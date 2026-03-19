@@ -19,7 +19,7 @@ use crate::block::Block;
 /// # Examples
 ///
 /// ```
-/// use raml_ffi::Value;
+/// use riot_core::Value;
 ///
 /// let v = Value::int(42);
 /// assert!(v.is_int());

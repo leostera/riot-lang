@@ -78,11 +78,17 @@ fn main() -> Result<()> {
         println!("  {} public modules", bindings.modules.len());
     }
     
-    let module_name = args.module_name
-        .unwrap_or_else(|| args.crate_path.file_name()
-            .unwrap()
-            .to_string_lossy()
-            .to_string());
+    let module_name = args
+        .module_name
+        .unwrap_or_else(|| {
+            let crate_name = args
+                .crate_path
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
+            sanitize_module_name(&crate_name)
+        });
     
     let generator = OCamlGenerator::new(module_name);
     let ocaml_code = generator.generate(bindings)?;
@@ -112,4 +118,10 @@ fn main() -> Result<()> {
     println!("  open {}", generator.module_name().to_uppercase());
     
     Ok(())
+}
+
+fn sanitize_module_name(name: &str) -> String {
+    name.chars()
+        .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' })
+        .collect()
 }

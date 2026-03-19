@@ -78,7 +78,7 @@ impl BlockHeader {
     /// # Examples
     ///
     /// ```
-    /// use raml_ffi::{BlockHeader, GcColor, Tag};
+    /// use riot_core::{BlockHeader, GcColor, Tag};
     ///
     /// let header = BlockHeader::new(3, Tag::CONS, GcColor::White);
     /// assert_eq!(header.size(), 3);

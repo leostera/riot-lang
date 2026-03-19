@@ -39,9 +39,8 @@ riot-bindgen
 
 ## What was removed
 
-These runtime and example experiments are no longer part of the active native workspace:
+These legacy experiments are no longer part of the active native workspace:
 
 - `example-lib`
-- `raml-kernel`
-- `raml-rt`
-
+- the old bytecode runtime experiments
+- the old native runner experiments

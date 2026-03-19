@@ -1,4 +1,4 @@
-# raml-derive
+# riot-derive
 
 Procedural macros for automatic Rust⟷OCaml value conversions.
 
@@ -19,15 +19,15 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-raml-core = { path = "../raml-core" }
-raml-derive = { path = "../raml-derive" }
+riot-core = { path = "../riot-core" }
+riot-derive = { path = "../riot-derive" }
 ```
 
-Or use the high-level `raml-ffi` facade:
+Or use the high-level `riot-ffi` facade:
 
 ```toml
 [dependencies]
-raml-ffi = { path = "../raml-ffi" }
+riot-ffi = { path = "../riot-ffi" }
 ```
 
 ## Examples
@@ -35,7 +35,7 @@ raml-ffi = { path = "../raml-ffi" }
 ### Structs
 
 ```rust
-use raml_ffi::prelude::*;
+use riot_ffi::prelude::*;
 
 #[derive(Value)]
 struct Point {
@@ -129,8 +129,8 @@ type color =
 ## Requirements
 
 All field types must implement:
-- `Into<raml_core::Value>`
-- `TryFrom<raml_core::Value>`
+- `Into<riot_core::Value>`
+- `TryFrom<riot_core::Value>`
 
 ## Limitations
 
@@ -144,16 +144,16 @@ All field types must implement:
 The macro generates:
 
 ```rust
-impl Into<raml_core::Value> for YourType {
-    fn into(self) -> raml_core::Value {
+impl Into<riot_core::Value> for YourType {
+    fn into(self) -> riot_core::Value {
         // Allocate block, set fields
     }
 }
 
-impl TryFrom<raml_core::Value> for YourType {
+impl TryFrom<riot_core::Value> for YourType {
     type Error = &'static str;
     
-    fn try_from(value: raml_core::Value) -> Result<Self, Self::Error> {
+    fn try_from(value: riot_core::Value) -> Result<Self, Self::Error> {
         // Validate tag/size, extract fields
     }
 }
@@ -161,6 +161,6 @@ impl TryFrom<raml_core::Value> for YourType {
 
 ## See Also
 
-- `raml-core`: Core value representation
-- `raml-ffi`: High-level FFI facade (re-exports this crate)
+- `riot-core`: Core value representation
+- `riot-ffi`: High-level FFI facade (re-exports this crate)
 - Examples: `derive_demo.rs`, `simple_struct.rs`, `simple_enum.rs`

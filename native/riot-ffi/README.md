@@ -1,15 +1,15 @@
-# raml-ffi
+# riot-ffi
 
 High-level FFI interface for Rust⟷OCaml interop.
 
 ## Overview
 
-This crate provides a convenient facade for working with OCaml values from Rust. It re-exports all types from `raml-core` and will provide derive macros for automatic conversion.
+This crate provides a convenient facade for working with OCaml values from Rust. It re-exports all types from `riot-core` and the `riot-derive` `Value` macro.
 
 ## Quick Start
 
 ```rust
-use raml_ffi::prelude::*;
+use riot_ffi::prelude::*;
 
 let v = Value::int(42);
 assert_eq!(v.as_int(), 42);
@@ -18,20 +18,20 @@ assert_eq!(v.as_int(), 42);
 ## Architecture
 
 ```
-raml-ffi (THIS CRATE)
-  ├── Re-exports raml-core
-  └── Future: #[derive(Value)] macro
+riot-ffi (this crate)
+  ├── Re-exports riot-core
+  └── Re-exports riot-derive::Value
 
-raml-core
+riot-core
   └── Core value representation
 ```
 
-## Future: Derive Macro
+## Derive Macro
 
-This crate will provide `#[derive(Value)]` for automatic conversion:
+This crate already exposes `#[derive(Value)]` for automatic conversion:
 
 ```rust
-use raml_ffi::prelude::*;
+use riot_ffi::prelude::*;
 
 #[derive(Value)]
 struct Point {
@@ -63,25 +63,23 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-raml-ffi = { path = "../raml-ffi" }
+riot-ffi = { path = "../riot-ffi" }
 ```
 
 Import the prelude:
 
 ```rust
-use raml_ffi::prelude::*;
+use riot_ffi::prelude::*;
 ```
 
-## Implementation Plan
+## What It Re-exports
 
-1. **Phase 1** (Current): Re-export raml-core ✅
-2. **Phase 2**: Create raml-derive proc macro crate
-3. **Phase 3**: Implement `#[derive(Value)]` for structs
-4. **Phase 4**: Implement `#[derive(Value)]` for enums
-5. **Phase 5**: Add error handling and validation
+- Everything from `riot-core`
+- `riot_derive::Value`
+- A `prelude` module containing the common imports for FFI crates
 
 ## See Also
 
-- `raml-core`: Core value representation (implementation details)
-- `raml-rt`: OCaml bytecode runtime
-- `raml-kernel`: Executable runner
+- `riot-core`: Core value representation
+- `riot-derive`: Proc-macro implementation details
+- `hello-rust`: End-to-end smoke-test crate

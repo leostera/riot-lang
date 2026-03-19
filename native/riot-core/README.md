@@ -1,12 +1,12 @@
-# raml-core
+# riot-core
 
-Core OCaml value representation for the RaML runtime.
+Core OCaml value representation for Riot's native binding layer.
 
 ## Overview
 
 This crate provides the fundamental types and abstractions for working with OCaml values. It implements OCaml's tagged pointer representation and block structure.
 
-**Note**: For FFI usage with derive macros, use the `raml-ffi` crate instead, which re-exports everything from `raml-core` plus provides `#[derive(Value)]`.
+For ergonomic FFI usage with derive macros, use `riot-ffi`, which re-exports `riot-core` and `#[derive(Value)]`.
 
 ## Value Representation
 
@@ -15,7 +15,7 @@ OCaml values use a tagged pointer representation:
 - **Pointers**: Aligned pointers to heap blocks with LSB = 0
 
 ```rust
-use raml_core::prelude::*;
+use riot_core::prelude::*;
 
 let v = Value::int(42);
 assert!(v.is_int());
@@ -31,7 +31,7 @@ Heap-allocated values are represented as blocks with:
 - **Fields**: Array of Value pointers
 
 ```rust
-use raml_core::prelude::*;
+use riot_core::prelude::*;
 
 let header = BlockHeader::new(3, Tag::CONS, GcColor::White);
 assert_eq!(header.size(), 3);
@@ -44,13 +44,13 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-raml-core = { path = "../raml-core" }
+riot-core = { path = "../riot-core" }
 ```
 
 Import the prelude:
 
 ```rust
-use raml_core::prelude::*;
+use riot_core::prelude::*;
 ```
 
 ## Examples
@@ -58,19 +58,20 @@ use raml_core::prelude::*;
 Run the basic usage example:
 
 ```bash
-cargo run -p raml-core --example basic_usage
+cargo run -p riot-core --example basic_usage
 ```
 
 ## Architecture
 
-This crate is part of the RaML (Rust Abstract Machine Layer) project:
+This crate is part of Riot's native binding stack:
 
 ```
 native/
-├── raml-core/     # Core value representation (THIS CRATE)
-├── raml-ffi/      # FFI facade with derive macros (re-exports raml-core)
-├── raml-rt/       # Bytecode runtime (uses raml-core)
-└── raml-kernel/   # Executable runner
+├── riot-core/     # Core value representation (this crate)
+├── riot-ffi/      # Ergonomic facade over riot-core plus derive support
+├── riot-derive/   # Procedural macros for Value conversions
+├── riot-bindgen/  # OCaml binding generator
+└── hello-rust/    # Smoke-test native library
 ```
 
 ## License

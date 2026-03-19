@@ -1,20 +1,20 @@
-# raml-bindgen
+# riot-bindgen
 
 Generate OCaml bindings from Rust crates.
 
 ## Overview
 
-`raml-bindgen` analyzes Rust code and generates OCaml `external` declarations for calling Rust functions from OCaml. This forms the foundation for writing native extensions in Rust.
+`riot-bindgen` analyzes Rust source files and generates OCaml declarations from the public items it finds. It is aimed at Riot's Rust-to-OCaml integration layer.
 
 ## Installation
 
 ```bash
-cargo install --path native/raml-bindgen
+cargo install --path native/riot-bindgen
 ```
 
 Or run directly:
 ```bash
-cargo run -p raml-bindgen -- <crate-path>
+cargo run -p riot-bindgen -- <crate-path>
 ```
 
 ## Usage
@@ -22,19 +22,19 @@ cargo run -p raml-bindgen -- <crate-path>
 ### Basic Usage
 
 ```bash
-raml-bindgen path/to/rust/crate
+riot-bindgen path/to/rust/crate
 ```
 
 This will:
 1. Analyze all `.rs` files in `src/`
-2. Find public functions with `#[no_mangle]` or `extern "C"`
-3. Find public types with `#[derive(Value)]`
+2. Find top-level public functions
+3. Find public structs and enums with `#[derive(Value)]`
 4. Generate OCaml bindings in `<crate>/ocaml_bindings/`
 
 ### Options
 
 ```bash
-raml-bindgen <crate-path> [OPTIONS]
+riot-bindgen <crate-path> [OPTIONS]
 
 Options:
   -o, --output <DIR>          Output directory (default: ocaml_bindings/)
@@ -48,22 +48,22 @@ Options:
 
 ```bash
 # Generate bindings for a crate
-$ raml-bindgen native/example-lib --generate-mli --verbose
+$ riot-bindgen native/hello-rust --generate-mli --verbose
 
-raml-bindgen: Analyzing crate at "native/example-lib"
-Found 3 Rust files
+riot-bindgen: Analyzing crate at "native/hello-rust"
+Found 1 Rust files
   Analyzing lib.rs
 
 Found:
-  8 public functions
+  2 public functions
   0 public types
   0 public modules
 
-Generated: "native/example-lib/ocaml_bindings/example-lib.ml"
-Generated: "native/example-lib/ocaml_bindings/example-lib.mli"
+Generated: "native/hello-rust/ocaml_bindings/hello_rust.ml"
+Generated: "native/hello-rust/ocaml_bindings/hello_rust.mli"
 
 To use in OCaml:
-  open EXAMPLE-LIB
+  open HELLO_RUST
 ```
 
 ## Writing Rust Code for OCaml
@@ -87,7 +87,7 @@ external add : int -> int -> int = "rust_add"
 ### Working with Custom Types
 
 ```rust
-use raml_ffi::prelude::*;
+use riot_ffi::prelude::*;
 
 pub struct Point {
     pub x: i32,
@@ -119,7 +119,7 @@ external point_x : 'a -> int = "rust_point_x"
 external point_free : 'a -> unit = "rust_point_free"
 ```
 
-### Type Mapping
+### Current Type Mapping
 
 | Rust Type | OCaml Type |
 |-----------|------------|
@@ -133,31 +133,16 @@ external point_free : 'a -> unit = "rust_point_free"
 | `Vec<T>` | `T list` |
 | `Option<T>` | `T option` |
 | `Result<T, E>` | `(T, E) result` |
-| `*const T, *mut T` | `'a` (abstract) |
+| `&T, &mut T` | mapped from the referenced inner type |
+| other named types | lowercased type name |
 
-## Integration with Build System
+## Generated Naming
 
-Add to your `Cargo.toml`:
+Today the generator:
 
-```toml
-[package.metadata.raml-bindgen]
-output = "ocaml_bindings"
-module_name = "MyLib"
-generate_mli = true
-```
-
-Then use in build script (`build.rs`):
-
-```rust
-fn main() {
-    println!("cargo:rerun-if-changed=src/");
-    
-    std::process::Command::new("raml-bindgen")
-        .arg(".")
-        .output()
-        .expect("Failed to run raml-bindgen");
-}
-```
+- writes `<module>.ml` and optionally `<module>.mli`
+- defaults the module name to the crate directory name with non-alphanumeric characters normalized to `_`, unless `--module-name` is passed
+- emits externals using the Rust function name with a `"rust_"` prefix in the generated OCaml stub string
 
 ## Generated Code Structure
 
@@ -171,11 +156,11 @@ your-crate/
 └── Cargo.toml
 ```
 
-## Example: Complete FFI Library
+## Example: Rust Library Shape
 
 ```rust
 // src/lib.rs
-use raml_ffi::prelude::*;
+use riot_ffi::prelude::*;
 
 pub struct Database {
     path: String,
@@ -233,9 +218,10 @@ db_close db
 ## Limitations
 
 Current:
-- Only public functions with `#[no_mangle]` or `extern "C"`
-- Types with `#[derive(Value)]` (future: auto-detect)
-- Basic type inference (pointers → abstract types)
+- Only top-level public functions are analyzed
+- Only public structs and enums with `#[derive(Value)]` become OCaml types
+- Type mapping is intentionally simple and lossy for many Rust-specific forms
+- Nested modules are not traversed as first-class OCaml modules yet
 
 Future:
 - Better type inference
@@ -245,17 +231,17 @@ Future:
 
 ## See Also
 
-- `raml-ffi`: High-level FFI facade
-- `raml-derive`: Derive macros for Value conversion
-- `example-lib`: Complete example
+- `riot-ffi`: High-level FFI facade
+- `riot-derive`: Derive macros for Value conversion
+- `hello-rust`: Smoke-test native library
 - OCaml manual: Interfacing C with OCaml
 
 ## Architecture
 
 ```
-Rust Crate
+Rust crate
     ↓
-raml-bindgen (analyze)
+riot-bindgen (analyze)
     ↓
 AST → Bindings
     ↓

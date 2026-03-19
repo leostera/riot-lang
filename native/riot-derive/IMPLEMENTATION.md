@@ -1,4 +1,4 @@
-# raml-derive Implementation
+# riot-derive Implementation
 
 Implementation notes for the `#[derive(Value)]` proc macro.
 
@@ -20,8 +20,8 @@ struct Point { x: i32, y: i32 }
 
 **Generated:**
 ```rust
-impl Into<raml_core::Value> for Point {
-    fn into(self) -> raml_core::Value {
+impl Into<riot_core::Value> for Point {
+    fn into(self) -> riot_core::Value {
         unsafe {
             // Allocate block: tag=0 (record), size=2
             let ptr = alloc_block(0, 2);
@@ -36,7 +36,7 @@ impl Into<raml_core::Value> for Point {
     }
 }
 
-impl TryFrom<raml_core::Value> for Point {
+impl TryFrom<riot_core::Value> for Point {
     type Error = &'static str;
     
     fn try_from(value: Value) -> Result<Self, Self::Error> {
@@ -76,8 +76,8 @@ enum Shape {
 
 **Generated:**
 ```rust
-impl Into<raml_core::Value> for Shape {
-    fn into(self) -> raml_core::Value {
+impl Into<riot_core::Value> for Shape {
+    fn into(self) -> riot_core::Value {
         match self {
             Shape::Circle(f0) => {
                 // Allocate block: tag=0, size=1
@@ -167,8 +167,8 @@ unsafe {
 ### Field Conversion
 
 All fields must implement:
-- `Into<raml_core::Value>` (for serialization)
-- `TryFrom<raml_core::Value>` (for deserialization)
+- `Into<riot_core::Value>` (for serialization)
+- `TryFrom<riot_core::Value>` (for deserialization)
 
 ### Error Handling
 
@@ -199,10 +199,10 @@ Future:
 
 Run examples:
 ```bash
-cargo run -p raml-ffi --example derive_demo
-cargo run -p raml-ffi --example simple_struct
-cargo run -p raml-ffi --example simple_enum
-cargo run -p raml-ffi --example mixed_enum
+cargo run -p riot-ffi --example derive_demo
+cargo run -p riot-ffi --example simple_struct
+cargo run -p riot-ffi --example simple_enum
+cargo run -p riot-ffi --example mixed_enum
 ```
 
 ## Performance
@@ -214,6 +214,6 @@ cargo run -p raml-ffi --example mixed_enum
 
 ## See Also
 
-- `raml-core`: Value representation details
-- `raml-ffi`: High-level usage examples
+- `riot-core`: Value representation details
+- `riot-ffi`: High-level usage examples
 - OCaml manual: Memory representation

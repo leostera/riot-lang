@@ -1,6 +1,6 @@
 //! # riot-core
 //!
-//! Core OCaml value representation for the RaML runtime.
+//! Core OCaml value representation for Riot's native binding layer.
 //!
 //! This crate provides the fundamental types and abstractions for working with OCaml values.
 //! It implements OCaml's tagged pointer representation and block structure.
