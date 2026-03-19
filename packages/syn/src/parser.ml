@@ -7120,21 +7120,7 @@ and parse_module_type_decl parser =
   in
   let trivia_after_eq = consume_trivia parser in
   
-  (* Parse module type expression (sig...end or identifier) *)
-  let type_expr =
-    match peek_kind parser with
-    | Token.OpenDelim Token.SigEnd -> parse_sig_expr parser
-    | Token.Ident _ ->
-        let ident = consume parser in
-        make_node Syntax_kind.IDENT_EXPR [ make_token parser ident ]
-    | _ ->
-        let found = peek parser in
-        let diagnostic =
-          Diagnostic.invalid_expression ~found ~text:(token_text parser found)
-            ~span:(expected_span parser)
-        in
-        make_error_node parser ~diagnostic ~consumed_tokens:[ found ]
-  in
+  let type_expr = parse_module_type_expr parser in
   
   (* Build MODULE_TYPE_DECL node *)
   make_node Syntax_kind.MODULE_TYPE_DECL
@@ -7240,68 +7226,7 @@ and parse_module_decl parser =
     if peek_kind parser = Token.Colon then
       let colon = consume parser in
       let trivia_after_colon = consume_trivia parser in
-      (* Parse module type expression *)
-      let sig_expr =
-        match peek_kind parser with
-        | Token.Keyword Keyword.Module ->
-            (* Check if this is "module type of" *)
-            let saved_pos = position parser in
-            advance parser; (* Skip 'module' *)
-            let trivia1 = consume_trivia parser in
-            if peek_kind parser = Token.Keyword Keyword.Type then (
-              advance parser; (* Skip 'type' *)
-              let trivia2 = consume_trivia parser in
-              if peek_kind parser = Token.Keyword Keyword.Of then (
-                (* This is "module type of" *)
-                Token_cursor.set_position parser.cursor saved_pos;
-                let module_kw = consume parser in
-                let trivia_after_module = consume_trivia parser in
-                let type_kw = consume parser in
-                let trivia_after_type = consume_trivia parser in
-                let of_kw = consume parser in
-                let trivia_after_of = consume_trivia parser in
-                (* Parse the module path *)
-                let module_path = parse_module_type_path parser in
-                make_node Syntax_kind.MODULE_TYPE_OF
-                  ([ make_token parser module_kw ]
-                  @ tokens_to_green parser trivia_after_module
-                  @ [ make_token parser type_kw ]
-                  @ tokens_to_green parser trivia_after_type
-                  @ [ make_token parser of_kw ]
-                  @ tokens_to_green parser trivia_after_of
-                  @ [ Ceibo.Green.Node module_path ])
-              ) else (
-                (* Not "module type of", restore and treat as error *)
-                Token_cursor.set_position parser.cursor saved_pos;
-                let found = peek parser in
-                let diagnostic =
-                  Diagnostic.invalid_expression ~found ~text:(token_text parser found)
-                    ~span:(expected_span parser)
-                in
-                make_error_node parser ~diagnostic ~consumed_tokens:[ found ]
-              )
-            ) else (
-              (* Not "module type", restore and treat as error *)
-              Token_cursor.set_position parser.cursor saved_pos;
-              let found = peek parser in
-              let diagnostic =
-                Diagnostic.invalid_expression ~found ~text:(token_text parser found)
-                  ~span:(expected_span parser)
-              in
-              make_error_node parser ~diagnostic ~consumed_tokens:[ found ]
-            )
-        | Token.Ident _ ->
-            let ident = consume parser in
-            make_node Syntax_kind.IDENT_EXPR [ make_token parser ident ]
-        | Token.OpenDelim Token.SigEnd -> parse_sig_expr parser
-        | _ ->
-            let found = peek parser in
-            let diagnostic =
-              Diagnostic.invalid_expression ~found ~text:(token_text parser found)
-                ~span:(expected_span parser)
-            in
-            make_error_node parser ~diagnostic ~consumed_tokens:[ found ]
-      in
+      let sig_expr = parse_module_type_expr parser in
       let trivia_after_sig = consume_trivia parser in
       Some (colon, trivia_after_colon, sig_expr, trivia_after_sig)
     else None
@@ -8000,6 +7925,15 @@ and parse_open_stmt parser =
   (* Consume 'open' keyword *)
   let open_kw = consume parser in
   let trivia_after_open = consume_trivia parser in
+  let bang_children, trivia_after_bang =
+    match peek_kind parser with
+    | Token.Bang ->
+        let bang = consume parser in
+        let trivia = consume_trivia parser in
+        ([ make_token parser bang ], trivia)
+    | _ ->
+        ([], [])
+  in
 
   (* Parse module path (e.g., List or Std.List) *)
   let rec parse_module_path () =
@@ -8033,6 +7967,8 @@ and parse_open_stmt parser =
   make_node Syntax_kind.OPEN_STMT
     ([ make_token parser open_kw ]
     @ tokens_to_green parser trivia_after_open
+    @ bang_children
+    @ tokens_to_green parser trivia_after_bang
     @ module_path)
 
 (** Parse include statement: include Module or include Module.Submodule *)
@@ -8078,64 +8014,77 @@ and parse_include_stmt parser =
 and parse_structure_item ?(in_block = false) parser =
   match peek_kind parser with
   | Token.Keyword Keyword.Let ->
+      (* let open ... in and let module ... in are expression forms. *)
+      let saved_pos0 = position parser in
+      advance parser;
+      let _ = consume_trivia parser in
+      let starts_let_expr =
+        match peek_kind parser with
+        | Token.Keyword Keyword.Open | Token.Keyword Keyword.Module -> true
+        | _ -> false
+      in
+      Token_cursor.set_position parser.cursor saved_pos0;
+      if starts_let_expr then
+        parse_expr parser
+      else
       (* Peek ahead to determine if this is a let-binding (structure item)
          or a let-in expression. We do this by saving position and parsing
          ahead to look for 'in' keyword *)
-      let saved_pos = position parser in
-      let is_let_in_expr = ref false in
-      
-      (* Try to scan ahead for 'in' keyword before EOF/next structure item *)
-      let rec scan_for_in depth struct_depth =
-        match peek_kind parser with
-        | Token.EOF -> ()
-        | Token.Keyword Keyword.In when depth = 0 && struct_depth = 0 ->
-            is_let_in_expr := true
-        | Token.Keyword Keyword.Let | Token.Keyword Keyword.Match
-        | Token.Keyword Keyword.Try | Token.Keyword Keyword.Fun
-        | Token.Keyword Keyword.Function ->
-            advance parser;
-            (* Only increment depth if NOT inside struct/sig blocks *)
-            let new_depth = if struct_depth = 0 then depth + 1 else depth in
-            scan_for_in new_depth struct_depth
-        | Token.Keyword Keyword.In ->
-            advance parser;
-            scan_for_in (depth - 1) struct_depth
-        (* Track struct/sig/begin...end blocks to avoid looking inside them *)
-        | Token.Keyword Keyword.Struct | Token.Keyword Keyword.Sig | Token.Keyword Keyword.Begin ->
-            advance parser;
-            scan_for_in depth (struct_depth + 1)
-        | Token.Keyword Keyword.End when struct_depth > 0 ->
-            advance parser;
-            scan_for_in depth (struct_depth - 1)
-        | Token.Keyword Keyword.End when struct_depth = 0 ->
-            (* Hit 'end' at struct_depth 0 - stop searching, this is not a let-in expr *)
-            ()
-        (* Only stop at structure keywords if we're at depth 0 AND not past a reasonable distance *)
-        | Token.Keyword Keyword.Type | Token.Keyword Keyword.Module 
-        | Token.Keyword Keyword.Exception | Token.Keyword Keyword.External
-        | Token.Keyword Keyword.Open | Token.Keyword Keyword.Include when depth = 0 && struct_depth = 0 ->
-            (* Hit next structure item without finding 'in' *)
-            ()
-        | Token.Keyword Keyword.And when depth = 0 && struct_depth = 0 ->
-            (* 'and' at top level ends the search *)
-            ()
-        | _ ->
-            advance parser;
-            scan_for_in depth struct_depth
-      in
-      
-      advance parser; (* skip 'let' *)
-      (* If we're already in a block, start with struct_depth = 1 to prevent 
-         looking past the block's 'end' keyword *)
-      let initial_struct_depth = if in_block then 1 else 0 in
-      scan_for_in 0 initial_struct_depth;
-      
-      (* Restore position *)
-      Token_cursor.set_position parser.cursor saved_pos;
-      
-      (* Parse as expression if we found 'in', otherwise as binding *)
-      if !is_let_in_expr then parse_expr parser
-      else parse_let_binding parser
+        let saved_pos = position parser in
+        let is_let_in_expr = ref false in
+        
+        (* Try to scan ahead for 'in' keyword before EOF/next structure item *)
+        let rec scan_for_in depth struct_depth =
+          match peek_kind parser with
+          | Token.EOF -> ()
+          | Token.Keyword Keyword.In when depth = 0 && struct_depth = 0 ->
+              is_let_in_expr := true
+          | Token.Keyword Keyword.Let | Token.Keyword Keyword.Match
+          | Token.Keyword Keyword.Try | Token.Keyword Keyword.Fun
+          | Token.Keyword Keyword.Function ->
+              advance parser;
+              (* Only increment depth if NOT inside struct/sig blocks *)
+              let new_depth = if struct_depth = 0 then depth + 1 else depth in
+              scan_for_in new_depth struct_depth
+          | Token.Keyword Keyword.In ->
+              advance parser;
+              scan_for_in (depth - 1) struct_depth
+          (* Track struct/sig/begin...end blocks to avoid looking inside them *)
+          | Token.Keyword Keyword.Struct | Token.Keyword Keyword.Sig | Token.Keyword Keyword.Begin ->
+              advance parser;
+              scan_for_in depth (struct_depth + 1)
+          | Token.Keyword Keyword.End when struct_depth > 0 ->
+              advance parser;
+              scan_for_in depth (struct_depth - 1)
+          | Token.Keyword Keyword.End when struct_depth = 0 ->
+              (* Hit 'end' at struct_depth 0 - stop searching, this is not a let-in expr *)
+              ()
+          (* Only stop at structure keywords if we're at depth 0 AND not past a reasonable distance *)
+          | Token.Keyword Keyword.Type | Token.Keyword Keyword.Module 
+          | Token.Keyword Keyword.Exception | Token.Keyword Keyword.External
+          | Token.Keyword Keyword.Open | Token.Keyword Keyword.Include when depth = 0 && struct_depth = 0 ->
+              (* Hit next structure item without finding 'in' *)
+              ()
+          | Token.Keyword Keyword.And when depth = 0 && struct_depth = 0 ->
+              (* 'and' at top level ends the search *)
+              ()
+          | _ ->
+              advance parser;
+              scan_for_in depth struct_depth
+        in
+        
+        advance parser; (* skip 'let' *)
+        (* If we're already in a block, start with struct_depth = 1 to prevent 
+           looking past the block's 'end' keyword *)
+        let initial_struct_depth = if in_block then 1 else 0 in
+        scan_for_in 0 initial_struct_depth;
+        
+        (* Restore position *)
+        Token_cursor.set_position parser.cursor saved_pos;
+        
+        (* Parse as expression if we found 'in', otherwise as binding *)
+        if !is_let_in_expr then parse_expr parser
+        else parse_let_binding parser
   | Token.Keyword Keyword.Type -> parse_type_decl parser
   | Token.Keyword Keyword.Module ->
       (* Check if this is 'module type' or 'module' by peeking past trivia *)
