@@ -16,11 +16,6 @@ Riot is an [actor-model][actors], multi-core-ready ecosystem for OCaml 5,
 designed from the ground up for _programmer happiness_ and _shipping_,
 following a few simple principles:
 
-If you're coming from Erlang, Elixir, Go, Rust, or Rails, the shape of Riot
-should feel familiar in spirit: a runtime model you can build around, a
-standard library that wants to be used, and tooling that is part of the
-experience rather than something bolted on later.
-
 * **Optimize for Programmer Happiness** -- We want writing OCaml to feel joyful. Riot
 tries to remove plumbing, incidental choices, and papercuts so developers can
 stay in flow and focus on the work that matters.
@@ -137,8 +132,7 @@ tusk completions --tests
 And if you want to validate the native interop path specifically:
 
 ```sh
-RUSTC_WRAPPER= tusk build hello-foreign
-tusk run hello
+tusk run hello-foreign:hello
 ```
 
 You do not need to understand the whole repository to get value from Riot. The
