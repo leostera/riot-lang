@@ -22,8 +22,18 @@ type summary = {
 
 type run_result = { files : file_result list; summary : summary }
 
-val run_file : ?pipeline:Pipeline.t -> mode:mode -> Path.t -> file_result
-val run_files : ?pipeline:Pipeline.t -> mode:mode -> Path.t list -> run_result
+val run_file :
+  ?pipeline:Pipeline.t ->
+  ?pipeline_for_file:(Path.t -> Pipeline.t) ->
+  mode:mode ->
+  Path.t ->
+  file_result
+val run_files :
+  ?pipeline:Pipeline.t ->
+  ?pipeline_for_file:(Path.t -> Pipeline.t) ->
+  mode:mode ->
+  Path.t list ->
+  run_result
 val summary_to_json : summary -> Data.Json.t
 val file_result_to_json : file_result -> Data.Json.t
 val run_result_to_json : run_result -> Data.Json.t

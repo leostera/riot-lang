@@ -2,6 +2,9 @@
 name = "miniriot"
 version = "0.0.1"
 
+[tusk.fix]
+rules = [ "-no-stdlib" ]
+
 [lib]
 path = "src/miniriot.ml"
 

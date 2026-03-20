@@ -75,11 +75,28 @@ let extract_code_snippet source (span : Syn.Ceibo.Span.t) =
     (* +1 for newline *)
   in
   let start_pos = span.start in
+  let end_pos =
+    if span.end_ <= span.start then span.start + 1 else span.end_
+  in
   let start_line, start_col = find_line line_lengths start_pos 1 0 in
+  let end_line, end_col = find_line line_lengths end_pos 1 0 in
   let line_idx = start_line - 1 in
   match line_at line_idx lines with
   | Some code_line ->
-      let pointer_line = String.make start_col ' ' ^ "\027[1;33m^\027[0m" in
+      let marker_width =
+        if start_line = end_line then
+          let width = end_col - start_col in
+          if width <= 0 then 1 else width
+        else
+          let remaining = String.length code_line - start_col in
+          if remaining <= 0 then 1 else remaining
+      in
+      let pointer_line =
+        String.make start_col ' '
+        ^ "\027[1;33m"
+        ^ String.make marker_width '^'
+        ^ "\027[0m"
+      in
       Some (code_line, pointer_line, start_line)
   | None -> None
 
@@ -170,6 +187,12 @@ let grouped_to_formatted_output ~file ~source grouped =
   let basic_info =
     [ "[" ^ severity_str ^ "] " ^ grouped.rule_id; ""; grouped.message ]
   in
+  let spans =
+    List.sort
+      (fun (left : Syn.Ceibo.Span.t) (right : Syn.Ceibo.Span.t) ->
+        Int.compare left.start right.start)
+      grouped.spans
+  in
   let lines_with_snippets =
     List.fold_left
       (fun acc span ->
@@ -184,7 +207,7 @@ let grouped_to_formatted_output ~file ~source grouped =
                 ^ " |\027[0m " ^ pointer_line;
               ]
         | None -> acc @ [ "  at " ^ Syn.Ceibo.Span.to_string span ])
-      basic_info grouped.spans
+      basic_info spans
   in
   let lines_with_suggestion =
     match grouped.suggestion, grouped.fix with

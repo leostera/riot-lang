@@ -45,5 +45,8 @@ members = [
 [tusk]
 target_dir = "_build"
 
+[tusk.fix]
+rules = ["no-stdlib"]
+
 [profile.debug]
 ocamlc_flags = ["-O0"]

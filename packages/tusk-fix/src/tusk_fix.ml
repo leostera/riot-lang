@@ -15,3 +15,4 @@ module File_scanner = File_scanner
 module Messages = Messages
 module Worker = Worker
 module Coordinator = Coordinator
+module Config = Fix_config

@@ -23,7 +23,12 @@ let default_path () =
     Env.current_dir ()
     |> Result.expect ~msg:"Failed to get current directory"
   in
-  let packages_dir = Path.(cwd / Path.v "packages") in
+  let workspace_root =
+    match Fix_config.load_scope ~cwd with
+    | Some scope -> Fix_config.workspace_root scope
+    | None -> cwd
+  in
+  let packages_dir = Path.(workspace_root / Path.v "packages") in
   if Fs.is_dir packages_dir |> Result.unwrap_or ~default:false then
     packages_dir
   else cwd
@@ -127,6 +132,11 @@ let print_text_summary mode summary =
          ^ Int.to_string summary.remaining_diagnostics ^ " issues remain")
 
 let run matches =
+  let cwd =
+    Env.current_dir ()
+    |> Result.expect ~msg:"Failed to get current directory"
+  in
+  let scope = Fix_config.load_scope ~cwd in
   let mode =
     if ArgParser.get_flag matches "check" then
       Runner.Check
@@ -138,12 +148,19 @@ let run matches =
     | _ -> Reporter.Text
   in
   let target = resolve_target matches in
-  let files = resolve_files target in
+  let files =
+    resolve_files target
+    |> List.filter (fun file -> not (Fix_config.should_ignore_file scope file))
+  in
   if List.length files = 0 then (
     println "No OCaml files found.";
     Ok ())
   else
-    let result = Runner.run_files ~mode files in
+    let result =
+      Runner.run_files
+        ~pipeline_for_file:(Fix_config.pipeline_for_file scope)
+        ~mode files
+    in
     (match format with
     | Reporter.Json ->
         print (Data.Json.to_string (Runner.run_result_to_json result));

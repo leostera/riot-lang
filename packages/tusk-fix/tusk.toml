@@ -12,6 +12,7 @@ path = "src/main.ml"
 [dependencies]
 std = { path = "../std" }
 syn = { path = "../syn" }
+tusk-model = { path = "../tusk-model" }
 
 [[bin]]
 name = "fix_tests"

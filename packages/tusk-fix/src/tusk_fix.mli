@@ -43,3 +43,6 @@ module Worker : module type of Worker
 
 module Coordinator : module type of Coordinator
 (** Coordinator actor for managing lint workers *)
+
+module Config : module type of Fix_config
+(** Workspace and package-local configuration resolution for `tusk fix` *)

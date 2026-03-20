@@ -39,7 +39,13 @@ let has_errors diagnostics =
 let run_pipeline pipeline file source =
   Pipeline.run pipeline ~filename:(Path.to_string file) source
 
-let run_file ?(pipeline = Pipeline.default ()) ~mode file =
+let resolve_pipeline ?pipeline ?pipeline_for_file file =
+  match pipeline_for_file with
+  | Some resolve -> resolve file
+  | None -> Option.unwrap_or ~default:(Pipeline.default ()) pipeline
+
+let run_file ?pipeline ?pipeline_for_file ~mode file =
+  let pipeline = resolve_pipeline ?pipeline ?pipeline_for_file file in
   match Fs.read file with
   | Error _ ->
       empty_result file
@@ -130,9 +136,11 @@ let summarize files =
     }
     files
 
-let run_files ?(pipeline = Pipeline.default ()) ~mode files =
+let run_files ?pipeline ?pipeline_for_file ~mode files =
   let files = List.sort (fun a b -> String.compare (Path.to_string a) (Path.to_string b)) files in
-  let results = List.map (run_file ~pipeline ~mode) files in
+  let results =
+    List.map (fun file -> run_file ?pipeline ?pipeline_for_file ~mode file) files
+  in
   { files = results; summary = summarize results }
 
 let summary_to_json summary =
