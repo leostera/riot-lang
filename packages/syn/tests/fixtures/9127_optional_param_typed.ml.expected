@@ -88,10 +88,17 @@
                 "width": 1
               },
               {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "x",
-                "width": 1
+                "type": "node",
+                "kind": "IDENT_PATTERN",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "token",
@@ -306,10 +313,17 @@
                 "width": 1
               },
               {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "f",
-                "width": 1
+                "type": "node",
+                "kind": "IDENT_PATTERN",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "f",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "token",
@@ -657,10 +671,17 @@
                 "width": 1
               },
               {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "prefix",
-                "width": 6
+                "type": "node",
+                "kind": "IDENT_PATTERN",
+                "width": 6,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "prefix",
+                    "width": 6
+                  }
+                ]
               },
               {
                 "type": "token",
@@ -756,10 +777,17 @@
                 "width": 1
               },
               {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "suffix",
-                "width": 6
+                "type": "node",
+                "kind": "IDENT_PATTERN",
+                "width": 6,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "suffix",
+                    "width": 6
+                  }
+                ]
               },
               {
                 "type": "token",

@@ -472,7 +472,7 @@
                   },
                   {
                     "type": "node",
-                    "kind": "IDENT_EXPR",
+                    "kind": "MODULE_TYPE_PATH",
                     "width": 6,
                     "children": [
                       {

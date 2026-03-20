@@ -81,7 +81,7 @@
                   },
                   {
                     "type": "node",
-                    "kind": "MODULE_PATH",
+                    "kind": "MODULE_TYPE_PATH",
                     "width": 5,
                     "children": [
                       {

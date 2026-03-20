@@ -1,5 +1,7 @@
 open Std
 
+type person = { name : string; age : int }
+
 (* Helper to run in a miniriot process *)
 let run_test () =
   println "\n=== Testing Agent (Parametric) ===";
@@ -49,7 +51,6 @@ let run_test () =
   Agent.stop string_agent;
   
   (* Test with record type *)
-  type person = { name : string; age : int }
   let person_agent = Agent.start (fun () -> { name = "Alice"; age = 30 }) in
   
   Agent.update person_agent (fun p -> { p with age = p.age + 1 });

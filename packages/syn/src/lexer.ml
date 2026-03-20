@@ -30,6 +30,11 @@ let lex_whitespace cursor start =
   { Token.kind = Token.Whitespace; span = Ceibo.Span.make ~start ~end_ }
 
 let try_skip_quoted_string cursor =
+  let is_quoted_string_header_char = function
+    | '%' -> true
+    | c -> is_ident_continue c
+  in
+
   let trim_right text =
     let rec loop i =
       if i < 0 then ""
@@ -60,10 +65,14 @@ let try_skip_quoted_string cursor =
           ""
   in
 
-  let rec find_pipe offset =
+  let rec find_pipe offset ~is_extension =
     match Cursor.peek_n cursor offset with
     | Some '|' -> Some offset
-    | Some _ -> find_pipe (offset + 1)
+    | Some c when is_extension && (is_quoted_string_header_char c || is_whitespace c) ->
+        find_pipe (offset + 1) ~is_extension
+    | Some c when is_quoted_string_header_char c ->
+        find_pipe (offset + 1) ~is_extension
+    | Some _ -> None
     | None -> None
   in
 
@@ -98,7 +107,7 @@ let try_skip_quoted_string cursor =
       if header_start = 0 then
         false
       else
-      match find_pipe header_start with
+      match find_pipe header_start ~is_extension with
       | None ->
           false
       | Some pipe_offset ->
