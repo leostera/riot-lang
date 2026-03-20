@@ -8,6 +8,7 @@
 2. Prefer direct local calls into tusk libraries over protocol-shaped wrappers.
 3. User-facing messages should stay concise and actionable.
 4. When adding commands, update completions and help output in the same change.
+5. Built-in commands that own domain logic elsewhere should delegate into their package library.
 
 ## Validate
 

@@ -126,6 +126,7 @@ _tusk() {
 
     builtin_commands=(
         'build:Build packages'
+        'fix:Lint and apply safe fixes'
         'run:Run a binary'
         'test:Run tests'
         'bench:Run benchmarks'
@@ -254,6 +255,12 @@ _tusk() {
                     '--benchmarks[List benchmarks]' \
                     '--commands[List commands]'
             fi
+            ;;
+        fix)
+            _arguments \
+                '--check[Check for issues without modifying files]' \
+                '--format[Output format]:format:(text json)' \
+                ':path:_files'
             ;;
         clean|install|new|doc|lsp|version)
             # These commands have their own completion logic

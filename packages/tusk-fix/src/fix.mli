@@ -48,12 +48,29 @@ type fix = {
     ]}
 *)
 
-(** {1 Future Functions}
-    
-    These will be implemented when auto-fix support is added:
-    
-    - [val apply_edit : source:string -> text_edit -> string]
-    - [val apply_fix : source:string -> fix -> string]
-    - [val apply_fixes : source:string -> fix list -> string]
-    - [val validate_fix : source:string -> fix -> (unit, string) result]
-*)
+val make_text_edit : span:Syn.Ceibo.Span.t -> new_text:string -> text_edit
+(** Construct a text edit. *)
+
+val make : title:string -> edits:text_edit list -> fix
+(** Construct a fix from a set of edits. *)
+
+val title : fix -> string
+(** Get the human-readable title for a fix. *)
+
+val edits : fix -> text_edit list
+(** Get the edits associated with a fix. *)
+
+val apply_edit : source:string -> text_edit -> (string, string) result
+(** Apply a single edit to source text. *)
+
+val apply_fix : source:string -> fix -> (string, string) result
+(** Apply a single fix to source text. *)
+
+val apply_fixes : source:string -> fix list -> (string, string) result
+(** Apply a list of fixes to source text, rejecting overlapping edits. *)
+
+val validate_fix : source:string -> fix -> (unit, string) result
+(** Validate that a fix is well-formed for the given source. *)
+
+val to_json : fix -> Data.Json.t
+(** Serialize a fix for machine-readable output. *)

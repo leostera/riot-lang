@@ -10,6 +10,7 @@ let build_cli workspace_opt =
     Build.command;
     Clean.command;
     Completions.command;
+    Fix_cmd.command;
     (* Fmt.command; *)
     (* TODO: Replace with tusk-fmt package *)
     Tusk_init.command;
@@ -196,6 +197,7 @@ format = "full"
       | Some ("clean", clean_matches) -> Clean.run clean_matches
       | Some ("completions", completions_matches) ->
           Completions.run completions_matches
+      | Some ("fix", fix_matches) -> Fix_cmd.run fix_matches
       | Some ("init", init_matches) -> Tusk_init.run init_matches
       | Some ("new", new_matches) -> New.run new_matches
       | Some ("install", install_matches) -> Install.run install_matches

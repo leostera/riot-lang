@@ -69,6 +69,10 @@ let () =
   build_package ~build_results ~needs_stdlib_and_unix:true "kernel" "packages/kernel";
   build_package ~build_results "miniriot" "packages/miniriot";
   build_package ~build_results "std" "packages/std";
+  build_package ~build_results "colors" "packages/colors";
+  build_package ~build_results "tty" "packages/tty";
+  build_package ~build_results "ceibo" "packages/ceibo";
+  build_package ~build_results "syn" "packages/syn";
   build_package ~build_results "tusk-model" "packages/tusk-model";
   build_package ~build_results "tusk-store" "packages/tusk-store";
   build_package ~build_results "tusk-toolchain" "packages/tusk-toolchain";
@@ -76,6 +80,7 @@ let () =
   build_package ~build_results "tusk-executor" "packages/tusk-executor";
   build_package ~build_results "tusk-server" "packages/tusk-server";
   build_package ~build_results "tusk-init" "packages/tusk-init";
+  build_package ~build_results "tusk-fix" "packages/tusk-fix";
   build_package ~build_results "tusk-cli" "packages/tusk-cli";
 
   Printf.printf "\n=== Build complete! ===\n"

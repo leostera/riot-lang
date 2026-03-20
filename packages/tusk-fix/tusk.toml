@@ -12,3 +12,11 @@ path = "src/main.ml"
 [dependencies]
 std = { path = "../std" }
 syn = { path = "../syn" }
+
+[[bin]]
+name = "fix_tests"
+path = "tests/fix_tests.ml"
+
+[[bin]]
+name = "runner_tests"
+path = "tests/runner_tests.ml"

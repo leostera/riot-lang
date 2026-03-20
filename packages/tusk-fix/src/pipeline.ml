@@ -1,23 +1,23 @@
 open Std
 
 type t = { rules : Rule.t list }
-type result = { tree : Rule.green_tree; diagnostics : Diagnostic.t list }
+type result = {
+  tree : Rule.green_tree;
+  diagnostics : Diagnostic.t list;
+  parse_diagnostics : Syn.Diagnostic.t list;
+}
 
 let make ~rules () = { rules }
 
 let run pipeline ?filename source =
-  let tokens = Syn.tokenize source in
-  let parse_result = Syn.Parser.parse_implementation ~source tokens in
-  let parse_diagnostics =
-    parse_result.diagnostics
-    |> List.map (fun diag ->
-        Diagnostic.make ~severity:Error
-          ~message:(Syn.Diagnostic.to_string diag)
-          ~span:diag.span ~rule_id:"parse_error" ())
+  let parse_result =
+    match filename with
+    | Some filename -> Syn.parse ~filename source
+    | None -> Syn.parse_implementation source
   in
   (* Skip linting if there are parse errors *)
   let lint_diagnostics =
-    if List.length parse_diagnostics > 0 then
+    if List.length parse_result.diagnostics > 0 then
       []
     else
       let red_tree = Syn.Ceibo.Red.new_root parse_result.tree in
@@ -29,7 +29,8 @@ let run pipeline ?filename source =
   in
   {
     tree = parse_result.tree;
-    diagnostics = parse_diagnostics @ lint_diagnostics;
+    diagnostics = lint_diagnostics;
+    parse_diagnostics = parse_result.diagnostics;
   }
 
 let default_rules () = 

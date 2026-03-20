@@ -8,6 +8,7 @@ type t = {
   span : Syn.Ceibo.Span.t;
   rule_id : string;
   suggestion : string option;
+  fix : Fix.fix option;
 }
 
 val make :
@@ -16,6 +17,7 @@ val make :
   span:Syn.Ceibo.Span.t ->
   rule_id:string ->
   ?suggestion:string ->
+  ?fix:Fix.fix ->
   unit ->
   t
 
@@ -30,6 +32,7 @@ val message : t -> string
 val span : t -> Syn.Ceibo.Span.t
 val rule_id : t -> string
 val suggestion : t -> string option
+val fix : t -> Fix.fix option
 
 type grouped = {
   severity : severity;
@@ -37,6 +40,7 @@ type grouped = {
   spans : Syn.Ceibo.Span.t list;
   rule_id : string;
   suggestion : string option;
+  fix : Fix.fix option;
 }
 
 val group_diagnostics : t list -> grouped list

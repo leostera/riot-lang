@@ -5,6 +5,12 @@ type t = { root : Path.t; exclude_patterns : string list }
 let create ~root ?(exclude_patterns = [ "."; "_build"; "target" ]) () =
   { root; exclude_patterns }
 
+let is_non_source_test_path path =
+  let path_str = Path.to_string path in
+  String.contains path_str "/tests/fixtures/"
+  || String.contains path_str "/tests/generated/"
+  || String.contains path_str "/tests/diagnostics/"
+
 let should_exclude t dir_name =
   List.exists
     (fun pattern ->
@@ -23,13 +29,15 @@ let rec walk_dir t dir =
           match Fs.is_dir entry_path with
           | Ok true ->
               let dir_name = Path.to_string entry in
-              if should_exclude t dir_name then []
+              if should_exclude t dir_name || is_non_source_test_path entry_path then
+                []
               else walk_dir t entry_path
           | Ok false | Error _ ->
               let path_str = Path.to_string entry_path in
               if
-                String.ends_with ~suffix:".ml" path_str
-                || String.ends_with ~suffix:".mli" path_str
+                not (is_non_source_test_path entry_path)
+                && (String.ends_with ~suffix:".ml" path_str
+                   || String.ends_with ~suffix:".mli" path_str)
               then [ entry_path ]
               else [])
         entry_list

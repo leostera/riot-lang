@@ -20,6 +20,12 @@ module Reporter : module type of Reporter
 module Rule : module type of Rule
 (** Lint rule abstraction *)
 
+module Runner : module type of Runner
+(** Synchronous lint/apply runner for files and directories *)
+
+module Cli : module type of Cli
+(** CLI surface shared by the standalone binary and `tusk fix` *)
+
 module Rules : module type of Rules
 (** Built-in lint rules *)
 
