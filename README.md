@@ -12,8 +12,8 @@ Modern actor-model, multi-core-ready ecosystem and tooling for OCaml 5.
   <a href="#acknowledgments">Acknowledgments</a>
 </p>
 
-Riot is an [actor-model][actors], multi-core-ready ecosystem for OCaml 5,
-designed from the ground up for _programmer happiness_ and _shipping_,
+Riot is an [actor-model][actors], multi-core-ready ecosystem and tooling for
+OCaml 5, designed from the ground up for _programmer happiness_ and _shipping_,
 following a few simple principles:
 
 * **Optimize for Programmer Happiness** -- We want writing OCaml to feel joyful. Riot
