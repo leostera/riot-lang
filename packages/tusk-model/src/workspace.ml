@@ -20,6 +20,7 @@ type manifest = {
   members : Path.t list;
   dependencies : Package.dependency list;
   profile_overrides : (string * Package.profile_override) list;
+  target_dir : string option;
 }
 
 let parse_dependency (name : string) (value : Toml.value) : Package.dependency =
@@ -85,18 +86,43 @@ let parse_profile_overrides (toml : Toml.value) : (string * Profile.profile_over
       Log.debug "[WORKSPACE] TOML root is not a table";
       []
 
+let parse_target_dir (toml : Toml.value) : string option =
+  match toml with
+  | Toml.Table items -> (
+      match List.assoc_opt "tusk" items with
+      | Some (Toml.Table tusk_items) -> (
+          match List.assoc_opt "target_dir" tusk_items with
+          | Some (Toml.String target_dir) -> Some target_dir
+          | _ -> None)
+      | _ -> None)
+  | _ -> None
+
 let of_toml (toml : Toml.value) : (manifest, string) result =
   let members = parse_members toml in
   let dependencies = parse_workspace_dependencies toml in
   let profile_overrides = parse_profile_overrides toml in
-  Ok { members; dependencies; profile_overrides }
+  let target_dir = parse_target_dir toml in
+  Ok { members; dependencies; profile_overrides; target_dir }
 
 let manifest_from_toml = of_toml [@@deprecated "Use of_toml instead"]
 
-let make ~root ~packages ?(profile_overrides = []) () : t =
-  (* Note: Hardcoded to avoid circular dependency with Tusk_dirs.
-     Keep in sync with Tusk_dirs.build_dir_name *)
-  { root; target_dir_root = Path.(root / Path.v "_build"); packages; profile_overrides }
+let resolve_target_dir_root ~root ?target_dir () =
+  let target_dir =
+    match target_dir with
+    | Some target_dir -> target_dir
+    | None -> "_build"
+  in
+  let target_dir_path = Path.v target_dir in
+  if Path.is_absolute target_dir_path then target_dir_path
+  else Path.(root / target_dir_path)
+
+let make ~root ~packages ?(profile_overrides = []) ?target_dir () : t =
+  {
+    root;
+    target_dir_root = resolve_target_dir_root ~root ?target_dir ();
+    packages;
+    profile_overrides;
+  }
 
 (** Utility functions *)
 
@@ -121,4 +147,29 @@ let find_command (workspace : t) (name : string) : Package_command.t option =
 
 module Tests = struct
   let test_parse_workspace_toml () : (unit, string) result = Ok () [@test]
+
+  let test_parse_target_dir () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[workspace]
+members = ["packages/foo"]
+
+[tusk]
+target_dir = "build-out"
+|}
+      |> Result.expect ~msg:"expected test toml to parse"
+    in
+    let manifest = of_toml toml |> Result.expect ~msg:"expected workspace manifest" in
+    if manifest.target_dir = Some "build-out" then Ok ()
+    else Error "expected [tusk].target_dir to be parsed"
+  [@test]
+
+  let test_make_uses_custom_target_dir () : (unit, string) result =
+    let workspace =
+      make ~root:(Path.v "/tmp/example") ~packages:[] ~target_dir:"build-out" ()
+    in
+    if Path.to_string workspace.target_dir_root = "/tmp/example/build-out" then Ok ()
+    else Error "expected custom target_dir_root"
+  [@test]
 end [@test]

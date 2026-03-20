@@ -9,6 +9,7 @@
 3. User-facing messages should stay concise and actionable.
 4. When adding commands, update completions and help output in the same change.
 5. Built-in commands that own domain logic elsewhere should delegate into their package library.
+6. Commands that touch build artifacts must resolve the workspace root and honor `[tusk].target_dir` instead of assuming `_build` or `./target`.
 
 ## Validate
 

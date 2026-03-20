@@ -7,10 +7,11 @@ val ensure_created : unit -> (unit, exn) result
 
 (** Build directory configuration *)
 
-(** Name of the build directory - centralized configuration point *)
+(** Default name of the build directory when [tusk.target_dir] is unset *)
 val build_dir_name : string
 
-(** Get the build directory root for a workspace (e.g., /path/to/project/_build) *)
+(** Get the build directory root for a workspace. Respects [tusk.target_dir] in
+    the workspace [tusk.toml], falling back to [_build]. *)
 val build_dir_root : workspace_root:Path.t -> Path.t
 
 (** Get current host triple *)

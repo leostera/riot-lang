@@ -11,6 +11,7 @@ type manifest = {
   members : Path.t list;
   dependencies : Package.dependency list;
   profile_overrides : (string * Package.profile_override) list;
+  target_dir : string option;
 }
 
 val of_toml : Std.Data.Toml.value -> (manifest, string) result
@@ -19,6 +20,7 @@ val make :
   root:Path.t ->
   packages:Package.t list ->
   ?profile_overrides:(string * Package.profile_override) list ->
+  ?target_dir:string ->
   unit ->
   t
 

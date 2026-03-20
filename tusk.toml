@@ -42,5 +42,8 @@ members = [
 [dependencies]
 # Shared external dependencies across workspace members
 
+[tusk]
+target_dir = "_build"
+
 [profile.debug]
 ocamlc_flags = ["-O0"]
