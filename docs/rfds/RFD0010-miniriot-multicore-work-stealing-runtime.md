@@ -90,6 +90,23 @@ The intended steady-state result is:
 - if one scheduler gets ahead or falls behind, idle schedulers steal runnable actors
 - the system trends toward roughly even runnable load without requiring the user to manually shard work
 
+The interaction that readers should picture is:
+
+```mermaid
+sequenceDiagram
+  participant P as Parent process
+  participant W0 as Worker 0
+  participant RT as Runtime
+  participant W7 as Worker 7
+  participant C as Child process
+
+  P->>W0: spawn child
+  W0->>RT: allocate process + pid
+  RT->>RT: choose random worker
+  RT->>W7: enqueue child directly
+  W7->>C: run child
+```
+
 ### Public semantics that stay the same
 
 - `Pid.t` remains runtime-wide
@@ -131,6 +148,26 @@ The current `Scheduler.run` becomes roughly:
 6. start one domain for each remaining worker
 7. place the main actor on worker 0
 8. drive the runtime until shutdown
+
+Startup now has an explicit handoff structure:
+
+```mermaid
+sequenceDiagram
+  participant Caller as Calling domain
+  participant RT as Runtime
+  participant W0 as Worker 0
+  participant RX as Reactor
+  participant WN as Worker N
+
+  Caller->>RT: create runtime
+  RT->>W0: bind current domain as worker 0
+  RT->>RX: start reactor domain
+  RT->>WN: start remaining worker domains
+  RT->>W0: enqueue main process
+  W0->>W0: begin worker loop
+  RX->>RX: begin poll/timer loop
+  WN->>WN: begin worker loop
+```
 
 The current process-local `current_scheduler` cell is replaced by per-domain worker-local state. A worker domain needs domain-local access to:
 
@@ -283,6 +320,26 @@ Remote wakeup becomes:
 
 The same pattern applies to I/O wakeups and timeout wakeups.
 
+The process interaction is:
+
+```mermaid
+sequenceDiagram
+  participant SW as Sender worker
+  participant MB as Receiver mailbox
+  participant PS as Receiver process slot
+  participant OW as Owner worker
+  participant RP as Receiver process
+
+  OW->>MB: scan mailbox
+  MB-->>OW: no matching message
+  OW->>PS: CAS Running -> Waiting_message
+  OW->>MB: re-check mailbox
+  SW->>MB: push message
+  SW->>PS: CAS Waiting_message -> Runnable
+  SW->>OW: enqueue receiver if queued = false
+  OW->>RP: resume receive loop
+```
+
 This invariant matters:
 
 - a runnable process may be present in at most one worker queue at a time
@@ -344,6 +401,25 @@ For ordinary wakeups, a reasonable first policy is:
 - wake onto the process's last worker for locality, unless the runtime later decides a different balancing heuristic is better
 
 The important point is that the reactor wakes actors back into worker runnable queues. It does not run actor continuations itself.
+
+The wakeup path should look like this:
+
+```mermaid
+sequenceDiagram
+  participant OW as Owner worker
+  participant RX as Reactor
+  participant IO as Poll or timer wheel
+  participant PS as Process slot
+  participant DW as Destination worker
+  participant P as Process
+
+  OW->>RX: register wait or timeout
+  RX->>IO: arm poller or timer
+  IO-->>RX: fd ready or timer expired
+  RX->>PS: CAS waiting -> Runnable
+  RX->>DW: enqueue process directly
+  DW->>P: run process
+```
 
 ### Timer cancellation
 
@@ -426,6 +502,24 @@ Shutdown is runtime-wide:
 - main process exit sets runtime stop
 - all workers observe stop and exit their loops
 - parked workers are unparked
+
+When a worker runs out of local work, the steal interaction is:
+
+```mermaid
+sequenceDiagram
+  participant IW as Idle worker
+  participant VW as Victim worker
+  participant VQ as Victim runnable queue
+  participant PS as Process slots
+  participant IQ as Idle worker queue
+
+  IW->>VW: attempt steal
+  VW->>VQ: expose stealable runnable batch
+  VQ-->>IW: return batch
+  IW->>PS: change owner for stolen processes
+  IW->>IQ: enqueue stolen batch locally
+  IW->>IW: resume worker loop
+```
 
 ## 12. Implementation plan
 

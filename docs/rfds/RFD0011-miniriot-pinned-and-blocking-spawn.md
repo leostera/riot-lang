@@ -87,6 +87,29 @@ Pinned means:
 
 Pinned does not necessarily mean "hard-pinned to CPU 3". It means "stable scheduler residency". If the runtime also pins that scheduler's domain to a CPU, then the actor gets CPU affinity transitively.
 
+The interaction to picture is:
+
+```mermaid
+sequenceDiagram
+  participant C as Caller process
+  participant WC as Current worker
+  participant RT as Runtime
+  participant WT as Target worker
+  participant P as Pinned process
+
+  C->>WC: spawn_pinned ?scheduler
+  WC->>RT: allocate pinned process
+  alt no explicit scheduler
+    RT->>RT: choose current worker
+    RT->>WC: enqueue pinned process
+    WC->>P: run and keep residency
+  else explicit scheduler n
+    RT->>RT: validate scheduler n
+    RT->>WT: enqueue pinned process
+    WT->>P: run and keep residency
+  end
+```
+
 ### `spawn_blocked`
 
 Use `spawn_blocked` when the actor may block the domain:
@@ -101,6 +124,26 @@ Blocked means:
 - the actor does not run on a normal work-stealing scheduler
 - it runs on a blocking scheduler/domain that the runtime treats separately
 - if it blocks, it only hurts that blocking lane, not the normal actor schedulers
+
+The interaction to picture is:
+
+```mermaid
+sequenceDiagram
+  participant C as Caller process
+  participant W as Normal worker
+  participant RT as Runtime
+  participant BP as Blocking pool
+  participant BD as Blocking domain
+  participant P as Blocking process
+
+  C->>W: spawn_blocked
+  W->>RT: allocate blocking process
+  RT->>BP: request isolated blocking lane
+  BP->>BD: create or reuse blocking domain
+  RT->>BD: enqueue blocking process
+  BD->>P: run process
+  Note over BD,P: Blocking work stays off the normal worker pool
+```
 
 ### Diagram
 
@@ -203,6 +246,22 @@ Pinned actors still use normal scheduler facilities:
 
 They simply opt out of stealing.
 
+Once placed, a pinned actor stays on its owner scheduler:
+
+```mermaid
+sequenceDiagram
+  participant W0 as Worker 0
+  participant W3 as Worker 3
+  participant PS as Process slot
+  participant P as Pinned actor
+
+  W3->>P: run actor
+  W0->>W3: attempt steal
+  W3->>PS: observe placement = Pinned
+  W3-->>W0: deny steal
+  W3->>P: continue local scheduling
+```
+
 ## 4. Blocking scheduler pool
 
 `spawn_blocked` should not reuse the normal scheduler pool.
@@ -267,6 +326,27 @@ That means:
 - a pinned actor on scheduler 3 inherits scheduler 3's CPU affinity if one exists
 - a normal actor may observe different CPUs over time if it migrates
 - a blocking actor inherits the affinity policy of its dedicated blocking domain if the runtime assigns one
+
+At runtime, affinity is a best-effort startup step:
+
+```mermaid
+sequenceDiagram
+  participant RT as Runtime
+  participant D as Worker or blocking domain
+  participant OS as Host OS
+  participant L as Domain loop
+
+  RT->>D: start domain
+  RT->>OS: apply configured affinity for domain
+  alt affinity applied
+    OS-->>RT: success
+    RT->>D: record affinity success
+  else affinity unavailable or rejected
+    OS-->>RT: failure or unsupported
+    RT->>D: record best-effort fallback
+  end
+  D->>L: begin scheduling loop
+```
 
 ## 7. Platform support matrix
 

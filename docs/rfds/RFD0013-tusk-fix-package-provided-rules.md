@@ -340,7 +340,7 @@ Problems:
 - process startup and transport overhead add up quickly
 - large workspaces become “call 100 tiny binaries”
 
-At Riot scale, that is not acceptable.
+At scale, that is not acceptable.
 
 ## 11. Why not statically link all rules into checked-in tusk-fix
 
