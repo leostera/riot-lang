@@ -10,6 +10,8 @@ type t = {
 type manifest = {
   members : Path.t list;
   dependencies : Package.dependency list;
+  dev_dependencies : Package.dependency list;
+  build_dependencies : Package.dependency list;
   profile_overrides : (string * Package.profile_override) list;
   target_dir : string option;
 }

@@ -47,7 +47,9 @@ let rec find_workspace_root (start_dir : Path.t) : Path.t option =
       | _ -> None)
 
 let load_member_package (workspace_root : Path.t) (member : string)
-    ~(workspace_deps : Package.dependency list) : Package.t option =
+    ~(workspace_deps : Package.dependency list)
+    ~(workspace_dev_deps : Package.dependency list)
+    ~(workspace_build_deps : Package.dependency list) : Package.t option =
   let member_path = Path.(workspace_root / Path.v member) in
   let toml_path = Path.(member_path / tusk_toml) in
   match Fs.exists toml_path with
@@ -60,7 +62,10 @@ let load_member_package (workspace_root : Path.t) (member : string)
           | Ok toml -> (
               let relative_path = Path.v member in
               match
-                Package.from_toml toml ~workspace_deps ~path:member_path
+                Package.from_toml toml ~workspace_deps
+                  ~workspace_dev_deps
+                  ~workspace_build_deps
+                  ~path:member_path
                   ~relative_path
               with
               | Ok pkg -> Some pkg
@@ -69,7 +74,10 @@ let load_member_package (workspace_root : Path.t) (member : string)
 
 let rec load_external_package (workspace_root : Path.t)
     (dep : Package.dependency) ~(seen : string list Cell.t) 
-    ~(workspace_deps : Package.dependency list) ~(dependant : string option) 
+    ~(workspace_deps : Package.dependency list)
+    ~(workspace_dev_deps : Package.dependency list)
+    ~(workspace_build_deps : Package.dependency list)
+    ~(dependant : string option)
     : (Package.t list * load_error list) =
   match dep.source with
   | Package.Workspace -> ([], [])
@@ -101,7 +109,9 @@ let rec load_external_package (workspace_root : Path.t)
                     in
                     let relative_path = Path.v rel_path in
                     match
-                      Package.from_toml toml ~workspace_deps ~path:abs_path
+                      Package.from_toml toml ~workspace_deps
+                        ~workspace_dev_deps ~workspace_build_deps
+                        ~path:abs_path
                         ~relative_path
                     with
                     | Ok pkg ->
@@ -118,11 +128,12 @@ let rec load_external_package (workspace_root : Path.t)
                                     dep with
                                     source = Package.Path resolved_path;
                                   })
-                            pkg.dependencies
+                            (Package.all_dependencies pkg)
                         in
                         let transitive_results =
                           List.map
-                            (load_external_package workspace_root ~seen ~workspace_deps 
+                            (load_external_package workspace_root ~seen ~workspace_deps
+                              ~workspace_dev_deps ~workspace_build_deps
                               ~dependant:(Some pkg.name))
                             transitive_deps
                         in
@@ -140,7 +151,9 @@ let build_workspace (workspace_root : Path.t)
     List.filter_map
       (fun member ->
         load_member_package workspace_root (Path.to_string member)
-          ~workspace_deps:workspace_manifest.dependencies)
+          ~workspace_deps:workspace_manifest.dependencies
+          ~workspace_dev_deps:workspace_manifest.dev_dependencies
+          ~workspace_build_deps:workspace_manifest.build_dependencies)
       workspace_manifest.members
   in
 
@@ -150,8 +163,12 @@ let build_workspace (workspace_root : Path.t)
   let workspace_results =
     List.map
       (load_external_package workspace_root ~seen 
-        ~workspace_deps:workspace_manifest.dependencies ~dependant:None)
-      workspace_manifest.dependencies
+        ~workspace_deps:workspace_manifest.dependencies
+        ~workspace_dev_deps:workspace_manifest.dev_dependencies
+        ~workspace_build_deps:workspace_manifest.build_dependencies
+        ~dependant:None)
+      (workspace_manifest.dependencies @ workspace_manifest.dev_dependencies
+      @ workspace_manifest.build_dependencies)
   in
   let workspace_packages = List.concat_map fst workspace_results in
   let workspace_errors = List.concat_map snd workspace_results in
@@ -162,9 +179,11 @@ let build_workspace (workspace_root : Path.t)
       (fun (pkg : Package.t) ->
         List.map
           (load_external_package workspace_root ~seen 
-            ~workspace_deps:workspace_manifest.dependencies 
+            ~workspace_deps:workspace_manifest.dependencies
+            ~workspace_dev_deps:workspace_manifest.dev_dependencies
+            ~workspace_build_deps:workspace_manifest.build_dependencies
             ~dependant:(Some pkg.name))
-          pkg.dependencies)
+          (Package.all_dependencies pkg))
       member_packages
   in
   let external_packages = List.concat_map fst external_results in

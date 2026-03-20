@@ -66,7 +66,7 @@ let plan_node input =
       let check_pkg (pkg : Package.t) =
         List.exists
           (fun (d : Package.dependency) -> d.name = "unix")
-          pkg.dependencies
+          (Package.build_graph_dependencies pkg)
       in
       check_pkg input.package
       || List.exists
@@ -79,7 +79,7 @@ let plan_node input =
       let check_pkg (pkg : Package.t) =
         List.exists
           (fun (d : Package.dependency) -> d.name = "dynlink")
-          pkg.dependencies
+          (Package.build_graph_dependencies pkg)
       in
       check_pkg input.package
       || List.exists

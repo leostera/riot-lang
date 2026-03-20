@@ -19,6 +19,8 @@ type t = {
 type manifest = {
   members : Path.t list;
   dependencies : Package.dependency list;
+  dev_dependencies : Package.dependency list;
+  build_dependencies : Package.dependency list;
   profile_overrides : (string * Package.profile_override) list;
   target_dir : string option;
 }
@@ -34,6 +36,15 @@ let parse_dependency (name : string) (value : Toml.value) : Package.dependency =
 let parse_dependencies (items : (string * Toml.value) list) :
     Package.dependency list =
   List.map (fun (name, value) -> parse_dependency name value) items
+
+let parse_dependency_section section_name (toml : Toml.value) :
+    Package.dependency list =
+  match toml with
+  | Toml.Table items -> (
+      match List.assoc_opt section_name items with
+      | Some (Toml.Table dep_items) -> parse_dependencies dep_items
+      | _ -> [])
+  | _ -> []
 
 let parse_members (toml : Toml.value) : Path.t list =
   match toml with
@@ -51,12 +62,15 @@ let parse_members (toml : Toml.value) : Path.t list =
 
 let parse_workspace_dependencies (toml : Toml.value) : Package.dependency list =
   Log.debug ("[WORKSPACE] parse_workspacE_dependencies has items: " ^ Toml.to_string toml);
-  match toml with
-  | Toml.Table items -> (
-      match List.assoc_opt "dependencies" items with
-      | Some (Toml.Table dep_items) -> parse_dependencies dep_items
-      | _ -> [])
-  | _ -> []
+  parse_dependency_section "dependencies" toml
+
+let parse_workspace_dev_dependencies (toml : Toml.value) :
+    Package.dependency list =
+  parse_dependency_section "dev-dependencies" toml
+
+let parse_workspace_build_dependencies (toml : Toml.value) :
+    Package.dependency list =
+  parse_dependency_section "build-dependencies" toml
 
 let parse_profile_overrides (toml : Toml.value) : (string * Profile.profile_override) list =
   Log.debug "[WORKSPACE] parse_profile_overrides called";
@@ -100,9 +114,11 @@ let parse_target_dir (toml : Toml.value) : string option =
 let of_toml (toml : Toml.value) : (manifest, string) result =
   let members = parse_members toml in
   let dependencies = parse_workspace_dependencies toml in
+  let dev_dependencies = parse_workspace_dev_dependencies toml in
+  let build_dependencies = parse_workspace_build_dependencies toml in
   let profile_overrides = parse_profile_overrides toml in
   let target_dir = parse_target_dir toml in
-  Ok { members; dependencies; profile_overrides; target_dir }
+  Ok { members; dependencies; dev_dependencies; build_dependencies; profile_overrides; target_dir }
 
 let manifest_from_toml = of_toml [@@deprecated "Use of_toml instead"]
 
@@ -194,6 +210,8 @@ rules = ["no-stdlib"]
     in
     let package =
       Package.from_toml package_toml ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
         ~path:(Path.v "/tmp/example/packages/std")
         ~relative_path:(Path.v "packages/std")
       |> Result.expect ~msg:"expected package manifest"
@@ -213,5 +231,42 @@ rules = ["no-stdlib"]
         then Ok ()
         else Error "expected provider metadata to round-trip"
     | _ -> Error "expected one fix provider"
+  [@test]
+
+  let test_parse_workspace_dependency_classes () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[workspace]
+members = ["packages/foo"]
+
+[dependencies]
+std = { path = "packages/std" }
+
+[dev-dependencies]
+propane = { path = "packages/propane" }
+
+[build-dependencies]
+tusk-fix-api = { path = "packages/tusk-fix-api" }
+|}
+      |> Result.expect ~msg:"expected test toml to parse"
+    in
+    let manifest =
+      of_toml toml |> Result.expect ~msg:"expected workspace manifest"
+    in
+    if
+      List.map (fun (dep : Package.dependency) -> dep.Package.name)
+        manifest.dependencies
+         = [ "std" ]
+      && List.map
+           (fun (dep : Package.dependency) -> dep.Package.name)
+           manifest.dev_dependencies
+         = [ "propane" ]
+      && List.map
+           (fun (dep : Package.dependency) -> dep.Package.name)
+           manifest.build_dependencies
+         = [ "tusk-fix-api" ]
+    then Ok ()
+    else Error "expected workspace dependency classes to parse"
   [@test]
 end [@test]

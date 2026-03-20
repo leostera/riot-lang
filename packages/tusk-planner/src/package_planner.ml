@@ -48,7 +48,7 @@ let compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx =
     List.sort
       (fun (a : Package.dependency) (b : Package.dependency) ->
         String.compare a.name b.name)
-      package.dependencies
+      (Package.build_graph_dependencies package)
   in
   List.iter
     (fun (dep : Package.dependency) ->

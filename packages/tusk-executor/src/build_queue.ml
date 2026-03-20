@@ -48,7 +48,7 @@ let dependencies_satisfied t (node : package_node) =
                The worker/planner will handle marking it as skipped if deps failed. *)
             true
         | _ -> false)
-    pkg.dependencies
+    (Package.build_graph_dependencies pkg)
 
 let queue t (node : package_node) =
   let pkg_name = get_package_name node in

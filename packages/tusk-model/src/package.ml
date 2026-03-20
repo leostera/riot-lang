@@ -7,6 +7,7 @@ open Std.Collections
 (** Types *)
 
 type dependency_source = Workspace | Path of Path.t
+type dependency_scope = Normal | Dev | Build
 type dependency = { name : string; source : dependency_source }
 type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
@@ -44,6 +45,8 @@ type t = {
   path : Path.t;
   relative_path : Path.t;
   dependencies : dependency list;
+  dev_dependencies : dependency list;
+  build_dependencies : dependency list;
   foreign_dependencies : foreign_dependency list;
   binaries : binary list;
   library : library option;
@@ -54,6 +57,17 @@ type t = {
 }
 
 let equal a b = a.name = b.name && a.path = b.path
+
+let dependencies_for_scope scope (pkg : t) =
+  match scope with
+  | Normal -> pkg.dependencies
+  | Dev -> pkg.dev_dependencies
+  | Build -> pkg.build_dependencies
+
+let build_graph_dependencies (pkg : t) = pkg.dependencies @ pkg.dev_dependencies
+
+let all_dependencies (pkg : t) =
+  pkg.dependencies @ pkg.dev_dependencies @ pkg.build_dependencies
 
 (** Check if this package is a workspace member (not an external dependency).
     External dependencies have relative_path that escapes the workspace (starts with "../")
@@ -142,6 +156,12 @@ let parse_dependencies (items : (string * Toml.value) list)
   List.map
     (fun (name, value) -> parse_dependency name value ~workspace_deps)
     items
+
+let parse_dependency_section section_name items ~(workspace_deps : dependency list) =
+  match List.assoc_opt section_name items with
+  | Some (Toml.Table dep_items) ->
+      parse_dependencies dep_items ~workspace_deps
+  | _ -> []
 
 let parse_foreign_dependency (name : string) (value : Toml.value)
     ~(package_path : Path.t) : (foreign_dependency, string) result =
@@ -535,16 +555,23 @@ let autodiscover_bench_binaries (sources : sources) ~(package_path : Path.t) :
     sources.bench
 
 let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
+    ~(workspace_dev_deps : dependency list)
+    ~(workspace_build_deps : dependency list)
     ~(path : Path.t) ~(relative_path : Path.t) : (t, string) result =
   match toml with
   | Toml.Table items ->
       let fallback_name = Path.basename path in
       let name = parse_name items fallback_name in
       let dependencies =
-        match List.assoc_opt "dependencies" items with
-        | Some (Toml.Table dep_items) ->
-            parse_dependencies dep_items ~workspace_deps
-        | _ -> []
+        parse_dependency_section "dependencies" items ~workspace_deps
+      in
+      let dev_dependencies =
+        parse_dependency_section "dev-dependencies" items
+          ~workspace_deps:workspace_dev_deps
+      in
+      let build_dependencies =
+        parse_dependency_section "build-dependencies" items
+          ~workspace_deps:workspace_build_deps
       in
       let binaries =
         match parse_binaries items ~package_path:path with
@@ -598,6 +625,8 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
           path;
           relative_path;
           dependencies;
+          dev_dependencies;
+          build_dependencies;
           foreign_dependencies = foreign;
           binaries = all_binaries;
           library;
@@ -622,6 +651,34 @@ let to_json (pkg : t) : Json.t =
                  | Path p -> Json.String (Path.to_string p) );
              ])
          pkg.dependencies)
+  in
+  let dev_dependencies_json =
+    Json.Array
+      (List.map
+         (fun (dep : dependency) ->
+           Json.Object
+             [
+               ("name", Json.String dep.name);
+               ( "source",
+                 match dep.source with
+                 | Workspace -> Json.String "workspace"
+                 | Path p -> Json.String (Path.to_string p) );
+             ])
+         pkg.dev_dependencies)
+  in
+  let build_dependencies_json =
+    Json.Array
+      (List.map
+         (fun (dep : dependency) ->
+           Json.Object
+             [
+               ("name", Json.String dep.name);
+               ( "source",
+                 match dep.source with
+                 | Workspace -> Json.String "workspace"
+                 | Path p -> Json.String (Path.to_string p) );
+             ])
+         pkg.build_dependencies)
   in
   let binaries_json =
     Json.Array
@@ -649,6 +706,8 @@ let to_json (pkg : t) : Json.t =
       ("path", Json.String (Path.to_string pkg.path));
       ("relative_path", Json.String (Path.to_string pkg.relative_path));
       ("dependencies", dependencies_json);
+      ("dev_dependencies", dev_dependencies_json);
+      ("build_dependencies", build_dependencies_json);
       ("binaries", binaries_json);
       ("library", library_json);
       ("fix_providers", fix_providers_json);
@@ -667,9 +726,8 @@ let from_json (json : Json.t) : (t, string) result =
           Some (Json.String rel_path_str) ) -> (
           match Path.of_string path_str, Path.of_string rel_path_str with
           | Ok path, Ok relative_path ->
-
-          let dependencies =
-            match List.assoc_opt "dependencies" fields with
+          let parse_dependencies_field field_name =
+            match List.assoc_opt field_name fields with
             | Some (Json.Array deps) ->
                 List.filter_map
                   (function
@@ -692,6 +750,11 @@ let from_json (json : Json.t) : (t, string) result =
                     | _ -> None)
                   deps
             | _ -> []
+          in
+          let dependencies = parse_dependencies_field "dependencies" in
+          let dev_dependencies = parse_dependencies_field "dev_dependencies" in
+          let build_dependencies =
+            parse_dependencies_field "build_dependencies"
           in
 
           let binaries =
@@ -728,6 +791,8 @@ let from_json (json : Json.t) : (t, string) result =
               path;
               relative_path;
               dependencies;
+              dev_dependencies;
+              build_dependencies;
               foreign_dependencies = [];
               binaries;
               library;
@@ -748,7 +813,8 @@ let hash state (pkg : t) =
   
   (* Dependencies metadata *)
   let sorted_deps =
-    List.sort (fun (a : dependency) (b : dependency) -> String.compare a.name b.name) pkg.dependencies
+    List.sort (fun (a : dependency) (b : dependency) -> String.compare a.name b.name)
+      (build_graph_dependencies pkg)
   in
   List.iter (fun (dep : dependency) ->
     H.write_string state dep.name;
@@ -910,3 +976,77 @@ let hash state (pkg : t) =
               H.write_string state (Path.to_string input_path))
         sorted_inputs)
     sorted_foreign_deps
+
+module Tests = struct
+  let test_parse_dependency_classes () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[package]
+name = "example"
+version = "0.1.0"
+
+[dependencies]
+std = { workspace = true }
+
+[dev-dependencies]
+propane = { workspace = true }
+
+[build-dependencies]
+tusk-fix-api = { path = "../tusk-fix-api" }
+|}
+      |> Result.expect ~msg:"expected package toml to parse"
+    in
+    let workspace_dep name = { name; source = Workspace } in
+    let pkg =
+      from_toml toml ~workspace_deps:[ workspace_dep "std" ]
+        ~workspace_dev_deps:[ workspace_dep "propane" ]
+        ~workspace_build_deps:[]
+        ~path:(Path.v "/tmp/example")
+        ~relative_path:(Path.v "packages/example")
+      |> Result.expect ~msg:"expected package manifest"
+    in
+    if
+      List.map (fun (dep : dependency) -> dep.name) pkg.dependencies = [ "std" ]
+      && List.map (fun (dep : dependency) -> dep.name) pkg.dev_dependencies
+         = [ "propane" ]
+      && List.map (fun (dep : dependency) -> dep.name) pkg.build_dependencies
+         = [ "tusk-fix-api" ]
+    then Ok ()
+    else Error "expected dependency classes to round-trip"
+  [@test]
+
+  let test_build_graph_dependencies_exclude_build_only_deps () :
+      (unit, string) result =
+    let pkg =
+      {
+        name = "example";
+        path = Path.v "/tmp/example";
+        relative_path = Path.v "packages/example";
+        dependencies = [ { name = "std"; source = Workspace } ];
+        dev_dependencies = [ { name = "propane"; source = Workspace } ];
+        build_dependencies = [ { name = "tusk-fix-api"; source = Workspace } ];
+        foreign_dependencies = [];
+        binaries = [];
+        library = None;
+        sources =
+          { src = []; native = []; tests = []; examples = []; bench = [] };
+        compiler = { profile_overrides = []; target_overrides = [] };
+        commands = [];
+        fix_providers = [];
+      }
+    in
+    let build_graph =
+      build_graph_dependencies pkg
+      |> List.map (fun (dep : dependency) -> dep.name)
+    in
+    let all =
+      all_dependencies pkg |> List.map (fun (dep : dependency) -> dep.name)
+    in
+    if
+      build_graph = [ "std"; "propane" ]
+      && all = [ "std"; "propane"; "tusk-fix-api" ]
+    then Ok ()
+    else Error "expected build graph dependencies to exclude build-only deps"
+  [@test]
+end

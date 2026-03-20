@@ -29,6 +29,8 @@ let make_package tmpdir name content =
       path = pkg_dir;
       relative_path = Path.v name;
       dependencies = [];
+      dev_dependencies = [];
+      build_dependencies = [];
       foreign_dependencies = [];
       binaries = [];
       library = Some { path = Path.v "src/lib.ml" };

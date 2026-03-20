@@ -39,7 +39,7 @@ let stdlib_flags (package : Package.t) =
   (* Check if this package has stdlib as a dependency *)
   let has_stdlib_dep = 
     List.exists (fun (dep : Package.dependency) -> dep.name = "stdlib") 
-      package.dependencies
+      (Package.build_graph_dependencies package)
   in
   (* Always add -nopervasives to prevent automatic opening of Stdlib *)
   (* Add -nostdlib only if package doesn't depend on stdlib *)
@@ -217,7 +217,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
       (* These are dependencies that can't be dynamically loaded later (stdlib, unix, dynlink) *)
       let has_stdlib_dep = 
         List.exists (fun (dep : Package.dependency) -> dep.name = "stdlib") 
-          package.dependencies
+          (Package.build_graph_dependencies package)
       in
       
       let external_libs = 
@@ -507,6 +507,8 @@ let from_json json =
                   path = Path.v ".";
                   relative_path = Path.v ".";
                   dependencies = [];
+                  dev_dependencies = [];
+                  build_dependencies = [];
                   foreign_dependencies = [];
                   binaries = [];
                   library = None;

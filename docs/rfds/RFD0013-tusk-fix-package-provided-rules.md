@@ -8,105 +8,75 @@
 ## Summary
 [summary]: #summary
 
-This RFD proposes extending `tusk-fix` so packages can ship their own lint
-rules and fix explanations, with the rules fused at build time into a
-workspace-specific synthetic `tusk-fix` runtime.
+This RFD extends `tusk-fix` so workspace packages can ship their own lint rules
+and explanations, with those rules fused at build time into one synthetic
+runtime.
 
-The important design point is that package rules should not be executed as one
-binary per rule or one binary per package at runtime. That model would be too
-slow for Riot-sized workspaces.
+The central design decision is unchanged:
 
-Instead:
+- do not run one binary per rule
+- do not run one binary per package
+- do parse each file once
+- do run all enabled rules in-process
 
-- packages declare fix-provider source files in `tusk.toml`
-- `tusk fix` discovers those provider sources from the workspace
-- `tusk fix` generates a synthetic registry package that depends on the owning
-  packages
-- that generated package links all discovered rules into one fused runtime
-- the fused runtime parses each file once and runs all enabled rules in-process
+The implementation that now exists follows that shape:
 
-That gives Riot the ownership we want:
+- packages declare one `[tusk.fix.provider]`
+- provider source defaults to either:
+  - `src/tusk_fix_rules/tusk_fix_rules.ml`
+  - `src/tusk_fix_rules.ml`
+- rule ids are automatically namespaced as `<package>:<rule>`
+- diagnostic codes are automatically namespaced as `<package>:<code>`
+- `tusk fix` generates a fused runtime under `_build`
+- that runtime rebuilds like any other `tusk` package and uses normal caching
 
-- `std` can ship `no-stdlib`
-- `suri` can ship framework migration rules
-- `sqlx` can ship data-access rules
-- any package can add rules by joining the workspace
-
-without turning the checked-in `packages/tusk-fix` package into a giant static
-central registry.
+`std:no-stdlib` is the first concrete package-owned rule using this model.
 
 ## Motivation
 [motivation]: #motivation
 
-`tusk-fix` already has the local building blocks:
+`tusk-fix` already had the right local primitives:
 
-- a parser-backed pipeline
-- a rule abstraction
+- parser-backed analysis
 - typed diagnostics
-- diagnostic explanations
-- a worker/coordinator execution model
+- fixes and explanations
+- one-process execution
 
-What it does not have yet is package ownership.
+What it lacked was ownership. Rules such as `no-stdlib` are not really generic
+`tusk-fix` opinions. They are package-owned policies. `std` should own
+`std:no-stdlib` in the same way `suri`, `sqlx`, or `minttea` should eventually
+own their own lint rules.
 
-Right now, rules live in `packages/tusk-fix/src/rules/`. That is fine for
-bootstrapping, but it is the wrong long-term boundary for package-specific
-knowledge.
+There is also a hard runtime constraint. Riot-sized workspaces are already large
+enough that per-rule or per-package subprocess execution would be the wrong
+shape. The cost is not just CPU time; it is repeated parsing, process startup,
+transport overhead, and poor streaming behavior.
 
-`no-stdlib` is the obvious example. It is not really a generic `tusk-fix`
-opinion. It is a `std` opinion about how Riot code should interact with the
-standard library boundary.
+So the requirement is:
 
-The same will be true elsewhere:
-
-- `suri` should own web-framework migrations and conventions
-- `http` should own protocol-surface transitions
-- `sqlx` should own query and pool usage rules
-- `minttea` should own update/view/command conventions
-
-So the requirement is not just “support more rules”. The requirement is:
-
-`tusk-fix` must let packages own their own rules.
-
-There is also a performance requirement.
-
-Riot already has roughly:
-
-- ~100k lines of OCaml
-- ~2300 source files
-
-If package rules were executed as tiny subprocesses, runtime overhead would
-explode quickly:
-
-- one provider invocation per file per rule is already too much
-- even “fast” subprocesses add startup, scheduling, and I/O overhead
-- per-provider parsing would repeat the same parse work unnecessarily
-
-The correct runtime shape is therefore:
-
-- one fused runtime
-- one parse pass per file
-- many rules executed in-process
-
-That is the central decision in this RFD.
+`tusk-fix` must let packages own rules without giving up a fused in-process
+runtime.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-A package that wants to ship `tusk-fix` rules declares a provider source file in its
-manifest.
-
-For example, `std` could eventually declare:
+A package can expose a fix provider in `tusk.toml`:
 
 ```toml
 [tusk.fix.provider]
-path = "fix/no_stdlib_provider.ml"
 rules = ["no-stdlib"]
 ```
 
-That source file is not part of the package's normal build. Instead, `tusk fix`
-copies it into the generated fused runtime and compiles it there.
+If `path` is omitted, `tusk-fix` probes these defaults in order:
 
-From the user side, nothing changes:
+- `src/tusk_fix_rules/tusk_fix_rules.ml`
+- `src/tusk_fix_rules.ml`
+
+The provider source is not compiled as part of the owning package's normal
+build. Instead, `tusk fix` discovers all providers in the workspace, generates a
+synthetic fused package, builds it, and runs that one binary.
+
+From the user side, the command surface stays simple:
 
 ```text
 tusk fix
@@ -114,109 +84,53 @@ tusk fix --check
 tusk fix --explain std:f0001
 ```
 
-The difference is in how `tusk fix` runs internally.
-
-Instead of directly using only the rules compiled into `packages/tusk-fix`, it
-does this:
+From the runtime side, the shape is:
 
 ```mermaid
 flowchart TD
   A[tusk fix] --> B[load workspace]
-  B --> C[discover package rule sources]
-  C --> D[generate fused runtime sources]
-  D --> E[build synthetic tusk-fix runtime]
-  E --> F[run one in-process fix pipeline]
-  F --> G[stream results]
+  B --> C[discover providers]
+  C --> D[generate fused runtime]
+  D --> E[build tusk-fix-fused]
+  E --> F[parse each file once]
+  F --> G[run all enabled rules in-process]
 ```
-
-The user should think about it this way:
-
-- packages own rule definitions
-- `tusk fix` owns orchestration
-- build-time fusion gives the user one runtime instead of hundreds of tiny ones
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-## 1. Current state
+## 1. Manifest shape
 
-Today:
-
-- `tusk-fix` owns the rule abstraction
-- `Pipeline.default_rules` returns built-in rules
-- `Fix_config` resolves workspace and package-local enable/disable state
-- the runtime executes rules in one process
-
-That current pipeline is good.
-
-What is missing is a way for rules to come from packages other than
-`packages/tusk-fix`.
-
-The current discovery shape is:
-
-```mermaid
-flowchart TD
-  A[Pipeline.default_rules] --> B[built-in factories]
-  B --> C[Rule.t list]
-  C --> D[Pipeline.run]
-```
-
-That is too closed for the next phase.
-
-## 2. Goals
-
-This proposal is trying to achieve all of the following:
-
-1. let any workspace package ship `tusk-fix` rules
-2. keep package-specific lint logic near the package that owns it
-3. preserve one in-process rule runtime
-4. preserve one parse pass per file
-5. keep `tusk fix --explain CODE` working for package-owned codes
-6. preserve the current workspace/package config override model
-7. avoid forcing checked-in `packages/tusk-fix` to depend on arbitrary packages
-
-## 3. Non-goals
-
-This proposal is not trying to do these things yet:
-
-- third-party plugin loading outside the current workspace
-- cross-file refactors
-- formatter plugins
-- dynlink-based OCaml plugins
-- solving normal vs dev vs build/tool dependency classes in the same change
-
-For the first implementation, providers are source files compiled only inside
-the generated fused runtime. That keeps provider-owned packages out of the
-normal `tusk-fix` dependency graph and avoids cycles like `std -> tusk-fix`.
-
-## 4. Manifest shape
-
-Packages expose rule providers through `tusk.toml`.
-
-The proposed manifest shape is:
+The implemented manifest shape is:
 
 ```toml
 [tusk.fix.provider]
-path = "fix/no_stdlib_provider.ml"
+path = "src/tusk_fix_rules/tusk_fix_rules.ml" # optional
 rules = ["no-stdlib"]
 ```
 
-Fields:
+Rules are declared provider-locally, but exposed to users as
+`<package>:<rule>`.
 
-- `path`: source file relative to the owning package root
-  Default: `src/tusk_fix_rules.ml`
-- `rules`: provider-local rule ids served by that provider
+For example:
 
-Package rule ids are automatically prefixed as `<package>:<rule>`.
+- package `std`
+- local rule `no-stdlib`
 
-This uses provider source files, not one manifest entry per rule, because packages
-will often want to ship a family of related rules and share helpers.
+becomes:
 
-## 5. Provider authoring API
+- `std:no-stdlib`
 
-Provider sources should implement the `Tusk_fix.Provider.S` signature.
+Likewise, provider-defined diagnostic code `f0001` becomes `std:f0001`.
 
-The authoring story should feel like:
+## 2. Provider authoring
+
+Shared rule-authoring types live in `tusk-fix-api`.
+
+The fused runtime still exposes the richer `Tusk_fix` runtime surface, but
+provider authors write against the shared rule API plus `syn` helpers.
+
+Conceptually, a provider module looks like:
 
 ```ocaml
 open Std
@@ -224,227 +138,163 @@ open Std
 let name = "std"
 
 let rules () =
-  [ No_stdlib_provider.make () ]
+  [ No_stdlib.make () ]
 
 let diagnostic_codes () =
-  No_stdlib_provider.codes
+  No_stdlib.codes
 ```
 
-Because the source file is compiled only inside the fused runtime:
+Provider support modules that live next to the entrypoint are copied into the
+generated fused runtime as sibling embedded modules.
 
-- the owning package does not need to link `tusk-fix` in its normal build
-- providers can still reference `Tusk_fix`, `Syn`, and the owning package's
-  public modules from the fused runtime
+## 3. Fusion model
 
-The important boundary is:
-
-- diagnostics stay typed inside `tusk-fix`
-- built-in codes remain strongly typed
-- package-provided codes use a typed `PackageProvided` variant carrying
-  provider-owned metadata
-
-## 6. Fusion model
-
-`tusk fix` should generate a workspace-specific synthetic package that links:
+`tusk fix` generates a workspace-specific synthetic package that depends on:
 
 - `tusk-fix`
-- `std`
+- `tusk-fix-api`
 - `syn`
-- every provider-owning package
-- a generated library/binary pair for `tusk-fix-fused`
+- `std`
+- each provider-owning package
 
-Conceptually:
+and emits generated source that:
 
-```mermaid
-flowchart TD
-  A[workspace packages] --> B[discover provider sources]
-  B --> C[generate tusk-fix-fused workspace]
-  C --> D[build synthetic tusk-fix-fused package]
-  D --> E[run fused binary]
-```
+- embeds provider entrypoints
+- embeds provider support modules
+- registers providers before CLI execution
 
-The generated fused runtime should:
+The resulting fused runtime is rebuilt like any other `tusk` package, so it
+inherits normal build caching behavior.
 
-- embed the provider source files as modules in generated source
-- register all providers before CLI execution
-- rebuild like any other `tusk` package
-- rely on normal `tusk` caching to avoid unnecessary rebuilds
+## 4. Runtime model
 
-That synthetic runtime is what the CLI should execute.
+Per file, the fused runtime should:
 
-## 7. Runtime model
+1. parse once with `syn`
+2. run all enabled built-in and package rules in-process
+3. collect diagnostics and optional fixes
+4. stream results through the CLI reporter
 
-Once the fused runtime exists, execution stays simple.
+That runtime model is the main reason to prefer generated fusion over provider
+subprocesses.
 
-Per file:
+## 5. Config interaction
 
-- parse once with `syn`
-- run all enabled rules in-process
-- merge diagnostics and optional fixes
-- stream results through the existing coordinator/reporter path
+The effective rule set is:
 
-Conceptually:
+1. built-in rules
+2. discovered package-provided rules
+3. workspace `[tusk.fix].rules` overrides
+4. package-local `[tusk.fix].rules` overrides
 
-```mermaid
-flowchart TD
-  A[file] --> B[syn parse]
-  B --> C[red tree]
-  C --> D[all enabled built-in and package rules]
-  D --> E[diagnostics and fixes]
-  E --> F[streamed output]
-```
+Short rule syntax still applies:
 
-This is the key reason not to use provider subprocesses.
+- `"name"` enables
+- `"-name"` disables
 
-## 8. Config interaction
+Package-local overrides apply on top of workspace defaults.
 
-The current config model is already close to what we need:
+## 6. Explain flow
 
-- workspace `[tusk.fix].rules`
-- package-local `[tusk.fix].rules`
-- package-local overrides applying on top of workspace defaults
-
-The only change is that the available rule set now comes from:
-
-- built-in rules
-- fused provider rules discovered from the workspace
-
-So the effective-rule algorithm becomes:
-
-1. discover all built-in and package-provided rule ids
-2. establish default enablement
-3. apply workspace overrides
-4. apply package-local overrides for the file’s package
-5. run only the resulting enabled rules
-
-## 9. Explain flow
-
-`tusk fix --explain std:f0001` should search:
+`tusk fix --explain std:f0001` searches:
 
 1. built-in diagnostic codes
 2. package-owned diagnostic codes fused into the runtime
-3. if no match exists, return the usual unknown-code error
+3. unknown-code fallback if nothing matches
 
-That means package-provided rules get first-class explanation text with no
-special user syntax.
+That makes package-provided explanations first-class.
 
-## 10. Why not one provider binary per package
+## 7. Dependency-layering constraint
 
-That model is easy to imagine, but it is the wrong runtime shape.
+The first implementation exposed a deeper problem in the build model.
 
-Problems:
+`std` wants to own `std:no-stdlib`, but direct normal dependency layering like:
 
-- one file can trigger many provider invocations
-- the same file gets reparsed repeatedly
-- process startup and transport overhead add up quickly
-- large workspaces become “call 100 tiny binaries”
+- `std -> tusk-fix-api`
+- `tusk-fix-api -> syn`
+- `syn -> ceibo`
+- `ceibo -> std`
 
-At scale, that is not acceptable.
+creates a cycle.
 
-## 11. Why not statically link all rules into checked-in tusk-fix
+That is why provider source must remain outside the owning package's normal
+build, and why dependency classes are now the required follow-up. Provider
+authoring wants build-only dependencies, not normal runtime dependencies.
 
-That creates the wrong ownership pattern.
+## 8. Current status
 
-Problems:
+Implemented:
 
-- `packages/tusk-fix` would need to depend on arbitrary packages
-- package-specific lint logic would still be centralized
-- package authors would need to edit `packages/tusk-fix` to add rules
-- the checked-in core package would keep growing as a bottleneck
+- provider discovery in `tusk-model`
+- fused runtime generation in `tusk-fix`
+- package-prefixed rule ids
+- package-prefixed diagnostic codes
+- default provider path probing
+- package-owned `std:no-stdlib`
+- package-owned `--explain` support
 
-That defeats the point of package-provided rules.
+Still open:
 
-## 12. Why not dynlink
-
-Dynamic OCaml plugins are the wrong tradeoff here.
-
-Problems:
-
-- native plugin loading is platform-sensitive
-- ABI boundaries are fragile
-- debugging is worse
-- the build/runtime model becomes harder to reason about
-
-Generated fusion is more explicit and more reliable.
-
-## 13. Rollout plan
-
-The rollout should happen in stages.
-
-### Stage 1
-
-- add provider metadata to `tusk-model`
-- discover providers from the workspace
-- generate the fused workspace and runtime
-- build and run one fused `tusk-fix` runtime
-
-### Stage 2
-
-- move `no-stdlib` into a package-owned provider
-- most likely `std` first
-- keep the built-in copy temporarily only for migration safety
-
-### Stage 3
-
-- remove migrated built-ins from `packages/tusk-fix/src/rules/`
-- make package-owned rules the normal extension mechanism
+- proper normal/dev/build dependency classes so provider-owning packages can
+  express build-only rule-authoring dependencies cleanly
 
 ## Drawbacks
 [drawbacks]: #drawbacks
 
 - fusion introduces generated workspace build artifacts
-- provider discovery changes the `tusk fix` build path
-- provider source files are compiled in a synthetic runtime, not in their
-  owning package's normal build
-- the synthetic runtime must be rebuilt when the provider set changes
-
-These are acceptable costs for getting ownership and runtime shape right.
+- provider source is compiled in a synthetic runtime, not in the owning
+  package's normal build
+- the synthetic runtime must be rebuilt when provider membership changes
+- provider authoring currently pushes on the package dependency model, which is
+  why dependency classes are now necessary
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-The chosen design optimizes for:
+### Why not one provider binary per package
 
-- package ownership
-- one parse pass per file
-- one runtime process
-- runtime performance
-- a stable user model
+Because it is the wrong runtime shape:
 
-The strongest alternative is “one provider binary per package”.
-That is simpler mechanically, but it is much worse operationally.
+- too many subprocesses
+- repeated parsing
+- repeated startup cost
+- poor scaling for large workspaces
 
-The fused design keeps the public story clean:
+### Why not statically link all rules into checked-in `tusk-fix`
 
-- packages declare providers
-- `tusk fix` discovers them
-- `tusk` generates a fused runtime
-- the user still runs one command
+Because it creates the wrong ownership model:
 
-That is the right foundation.
+- package-specific rules stay centralized
+- package authors must edit `packages/tusk-fix`
+- `tusk-fix` becomes a bottleneck package
+
+### Why not dynlink
+
+Because it buys the wrong tradeoff:
+
+- platform-sensitive behavior
+- ABI fragility
+- more complex debugging
+- harder-to-reason-about build/runtime story
+
+Generated fusion is more explicit and more predictable.
 
 ## Prior art
 [prior-art]: #prior-art
 
 Relevant patterns:
 
-- workspace-discovered extension points already exist in `tusk`
-- other language toolchains generate synthetic registries at build time
-- Riot already uses generated build artifacts when a checked-in package would be
-  the wrong boundary
+- synthetic registries generated at build time
+- workspace-discovered extension points
+- toolchains that keep extension ownership at the package boundary while still
+  executing one coherent runtime
 
-This proposal follows the same general idea:
-
-- package-owned implementation
-- generated fusion at build time
-- one coherent runtime at execution time
+This design follows that same pattern.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-- How far should provider sources be allowed to reach into their owning package:
+- How far should provider sources be allowed to reach into the owning package:
   only public modules, or some future friend/internal surface?
-- Should provider-owned diagnostic ids follow a recommended naming convention
-  beyond uniqueness?
 - When built-ins migrate to package providers, should the built-in copies linger
-  for one release window or be removed immediately after verification?
+  for a transition window or be removed immediately after verification?

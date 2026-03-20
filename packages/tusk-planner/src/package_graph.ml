@@ -104,7 +104,7 @@ let create (workspace : Workspace.t) : (t, create_error) result =
                   (* Skip well-known OCaml stdlib packages *)
                   if not (is_well_known_package dep.name) then
                     Vector.push missing { package = pkg.name; dependency = dep.name })
-            pkg.dependencies)
+            (Package.build_graph_dependencies pkg))
     workspace.packages;
 
   if Vector.len missing > 0 then

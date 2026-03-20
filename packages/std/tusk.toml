@@ -14,3 +14,6 @@ path = "src/std.ml"
 [dependencies]
 miniriot = { path = "../miniriot" }
 kernel = { path = "../kernel" }
+
+[build-dependencies]
+tusk-fix-api = { path = "../tusk-fix-api" }

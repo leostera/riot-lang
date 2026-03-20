@@ -1,6 +1,7 @@
 open Std
 
 type dependency_source = Workspace | Path of Path.t
+type dependency_scope = Normal | Dev | Build
 type dependency = { name : string; source : dependency_source }
 type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
@@ -39,6 +40,8 @@ type t = {
   path : Path.t;
   relative_path : Path.t;
   dependencies : dependency list;
+  dev_dependencies : dependency list;
+  build_dependencies : dependency list;
   foreign_dependencies : foreign_dependency list;
   binaries : binary list;
   library : library option;
@@ -65,12 +68,18 @@ val validate_name : string -> (string, string) result
 val from_toml :
   Std.Data.Toml.value ->
   workspace_deps:dependency list ->
+  workspace_dev_deps:dependency list ->
+  workspace_build_deps:dependency list ->
   path:Path.t ->
   relative_path:Path.t ->
   (t, string) result
 
 val to_json : t -> Std.Data.Json.t
 val from_json : Std.Data.Json.t -> (t, string) result
+
+val dependencies_for_scope : dependency_scope -> t -> dependency list
+val build_graph_dependencies : t -> dependency list
+val all_dependencies : t -> dependency list
 
 (** Hash package metadata into a Sha256 hasher state *)
 val hash : Crypto.Sha256.state -> t -> unit
