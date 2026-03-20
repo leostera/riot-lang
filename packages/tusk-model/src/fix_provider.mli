@@ -5,7 +5,7 @@ type t = {
   name : string;
   package_name : string;
   package_path : Path.t;
-  module_name : string;
+  source_path : Path.t;
   rules : string list;
 }
 

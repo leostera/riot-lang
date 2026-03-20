@@ -15,6 +15,9 @@ let builtin_rule_factories () =
     ("naming-convention", Rules.Naming_convention.make);
   ]
 
+let package_rules () =
+  Provider_registry.rules ()
+
 let run pipeline ?filename source =
   let parse_result =
     match filename with
@@ -40,21 +43,26 @@ let run pipeline ?filename source =
   }
 
 let default_rules () = 
-  [ 
+  [
     Rules.No_stdlib.make ();
     (* Rules.Naming_convention.make (); *)
   ]
+  @ package_rules ()
 
 let default_rule_ids () =
   default_rules () |> List.map Rule.id
 
 let rules_by_id ids =
   let factories = builtin_rule_factories () in
+  let package_rules = package_rules () in
   ids
   |> List.filter_map (fun id ->
          match List.find_opt (fun (rule_id, _) -> String.equal rule_id id) factories with
          | Some (_rule_id, factory) -> Some (factory ())
-         | None ->
-             Log.warn ("Unknown tusk-fix rule '" ^ id ^ "', ignoring");
-             None)
+         | None -> (
+             match List.find_opt (fun rule -> String.equal (Rule.id rule) id) package_rules with
+             | Some rule -> Some rule
+             | None ->
+                 Log.warn ("Unknown tusk-fix rule '" ^ id ^ "', ignoring");
+                 None))
 let default () = make ~rules:(default_rules ()) ()

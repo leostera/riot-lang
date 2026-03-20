@@ -91,10 +91,21 @@ class TestRunner:
         if result.returncode not in (0, 1):
             return None
 
+        payload = self.extract_json_payload(result.stdout)
+        if payload is None:
+            return None
+
         try:
-            return json.loads(result.stdout)
+            return json.loads(payload)
         except json.JSONDecodeError:
             return None
+
+    def extract_json_payload(self, stdout: str) -> str | None:
+        start = stdout.find("{")
+        end = stdout.rfind("}")
+        if start == -1 or end == -1 or end < start:
+            return None
+        return stdout[start : end + 1]
 
     def normalize(self, value):
         if isinstance(value, dict):

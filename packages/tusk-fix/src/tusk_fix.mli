@@ -14,6 +14,12 @@ module Fix : module type of Fix
 module Pipeline : module type of Pipeline
 (** Linting pipeline orchestration *)
 
+module Provider : module type of Provider
+(** Package-provided tusk-fix rule surface *)
+
+module Provider_registry : module type of Provider_registry
+(** Runtime registry for package-provided rules and diagnostic codes *)
+
 module Reporter : module type of Reporter
 (** Diagnostic output formatting *)
 

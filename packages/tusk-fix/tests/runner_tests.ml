@@ -11,6 +11,21 @@ let run_cli argv =
   | Error err -> Error (Failure (ArgParser.error_message err))
   | Ok matches -> Tusk_fix.Cli.run matches
 
+let with_cwd path fn =
+  let original =
+    Env.current_dir () |> Result.expect ~msg:"failed to get cwd"
+  in
+  Env.set_current_dir path |> Result.expect ~msg:"failed to chdir into test dir";
+  try
+    let result = fn () in
+    Env.set_current_dir original
+    |> Result.expect ~msg:"failed to restore cwd";
+    result
+  with exn ->
+    Env.set_current_dir original
+    |> Result.expect ~msg:"failed to restore cwd after exception";
+    raise exn
+
 let with_tempdir prefix fn =
   match Fs.with_tempdir ~prefix fn with
   | Ok result -> result
@@ -188,7 +203,9 @@ let tests =
         with_tempdir "tusk_fix_cli" (fun tmpdir ->
               let file = Path.(tmpdir / Path.v "sample.ml") in
               write_file file "open Stdlib\n";
-              let result = run_cli [ Path.to_string file ] in
+              let result =
+                with_cwd tmpdir (fun () -> run_cli [ Path.to_string file ])
+              in
               Test.assert_ok result;
               Test.assert_equal ~expected:"open Std\n" ~actual:(read_file file);
               Ok ()));
@@ -196,7 +213,10 @@ let tests =
         with_tempdir "tusk_fix_cli" (fun tmpdir ->
               let file = Path.(tmpdir / Path.v "sample.ml") in
               write_file file "let home = Unix.getenv \"HOME\"\n";
-              let result = run_cli [ "--check"; Path.to_string file ] in
+              let result =
+                with_cwd tmpdir (fun () ->
+                    run_cli [ "--check"; Path.to_string file ])
+              in
               Test.assert_error result;
               Test.assert_equal ~expected:"let home = Unix.getenv \"HOME\"\n"
                 ~actual:(read_file file);
@@ -242,15 +262,27 @@ let tests =
               write_file workspace_toml
                 "[workspace]\nmembers = [\"packages/std\"]\n";
               write_file Path.(package_dir / Path.v "tusk.toml")
-                "[package]\nname = \"std\"\nversion = \"0.1.0\"\n\n[[tusk.fix.provider]]\nname = \"std\"\nmodule = \"Std.Fix_rules\"\nrules = [\"no-stdlib\"]\n";
+                "[package]\nname = \"std\"\nversion = \"0.1.0\"\n\n[[tusk.fix.provider]]\nname = \"std\"\npath = \"fix/no_stdlib_provider.ml\"\nrules = [\"no-stdlib\"]\n";
+              Fs.create_dir_all Path.(package_dir / Path.v "fix")
+              |> Result.expect ~msg:"mkdir fix";
+              write_file
+                Path.(package_dir / Path.v "fix" / Path.v "no_stdlib_provider.ml")
+                "let name = \"std\"\nlet rules () = []\nlet diagnostic_codes () = []\n";
               let scope =
                 Tusk_fix.Config.load_scope ~cwd:tmpdir
                 |> Option.expect ~msg:"expected workspace scope"
               in
               match Tusk_fix.Config.providers (Some scope) with
               | [ provider ] ->
-                  Test.assert_equal ~expected:"Std.Fix_rules"
-                    ~actual:provider.Tusk_model.Fix_provider.module_name;
+                  Test.assert_equal
+                    ~expected:
+                      (Path.to_string
+                         Path.(
+                           package_dir / Path.v "fix"
+                           / Path.v "no_stdlib_provider.ml"))
+                    ~actual:
+                      (Path.to_string
+                         provider.Tusk_model.Fix_provider.source_path);
                   Ok ()
               | _ -> Error "expected one discovered provider"));
     Test.case "fused runtime registry source lists discovered providers" (fun () ->
@@ -261,22 +293,22 @@ let tests =
                 name = "std";
                 package_name = "std";
                 package_path = Path.v "packages/std";
-                module_name = "Std.Fix_rules";
-                rules = [ "no-stdlib" ];
+                source_path = Path.v "/workspace/packages/std/fix/no_stdlib_provider.ml";
+                rules = [ "pkg:no-stdlib" ];
               };
             Tusk_model.Fix_provider.
               {
                 name = "suri";
                 package_name = "suri";
                 package_path = Path.v "packages/suri";
-                module_name = "Suri.Fix_rules";
-                rules = [ "route-style" ];
+                source_path = Path.v "/workspace/packages/suri/fix/route_style_provider.ml";
+                rules = [ "pkg:route-style" ];
               };
           ]
         in
         let source = Tusk_fix.Fused_runtime.registry_source providers in
-        Test.assert_true (String.contains source "Std.Fix_rules");
-        Test.assert_true (String.contains source "Suri.Fix_rules");
+        Test.assert_true (String.contains source "Provider_std_std");
+        Test.assert_true (String.contains source "Provider_suri_suri");
         Ok ());
   ]
 

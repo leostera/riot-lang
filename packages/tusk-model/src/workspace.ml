@@ -188,7 +188,7 @@ version = "0.1.0"
 
 [[tusk.fix.provider]]
 name = "std"
-module = "Std.Fix_rules"
+path = "fix/no_stdlib_provider.ml"
 rules = ["no-stdlib"]
 |}
       |> Result.expect ~msg:"expected package toml to parse"
@@ -206,8 +206,10 @@ rules = ["no-stdlib"]
     | [ provider ] ->
         if
           String.equal provider.package_name "std"
-          && String.equal provider.module_name "Std.Fix_rules"
-          && provider.rules = [ "no-stdlib" ]
+          && String.equal
+               (Path.to_string provider.source_path)
+               "/tmp/example/packages/std/fix/no_stdlib_provider.ml"
+          && provider.rules = [ "pkg:no-stdlib" ]
         then Ok ()
         else Error "expected provider metadata to round-trip"
     | _ -> Error "expected one fix provider"

@@ -719,7 +719,7 @@ let hash state (pkg : t) =
   List.iter
     (fun (provider : Fix_provider.t) ->
       H.write_string state provider.name;
-      H.write_string state provider.module_name;
+      H.write_string state (Path.to_string provider.source_path);
       List.iter (H.write_string state) provider.rules)
     sorted_providers;
   

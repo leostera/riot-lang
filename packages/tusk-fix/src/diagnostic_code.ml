@@ -5,6 +5,15 @@ type t =
   | DirectSysUsage
   | DirectStdlibUsage
   | DirectPervasivesUsage
+  | PackageProvided of package_entry
+
+and package_entry = {
+  id : string;
+  rule_id : string;
+  title : string;
+  body : string;
+  message : string;
+}
 
 type entry = {
   code : t;
@@ -12,24 +21,41 @@ type entry = {
   body : string;
 }
 
+let package_codes : (string, package_entry) Std.Collections.HashMap.t =
+  Std.Collections.HashMap.create ()
+
 let to_id = function
   | DirectUnixUsage -> "F0001"
   | DirectSysUsage -> "F0002"
   | DirectStdlibUsage -> "F0003"
   | DirectPervasivesUsage -> "F0004"
+  | PackageProvided entry -> entry.id
 
 let of_id = function
   | "F0001" -> Some DirectUnixUsage
   | "F0002" -> Some DirectSysUsage
   | "F0003" -> Some DirectStdlibUsage
   | "F0004" -> Some DirectPervasivesUsage
-  | _ -> None
+  | code -> (
+      match Std.Collections.HashMap.get package_codes code with
+      | Some entry -> Some (PackageProvided entry)
+      | None -> None)
+
+let register_package_code entry =
+  ignore (Std.Collections.HashMap.insert package_codes entry.id entry)
+
+let register_package_codes entries =
+  List.iter register_package_code entries
+
+let clear_package_codes () =
+  Std.Collections.HashMap.clear package_codes
 
 let title = function
   | DirectUnixUsage -> "Direct Unix usage"
   | DirectSysUsage -> "Direct Sys usage"
   | DirectStdlibUsage -> "Direct Stdlib usage"
   | DirectPervasivesUsage -> "Direct Pervasives usage"
+  | PackageProvided entry -> entry.title
 
 let body = function
   | DirectUnixUsage ->
@@ -111,8 +137,11 @@ Examples:
 
 This rule exists mostly for consistency and modernization.
 |}
+  | PackageProvided entry -> entry.body
 
-let rule_id _ = "no-stdlib"
+let rule_id = function
+  | PackageProvided entry -> entry.rule_id
+  | _ -> "no-stdlib"
 
 let message = function
   | DirectStdlibUsage ->
@@ -123,6 +152,7 @@ let message = function
       "Direct usage of Unix is discouraged. Use package-owned Riot abstractions instead."
   | DirectSysUsage ->
       "Direct usage of Sys is discouraged. Use package-owned Riot abstractions instead."
+  | PackageProvided entry -> entry.message
 
 let no_stdlib_code_for_module = function
   | "Unix" -> Some DirectUnixUsage

@@ -21,8 +21,8 @@
             "start": 11,
             "end": 15
           },
-          "rule_id": "no-stdlib",
-          "code": "F0001",
+          "rule_id": "pkg:no-stdlib",
+          "code": "FSTD0001",
           "suggestion": null,
           "fix": null
         },
@@ -33,8 +33,8 @@
             "start": 73,
             "end": 76
           },
-          "rule_id": "no-stdlib",
-          "code": "F0002",
+          "rule_id": "pkg:no-stdlib",
+          "code": "FSTD0002",
           "suggestion": null,
           "fix": null
         }

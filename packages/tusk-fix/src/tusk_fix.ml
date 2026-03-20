@@ -5,6 +5,8 @@ open Std
 module Diagnostic = Diagnostic
 module Fix = Fix
 module Pipeline = Pipeline
+module Provider = Provider
+module Provider_registry = Provider_registry
 module Reporter = Reporter
 module Rule = Rule
 module Runner = Runner

@@ -18,8 +18,8 @@ slow for Riot-sized workspaces.
 
 Instead:
 
-- packages declare fix-provider modules in `tusk.toml`
-- `tusk fix` discovers those provider modules from the workspace
+- packages declare fix-provider source files in `tusk.toml`
+- `tusk fix` discovers those provider sources from the workspace
 - `tusk fix` generates a synthetic registry package that depends on the owning
   packages
 - that generated package links all discovered rules into one fused runtime
@@ -92,7 +92,7 @@ That is the central decision in this RFD.
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-A package that wants to ship `tusk-fix` rules declares a provider module in its
+A package that wants to ship `tusk-fix` rules declares a provider source file in its
 manifest.
 
 For example, `std` could eventually declare:
@@ -100,12 +100,12 @@ For example, `std` could eventually declare:
 ```toml
 [[tusk.fix.provider]]
 name = "std"
-module = "Std.Fix_rules"
-rules = ["no-stdlib"]
+path = "fix/no_stdlib_provider.ml"
+rules = ["pkg:no-stdlib"]
 ```
 
-The package would then expose a provider module implementing a small API from a
-new `tusk-fix-api` package.
+That source file is not part of the package's normal build. Instead, `tusk fix`
+copies it into the generated fused runtime and compiles it there.
 
 From the user side, nothing changes:
 
@@ -123,8 +123,8 @@ does this:
 ```mermaid
 flowchart TD
   A[tusk fix] --> B[load workspace]
-  B --> C[discover package rule providers]
-  C --> D[generate fused registry module]
+  B --> C[discover package rule sources]
+  C --> D[generate fused runtime sources]
   D --> E[build synthetic tusk-fix runtime]
   E --> F[run one in-process fix pipeline]
   F --> G[stream results]
@@ -186,8 +186,9 @@ This proposal is not trying to do these things yet:
 - dynlink-based OCaml plugins
 - solving normal vs dev vs build/tool dependency classes in the same change
 
-For the first implementation, packages can depend on `syn` and `tusk-fix-api`
-as regular dependencies when they choose to ship fix providers.
+For the first implementation, providers are source files compiled only inside
+the generated fused runtime. That keeps provider-owned packages out of the
+normal `tusk-fix` dependency graph and avoids cycles like `std -> tusk-fix`.
 
 ## 4. Manifest shape
 
@@ -198,78 +199,78 @@ The proposed manifest shape is:
 ```toml
 [[tusk.fix.provider]]
 name = "std"
-module = "Std.Fix_rules"
-rules = ["no-stdlib"]
+path = "fix/no_stdlib_provider.ml"
+rules = ["pkg:no-stdlib"]
 ```
 
 Fields:
 
 - `name`: provider name for debugging and reporting
-- `module`: fully qualified provider module path
+- `path`: source file relative to the owning package root
 - `rules`: rule ids served by that provider
 
-This uses provider modules, not one manifest entry per rule, because packages
+Package rule ids are prefixed as `pkg:<rule>`.
+
+This uses provider source files, not one manifest entry per rule, because packages
 will often want to ship a family of related rules and share helpers.
 
 ## 5. Provider authoring API
 
-Provider modules should implement a small API in a new `tusk-fix-api` package.
-
-That package should expose:
-
-- `Rule`
-- `Diagnostic`
-- `Diagnostic_code`
-- `Fix`
-- a provider module signature
-- helpers for registration into the fused runtime
+Provider sources should implement the `Tusk_fix.Provider.S` signature.
 
 The authoring story should feel like:
 
 ```ocaml
-module Std_fix_rules : Tusk_fix_api.Provider = struct
-  let rules () =
-    [ No_stdlib.make () ]
+open Std
 
-  let codes () =
-    No_stdlib.codes
-end
+let name = "std"
+
+let rules () =
+  [ No_stdlib_provider.make () ]
+
+let diagnostic_codes () =
+  No_stdlib_provider.codes
 ```
+
+Because the source file is compiled only inside the fused runtime:
+
+- the owning package does not need to link `tusk-fix` in its normal build
+- providers can still reference `Tusk_fix`, `Syn`, and the owning package's
+  public modules from the fused runtime
 
 The important boundary is:
 
-- diagnostics stay typed inside the provider-owning package
-- the fused runtime sees one shared set of rules and codes
+- diagnostics stay typed inside `tusk-fix`
+- built-in codes remain strongly typed
+- package-provided codes use a typed `PackageProvided` variant carrying
+  provider-owned metadata
 
 ## 6. Fusion model
 
 `tusk fix` should generate a workspace-specific synthetic package that links:
 
 - `tusk-fix`
-- `tusk-fix-api`
+- `std`
+- `syn`
 - every provider-owning package
-- a generated registry module that lists every discovered provider
+- a generated library/binary pair for `tusk-fix-fused`
 
 Conceptually:
 
 ```mermaid
 flowchart TD
-  A[workspace packages] --> B[discover provider modules]
-  B --> C[generate registry.ml]
-  C --> D[synthetic tusk-fix-fused package]
-  D --> E[build fused binary]
-  E --> F[run one runtime]
+  A[workspace packages] --> B[discover provider sources]
+  B --> C[generate tusk-fix-fused workspace]
+  C --> D[build synthetic tusk-fix-fused package]
+  D --> E[run fused binary]
 ```
 
-The generated registry module should look roughly like:
+The generated fused runtime should:
 
-```ocaml
-let providers =
-  [
-    (module Std.Fix_rules : Tusk_fix_api.Provider);
-    (module Suri.Fix_rules : Tusk_fix_api.Provider);
-  ]
-```
+- embed the provider source files as modules in generated source
+- register all providers before CLI execution
+- rebuild like any other `tusk` package
+- rely on normal `tusk` caching to avoid unnecessary rebuilds
 
 That synthetic runtime is what the CLI should execute.
 
@@ -308,7 +309,7 @@ The current config model is already close to what we need:
 The only change is that the available rule set now comes from:
 
 - built-in rules
-- fused provider modules discovered from the workspace
+- fused provider rules discovered from the workspace
 
 So the effective-rule algorithm becomes:
 
@@ -376,8 +377,7 @@ The rollout should happen in stages.
 
 - add provider metadata to `tusk-model`
 - discover providers from the workspace
-- add `tusk-fix-api`
-- generate the fused registry module
+- generate the fused workspace and runtime
 - build and run one fused `tusk-fix` runtime
 
 ### Stage 2
@@ -396,7 +396,8 @@ The rollout should happen in stages.
 
 - fusion introduces generated workspace build artifacts
 - provider discovery changes the `tusk fix` build path
-- provider-owning packages currently need regular deps on `syn` and `tusk-fix-api`
+- provider source files are compiled in a synthetic runtime, not in their
+  owning package's normal build
 - the synthetic runtime must be rebuilt when the provider set changes
 
 These are acceptable costs for getting ownership and runtime shape right.
@@ -443,11 +444,9 @@ This proposal follows the same general idea:
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-- Should rule ids be globally unique strings, or should `tusk-fix`
-  canonicalize them as `package:rule` internally?
-- Should the fused runtime be rebuilt eagerly on every `tusk fix`, or only when
-  the provider set hash changes?
-- Should provider-owning packages eventually use dev/build-only deps instead of
-  regular package dependencies?
-- Should built-in `Diagnostic_code` move to a more extensible registry shape
-  before the first external provider lands?
+- How far should provider sources be allowed to reach into their owning package:
+  only public modules, or some future friend/internal surface?
+- Should provider-owned diagnostic ids follow a recommended naming convention
+  beyond uniqueness?
+- When built-ins migrate to package providers, should the built-in copies linger
+  for one release window or be removed immediately after verification?
