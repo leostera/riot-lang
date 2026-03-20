@@ -9,34 +9,35 @@ type t = {
   rules : string list;
 }
 
-let normalize_rule_id rule_id =
-  if String.starts_with ~prefix:"pkg:" rule_id then rule_id
-  else "pkg:" ^ rule_id
+let normalize_rule_id package_name rule_id =
+  if String.contains rule_id ":" then rule_id
+  else package_name ^ ":" ^ rule_id
+
+let default_source_path = Path.v "src/tusk_fix_rules.ml"
 
 let parse_provider provider_toml ~package_name ~package_path =
   match provider_toml with
   | Toml.Table provider_items -> (
-      match
-        ( List.assoc_opt "name" provider_items,
-          List.assoc_opt "path" provider_items )
-      with
-      | Some (Toml.String name), Some (Toml.String source_path) ->
-          let rules =
-            match List.assoc_opt "rules" provider_items with
-            | Some (Toml.Array items) ->
-                List.filter_map Toml.get_string items
-                |> List.map normalize_rule_id
-            | _ -> []
-          in
-          Some
-            {
-              name;
-              package_name;
-              package_path;
-              source_path = Path.(package_path / Path.v source_path);
-              rules;
-            }
-      | _ -> None)
+      let source_path =
+        match List.assoc_opt "path" provider_items with
+        | Some (Toml.String source_path) -> Path.v source_path
+        | _ -> default_source_path
+      in
+      let rules =
+        match List.assoc_opt "rules" provider_items with
+        | Some (Toml.Array items) ->
+            List.filter_map Toml.get_string items
+            |> List.map (normalize_rule_id package_name)
+        | _ -> []
+      in
+      Some
+        {
+          name = package_name;
+          package_name;
+          package_path;
+          source_path = Path.(package_path / source_path);
+          rules;
+        })
   | _ -> None
 
 let parse_from_toml items ~package_name ~package_path =
@@ -45,12 +46,10 @@ let parse_from_toml items ~package_name ~package_path =
       match List.assoc_opt "fix" tusk_items with
       | Some (Toml.Table fix_items) -> (
           match List.assoc_opt "provider" fix_items with
-          | Some (Toml.Array providers) ->
-              List.filter_map
-                (fun provider ->
-                  parse_provider provider ~package_name ~package_path)
-                providers
-          | _ -> [])
+          | Some provider ->
+              parse_provider provider ~package_name ~package_path
+              |> Option.to_list
+          | None -> [])
       | _ -> [])
   | _ -> []
 

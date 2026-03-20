@@ -189,6 +189,23 @@ let set_rule_state states name enabled =
   (name, enabled)
   :: List.filter (fun (existing, _) -> not (String.equal existing name)) states
 
+let matching_rule_names states name =
+  if String.contains name ":" then
+    [ name ]
+  else
+    let names = List.map fst states in
+    let exact_matches =
+      List.filter (fun actual -> String.equal actual name) names
+    in
+    if List.length exact_matches > 0 then
+      exact_matches
+    else
+      let suffix = ":" ^ name in
+      let qualified_matches =
+        List.filter (fun actual -> String.ends_with ~suffix actual) names
+      in
+      if List.length qualified_matches > 0 then qualified_matches else [ name ]
+
 let apply_rule_overrides states overrides =
   List.fold_left
     (fun acc rule_override ->
@@ -197,7 +214,8 @@ let apply_rule_overrides states overrides =
         | Enabled -> true
         | Disabled -> false
       in
-      set_rule_state acc rule_override.name enabled)
+      matching_rule_names acc rule_override.name
+      |> List.fold_left (fun acc rule_name -> set_rule_state acc rule_name enabled) acc)
     states overrides
 
 let default_rule_states () =

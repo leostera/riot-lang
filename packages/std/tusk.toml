@@ -3,10 +3,9 @@ name = "std"
 version = "0.1.0"
 
 [tusk.fix]
-rules = [ "-pkg:no-stdlib" ]
+rules = [ "-no-stdlib" ]
 
-[[tusk.fix.provider]]
-name = "std"
+[tusk.fix.provider]
 path = "fix/no_stdlib_provider.ml"
 rules = [ "no-stdlib" ]
 

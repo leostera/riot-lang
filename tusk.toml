@@ -43,7 +43,7 @@ members = [
 # Shared external dependencies across workspace members
 
 [tusk.fix]
-rules = ["pkg:no-stdlib"]
+rules = ["no-stdlib"]
 
 [profile.debug]
 ocamlc_flags = ["-O0"]

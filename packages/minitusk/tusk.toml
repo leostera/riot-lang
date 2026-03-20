@@ -3,7 +3,7 @@ name = "minitusk"
 version = "0.0.1"
 
 [tusk.fix]
-rules = [ "-pkg:no-stdlib" ]
+rules = [ "-no-stdlib" ]
 
 [dependencies]
 stdlib = "*"

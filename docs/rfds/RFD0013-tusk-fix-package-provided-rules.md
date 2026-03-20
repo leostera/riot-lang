@@ -98,10 +98,9 @@ manifest.
 For example, `std` could eventually declare:
 
 ```toml
-[[tusk.fix.provider]]
-name = "std"
+[tusk.fix.provider]
 path = "fix/no_stdlib_provider.ml"
-rules = ["pkg:no-stdlib"]
+rules = ["no-stdlib"]
 ```
 
 That source file is not part of the package's normal build. Instead, `tusk fix`
@@ -112,7 +111,7 @@ From the user side, nothing changes:
 ```text
 tusk fix
 tusk fix --check
-tusk fix --explain F0001
+tusk fix --explain std:f0001
 ```
 
 The difference is in how `tusk fix` runs internally.
@@ -197,19 +196,18 @@ Packages expose rule providers through `tusk.toml`.
 The proposed manifest shape is:
 
 ```toml
-[[tusk.fix.provider]]
-name = "std"
+[tusk.fix.provider]
 path = "fix/no_stdlib_provider.ml"
-rules = ["pkg:no-stdlib"]
+rules = ["no-stdlib"]
 ```
 
 Fields:
 
-- `name`: provider name for debugging and reporting
 - `path`: source file relative to the owning package root
-- `rules`: rule ids served by that provider
+  Default: `src/tusk_fix_rules.ml`
+- `rules`: provider-local rule ids served by that provider
 
-Package rule ids are prefixed as `pkg:<rule>`.
+Package rule ids are automatically prefixed as `<package>:<rule>`.
 
 This uses provider source files, not one manifest entry per rule, because packages
 will often want to ship a family of related rules and share helpers.
@@ -321,7 +319,7 @@ So the effective-rule algorithm becomes:
 
 ## 9. Explain flow
 
-`tusk fix --explain F0001` should search:
+`tusk fix --explain std:f0001` should search:
 
 1. built-in diagnostic codes
 2. package-owned diagnostic codes fused into the runtime

@@ -186,8 +186,7 @@ target_dir = "build-out"
 name = "std"
 version = "0.1.0"
 
-[[tusk.fix.provider]]
-name = "std"
+[tusk.fix.provider]
 path = "fix/no_stdlib_provider.ml"
 rules = ["no-stdlib"]
 |}
@@ -209,7 +208,8 @@ rules = ["no-stdlib"]
           && String.equal
                (Path.to_string provider.source_path)
                "/tmp/example/packages/std/fix/no_stdlib_provider.ml"
-          && provider.rules = [ "pkg:no-stdlib" ]
+          && String.equal provider.name "std"
+          && provider.rules = [ "std:no-stdlib" ]
         then Ok ()
         else Error "expected provider metadata to round-trip"
     | _ -> Error "expected one fix provider"

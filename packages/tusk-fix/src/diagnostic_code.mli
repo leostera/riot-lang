@@ -8,7 +8,8 @@ type t =
   | PackageProvided of package_entry
 
 and package_entry = {
-  id : string;
+  package_name : string;
+  local_id : string;
   rule_id : string;
   title : string;
   body : string;

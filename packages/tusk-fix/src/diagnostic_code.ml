@@ -8,7 +8,8 @@ type t =
   | PackageProvided of package_entry
 
 and package_entry = {
-  id : string;
+  package_name : string;
+  local_id : string;
   rule_id : string;
   title : string;
   body : string;
@@ -24,12 +25,15 @@ type entry = {
 let package_codes : (string, package_entry) Std.Collections.HashMap.t =
   Std.Collections.HashMap.create ()
 
+let package_code_id entry =
+  entry.package_name ^ ":" ^ entry.local_id
+
 let to_id = function
   | DirectUnixUsage -> "F0001"
   | DirectSysUsage -> "F0002"
   | DirectStdlibUsage -> "F0003"
   | DirectPervasivesUsage -> "F0004"
-  | PackageProvided entry -> entry.id
+  | PackageProvided entry -> package_code_id entry
 
 let of_id = function
   | "F0001" -> Some DirectUnixUsage
@@ -42,7 +46,7 @@ let of_id = function
       | None -> None)
 
 let register_package_code entry =
-  ignore (Std.Collections.HashMap.insert package_codes entry.id entry)
+  ignore (Std.Collections.HashMap.insert package_codes (package_code_id entry) entry)
 
 let register_package_codes entries =
   List.iter register_package_code entries

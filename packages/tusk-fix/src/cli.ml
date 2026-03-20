@@ -10,7 +10,7 @@ let command =
          flag "check" |> long "check"
          |> help "Check for fixable issues without modifying files";
          option "explain" |> long "explain"
-         |> help "Explain a diagnostic code (e.g. F0001)";
+         |> help "Explain a diagnostic code (e.g. F0001 or std:f0001)";
          option "format" |> long "format"
          |> possible_values [ "text"; "json" ]
          |> help "Output format (text or json)";

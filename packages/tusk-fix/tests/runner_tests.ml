@@ -262,7 +262,7 @@ let tests =
               write_file workspace_toml
                 "[workspace]\nmembers = [\"packages/std\"]\n";
               write_file Path.(package_dir / Path.v "tusk.toml")
-                "[package]\nname = \"std\"\nversion = \"0.1.0\"\n\n[[tusk.fix.provider]]\nname = \"std\"\npath = \"fix/no_stdlib_provider.ml\"\nrules = [\"no-stdlib\"]\n";
+                "[package]\nname = \"std\"\nversion = \"0.1.0\"\n\n[tusk.fix.provider]\npath = \"fix/no_stdlib_provider.ml\"\nrules = [\"no-stdlib\"]\n";
               Fs.create_dir_all Path.(package_dir / Path.v "fix")
               |> Result.expect ~msg:"mkdir fix";
               write_file
@@ -285,6 +285,32 @@ let tests =
                          provider.Tusk_model.Fix_provider.source_path);
                   Ok ()
               | _ -> Error "expected one discovered provider"));
+    Test.case "config scope defaults provider path to src/tusk_fix_rules.ml" (fun () ->
+        with_tempdir "tusk_fix_provider_default_path" (fun tmpdir ->
+              let workspace_toml = Path.(tmpdir / Path.v "tusk.toml") in
+              let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "demo") in
+              let src_dir = Path.(package_dir / Path.v "src") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file workspace_toml
+                "[workspace]\nmembers = [\"packages/demo\"]\n";
+              write_file Path.(package_dir / Path.v "tusk.toml")
+                "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[tusk.fix.provider]\nrules = [\"demo-rule\"]\n";
+              write_file Path.(src_dir / Path.v "tusk_fix_rules.ml")
+                "let name = \"demo\"\nlet rules () = []\nlet diagnostic_codes () = []\n";
+              let scope =
+                Tusk_fix.Config.load_scope ~cwd:tmpdir
+                |> Option.expect ~msg:"expected workspace scope"
+              in
+              match Tusk_fix.Config.providers (Some scope) with
+              | [ provider ] ->
+                  Test.assert_equal
+                    ~expected:
+                      (Path.to_string
+                         Path.(src_dir / Path.v "tusk_fix_rules.ml"))
+                    ~actual:(Path.to_string provider.Tusk_model.Fix_provider.source_path);
+                  Test.assert_equal ~expected:[ "demo:demo-rule" ] ~actual:provider.rules;
+                  Ok ()
+              | _ -> Error "expected one discovered provider"));
     Test.case "fused runtime registry source lists discovered providers" (fun () ->
         let providers =
           [
@@ -294,7 +320,7 @@ let tests =
                 package_name = "std";
                 package_path = Path.v "packages/std";
                 source_path = Path.v "/workspace/packages/std/fix/no_stdlib_provider.ml";
-                rules = [ "pkg:no-stdlib" ];
+                rules = [ "std:no-stdlib" ];
               };
             Tusk_model.Fix_provider.
               {
@@ -302,7 +328,7 @@ let tests =
                 package_name = "suri";
                 package_path = Path.v "packages/suri";
                 source_path = Path.v "/workspace/packages/suri/fix/route_style_provider.ml";
-                rules = [ "pkg:route-style" ];
+                rules = [ "suri:route-style" ];
               };
           ]
         in

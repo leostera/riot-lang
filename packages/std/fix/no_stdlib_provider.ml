@@ -1,11 +1,13 @@
 open Std
 
-let package_rule_id = "pkg:no-stdlib"
+let package_name = "std"
+let package_rule_id = package_name ^ ":no-stdlib"
 
 let unix_code =
   Tusk_fix.Diagnostic_code.
     {
-      id = "FSTD0001";
+      package_name;
+      local_id = "f0001";
       rule_id = package_rule_id;
       title = "Direct Unix usage";
       body = Tusk_fix.Diagnostic_code.body DirectUnixUsage;
@@ -15,7 +17,8 @@ let unix_code =
 let sys_code =
   Tusk_fix.Diagnostic_code.
     {
-      id = "FSTD0002";
+      package_name;
+      local_id = "f0002";
       rule_id = package_rule_id;
       title = "Direct Sys usage";
       body = Tusk_fix.Diagnostic_code.body DirectSysUsage;
@@ -25,7 +28,8 @@ let sys_code =
 let stdlib_code =
   Tusk_fix.Diagnostic_code.
     {
-      id = "FSTD0003";
+      package_name;
+      local_id = "f0003";
       rule_id = package_rule_id;
       title = "Direct Stdlib usage";
       body = Tusk_fix.Diagnostic_code.body DirectStdlibUsage;
@@ -35,7 +39,8 @@ let stdlib_code =
 let pervasives_code =
   Tusk_fix.Diagnostic_code.
     {
-      id = "FSTD0004";
+      package_name;
+      local_id = "f0004";
       rule_id = package_rule_id;
       title = "Direct Pervasives usage";
       body = Tusk_fix.Diagnostic_code.body DirectPervasivesUsage;
@@ -84,4 +89,4 @@ let rules () =
       ~run:run_builtin ();
   ]
 
-let name = "std"
+let name = package_name
