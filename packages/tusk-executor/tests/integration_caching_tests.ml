@@ -43,6 +43,7 @@ let make_simple_package tmpdir name =
       sources = { src = []; native = []; tests = []; examples = [] };
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
+      fix_providers = [];
     }
 
 let test_package_cache_hit_skips_planning () =

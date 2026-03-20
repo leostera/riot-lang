@@ -1,5 +1,6 @@
 open Std
 module Build_ctx = Build_ctx
+module Fix_provider = Fix_provider
 module Package_command = Package_command
 module Error = Error
 module Event = Event

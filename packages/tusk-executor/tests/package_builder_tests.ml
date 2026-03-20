@@ -43,6 +43,7 @@ let test_collect_source_files () =
             sources = { src = []; native = []; tests = []; examples = []; bench = [] };
             compiler = { profile_overrides = []; target_overrides = [] };
             commands = [];
+            fix_providers = [];
           }
         in
 
@@ -96,6 +97,7 @@ let test_build_result_status_variants () =
         sources = { src = []; native = []; tests = []; examples = []; bench = [] };
         compiler = { profile_overrides = []; target_overrides = [] };
         commands = [];
+        fix_providers = [];
       }
   in
 

@@ -37,3 +37,6 @@ val discover_commands : t -> Package_command.t list
 
 val find_command : t -> string -> Package_command.t option
 (** Find a command by name in the workspace *)
+
+val discover_fix_providers : t -> Fix_provider.t list
+(** Discover all package-provided tusk-fix providers in the workspace *)

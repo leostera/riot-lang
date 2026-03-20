@@ -17,3 +17,4 @@ module Worker = Worker
 module Coordinator = Coordinator
 module Config = Fix_config
 module Diagnostic_code = Diagnostic_code
+module Fused_runtime = Fused_runtime

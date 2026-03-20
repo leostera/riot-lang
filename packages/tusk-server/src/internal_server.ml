@@ -193,6 +193,7 @@ and handle_get_package_info state client_pid package_name =
                     sources = { src = []; native = []; tests = []; examples = []; bench = [] };
                     compiler = { profile_overrides = []; target_overrides = [] };
                     commands = [];
+                    fix_providers = [];
                   };
                 sources = [];
                 dependencies = [];

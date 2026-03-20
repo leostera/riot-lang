@@ -50,6 +50,7 @@ type t = {
   sources : sources;
   compiler : compiler_config;
   commands : Package_command.t list;
+  fix_providers : Fix_provider.t list;
 }
 
 let equal a b = a.name = b.name && a.path = b.path
@@ -531,6 +532,9 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
             Package_command.parse_from_toml cmd_entries ~package_name:name ~package_path:path
         | _ -> []
       in
+      let fix_providers =
+        Fix_provider.parse_from_toml items ~package_name:name ~package_path:path
+      in
       
       Ok
         {
@@ -544,6 +548,7 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
           sources;
           compiler;
           commands;
+          fix_providers;
         }
   | _ -> Error "TOML is not a table"
 
@@ -579,6 +584,9 @@ let to_json (pkg : t) : Json.t =
         Json.Object [ ("path", Json.String (Path.to_string lib.path)) ]
     | None -> Json.Null
   in
+  let fix_providers_json =
+    Json.Array (List.map Fix_provider.to_json pkg.fix_providers)
+  in
   Json.Object
     [
       ("name", Json.String pkg.name);
@@ -587,6 +595,7 @@ let to_json (pkg : t) : Json.t =
       ("dependencies", dependencies_json);
       ("binaries", binaries_json);
       ("library", library_json);
+      ("fix_providers", fix_providers_json);
     ]
 
 let from_json (json : Json.t) : (t, string) result =
@@ -669,6 +678,7 @@ let from_json (json : Json.t) : (t, string) result =
               sources = { src = []; native = []; tests = []; examples = []; bench = [] };
               compiler = { profile_overrides = []; target_overrides = [] };
               commands = [];
+              fix_providers = [];
             }
           | Error _, _ -> Error ("Invalid path in package JSON: " ^ path_str)
           | _, Error _ -> Error ("Invalid relative_path in package JSON: " ^ rel_path_str))
@@ -699,6 +709,19 @@ let hash state (pkg : t) =
     H.write_string state bin.name;
     H.write_string state (Path.to_string bin.path)
   ) sorted_bins;
+
+  let sorted_providers =
+    List.sort
+      (fun (a : Fix_provider.t) (b : Fix_provider.t) ->
+        String.compare a.name b.name)
+      pkg.fix_providers
+  in
+  List.iter
+    (fun (provider : Fix_provider.t) ->
+      H.write_string state provider.name;
+      H.write_string state provider.module_name;
+      List.iter (H.write_string state) provider.rules)
+    sorted_providers;
   
   (* Library metadata *)
   (match pkg.library with

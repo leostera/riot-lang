@@ -21,8 +21,10 @@ type package_scope = {
 
 type scope = {
   workspace_root : Path.t;
+  target_dir_root : Path.t;
   workspace_config : fix_config;
   packages : package_scope list;
+  providers : Tusk_model.Fix_provider.t list;
 }
 
 let empty_fix_config = {
@@ -106,11 +108,18 @@ let load_scope ~cwd =
       in
       Some {
         workspace_root = workspace.root;
+        target_dir_root = workspace.target_dir_root;
         workspace_config;
         packages;
+        providers = Workspace.discover_fix_providers workspace;
       }
 
 let workspace_root scope = scope.workspace_root
+let target_dir_root scope = scope.target_dir_root
+
+let providers = function
+  | None -> []
+  | Some scope -> scope.providers
 
 let ignore_patterns = function
   | None -> []

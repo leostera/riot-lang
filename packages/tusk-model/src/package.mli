@@ -45,6 +45,7 @@ type t = {
   sources : sources;
   compiler : compiler_config;
   commands : Package_command.t list;
+  fix_providers : Fix_provider.t list;
 }
 
 val equal : t -> t -> bool

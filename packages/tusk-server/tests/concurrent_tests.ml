@@ -35,6 +35,7 @@ let make_package tmpdir name content =
       sources = { src = []; native = []; tests = []; examples = []; bench = [] };
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
+      fix_providers = [];
     }
 
 type Message.t += BuildComplete of (string * (unit, string) result)

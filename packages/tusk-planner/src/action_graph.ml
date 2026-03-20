@@ -514,6 +514,7 @@ let from_json json =
                     { src = []; native = []; tests = []; examples = []; bench = [] };
                   compiler = { profile_overrides = []; target_overrides = [] };
                   commands = [];
+                  fix_providers = [];
                 }
                             in
                             let toolchain =

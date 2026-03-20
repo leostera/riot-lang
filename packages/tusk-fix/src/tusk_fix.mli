@@ -49,3 +49,6 @@ module Config : module type of Fix_config
 
 module Diagnostic_code : module type of Diagnostic_code
 (** Diagnostic code registry and explanation text for `tusk fix` *)
+
+module Fused_runtime : module type of Fused_runtime
+(** Build-time fused runtime planning for package-provided rules *)

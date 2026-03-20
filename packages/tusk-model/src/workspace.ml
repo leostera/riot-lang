@@ -145,6 +145,11 @@ let find_command (workspace : t) (name : string) : Package_command.t option =
   discover_commands workspace
   |> List.find_opt (fun (cmd : Package_command.t) -> cmd.name = name)
 
+let discover_fix_providers (workspace : t) : Fix_provider.t list =
+  List.concat_map
+    (fun (pkg : Package.t) -> pkg.fix_providers)
+    workspace.packages
+
 module Tests = struct
   let test_parse_workspace_toml () : (unit, string) result = Ok () [@test]
 
@@ -171,5 +176,40 @@ target_dir = "build-out"
     in
     if Path.to_string workspace.target_dir_root = "/tmp/example/build-out" then Ok ()
     else Error "expected custom target_dir_root"
+  [@test]
+
+  let test_discover_fix_providers () : (unit, string) result =
+    let package_toml =
+      Std.Data.Toml.parse
+        {|
+[package]
+name = "std"
+version = "0.1.0"
+
+[[tusk.fix.provider]]
+name = "std"
+module = "Std.Fix_rules"
+rules = ["no-stdlib"]
+|}
+      |> Result.expect ~msg:"expected package toml to parse"
+    in
+    let package =
+      Package.from_toml package_toml ~workspace_deps:[]
+        ~path:(Path.v "/tmp/example/packages/std")
+        ~relative_path:(Path.v "packages/std")
+      |> Result.expect ~msg:"expected package manifest"
+    in
+    let workspace =
+      make ~root:(Path.v "/tmp/example") ~packages:[ package ] ()
+    in
+    match discover_fix_providers workspace with
+    | [ provider ] ->
+        if
+          String.equal provider.package_name "std"
+          && String.equal provider.module_name "Std.Fix_rules"
+          && provider.rules = [ "no-stdlib" ]
+        then Ok ()
+        else Error "expected provider metadata to round-trip"
+    | _ -> Error "expected one fix provider"
   [@test]
 end [@test]

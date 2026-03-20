@@ -21,6 +21,8 @@ val load_scope : cwd:Path.t -> scope option
     workspace. Returns [None] outside a workspace. *)
 
 val workspace_root : scope -> Path.t
+val target_dir_root : scope -> Path.t
+val providers : scope option -> Tusk_model.Fix_provider.t list
 
 val ignore_patterns : scope option -> string list
 (** Effective ignore patterns to apply while scanning. Includes workspace-level

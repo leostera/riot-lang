@@ -234,6 +234,50 @@ let tests =
               Test.assert_equal ~expected:[ Path.to_string Path.(src_dir / Path.v "real.ml") ]
                 ~actual:files;
               Ok ()));
+    Test.case "config scope discovers fix providers from workspace packages" (fun () ->
+        with_tempdir "tusk_fix_provider_scope" (fun tmpdir ->
+              let workspace_toml = Path.(tmpdir / Path.v "tusk.toml") in
+              let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "std") in
+              Fs.create_dir_all package_dir |> Result.expect ~msg:"mkdir package";
+              write_file workspace_toml
+                "[workspace]\nmembers = [\"packages/std\"]\n";
+              write_file Path.(package_dir / Path.v "tusk.toml")
+                "[package]\nname = \"std\"\nversion = \"0.1.0\"\n\n[[tusk.fix.provider]]\nname = \"std\"\nmodule = \"Std.Fix_rules\"\nrules = [\"no-stdlib\"]\n";
+              let scope =
+                Tusk_fix.Config.load_scope ~cwd:tmpdir
+                |> Option.expect ~msg:"expected workspace scope"
+              in
+              match Tusk_fix.Config.providers (Some scope) with
+              | [ provider ] ->
+                  Test.assert_equal ~expected:"Std.Fix_rules"
+                    ~actual:provider.Tusk_model.Fix_provider.module_name;
+                  Ok ()
+              | _ -> Error "expected one discovered provider"));
+    Test.case "fused runtime registry source lists discovered providers" (fun () ->
+        let providers =
+          [
+            Tusk_model.Fix_provider.
+              {
+                name = "std";
+                package_name = "std";
+                package_path = Path.v "packages/std";
+                module_name = "Std.Fix_rules";
+                rules = [ "no-stdlib" ];
+              };
+            Tusk_model.Fix_provider.
+              {
+                name = "suri";
+                package_name = "suri";
+                package_path = Path.v "packages/suri";
+                module_name = "Suri.Fix_rules";
+                rules = [ "route-style" ];
+              };
+          ]
+        in
+        let source = Tusk_fix.Fused_runtime.registry_source providers in
+        Test.assert_true (String.contains source "Std.Fix_rules");
+        Test.assert_true (String.contains source "Suri.Fix_rules");
+        Ok ());
   ]
 
 let () =

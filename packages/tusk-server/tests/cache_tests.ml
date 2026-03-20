@@ -44,6 +44,7 @@ let make_package tmpdir name content =
       sources = { src = []; native = []; tests = []; examples = []; bench = [] };
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
+      fix_providers = [];
     }
 
 let test_fresh_build_no_cache () =
