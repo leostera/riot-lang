@@ -31,6 +31,7 @@ let plan_node input =
       {
         root = input.package.path;
         source_dir = input.planning_root;
+        allowed_source_files = input.package.sources.src;
         namespace;
         package = input.package;
         toolchain = input.toolchain;

@@ -29,6 +29,7 @@ members = [
   "packages/tusk-eval",
   "packages/tusk-executor",
   "packages/tusk-fix",
+  "packages/tusk-fix-api",
   "packages/tusk-init",
   "packages/tusk-model",
   "packages/tusk-planner",

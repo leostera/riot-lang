@@ -311,6 +311,37 @@ let tests =
                   Test.assert_equal ~expected:[ "demo:demo-rule" ] ~actual:provider.rules;
                   Ok ()
               | _ -> Error "expected one discovered provider"));
+    Test.case
+      "config scope defaults provider path to src/tusk_fix_rules/tusk_fix_rules.ml"
+      (fun () ->
+        with_tempdir "tusk_fix_provider_nested_default_path" (fun tmpdir ->
+              let workspace_toml = Path.(tmpdir / Path.v "tusk.toml") in
+              let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "demo") in
+              let provider_dir =
+                Path.(package_dir / Path.v "src" / Path.v "tusk_fix_rules")
+              in
+              Fs.create_dir_all provider_dir |> Result.expect ~msg:"mkdir provider dir";
+              write_file workspace_toml
+                "[workspace]\nmembers = [\"packages/demo\"]\n";
+              write_file Path.(package_dir / Path.v "tusk.toml")
+                "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[tusk.fix.provider]\nrules = [\"demo-rule\"]\n";
+              write_file Path.(provider_dir / Path.v "tusk_fix_rules.ml")
+                "let name = \"demo\"\nlet rules () = []\nlet diagnostic_codes () = []\n";
+              let scope =
+                Tusk_fix.Config.load_scope ~cwd:tmpdir
+                |> Option.expect ~msg:"expected workspace scope"
+              in
+              match Tusk_fix.Config.providers (Some scope) with
+              | [ provider ] ->
+                  Test.assert_equal
+                    ~expected:
+                      (Path.to_string
+                         Path.(
+                           provider_dir / Path.v "tusk_fix_rules.ml"))
+                    ~actual:(Path.to_string provider.Tusk_model.Fix_provider.source_path);
+                  Test.assert_equal ~expected:[ "demo:demo-rule" ] ~actual:provider.rules;
+                  Ok ()
+              | _ -> Error "expected one discovered provider"));
     Test.case "fused runtime registry source lists discovered providers" (fun () ->
         let providers =
           [

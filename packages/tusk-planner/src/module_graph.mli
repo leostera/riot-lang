@@ -5,6 +5,7 @@ module G = Std.Graph.SimpleGraph
 type config = {
   root : Path.t;
   source_dir : Path.t;
+  allowed_source_files : Path.t list;
   namespace : string;
   package : Package.t;
   toolchain : Tusk_toolchain.t;

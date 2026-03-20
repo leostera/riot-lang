@@ -6,7 +6,6 @@ version = "0.1.0"
 rules = [ "-no-stdlib" ]
 
 [tusk.fix.provider]
-path = "fix/no_stdlib_provider.ml"
 rules = [ "no-stdlib" ]
 
 [lib]

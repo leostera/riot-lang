@@ -27,6 +27,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/tusk-init/AGENTS.md`: workspace/package scaffolding
 - `packages/tusk-eval/AGENTS.md`: OCaml evaluation tooling
 - `packages/tusk-fix/AGENTS.md`: linting and auto-fix pipeline
+- `packages/tusk-fix-api/AGENTS.md`: shared rule-authoring types used by tusk-fix and fused package providers
 - `packages/tty/AGENTS.md`: terminal control and rendering helpers
 - `packages/gooey/AGENTS.md`: TUI primitives
 - `packages/minttea/AGENTS.md`: Elm-style TUI framework

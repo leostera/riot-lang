@@ -1,15 +1,19 @@
 open Std
 
-type severity = Error | Warning | Info | Hint
+type severity = Tusk_fix_api.Diagnostic.severity =
+  | Error
+  | Warning
+  | Info
+  | Hint
 
-type kind =
+type kind = Tusk_fix_api.Diagnostic.kind =
   | Known of Diagnostic_code.t
   | Generic of {
       rule_id : string;
       message : string;
     }
 
-type t = {
+type t = Tusk_fix_api.Diagnostic.t = {
   severity : severity;
   kind : kind;
   span : Syn.Ceibo.Span.t;
@@ -17,8 +21,7 @@ type t = {
   fix : Fix.fix option;
 }
 
-let make ~severity ~kind ~span ?suggestion ?fix () =
-  { severity; kind; span; suggestion; fix }
+let make = Tusk_fix_api.Diagnostic.make
 
 let severity_to_string = function
   | Error -> "error"
@@ -32,20 +35,13 @@ let severity_to_colored_string = function
   | Info -> "\027[1;36minfo\027[0m"
   | Hint -> "\027[1;90mhint\027[0m"
 
-let message = function
-  | { kind = Known code; _ } -> Diagnostic_code.message code
-  | { kind = Generic { message; _ }; _ } -> message
+let message = Tusk_fix_api.Diagnostic.message
 
-let rule_id = function
-  | { kind = Known code; _ } -> Diagnostic_code.rule_id code
-  | { kind = Generic { rule_id; _ }; _ } -> rule_id
+let rule_id = Tusk_fix_api.Diagnostic.rule_id
 
-let code = function
-  | { kind = Known code; _ } -> Some code
-  | { kind = Generic _; _ } -> None
+let code = Tusk_fix_api.Diagnostic.code
 
-let code_id diag =
-  code diag |> Option.map Diagnostic_code.to_id
+let code_id = Tusk_fix_api.Diagnostic.code_id
 
 let header_label severity rule_id code =
   match code with
@@ -193,11 +189,11 @@ let to_json diag =
     ]
 
 (* Accessor functions *)
-let kind diag = diag.kind
-let severity diag = diag.severity
-let span diag = diag.span
-let suggestion diag = diag.suggestion
-let fix diag = diag.fix
+let kind = Tusk_fix_api.Diagnostic.kind
+let severity = Tusk_fix_api.Diagnostic.severity
+let span = Tusk_fix_api.Diagnostic.span
+let suggestion = Tusk_fix_api.Diagnostic.suggestion
+let fix = Tusk_fix_api.Diagnostic.fix
 
 (* Grouped diagnostics *)
 type grouped = {

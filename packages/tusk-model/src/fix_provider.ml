@@ -13,16 +13,26 @@ let normalize_rule_id package_name rule_id =
   if String.contains rule_id ":" then rule_id
   else package_name ^ ":" ^ rule_id
 
-let default_source_path = Path.v "src/tusk_fix_rules.ml"
+let default_source_paths =
+  [
+    Path.v "src/tusk_fix_rules/tusk_fix_rules.ml";
+    Path.v "src/tusk_fix_rules.ml";
+  ]
+
+let resolve_source_path provider_items ~package_path =
+  match List.assoc_opt "path" provider_items with
+  | Some (Toml.String source_path) -> Path.v source_path
+  | _ ->
+      default_source_paths
+      |> List.find_opt (fun rel_path ->
+             Fs.exists Path.(package_path / rel_path)
+             |> Result.unwrap_or ~default:false)
+      |> Option.unwrap_or ~default:(Path.v "src/tusk_fix_rules.ml")
 
 let parse_provider provider_toml ~package_name ~package_path =
   match provider_toml with
   | Toml.Table provider_items -> (
-      let source_path =
-        match List.assoc_opt "path" provider_items with
-        | Some (Toml.String source_path) -> Path.v source_path
-        | _ -> default_source_path
-      in
+      let source_path = resolve_source_path provider_items ~package_path in
       let rules =
         match List.assoc_opt "rules" provider_items with
         | Some (Toml.Array items) ->

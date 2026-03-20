@@ -4,6 +4,7 @@ type generated_provider = {
   provider : Tusk_model.Fix_provider.t;
   module_name : string;
   copied_source_path : Path.t;
+  support_module_sources : (string * Path.t) list;
 }
 
 type plan = {

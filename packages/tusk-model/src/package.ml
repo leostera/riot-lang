@@ -387,7 +387,57 @@ let parse_compiler_config (items : (string * Toml.value) list) : compiler_config
   
   { profile_overrides; target_overrides }
 
-let scan_sources ~(package_path : Path.t) : sources =
+let provider_excluded_relpaths ~(package_path : Path.t) providers =
+  let ocaml_source_suffix path_str =
+    String.ends_with ~suffix:".ml" path_str
+    || String.ends_with ~suffix:".mli" path_str
+  in
+  let collect_provider_tree rel_path =
+    let rel_str = Path.to_string rel_path in
+    let provider_parent = Path.dirname rel_path in
+    let parent_basename = Path.basename provider_parent in
+    let basename = Path.basename rel_path in
+    if
+      String.equal basename "tusk_fix_rules.ml"
+      && String.equal parent_basename "tusk_fix_rules"
+    then
+      let provider_dir = Path.(package_path / provider_parent) in
+      let rec scan_dir_recursive ~from_dir ~rel_path =
+        match Fs.read_dir from_dir with
+        | Error _ -> []
+        | Ok iter ->
+            let entries = Std.Iter.MutIterator.to_list iter in
+            List.concat_map
+              (fun filename ->
+                let abs_path = Path.(from_dir / filename) in
+                let rel_path_full = Path.(rel_path / filename) in
+                match Fs.is_dir abs_path with
+                | Ok true ->
+                    scan_dir_recursive ~from_dir:abs_path ~rel_path:rel_path_full
+                | Ok false ->
+                    let rel_str = Path.to_string rel_path_full in
+                    if ocaml_source_suffix rel_str then [ rel_path_full ] else []
+                | Error _ -> [])
+              entries
+      in
+      scan_dir_recursive ~from_dir:provider_dir ~rel_path:provider_parent
+    else
+      [ rel_path ]
+  in
+  providers
+  |> List.filter_map (fun (provider : Fix_provider.t) ->
+         match Path.strip_prefix provider.source_path ~prefix:package_path with
+         | Ok rel_path -> Some (collect_provider_tree rel_path)
+         | Error _ -> None)
+  |> List.concat
+  |> List.sort_uniq (fun left right ->
+         String.compare (Path.to_string left) (Path.to_string right))
+
+let scan_sources ~(package_path : Path.t) ?(excluded_relpaths = []) () : sources =
+  let excluded_relpath_strings =
+    excluded_relpaths
+    |> List.map Path.to_string
+  in
   let rec scan_dir_recursive ~from_dir ~rel_path =
     match Fs.read_dir from_dir with
     | Error _ -> []
@@ -400,7 +450,11 @@ let scan_sources ~(package_path : Path.t) : sources =
             match Fs.is_dir abs_path with
             | Ok true ->
                 scan_dir_recursive ~from_dir:abs_path ~rel_path:rel_path_full
-            | Ok false -> [ rel_path_full ]
+            | Ok false ->
+                if
+                  List.mem (Path.to_string rel_path_full) excluded_relpath_strings
+                then []
+                else [ rel_path_full ]
             | Error _ -> [])
           entries
   in
@@ -513,7 +567,13 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
             Log.warn ("[PACKAGE] Failed to parse foreign dependencies for " ^ name ^ ": " ^ msg);
             []
       in
-      let sources = scan_sources ~package_path:path in
+      let fix_providers =
+        Fix_provider.parse_from_toml items ~package_name:name ~package_path:path
+      in
+      let excluded_relpaths =
+        provider_excluded_relpaths ~package_path:path fix_providers
+      in
+      let sources = scan_sources ~package_path:path ~excluded_relpaths () in
       let compiler = parse_compiler_config items in
       let test_binaries = autodiscover_test_binaries sources ~package_path:path in
       let example_binaries =
@@ -532,10 +592,6 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
             Package_command.parse_from_toml cmd_entries ~package_name:name ~package_path:path
         | _ -> []
       in
-      let fix_providers =
-        Fix_provider.parse_from_toml items ~package_name:name ~package_path:path
-      in
-      
       Ok
         {
           name;

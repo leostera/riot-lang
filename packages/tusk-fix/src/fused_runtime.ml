@@ -4,6 +4,7 @@ type generated_provider = {
   provider : Tusk_model.Fix_provider.t;
   module_name : string;
   copied_source_path : Path.t;
+  support_module_sources : (string * Path.t) list;
 }
 
 type plan = {
@@ -40,6 +41,39 @@ let generated_module_name (provider : Tusk_model.Fix_provider.t) =
   "Provider_" ^ sanitize_component provider.package_name ^ "_"
   ^ sanitize_component provider.name
 
+let ocaml_module_name_of_path path =
+  let base =
+    Path.basename path
+    |> Path.v
+    |> Path.remove_extension
+    |> Path.to_string
+  in
+  if String.length base = 0 then
+    "Generated"
+  else
+    String.uppercase_ascii (String.sub base 0 1)
+    ^ String.sub base 1 (String.length base - 1)
+
+let support_module_sources (provider : Tusk_model.Fix_provider.t) =
+  let provider_dir = Path.dirname provider.source_path in
+  let provider_basename = Path.basename provider.source_path in
+  match Fs.read_dir provider_dir with
+  | Error _ -> []
+  | Ok iter ->
+      Std.Iter.MutIterator.to_list iter
+      |> List.filter_map (fun entry ->
+             let source_path = Path.(provider_dir / entry) in
+             let entry_name = Path.basename source_path in
+             if
+               String.equal entry_name provider_basename
+               || not (String.ends_with ~suffix:".ml" entry_name)
+             then None
+             else Some (ocaml_module_name_of_path source_path, source_path))
+      |> List.sort (fun (left_name, left_path) (right_name, right_path) ->
+             match String.compare left_name right_name with
+             | 0 -> String.compare (Path.to_string left_path) (Path.to_string right_path)
+             | cmp -> cmp)
+
 let provider_fingerprint (provider : Tusk_model.Fix_provider.t) =
   String.concat ":"
     [
@@ -64,6 +98,7 @@ let generated_provider plan provider =
     provider;
     module_name;
     copied_source_path = Path.(plan.providers_dir / Path.v (module_name ^ ".ml"));
+    support_module_sources = support_module_sources provider;
   }
 
 let plan ~workspace_root ~target_dir_root providers =
@@ -133,6 +168,19 @@ let embedded_provider_module_source (provider : generated_provider) =
   String.concat "\n"
     [
       "module " ^ provider.module_name ^ " = struct";
+      String.concat "\n"
+        (List.map
+           (fun (module_name, source_path) ->
+             let source =
+               Fs.read source_path
+               |> Result.expect
+                    ~msg:
+                      ("failed to read provider support source "
+                     ^ Path.to_string source_path)
+             in
+             String.concat "\n"
+               [ "module " ^ module_name ^ " = struct"; source; "end"; "" ])
+           provider.support_module_sources);
       source;
       "end";
       "";
@@ -157,6 +205,7 @@ let dependency_entries workspace_root providers =
       ("std", Path.(workspace_root / Path.v "packages" / Path.v "std"));
       ("syn", Path.(workspace_root / Path.v "packages" / Path.v "syn"));
       ("tusk-fix", Path.(workspace_root / Path.v "packages" / Path.v "tusk-fix"));
+      ("tusk-fix-api", Path.(workspace_root / Path.v "packages" / Path.v "tusk-fix-api"));
     ]
     @ List.map (fun ({ provider; _ } : generated_provider) ->
           (provider.package_name, provider.package_path))

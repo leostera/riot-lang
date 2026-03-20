@@ -13,6 +13,7 @@ path = "src/main.ml"
 std = { path = "../std" }
 syn = { path = "../syn" }
 tusk-model = { path = "../tusk-model" }
+tusk-fix-api = { path = "../tusk-fix-api" }
 
 [[bin]]
 name = "fix_tests"

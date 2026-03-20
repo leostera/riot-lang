@@ -1,0 +1,103 @@
+open Std
+
+(** Traversal Helpers for Syn CST
+    
+    This module provides utilities for traversing and querying Syn's
+    Concrete Syntax Trees (CST), reducing boilerplate in lint rules.
+*)
+
+type red_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
+type red_node = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
+type red_token = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_token
+type red_element = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_element
+
+(** {1 Finding Nodes} *)
+
+val find_nodes : (red_node -> bool) -> red_tree -> red_node list
+(** [find_nodes predicate tree] returns all nodes in [tree] that satisfy [predicate].
+    
+    Example:
+    {[
+      let open_nodes = find_nodes 
+        (fun n -> SyntaxNode.kind n = OPEN_STMT) 
+        tree
+    ]}
+*)
+
+val find_by_kind : Syn.SyntaxKind.t -> red_tree -> red_node list
+(** [find_by_kind kind tree] returns all nodes of the given [kind].
+    
+    Example:
+    {[
+      let open_stmts = find_by_kind OPEN_STMT tree in
+      List.iter check_open open_stmts
+    ]}
+*)
+
+val find_by_kinds : Syn.SyntaxKind.t list -> red_tree -> red_node list
+(** [find_by_kinds kinds tree] returns all nodes matching any of the given [kinds].
+    
+    Example:
+    {[
+      let exprs = find_by_kinds [PATH_EXPR; FIELD_ACCESS_EXPR] tree
+    ]}
+*)
+
+(** {1 Token Queries} *)
+
+val find_tokens : (red_token -> bool) -> red_tree -> red_token list
+(** [find_tokens predicate tree] returns all tokens that satisfy [predicate].
+    
+    Example:
+    {[
+      let comments = find_tokens
+        (fun t -> SyntaxToken.kind t = COMMENT)
+        tree
+    ]}
+*)
+
+val first_non_trivia_child : red_node -> red_element option
+(** [first_non_trivia_child node] returns the first child that is not whitespace,
+    comment, or docstring.
+    
+    Useful for extracting meaningful tokens from nodes.
+*)
+
+val first_non_trivia_token : red_node -> red_token option
+(** [first_non_trivia_token node] returns the first non-trivia token child.
+    
+    Returns [None] if the first non-trivia child is a node or doesn't exist.
+*)
+
+(** {1 Visitor Pattern} *)
+
+type 'acc visitor = {
+  visit_node : red_node -> 'acc -> 'acc;
+  visit_token : red_token -> 'acc -> 'acc;
+}
+(** Visitor for folding over the tree.
+    
+    Example:
+    {[
+      let count_identifiers = fold
+        {
+          visit_node = (fun _ acc -> acc);
+          visit_token = (fun tok acc ->
+            if SyntaxToken.kind tok = IDENT then acc + 1 else acc
+          );
+        }
+        0
+        tree
+    ]}
+*)
+
+val fold : 'acc visitor -> 'acc -> red_tree -> 'acc
+(** [fold visitor init tree] folds over the tree with a visitor pattern.
+    
+    Traverses in pre-order: nodes before their children.
+*)
+
+(** {1 Utilities} *)
+
+val is_trivia : Syn.SyntaxKind.t -> bool
+(** [is_trivia kind] returns true if [kind] is whitespace, comment, or docstring. *)

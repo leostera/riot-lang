@@ -1,0 +1,10 @@
+[package]
+name = "tusk-fix-api"
+version = "0.1.0"
+
+[lib]
+path = "src/tusk_fix_api.ml"
+
+[dependencies]
+std = { path = "../std" }
+syn = { path = "../syn" }

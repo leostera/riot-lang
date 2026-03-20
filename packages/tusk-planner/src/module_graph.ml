@@ -38,6 +38,7 @@ module G = Std.Graph.SimpleGraph
 type config = {
   root : Path.t;
   source_dir : Path.t;
+  allowed_source_files : Path.t list;
   namespace : string;
   package : Package.t;
   toolchain : Tusk_toolchain.t;
@@ -75,6 +76,33 @@ let make_relative ~base ~path =
     let len = String.length prefix in
     Path.v (String.sub path_str len (String.length path_str - len))
   else path
+
+let rec filter_entries ~allowed entries =
+  let allowed_strings = List.map Path.to_string allowed in
+  List.filter_map
+    (function
+      | Module_scanner.ML (name, path) ->
+          if List.mem (Path.to_string path) allowed_strings then
+            Some (Module_scanner.ML (name, path))
+          else None
+      | Module_scanner.MLI (name, path) ->
+          if List.mem (Path.to_string path) allowed_strings then
+            Some (Module_scanner.MLI (name, path))
+          else None
+      | Module_scanner.C (name, path) ->
+          if List.mem (Path.to_string path) allowed_strings then
+            Some (Module_scanner.C (name, path))
+          else None
+      | Module_scanner.H (name, path) ->
+          if List.mem (Path.to_string path) allowed_strings then
+            Some (Module_scanner.H (name, path))
+          else None
+      | Module_scanner.Other _ -> None
+      | Module_scanner.Dir (name, path, children) ->
+          let children = filter_entries ~allowed children in
+          if List.length children = 0 then None
+          else Some (Module_scanner.Dir (name, path, children)))
+    entries
 
 (** Check if a path is a binary source file.
 
@@ -332,6 +360,7 @@ let scan_sources t (sources : Module_scanner.entry list) =
 let create config =
   let entries =
     Module_scanner.scan ~root:config.root ~source_dir:config.source_dir
+    |> filter_entries ~allowed:config.allowed_source_files
   in
   let graph = G.make () in
   let registry = Module_registry.create () in

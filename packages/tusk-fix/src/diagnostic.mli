@@ -1,15 +1,19 @@
 open Std
 
-type severity = Error | Warning | Info | Hint
+type severity = Tusk_fix_api.Diagnostic.severity =
+  | Error
+  | Warning
+  | Info
+  | Hint
 
-type kind =
+type kind = Tusk_fix_api.Diagnostic.kind =
   | Known of Diagnostic_code.t
   | Generic of {
       rule_id : string;
       message : string;
     }
 
-type t = {
+type t = Tusk_fix_api.Diagnostic.t = {
   severity : severity;
   kind : kind;
   span : Syn.Ceibo.Span.t;
