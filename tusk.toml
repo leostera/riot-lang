@@ -42,9 +42,6 @@ members = [
 [dependencies]
 # Shared external dependencies across workspace members
 
-[tusk]
-target_dir = "_build"
-
 [tusk.fix]
 rules = ["no-stdlib"]
 
