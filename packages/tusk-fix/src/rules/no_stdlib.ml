@@ -41,11 +41,17 @@ let make_fix token replacement =
 
 let make_diagnostic token =
   let text = Syn.Ceibo.Red.SyntaxToken.text token in
+  let code = Diagnostic_code.no_stdlib_code_for_module text in
   let suggestion = make_suggestion text in
   let fix = replacement_for text |> Option.map (make_fix token) in
-  Diagnostic.make ~severity:Warning ~message:(make_message text)
+  let kind =
+    match code with
+    | Some code -> Diagnostic.Known code
+    | None -> Diagnostic.Generic { rule_id; message = make_message text }
+  in
+  Diagnostic.make ~severity:Warning ~kind
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-    ~rule_id ?suggestion ?fix ()
+    ?suggestion ?fix ()
 
 let dedupe_diagnostics diagnostics =
   let seen = HashMap.create () in

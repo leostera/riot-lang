@@ -1,32 +1,44 @@
-./packages/tusk_fix/tests/0002_nostdlib_module_path.ml:
-[[1;33mwarning[0m] no-stdlib
-
-Direct usage of Hashtbl is discouraged. Use Std equivalents instead.
-
-  [1;90m2 |[0m let tbl = Hashtbl.create 10
-  [1;90m  |[0m           [1;33m^[0m
-
-
-  [1;90m→[0m Replace Hashtbl with Std module
-
-./packages/tusk_fix/tests/0002_nostdlib_module_path.ml:
-[[1;33mwarning[0m] no-stdlib
-
-Direct usage of Unix is discouraged. Use Std equivalents instead.
-
-  [1;90m1 |[0m let home = Unix.getenv "HOME"
-  [1;90m  |[0m            [1;33m^[0m
-
-
-  [1;90m→[0m Replace Unix with Std module
-
-./packages/tusk_fix/tests/0002_nostdlib_module_path.ml:
-[[1;33mwarning[0m] no-stdlib
-
-Direct usage of Sys is discouraged. Use Std equivalents instead.
-
-  [1;90m3 |[0m let sys_args = Sys.argv
-  [1;90m  |[0m                [1;33m^[0m
-
-
-  [1;90m→[0m Replace Sys with Std module
+{
+  "summary": {
+    "total_files": 1,
+    "changed_files": 0,
+    "remaining_diagnostics": 2,
+    "applied_fixes": 0,
+    "failed_files": 0
+  },
+  "files": [
+    {
+      "file": "packages/tusk-fix/tests/0002_nostdlib_module_path.ml",
+      "changed": false,
+      "error": null,
+      "applied_fixes": [],
+      "parse_diagnostics": [],
+      "diagnostics": [
+        {
+          "severity": "warning",
+          "message": "Direct usage of Unix is discouraged. Use package-owned Riot abstractions instead.",
+          "span": {
+            "start": 11,
+            "end": 15
+          },
+          "rule_id": "no-stdlib",
+          "code": "F0001",
+          "suggestion": null,
+          "fix": null
+        },
+        {
+          "severity": "warning",
+          "message": "Direct usage of Sys is discouraged. Use package-owned Riot abstractions instead.",
+          "span": {
+            "start": 73,
+            "end": 76
+          },
+          "rule_id": "no-stdlib",
+          "code": "F0002",
+          "suggestion": null,
+          "fix": null
+        }
+      ]
+    }
+  ]
+}

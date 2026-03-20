@@ -5,7 +5,8 @@ open Std
 type config = {
   files : Path.t list;
   concurrency : int;
-  format : Reporter.format;
+  mode : Runner.mode;
+  scope : Fix_config.scope option;
   owner : Pid.t;
 }
 (** Coordinator configuration *)

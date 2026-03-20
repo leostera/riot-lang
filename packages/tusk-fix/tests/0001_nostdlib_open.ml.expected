@@ -1,21 +1,32 @@
-./packages/tusk_fix/tests/0001_nostdlib_open.ml:
-[[1;33mwarning[0m] no-stdlib
-
-Direct usage of Hashtbl is discouraged. Use Std equivalents instead.
-
-  [1;90m2 |[0m open Hashtbl
-  [1;90m  |[0m      [1;33m^[0m
-
-
-  [1;90m→[0m Replace Hashtbl with Std module
-
-./packages/tusk_fix/tests/0001_nostdlib_open.ml:
-[[1;33mwarning[0m] no-stdlib
-
-Direct usage of Unix is discouraged. Use Std equivalents instead.
-
-  [1;90m1 |[0m open Unix
-  [1;90m  |[0m      [1;33m^[0m
-
-
-  [1;90m→[0m Replace Unix with Std module
+{
+  "summary": {
+    "total_files": 1,
+    "changed_files": 0,
+    "remaining_diagnostics": 1,
+    "applied_fixes": 0,
+    "failed_files": 0
+  },
+  "files": [
+    {
+      "file": "packages/tusk-fix/tests/0001_nostdlib_open.ml",
+      "changed": false,
+      "error": null,
+      "applied_fixes": [],
+      "parse_diagnostics": [],
+      "diagnostics": [
+        {
+          "severity": "warning",
+          "message": "Direct usage of Unix is discouraged. Use package-owned Riot abstractions instead.",
+          "span": {
+            "start": 5,
+            "end": 9
+          },
+          "rule_id": "no-stdlib",
+          "code": "F0001",
+          "suggestion": null,
+          "fix": null
+        }
+      ]
+    }
+  ]
+}

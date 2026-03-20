@@ -40,6 +40,26 @@ let tests =
         | Some diag ->
             Test.assert_equal ~expected:None ~actual:(Tusk_fix.Diagnostic.fix diag);
             Ok ());
+    Test.case "no-stdlib emits stable module-specific codes" (fun () ->
+        let source = "open Unix\nlet cmp = Stdlib.compare\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0001"; "F0003" ] ~actual:codes;
+        Ok ());
+    Test.case "diagnostic code registry explains Unix violations" (fun () ->
+        match Tusk_fix.Diagnostic_code.explain "F0001" with
+        | None -> Error "Expected explanation for F0001"
+        | Some entry ->
+            Test.assert_equal ~expected:"F0001"
+              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
+            Test.assert_true
+              (String.contains entry.body "scheduler");
+            Ok ());
     Test.case "no-stdlib ignores non-stdlib Queue modules" (fun () ->
         let source =
           "val queue : 'value t -> 'value Collections.Queue.t t\nlet q = Queue.create ()\n"

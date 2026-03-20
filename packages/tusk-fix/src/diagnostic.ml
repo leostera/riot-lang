@@ -2,17 +2,23 @@ open Std
 
 type severity = Error | Warning | Info | Hint
 
+type kind =
+  | Known of Diagnostic_code.t
+  | Generic of {
+      rule_id : string;
+      message : string;
+    }
+
 type t = {
   severity : severity;
-  message : string;
+  kind : kind;
   span : Syn.Ceibo.Span.t;
-  rule_id : string;
   suggestion : string option;
   fix : Fix.fix option;
 }
 
-let make ~severity ~message ~span ~rule_id ?suggestion ?fix () =
-  { severity; message; span; rule_id; suggestion; fix }
+let make ~severity ~kind ~span ?suggestion ?fix () =
+  { severity; kind; span; suggestion; fix }
 
 let severity_to_string = function
   | Error -> "error"
@@ -26,11 +32,54 @@ let severity_to_colored_string = function
   | Info -> "\027[1;36minfo\027[0m"
   | Hint -> "\027[1;90mhint\027[0m"
 
+let message = function
+  | { kind = Known code; _ } -> Diagnostic_code.message code
+  | { kind = Generic { message; _ }; _ } -> message
+
+let rule_id = function
+  | { kind = Known code; _ } -> Diagnostic_code.rule_id code
+  | { kind = Generic { rule_id; _ }; _ } -> rule_id
+
+let code = function
+  | { kind = Known code; _ } -> Some code
+  | { kind = Generic _; _ } -> None
+
+let code_id diag =
+  code diag |> Option.map Diagnostic_code.to_id
+
+let header_label severity rule_id code =
+  match code with
+  | Some code ->
+      "[" ^ severity_to_string severity ^ "] " ^ rule_id ^ " ("
+      ^ Diagnostic_code.to_id code
+      ^ ")"
+  | None -> "[" ^ severity_to_string severity ^ "] " ^ rule_id
+
+let colored_header_label severity rule_id code =
+  match code with
+  | Some code ->
+      "[" ^ severity_to_colored_string severity ^ "] " ^ rule_id ^ " ("
+      ^ Diagnostic_code.to_id code
+      ^ ")"
+  | None -> "[" ^ severity_to_colored_string severity ^ "] " ^ rule_id
+
+let explain_hint severity = function
+  | Some code ->
+      "  For more information about this "
+      ^ severity_to_string severity
+      ^ ", try `tusk fix --explain " ^ Diagnostic_code.to_id code ^ "`"
+  | None -> ""
+
 let to_string diag =
   let severity_str = severity_to_string diag.severity in
   let span_str = Syn.Ceibo.Span.to_string diag.span in
   let base_msg =
-    "[" ^ severity_str ^ "] " ^ diag.message ^ " at " ^ span_str ^ " (" ^ diag.rule_id ^ ")"
+    "[" ^ severity_str ^ "] " ^ message diag ^ " at " ^ span_str ^ " ("
+    ^ rule_id diag
+    ^
+    match code_id diag with
+    | Some code -> ", " ^ code ^ ")"
+    | None -> ")"
   in
   match diag.suggestion, diag.fix with
   | Some sugg, _ -> base_msg ^ "\n  Suggestion: " ^ sugg
@@ -38,15 +87,14 @@ let to_string diag =
   | None, None -> base_msg
 
 let to_colored_string diag =
-  let severity_str = severity_to_colored_string diag.severity in
   let span_str = Syn.Ceibo.Span.to_string diag.span in
   let lines =
     [
-      "[" ^ severity_str ^ "] " ^ diag.rule_id;
+      colored_header_label diag.severity (rule_id diag) (code diag);
       "";
       "  at " ^ span_str;
       "";
-      diag.message;
+      message diag;
     ]
   in
   let lines =
@@ -102,9 +150,8 @@ let extract_code_snippet source (span : Syn.Ceibo.Span.t) =
 
 let to_formatted_output ~file ~source diag =
   let header = Path.to_string file ^ ":" in
-  let severity_str = severity_to_string diag.severity in
   let basic_info =
-    [ "[" ^ severity_str ^ "] " ^ diag.rule_id; ""; diag.message ]
+    [ header_label diag.severity (rule_id diag) (code diag); ""; message diag ]
   in
   let lines_with_snippet =
     match extract_code_snippet source diag.span with
@@ -125,25 +172,30 @@ let to_formatted_output ~file ~source diag =
         lines_with_snippet @ [ ""; "  \027[1;90m→\027[0m " ^ Fix.title fix ]
     | None, None -> lines_with_snippet
   in
-  header ^ "\n" ^ String.concat "\n" lines_with_suggestion ^ "\n\n"
+  let lines_with_explain =
+    match code diag with
+    | Some _ -> lines_with_suggestion @ [ ""; explain_hint diag.severity (code diag) ]
+    | None -> lines_with_suggestion
+  in
+  header ^ "\n" ^ String.concat "\n" lines_with_explain ^ "\n\n"
 
 let to_json diag =
   let open Data.Json in
   Object
     [
       ("severity", String (severity_to_string diag.severity));
-      ("message", String diag.message);
+      ("message", String (message diag));
       ("span", Object [ ("start", Int diag.span.start); ("end", Int diag.span.end_) ]);
-      ("rule_id", String diag.rule_id);
+      ("rule_id", String (rule_id diag));
+      ("code", match code_id diag with Some code -> String code | None -> Null);
       ("suggestion", match diag.suggestion with Some s -> String s | None -> Null);
       ("fix", match diag.fix with Some fix -> Fix.to_json fix | None -> Null);
     ]
 
 (* Accessor functions *)
+let kind diag = diag.kind
 let severity diag = diag.severity
-let message diag = diag.message
 let span diag = diag.span
-let rule_id diag = diag.rule_id
 let suggestion diag = diag.suggestion
 let fix diag = diag.fix
 
@@ -153,6 +205,7 @@ type grouped = {
   message : string;
   spans : Syn.Ceibo.Span.t list;
   rule_id : string;
+  code : Diagnostic_code.t option;
   suggestion : string option;
   fix : Fix.fix option;
 }
@@ -163,14 +216,22 @@ let group_diagnostics (diags : t list) : grouped list =
   List.iter
     (fun (diag : t) ->
       let fix_title = diag.fix |> Option.map Fix.title in
-      let key = (diag.severity, diag.message, diag.rule_id, diag.suggestion, fix_title) in
+      let key =
+        ( diag.severity,
+          message diag,
+          rule_id diag,
+          code_id diag,
+          diag.suggestion,
+          fix_title )
+      in
       match DiagMap.get map key with
       | Some existing_spans ->
           ignore (DiagMap.insert map key ((diag.fix, diag.span) :: existing_spans))
       | None -> ignore (DiagMap.insert map key [ (diag.fix, diag.span) ]))
     diags;
   DiagMap.into_iter map
-  |> Iter.Iterator.map ~fn:(fun ((severity, message, rule_id, suggestion, _fix_title), spans) ->
+  |> Iter.Iterator.map ~fn:(fun
+       ((severity, message, rule_id, code_id, suggestion, _fix_title), spans) ->
          let spans = List.rev spans in
          let fix =
            match spans with
@@ -178,14 +239,31 @@ let group_diagnostics (diags : t list) : grouped list =
            | (fix, _) :: _ -> fix
          in
          let spans = List.map snd spans in
-         ({ severity; message; spans; rule_id; suggestion; fix } : grouped))
+         let code =
+           match code_id with
+           | Some code_id -> Diagnostic_code.of_id code_id
+           | None -> None
+         in
+         ( {
+             severity;
+             message;
+             spans;
+             rule_id;
+             code;
+             suggestion;
+             fix;
+           }
+           : grouped ))
   |> Iter.Iterator.to_list
 
 let grouped_to_formatted_output ~file ~source grouped =
   let header = Path.to_string file ^ ":" in
-  let severity_str = severity_to_colored_string grouped.severity in
   let basic_info =
-    [ "[" ^ severity_str ^ "] " ^ grouped.rule_id; ""; grouped.message ]
+    [
+      colored_header_label grouped.severity grouped.rule_id grouped.code;
+      "";
+      grouped.message;
+    ]
   in
   let spans =
     List.sort
@@ -216,4 +294,11 @@ let grouped_to_formatted_output ~file ~source grouped =
         lines_with_snippets @ [ ""; "  \027[1;90m→\027[0m " ^ Fix.title fix ]
     | None, None -> lines_with_snippets
   in
-  header ^ "\n" ^ String.concat "\n" lines_with_suggestion ^ "\n"
+  let lines_with_explain =
+    match grouped.code with
+    | Some _ ->
+        lines_with_suggestion
+        @ [ ""; explain_hint grouped.severity grouped.code ]
+    | None -> lines_with_suggestion
+  in
+  header ^ "\n" ^ String.concat "\n" lines_with_explain ^ "\n"

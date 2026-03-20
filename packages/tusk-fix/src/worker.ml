@@ -1,57 +1,39 @@
 open Std
 
-type config = { pipeline : Pipeline.t; coordinator : Pid.t }
-
-type lint_result = {
-  file : Path.t;
-  source : string;
-  diagnostics : Diagnostic.t list;
+type config = {
+  mode : Runner.mode;
+  scope : Fix_config.scope option;
+  coordinator : Pid.t;
 }
 
-let lint_file pipeline file_path =
-  match Fs.read file_path with
-  | Error _ -> { file = file_path; source = ""; diagnostics = [] }
-  | Ok source -> (
-      try
-        let filename = Path.to_string file_path in
-        let result = Pipeline.run pipeline ~filename source in
-        { file = file_path; source; diagnostics = result.diagnostics }
-      with exn ->
-        let error_msg = "Parser error: " ^ Exception.to_string exn in
-        let diag =
-          Diagnostic.make ~severity:Error ~message:error_msg
-            ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
-            ~rule_id:"parser-error" ()
-        in
-        { file = file_path; source; diagnostics = [ diag ] })
+let run_file config file_path =
+  try
+    Runner.run_file
+      ~pipeline_for_file:(Fix_config.pipeline_for_file config.scope)
+      ~mode:config.mode file_path
+  with exn ->
+    Runner.
+      {
+        file = file_path;
+        final_source = "";
+        diagnostics = [];
+        parse_diagnostics = [];
+        applied_fixes = [];
+        changed = false;
+        error = Some (Exception.to_string exn);
+      }
 
 let rec worker_loop config =
-  (* Tell coordinator we're ready for work *)
   send config.coordinator (Messages.WorkerReady (self ()));
-
-  (* Wait for a task *)
   let selector = function
-    | Messages.LintTask file -> `select file
+    | Messages.RunTask file -> `select file
     | _ -> `skip
   in
 
   match receive ~selector () with
-  | file_path -> (
-      try
-        let result = lint_file config.pipeline file_path in
-        let msg_result : Messages.lint_result =
-          {
-            file = result.file;
-            diagnostics = result.diagnostics;
-            source = result.source;
-          }
-        in
-        send config.coordinator (Messages.LintResult msg_result)
-      with exn ->
-        let failure : Messages.worker_failure =
-          { file = file_path; worker = self (); reason = Exception.to_string exn }
-        in
-        send config.coordinator (Messages.WorkerFailed failure));
+  | file_path ->
+      let result = run_file config file_path in
+      send config.coordinator (Messages.FileResult { worker = self (); result });
       worker_loop config
 
 let init config () = worker_loop config

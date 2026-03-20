@@ -34,6 +34,7 @@ val run_files :
   mode:mode ->
   Path.t list ->
   run_result
+val summarize : file_result list -> summary
 val summary_to_json : summary -> Data.Json.t
 val file_result_to_json : file_result -> Data.Json.t
 val run_result_to_json : run_result -> Data.Json.t

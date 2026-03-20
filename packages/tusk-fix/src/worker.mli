@@ -2,7 +2,11 @@
 
 open Std
 
-type config = { pipeline : Pipeline.t; coordinator : Pid.t }
+type config = {
+  mode : Runner.mode;
+  scope : Fix_config.scope option;
+  coordinator : Pid.t;
+}
 (** Worker configuration *)
 
 val start : config -> Pid.t

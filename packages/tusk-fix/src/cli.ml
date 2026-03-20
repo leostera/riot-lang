@@ -9,6 +9,8 @@ let command =
        [
          flag "check" |> long "check"
          |> help "Check for fixable issues without modifying files";
+         option "explain" |> long "explain"
+         |> help "Explain a diagnostic code (e.g. F0001)";
          option "format" |> long "format"
          |> possible_values [ "text"; "json" ]
          |> help "Output format (text or json)";
@@ -131,7 +133,55 @@ let print_text_summary mode summary =
          ^ Int.to_string summary.changed_files ^ " files; "
          ^ Int.to_string summary.remaining_diagnostics ^ " issues remain")
 
+let explain_code code =
+  match Diagnostic_code.explain code with
+  | Some entry ->
+      print (Diagnostic_code.format_explanation entry);
+      Ok ()
+  | None -> Error (Failure ("Unknown tusk-fix diagnostic code: " ^ code))
+
+let run_with_coordinator ~format ~mode ~scope files =
+  let concurrency =
+    let recommended = System.available_parallelism in
+    if recommended <= 0 then 1 else recommended
+  in
+  if format = Reporter.Text then
+    println
+      ("Scanning " ^ Int.to_string (List.length files) ^ " files with "
+     ^ Int.to_string concurrency ^ " workers...");
+  let owner = self () in
+  ignore (Coordinator.start { files; concurrency; mode; scope; owner });
+  let rec loop results_rev =
+    let selector = function
+      | Messages.FileResult result -> `select (`FileResult result)
+      | Messages.AllComplete summary -> `select (`AllComplete summary)
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | `FileResult { Messages.result; _ } ->
+        (match format with
+        | Reporter.Text -> print_text_result mode result
+        | Reporter.Json -> ());
+        loop (result :: results_rev)
+    | `AllComplete summary ->
+        let result = Runner.{ files = List.rev results_rev; summary } in
+        (match format with
+        | Reporter.Json ->
+            print (Data.Json.to_string (Runner.run_result_to_json result));
+            print "\n"
+        | Reporter.Text -> print_text_summary mode summary);
+        if
+          summary.failed_files > 0
+          || summary.remaining_diagnostics > 0
+        then Error (Failure "Issues remain after tusk fix")
+        else Ok ()
+  in
+  loop []
+
 let run matches =
+  match ArgParser.get_one matches "explain" with
+  | Some code -> explain_code code
+  | None ->
   let cwd =
     Env.current_dir ()
     |> Result.expect ~msg:"Failed to get current directory"
@@ -156,23 +206,7 @@ let run matches =
     println "No OCaml files found.";
     Ok ())
   else
-    let result =
-      Runner.run_files
-        ~pipeline_for_file:(Fix_config.pipeline_for_file scope)
-        ~mode files
-    in
-    (match format with
-    | Reporter.Json ->
-        print (Data.Json.to_string (Runner.run_result_to_json result));
-        print "\n"
-    | Reporter.Text ->
-        List.iter (print_text_result mode) result.files;
-        print_text_summary mode result.summary);
-    if
-      result.summary.failed_files > 0
-      || result.summary.remaining_diagnostics > 0
-    then Error (Failure "Issues remain after tusk fix")
-    else Ok ()
+    run_with_coordinator ~format ~mode ~scope files
 
 let main ~args =
   match ArgParser.get_matches command args with

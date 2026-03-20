@@ -46,3 +46,6 @@ module Coordinator : module type of Coordinator
 
 module Config : module type of Fix_config
 (** Workspace and package-local configuration resolution for `tusk fix` *)
+
+module Diagnostic_code : module type of Diagnostic_code
+(** Diagnostic code registry and explanation text for `tusk fix` *)
