@@ -378,6 +378,30 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains unnecessary rec" (fun () ->
         assert_explanation_contains ~code:"F0127" ~snippet:"Remove rec");
+    Test.case "no-redundant-else-unit flags else branches that only return unit" (fun () ->
+        let source = "let render ok = if ok then log () else ()\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_redundant_else_unit.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0128" ] ~actual:codes;
+        Ok ());
+    Test.case "no-redundant-else-unit keeps meaningful else branches clean" (fun () ->
+        let source = "let render ok = if ok then log () else fallback ()\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_redundant_else_unit.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains redundant else unit branches" (fun () ->
+        assert_explanation_contains ~code:"F0128" ~snippet:"else ()");
     Test.case "alphabetized-named-arguments flags unsorted labeled arguments" (fun () ->
         let source = "let render ~zebra ~alpha current_user = current_user\n" in
         let pipeline =
@@ -646,6 +670,30 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains custom operators" (fun () ->
         assert_explanation_contains ~code:"F0120" ~snippet:"hard to search");
+    Test.case "prefer-pipelines-for-nested-calls flags very deep call chains" (fun () ->
+        let source = "let rendered = foo (bar (baz (hex 1)))\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_pipelines_for_nested_calls.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0129" ] ~actual:codes;
+        Ok ());
+    Test.case "prefer-pipelines-for-nested-calls keeps shorter chains clean" (fun () ->
+        let source = "let rendered = foo (bar (baz 1))\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_pipelines_for_nested_calls.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains nested pipeline preference" (fun () ->
+        assert_explanation_contains ~code:"F0129" ~snippet:"hex 1 |> baz |> bar |> foo");
     Test.case "no-inline-parameter-type-annotations flags typed positional parameters" (fun () ->
         let source = "let render (user_id : int) (enabled : bool) = user_id\n" in
         let pipeline =

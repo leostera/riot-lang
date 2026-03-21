@@ -27,8 +27,10 @@ end
 type expression =
   | PathExpression of path_expression
   | StringLiteral of string_literal
+  | UnitLiteral of unit_literal
   | ApplyExpression of apply_expression
   | InfixExpression of infix_expression
+  | IfExpression of if_expression
   | ParenthesizedExpression of parenthesized_expression
   | Unknown of syntax_node
 
@@ -40,6 +42,10 @@ and path_expression = {
 and string_literal = {
   syntax_node : syntax_node;
   literal_token : Token.t;
+}
+
+and unit_literal = {
+  syntax_node : syntax_node;
 }
 
 and apply_expression = {
@@ -55,6 +61,13 @@ and infix_expression = {
   right : expression;
 }
 
+and if_expression = {
+  syntax_node : syntax_node;
+  condition : expression;
+  then_branch : expression;
+  else_branch : expression option;
+}
+
 and parenthesized_expression = {
   syntax_node : syntax_node;
   inner : expression;
@@ -64,8 +77,10 @@ module Expression : sig
   type t = expression =
     | PathExpression of path_expression
     | StringLiteral of string_literal
+    | UnitLiteral of unit_literal
     | ApplyExpression of apply_expression
     | InfixExpression of infix_expression
+    | IfExpression of if_expression
     | ParenthesizedExpression of parenthesized_expression
     | Unknown of syntax_node
 
@@ -93,6 +108,14 @@ module StringLiteral : sig
   val text : t -> string
 end
 
+module UnitLiteral : sig
+  type t = unit_literal = {
+    syntax_node : syntax_node;
+  }
+
+  val syntax_node : t -> syntax_node
+end
+
 module ApplyExpression : sig
   type t = apply_expression = {
     syntax_node : syntax_node;
@@ -118,6 +141,20 @@ module InfixExpression : sig
   val operator_token : t -> Token.t
   val operator : t -> string
   val right : t -> Expression.t
+end
+
+module IfExpression : sig
+  type t = if_expression = {
+    syntax_node : syntax_node;
+    condition : expression;
+    then_branch : expression;
+    else_branch : expression option;
+  }
+
+  val syntax_node : t -> syntax_node
+  val condition : t -> Expression.t
+  val then_branch : t -> Expression.t
+  val else_branch : t -> Expression.t option
 end
 
 module ParenthesizedExpression : sig

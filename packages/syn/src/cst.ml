@@ -39,8 +39,10 @@ end
 type expression =
   | PathExpression of path_expression
   | StringLiteral of string_literal
+  | UnitLiteral of unit_literal
   | ApplyExpression of apply_expression
   | InfixExpression of infix_expression
+  | IfExpression of if_expression
   | ParenthesizedExpression of parenthesized_expression
   | Unknown of syntax_node
 
@@ -52,6 +54,10 @@ and path_expression = {
 and string_literal = {
   syntax_node : syntax_node;
   literal_token : Token.t;
+}
+
+and unit_literal = {
+  syntax_node : syntax_node;
 }
 
 and apply_expression = {
@@ -67,6 +73,13 @@ and infix_expression = {
   right : expression;
 }
 
+and if_expression = {
+  syntax_node : syntax_node;
+  condition : expression;
+  then_branch : expression;
+  else_branch : expression option;
+}
+
 and parenthesized_expression = {
   syntax_node : syntax_node;
   inner : expression;
@@ -76,16 +89,20 @@ module Expression = struct
   type t = expression =
     | PathExpression of path_expression
     | StringLiteral of string_literal
+    | UnitLiteral of unit_literal
     | ApplyExpression of apply_expression
     | InfixExpression of infix_expression
+    | IfExpression of if_expression
     | ParenthesizedExpression of parenthesized_expression
     | Unknown of syntax_node
 
   let syntax_node = function
     | PathExpression expr -> expr.syntax_node
     | StringLiteral expr -> expr.syntax_node
+    | UnitLiteral expr -> expr.syntax_node
     | ApplyExpression expr -> expr.syntax_node
     | InfixExpression expr -> expr.syntax_node
+    | IfExpression expr -> expr.syntax_node
     | ParenthesizedExpression expr -> expr.syntax_node
     | Unknown node -> node
 end
@@ -109,6 +126,14 @@ module StringLiteral = struct
   let syntax_node expr = expr.syntax_node
   let literal_token expr = expr.literal_token
   let text expr = Token.text expr.literal_token
+end
+
+module UnitLiteral = struct
+  type t = unit_literal = {
+    syntax_node : syntax_node;
+  }
+
+  let syntax_node expr = expr.syntax_node
 end
 
 module ApplyExpression = struct
@@ -136,6 +161,20 @@ module InfixExpression = struct
   let operator_token expr = expr.operator_token
   let operator expr = Token.text expr.operator_token
   let right expr = expr.right
+end
+
+module IfExpression = struct
+  type t = if_expression = {
+    syntax_node : syntax_node;
+    condition : expression;
+    then_branch : expression;
+    else_branch : expression option;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let condition expr = expr.condition
+  let then_branch expr = expr.then_branch
+  let else_branch expr = expr.else_branch
 end
 
 module ParenthesizedExpression = struct
@@ -458,6 +497,8 @@ let rec expression_from_node node =
       Expression.PathExpression
         PathExpression.
           { syntax_node = node; path = module_path_from_node node }
+  | Syntax_kind.UNIT_LITERAL ->
+      Expression.UnitLiteral UnitLiteral.{ syntax_node = node }
   | Syntax_kind.FIELD_ACCESS_EXPR -> (
       match path_expression_from_field_access node with
       | Some expr -> expr
@@ -493,6 +534,28 @@ let rec expression_from_node node =
                 left = expression_from_node left_node;
                 operator_token = token operator_syntax_token;
                 right = expression_from_node right_node;
+              }
+      | _ -> Expression.Unknown node)
+  | Syntax_kind.IF_EXPR -> (
+      let expression_children =
+        direct_non_trivia_nodes node
+        |> List.filter (fun child ->
+               match expression_from_node child with
+               | Expression.Unknown _ -> false
+               | _ -> true)
+      in
+      match expression_children with
+      | condition_node :: then_node :: else_nodes ->
+          Expression.IfExpression
+            IfExpression.
+              {
+                syntax_node = node;
+                condition = expression_from_node condition_node;
+                then_branch = expression_from_node then_node;
+                else_branch =
+                  (match else_nodes with
+                  | else_node :: _ -> Some (expression_from_node else_node)
+                  | [] -> None);
               }
       | _ -> Expression.Unknown node)
   | Syntax_kind.PAREN_EXPR -> (

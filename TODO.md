@@ -32,9 +32,9 @@
 
 - [ ] when using inline closed polymorphic variants like ``[ `a | `b ] list``, prefer giving them a _name_ like ``type x = [ `a  `b ]`` -- this allows you to reuse them and also easier on the eyes when types get compllicated
 
-- [ ] Prefer pipeline over very nested function calls so `(foo (bar (baz (hex 1))))` into `hex 1 |> baz |> bar |> foo`
+- [x] Prefer pipeline over very nested function calls so `(foo (bar (baz (hex 1))))` into `hex 1 |> baz |> bar |> foo` (`prefer-pipelines-for-nested-calls`)
 
-- [ ] Redundant `else ()` can be removed
+- [x] Redundant `else ()` can be removed (`no-redundant-else-unit`)
 
 - [x] Warn about using `open!` (`no-open-bang`)
 
@@ -44,7 +44,7 @@
 
 - [ ] Useless binding `let y = f x in y` is just `f x`
 
-- [ ] Unnecessary `rec` in `let rec f x = x + 1`
+- [x] Unnecessary `rec` in `let rec f x = x + 1` (`no-unnecessary-rec`)
 
 - [x] Many `open` statmenets get confusing and can shadow symbols, warn about this if we have more than 2 opens (`limit-open-statements`)
 

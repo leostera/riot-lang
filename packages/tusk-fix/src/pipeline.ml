@@ -16,12 +16,14 @@ let builtin_rule_factories () =
     ("limit-parenthesis-depth", Rules.Limit_parenthesis_depth.make);
     ("limit-open-statements", Rules.Limit_open_statements.make);
     ("no-unnecessary-rec", Rules.No_unnecessary_rec.make);
+    ("no-redundant-else-unit", Rules.No_redundant_else_unit.make);
     ("no-open-bang", Rules.No_open_bang.make);
     ("no-inline-parameter-type-annotations", Rules.No_inline_parameter_type_annotations.make);
     ("no-function-shorthand", Rules.No_function_shorthand.make);
     ("limit-function-parameters", Rules.Limit_function_parameters.make);
     ("prefer-multiline-string-literals", Rules.Prefer_multiline_string_literals.make);
     ("no-custom-operators", Rules.No_custom_operators.make);
+    ("prefer-pipelines-for-nested-calls", Rules.Prefer_pipelines_for_nested_calls.make);
     ("snake-case-type-names", Rules.Snake_case_type_names.make);
     ("descriptive-type-variables", Rules.Descriptive_type_variables.make);
     ("snake-case-function-names", Rules.Snake_case_function_names.make);
