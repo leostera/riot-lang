@@ -11,8 +11,7 @@ let make ~rules () = { rules }
 
 let builtin_rule_factories () =
   [
-    ("no-stdlib", Rules.No_stdlib.make);
-    ("naming-convention", Rules.Naming_convention.make);
+    ("type-name-style", Rules.Type_name_style.make);
   ]
 
 let package_rules () =
@@ -28,10 +27,7 @@ let filtered_builtin_rules package_rules =
   let shadowed_ids =
     package_rules |> List.map Rule.id |> List.map unqualified_rule_id
   in
-  [
-    Rules.No_stdlib.make ();
-    (* Rules.Naming_convention.make (); *)
-  ]
+  [ Rules.Type_name_style.make () ]
   |> List.filter (fun rule ->
          not (List.mem (unqualified_rule_id (Rule.id rule)) shadowed_ids))
 

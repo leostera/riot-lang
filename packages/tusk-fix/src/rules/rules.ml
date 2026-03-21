@@ -1,2 +1,1 @@
-module No_stdlib = No_stdlib
-module Naming_convention = Naming_convention
+module Type_name_style = Type_name_style

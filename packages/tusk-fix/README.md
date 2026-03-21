@@ -124,7 +124,7 @@ open Std
 (* Create a custom pipeline *)
 let pipeline = Pipeline.make 
   ~rules:[
-    No_stdlib.make ();
+    Type_name_style.make ();
     (* Add more rules here *)
   ] 
   ()
@@ -142,29 +142,24 @@ match result.diagnostics with
 
 ## Built-in Rules
 
-### no-stdlib
+### type-name-style
 
-**Rule ID**: `no-stdlib`
+**Rule ID**: `type-name-style`
 
-Detects usage of OCaml's standard library modules that should be replaced with `Std` equivalents.
-
-Forbidden modules:
-- `Stdlib` → Use `Std`
-- `List` → Use `Std.List` or `Std.Collections.Vector`
-- `Hashtbl` → Use `Std.Collections.HashMap`
-- `Queue` → Use `Std.Collections.Queue`
-- `Set` → Use `Std.Collections.HashSet`
-- `Unix` → Use `Std.Fs`, `Std.Command`, etc.
-- `Sys` → Use `Std.System`, `Std.Fs`, etc.
+Detects type declarations that use camelCase instead of `snake_case`.
 
 **Example**:
 
 ```ocaml
 (* BAD *)
-let h = Hashtbl.create 10
+type userProfile = {
+  name : string;
+}
 
 (* GOOD *)
-let h = Std.Collections.HashMap.create ()
+type user_profile = {
+  name : string;
+}
 ```
 
 ## Creating Custom Rules
@@ -209,7 +204,7 @@ Update `pipeline.ml`:
 
 ```ocaml
 let default_rules () = [
-  No_stdlib.make ();
+  Type_name_style.make ();
   My_rule.make ();  (* Add your rule *)
 ]
 ```
@@ -263,10 +258,10 @@ let check_tree tree =
 (* Warning with suggestion *)
 Diagnostic.make 
   ~severity:Warning
-  ~message:"Use Std.HashMap instead"
+  ~message:"Type names should use snake_case instead of camelCase."
   ~span
-  ~rule_id:"no-stdlib"
-  ~suggestion:"Replace Hashtbl with Std.Collections.HashMap"
+  ~rule_id:"type-name-style"
+  ~suggestion:"Rename userProfile to user_profile"
   ()
 
 (* Error without suggestion *)
@@ -285,7 +280,7 @@ The architecture is designed to support user-land lints in the future:
 ```toml
 # .tusk_fix.toml (future)
 [rules]
-enable = ["no-stdlib", "custom-rule"]
+enable = ["type-name-style", "custom-rule"]
 
 [rules.custom-rule]
 plugin = "./lints/custom_rule.cmxs"
@@ -309,7 +304,7 @@ Users will be able to:
   - ✅ CLI interface
 
 ✅ Built-in rules
-  - ✅ no-stdlib
+  - ✅ type-name-style
 
 🚧 Future work
   - ⬜ More built-in rules

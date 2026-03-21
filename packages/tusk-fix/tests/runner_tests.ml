@@ -33,30 +33,22 @@ let with_tempdir prefix fn =
 
 let tests =
   [
-    Test.case "no-stdlib rule exposes safe fixes" (fun () ->
-        let source = "open Stdlib\nlet cmp = Stdlib.compare\n" in
+    Test.case "type-name-style rule exposes safe fixes" (fun () ->
+        let source = "type userProfile = { name : string }\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         let fixes =
           List.filter_map Tusk_fix.Diagnostic.fix result.diagnostics
         in
-        Test.assert_equal ~expected:2 ~actual:(List.length fixes);
+        Test.assert_equal ~expected:1 ~actual:(List.length fixes);
         Ok ());
-    Test.case "no-stdlib keeps Unix diagnostic without fix" (fun () ->
-        let source = "let home = Unix.getenv \"HOME\"\n" in
+    Test.case "type-name-style keeps compliant type names clean" (fun () ->
+        let source = "type user_profile = { name : string }\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let unix_diag =
-          List.find_opt
-            (fun diag ->
-              String.contains (Tusk_fix.Diagnostic.message diag) "Unix")
-            result.diagnostics
-        in
-        match unix_diag with
-        | None -> Error "Expected Unix diagnostic"
-        | Some diag ->
-            Test.assert_equal ~expected:None ~actual:(Tusk_fix.Diagnostic.fix diag);
-            Ok ());
-    Test.case "no-stdlib emits stable module-specific codes" (fun () ->
-        let source = "open Unix\nlet cmp = Stdlib.compare\n" in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "type-name-style emits stable diagnostic codes" (fun () ->
+        let source = "type userProfile = int\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         let codes =
           result.diagnostics
@@ -64,26 +56,30 @@ let tests =
           |> List.map Tusk_fix.Diagnostic_code.to_id
           |> List.sort String.compare
         in
-        Test.assert_equal ~expected:[ "F0001"; "F0003" ] ~actual:codes;
+        Test.assert_equal ~expected:[ "F0101" ] ~actual:codes;
         Ok ());
-    Test.case "diagnostic code registry explains Unix violations" (fun () ->
-        match Tusk_fix.Diagnostic_code.explain "F0001" with
-        | None -> Error "Expected explanation for F0001"
+    Test.case "diagnostic code registry explains type-name violations" (fun () ->
+        match Tusk_fix.Diagnostic_code.explain "F0101" with
+        | None -> Error "Expected explanation for F0101"
         | Some entry ->
-            Test.assert_equal ~expected:"F0001"
+            Test.assert_equal ~expected:"F0101"
               ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
             Test.assert_true
-              (String.contains entry.body "scheduler");
+              (String.contains entry.body "snake_case");
             Ok ());
-    Test.case "no-stdlib ignores non-stdlib Queue modules" (fun () ->
-        let source =
-          "val queue : 'value t -> 'value Collections.Queue.t t\nlet q = Queue.create ()\n"
-        in
+    Test.case "type-name-style ignores non-type camelCase identifiers" (fun () ->
+        let source = "let userProfile = 42\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "package rule override disables no-stdlib locally" (fun () ->
+    Test.case "type-name-style ignores module qualifiers in extensible types" (fun () ->
+        let source = "type Message.t += Added\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "package rule override disables type-name-style locally" (fun () ->
         with_tempdir "tusk_fix_config" (fun tmpdir ->
               let workspace_toml = Path.(tmpdir / Path.v "tusk.toml") in
               let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "kernel") in
@@ -92,10 +88,10 @@ let tests =
               let file = Path.(src_dir / Path.v "file.ml") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
-                "[workspace]\nmembers = [\"packages/kernel\"]\n\n[tusk.fix]\nrules = [\"no-stdlib\"]\n";
+                "[workspace]\nmembers = [\"packages/kernel\"]\n\n[tusk.fix]\nrules = [\"type-name-style\"]\n";
               write_file package_toml
-                "[package]\nname = \"kernel\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [\"-no-stdlib\"]\n\n[lib]\npath = \"src/kernel.ml\"\n";
-              write_file file "let home = Unix.getenv \"HOME\"\n";
+                "[package]\nname = \"kernel\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [\"-type-name-style\"]\n\n[lib]\npath = \"src/kernel.ml\"\n";
+              write_file file "type userProfile = int\n";
               let scope =
                 Tusk_fix.Config.load_scope ~cwd:tmpdir
                 |> Option.expect ~msg:"expected workspace scope"
@@ -105,8 +101,7 @@ let tests =
               in
               let result =
                 Tusk_fix.Pipeline.run pipeline
-                  ~filename:(Path.to_string file)
-                  "let home = Unix.getenv \"HOME\"\n"
+                  ~filename:(Path.to_string file) "type userProfile = int\n"
               in
               Test.assert_equal ~expected:0
                 ~actual:(List.length result.diagnostics);
@@ -119,10 +114,10 @@ let tests =
               let ignored = Path.(src_dir / Path.v "ignored.ml") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
-                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nignore = [\"ignored.ml\"]\nrules = [\"no-stdlib\"]\n";
+                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nignore = [\"ignored.ml\"]\nrules = [\"type-name-style\"]\n";
               write_file Path.(package_dir / Path.v "tusk.toml")
                 "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[lib]\npath = \"src/app.ml\"\n";
-              write_file ignored "let home = Unix.getenv \"HOME\"\n";
+              write_file ignored "type userProfile = int\n";
               let scope =
                 Tusk_fix.Config.load_scope ~cwd:tmpdir
                 |> Option.expect ~msg:"expected workspace scope"
@@ -137,10 +132,10 @@ let tests =
               let file = Path.(src_dir / Path.v "file.ml") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
-                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [\"no-stdlib\"]\n";
+                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [\"type-name-style\"]\n";
               write_file Path.(package_dir / Path.v "tusk.toml")
-                "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [\"-no-stdlib\"]\n\n[lib]\npath = \"src/app.ml\"\n";
-              write_file file "let home = Unix.getenv \"HOME\"\n";
+                "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [\"-type-name-style\"]\n\n[lib]\npath = \"src/app.ml\"\n";
+              write_file file "type userProfile = int\n";
               let result =
                 Tusk_fix.Runner.run_files
                   ~pipeline_for_file:(Tusk_fix.Config.pipeline_for_file (Tusk_fix.Config.load_scope ~cwd:tmpdir))
@@ -157,10 +152,10 @@ let tests =
               let file = Path.(src_dir / Path.v "file.ml") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
-                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [{ name = \"no-stdlib\", state = \"enabled\" }]\n";
+                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [{ name = \"type-name-style\", state = \"enabled\" }]\n";
               write_file Path.(package_dir / Path.v "tusk.toml")
-                "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [{ name = \"no-stdlib\", state = \"disabled\" }]\n\n[lib]\npath = \"src/app.ml\"\n";
-              write_file file "let home = Unix.getenv \"HOME\"\n";
+                "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [{ name = \"type-name-style\", state = \"disabled\" }]\n\n[lib]\npath = \"src/app.ml\"\n";
+              write_file file "type userProfile = int\n";
               let result =
                 Tusk_fix.Runner.run_files
                   ~pipeline_for_file:(Tusk_fix.Config.pipeline_for_file (Tusk_fix.Config.load_scope ~cwd:tmpdir))
@@ -169,11 +164,10 @@ let tests =
               Test.assert_equal ~expected:0
                 ~actual:result.summary.remaining_diagnostics;
               Ok ()));
-    Test.case "runner apply rewrites only direct Stdlib usage" (fun () ->
+    Test.case "runner apply rewrites camelCase type names" (fun () ->
         with_tempdir "tusk_fix_runner" (fun tmpdir ->
               let file = Path.(tmpdir / Path.v "sample.ml") in
-              write_file file
-                "open Stdlib\nlet cmp = Stdlib.compare\n";
+              write_file file "type userProfile = { name : string }\n";
               let result =
                 Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Apply file
               in
@@ -181,15 +175,13 @@ let tests =
               Test.assert_equal ~expected:0
                 ~actual:(List.length result.diagnostics);
               let actual = read_file file in
-              let expected =
-                "open Std\nlet cmp = Std.compare\n"
-              in
+              let expected = "type user_profile = { name : string }\n" in
               Test.assert_equal ~expected ~actual;
               Ok ()));
-    Test.case "check mode reports Unix issues without writing" (fun () ->
+    Test.case "check mode reports type-name issues without writing" (fun () ->
         with_tempdir "tusk_fix_check" (fun tmpdir ->
               let file = Path.(tmpdir / Path.v "sample.ml") in
-              let source = "let home = Unix.getenv \"HOME\"\n" in
+              let source = "type userProfile = int\n" in
               write_file file source;
               let result =
                 Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
@@ -202,23 +194,24 @@ let tests =
     Test.case "cli applies safe fixes by default" (fun () ->
         with_tempdir "tusk_fix_cli" (fun tmpdir ->
               let file = Path.(tmpdir / Path.v "sample.ml") in
-              write_file file "open Stdlib\n";
+              write_file file "type userProfile = int\n";
               let result =
                 with_cwd tmpdir (fun () -> run_cli [ Path.to_string file ])
               in
               Test.assert_ok result;
-              Test.assert_equal ~expected:"open Std\n" ~actual:(read_file file);
+              Test.assert_equal ~expected:"type user_profile = int\n"
+                ~actual:(read_file file);
               Ok ()));
     Test.case "cli check exits with error when issues remain" (fun () ->
         with_tempdir "tusk_fix_cli" (fun tmpdir ->
               let file = Path.(tmpdir / Path.v "sample.ml") in
-              write_file file "let home = Unix.getenv \"HOME\"\n";
+              write_file file "type userProfile = int\n";
               let result =
                 with_cwd tmpdir (fun () ->
                     run_cli [ "--check"; Path.to_string file ])
               in
               Test.assert_error result;
-              Test.assert_equal ~expected:"let home = Unix.getenv \"HOME\"\n"
+              Test.assert_equal ~expected:"type userProfile = int\n"
                 ~actual:(read_file file);
               Ok ()));
     Test.case "pipeline parses interface files with interface entrypoint" (fun () ->
