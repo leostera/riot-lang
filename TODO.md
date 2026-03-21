@@ -103,7 +103,7 @@ Miniriot:
 Std:
 - [ ] `ignore (List.map f xs)` or `ignore (Iter.map f iter)` is likely a bug and should be `List.iter f xs` or `Iter.iter f iter` -- i fogret the xact iterators api but you'll figure it out -- the same applies with `let _ = Mod.map f xs` 
 
-- [ ] if someone uses `<>` we should tell them its `!=` now
+- [x] if someone uses `<>` we should tell them its `!=` now (`std:prefer-bang-equal-inequality`)
 - [ ] Double List.rev 
 
 - [ ] `List.length x == 0` or `List.length > 0` prefer `List.is_empty` (if we don't have it then lets add it)

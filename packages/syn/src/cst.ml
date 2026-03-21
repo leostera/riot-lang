@@ -365,11 +365,13 @@ module SourceFile = struct
     syntax_node : syntax_node;
     items : Item.t list;
     let_bindings : LetBinding.t list;
+    expressions : Expression.t list;
   }
 
   let syntax_node source_file = source_file.syntax_node
   let items source_file = source_file.items
   let let_bindings source_file = source_file.let_bindings
+  let expressions source_file = source_file.expressions
 end
 
 type source_file = SourceFile.t
@@ -819,6 +821,17 @@ let rec collect_let_bindings node =
   in
   bindings_here @ nested
 
+let rec collect_expressions node =
+  let expressions_here =
+    match expression_from_node node with
+    | Expression.Unknown _ -> []
+    | expr -> [ expr ]
+  in
+  let nested =
+    direct_non_trivia_nodes node |> List.concat_map collect_expressions
+  in
+  expressions_here @ nested
+
 let rec items_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.TYPE_DECL -> (
@@ -862,7 +875,13 @@ let of_green_tree tree =
     |> List.concat_map items_from_node
   in
   let file_let_bindings = collect_let_bindings root in
+  let file_expressions = collect_expressions root in
   SourceFile.
-    { syntax_node = root; items = file_items; let_bindings = file_let_bindings }
+    {
+      syntax_node = root;
+      items = file_items;
+      let_bindings = file_let_bindings;
+      expressions = file_expressions;
+    }
 
 let syntax_node_of_source_file source_file = SourceFile.syntax_node source_file

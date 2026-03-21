@@ -277,6 +277,23 @@ let tests =
                 Ok ()
             | _ -> Error "expected infix expression value")
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst source files collect recognized expressions recursively" (fun () ->
+        let source = "let changed = (left <> right)\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let operators =
+          Syn.Cst.SourceFile.expressions cst
+          |> List.filter_map (function
+               | Syn.Cst.Expression.InfixExpression expr ->
+                   Some (Syn.Cst.InfixExpression.operator expr)
+               | _ -> None)
+        in
+        Test.assert_equal ~expected:[ "<>" ] ~actual:operators;
+        Ok ());
     Test.case "cst preserves parenthesized expressions structurally" (fun () ->
         let source = "let wrapped = (((((value)))))\n" in
         let result = Syn.parse ~filename:"sample.ml" source in

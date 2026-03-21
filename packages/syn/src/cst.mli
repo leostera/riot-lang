@@ -299,11 +299,13 @@ module SourceFile : sig
     syntax_node : syntax_node;
     items : Item.t list;
     let_bindings : LetBinding.t list;
+    expressions : Expression.t list;
   }
 
   val syntax_node : t -> syntax_node
   val items : t -> Item.t list
   val let_bindings : t -> LetBinding.t list
+  val expressions : t -> Expression.t list
 end
 
 type source_file = SourceFile.t
