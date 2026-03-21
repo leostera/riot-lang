@@ -58,6 +58,31 @@ let tests =
         in
         Test.assert_equal ~expected:[ "F0101" ] ~actual:codes;
         Ok ());
+    Test.case "descriptive-type-variables flags short type parameters" (fun () ->
+        let source = "type ('a, 'error) resultish = ('a, 'error) result\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0102" ] ~actual:codes;
+        Ok ());
+    Test.case "descriptive-type-variables keeps descriptive type parameters clean" (fun () ->
+        let source =
+          "type ('value, 'error) resultish = ('value, 'error) result\n"
+        in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "descriptive-type-variables ignores nested type variable usages" (fun () ->
+        let source = "type 'value callback = 'a -> 'value\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
     Test.case "diagnostic code registry explains type-name violations" (fun () ->
         match Tusk_fix.Diagnostic_code.explain "F0101" with
         | None -> Error "Expected explanation for F0101"
@@ -66,6 +91,15 @@ let tests =
               ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
             Test.assert_true
               (String.contains entry.body "snake_case");
+            Ok ());
+    Test.case "diagnostic code registry explains short type variables" (fun () ->
+        match Tusk_fix.Diagnostic_code.explain "F0102" with
+        | None -> Error "Expected explanation for F0102"
+        | Some entry ->
+            Test.assert_equal ~expected:"F0102"
+              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
+            Test.assert_true
+              (String.contains entry.body "'value");
             Ok ());
     Test.case "type-name-style ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in

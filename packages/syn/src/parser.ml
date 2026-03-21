@@ -13,6 +13,7 @@ open Std.Collections
 
 type parse_result = {
   tree : (Syntax_kind.t, string) Ceibo.Green.node;
+  cst : Cst.source_file option;
   diagnostics : Diagnostic.t list;
 }
 (** Parse result type *)
@@ -10267,7 +10268,10 @@ and parse ~parse_item ~source ~tokens =
   let tree = make_node Syntax_kind.SOURCE_FILE children in
 
   let diagnostics = List.rev (Cell.get parser.diagnostics) |> dedupe_diagnostics in
-  { tree; diagnostics }
+  let cst =
+    if List.length diagnostics = 0 then Some (Cst.of_green_tree tree) else None
+  in
+  { tree; cst; diagnostics }
 
 (** Parse interface file (.mli) *)
 let parse_interface ~source tokens =

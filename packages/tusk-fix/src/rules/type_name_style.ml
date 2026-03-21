@@ -50,43 +50,25 @@ let make_diagnostic token =
     ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
     ~fix:(make_fix token replacement) ()
 
-let type_name_token node =
-  let children = Syn.Ceibo.Red.SyntaxNode.children node in
-  let last_non_trivia_token node =
-    let module_path_children = Syn.Ceibo.Red.SyntaxNode.children node in
-    let rec find idx =
-      if idx < 0 then None
-      else
-        match module_path_children.(idx) with
-        | Syn.Ceibo.Red.Token token
-          when not (Traversal.is_trivia (Syn.Ceibo.Red.SyntaxToken.kind token)) ->
-            Some token
-        | _ -> find (idx - 1)
-    in
-    find (Array.length module_path_children - 1)
-  in
-  let rec find idx =
-    if idx >= Array.length children then None
-    else
-      match children.(idx) with
-      | Syn.Ceibo.Red.Node child
-        when Syn.Ceibo.Red.SyntaxNode.kind child = Syn.SyntaxKind.MODULE_PATH ->
-          last_non_trivia_token child
-      | _ -> find (idx + 1)
-  in
-  find 0
+let diagnostic_for_decl = function
+  | Syn.Cst.TypeDeclaration.{ type_name; _ } as decl -> (
+      match Syn.Cst.ModulePath.name type_name with
+      | Some text when should_flag_type_name text ->
+          let token =
+            Syn.Cst.TypeDeclaration.name_token decl
+            |> Syn.Cst.Token.syntax_token
+          in
+          Some (make_diagnostic token)
+      | _ -> None)
 
-let diagnostic_for_decl node =
-  match type_name_token node with
-  | Some token ->
-      let text = Syn.Ceibo.Red.SyntaxToken.text token in
-      if should_flag_type_name text then Some (make_diagnostic token)
-      else None
-  | None -> None
-
-let check_tree _ctx red_root =
-  Traversal.find_by_kind Syn.SyntaxKind.TYPE_DECL red_root
-  |> List.filter_map diagnostic_for_decl
+let check_tree (ctx : Rule.context) _red_root =
+  match ctx.cst with
+  | None -> []
+  | Some source_file ->
+      Syn.Cst.SourceFile.items source_file
+      |> List.filter_map (function
+           | Syn.Cst.Item.TypeDeclaration decl -> diagnostic_for_decl decl
+           | Syn.Cst.Item.Unknown _ -> None)
 
 let make () =
   Rule.make ~id:rule_id ~name:rule_name ~description:rule_description

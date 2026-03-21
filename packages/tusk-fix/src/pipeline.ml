@@ -12,6 +12,7 @@ let make ~rules () = { rules }
 let builtin_rule_factories () =
   [
     ("type-name-style", Rules.Type_name_style.make);
+    ("descriptive-type-variables", Rules.Type_variable_name_style.make);
   ]
 
 let package_rules () =
@@ -27,7 +28,9 @@ let filtered_builtin_rules package_rules =
   let shadowed_ids =
     package_rules |> List.map Rule.id |> List.map unqualified_rule_id
   in
-  [ Rules.Type_name_style.make () ]
+  builtin_rule_factories ()
+  |> List.map snd
+  |> List.map (fun make_rule -> make_rule ())
   |> List.filter (fun rule ->
          not (List.mem (unqualified_rule_id (Rule.id rule)) shadowed_ids))
 
@@ -44,7 +47,7 @@ let run pipeline ?filename source =
     else
       let red_tree = Syn.Ceibo.Red.new_root parse_result.tree in
       let file_path = Option.unwrap_or ~default:"<stdin>" filename in
-      let ctx = Rule.{ file_path } in
+      let ctx = Rule.{ file_path; cst = parse_result.cst } in
       pipeline.rules
       |> List.map (fun rule -> Rule.run rule ctx red_tree)
       |> List.concat

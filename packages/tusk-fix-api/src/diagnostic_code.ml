@@ -416,7 +416,7 @@ let rule_id = function
   | DirectPervasivesUsage ->
       "no-stdlib"
   | CamelCaseTypeName -> "type-name-style"
-  | ShortTypeVariableName -> "type-variable-name-style"
+  | ShortTypeVariableName -> "descriptive-type-variables"
   | CamelCaseFunctionName -> "function-name-style"
   | JiraffeCaseModuleName -> "module-name-style"
   | CamelCaseVariableName -> "variable-name-style"

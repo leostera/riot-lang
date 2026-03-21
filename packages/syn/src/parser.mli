@@ -79,6 +79,12 @@ type parse_result = {
           This is an immutable, position-independent tree that preserves all
           source information. It may contain ERROR and MISSING nodes if the
           source had syntax errors. *)
+  cst : Cst.source_file option;
+      (** Fully materialized typed CST when parsing succeeded without
+          diagnostics.
+
+          `None` means parser diagnostics were produced and callers should stay
+          on diagnostics or the raw lossless tree. *)
   diagnostics : Diagnostic.t list;
       (** List of parse errors and warnings.
 
@@ -89,7 +95,8 @@ type parse_result = {
 
     The parser **always** returns a parse result, even if the source code is
     malformed. The `diagnostics` field indicates whether there were any
-    problems.
+    problems, and the `cst` field is only populated when those diagnostics are
+    empty.
 
     This design enables:
     - IDE features that work on incomplete code

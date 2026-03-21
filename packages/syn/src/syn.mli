@@ -82,6 +82,11 @@ module Diagnostic : module type of Diagnostic
 
 module DiagnosticReporter : module type of Diagnostic_reporter
 
+module Cst : module type of Cst
+(** Typed concrete syntax tree layered on top of the lossless Ceibo tree.
+
+    `Cst` is only produced for parse results without diagnostics. *)
+
 module Parser : module type of Parser
 (** OCaml parser that produces Ceibo trees. *)
 

@@ -9,6 +9,7 @@ module SyntaxKind = Syntax_kind
 module Diagnostic = Diagnostic
 module Parser = Parser
 module DiagnosticReporter = Diagnostic_reporter
+module Cst = Cst
 
 let tokenize source = Lexer.tokenize source
 
