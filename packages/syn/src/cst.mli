@@ -27,6 +27,7 @@ end
 type expression =
   | PathExpression of path_expression
   | StringLiteral of string_literal
+  | BoolLiteral of bool_literal
   | UnitLiteral of unit_literal
   | ApplyExpression of apply_expression
   | InfixExpression of infix_expression
@@ -40,6 +41,11 @@ and path_expression = {
 }
 
 and string_literal = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+}
+
+and bool_literal = {
   syntax_node : syntax_node;
   literal_token : Token.t;
 }
@@ -77,6 +83,7 @@ module Expression : sig
   type t = expression =
     | PathExpression of path_expression
     | StringLiteral of string_literal
+    | BoolLiteral of bool_literal
     | UnitLiteral of unit_literal
     | ApplyExpression of apply_expression
     | InfixExpression of infix_expression
@@ -106,6 +113,17 @@ module StringLiteral : sig
   val syntax_node : t -> syntax_node
   val literal_token : t -> Token.t
   val text : t -> string
+end
+
+module BoolLiteral : sig
+  type t = bool_literal = {
+    syntax_node : syntax_node;
+    literal_token : Token.t;
+  }
+
+  val syntax_node : t -> syntax_node
+  val literal_token : t -> Token.t
+  val value : t -> bool
 end
 
 module UnitLiteral : sig

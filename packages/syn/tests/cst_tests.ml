@@ -307,6 +307,28 @@ let tests =
                 | _ -> Error "expected unit else branch")
             | _ -> Error "expected if expression value")
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst if expressions preserve boolean literal comparisons" (fun () ->
+        let source = "let render ok = if ok = true then log () else ()\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding binding :: _ -> (
+            match Syn.Cst.LetBinding.value binding with
+            | Syn.Cst.Expression.IfExpression expr -> (
+                match Syn.Cst.IfExpression.condition expr with
+                | Syn.Cst.Expression.InfixExpression cmp -> (
+                    match Syn.Cst.InfixExpression.right cmp with
+                    | Syn.Cst.Expression.BoolLiteral literal ->
+                        Test.assert_true (Syn.Cst.BoolLiteral.value literal);
+                        Ok ()
+                    | _ -> Error "expected bool literal on right-hand side")
+                | _ -> Error "expected infix comparison condition")
+            | _ -> Error "expected if expression value")
+        | _ -> Error "expected first item to be a let binding");
     Test.case "cst source files collect recognized expressions recursively" (fun () ->
         let source = "let changed = (left <> right)\n" in
         let result = Syn.parse ~filename:"sample.ml" source in

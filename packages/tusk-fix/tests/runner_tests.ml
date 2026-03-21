@@ -402,6 +402,52 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains redundant else unit branches" (fun () ->
         assert_explanation_contains ~code:"F0128" ~snippet:"else ()");
+    Test.case "no-boolean-comparisons-in-conditionals flags equality to true" (fun () ->
+        let source = "let render is_ready = if is_ready = true then log ()\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_boolean_comparisons_in_conditionals.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0130" ] ~actual:codes;
+        Ok ());
+    Test.case "no-boolean-comparisons-in-conditionals flags equality to false" (fun () ->
+        let source = "let render is_ready = if is_ready = false then log ()\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_boolean_comparisons_in_conditionals.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0130" ] ~actual:codes;
+        Ok ());
+    Test.case "no-boolean-comparisons-in-conditionals flags inequality to false" (fun () ->
+        let source = "let render is_ready = if is_ready != false then log ()\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_boolean_comparisons_in_conditionals.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0130" ] ~actual:codes;
+        Ok ());
+    Test.case "no-boolean-comparisons-in-conditionals keeps direct conditions clean" (fun () ->
+        let source = "let render is_ready = if is_ready then log ()\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_boolean_comparisons_in_conditionals.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains boolean conditional comparisons" (fun () ->
+        assert_explanation_contains ~code:"F0130" ~snippet:"if is_ready then render ()");
     Test.case "alphabetized-named-arguments flags unsorted labeled arguments" (fun () ->
         let source = "let render ~zebra ~alpha current_user = current_user\n" in
         let pipeline =

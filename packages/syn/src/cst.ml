@@ -39,6 +39,7 @@ end
 type expression =
   | PathExpression of path_expression
   | StringLiteral of string_literal
+  | BoolLiteral of bool_literal
   | UnitLiteral of unit_literal
   | ApplyExpression of apply_expression
   | InfixExpression of infix_expression
@@ -52,6 +53,11 @@ and path_expression = {
 }
 
 and string_literal = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+}
+
+and bool_literal = {
   syntax_node : syntax_node;
   literal_token : Token.t;
 }
@@ -89,6 +95,7 @@ module Expression = struct
   type t = expression =
     | PathExpression of path_expression
     | StringLiteral of string_literal
+    | BoolLiteral of bool_literal
     | UnitLiteral of unit_literal
     | ApplyExpression of apply_expression
     | InfixExpression of infix_expression
@@ -99,6 +106,7 @@ module Expression = struct
   let syntax_node = function
     | PathExpression expr -> expr.syntax_node
     | StringLiteral expr -> expr.syntax_node
+    | BoolLiteral expr -> expr.syntax_node
     | UnitLiteral expr -> expr.syntax_node
     | ApplyExpression expr -> expr.syntax_node
     | InfixExpression expr -> expr.syntax_node
@@ -126,6 +134,17 @@ module StringLiteral = struct
   let syntax_node expr = expr.syntax_node
   let literal_token expr = expr.literal_token
   let text expr = Token.text expr.literal_token
+end
+
+module BoolLiteral = struct
+  type t = bool_literal = {
+    syntax_node : syntax_node;
+    literal_token : Token.t;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let literal_token expr = expr.literal_token
+  let value expr = String.equal (Token.text expr.literal_token) "true"
 end
 
 module UnitLiteral = struct
@@ -508,6 +527,16 @@ let rec expression_from_node node =
       | literal_syntax_token :: _ ->
           Expression.StringLiteral
             StringLiteral.
+              {
+                syntax_node = node;
+                literal_token = token literal_syntax_token;
+              }
+      | [] -> Expression.Unknown node)
+  | Syntax_kind.BOOL_LITERAL -> (
+      match direct_non_trivia_tokens node with
+      | literal_syntax_token :: _ ->
+          Expression.BoolLiteral
+            BoolLiteral.
               {
                 syntax_node = node;
                 literal_token = token literal_syntax_token;

@@ -1,0 +1,99 @@
+open Std
+
+let rule_id = "no-boolean-comparisons-in-conditionals"
+let rule_name = "No Boolean Comparisons In Conditionals"
+let rule_code = "F0130"
+
+let rule_description =
+  "Boolean conditions should not be compared explicitly to true or false"
+
+let rule_message =
+  "Compare booleans directly in conditionals instead of checking them against true or false."
+
+let rule_explain =
+  {|
+Boolean conditions should not be compared explicitly to `true` or `false`.
+
+Why this rule exists:
+- `if is_ready = true then ...` is noisier than `if is_ready then ...`.
+- `if is_ready = false then ...` is easier to read as `if not is_ready then ...`.
+- The shorter form makes the real condition stand out immediately.
+
+Examples:
+  Bad:    if is_ready = true then render ()
+  Better: if is_ready then render ()
+
+  Bad:    if is_ready = false then render ()
+  Better: if not is_ready then render ()
+|}
+
+let rec unwrap_parens = function
+  | Syn.Cst.Expression.ParenthesizedExpression expr ->
+      unwrap_parens (Syn.Cst.ParenthesizedExpression.inner expr)
+  | expr -> expr
+
+let bool_literal_value = function
+  | Syn.Cst.Expression.BoolLiteral literal -> Some (Syn.Cst.BoolLiteral.value literal)
+  | _ -> None
+
+let comparison_operands expr =
+  match unwrap_parens expr with
+  | Syn.Cst.Expression.InfixExpression cmp ->
+      let op = Syn.Cst.InfixExpression.operator cmp in
+      if String.equal op "=" || String.equal op "!=" || String.equal op "<>" then
+        Some (op, Syn.Cst.InfixExpression.left cmp, Syn.Cst.InfixExpression.right cmp)
+      else
+        None
+  | _ -> None
+
+let should_flag_condition expr =
+  match comparison_operands expr with
+  | Some (_, left, right) -> (
+      match bool_literal_value left, bool_literal_value right with
+      | Some _, None | None, Some _ -> true
+      | _ -> false)
+  | None -> false
+
+let suggestion_for_condition expr =
+  match comparison_operands expr with
+  | Some (op, left, right) -> (
+      match bool_literal_value left, bool_literal_value right with
+      | Some true, None
+      | None, Some true ->
+          if String.equal op "=" then
+            "Use the condition directly."
+          else
+            "Use not <condition> instead."
+      | Some false, None
+      | None, Some false ->
+          if String.equal op "=" then
+            "Use not <condition> instead."
+          else
+            "Use the condition directly."
+      | _ -> "Simplify this boolean comparison.")
+  | None -> "Simplify this boolean comparison."
+
+let make_diagnostic if_expr =
+  Diagnostic.make ~severity:Warning
+    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.IfExpression.syntax_node if_expr))
+    ~suggestion:(suggestion_for_condition (Syn.Cst.IfExpression.condition if_expr))
+    ()
+
+let diagnostic_for_expression = function
+  | Syn.Cst.Expression.IfExpression if_expr
+    when should_flag_condition (Syn.Cst.IfExpression.condition if_expr) ->
+      Some (make_diagnostic if_expr)
+  | _ -> None
+
+let check_tree (ctx : Rule.context) _red_root =
+  match ctx.cst with
+  | None -> []
+  | Some source_file ->
+      Syn.Cst.SourceFile.expressions source_file
+      |> List.filter_map diagnostic_for_expression
+
+let make () =
+  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
+    ~description:rule_description ~message:rule_message ~explain:rule_explain
+    ~run:check_tree ()
