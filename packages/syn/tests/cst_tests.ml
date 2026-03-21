@@ -108,6 +108,24 @@ let tests =
               ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
             Ok ()
         | _ -> Error "expected first item to be a module type declaration");
+    Test.case "cst source files collect let bindings recursively" (fun () ->
+        let source =
+          "let top_level = 1\nlet render x = let local_value = x in local_value\n"
+        in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let bindings =
+          Syn.Cst.SourceFile.let_bindings cst
+          |> List.map Syn.Cst.LetBinding.name
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "local_value"; "render"; "top_level" ]
+          ~actual:bindings;
+        Ok ());
   ]
 
 let () =

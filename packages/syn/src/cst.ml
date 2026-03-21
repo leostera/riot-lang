@@ -151,10 +151,12 @@ module SourceFile = struct
   type t = {
     syntax_node : syntax_node;
     items : Item.t list;
+    let_bindings : LetBinding.t list;
   }
 
   let syntax_node source_file = source_file.syntax_node
   let items source_file = source_file.items
+  let let_bindings source_file = source_file.let_bindings
 end
 
 type source_file = SourceFile.t
@@ -214,6 +216,34 @@ let name_token_from_ident_pattern node =
   | first :: _ -> Some (token first)
   | [] -> None
 
+let is_parameter_like_kind = function
+  | Syntax_kind.IDENT_PATTERN
+  | Syntax_kind.WILDCARD_PATTERN
+  | Syntax_kind.LITERAL_PATTERN
+  | Syntax_kind.CONSTRUCTOR_PATTERN
+  | Syntax_kind.TUPLE_PATTERN
+  | Syntax_kind.LIST_PATTERN
+  | Syntax_kind.ARRAY_PATTERN
+  | Syntax_kind.CONS_PATTERN
+  | Syntax_kind.RECORD_PATTERN
+  | Syntax_kind.OR_PATTERN
+  | Syntax_kind.AS_PATTERN
+  | Syntax_kind.RANGE_PATTERN
+  | Syntax_kind.TYPED_PATTERN
+  | Syntax_kind.LAZY_PATTERN
+  | Syntax_kind.EXCEPTION_PATTERN
+  | Syntax_kind.PAREN_PATTERN
+  | Syntax_kind.POLY_VARIANT_PATTERN
+  | Syntax_kind.POLY_VARIANT_TYPE_PATTERN
+  | Syntax_kind.LOCAL_OPEN_PATTERN
+  | Syntax_kind.OPERATOR_PATTERN
+  | Syntax_kind.FIRST_CLASS_MODULE_PATTERN
+  | Syntax_kind.LABELED_PARAM
+  | Syntax_kind.OPTIONAL_PARAM
+  | Syntax_kind.OPTIONAL_PARAM_DEFAULT ->
+      true
+  | _ -> false
+
 let type_declaration_name_path node =
   let is_name_node child =
     let kind = Ceibo.Red.SyntaxNode.kind child in
@@ -261,6 +291,40 @@ let let_binding_from_node ~is_recursive_binding node =
       | _ -> None)
   | [] -> None
 
+let let_expression_binding_from_node ~is_recursive_binding node =
+  let rec find_name_node = function
+    | [] -> None
+    | child :: rest ->
+        if Ceibo.Red.SyntaxNode.kind child = Syntax_kind.IDENT_PATTERN then
+          Some (child, rest)
+        else
+          find_name_node rest
+  in
+  let rec split_parameters params = function
+    | child :: rest when is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child)
+      ->
+        split_parameters (child :: params) rest
+    | child :: rest when Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_CONSTRAINT
+      ->
+        split_parameters params rest
+    | child :: _ -> Some (List.rev params, child)
+    | [] -> None
+  in
+  match find_name_node (direct_non_trivia_nodes node) with
+  | Some (name_node, rest) -> (
+      match name_token_from_ident_pattern name_node, split_parameters [] rest with
+      | Some binding_name, Some (param_nodes, bound_value_node) ->
+          Some LetBinding.
+                 {
+                   syntax_node = node;
+                   binding_name = binding_name;
+                   parameters = param_nodes;
+                   value_syntax_node = bound_value_node;
+                   is_recursive = is_recursive_binding;
+                 }
+      | _ -> None)
+  | None -> None
+
 let module_declaration_from_node node =
   match direct_non_trivia_tokens node with
   | _module_kw :: module_name :: _ ->
@@ -273,6 +337,26 @@ let module_type_declaration_from_node node =
       Some ModuleTypeDeclaration.
              { syntax_node = node; module_type_name = token module_type_name }
   | _ -> None
+
+let rec collect_let_bindings node =
+  let bindings_here =
+    match Ceibo.Red.SyntaxNode.kind node with
+    | Syntax_kind.LET_BINDING ->
+        Option.to_list (let_binding_from_node ~is_recursive_binding:false node)
+    | Syntax_kind.LET_REC_BINDING ->
+        Option.to_list (let_binding_from_node ~is_recursive_binding:true node)
+    | Syntax_kind.LET_EXPR ->
+        Option.to_list
+          (let_expression_binding_from_node ~is_recursive_binding:false node)
+    | Syntax_kind.LET_REC_EXPR ->
+        Option.to_list
+          (let_expression_binding_from_node ~is_recursive_binding:true node)
+    | _ -> []
+  in
+  let nested =
+    direct_non_trivia_nodes node |> List.concat_map collect_let_bindings
+  in
+  bindings_here @ nested
 
 let rec items_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
@@ -312,6 +396,8 @@ let of_green_tree tree =
     direct_non_trivia_nodes root
     |> List.concat_map items_from_node
   in
-  SourceFile.{ syntax_node = root; items = file_items }
+  let file_let_bindings = collect_let_bindings root in
+  SourceFile.
+    { syntax_node = root; items = file_items; let_bindings = file_let_bindings }
 
 let syntax_node_of_source_file source_file = SourceFile.syntax_node source_file

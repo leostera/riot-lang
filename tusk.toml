@@ -49,7 +49,9 @@ rules = [
   "snake-case-type-names", 
   "descriptive-type-variables",
   "snake-case-function-names",
-  "class-case-module-names"
+  "-class-case-module-names",
+  "snake-case-variable-names",
+  "no-prime-variables"
 ]
 
 [profile.debug]

@@ -1,11 +1,11 @@
 open Std
 open Std.Collections
 
-let rule_id = "snake-case-function-names"
-let rule_name = "Snake Case Function Names"
+let rule_id = "snake-case-variable-names"
+let rule_name = "Snake Case Variable Names"
 
 let rule_description =
-  "Function names should use snake_case instead of camelCase"
+  "Variable names should use snake_case instead of camelCase"
 
 let is_upper ch = ch >= 'A' && ch <= 'Z'
 let is_lower ch = ch >= 'a' && ch <= 'z'
@@ -27,24 +27,24 @@ let to_snake_case text =
     text;
   String.concat "" (List.rev !pieces)
 
-let should_flag_function_name text =
+let should_flag_variable_name text =
   not (String.equal text (to_snake_case text))
 
 let make_diagnostic token =
   let original = Syn.Ceibo.Red.SyntaxToken.text token in
   let replacement = to_snake_case original in
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known Diagnostic_code.CamelCaseFunctionName)
+    ~kind:(Diagnostic.Known Diagnostic_code.CamelCaseVariableName)
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
     ()
 
 let diagnostic_for_binding binding =
-  if not (Syn.Cst.LetBinding.is_function binding) then
+  if Syn.Cst.LetBinding.is_function binding then
     None
   else
     let name = Syn.Cst.LetBinding.name binding in
-    if should_flag_function_name name then
+    if should_flag_variable_name name then
       let token =
         Syn.Cst.LetBinding.binding_name_token binding
         |> Syn.Cst.Token.syntax_token
@@ -57,10 +57,8 @@ let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with
   | None -> []
   | Some source_file ->
-      Syn.Cst.SourceFile.items source_file
-      |> List.filter_map (function
-           | Syn.Cst.Item.LetBinding binding -> diagnostic_for_binding binding
-           | _ -> None)
+      Syn.Cst.SourceFile.let_bindings source_file
+      |> List.filter_map diagnostic_for_binding
 
 let make () =
   Rule.make ~id:rule_id ~name:rule_name ~description:rule_description

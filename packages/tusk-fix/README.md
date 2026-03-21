@@ -124,7 +124,7 @@ open Std
 (* Create a custom pipeline *)
 let pipeline = Pipeline.make 
   ~rules:[
-    Type_name_style.make ();
+    Snake_case_type_names.make ();
     (* Add more rules here *)
   ] 
   ()
@@ -204,7 +204,7 @@ Update `pipeline.ml`:
 
 ```ocaml
 let default_rules () = [
-  Type_name_style.make ();
+  Snake_case_type_names.make ();
   My_rule.make ();  (* Add your rule *)
 ]
 ```

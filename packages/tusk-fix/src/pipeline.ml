@@ -11,10 +11,12 @@ let make ~rules () = { rules }
 
 let builtin_rule_factories () =
   [
-    ("snake-case-type-names", Rules.Type_name_style.make);
-    ("descriptive-type-variables", Rules.Type_variable_name_style.make);
-    ("snake-case-function-names", Rules.Function_name_style.make);
-    ("class-case-module-names", Rules.Module_name_style.make);
+    ("snake-case-type-names", Rules.Snake_case_type_names.make);
+    ("descriptive-type-variables", Rules.Descriptive_type_variables.make);
+    ("snake-case-function-names", Rules.Snake_case_function_names.make);
+    ("class-case-module-names", Rules.Class_case_module_names.make);
+    ("snake-case-variable-names", Rules.Snake_case_variable_names.make);
+    ("no-prime-variables", Rules.No_prime_variables.make);
   ]
 
 let package_rules () =

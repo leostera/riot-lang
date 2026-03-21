@@ -126,9 +126,30 @@ let tests =
         Ok ());
     Test.case "snake-case-function-names ignores camelCase value bindings" (fun () ->
         let source = "let userProfile = 42\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Snake_case_function_names.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[] ~actual:codes;
+        Ok ());
+    Test.case "snake-case-function-names flags local camelCase function bindings" (fun () ->
+        let source = "let render x = let userProfile y = y in userProfile x\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        Test.assert_equal ~expected:0
-          ~actual:(List.length result.diagnostics);
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0103" ] ~actual:codes;
         Ok ());
     Test.case "diagnostic code registry explains function-name violations" (fun () ->
         match Tusk_fix.Diagnostic_code.explain "F0103" with
@@ -171,11 +192,124 @@ let tests =
             Test.assert_true
               (String.contains entry.body "FooBar");
             Ok ());
-    Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
-        let source = "let userProfile = 42\n" in
+    Test.case "snake-case-variable-names flags camelCase value bindings" (fun () ->
+        let source = "let currentUser = 42\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0105" ] ~actual:codes;
+        Ok ());
+    Test.case "snake-case-variable-names flags local camelCase value bindings" (fun () ->
+        let source = "let render x = let currentUser = x in currentUser\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0105" ] ~actual:codes;
+        Ok ());
+    Test.case "snake-case-variable-names keeps compliant values clean" (fun () ->
+        let source = "let current_user = 42\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "snake-case-variable-names ignores camelCase function bindings" (fun () ->
+        let source = "let currentUser x = x\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        Test.assert_equal ~expected:1
+          ~actual:(List.length result.diagnostics);
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0103" ] ~actual:codes;
+        Ok ());
+    Test.case "diagnostic code registry explains variable-name violations" (fun () ->
+        match Tusk_fix.Diagnostic_code.explain "F0105" with
+        | None -> Error "Expected explanation for F0105"
+        | Some entry ->
+            Test.assert_equal ~expected:"F0105"
+              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
+            Test.assert_true
+              (String.contains entry.body "current_user");
+            Ok ());
+    Test.case "no-prime-variables flags prime-suffixed value bindings" (fun () ->
+        let source = "let current_user' = 42\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0106" ] ~actual:codes;
+        Ok ());
+    Test.case "no-prime-variables flags local prime-suffixed value bindings" (fun () ->
+        let source = "let render x = let state' = x in state'\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0106" ] ~actual:codes;
+        Ok ());
+    Test.case "no-prime-variables keeps non-prime values clean" (fun () ->
+        let source = "let current_user2 = 42\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_prime_variables.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "no-prime-variables ignores prime-suffixed function bindings" (fun () ->
+        let source = "let current_user' x = x\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_prime_variables.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains prime-variable violations" (fun () ->
+        match Tusk_fix.Diagnostic_code.explain "F0106" with
+        | None -> Error "Expected explanation for F0106"
+        | Some entry ->
+            Test.assert_equal ~expected:"F0106"
+              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
+            Test.assert_true
+              (String.contains entry.body "state2");
+            Ok ());
+    Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
+        let source = "let userProfile = 42\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Snake_case_type_names.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[] ~actual:codes;
         Ok ());
     Test.case "snake-case-type-names ignores module qualifiers in extensible types" (fun () ->
         let source = "type Message.t += Added\n" in
@@ -312,6 +446,32 @@ let tests =
         with_tempdir "tusk_fix_check" (fun tmpdir ->
               let file = Path.(tmpdir / Path.v "sample.ml") in
               let source = "module Foo_bar = struct end\n" in
+              write_file file source;
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_false result.changed;
+              Test.assert_equal ~expected:1
+                ~actual:(List.length result.diagnostics);
+              Test.assert_equal ~expected:source ~actual:(read_file file);
+              Ok ()));
+    Test.case "check mode reports variable-name issues without writing" (fun () ->
+        with_tempdir "tusk_fix_check" (fun tmpdir ->
+              let file = Path.(tmpdir / Path.v "sample.ml") in
+              let source = "let currentUser = 42\n" in
+              write_file file source;
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_false result.changed;
+              Test.assert_equal ~expected:1
+                ~actual:(List.length result.diagnostics);
+              Test.assert_equal ~expected:source ~actual:(read_file file);
+              Ok ()));
+    Test.case "check mode reports prime-variable issues without writing" (fun () ->
+        with_tempdir "tusk_fix_check" (fun tmpdir ->
+              let file = Path.(tmpdir / Path.v "sample.ml") in
+              let source = "let state' = 42\n" in
               write_file file source;
               let result =
                 Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
