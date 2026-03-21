@@ -85,13 +85,39 @@ module TypeDeclaration = struct
     | None -> panic "TypeDeclaration.name_token: missing type name token"
 end
 
+module LetBinding = struct
+  type t = {
+    syntax_node : syntax_node;
+    binding_name : Token.t;
+    parameters : syntax_node list;
+    value_syntax_node : syntax_node;
+    is_recursive : bool;
+  }
+
+  let syntax_node binding = binding.syntax_node
+  let binding_name_token binding = binding.binding_name
+  let name binding = Token.text binding.binding_name
+  let parameters binding = binding.parameters
+  let value_syntax_node binding = binding.value_syntax_node
+  let is_recursive binding = binding.is_recursive
+
+  let is_function binding =
+    List.length binding.parameters > 0
+    ||
+    match Ceibo.Red.SyntaxNode.kind binding.value_syntax_node with
+    | Syntax_kind.FUN_EXPR | Syntax_kind.FUNCTION_EXPR -> true
+    | _ -> false
+end
+
 module Item = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
+    | LetBinding of LetBinding.t
     | Unknown of syntax_node
 
   let syntax_node = function
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
+    | LetBinding binding -> LetBinding.syntax_node binding
     | Unknown node -> node
 end
 
@@ -157,6 +183,11 @@ let ident_path_from_node node =
   in
   ModulePath.{ syntax_node = node; segments = parts }
 
+let name_token_from_ident_pattern node =
+  match direct_non_trivia_tokens node with
+  | first :: _ -> Some (token first)
+  | [] -> None
+
 let type_declaration_name_path node =
   let is_name_node child =
     let kind = Ceibo.Red.SyntaxNode.kind child in
@@ -185,19 +216,57 @@ let type_declaration_from_node node =
       | None -> None)
   | None -> None
 
-let item_from_node node =
+let let_binding_from_node ~is_recursive_binding node =
+  match direct_non_trivia_nodes node with
+  | name_node :: rest -> (
+      match List.rev rest with
+      | value_node :: rev_params
+        when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_PATTERN ->
+          name_token_from_ident_pattern name_node
+          |> Option.map (fun binding_name ->
+                 LetBinding.
+                   {
+                     syntax_node = node;
+                     binding_name;
+                     parameters = List.rev rev_params;
+                     value_syntax_node = value_node;
+                     is_recursive = is_recursive_binding;
+                   })
+      | _ -> None)
+  | [] -> None
+
+let rec items_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.TYPE_DECL -> (
       match type_declaration_from_node node with
-      | Some decl -> Item.TypeDeclaration decl
-      | None -> Item.Unknown node)
-  | _ -> Item.Unknown node
+      | Some decl -> [ Item.TypeDeclaration decl ]
+      | None -> [ Item.Unknown node ])
+  | Syntax_kind.TYPE_MUTUAL_DECL ->
+      direct_non_trivia_nodes node
+      |> List.filter (fun child ->
+             Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL)
+      |> List.concat_map items_from_node
+  | Syntax_kind.LET_BINDING -> (
+      match let_binding_from_node ~is_recursive_binding:false node with
+      | Some binding -> [ Item.LetBinding binding ]
+      | None -> [ Item.Unknown node ])
+  | Syntax_kind.LET_REC_BINDING -> (
+      match let_binding_from_node ~is_recursive_binding:true node with
+      | Some binding -> [ Item.LetBinding binding ]
+      | None -> [ Item.Unknown node ])
+  | Syntax_kind.LET_MUTUAL_DECL ->
+      direct_non_trivia_nodes node
+      |> List.filter (fun child ->
+             let kind = Ceibo.Red.SyntaxNode.kind child in
+             kind = Syntax_kind.LET_BINDING || kind = Syntax_kind.LET_REC_BINDING)
+      |> List.concat_map items_from_node
+  | _ -> [ Item.Unknown node ]
 
 let of_green_tree tree =
   let root = Ceibo.Red.new_root tree in
   let file_items =
     direct_non_trivia_nodes root
-    |> List.map item_from_node
+    |> List.concat_map items_from_node
   in
   SourceFile.{ syntax_node = root; items = file_items }
 

@@ -417,7 +417,7 @@ let rule_id = function
       "no-stdlib"
   | CamelCaseTypeName -> "snake-case-type-names"
   | ShortTypeVariableName -> "descriptive-type-variables"
-  | CamelCaseFunctionName -> "function-name-style"
+  | CamelCaseFunctionName -> "snake-case-function-names"
   | JiraffeCaseModuleName -> "module-name-style"
   | CamelCaseVariableName -> "variable-name-style"
   | PrimeVariableName -> "variable-prime-style"

@@ -43,7 +43,7 @@ let check_tree (ctx : Rule.context) _red_root =
       Syn.Cst.SourceFile.items source_file
       |> List.concat_map (function
            | Syn.Cst.Item.TypeDeclaration decl -> diagnostic_for_decl decl
-           | Syn.Cst.Item.Unknown _ -> [])
+           | _ -> [])
 
 let make () =
   Rule.make ~id:rule_id ~name:rule_name ~description:rule_description

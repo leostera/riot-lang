@@ -4,7 +4,7 @@
 
 - [x] Type names should use `snake_case` instead of `camelCase` (`snake-case-type-names`)
 - [x] Warn on type variable names like `'a` or `'b` in type definitions; suggest descriptive names like `'value` and `'error`
-- [ ] Function names should use `snake_case` instead of `camelCase`
+- [x] Function names should use `snake_case` instead of `camelCase`
 - [ ] Module names should be ClassCased and not Jiraffe_cased
 - [ ] Variable names should use `snake_case` instead of `camelCase`
 - [ ] Variable names should not contain `'`; prefer `x2` over `x'`
@@ -36,3 +36,15 @@
 - [ ] Avoid function names like `f` or `g` 
 - [ ] Avoid type single-letter type names except its `t`
 - [ ] If a module has a single type definition, prefer it be called `t`
+
+- [ ] useless booleans comparisons in conditionals like `if is_ready = true then ...` that should be flagged and recommended to rewrite as `if is_ready then ...` -- same for `if flag <> false then ...` and prefer `if flag then  ...` -- same for `if b = false then ...` prefer `if not b then ...` 
+
+
+
+## Package specific lint rules
+
+Miniriot:
+- [ ] If a while or for loop doesn't immediately have a `yield ()` at the beginning of it, we should warn about it
+
+Std:
+- [ ] 

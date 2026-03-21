@@ -59,9 +59,28 @@ module TypeDeclaration : sig
   val name_token : t -> Token.t
 end
 
+module LetBinding : sig
+  type t = {
+    syntax_node : syntax_node;
+    binding_name : Token.t;
+    parameters : syntax_node list;
+    value_syntax_node : syntax_node;
+    is_recursive : bool;
+  }
+
+  val syntax_node : t -> syntax_node
+  val binding_name_token : t -> Token.t
+  val name : t -> string
+  val parameters : t -> syntax_node list
+  val value_syntax_node : t -> syntax_node
+  val is_recursive : t -> bool
+  val is_function : t -> bool
+end
+
 module Item : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
+    | LetBinding of LetBinding.t
     | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node

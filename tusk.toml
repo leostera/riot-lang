@@ -47,7 +47,8 @@ members = [
 rules = [
   "no-stdlib", 
   "snake-case-type-names", 
-  "descriptive-type-variables"
+  "descriptive-type-variables",
+  "snake-case-function-names"
 ]
 
 [profile.debug]

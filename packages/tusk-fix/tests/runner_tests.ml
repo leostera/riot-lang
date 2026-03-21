@@ -101,6 +101,44 @@ let tests =
             Test.assert_true
               (String.contains entry.body "'value");
             Ok ());
+    Test.case "snake-case-function-names flags camelCase function bindings" (fun () ->
+        let source = "let userProfile x = x\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0103" ] ~actual:codes;
+        Ok ());
+    Test.case "snake-case-function-names flags explicit fun bindings" (fun () ->
+        let source = "let userProfile = fun x -> x\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        Test.assert_equal ~expected:1
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "snake-case-function-names keeps compliant function names clean" (fun () ->
+        let source = "let user_profile x = x\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "snake-case-function-names ignores camelCase value bindings" (fun () ->
+        let source = "let userProfile = 42\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains function-name violations" (fun () ->
+        match Tusk_fix.Diagnostic_code.explain "F0103" with
+        | None -> Error "Expected explanation for F0103"
+        | Some entry ->
+            Test.assert_equal ~expected:"F0103"
+              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
+            Test.assert_true
+              (String.contains entry.body "parse_user");
+            Ok ());
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
@@ -216,6 +254,19 @@ let tests =
         with_tempdir "tusk_fix_check" (fun tmpdir ->
               let file = Path.(tmpdir / Path.v "sample.ml") in
               let source = "type userProfile = int\n" in
+              write_file file source;
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_false result.changed;
+              Test.assert_equal ~expected:1
+                ~actual:(List.length result.diagnostics);
+              Test.assert_equal ~expected:source ~actual:(read_file file);
+              Ok ()));
+    Test.case "check mode reports function-name issues without writing" (fun () ->
+        with_tempdir "tusk_fix_check" (fun tmpdir ->
+              let file = Path.(tmpdir / Path.v "sample.ml") in
+              let source = "let userProfile x = x\n" in
               write_file file source;
               let result =
                 Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file

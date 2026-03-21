@@ -13,6 +13,7 @@ let builtin_rule_factories () =
   [
     ("snake-case-type-names", Rules.Type_name_style.make);
     ("descriptive-type-variables", Rules.Type_variable_name_style.make);
+    ("snake-case-function-names", Rules.Function_name_style.make);
   ]
 
 let package_rules () =

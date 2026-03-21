@@ -52,6 +52,34 @@ let tests =
             Test.assert_equal ~expected:[ "'a"; "'error" ] ~actual:params;
             Ok ()
         | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst let bindings expose function binding names" (fun () ->
+        let result = Syn.parse ~filename:"sample.ml" "let userProfile x = x\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.LetBinding binding :: _ ->
+            Test.assert_equal ~expected:"userProfile"
+              ~actual:(Syn.Cst.LetBinding.name binding);
+            Test.assert_true (Syn.Cst.LetBinding.is_function binding);
+            Ok ()
+        | _ -> Error "expected first item to be a let binding");
+    Test.case "cst let bindings distinguish value bindings from function bindings" (fun () ->
+        let result = Syn.parse ~filename:"sample.ml" "let userProfile = 42\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.LetBinding binding :: _ ->
+            Test.assert_false (Syn.Cst.LetBinding.is_function binding);
+            Ok ()
+        | _ -> Error "expected first item to be a let binding");
   ]
 
 let () =
