@@ -319,6 +319,41 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains open! violations" (fun () ->
         assert_explanation_contains ~code:"F0125" ~snippet:"open!");
+    Test.case "limit-open-statements flags a third file-level open" (fun () ->
+        let source = "open Std\nopen Http\nopen Json\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_open_statements.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0126" ] ~actual:codes;
+        Ok ());
+    Test.case "limit-open-statements keeps one or two opens clean" (fun () ->
+        let source = "open Std\nopen Http\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_open_statements.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "limit-open-statements reports only one issue per file" (fun () ->
+        let source = "open Std\nopen Http\nopen Json\nopen Uri\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_open_statements.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:1
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains open-count violations" (fun () ->
+        assert_explanation_contains ~code:"F0126" ~snippet:"two open statements");
     Test.case "alphabetized-named-arguments flags unsorted labeled arguments" (fun () ->
         let source = "let render ~zebra ~alpha current_user = current_user\n" in
         let pipeline =

@@ -46,7 +46,7 @@
 
 - [ ] Unnecessary `rec` in `let rec f x = x + 1`
 
-- [ ] Many `open` statmenets get confusing and can shadow symbols, warn about this if we have more than 2 opens
+- [x] Many `open` statmenets get confusing and can shadow symbols, warn about this if we have more than 2 opens (`limit-open-statements`)
 
 - [ ] `let () = foo () in ..` this shoudl just be `foo ();` 
 
