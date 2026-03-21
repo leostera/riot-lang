@@ -2,6 +2,7 @@ module Avoid_single_letter_function_names = Avoid_single_letter_function_names
 module Avoid_single_letter_type_names = Avoid_single_letter_type_names
 module Limit_parenthesis_depth = Limit_parenthesis_depth
 module Limit_open_statements = Limit_open_statements
+module No_unnecessary_rec = No_unnecessary_rec
 module No_open_bang = No_open_bang
 module No_inline_parameter_type_annotations = No_inline_parameter_type_annotations
 module No_function_shorthand = No_function_shorthand

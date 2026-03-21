@@ -4,6 +4,7 @@ open Std.Collections
 type config = {
   files : Path.t list;
   concurrency : int;
+  limit : int option;
   mode : Runner.mode;
   scope : Fix_config.scope option;
   owner : Pid.t;
@@ -13,13 +14,18 @@ type state = {
   file_queue : Path.t Queue.t;
   busy_workers : (Pid.t, Path.t) HashMap.t;
   mutable results_rev : Runner.file_result list;
+  mutable diagnostics_seen : int;
   mutable stop_requested : bool;
   mutable stopped_workers : int;
+  limit : int option;
   total_workers : int;
   mode : Runner.mode;
   scope : Fix_config.scope option;
   owner : Pid.t;
 }
+
+let diagnostic_count result =
+  List.length result.Runner.parse_diagnostics + List.length result.diagnostics
 
 let rec loop state =
   let selector msg =
@@ -56,6 +62,11 @@ and handle_worker_ready state worker =
 and handle_file_result state r =
   ignore (HashMap.remove state.busy_workers r.worker);
   state.results_rev <- r.result :: state.results_rev;
+  state.diagnostics_seen <- state.diagnostics_seen + diagnostic_count r.result;
+  (match state.limit with
+  | Some max_diagnostics when state.diagnostics_seen >= max_diagnostics ->
+      state.stop_requested <- true
+  | _ -> ());
   send state.owner (Messages.FileResult r);
   if is_complete state then
     handle_complete state
@@ -92,8 +103,10 @@ let init config () =
       file_queue;
       busy_workers = HashMap.create ();
       results_rev = [];
+      diagnostics_seen = 0;
       stop_requested = false;
       stopped_workers = 0;
+      limit = config.limit;
       total_workers = config.concurrency;
       mode = config.mode;
       scope = config.scope;

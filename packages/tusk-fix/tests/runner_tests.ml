@@ -354,6 +354,30 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains open-count violations" (fun () ->
         assert_explanation_contains ~code:"F0126" ~snippet:"two open statements");
+    Test.case "no-unnecessary-rec flags recursive bindings without self-reference" (fun () ->
+        let source = "let rec render x = x + 1\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_unnecessary_rec.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0127" ] ~actual:codes;
+        Ok ());
+    Test.case "no-unnecessary-rec keeps real recursive bindings clean" (fun () ->
+        let source = "let rec loop x = loop x\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_unnecessary_rec.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains unnecessary rec" (fun () ->
+        assert_explanation_contains ~code:"F0127" ~snippet:"Remove rec");
     Test.case "alphabetized-named-arguments flags unsorted labeled arguments" (fun () ->
         let source = "let render ~zebra ~alpha current_user = current_user\n" in
         let pipeline =
@@ -793,6 +817,34 @@ let tests =
         Test.assert_true (String.contains output "\"rule_id\":\"snake-case-type-names\"");
         Test.assert_true (String.contains output "\"code\":\"F0102\"");
         Ok ());
+    Test.case "cli run_result stops after the requested diagnostic limit" (fun () ->
+        with_tempdir "tusk_fix_limit" (fun tmpdir ->
+              let file1 = Path.(tmpdir / Path.v "a.ml") in
+              let file2 = Path.(tmpdir / Path.v "b.ml") in
+              let file3 = Path.(tmpdir / Path.v "c.ml") in
+              write_file file1 "type userProfile = int\n";
+              write_file file2 "type accountProfile = int\n";
+              write_file file3 "type sessionState = int\n";
+              let outcome =
+                Tusk_fix.Cli.run_result ~mode:Tusk_fix.Runner.Check ~scope:None
+                  ~limit:(Some 1) ~files:[ file1; file2; file3 ]
+              in
+              Test.assert_true outcome.limit_reached;
+              Test.assert_equal ~expected:1
+                ~actual:outcome.result.summary.total_files;
+              Test.assert_equal ~expected:1
+                ~actual:outcome.result.summary.remaining_diagnostics;
+              Ok ()));
+    Test.case "cli rejects non-positive diagnostic limits" (fun () ->
+        with_tempdir "tusk_fix_limit" (fun tmpdir ->
+              let file = Path.(tmpdir / Path.v "sample.ml") in
+              write_file file "type userProfile = int\n";
+              let result =
+                with_cwd tmpdir (fun () ->
+                    run_cli [ "--check"; "--limit"; "0"; Path.to_string file ])
+              in
+              Test.assert_error result;
+              Ok ()));
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let pipeline =

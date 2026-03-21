@@ -243,6 +243,19 @@ let tests =
               ~actual:names;
             Ok ()
         | None -> Error "expected render binding parameters");
+    Test.case "cst let bindings preserve recursive markers" (fun () ->
+        let source = "let rec loop x = loop x\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.let_bindings cst with
+        | binding :: _ ->
+            Test.assert_true (Syn.Cst.LetBinding.is_recursive binding);
+            Ok ()
+        | [] -> Error "expected recursive let binding");
     Test.case "cst let bindings expose infix string concatenation values" (fun () ->
         let source = "let banner = \"a\" ^ \"b\" ^ \"c\"\n" in
         let result = Syn.parse ~filename:"sample.ml" source in

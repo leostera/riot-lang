@@ -5,6 +5,7 @@ open Std
 type config = {
   files : Path.t list;
   concurrency : int;
+  limit : int option;
   mode : Runner.mode;
   scope : Fix_config.scope option;
   owner : Pid.t;

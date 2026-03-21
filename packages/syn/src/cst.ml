@@ -789,6 +789,12 @@ let type_declaration_from_node node =
   | None -> None
 
 let let_binding_from_node ~is_recursive_binding node =
+  let is_recursive_binding =
+    is_recursive_binding
+    || List.exists
+         (fun token -> String.equal (Ceibo.Red.SyntaxToken.text token) "rec")
+         (direct_non_trivia_tokens node)
+  in
   match direct_non_trivia_nodes node with
   | name_node :: rest -> (
       match List.rev rest with
@@ -808,6 +814,12 @@ let let_binding_from_node ~is_recursive_binding node =
   | [] -> None
 
 let let_expression_binding_from_node ~is_recursive_binding node =
+  let is_recursive_binding =
+    is_recursive_binding
+    || List.exists
+         (fun token -> String.equal (Ceibo.Red.SyntaxToken.text token) "rec")
+         (direct_non_trivia_tokens node)
+  in
   let rec find_name_node = function
     | [] -> None
     | child :: rest ->

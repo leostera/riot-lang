@@ -1,5 +1,10 @@
 open Std
 
+type run_outcome = {
+  result : Runner.run_result;
+  limit_reached : bool;
+}
+
 let command =
   let open ArgParser in
   let open Arg in
@@ -294,17 +299,19 @@ let list_diagnostics format =
   if format = Reporter.Text then print "\n";
   Ok ()
 
-let run_with_coordinator ~format ~mode ~scope ~limit files =
+let recommended_concurrency ~limit =
   let concurrency =
     let recommended = System.available_parallelism in
     if recommended <= 0 then 1 else recommended
   in
-  if format = Reporter.Text then
-    println
-      ("Scanning " ^ Int.to_string (List.length files) ^ " files with "
-     ^ Int.to_string concurrency ^ " workers...");
+  match limit with
+  | Some max_diagnostics -> Int.min concurrency max_diagnostics
+  | None -> concurrency
+
+let run_result_with ~on_result ~mode ~scope ~limit ~files =
+  let concurrency = recommended_concurrency ~limit in
   let owner = self () in
-  let coordinator = Coordinator.start { files; concurrency; mode; scope; owner } in
+  let coordinator = Coordinator.start { files; concurrency; limit; mode; scope; owner } in
   let rec loop results_rev diagnostics_seen limit_reached =
     let selector = function
       | Messages.FileResult result -> `select (`FileResult result)
@@ -329,35 +336,50 @@ let run_with_coordinator ~format ~mode ~scope ~limit files =
           | Some max_diagnostics when diagnostics_seen >= max_diagnostics -> true
           | _ -> false
         in
-        if limit_reached_now && not limit_reached then
-          send coordinator Messages.StopRequested;
-        (match format with
-        | Reporter.Text -> print_text_result mode result
-        | Reporter.Json -> ());
+        on_result result;
         loop (result :: results_rev) diagnostics_seen (limit_reached || limit_reached_now)
     | `AllComplete _summary ->
         let files = List.rev results_rev in
         let summary = Runner.summarize files in
-        let result = Runner.{ files; summary } in
-        (match format with
-        | Reporter.Json ->
-            print (Data.Json.to_string (Runner.run_result_to_json result));
-            print "\n"
-        | Reporter.Text ->
-            if limit_reached then (
-              println "";
-              println
-                ("\027[1;33m!\027[0m Reached diagnostic limit "
-               ^ (limit |> Option.map Int.to_string |> Option.unwrap_or ~default:"0")
-               ^ "; stopped early"));
-            print_text_summary mode summary);
-        if
-          summary.failed_files > 0
-          || summary.remaining_diagnostics > 0
-        then Error (Failure "Issues remain after tusk fix")
-        else Ok ()
+        {
+          result = Runner.{ files; summary };
+          limit_reached;
+        }
   in
   loop [] 0 false
+
+let run_result ~mode ~scope ~limit ~files =
+  run_result_with ~mode ~scope ~limit ~files ~on_result:(fun _ -> ())
+
+let run_with_coordinator ~format ~mode ~scope ~limit files =
+  let concurrency = recommended_concurrency ~limit in
+  if format = Reporter.Text then
+    println
+      ("Scanning " ^ Int.to_string (List.length files) ^ " files with "
+     ^ Int.to_string concurrency ^ " workers...");
+  let outcome =
+    run_result_with ~mode ~scope ~limit ~files ~on_result:(fun result ->
+        match format with
+        | Reporter.Text -> print_text_result mode result
+        | Reporter.Json -> ())
+  in
+  (match format with
+  | Reporter.Json ->
+      print (Data.Json.to_string (Runner.run_result_to_json outcome.result));
+      print "\n"
+  | Reporter.Text ->
+      if outcome.limit_reached then (
+        println "";
+        println
+          ("\027[1;33m!\027[0m Reached diagnostic limit "
+         ^ (limit |> Option.map Int.to_string |> Option.unwrap_or ~default:"0")
+         ^ "; stopped early"));
+      print_text_summary mode outcome.result.summary);
+  if
+    outcome.result.summary.failed_files > 0
+    || outcome.result.summary.remaining_diagnostics > 0
+  then Error (Failure "Issues remain after tusk fix")
+  else Ok ()
 
 let run matches =
   let cwd =
@@ -377,29 +399,32 @@ let run matches =
   in
   let limit =
     match ArgParser.get_int matches "limit" with
-    | Some n when n > 0 -> Some n
-    | Some _ -> raise (Failure "--limit must be greater than 0")
-    | None -> None
+    | Some n when n > 0 -> Ok (Some n)
+    | Some _ -> Error (Failure "--limit must be greater than 0")
+    | None -> Ok None
   in
-  match
-    ArgParser.get_flag matches "list-rules",
-    ArgParser.get_flag matches "list-diagnostics",
-    ArgParser.get_one matches "explain"
-  with
-  | true, _, _ -> list_rules format
-  | false, true, _ -> list_diagnostics format
-  | false, false, Some code -> explain_code code
-  | false, false, None ->
-  let target = resolve_target matches in
-  let files =
-    resolve_files target
-    |> List.filter (fun file -> not (Fix_config.should_ignore_file scope file))
-  in
-  if List.length files = 0 then (
-    println "No OCaml files found.";
-    Ok ())
-  else
-    run_with_coordinator ~format ~mode ~scope ~limit files
+  match limit with
+  | Error _ as err -> err
+  | Ok limit ->
+      match
+        ArgParser.get_flag matches "list-rules",
+        ArgParser.get_flag matches "list-diagnostics",
+        ArgParser.get_one matches "explain"
+      with
+      | true, _, _ -> list_rules format
+      | false, true, _ -> list_diagnostics format
+      | false, false, Some code -> explain_code code
+      | false, false, None ->
+          let target = resolve_target matches in
+          let files =
+            resolve_files target
+            |> List.filter (fun file -> not (Fix_config.should_ignore_file scope file))
+          in
+          if List.length files = 0 then (
+            println "No OCaml files found.";
+            Ok ())
+          else
+            run_with_coordinator ~format ~mode ~scope ~limit files
 
 let main ~args =
   match ArgParser.get_matches command args with
