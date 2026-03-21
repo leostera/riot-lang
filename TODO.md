@@ -23,7 +23,7 @@
 - [x] Prefer function definitions with explicit params like `let foo x y = x + y` and `let foo = fn x y -> x + y` instead of `let foo = function | x -> x +1` -- we want to discourage those inlined functions and ideally nudge towards `let foo = fn ... -> ...` since it makes adding a signature easier later (`no-function-shorthand`)
 - [ ] Warn about depth of parenthesized expressions! ~5 parens is too much
 
-- [ ] Warn about functions with many params (complex check) in a few ways:
+- [x] Warn about functions with many params (complex check) in a few ways: (`limit-function-parameters`)
       1. if there are only unnamed params, 5 is too much
       2. if there are only named params, 8 is too much
       3. if there are mixed params, 10 is too much

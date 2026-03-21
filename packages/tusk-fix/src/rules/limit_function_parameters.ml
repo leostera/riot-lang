@@ -1,0 +1,97 @@
+open Std
+
+let rule_id = "limit-function-parameters"
+let rule_name = "Limit Function Parameters"
+let rule_code = "F0123"
+
+let rule_description =
+  "Functions should keep parameter counts small so call sites stay readable"
+
+let rule_message =
+  "Functions should keep parameter counts small so call sites stay readable."
+
+let rule_explain =
+  {|
+Functions with too many parameters should be avoided.
+
+Why this rule exists:
+- A long parameter list usually hides a record-shaped concept that wants a name.
+- Smaller parameter lists are easier to read, harder to mix up, and easier to refactor.
+
+Thresholds:
+- Positional-only functions should stay below 5 parameters.
+- Named-only functions should stay below 8 parameters.
+- Mixed named and positional functions should stay below 10 parameters.
+
+If a function keeps growing parameters like `~purchased_at`, `~quantity`, and `~item`,
+that usually means a `Purchase_order.t` or similar record wants to exist.
+|}
+
+type parameter_counts = {
+  positional_count : int;
+  named_count : int;
+}
+
+let count_parameter counts parameter =
+  match parameter with
+  | Syn.Cst.Parameter.Positional _ ->
+      { counts with positional_count = counts.positional_count + 1 }
+  | Syn.Cst.Parameter.Labeled _ | Syn.Cst.Parameter.Optional _ ->
+      { counts with named_count = counts.named_count + 1 }
+  | Syn.Cst.Parameter.LocallyAbstract _ | Syn.Cst.Parameter.Unknown _ ->
+      counts
+
+let parameter_counts binding =
+  Syn.Cst.LetBinding.parameters binding
+  |> List.fold_left count_parameter { positional_count = 0; named_count = 0 }
+
+let exceeds_limit counts =
+  let total = counts.positional_count + counts.named_count in
+  if counts.named_count = 0 then
+    counts.positional_count >= 5
+  else if counts.positional_count = 0 then
+    counts.named_count >= 8
+  else
+    total >= 10
+
+let threshold_description counts =
+  if counts.named_count = 0 then
+    "positional-only functions should stay below 5 parameters"
+  else if counts.positional_count = 0 then
+    "named-only functions should stay below 8 parameters"
+  else
+    "mixed named and positional functions should stay below 10 parameters"
+
+let make_diagnostic binding counts =
+  let total = counts.positional_count + counts.named_count in
+  Diagnostic.make ~severity:Warning
+    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~span:
+      (Syn.Cst.LetBinding.binding_name_token binding
+      |> Syn.Cst.Token.span)
+    ~suggestion:
+      ("This function has "
+     ^ Int.to_string total
+     ^ " parameters; consider introducing a named record parameter because "
+     ^ threshold_description counts)
+    ()
+
+let diagnostic_for_binding binding =
+  let counts = parameter_counts binding in
+  if exceeds_limit counts then
+    Some (make_diagnostic binding counts)
+  else
+    None
+
+let check_tree (ctx : Rule.context) _red_root =
+  match ctx.cst with
+  | None -> []
+  | Some source_file ->
+      Syn.Cst.SourceFile.let_bindings source_file
+      |> List.filter Syn.Cst.LetBinding.is_function
+      |> List.filter_map diagnostic_for_binding
+
+let make () =
+  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
+    ~description:rule_description ~message:rule_message ~explain:rule_explain
+    ~run:check_tree ()

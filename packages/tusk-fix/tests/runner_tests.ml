@@ -615,6 +615,56 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains function shorthand" (fun () ->
         assert_explanation_contains ~code:"F0122" ~snippet:"Explicit parameters");
+    Test.case "limit-function-parameters flags five positional parameters" (fun () ->
+        let source = "let render a b c d e = a\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_function_parameters.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0123" ] ~actual:codes;
+        Ok ());
+    Test.case "limit-function-parameters flags eight named parameters" (fun () ->
+        let source =
+          "let render ~a ~b ~c ~d ~e ~f ~g ~h = a\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_function_parameters.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0123" ] ~actual:codes;
+        Ok ());
+    Test.case "limit-function-parameters flags mixed parameter lists at ten" (fun () ->
+        let source =
+          "let render ~a ~b ~c ~d ~e x y z q r = a\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_function_parameters.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0123" ] ~actual:codes;
+        Ok ());
+    Test.case "limit-function-parameters keeps shorter signatures clean" (fun () ->
+        let source = "let render ~a ~b x y = a\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_function_parameters.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains parameter count limits" (fun () ->
+        assert_explanation_contains ~code:"F0123" ~snippet:"record-shaped concept");
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let pipeline =
