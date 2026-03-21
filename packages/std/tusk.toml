@@ -14,3 +14,6 @@ kernel = { path = "../kernel" }
 
 [dev-dependencies]
 propane = { path = "../propane" }
+
+[build-dependencies]
+tusk-fix-api = { path = "../tusk-fix-api" }
