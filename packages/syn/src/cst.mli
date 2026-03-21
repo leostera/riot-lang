@@ -12,15 +12,40 @@ module Token : sig
   val span : t -> Ceibo.Span.t
 end
 
+module ModulePath : sig
+  type t = {
+    syntax_node : syntax_node;
+    segments : Token.t list;
+  }
+
+  val syntax_node : t -> syntax_node
+  val segments : t -> Token.t list
+  val last_segment : t -> Token.t option
+  val name : t -> string option
+end
+
 type expression =
+  | PathExpression of path_expression
   | StringLiteral of string_literal
+  | ApplyExpression of apply_expression
   | InfixExpression of infix_expression
   | ParenthesizedExpression of parenthesized_expression
   | Unknown of syntax_node
 
+and path_expression = {
+  syntax_node : syntax_node;
+  path : ModulePath.t;
+}
+
 and string_literal = {
   syntax_node : syntax_node;
   literal_token : Token.t;
+}
+
+and apply_expression = {
+  syntax_node : syntax_node;
+  callee : expression;
+  argument : expression;
 }
 
 and infix_expression = {
@@ -37,12 +62,24 @@ and parenthesized_expression = {
 
 module Expression : sig
   type t = expression =
+    | PathExpression of path_expression
     | StringLiteral of string_literal
+    | ApplyExpression of apply_expression
     | InfixExpression of infix_expression
     | ParenthesizedExpression of parenthesized_expression
     | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node
+end
+
+module PathExpression : sig
+  type t = path_expression = {
+    syntax_node : syntax_node;
+    path : ModulePath.t;
+  }
+
+  val syntax_node : t -> syntax_node
+  val path : t -> ModulePath.t
 end
 
 module StringLiteral : sig
@@ -54,6 +91,18 @@ module StringLiteral : sig
   val syntax_node : t -> syntax_node
   val literal_token : t -> Token.t
   val text : t -> string
+end
+
+module ApplyExpression : sig
+  type t = apply_expression = {
+    syntax_node : syntax_node;
+    callee : expression;
+    argument : expression;
+  }
+
+  val syntax_node : t -> syntax_node
+  val callee : t -> Expression.t
+  val argument : t -> Expression.t
 end
 
 module InfixExpression : sig
@@ -101,18 +150,6 @@ module TypeParameter : sig
 
   val syntax_node : t -> syntax_node
   val type_variable : t -> TypeVariable.t option
-end
-
-module ModulePath : sig
-  type t = {
-    syntax_node : syntax_node;
-    segments : Token.t list;
-  }
-
-  val syntax_node : t -> syntax_node
-  val segments : t -> Token.t list
-  val last_segment : t -> Token.t option
-  val name : t -> string option
 end
 
 module RecordField : sig

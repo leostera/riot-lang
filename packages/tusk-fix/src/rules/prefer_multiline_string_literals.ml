@@ -26,7 +26,9 @@ hello world!
 |explain}
 
 let rec string_literal_chain_size = function
+  | Syn.Cst.Expression.PathExpression _ -> None
   | Syn.Cst.Expression.StringLiteral _ -> Some 1
+  | Syn.Cst.Expression.ApplyExpression _ -> None
   | Syn.Cst.Expression.ParenthesizedExpression expr ->
       string_literal_chain_size (Syn.Cst.ParenthesizedExpression.inner expr)
   | Syn.Cst.Expression.InfixExpression expr

@@ -43,9 +43,15 @@ let rec parenthesis_chain_depth = function
   | _ -> 0
 
 let rec diagnostics_for_expression ~inside_parenthesized_chain = function
+  | Syn.Cst.Expression.PathExpression _
   | Syn.Cst.Expression.StringLiteral _
   | Syn.Cst.Expression.Unknown _ ->
       []
+  | Syn.Cst.Expression.ApplyExpression expr ->
+      diagnostics_for_expression ~inside_parenthesized_chain
+        (Syn.Cst.ApplyExpression.callee expr)
+      @ diagnostics_for_expression ~inside_parenthesized_chain
+          (Syn.Cst.ApplyExpression.argument expr)
   | Syn.Cst.Expression.InfixExpression expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
         (Syn.Cst.InfixExpression.left expr)

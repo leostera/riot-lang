@@ -68,9 +68,13 @@ let make_diagnostic expr =
     ()
 
 let rec diagnostics_for_expression = function
+  | Syn.Cst.Expression.PathExpression _
   | Syn.Cst.Expression.StringLiteral _
   | Syn.Cst.Expression.Unknown _ ->
       []
+  | Syn.Cst.Expression.ApplyExpression expr ->
+      diagnostics_for_expression (Syn.Cst.ApplyExpression.callee expr)
+      @ diagnostics_for_expression (Syn.Cst.ApplyExpression.argument expr)
   | Syn.Cst.Expression.ParenthesizedExpression expr ->
       diagnostics_for_expression (Syn.Cst.ParenthesizedExpression.inner expr)
   | Syn.Cst.Expression.InfixExpression expr ->

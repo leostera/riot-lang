@@ -17,15 +17,47 @@ module Token = struct
   let span token = Ceibo.Red.SyntaxToken.span token.syntax_token
 end
 
+module ModulePath = struct
+  type t = {
+    syntax_node : syntax_node;
+    segments : Token.t list;
+  }
+
+  let syntax_node path = path.syntax_node
+  let segments path = path.segments
+  let last_segment path =
+    match List.rev path.segments with
+    | segment :: _ -> Some segment
+    | [] -> None
+
+  let name path =
+    match last_segment path with
+    | Some segment -> Some (Token.text segment)
+    | None -> None
+end
+
 type expression =
+  | PathExpression of path_expression
   | StringLiteral of string_literal
+  | ApplyExpression of apply_expression
   | InfixExpression of infix_expression
   | ParenthesizedExpression of parenthesized_expression
   | Unknown of syntax_node
 
+and path_expression = {
+  syntax_node : syntax_node;
+  path : ModulePath.t;
+}
+
 and string_literal = {
   syntax_node : syntax_node;
   literal_token : Token.t;
+}
+
+and apply_expression = {
+  syntax_node : syntax_node;
+  callee : expression;
+  argument : expression;
 }
 
 and infix_expression = {
@@ -42,16 +74,30 @@ and parenthesized_expression = {
 
 module Expression = struct
   type t = expression =
+    | PathExpression of path_expression
     | StringLiteral of string_literal
+    | ApplyExpression of apply_expression
     | InfixExpression of infix_expression
     | ParenthesizedExpression of parenthesized_expression
     | Unknown of syntax_node
 
   let syntax_node = function
+    | PathExpression expr -> expr.syntax_node
     | StringLiteral expr -> expr.syntax_node
+    | ApplyExpression expr -> expr.syntax_node
     | InfixExpression expr -> expr.syntax_node
     | ParenthesizedExpression expr -> expr.syntax_node
     | Unknown node -> node
+end
+
+module PathExpression = struct
+  type t = path_expression = {
+    syntax_node : syntax_node;
+    path : ModulePath.t;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let path expr = expr.path
 end
 
 module StringLiteral = struct
@@ -63,6 +109,18 @@ module StringLiteral = struct
   let syntax_node expr = expr.syntax_node
   let literal_token expr = expr.literal_token
   let text expr = Token.text expr.literal_token
+end
+
+module ApplyExpression = struct
+  type t = apply_expression = {
+    syntax_node : syntax_node;
+    callee : expression;
+    argument : expression;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let callee expr = expr.callee
+  let argument expr = expr.argument
 end
 
 module InfixExpression = struct
@@ -120,25 +178,6 @@ module TypeParameter = struct
 
   let syntax_node type_param = type_param.syntax_node
   let type_variable type_param = type_param.type_variable
-end
-
-module ModulePath = struct
-  type t = {
-    syntax_node : syntax_node;
-    segments : Token.t list;
-  }
-
-  let syntax_node path = path.syntax_node
-  let segments path = path.segments
-  let last_segment path =
-    match List.rev path.segments with
-    | segment :: _ -> Some segment
-    | [] -> None
-
-  let name path =
-    match last_segment path with
-    | Some segment -> Some (Token.text segment)
-    | None -> None
 end
 
 module RecordField = struct
@@ -397,8 +436,32 @@ let direct_non_trivia_tokens node =
            Some tok
        | _ -> None)
 
+let module_path_from_node node =
+  let parts = direct_non_trivia_tokens node |> List.map token in
+  ModulePath.{ syntax_node = node; segments = parts }
+
+let ident_path_from_node node =
+  let parts =
+    match direct_non_trivia_tokens node with
+    | first :: _ -> [ token first ]
+    | [] -> []
+  in
+  ModulePath.{ syntax_node = node; segments = parts }
+
 let rec expression_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.IDENT_EXPR ->
+      Expression.PathExpression
+        PathExpression.
+          { syntax_node = node; path = ident_path_from_node node }
+  | Syntax_kind.MODULE_PATH ->
+      Expression.PathExpression
+        PathExpression.
+          { syntax_node = node; path = module_path_from_node node }
+  | Syntax_kind.FIELD_ACCESS_EXPR -> (
+      match path_expression_from_field_access node with
+      | Some expr -> expr
+      | None -> Expression.Unknown node)
   | Syntax_kind.STRING_LITERAL -> (
       match direct_non_trivia_tokens node with
       | literal_syntax_token :: _ ->
@@ -409,6 +472,17 @@ let rec expression_from_node node =
                 literal_token = token literal_syntax_token;
               }
       | [] -> Expression.Unknown node)
+  | Syntax_kind.APPLY_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | callee_node :: argument_node :: _ ->
+          Expression.ApplyExpression
+            ApplyExpression.
+              {
+                syntax_node = node;
+                callee = expression_from_node callee_node;
+                argument = expression_from_node argument_node;
+              }
+      | _ -> Expression.Unknown node)
   | Syntax_kind.INFIX_EXPR -> (
       match direct_non_trivia_nodes node, direct_non_trivia_tokens node with
       | left_node :: right_node :: _, operator_syntax_token :: _ ->
@@ -433,6 +507,25 @@ let rec expression_from_node node =
       | [] -> Expression.Unknown node)
   | _ -> Expression.Unknown node
 
+and path_expression_from_field_access node =
+  match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
+  | receiver_node :: _, field_token :: _ -> (
+      match expression_from_node receiver_node with
+      | Expression.PathExpression receiver ->
+          let path_segments =
+            ModulePath.segments (PathExpression.path receiver)
+            @ [ token field_token ]
+          in
+          Some
+            (Expression.PathExpression
+               PathExpression.
+                 {
+                   syntax_node = node;
+                   path = ModulePath.{ syntax_node = node; segments = path_segments };
+                 })
+      | _ -> None)
+  | _ -> None
+
 let type_variable_from_node node =
   match List.rev (direct_non_trivia_tokens node) with
   | name_tok :: _ ->
@@ -449,18 +542,6 @@ let type_parameter_from_node node =
     | None -> None
   in
   TypeParameter.{ syntax_node = node; type_variable = type_var }
-
-let module_path_from_node node =
-  let parts = direct_non_trivia_tokens node |> List.map token in
-  ModulePath.{ syntax_node = node; segments = parts }
-
-let ident_path_from_node node =
-  let parts =
-    match direct_non_trivia_tokens node with
-    | first :: _ -> [ token first ]
-    | [] -> []
-  in
-  ModulePath.{ syntax_node = node; segments = parts }
 
 let record_field_name_token node =
   match direct_non_trivia_tokens node with
