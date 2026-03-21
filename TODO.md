@@ -19,8 +19,8 @@
 - [x] Polyvariant constructors should be `snake_case` (`snake-case-polyvariant-tags`)
 - [x] Avoid single-letter function names like `f` or `g` (`avoid-single-letter-function-names`)
 - [x] Avoid single-letter type names except for `t` (`avoid-single-letter-type-names`)
-- [ ] Prefer function sigantures in the form of `let foo : <sign> = fn x y z -> ...` rather than inlineed in params like `let foo (x : int) (y : bool) ...`
-- [ ] Prefer function definitions with explicit params like `let foo x y = x + y` and `let foo = fn x y -> x + y` instead of `let foo = function | x -> x +1` -- we want to discourage those inlined functions and ideally nudge towards `let foo = fn ... -> ...` since it makes adding a signature easier later
+- [x] Prefer function sigantures in the form of `let foo : <sign> = fn x y z -> ...` rather than inlineed in params like `let foo (x : int) (y : bool) ...` (`no-inline-parameter-type-annotations`)
+- [x] Prefer function definitions with explicit params like `let foo x y = x + y` and `let foo = fn x y -> x + y` instead of `let foo = function | x -> x +1` -- we want to discourage those inlined functions and ideally nudge towards `let foo = fn ... -> ...` since it makes adding a signature easier later (`no-function-shorthand`)
 - [ ] Warn about depth of parenthesized expressions! ~5 parens is too much
 
 - [ ] Warn about functions with many params (complex check) in a few ways:

@@ -567,6 +567,54 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains custom operators" (fun () ->
         assert_explanation_contains ~code:"F0120" ~snippet:"hard to search");
+    Test.case "no-inline-parameter-type-annotations flags typed positional parameters" (fun () ->
+        let source = "let render (user_id : int) (enabled : bool) = user_id\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_inline_parameter_type_annotations.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0121" ] ~actual:codes;
+        Ok ());
+    Test.case "no-inline-parameter-type-annotations keeps unsigned parameters clean" (fun () ->
+        let source = "let render user_id enabled = user_id\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_inline_parameter_type_annotations.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains inline parameter annotations" (fun () ->
+        assert_explanation_contains ~code:"F0121" ~snippet:"Function signatures");
+    Test.case "no-function-shorthand flags named function shorthand" (fun () ->
+        let source = "let render = function | x -> x + 1\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_function_shorthand.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0122" ] ~actual:codes;
+        Ok ());
+    Test.case "no-function-shorthand keeps fun expressions clean" (fun () ->
+        let source = "let render = fun x -> x + 1\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_function_shorthand.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains function shorthand" (fun () ->
+        assert_explanation_contains ~code:"F0122" ~snippet:"Explicit parameters");
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let pipeline =
