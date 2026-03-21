@@ -120,7 +120,7 @@ let title = function
   | CamelCaseArgumentName -> "Argument names should be snake_case"
   | NamedArgumentOrder -> "Order argument kinds"
   | TFirstNamedArgs -> "Prefer t-first positional arguments"
-  | SortedNamedArguments -> "Sort named arguments alphabetically"
+  | SortedNamedArguments -> "Alphabetize named arguments"
   | CamelCaseRecordFieldName -> "Record fields should be snake_case"
   | ConstructorNameStyle -> "Constructors should be ClassCase"
   | PolyvariantNameStyle -> "Polymorphic variants should be snake_case"
@@ -364,7 +364,7 @@ Examples:
 |}
   | SortedNamedArguments ->
       {|
-Named arguments should be kept in alphabetical order.
+Named arguments should be kept in alphabetical order within their kind groups.
 
 Why this rule exists:
 - Alphabetical order removes needless bikeshedding.
@@ -427,7 +427,7 @@ let rule_id = function
   | CamelCaseArgumentName -> "snake-case-argument-names"
   | NamedArgumentOrder -> "ordered-argument-kinds"
   | TFirstNamedArgs -> "t-first-arg-style"
-  | SortedNamedArguments -> "named-arg-sort-style"
+  | SortedNamedArguments -> "alphabetized-named-arguments"
   | CamelCaseRecordFieldName -> "record-field-name-style"
   | ConstructorNameStyle -> "constructor-name-style"
   | PolyvariantNameStyle -> "polyvariant-name-style"
@@ -467,7 +467,7 @@ let message = function
   | TFirstNamedArgs ->
       "When a function takes t with named arguments, keep t first among positional arguments."
   | SortedNamedArguments ->
-      "Keep named arguments alphabetically sorted."
+      "Keep labeled and optional arguments alphabetically sorted within their groups."
   | CamelCaseRecordFieldName ->
       "Record field names should use snake_case instead of camelCase."
   | ConstructorNameStyle ->

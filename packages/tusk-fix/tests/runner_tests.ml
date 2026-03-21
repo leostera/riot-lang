@@ -427,6 +427,69 @@ let tests =
             Test.assert_true
               (String.contains entry.body "labeled arguments");
             Ok ());
+    Test.case "alphabetized-named-arguments flags unsorted labeled arguments" (fun () ->
+        let source = "let render ~zebra ~alpha current_user = current_user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Alphabetized_named_arguments.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0113" ] ~actual:codes;
+        Ok ());
+    Test.case "alphabetized-named-arguments flags unsorted optional arguments" (fun () ->
+        let source = "let render ?zebra ?alpha current_user = current_user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Alphabetized_named_arguments.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0113" ] ~actual:codes;
+        Ok ());
+    Test.case "alphabetized-named-arguments keeps each kind group independent" (fun () ->
+        let source = "let render ~zebra ?alpha current_user = current_user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Alphabetized_named_arguments.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "alphabetized-named-arguments reports one issue per function" (fun () ->
+        let source = "let render ~zebra ~alpha ~beta current_user = current_user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Alphabetized_named_arguments.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:1
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains named-argument sorting violations" (fun () ->
+        match Tusk_fix.Diagnostic_code.explain "F0113" with
+        | None -> Error "Expected explanation for F0113"
+        | Some entry ->
+            Test.assert_equal ~expected:"F0113"
+              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
+            Test.assert_true
+              (String.contains entry.body "Alphabetical order");
+            Ok ());
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let pipeline =

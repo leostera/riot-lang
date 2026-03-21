@@ -13,7 +13,7 @@
 - [ ] warn against custom operators
 - [x] Named arguments should come first, then arguments with defaults, then positional arguments (`ordered-argument-kinds`)
 - [ ] Prefer `t`-first functions when named arguments are present
-- [ ] Keep named arguments alphabetically sorted
+- [x] Keep named arguments alphabetically sorted (`alphabetized-named-arguments`)
 - [ ] Record field names should use `snake_case`
 - [ ] Constructor names should be `ClassCased`
 - [ ] Polyvariant constructors should be `ClassCased`
