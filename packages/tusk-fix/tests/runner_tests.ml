@@ -391,6 +391,78 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains t-first named argument violations" (fun () ->
         assert_explanation_contains ~code:"F0112" ~snippet:"receiver");
+    Test.case "snake-case-record-fields flags camelCase record fields" (fun () ->
+        let source = "type user = { displayName : string; created_at : int }\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Snake_case_record_fields.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0114" ] ~actual:codes;
+        Ok ());
+    Test.case "snake-case-record-fields keeps snake_case fields clean" (fun () ->
+        let source = "type user = { display_name : string; created_at : int }\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Snake_case_record_fields.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains record-field violations" (fun () ->
+        assert_explanation_contains ~code:"F0114" ~snippet:"display_name");
+    Test.case "class-case-constructors flags underscored constructors" (fun () ->
+        let source = "type user = | Guest_user | RegisteredUser\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Class_case_constructors.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0115" ] ~actual:codes;
+        Ok ());
+    Test.case "class-case-constructors keeps ClassCased constructors clean" (fun () ->
+        let source = "type user = | GuestUser | RegisteredUser\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Class_case_constructors.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains constructor-name violations" (fun () ->
+        assert_explanation_contains ~code:"F0115" ~snippet:"GuestUser");
+    Test.case "snake-case-polyvariant-tags flags non-snake-case tags" (fun () ->
+        let source = "type user = [ `GuestUser | `registered_user ]\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Snake_case_polyvariant_tags.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0116" ] ~actual:codes;
+        Ok ());
+    Test.case "snake-case-polyvariant-tags keeps snake_case tags clean" (fun () ->
+        let source = "type user = [ `guest_user | `registered_user ]\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Snake_case_polyvariant_tags.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains polyvariant-tag violations" (fun () ->
+        assert_explanation_contains ~code:"F0116" ~snippet:"guest_user");
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let pipeline =

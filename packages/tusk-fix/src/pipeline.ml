@@ -21,6 +21,9 @@ let builtin_rule_factories () =
     ("ordered-argument-kinds", Rules.Ordered_argument_kinds.make);
     ("alphabetized-named-arguments", Rules.Alphabetized_named_arguments.make);
     ("t-first-named-arguments", Rules.T_first_named_arguments.make);
+    ("snake-case-record-fields", Rules.Snake_case_record_fields.make);
+    ("class-case-constructors", Rules.Class_case_constructors.make);
+    ("snake-case-polyvariant-tags", Rules.Snake_case_polyvariant_tags.make);
   ]
 
 let package_rules () =

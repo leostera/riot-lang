@@ -52,6 +52,81 @@ let tests =
             Test.assert_equal ~expected:[ "'a"; "'error" ] ~actual:params;
             Ok ()
         | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst type declarations expose record fields structurally" (fun () ->
+        let result =
+          Syn.parse ~filename:"sample.ml"
+            "type user = { mutable userName : string; created_at : int }\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+            match Syn.Cst.TypeDeclaration.type_definition decl with
+            | Syn.Cst.TypeDefinition.Record fields ->
+                let names =
+                  fields |> List.map Syn.Cst.RecordField.name
+                in
+                let mutability =
+                  fields |> List.map Syn.Cst.RecordField.is_mutable
+                in
+                Test.assert_equal ~expected:[ "userName"; "created_at" ]
+                  ~actual:names;
+                Test.assert_equal ~expected:[ true; false ] ~actual:mutability;
+                Ok ()
+            | _ -> Error "expected record type definition")
+        | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst type declarations expose variant constructors structurally" (fun () ->
+        let result =
+          Syn.parse ~filename:"sample.ml"
+            "type user = | Guest_user | RegisteredUser of int\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+            match Syn.Cst.TypeDeclaration.type_definition decl with
+            | Syn.Cst.TypeDefinition.Variant constructors ->
+                let names =
+                  constructors
+                  |> List.map Syn.Cst.VariantConstructor.name
+                  |> List.sort String.compare
+                in
+                Test.assert_equal ~expected:[ "Guest_user"; "RegisteredUser" ]
+                  ~actual:names;
+                Ok ()
+            | _ -> Error "expected variant type definition")
+        | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst type declarations expose polyvariant tags structurally" (fun () ->
+        let result =
+          Syn.parse ~filename:"sample.ml"
+            "type user = [ `guest_user | `RegisteredUser of int ]\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+            match Syn.Cst.TypeDeclaration.type_definition decl with
+            | Syn.Cst.TypeDefinition.PolyVariant tags ->
+                let names =
+                  tags |> List.map Syn.Cst.PolyVariantTag.name
+                in
+                Test.assert_equal ~expected:[ "guest_user"; "RegisteredUser" ]
+                  ~actual:names;
+                Ok ()
+            | _ -> Error "expected polyvariant type definition")
+        | _ -> Error "expected first item to be a type declaration");
     Test.case "cst let bindings expose function binding names" (fun () ->
         let result = Syn.parse ~filename:"sample.ml" "let userProfile x = x\n" in
         let cst =

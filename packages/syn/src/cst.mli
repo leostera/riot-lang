@@ -46,16 +46,62 @@ module ModulePath : sig
   val name : t -> string option
 end
 
+module RecordField : sig
+  type t = {
+    syntax_node : syntax_node;
+    field_name : Token.t;
+    is_mutable : bool;
+  }
+
+  val syntax_node : t -> syntax_node
+  val field_name_token : t -> Token.t
+  val name : t -> string
+  val is_mutable : t -> bool
+end
+
+module VariantConstructor : sig
+  type t = {
+    syntax_node : syntax_node;
+    constructor_name : Token.t;
+  }
+
+  val syntax_node : t -> syntax_node
+  val constructor_name_token : t -> Token.t
+  val name : t -> string
+end
+
+module PolyVariantTag : sig
+  type t = {
+    syntax_node : syntax_node;
+    tag_name : Token.t;
+  }
+
+  val syntax_node : t -> syntax_node
+  val tag_name_token : t -> Token.t
+  val name : t -> string
+end
+
+module TypeDefinition : sig
+  type t =
+    | Abstract
+    | Record of RecordField.t list
+    | Variant of VariantConstructor.t list
+    | PolyVariant of PolyVariantTag.t list
+    | Other of syntax_node
+end
+
 module TypeDeclaration : sig
   type t = {
     syntax_node : syntax_node;
     type_name : ModulePath.t;
     type_params : TypeParameter.t list;
+    type_definition : TypeDefinition.t;
   }
 
   val syntax_node : t -> syntax_node
   val type_name : t -> ModulePath.t
   val type_params : t -> TypeParameter.t list
+  val type_definition : t -> TypeDefinition.t
   val name_token : t -> Token.t
 end
 

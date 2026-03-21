@@ -68,16 +68,62 @@ module ModulePath = struct
     | None -> None
 end
 
+module RecordField = struct
+  type t = {
+    syntax_node : syntax_node;
+    field_name : Token.t;
+    is_mutable : bool;
+  }
+
+  let syntax_node field = field.syntax_node
+  let field_name_token field = field.field_name
+  let name field = Token.text field.field_name
+  let is_mutable field = field.is_mutable
+end
+
+module VariantConstructor = struct
+  type t = {
+    syntax_node : syntax_node;
+    constructor_name : Token.t;
+  }
+
+  let syntax_node constr = constr.syntax_node
+  let constructor_name_token constr = constr.constructor_name
+  let name constr = Token.text constr.constructor_name
+end
+
+module PolyVariantTag = struct
+  type t = {
+    syntax_node : syntax_node;
+    tag_name : Token.t;
+  }
+
+  let syntax_node tag = tag.syntax_node
+  let tag_name_token tag = tag.tag_name
+  let name tag = Token.text tag.tag_name
+end
+
+module TypeDefinition = struct
+  type t =
+    | Abstract
+    | Record of RecordField.t list
+    | Variant of VariantConstructor.t list
+    | PolyVariant of PolyVariantTag.t list
+    | Other of syntax_node
+end
+
 module TypeDeclaration = struct
   type t = {
     syntax_node : syntax_node;
     type_name : ModulePath.t;
     type_params : TypeParameter.t list;
+    type_definition : TypeDefinition.t;
   }
 
   let syntax_node decl = decl.syntax_node
   let type_name decl = decl.type_name
   let type_params decl = decl.type_params
+  let type_definition decl = decl.type_definition
 
   let name_token decl =
     match ModulePath.last_segment decl.type_name with
@@ -289,6 +335,44 @@ let ident_path_from_node node =
   in
   ModulePath.{ syntax_node = node; segments = parts }
 
+let record_field_name_token node =
+  match direct_non_trivia_tokens node with
+  | mutable_kw :: field_name :: _
+    when String.equal (Ceibo.Red.SyntaxToken.text mutable_kw) "mutable" ->
+      Some (token field_name)
+  | field_name :: _ -> Some (token field_name)
+  | [] -> None
+
+let record_field_from_node node =
+  record_field_name_token node
+  |> Option.map (fun field_name ->
+         let mutable_field =
+           match direct_non_trivia_tokens node with
+           | first :: _ ->
+               String.equal (Ceibo.Red.SyntaxToken.text first) "mutable"
+           | [] -> false
+         in
+         RecordField.{ syntax_node = node; field_name; is_mutable = mutable_field })
+
+let variant_constructor_from_node node =
+  match direct_non_trivia_nodes node with
+  | first_child :: _ -> (
+      match direct_non_trivia_tokens first_child with
+      | constructor_name :: _ ->
+          Some
+            VariantConstructor.
+              { syntax_node = node; constructor_name = token constructor_name }
+      | [] -> None)
+  | [] -> None
+
+let poly_variant_tag_from_node node =
+  match direct_non_trivia_tokens node with
+  | _backtick :: tag_name :: _ ->
+      Some PolyVariantTag.{ syntax_node = node; tag_name = token tag_name }
+  | tag_name :: _ ->
+      Some PolyVariantTag.{ syntax_node = node; tag_name = token tag_name }
+  | [] -> None
+
 let name_token_from_ident_pattern node =
   match direct_non_trivia_tokens node with
   | first :: _ -> Some (token first)
@@ -423,6 +507,57 @@ let type_declaration_name_path node =
          | Syntax_kind.IDENT_EXPR -> ident_path_from_node child
          | _ -> ModulePath.{ syntax_node = child; segments = [] })
 
+let type_definition_from_node node =
+  let direct_children = direct_non_trivia_nodes node in
+  let variant_constructors =
+    direct_children
+    |> List.filter (fun child ->
+           Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_VARIANT_CONSTR)
+    |> List.filter_map variant_constructor_from_node
+  in
+  if List.length variant_constructors > 0 then
+    TypeDefinition.Variant variant_constructors
+  else
+    match
+      direct_children
+      |> List.find_opt (fun child ->
+             Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD)
+    with
+    | Some record_node ->
+        let fields =
+          direct_non_trivia_nodes record_node
+          |> List.filter (fun child ->
+                 Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
+          |> List.filter_map record_field_from_node
+        in
+        TypeDefinition.Record fields
+    | None -> (
+        match
+          direct_children
+          |> List.find_opt (fun child ->
+                 Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_POLY_VARIANT)
+        with
+        | Some poly_variant_node ->
+            let tags =
+              direct_non_trivia_nodes poly_variant_node
+              |> List.filter (fun child ->
+                     Ceibo.Red.SyntaxNode.kind child = Syntax_kind.POLY_VARIANT_TAG)
+              |> List.filter_map poly_variant_tag_from_node
+            in
+            TypeDefinition.PolyVariant tags
+        | None ->
+            let remaining_nodes =
+              direct_children
+              |> List.filter (fun child ->
+                     let kind = Ceibo.Red.SyntaxNode.kind child in
+                     kind != Syntax_kind.TYPE_PARAM
+                     && kind != Syntax_kind.IDENT_EXPR
+                     && kind != Syntax_kind.MODULE_PATH)
+            in
+            match remaining_nodes with
+            | [] -> TypeDefinition.Abstract
+            | first :: _ -> TypeDefinition.Other first)
+
 let type_declaration_from_node node =
   let params =
     direct_non_trivia_nodes node
@@ -434,7 +569,14 @@ let type_declaration_from_node node =
   | Some path -> (
       match ModulePath.last_segment path with
       | Some _ ->
-          Some TypeDeclaration.{ syntax_node = node; type_name = path; type_params = params }
+          Some
+            TypeDeclaration.
+              {
+                syntax_node = node;
+                type_name = path;
+                type_params = params;
+                type_definition = type_definition_from_node node;
+              }
       | None -> None)
   | None -> None
 

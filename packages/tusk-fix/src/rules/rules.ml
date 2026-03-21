@@ -8,3 +8,6 @@ module Snake_case_argument_names = Snake_case_argument_names
 module Ordered_argument_kinds = Ordered_argument_kinds
 module Alphabetized_named_arguments = Alphabetized_named_arguments
 module T_first_named_arguments = T_first_named_arguments
+module Snake_case_record_fields = Snake_case_record_fields
+module Class_case_constructors = Class_case_constructors
+module Snake_case_polyvariant_tags = Snake_case_polyvariant_tags

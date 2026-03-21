@@ -3,20 +3,20 @@
 ## CST-Driven Lint Rules
 
 - [x] Type names should use `snake_case` instead of `camelCase` (`snake-case-type-names`)
-- [x] Warn on type variable names like `'a` or `'b` in type definitions; suggest descriptive names like `'value` and `'error`
-- [x] Function names should use `snake_case` instead of `camelCase`
+- [x] Warn on type variable names like `'a` or `'b` in type definitions; suggest descriptive names like `'value` and `'error` (`descriptive-type-variables`)
+- [x] Function names should use `snake_case` instead of `camelCase` (`snake-case-function-names`)
 - [x] Module names should be ClassCased and not Jiraffe_cased (`class-case-module-names`)
 - [x] Variable names should use `snake_case` instead of `camelCase` (`snake-case-variable-names`)
 - [x] Variable names should not contain `'`; prefer `x2` over `x'` (`no-prime-variables`)
 - [x] Argument names should use `snake_case` instead of `camelCase` (`snake-case-argument-names`)
 - [ ] Prefer multiline strings like `{| ... |}` over concatenated string literals
-- [ ] warn against custom operators
+- [ ] Warn against custom operators
 - [x] Named arguments should come first, then arguments with defaults, then positional arguments (`ordered-argument-kinds`)
-- [ ] Prefer `t`-first functions when named arguments are present
+- [x] Prefer `t`-first functions when named arguments are present (`t-first-named-arguments`)
 - [x] Keep named arguments alphabetically sorted (`alphabetized-named-arguments`)
-- [ ] Record field names should use `snake_case`
-- [ ] Constructor names should be `ClassCased`
-- [ ] Polyvariant constructors should be `ClassCased`
+- [x] Record field names should use `snake_case` (`snake-case-record-fields`)
+- [x] Constructor names should be `ClassCased` (`class-case-constructors`)
+- [x] Polyvariant constructors should be `snake_case` (`snake-case-polyvariant-tags`)
 - [ ] Prefer function sigantures in the form of `let foo : <sign> = fn x y z -> ...` rather than inlineed in params like `let foo (x : int) (y : bool) ...`
 - [ ] Prefer function definitions with explicit params like `let foo x y = x + y` and `let foo = fn x y -> x + y` instead of `let foo = function | x -> x +1` -- we want to discourage those inlined functions and ideally nudge towards `let foo = fn ... -> ...` since it makes adding a signature easier later
 - [ ] Warn about depth of parenthesized expressions! ~5 parens is too much
