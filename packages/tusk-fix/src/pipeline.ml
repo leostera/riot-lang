@@ -11,7 +11,7 @@ let make ~rules () = { rules }
 
 let builtin_rule_factories () =
   [
-    ("type-name-style", Rules.Type_name_style.make);
+    ("snake-case-type-names", Rules.Type_name_style.make);
     ("descriptive-type-variables", Rules.Type_variable_name_style.make);
   ]
 

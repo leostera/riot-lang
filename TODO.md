@@ -2,10 +2,10 @@
 
 ## CST-Driven Lint Rules
 
-- [x] Type names should use `snake_case` instead of `camelCase` (`type-name-style`)
+- [x] Type names should use `snake_case` instead of `camelCase` (`snake-case-type-names`)
 - [x] Warn on type variable names like `'a` or `'b` in type definitions; suggest descriptive names like `'value` and `'error`
 - [ ] Function names should use `snake_case` instead of `camelCase`
-- [ ] Module names should not be Jiraffe_cased
+- [ ] Module names should be ClassCased and not Jiraffe_cased
 - [ ] Variable names should use `snake_case` instead of `camelCase`
 - [ ] Variable names should not contain `'`; prefer `x2` over `x'`
 - [ ] Prefer `Module.{ field = value }` over `{ Module.field = value }`
@@ -32,3 +32,7 @@
 
 - [ ] when using inline closed polymorphic variants like ``[ `a | `b ] list``, prefer giving them a _name_ like ``type x = [ `a  `b ]`` -- this allows you to reuse them and also easier on the eyes when types get compllicated
 
+
+- [ ] Avoid function names like `f` or `g` 
+- [ ] Avoid type single-letter type names except its `t`
+- [ ] If a module has a single type definition, prefer it be called `t`

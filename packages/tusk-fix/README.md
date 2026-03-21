@@ -142,9 +142,9 @@ match result.diagnostics with
 
 ## Built-in Rules
 
-### type-name-style
+### snake-case-type-names
 
-**Rule ID**: `type-name-style`
+**Rule ID**: `snake-case-type-names`
 
 Detects type declarations that use camelCase instead of `snake_case`.
 
@@ -260,7 +260,7 @@ Diagnostic.make
   ~severity:Warning
   ~message:"Type names should use snake_case instead of camelCase."
   ~span
-  ~rule_id:"type-name-style"
+  ~rule_id:"snake-case-type-names"
   ~suggestion:"Rename userProfile to user_profile"
   ()
 
@@ -280,7 +280,7 @@ The architecture is designed to support user-land lints in the future:
 ```toml
 # .tusk_fix.toml (future)
 [rules]
-enable = ["type-name-style", "custom-rule"]
+enable = ["snake-case-type-names", "custom-rule"]
 
 [rules.custom-rule]
 plugin = "./lints/custom_rule.cmxs"
@@ -304,7 +304,7 @@ Users will be able to:
   - ✅ CLI interface
 
 ✅ Built-in rules
-  - ✅ type-name-style
+  - ✅ snake-case-type-names
 
 🚧 Future work
   - ⬜ More built-in rules

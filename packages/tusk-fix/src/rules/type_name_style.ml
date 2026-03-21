@@ -1,8 +1,8 @@
 open Std
 open Std.Collections
 
-let rule_id = "type-name-style"
-let rule_name = "Type Name Style"
+let rule_id = "snake-case-type-names"
+let rule_name = "Snake Case Type Names"
 
 let rule_description =
   "Type names should use snake_case instead of camelCase"

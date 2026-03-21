@@ -41,7 +41,7 @@ tokens, which means many rules have to:
 
 That is workable, but it is brittle.
 
-The recent `type-name-style` rule in `tusk-fix` is a good example. The rule
+The recent `snake-case-type-names` rule in `tusk-fix` is a good example. The rule
 should conceptually answer a simple question:
 
 - "what is the declared type name of this `type` declaration?"

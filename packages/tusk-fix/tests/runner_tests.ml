@@ -33,7 +33,7 @@ let with_tempdir prefix fn =
 
 let tests =
   [
-    Test.case "type-name-style rule exposes safe fixes" (fun () ->
+    Test.case "snake-case-type-names exposes safe fixes" (fun () ->
         let source = "type userProfile = { name : string }\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         let fixes =
@@ -41,13 +41,13 @@ let tests =
         in
         Test.assert_equal ~expected:1 ~actual:(List.length fixes);
         Ok ());
-    Test.case "type-name-style keeps compliant type names clean" (fun () ->
+    Test.case "snake-case-type-names keeps compliant type names clean" (fun () ->
         let source = "type user_profile = { name : string }\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "type-name-style emits stable diagnostic codes" (fun () ->
+    Test.case "snake-case-type-names emits stable diagnostic codes" (fun () ->
         let source = "type userProfile = int\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         let codes =
@@ -101,19 +101,19 @@ let tests =
             Test.assert_true
               (String.contains entry.body "'value");
             Ok ());
-    Test.case "type-name-style ignores non-type camelCase identifiers" (fun () ->
+    Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "type-name-style ignores module qualifiers in extensible types" (fun () ->
+    Test.case "snake-case-type-names ignores module qualifiers in extensible types" (fun () ->
         let source = "type Message.t += Added\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "package rule override disables type-name-style locally" (fun () ->
+    Test.case "package rule override disables snake-case-type-names locally" (fun () ->
         with_tempdir "tusk_fix_config" (fun tmpdir ->
               let workspace_toml = Path.(tmpdir / Path.v "tusk.toml") in
               let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "kernel") in
@@ -122,9 +122,9 @@ let tests =
               let file = Path.(src_dir / Path.v "file.ml") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
-                "[workspace]\nmembers = [\"packages/kernel\"]\n\n[tusk.fix]\nrules = [\"type-name-style\"]\n";
+                "[workspace]\nmembers = [\"packages/kernel\"]\n\n[tusk.fix]\nrules = [\"snake-case-type-names\"]\n";
               write_file package_toml
-                "[package]\nname = \"kernel\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [\"-type-name-style\"]\n\n[lib]\npath = \"src/kernel.ml\"\n";
+                "[package]\nname = \"kernel\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [\"-snake-case-type-names\"]\n\n[lib]\npath = \"src/kernel.ml\"\n";
               write_file file "type userProfile = int\n";
               let scope =
                 Tusk_fix.Config.load_scope ~cwd:tmpdir
@@ -148,7 +148,7 @@ let tests =
               let ignored = Path.(src_dir / Path.v "ignored.ml") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
-                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nignore = [\"ignored.ml\"]\nrules = [\"type-name-style\"]\n";
+                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nignore = [\"ignored.ml\"]\nrules = [\"snake-case-type-names\"]\n";
               write_file Path.(package_dir / Path.v "tusk.toml")
                 "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[lib]\npath = \"src/app.ml\"\n";
               write_file ignored "type userProfile = int\n";
@@ -166,9 +166,9 @@ let tests =
               let file = Path.(src_dir / Path.v "file.ml") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
-                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [\"type-name-style\"]\n";
+                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [\"snake-case-type-names\"]\n";
               write_file Path.(package_dir / Path.v "tusk.toml")
-                "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [\"-type-name-style\"]\n\n[lib]\npath = \"src/app.ml\"\n";
+                "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [\"-snake-case-type-names\"]\n\n[lib]\npath = \"src/app.ml\"\n";
               write_file file "type userProfile = int\n";
               let result =
                 Tusk_fix.Runner.run_files
@@ -186,9 +186,9 @@ let tests =
               let file = Path.(src_dir / Path.v "file.ml") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
-                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [{ name = \"type-name-style\", state = \"enabled\" }]\n";
+                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [{ name = \"snake-case-type-names\", state = \"enabled\" }]\n";
               write_file Path.(package_dir / Path.v "tusk.toml")
-                "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [{ name = \"type-name-style\", state = \"disabled\" }]\n\n[lib]\npath = \"src/app.ml\"\n";
+                "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [{ name = \"snake-case-type-names\", state = \"disabled\" }]\n\n[lib]\npath = \"src/app.ml\"\n";
               write_file file "type userProfile = int\n";
               let result =
                 Tusk_fix.Runner.run_files
