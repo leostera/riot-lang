@@ -70,6 +70,8 @@ let make_diagnostic expr =
 let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.PathExpression _
   | Syn.Cst.Expression.StringLiteral _
+  | Syn.Cst.Expression.BoolLiteral _
+  | Syn.Cst.Expression.UnitLiteral _
   | Syn.Cst.Expression.Unknown _ ->
       []
   | Syn.Cst.Expression.ApplyExpression expr ->
@@ -77,6 +79,16 @@ let rec diagnostics_for_expression = function
       @ diagnostics_for_expression (Syn.Cst.ApplyExpression.argument expr)
   | Syn.Cst.Expression.ParenthesizedExpression expr ->
       diagnostics_for_expression (Syn.Cst.ParenthesizedExpression.inner expr)
+  | Syn.Cst.Expression.LetExpression expr ->
+      diagnostics_for_expression (Syn.Cst.LetExpression.bound_value expr)
+      @ diagnostics_for_expression (Syn.Cst.LetExpression.body expr)
+  | Syn.Cst.Expression.IfExpression expr ->
+      diagnostics_for_expression (Syn.Cst.IfExpression.condition expr)
+      @ diagnostics_for_expression (Syn.Cst.IfExpression.then_branch expr)
+      @
+      (match Syn.Cst.IfExpression.else_branch expr with
+      | Some else_branch -> diagnostics_for_expression else_branch
+      | None -> [])
   | Syn.Cst.Expression.InfixExpression expr ->
       let nested =
         diagnostics_for_expression (Syn.Cst.InfixExpression.left expr)

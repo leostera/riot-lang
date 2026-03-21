@@ -36,6 +36,26 @@ module ModulePath = struct
     | None -> None
 end
 
+type pattern =
+  | IdentifierPattern of identifier_pattern
+  | UnitPattern of unit_pattern
+  | ParenthesizedPattern of parenthesized_pattern
+  | UnknownPattern of syntax_node
+
+and identifier_pattern = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+}
+
+and unit_pattern = {
+  syntax_node : syntax_node;
+}
+
+and parenthesized_pattern = {
+  syntax_node : syntax_node;
+  inner : pattern;
+}
+
 type expression =
   | PathExpression of path_expression
   | StringLiteral of string_literal
@@ -43,6 +63,7 @@ type expression =
   | UnitLiteral of unit_literal
   | ApplyExpression of apply_expression
   | InfixExpression of infix_expression
+  | LetExpression of let_expression
   | IfExpression of if_expression
   | ParenthesizedExpression of parenthesized_expression
   | Unknown of syntax_node
@@ -79,6 +100,14 @@ and infix_expression = {
   right : expression;
 }
 
+and let_expression = {
+  syntax_node : syntax_node;
+  binding_pattern : pattern;
+  bound_value : expression;
+  body : expression;
+  is_recursive : bool;
+}
+
 and if_expression = {
   syntax_node : syntax_node;
   condition : expression;
@@ -99,6 +128,7 @@ module Expression = struct
     | UnitLiteral of unit_literal
     | ApplyExpression of apply_expression
     | InfixExpression of infix_expression
+    | LetExpression of let_expression
     | IfExpression of if_expression
     | ParenthesizedExpression of parenthesized_expression
     | Unknown of syntax_node
@@ -110,9 +140,53 @@ module Expression = struct
     | UnitLiteral expr -> expr.syntax_node
     | ApplyExpression expr -> expr.syntax_node
     | InfixExpression expr -> expr.syntax_node
+    | LetExpression expr -> expr.syntax_node
     | IfExpression expr -> expr.syntax_node
     | ParenthesizedExpression expr -> expr.syntax_node
     | Unknown node -> node
+end
+
+module Pattern = struct
+  type t = pattern =
+    | IdentifierPattern of identifier_pattern
+    | UnitPattern of unit_pattern
+    | ParenthesizedPattern of parenthesized_pattern
+    | UnknownPattern of syntax_node
+
+  let syntax_node = function
+    | IdentifierPattern pattern -> pattern.syntax_node
+    | UnitPattern pattern -> pattern.syntax_node
+    | ParenthesizedPattern pattern -> pattern.syntax_node
+    | UnknownPattern node -> node
+end
+
+module IdentifierPattern = struct
+  type t = identifier_pattern = {
+    syntax_node : syntax_node;
+    name_token : Token.t;
+  }
+
+  let syntax_node pattern = pattern.syntax_node
+  let name_token pattern = pattern.name_token
+  let name pattern = Token.text pattern.name_token
+end
+
+module UnitPattern = struct
+  type t = unit_pattern = {
+    syntax_node : syntax_node;
+  }
+
+  let syntax_node pattern = pattern.syntax_node
+end
+
+module ParenthesizedPattern = struct
+  type t = parenthesized_pattern = {
+    syntax_node : syntax_node;
+    inner : pattern;
+  }
+
+  let syntax_node pattern = pattern.syntax_node
+  let inner pattern = pattern.inner
 end
 
 module PathExpression = struct
@@ -180,6 +254,22 @@ module InfixExpression = struct
   let operator_token expr = expr.operator_token
   let operator expr = Token.text expr.operator_token
   let right expr = expr.right
+end
+
+module LetExpression = struct
+  type t = let_expression = {
+    syntax_node : syntax_node;
+    binding_pattern : pattern;
+    bound_value : expression;
+    body : expression;
+    is_recursive : bool;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let binding_pattern expr = expr.binding_pattern
+  let bound_value expr = expr.bound_value
+  let body expr = expr.body
+  let is_recursive expr = expr.is_recursive
 end
 
 module IfExpression = struct
@@ -506,6 +596,53 @@ let ident_path_from_node node =
   in
   ModulePath.{ syntax_node = node; segments = parts }
 
+let is_parameter_like_kind = function
+  | Syntax_kind.IDENT_PATTERN
+  | Syntax_kind.WILDCARD_PATTERN
+  | Syntax_kind.LITERAL_PATTERN
+  | Syntax_kind.CONSTRUCTOR_PATTERN
+  | Syntax_kind.TUPLE_PATTERN
+  | Syntax_kind.LIST_PATTERN
+  | Syntax_kind.ARRAY_PATTERN
+  | Syntax_kind.CONS_PATTERN
+  | Syntax_kind.RECORD_PATTERN
+  | Syntax_kind.OR_PATTERN
+  | Syntax_kind.AS_PATTERN
+  | Syntax_kind.RANGE_PATTERN
+  | Syntax_kind.TYPED_PATTERN
+  | Syntax_kind.LAZY_PATTERN
+  | Syntax_kind.EXCEPTION_PATTERN
+  | Syntax_kind.PAREN_PATTERN
+  | Syntax_kind.POLY_VARIANT_PATTERN
+  | Syntax_kind.POLY_VARIANT_TYPE_PATTERN
+  | Syntax_kind.LOCAL_OPEN_PATTERN
+  | Syntax_kind.OPERATOR_PATTERN
+  | Syntax_kind.FIRST_CLASS_MODULE_PATTERN
+  | Syntax_kind.LABELED_PARAM
+  | Syntax_kind.OPTIONAL_PARAM
+  | Syntax_kind.OPTIONAL_PARAM_DEFAULT ->
+      true
+  | _ -> false
+
+let rec pattern_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.IDENT_PATTERN -> (
+      match direct_non_trivia_tokens node with
+      | first :: _ ->
+          Pattern.IdentifierPattern
+            IdentifierPattern.{ syntax_node = node; name_token = token first }
+      | [] -> Pattern.UnknownPattern node)
+  | Syntax_kind.UNIT_LITERAL ->
+      Pattern.UnitPattern UnitPattern.{ syntax_node = node }
+  | Syntax_kind.PAREN_PATTERN -> (
+      match direct_non_trivia_nodes node with
+      | inner_node :: _ ->
+          Pattern.ParenthesizedPattern
+            ParenthesizedPattern.
+              { syntax_node = node; inner = pattern_from_node inner_node }
+      | [] -> Pattern.UnknownPattern node)
+  | _ -> Pattern.UnknownPattern node
+
 let rec expression_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.IDENT_EXPR ->
@@ -565,6 +702,14 @@ let rec expression_from_node node =
                 right = expression_from_node right_node;
               }
       | _ -> Expression.Unknown node)
+  | Syntax_kind.LET_EXPR -> (
+      match let_expression_from_node ~is_recursive_binding:false node with
+      | Some expr -> Expression.LetExpression expr
+      | None -> Expression.Unknown node)
+  | Syntax_kind.LET_REC_EXPR -> (
+      match let_expression_from_node ~is_recursive_binding:true node with
+      | Some expr -> Expression.LetExpression expr
+      | None -> Expression.Unknown node)
   | Syntax_kind.IF_EXPR -> (
       let expression_children =
         direct_non_trivia_nodes node
@@ -617,6 +762,38 @@ and path_expression_from_field_access node =
                  })
       | _ -> None)
   | _ -> None
+
+and let_expression_from_node ~is_recursive_binding node =
+  let is_recursive_binding =
+    is_recursive_binding
+    || List.exists
+         (fun token -> String.equal (Ceibo.Red.SyntaxToken.text token) "rec")
+         (direct_non_trivia_tokens node)
+  in
+  let rec split_parameters params = function
+    | child :: rest when is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child) ->
+        split_parameters (child :: params) rest
+    | child :: rest when Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_CONSTRAINT ->
+        split_parameters params rest
+    | bound_value_node :: body_node :: _ ->
+        Some (List.rev params, bound_value_node, body_node)
+    | _ -> None
+  in
+  match direct_non_trivia_nodes node with
+  | binding_pattern_node :: rest -> (
+      match split_parameters [] rest with
+      | Some (_params, bound_value_node, body_node) ->
+          Some
+            LetExpression.
+              {
+                syntax_node = node;
+                binding_pattern = pattern_from_node binding_pattern_node;
+                bound_value = expression_from_node bound_value_node;
+                body = expression_from_node body_node;
+                is_recursive = is_recursive_binding;
+              }
+      | None -> None)
+  | [] -> None
 
 let type_variable_from_node node =
   match List.rev (direct_non_trivia_tokens node) with
@@ -718,34 +895,6 @@ let first_ident_token_in_subtree node =
     | None -> direct_non_trivia_nodes node |> List.find_map go_node
   in
   go_node node
-
-let is_parameter_like_kind = function
-  | Syntax_kind.IDENT_PATTERN
-  | Syntax_kind.WILDCARD_PATTERN
-  | Syntax_kind.LITERAL_PATTERN
-  | Syntax_kind.CONSTRUCTOR_PATTERN
-  | Syntax_kind.TUPLE_PATTERN
-  | Syntax_kind.LIST_PATTERN
-  | Syntax_kind.ARRAY_PATTERN
-  | Syntax_kind.CONS_PATTERN
-  | Syntax_kind.RECORD_PATTERN
-  | Syntax_kind.OR_PATTERN
-  | Syntax_kind.AS_PATTERN
-  | Syntax_kind.RANGE_PATTERN
-  | Syntax_kind.TYPED_PATTERN
-  | Syntax_kind.LAZY_PATTERN
-  | Syntax_kind.EXCEPTION_PATTERN
-  | Syntax_kind.PAREN_PATTERN
-  | Syntax_kind.POLY_VARIANT_PATTERN
-  | Syntax_kind.POLY_VARIANT_TYPE_PATTERN
-  | Syntax_kind.LOCAL_OPEN_PATTERN
-  | Syntax_kind.OPERATOR_PATTERN
-  | Syntax_kind.FIRST_CLASS_MODULE_PATTERN
-  | Syntax_kind.LABELED_PARAM
-  | Syntax_kind.OPTIONAL_PARAM
-  | Syntax_kind.OPTIONAL_PARAM_DEFAULT ->
-      true
-  | _ -> false
 
 let parameter_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with

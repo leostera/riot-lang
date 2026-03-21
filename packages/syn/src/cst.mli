@@ -24,6 +24,26 @@ module ModulePath : sig
   val name : t -> string option
 end
 
+type pattern =
+  | IdentifierPattern of identifier_pattern
+  | UnitPattern of unit_pattern
+  | ParenthesizedPattern of parenthesized_pattern
+  | UnknownPattern of syntax_node
+
+and identifier_pattern = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+}
+
+and unit_pattern = {
+  syntax_node : syntax_node;
+}
+
+and parenthesized_pattern = {
+  syntax_node : syntax_node;
+  inner : pattern;
+}
+
 type expression =
   | PathExpression of path_expression
   | StringLiteral of string_literal
@@ -31,6 +51,7 @@ type expression =
   | UnitLiteral of unit_literal
   | ApplyExpression of apply_expression
   | InfixExpression of infix_expression
+  | LetExpression of let_expression
   | IfExpression of if_expression
   | ParenthesizedExpression of parenthesized_expression
   | Unknown of syntax_node
@@ -67,6 +88,14 @@ and infix_expression = {
   right : expression;
 }
 
+and let_expression = {
+  syntax_node : syntax_node;
+  binding_pattern : pattern;
+  bound_value : expression;
+  body : expression;
+  is_recursive : bool;
+}
+
 and if_expression = {
   syntax_node : syntax_node;
   condition : expression;
@@ -87,11 +116,51 @@ module Expression : sig
     | UnitLiteral of unit_literal
     | ApplyExpression of apply_expression
     | InfixExpression of infix_expression
+    | LetExpression of let_expression
     | IfExpression of if_expression
     | ParenthesizedExpression of parenthesized_expression
     | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node
+end
+
+module Pattern : sig
+  type t = pattern =
+    | IdentifierPattern of identifier_pattern
+    | UnitPattern of unit_pattern
+    | ParenthesizedPattern of parenthesized_pattern
+    | UnknownPattern of syntax_node
+
+  val syntax_node : t -> syntax_node
+end
+
+module IdentifierPattern : sig
+  type t = identifier_pattern = {
+    syntax_node : syntax_node;
+    name_token : Token.t;
+  }
+
+  val syntax_node : t -> syntax_node
+  val name_token : t -> Token.t
+  val name : t -> string
+end
+
+module UnitPattern : sig
+  type t = unit_pattern = {
+    syntax_node : syntax_node;
+  }
+
+  val syntax_node : t -> syntax_node
+end
+
+module ParenthesizedPattern : sig
+  type t = parenthesized_pattern = {
+    syntax_node : syntax_node;
+    inner : pattern;
+  }
+
+  val syntax_node : t -> syntax_node
+  val inner : t -> Pattern.t
 end
 
 module PathExpression : sig
@@ -159,6 +228,22 @@ module InfixExpression : sig
   val operator_token : t -> Token.t
   val operator : t -> string
   val right : t -> Expression.t
+end
+
+module LetExpression : sig
+  type t = let_expression = {
+    syntax_node : syntax_node;
+    binding_pattern : pattern;
+    bound_value : expression;
+    body : expression;
+    is_recursive : bool;
+  }
+
+  val syntax_node : t -> syntax_node
+  val binding_pattern : t -> Pattern.t
+  val bound_value : t -> Expression.t
+  val body : t -> Expression.t
+  val is_recursive : t -> bool
 end
 
 module IfExpression : sig

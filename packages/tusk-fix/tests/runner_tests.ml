@@ -448,6 +448,30 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains boolean conditional comparisons" (fun () ->
         assert_explanation_contains ~code:"F0130" ~snippet:"if is_ready then render ()");
+    Test.case "prefer-sequences-over-let-unit flags let-unit sequencing" (fun () ->
+        let source = "let render () = let () = log () in flush ()\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_sequences_over_let_unit.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0131" ] ~actual:codes;
+        Ok ());
+    Test.case "prefer-sequences-over-let-unit keeps named let bindings clean" (fun () ->
+        let source = "let render () = let flushed = flush () in flushed\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_sequences_over_let_unit.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains let-unit sequencing" (fun () ->
+        assert_explanation_contains ~code:"F0131" ~snippet:"log (); flush ()");
     Test.case "alphabetized-named-arguments flags unsorted labeled arguments" (fun () ->
         let source = "let render ~zebra ~alpha current_user = current_user\n" in
         let pipeline =

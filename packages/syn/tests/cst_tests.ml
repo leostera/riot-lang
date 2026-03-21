@@ -316,18 +316,50 @@ let tests =
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
         match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding binding :: _ -> (
-            match Syn.Cst.LetBinding.value binding with
-            | Syn.Cst.Expression.IfExpression expr -> (
-                match Syn.Cst.IfExpression.condition expr with
-                | Syn.Cst.Expression.InfixExpression cmp -> (
-                    match Syn.Cst.InfixExpression.right cmp with
-                    | Syn.Cst.Expression.BoolLiteral literal ->
-                        Test.assert_true (Syn.Cst.BoolLiteral.value literal);
-                        Ok ()
-                    | _ -> Error "expected bool literal on right-hand side")
-                | _ -> Error "expected infix comparison condition")
-            | _ -> Error "expected if expression value")
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.IfExpression
+                  {
+                    condition =
+                      Syn.Cst.Expression.InfixExpression
+                        {
+                          right =
+                            Syn.Cst.Expression.BoolLiteral
+                              { literal_token = { syntax_token }; _ };
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_true
+              (String.equal (Syn.Ceibo.Red.SyntaxToken.text syntax_token) "true");
+            Ok ()
+        | _ -> Error "expected first item to be a let binding");
+    Test.case "cst let expressions expose unit-pattern sequencing structurally" (fun () ->
+        let source = "let render () = let () = log () in flush ()\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LetExpression
+                  {
+                    binding_pattern = Syn.Cst.Pattern.UnitPattern _;
+                    body = Syn.Cst.Expression.ApplyExpression _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Ok ()
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst source files collect recognized expressions recursively" (fun () ->
         let source = "let changed = (left <> right)\n" in

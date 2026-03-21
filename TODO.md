@@ -1,5 +1,13 @@
 # TODO
 
+Main goals:
+- [ ] Implement all the lints in the sections below (and i mean ALL of them!)
+- [ ] Make sure the Syn.Cst tree represents the entirety of the OCaml grammar (see ./packages/syn/docs/ocaml_grammar.ebnf)
+- [ ] Then lets do a learning pass by exploring how Rust's clippy does a few things:
+      - [ ] we should group built-in lints by category like rust's clippy does (https://doc.rust-lang.org/stable/clippy/lints.html)
+      - [ ] we should also learn from how clippy lets your build new lints (https://doc.rust-lang.org/stable/clippy/development/adding_lints.html)
+
+
 ## CST-Driven Lint Rules
 
 - [x] Type names should use `snake_case` instead of `camelCase` (`snake-case-type-names`)
@@ -48,7 +56,7 @@
 
 - [x] Many `open` statmenets get confusing and can shadow symbols, warn about this if we have more than 2 opens (`limit-open-statements`)
 
-- [ ] `let () = foo () in ..` this shoudl just be `foo ();` 
+- [x] `let () = foo () in ..` this shoudl just be `foo ();` (`prefer-sequences-over-let-unit`)
 
 - [ ] Needles `(fun x -> foo x)` due to eta-expansion, they can just put `foo` in there
 - [ ] Needless or redundant parenthesis or begin/end blocks

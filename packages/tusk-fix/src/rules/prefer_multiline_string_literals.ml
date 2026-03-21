@@ -28,7 +28,10 @@ hello world!
 let rec string_literal_chain_size = function
   | Syn.Cst.Expression.PathExpression _ -> None
   | Syn.Cst.Expression.StringLiteral _ -> Some 1
-  | Syn.Cst.Expression.ApplyExpression _ -> None
+  | Syn.Cst.Expression.BoolLiteral _
+  | Syn.Cst.Expression.UnitLiteral _
+  | Syn.Cst.Expression.ApplyExpression _ ->
+      None
   | Syn.Cst.Expression.ParenthesizedExpression expr ->
       string_literal_chain_size (Syn.Cst.ParenthesizedExpression.inner expr)
   | Syn.Cst.Expression.InfixExpression expr
@@ -39,6 +42,17 @@ let rec string_literal_chain_size = function
       with
       | Some left_count, Some right_count -> Some (left_count + right_count)
       | _ -> None)
+  | Syn.Cst.Expression.LetExpression expr -> (
+      match string_literal_chain_size (Syn.Cst.LetExpression.bound_value expr) with
+      | Some _ as size -> size
+      | None -> string_literal_chain_size (Syn.Cst.LetExpression.body expr))
+  | Syn.Cst.Expression.IfExpression expr -> (
+      match string_literal_chain_size (Syn.Cst.IfExpression.then_branch expr) with
+      | Some _ as size -> size
+      | None -> (
+          match Syn.Cst.IfExpression.else_branch expr with
+          | Some else_branch -> string_literal_chain_size else_branch
+          | None -> None))
   | Syn.Cst.Expression.InfixExpression _
   | Syn.Cst.Expression.Unknown _ ->
       None

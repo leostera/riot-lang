@@ -18,6 +18,7 @@ let builtin_rule_factories () =
     ("no-unnecessary-rec", Rules.No_unnecessary_rec.make);
     ("no-redundant-else-unit", Rules.No_redundant_else_unit.make);
     ("no-boolean-comparisons-in-conditionals", Rules.No_boolean_comparisons_in_conditionals.make);
+    ("prefer-sequences-over-let-unit", Rules.Prefer_sequences_over_let_unit.make);
     ("no-open-bang", Rules.No_open_bang.make);
     ("no-inline-parameter-type-annotations", Rules.No_inline_parameter_type_annotations.make);
     ("no-function-shorthand", Rules.No_function_shorthand.make);

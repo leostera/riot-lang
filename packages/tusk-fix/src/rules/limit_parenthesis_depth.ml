@@ -45,6 +45,8 @@ let rec parenthesis_chain_depth = function
 let rec diagnostics_for_expression ~inside_parenthesized_chain = function
   | Syn.Cst.Expression.PathExpression _
   | Syn.Cst.Expression.StringLiteral _
+  | Syn.Cst.Expression.BoolLiteral _
+  | Syn.Cst.Expression.UnitLiteral _
   | Syn.Cst.Expression.Unknown _ ->
       []
   | Syn.Cst.Expression.ApplyExpression expr ->
@@ -57,6 +59,21 @@ let rec diagnostics_for_expression ~inside_parenthesized_chain = function
         (Syn.Cst.InfixExpression.left expr)
       @ diagnostics_for_expression ~inside_parenthesized_chain
           (Syn.Cst.InfixExpression.right expr)
+  | Syn.Cst.Expression.LetExpression expr ->
+      diagnostics_for_expression ~inside_parenthesized_chain
+        (Syn.Cst.LetExpression.bound_value expr)
+      @ diagnostics_for_expression ~inside_parenthesized_chain
+          (Syn.Cst.LetExpression.body expr)
+  | Syn.Cst.Expression.IfExpression expr ->
+      diagnostics_for_expression ~inside_parenthesized_chain
+        (Syn.Cst.IfExpression.condition expr)
+      @ diagnostics_for_expression ~inside_parenthesized_chain
+          (Syn.Cst.IfExpression.then_branch expr)
+      @
+      (match Syn.Cst.IfExpression.else_branch expr with
+      | Some else_branch ->
+          diagnostics_for_expression ~inside_parenthesized_chain else_branch
+      | None -> [])
   | Syn.Cst.Expression.ParenthesizedExpression expr ->
       let inner = Syn.Cst.ParenthesizedExpression.inner expr in
       let nested = diagnostics_for_expression ~inside_parenthesized_chain:true inner in
