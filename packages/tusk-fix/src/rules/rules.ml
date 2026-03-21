@@ -1,5 +1,7 @@
 module Avoid_single_letter_function_names = Avoid_single_letter_function_names
 module Avoid_single_letter_type_names = Avoid_single_letter_type_names
+module Prefer_multiline_string_literals = Prefer_multiline_string_literals
+module No_custom_operators = No_custom_operators
 module Snake_case_type_names = Snake_case_type_names
 module Descriptive_type_variables = Descriptive_type_variables
 module Snake_case_function_names = Snake_case_function_names

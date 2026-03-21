@@ -9,8 +9,8 @@
 - [x] Variable names should use `snake_case` instead of `camelCase` (`snake-case-variable-names`)
 - [x] Variable names should not contain `'`; prefer `x2` over `x'` (`no-prime-variables`)
 - [x] Argument names should use `snake_case` instead of `camelCase` (`snake-case-argument-names`)
-- [ ] Prefer multiline strings like `{| ... |}` over concatenated string literals
-- [ ] Warn against custom operators
+- [x] Prefer multiline strings like `{| ... |}` over concatenated string literals (`prefer-multiline-string-literals`)
+- [x] Warn against custom operators (`no-custom-operators`)
 - [x] Named arguments should come first, then arguments with defaults, then positional arguments (`ordered-argument-kinds`)
 - [x] Prefer `t`-first functions when named arguments are present (`t-first-named-arguments`)
 - [x] Keep named arguments alphabetically sorted (`alphabetized-named-arguments`)

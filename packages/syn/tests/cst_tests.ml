@@ -227,6 +227,40 @@ let tests =
               ~actual:names;
             Ok ()
         | None -> Error "expected render binding parameters");
+    Test.case "cst let bindings expose infix string concatenation values" (fun () ->
+        let source = "let banner = \"a\" ^ \"b\" ^ \"c\"\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding binding :: _ -> (
+            match Syn.Cst.LetBinding.value binding with
+            | Syn.Cst.Expression.InfixExpression expr ->
+                Test.assert_equal ~expected:"^"
+                  ~actual:(Syn.Cst.InfixExpression.operator expr);
+                Ok ()
+            | _ -> Error "expected infix expression value")
+        | _ -> Error "expected first item to be a let binding");
+    Test.case "cst let bindings expose custom infix operators structurally" (fun () ->
+        let source = "let composed = f %> g\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding binding :: _ -> (
+            match Syn.Cst.LetBinding.value binding with
+            | Syn.Cst.Expression.InfixExpression expr ->
+                Test.assert_equal ~expected:"%>"
+                  ~actual:(Syn.Cst.InfixExpression.operator expr);
+                Ok ()
+            | _ -> Error "expected infix expression value")
+        | _ -> Error "expected first item to be a let binding");
   ]
 
 let () =

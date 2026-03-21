@@ -12,6 +12,58 @@ module Token : sig
   val span : t -> Ceibo.Span.t
 end
 
+type expression =
+  | StringLiteral of string_literal
+  | InfixExpression of infix_expression
+  | Unknown of syntax_node
+
+and string_literal = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+}
+
+and infix_expression = {
+  syntax_node : syntax_node;
+  left : expression;
+  operator_token : Token.t;
+  right : expression;
+}
+
+module Expression : sig
+  type t = expression =
+    | StringLiteral of string_literal
+    | InfixExpression of infix_expression
+    | Unknown of syntax_node
+
+  val syntax_node : t -> syntax_node
+end
+
+module StringLiteral : sig
+  type t = string_literal = {
+    syntax_node : syntax_node;
+    literal_token : Token.t;
+  }
+
+  val syntax_node : t -> syntax_node
+  val literal_token : t -> Token.t
+  val text : t -> string
+end
+
+module InfixExpression : sig
+  type t = infix_expression = {
+    syntax_node : syntax_node;
+    left : expression;
+    operator_token : Token.t;
+    right : expression;
+  }
+
+  val syntax_node : t -> syntax_node
+  val left : t -> Expression.t
+  val operator_token : t -> Token.t
+  val operator : t -> string
+  val right : t -> Expression.t
+end
+
 module TypeVariable : sig
   type t = {
     syntax_node : syntax_node;
@@ -164,7 +216,7 @@ module LetBinding : sig
     syntax_node : syntax_node;
     binding_name : Token.t;
     parameters : Parameter.t list;
-    value_syntax_node : syntax_node;
+    value : Expression.t;
     is_recursive : bool;
   }
 
@@ -172,6 +224,7 @@ module LetBinding : sig
   val binding_name_token : t -> Token.t
   val name : t -> string
   val parameters : t -> Parameter.t list
+  val value : t -> Expression.t
   val value_syntax_node : t -> syntax_node
   val is_recursive : t -> bool
   val is_function : t -> bool

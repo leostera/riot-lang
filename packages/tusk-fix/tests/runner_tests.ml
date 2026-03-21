@@ -519,6 +519,54 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains single-letter type names" (fun () ->
         assert_explanation_contains ~code:"F0118" ~snippet:"conventional `t`");
+    Test.case "prefer-multiline-string-literals flags chained string literals" (fun () ->
+        let source = "let banner = \"hello \" ^ \"world\" ^ \"!\"\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_multiline_string_literals.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0119" ] ~actual:codes;
+        Ok ());
+    Test.case "prefer-multiline-string-literals ignores mixed concatenations" (fun () ->
+        let source = "let banner name = \"hello \" ^ name\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_multiline_string_literals.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains multiline string preference" (fun () ->
+        assert_explanation_contains ~code:"F0119" ~snippet:"multiline literal");
+    Test.case "no-custom-operators flags symbolic custom operators" (fun () ->
+        let source = "let composed = f %> g\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_custom_operators.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0120" ] ~actual:codes;
+        Ok ());
+    Test.case "no-custom-operators allows builtin operators" (fun () ->
+        let source = "let sum = a + b\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_custom_operators.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains custom operators" (fun () ->
+        assert_explanation_contains ~code:"F0120" ~snippet:"hard to search");
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let pipeline =

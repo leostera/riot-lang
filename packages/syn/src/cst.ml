@@ -17,6 +17,61 @@ module Token = struct
   let span token = Ceibo.Red.SyntaxToken.span token.syntax_token
 end
 
+type expression =
+  | StringLiteral of string_literal
+  | InfixExpression of infix_expression
+  | Unknown of syntax_node
+
+and string_literal = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+}
+
+and infix_expression = {
+  syntax_node : syntax_node;
+  left : expression;
+  operator_token : Token.t;
+  right : expression;
+}
+
+module Expression = struct
+  type t = expression =
+    | StringLiteral of string_literal
+    | InfixExpression of infix_expression
+    | Unknown of syntax_node
+
+  let syntax_node = function
+    | StringLiteral expr -> expr.syntax_node
+    | InfixExpression expr -> expr.syntax_node
+    | Unknown node -> node
+end
+
+module StringLiteral = struct
+  type t = string_literal = {
+    syntax_node : syntax_node;
+    literal_token : Token.t;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let literal_token expr = expr.literal_token
+  let text expr = Token.text expr.literal_token
+end
+
+module InfixExpression = struct
+  type t = infix_expression = {
+    syntax_node : syntax_node;
+    left : expression;
+    operator_token : Token.t;
+    right : expression;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let left expr = expr.left
+  let operator_token expr = expr.operator_token
+  let operator expr = Token.text expr.operator_token
+  let right expr = expr.right
+end
+
 module TypeVariable = struct
   type t = {
     syntax_node : syntax_node;
@@ -214,7 +269,7 @@ module LetBinding = struct
     syntax_node : syntax_node;
     binding_name : Token.t;
     parameters : Parameter.t list;
-    value_syntax_node : syntax_node;
+    value : Expression.t;
     is_recursive : bool;
   }
 
@@ -222,13 +277,14 @@ module LetBinding = struct
   let binding_name_token binding = binding.binding_name
   let name binding = Token.text binding.binding_name
   let parameters binding = binding.parameters
-  let value_syntax_node binding = binding.value_syntax_node
+  let value binding = binding.value
+  let value_syntax_node binding = Expression.syntax_node binding.value
   let is_recursive binding = binding.is_recursive
 
   let is_function binding =
     List.length binding.parameters > 0
     ||
-    match Ceibo.Red.SyntaxNode.kind binding.value_syntax_node with
+    match Ceibo.Red.SyntaxNode.kind (value_syntax_node binding) with
     | Syntax_kind.FUN_EXPR | Syntax_kind.FUNCTION_EXPR -> true
     | _ -> false
 end
@@ -305,6 +361,36 @@ let direct_non_trivia_tokens node =
          when not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)) ->
            Some tok
        | _ -> None)
+
+let rec expression_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.STRING_LITERAL -> (
+      match direct_non_trivia_tokens node with
+      | literal_syntax_token :: _ ->
+          Expression.StringLiteral
+            StringLiteral.
+              {
+                syntax_node = node;
+                literal_token = token literal_syntax_token;
+              }
+      | [] -> Expression.Unknown node)
+  | Syntax_kind.INFIX_EXPR -> (
+      match direct_non_trivia_nodes node, direct_non_trivia_tokens node with
+      | left_node :: right_node :: _, operator_syntax_token :: _ ->
+          Expression.InfixExpression
+            InfixExpression.
+              {
+                syntax_node = node;
+                left = expression_from_node left_node;
+                operator_token = token operator_syntax_token;
+                right = expression_from_node right_node;
+              }
+      | _ -> Expression.Unknown node)
+  | Syntax_kind.PAREN_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | inner :: _ -> expression_from_node inner
+      | [] -> Expression.Unknown node)
+  | _ -> Expression.Unknown node
 
 let type_variable_from_node node =
   match List.rev (direct_non_trivia_tokens node) with
@@ -593,7 +679,7 @@ let let_binding_from_node ~is_recursive_binding node =
                      syntax_node = node;
                      binding_name;
                      parameters = List.rev rev_params |> List.map parameter_from_node;
-                     value_syntax_node = value_node;
+                     value = expression_from_node value_node;
                      is_recursive = is_recursive_binding;
                    })
       | _ -> None)
@@ -627,7 +713,7 @@ let let_expression_binding_from_node ~is_recursive_binding node =
                    syntax_node = node;
                    binding_name = binding_name;
                    parameters = List.map parameter_from_node param_nodes;
-                   value_syntax_node = bound_value_node;
+                   value = expression_from_node bound_value_node;
                    is_recursive = is_recursive_binding;
                  }
       | _ -> None)
