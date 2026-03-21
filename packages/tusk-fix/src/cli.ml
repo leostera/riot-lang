@@ -7,6 +7,8 @@ let command =
   |> about "Lint OCaml code and apply safe fixes"
   |> args
        [
+         flag "list-rules" |> long "list-rules"
+         |> help "List all available rules in the current tusk-fix runtime";
          flag "check" |> long "check"
          |> help "Check for fixable issues without modifying files";
          option "explain" |> long "explain"
@@ -140,6 +142,56 @@ let explain_code code =
       Ok ()
   | None -> Error (Failure ("Unknown tusk-fix diagnostic code: " ^ code))
 
+let sorted_rules () =
+  let compare_codes left right =
+    match left, right with
+    | Some left, Some right -> String.compare left right
+    | None, Some _ -> -1
+    | Some _, None -> 1
+    | None, None -> 0
+  in
+  Pipeline.default_rules ()
+  |> List.sort (fun left right ->
+         match compare_codes (Rule.code left) (Rule.code right) with
+         | 0 -> String.compare (Rule.id left) (Rule.id right)
+         | cmp -> cmp)
+
+let rule_to_json rule =
+  let open Data.Json in
+  Object
+    [
+      ("id", string (Rule.id rule));
+      ("code", match Rule.code rule with Some code -> string code | None -> null);
+      ("name", string (Rule.name rule));
+      ("description", string (Rule.description rule));
+      ("enabled", bool (Rule.enabled rule));
+    ]
+
+let list_rules_text rules =
+  let format_code = function
+    | Some code -> code
+    | None -> "-"
+  in
+  rules
+  |> List.map (fun rule ->
+         format_code (Rule.code rule)
+         ^ "  " ^ Rule.id rule ^ "  " ^ Rule.name rule ^ "\n    "
+         ^ Rule.description rule)
+  |> String.concat "\n"
+
+let list_rules_output ~format =
+  let rules = sorted_rules () in
+  match format with
+  | Reporter.Text -> list_rules_text rules
+  | Reporter.Json ->
+      Data.Json.Array (List.map rule_to_json rules)
+      |> Data.Json.to_string
+
+let list_rules format =
+  print (list_rules_output ~format);
+  if format = Reporter.Text then print "\n";
+  Ok ()
+
 let run_with_coordinator ~format ~mode ~scope files =
   let concurrency =
     let recommended = System.available_parallelism in
@@ -179,9 +231,6 @@ let run_with_coordinator ~format ~mode ~scope files =
   loop []
 
 let run matches =
-  match ArgParser.get_one matches "explain" with
-  | Some code -> explain_code code
-  | None ->
   let cwd =
     Env.current_dir ()
     |> Result.expect ~msg:"Failed to get current directory"
@@ -197,6 +246,10 @@ let run matches =
     | "json" -> Reporter.Json
     | _ -> Reporter.Text
   in
+  match ArgParser.get_flag matches "list-rules", ArgParser.get_one matches "explain" with
+  | true, _ -> list_rules format
+  | false, Some code -> explain_code code
+  | false, None ->
   let target = resolve_target matches in
   let files =
     resolve_files target

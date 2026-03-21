@@ -665,6 +665,16 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains parameter count limits" (fun () ->
         assert_explanation_contains ~code:"F0123" ~snippet:"record-shaped concept");
+    Test.case "cli list-rules text output includes builtin rules" (fun () ->
+        let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
+        Test.assert_true (String.contains output "snake-case-type-names");
+        Test.assert_true (String.contains output "F0101");
+        Ok ());
+    Test.case "cli list-rules json output includes builtin rules" (fun () ->
+        let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Json in
+        Test.assert_true (String.contains output "\"snake-case-type-names\"");
+        Test.assert_true (String.contains output "\"F0101\"");
+        Ok ());
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let pipeline =
