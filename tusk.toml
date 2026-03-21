@@ -51,7 +51,8 @@ rules = [
   "snake-case-function-names",
   "-class-case-module-names",
   "snake-case-variable-names",
-  "no-prime-variables"
+  "no-prime-variables",
+  "snake-case-argument-names"
 ]
 
 [profile.debug]

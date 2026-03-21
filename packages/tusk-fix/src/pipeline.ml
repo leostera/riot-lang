@@ -17,6 +17,7 @@ let builtin_rule_factories () =
     ("class-case-module-names", Rules.Class_case_module_names.make);
     ("snake-case-variable-names", Rules.Snake_case_variable_names.make);
     ("no-prime-variables", Rules.No_prime_variables.make);
+    ("snake-case-argument-names", Rules.Snake_case_argument_names.make);
   ]
 
 let package_rules () =

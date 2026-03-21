@@ -59,11 +59,65 @@ module TypeDeclaration : sig
   val name_token : t -> Token.t
 end
 
+module PositionalParameter : sig
+  type t = {
+    syntax_node : syntax_node;
+    name_token : Token.t option;
+  }
+
+  val syntax_node : t -> syntax_node
+  val name_token : t -> Token.t option
+  val name : t -> string option
+end
+
+module LabeledParameter : sig
+  type t = {
+    syntax_node : syntax_node;
+    label_token : Token.t;
+    binding_name_token : Token.t option;
+  }
+
+  val syntax_node : t -> syntax_node
+  val label_token : t -> Token.t
+  val label : t -> string
+  val binding_name_token : t -> Token.t option
+end
+
+module OptionalParameter : sig
+  type t = {
+    syntax_node : syntax_node;
+    label_token : Token.t;
+    binding_name_token : Token.t option;
+    has_default : bool;
+  }
+
+  val syntax_node : t -> syntax_node
+  val label_token : t -> Token.t
+  val label : t -> string
+  val binding_name_token : t -> Token.t option
+  val has_default : t -> bool
+end
+
+module Parameter : sig
+  type t =
+    | Positional of PositionalParameter.t
+    | Labeled of LabeledParameter.t
+    | Optional of OptionalParameter.t
+    | LocallyAbstract of syntax_node
+    | Unknown of syntax_node
+
+  val syntax_node : t -> syntax_node
+  val name_token : t -> Token.t option
+  val name : t -> string option
+  val is_named : t -> bool
+  val has_default : t -> bool
+end
+
 module LetBinding : sig
   type t = {
     syntax_node : syntax_node;
     binding_name : Token.t;
-    parameters : syntax_node list;
+    parameters : Parameter.t list;
     value_syntax_node : syntax_node;
     is_recursive : bool;
   }
@@ -71,7 +125,7 @@ module LetBinding : sig
   val syntax_node : t -> syntax_node
   val binding_name_token : t -> Token.t
   val name : t -> string
-  val parameters : t -> syntax_node list
+  val parameters : t -> Parameter.t list
   val value_syntax_node : t -> syntax_node
   val is_recursive : t -> bool
   val is_function : t -> bool

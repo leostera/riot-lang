@@ -126,6 +126,32 @@ let tests =
         Test.assert_equal ~expected:[ "local_value"; "render"; "top_level" ]
           ~actual:bindings;
         Ok ());
+    Test.case "cst let bindings expose typed parameters" (fun () ->
+        let source =
+          "let render userId ~displayName ?pageSize current_user = current_user\n"
+        in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match
+          Syn.Cst.SourceFile.let_bindings cst
+          |> List.find_opt (fun binding ->
+                 String.equal (Syn.Cst.LetBinding.name binding) "render")
+        with
+        | Some binding ->
+            let names =
+              Syn.Cst.LetBinding.parameters binding
+              |> List.map Syn.Cst.Parameter.name
+            in
+            Test.assert_equal
+              ~expected:
+                [ Some "userId"; Some "displayName"; Some "pageSize"; Some "current_user" ]
+              ~actual:names;
+            Ok ()
+        | None -> Error "expected render binding parameters");
   ]
 
 let () =

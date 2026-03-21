@@ -8,9 +8,9 @@
 - [x] Module names should be ClassCased and not Jiraffe_cased (`class-case-module-names`)
 - [x] Variable names should use `snake_case` instead of `camelCase` (`snake-case-variable-names`)
 - [x] Variable names should not contain `'`; prefer `x2` over `x'` (`no-prime-variables`)
+- [x] Argument names should use `snake_case` instead of `camelCase` (`snake-case-argument-names`)
 - [ ] Prefer multiline strings like `{| ... |}` over concatenated string literals
 - [ ] warn against custom operators
-- [ ] Argument names should use `snake_case` instead of `camelCase`
 - [ ] Named arguments should come first, then arguments with defaults, then positional arguments
 - [ ] Prefer `t`-first functions when named arguments are present
 - [ ] Keep named arguments alphabetically sorted
@@ -119,5 +119,4 @@ Std:
     * int_of_string -> Int.parse
     * float_of_int  -> Float.from_int int
     * 
-
 

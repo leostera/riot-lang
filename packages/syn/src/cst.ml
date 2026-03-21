@@ -85,11 +85,89 @@ module TypeDeclaration = struct
     | None -> panic "TypeDeclaration.name_token: missing type name token"
 end
 
+module PositionalParameter = struct
+  type t = {
+    syntax_node : syntax_node;
+    name_token : Token.t option;
+  }
+
+  let syntax_node param = param.syntax_node
+  let name_token param = param.name_token
+
+  let name param =
+    match param.name_token with
+    | Some token -> Some (Token.text token)
+    | None -> None
+end
+
+module LabeledParameter = struct
+  type t = {
+    syntax_node : syntax_node;
+    label_token : Token.t;
+    binding_name_token : Token.t option;
+  }
+
+  let syntax_node param = param.syntax_node
+  let label_token param = param.label_token
+  let label param = Token.text param.label_token
+  let binding_name_token param = param.binding_name_token
+end
+
+module OptionalParameter = struct
+  type t = {
+    syntax_node : syntax_node;
+    label_token : Token.t;
+    binding_name_token : Token.t option;
+    has_default : bool;
+  }
+
+  let syntax_node param = param.syntax_node
+  let label_token param = param.label_token
+  let label param = Token.text param.label_token
+  let binding_name_token param = param.binding_name_token
+  let has_default param = param.has_default
+end
+
+module Parameter = struct
+  type t =
+    | Positional of PositionalParameter.t
+    | Labeled of LabeledParameter.t
+    | Optional of OptionalParameter.t
+    | LocallyAbstract of syntax_node
+    | Unknown of syntax_node
+
+  let syntax_node = function
+    | Positional param -> PositionalParameter.syntax_node param
+    | Labeled param -> LabeledParameter.syntax_node param
+    | Optional param -> OptionalParameter.syntax_node param
+    | LocallyAbstract node -> node
+    | Unknown node -> node
+
+  let name_token = function
+    | Positional param -> PositionalParameter.name_token param
+    | Labeled param -> Some (LabeledParameter.label_token param)
+    | Optional param -> Some (OptionalParameter.label_token param)
+    | LocallyAbstract _ | Unknown _ -> None
+
+  let name param =
+    match name_token param with
+    | Some token -> Some (Token.text token)
+    | None -> None
+
+  let is_named = function
+    | Labeled _ | Optional _ -> true
+    | Positional _ | LocallyAbstract _ | Unknown _ -> false
+
+  let has_default = function
+    | Optional param -> OptionalParameter.has_default param
+    | Positional _ | Labeled _ | LocallyAbstract _ | Unknown _ -> false
+end
+
 module LetBinding = struct
   type t = {
     syntax_node : syntax_node;
     binding_name : Token.t;
-    parameters : syntax_node list;
+    parameters : Parameter.t list;
     value_syntax_node : syntax_node;
     is_recursive : bool;
   }
@@ -216,6 +294,47 @@ let name_token_from_ident_pattern node =
   | first :: _ -> Some (token first)
   | [] -> None
 
+let is_identifier_like_text text =
+  String.length text > 0
+  &&
+  let ch = String.get text 0 in
+  (ch >= 'a' && ch <= 'z')
+  || (ch >= 'A' && ch <= 'Z')
+  || ch = '_'
+
+let rec simple_pattern_name_token node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.IDENT_PATTERN ->
+      name_token_from_ident_pattern node
+  | Syntax_kind.TYPED_PATTERN
+  | Syntax_kind.PAREN_PATTERN
+  | Syntax_kind.LAZY_PATTERN ->
+      (match direct_non_trivia_nodes node |> List.find_opt (fun _ -> true) with
+      | Some child -> simple_pattern_name_token child
+      | None -> None)
+  | Syntax_kind.AS_PATTERN ->
+      (match
+         direct_non_trivia_nodes node
+         |> List.rev
+         |> List.find_opt (fun child ->
+                Ceibo.Red.SyntaxNode.kind child = Syntax_kind.IDENT_PATTERN)
+       with
+      | Some child -> name_token_from_ident_pattern child
+      | None -> None)
+  | _ -> None
+
+let first_ident_token_in_subtree node =
+  let rec go_node node =
+    match
+      direct_non_trivia_tokens node
+      |> List.find_opt (fun tok ->
+             is_identifier_like_text (Ceibo.Red.SyntaxToken.text tok))
+    with
+    | Some tok -> Some (token tok)
+    | None -> direct_non_trivia_nodes node |> List.find_map go_node
+  in
+  go_node node
+
 let is_parameter_like_kind = function
   | Syntax_kind.IDENT_PATTERN
   | Syntax_kind.WILDCARD_PATTERN
@@ -243,6 +362,53 @@ let is_parameter_like_kind = function
   | Syntax_kind.OPTIONAL_PARAM_DEFAULT ->
       true
   | _ -> false
+
+let parameter_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.LABELED_PARAM -> (
+      match first_ident_token_in_subtree node with
+      | Some label_name_token ->
+          Parameter.Labeled
+            LabeledParameter.
+              {
+                syntax_node = node;
+                label_token = label_name_token;
+                binding_name_token = None;
+              }
+      | None -> Parameter.Unknown node)
+  | Syntax_kind.OPTIONAL_PARAM -> (
+      match first_ident_token_in_subtree node with
+      | Some label_name_token ->
+          Parameter.Optional
+            OptionalParameter.
+              {
+                syntax_node = node;
+                label_token = label_name_token;
+                binding_name_token = None;
+                has_default = false;
+              }
+      | None -> Parameter.Unknown node)
+  | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> (
+      match direct_non_trivia_nodes node |> List.find_map first_ident_token_in_subtree with
+      | Some label_name_token ->
+          Parameter.Optional
+            OptionalParameter.
+              {
+                syntax_node = node;
+                label_token = label_name_token;
+                binding_name_token = None;
+                has_default = true;
+              }
+      | None -> Parameter.Unknown node)
+  | Syntax_kind.TYPE_CONSTRAINT ->
+      Parameter.LocallyAbstract node
+  | _ ->
+      Parameter.Positional
+        PositionalParameter.
+          {
+            syntax_node = node;
+            name_token = simple_pattern_name_token node;
+          }
 
 let type_declaration_name_path node =
   let is_name_node child =
@@ -284,7 +450,7 @@ let let_binding_from_node ~is_recursive_binding node =
                    {
                      syntax_node = node;
                      binding_name;
-                     parameters = List.rev rev_params;
+                     parameters = List.rev rev_params |> List.map parameter_from_node;
                      value_syntax_node = value_node;
                      is_recursive = is_recursive_binding;
                    })
@@ -318,7 +484,7 @@ let let_expression_binding_from_node ~is_recursive_binding node =
                  {
                    syntax_node = node;
                    binding_name = binding_name;
-                   parameters = param_nodes;
+                   parameters = List.map parameter_from_node param_nodes;
                    value_syntax_node = bound_value_node;
                    is_recursive = is_recursive_binding;
                  }

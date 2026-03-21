@@ -424,7 +424,7 @@ let rule_id = function
   | QualifiedRecordField -> "qualified-record-field-style"
   | ConcatenatedStringLiteral -> "multiline-string-style"
   | CustomOperatorDefinition -> "custom-operator-style"
-  | CamelCaseArgumentName -> "argument-name-style"
+  | CamelCaseArgumentName -> "snake-case-argument-names"
   | NamedArgumentOrder -> "argument-order-style"
   | TFirstNamedArgs -> "t-first-arg-style"
   | SortedNamedArguments -> "named-arg-sort-style"

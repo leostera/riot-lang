@@ -4,3 +4,4 @@ module Snake_case_function_names = Snake_case_function_names
 module Class_case_module_names = Class_case_module_names
 module Snake_case_variable_names = Snake_case_variable_names
 module No_prime_variables = No_prime_variables
+module Snake_case_argument_names = Snake_case_argument_names
