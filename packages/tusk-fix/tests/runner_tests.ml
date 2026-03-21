@@ -463,6 +463,62 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains polyvariant-tag violations" (fun () ->
         assert_explanation_contains ~code:"F0116" ~snippet:"guest_user");
+    Test.case "avoid-single-letter-function-names flags placeholder bindings" (fun () ->
+        let source = "let f x = x\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0117" ] ~actual:codes;
+        Ok ());
+    Test.case "avoid-single-letter-function-names flags local placeholder bindings" (fun () ->
+        let source = "let render x = let g y = y in g x\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0117" ] ~actual:codes;
+        Ok ());
+    Test.case "avoid-single-letter-function-names keeps descriptive bindings clean" (fun () ->
+        let source = "let render_user x = x\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "avoid-single-letter-function-names ignores placeholder value bindings" (fun () ->
+        let source = "let f = 42\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Avoid_single_letter_function_names.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains single-letter function bindings" (fun () ->
+        assert_explanation_contains ~code:"F0117" ~snippet:"Placeholder names");
+    Test.case "avoid-single-letter-type-names flags placeholder type names" (fun () ->
+        let source = "type x = int\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0118" ] ~actual:codes;
+        Ok ());
+    Test.case "avoid-single-letter-type-names allows t" (fun () ->
+        let source = "type t = int\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Avoid_single_letter_type_names.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "avoid-single-letter-type-names keeps descriptive names clean" (fun () ->
+        let source = "type user_profile = int\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains single-letter type names" (fun () ->
+        assert_explanation_contains ~code:"F0118" ~snippet:"conventional `t`");
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let pipeline =

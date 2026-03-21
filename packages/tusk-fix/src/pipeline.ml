@@ -11,6 +11,8 @@ let make ~rules () = { rules }
 
 let builtin_rule_factories () =
   [
+    ("avoid-single-letter-function-names", Rules.Avoid_single_letter_function_names.make);
+    ("avoid-single-letter-type-names", Rules.Avoid_single_letter_type_names.make);
     ("snake-case-type-names", Rules.Snake_case_type_names.make);
     ("descriptive-type-variables", Rules.Descriptive_type_variables.make);
     ("snake-case-function-names", Rules.Snake_case_function_names.make);
