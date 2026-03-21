@@ -669,7 +669,7 @@ let tests =
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true
           (String.contains output
-             "f0101:snake-case-type-names - Type names should use snake_case instead of camelCase");
+             "\027[1mf0101:snake-case-type-names\027[0m - Type names should use snake_case instead of camelCase");
         Test.assert_true
           (not
              (String.contains output

@@ -172,10 +172,11 @@ let list_rules_text rules =
     | Some code -> String.lowercase_ascii code
     | None -> "-"
   in
+  let bold text = "\027[1m" ^ text ^ "\027[0m" in
   rules
   |> List.map (fun rule ->
-         format_code (Rule.code rule)
-         ^ ":" ^ Rule.id rule ^ " - " ^ Rule.description rule)
+         bold (format_code (Rule.code rule) ^ ":" ^ Rule.id rule)
+         ^ " - " ^ Rule.description rule)
   |> String.concat "\n"
 
 let list_rules_output ~format =
