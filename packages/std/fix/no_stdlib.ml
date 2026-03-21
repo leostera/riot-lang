@@ -1,4 +1,3 @@
-(*
 open Std
 open Std.Collections
 
@@ -184,4 +183,3 @@ let rule () =
     ~description:
       "Detects direct Stdlib, Unix, Sys, and Pervasives usage from the Std package boundary"
     ~run:check_tree ()
-    *)

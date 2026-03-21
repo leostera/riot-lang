@@ -82,14 +82,25 @@ let binaries_for_scope scope (pkg : t) =
   match scope with
   | Normal ->
       List.filter (fun bin -> binary_scope bin = Normal) pkg.binaries
-  | Dev -> pkg.binaries
+  | Dev ->
+      List.filter (fun bin -> binary_scope bin = Dev) pkg.binaries
   | Build -> []
+
+let commands_for_scope scope (pkg : t) =
+  match scope with
+  | Normal -> pkg.commands
+  | Dev | Build -> []
 
 let sources_for_scope scope (pkg : t) =
   match scope with
   | Normal ->
       { pkg.sources with tests = []; examples = []; bench = [] }
-  | Dev -> pkg.sources
+  | Dev ->
+      {
+        pkg.sources with
+        src = [];
+        native = [];
+      }
   | Build ->
       {
         pkg.sources with
@@ -108,12 +119,17 @@ let for_scope scope (pkg : t) =
         dev_dependencies = [];
         build_dependencies = [];
         binaries = binaries_for_scope Normal pkg;
+        commands = commands_for_scope Normal pkg;
         sources = sources_for_scope Normal pkg;
       }
   | Dev ->
       {
         pkg with
         build_dependencies = [];
+        library = None;
+        binaries = binaries_for_scope Dev pkg;
+        commands = commands_for_scope Dev pkg;
+        sources = sources_for_scope Dev pkg;
       }
   | Build ->
       {
@@ -122,6 +138,7 @@ let for_scope scope (pkg : t) =
         dev_dependencies = [];
         library = None;
         binaries = [];
+        commands = commands_for_scope Build pkg;
         sources = sources_for_scope Build pkg;
       }
 

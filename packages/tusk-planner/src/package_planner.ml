@@ -88,10 +88,12 @@ let compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx =
   H.finish state
 
 let check_dependencies_built ~package_graph ~package_key =
-  let current_package_name =
+  let current_package_name, current_scope =
     match Package_graph.get_node_by_key package_graph package_key with
-    | Some node -> (Package_graph.get_package node.value).Package.name
-    | None -> ""
+    | Some node ->
+        ( (Package_graph.get_package node.value).Package.name,
+          Package_graph.get_scope node.value )
+    | None -> ("", Package_graph.Runtime)
   in
   let deps =
     match Package_graph.get_node_by_key package_graph package_key with
@@ -105,12 +107,12 @@ let check_dependencies_built ~package_graph ~package_key =
 
   let process_node node =
     let pkg = Package_graph.get_package node in
-    let is_self_build_phase =
+    let is_ordering_only_self_dependency =
       String.equal pkg.Package.name current_package_name
       &&
-      match Package_graph.get_scope node with
-      | Package_graph.Build -> true
-      | Package_graph.Runtime | Package_graph.Dev -> false
+      match (current_scope, Package_graph.get_scope node) with
+      | Package_graph.Runtime, Package_graph.Build -> true
+      | _ -> false
     in
     match node with
     | Package_graph.Unplanned _ ->
@@ -126,7 +128,7 @@ let check_dependencies_built ~package_graph ~package_key =
         (* Dependency was skipped - treat as failed *)
         failed := pkg :: !failed
     | Package_graph.Built { package; artifact; depset = dep_depset; hash; _ } ->
-        if not is_self_build_phase then
+        if not is_ordering_only_self_dependency then
           let dep = Dependency.{ package; artifact; depset = dep_depset; hash } in
           Vector.push depset dep
   in

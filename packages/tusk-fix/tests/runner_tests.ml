@@ -342,6 +342,44 @@ let tests =
                   Test.assert_equal ~expected:[ "demo:demo-rule" ] ~actual:provider.rules;
                   Ok ()
               | _ -> Error "expected one discovered provider"));
+    Test.case "fused runtime includes provider build dependencies" (fun () ->
+        with_tempdir "tusk_fix_provider_build_deps" (fun tmpdir ->
+              let workspace_toml = Path.(tmpdir / Path.v "tusk.toml") in
+              let provider_dir = Path.(tmpdir / Path.v "packages" / Path.v "demo") in
+              let helper_dir = Path.(tmpdir / Path.v "packages" / Path.v "helper") in
+              let fix_dir = Path.(provider_dir / Path.v "fix") in
+              let helper_src_dir = Path.(helper_dir / Path.v "src") in
+              Fs.create_dir_all fix_dir |> Result.expect ~msg:"mkdir fix";
+              Fs.create_dir_all helper_src_dir |> Result.expect ~msg:"mkdir helper";
+              write_file workspace_toml
+                "[workspace]\nmembers = [\"packages/demo\", \"packages/helper\"]\n";
+              write_file Path.(provider_dir / Path.v "tusk.toml")
+                "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[build-dependencies]\nhelper = { path = \"../helper\" }\n\n[tusk.fix.provider]\nrules = [\"demo-rule\"]\n";
+              write_file Path.(helper_dir / Path.v "tusk.toml")
+                "[package]\nname = \"helper\"\nversion = \"0.1.0\"\n\n[lib]\npath = \"src/helper.ml\"\n";
+              write_file Path.(helper_src_dir / Path.v "helper.ml") "let value = 1\n";
+              write_file Path.(fix_dir / Path.v "tusk_fix_rules.ml")
+                "let name = \"demo\"\nlet rules () = []\nlet diagnostic_codes () = []\n";
+              let providers =
+                [
+                  Tusk_model.Fix_provider.
+                    {
+                      name = "demo";
+                      package_name = "demo";
+                      package_path = provider_dir;
+                      source_path = Path.(fix_dir / Path.v "tusk_fix_rules.ml");
+                      rules = [ "demo:demo-rule" ];
+                    };
+                ]
+              in
+              let plan =
+                Tusk_fix.Fused_runtime.materialize ~workspace_root:tmpdir
+                  ~target_dir_root:Path.(tmpdir / Path.v "_build")
+                  providers
+              in
+              let package_toml = read_file plan.package_toml_path in
+              Test.assert_true (String.contains package_toml "helper = { path = \"");
+              Ok ()));
     Test.case "fused runtime registry source lists discovered providers" (fun () ->
         let providers =
           [

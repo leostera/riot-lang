@@ -200,6 +200,31 @@ let workspace_toml_source plan =
     ]
 
 let dependency_entries workspace_root providers =
+  let workspace_packages =
+    match Tusk_model.Workspace_manager.scan workspace_root with
+    | Ok (workspace, _errors) -> workspace.Tusk_model.Workspace.packages
+    | Error _ -> []
+  in
+  let workspace_package_path name =
+    workspace_packages
+    |> List.find_opt (fun (pkg : Tusk_model.Package.t) -> String.equal pkg.name name)
+    |> Option.map (fun (pkg: Tusk_model.Package.t) -> pkg.path)
+  in
+  let provider_build_deps =
+    providers
+    |> List.concat_map (fun ({ provider; _ } : generated_provider) ->
+           workspace_packages
+           |> List.find_opt (fun (pkg : Tusk_model.Package.t) ->
+                  String.equal pkg.name provider.package_name)
+           |> Option.map (fun pkg -> pkg.Tusk_model.Package.build_dependencies)
+           |> Option.unwrap_or ~default:[]
+           |> List.filter_map (fun (dep : Tusk_model.Package.dependency) ->
+                  match dep.source with
+                  | Tusk_model.Package.Workspace ->
+                      workspace_package_path dep.name
+                      |> Option.map (fun path -> (dep.name, path))
+                  | Tusk_model.Package.Path path -> Some (dep.name, path)))
+  in
   let entries =
     [
       ("std", Path.(workspace_root / Path.v "packages" / Path.v "std"));
@@ -207,6 +232,7 @@ let dependency_entries workspace_root providers =
       ("tusk-fix", Path.(workspace_root / Path.v "packages" / Path.v "tusk-fix"));
       ("tusk-fix-api", Path.(workspace_root / Path.v "packages" / Path.v "tusk-fix-api"));
     ]
+    @ provider_build_deps
     @ List.map (fun ({ provider; _ } : generated_provider) ->
           (provider.package_name, provider.package_path))
         providers

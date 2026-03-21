@@ -11,6 +11,9 @@ gooey = { path = "../gooey" }
 std = { path = "../std" }
 tty = { path = "../tty" }
 
+[build-dependencies]
+std = { path = "../std" }
+
 [[command]]
 name = "demo"
 help = "Run a minttea TUI demo"

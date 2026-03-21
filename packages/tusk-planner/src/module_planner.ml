@@ -91,18 +91,21 @@ let plan_node input =
     in
 
     let binary_libraries =
-      match input.package.library with
-      | Some _ ->
-          let lib_name = Module_name.(of_string input.package.name |> cmxa) in
-          (* Binaries and commands need the full transitive runtime library
-             closure, not just direct deps, because a direct package library
-             like Std can reference modules provided by transitive deps such as
-             Kernel and Miniriot. *)
-          let unix_lib = if needs_unix then [ Path.v "unix.cmxa" ] else [] in
-          let dynlink_lib = if needs_dynlink then [ Path.v "dynlink.cmxa" ] else [] in
-          let dep_libs = List.map Dependency.library_cmxa transitive_deps in
-          unix_lib @ dynlink_lib @ dep_libs @ [ lib_name ]
-      | None -> []
+      (* Binaries and commands need the full transitive runtime library
+         closure, not just direct deps, because a direct package library
+         like Std can reference modules provided by transitive deps such as
+         Kernel and Miniriot. Dev-only packages have no local library, but
+         their test/example binaries still need the dependency closure. *)
+      let unix_lib = if needs_unix then [ Path.v "unix.cmxa" ] else [] in
+      let dynlink_lib = if needs_dynlink then [ Path.v "dynlink.cmxa" ] else [] in
+      let dep_libs = List.map Dependency.library_cmxa transitive_deps in
+      let own_lib =
+        match input.package.library with
+        | Some _ ->
+            [ Module_name.(of_string input.package.name |> cmxa) ]
+        | None -> []
+      in
+      List.unique (unix_lib @ dynlink_lib @ dep_libs @ own_lib)
     in
 
     (* Add cache directories from dependencies to includes *)

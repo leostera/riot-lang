@@ -191,9 +191,22 @@ let create ~scope (workspace : Workspace.t) : (t, create_error) result =
       | Some dev_node, Some runtime_node ->
           G.add_edge dev_node ~depends_on:runtime_node
       | _ -> ());
-      List.iter
-        (fun (dep : Package.dependency) -> add_dep_edge ~from_scope:Build dep.name)
-        pkg.build_dependencies;
+      (* Build-phase dependencies are for build-tooling surfaces such as fused
+         tusk-fix providers and future build scripts. Plain workspace
+         build/test graphs should still preserve pkg.build -> pkg.runtime
+         ordering, but they should not pull build-time libraries into the
+         normal runtime graph or we recreate cycles like:
+
+           std.runtime -> std.build -> tusk-fix-api.runtime -> syn.runtime -> std.runtime
+
+         A dedicated Build graph can still wire these edges when build-only
+         tooling is the target. *)
+      (match scope with
+      | Build ->
+          List.iter
+            (fun (dep : Package.dependency) -> add_dep_edge ~from_scope:Build dep.name)
+            pkg.build_dependencies
+      | Runtime | Dev -> ());
       List.iter
         (fun (dep : Package.dependency) -> add_dep_edge ~from_scope:Runtime dep.name)
         pkg.dependencies;
