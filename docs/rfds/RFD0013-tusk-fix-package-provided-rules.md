@@ -12,27 +12,30 @@ This RFD extends `tusk-fix` so workspace packages can ship their own lint rules
 and explanations, with those rules fused at build time into one synthetic
 runtime.
 
-The central design decision is unchanged:
+The central design should be:
 
 - do not run one binary per rule
 - do not run one binary per package
 - do parse each file once
 - do run all enabled rules in-process
 
-The implementation that now exists follows that shape:
+The resulting system should have these properties:
 
-- packages declare one `[tusk.fix.provider]`
-- provider source defaults to either:
+- packages should declare at most one `[tusk.fix.provider]`
+- provider source should default to either:
   - `fix/tusk_fix_rules/tusk_fix_rules.ml`
   - `fix/tusk_fix_rules.ml`
-  - `src/tusk_fix_rules/tusk_fix_rules.ml`
-  - `src/tusk_fix_rules.ml`
-- rule ids are automatically namespaced as `<package>:<rule>`
-- diagnostic codes are automatically namespaced as `<package>:<code>`
-- `tusk fix` generates a fused runtime under `_build`
-- that runtime rebuilds like any other `tusk` package and uses normal caching
+  - and may accept these as compatibility fallbacks:
+    - `src/tusk_fix_rules/tusk_fix_rules.ml`
+    - `src/tusk_fix_rules.ml`
+- rule ids should be automatically namespaced as `<package>:<rule>`
+- diagnostic codes should be automatically namespaced as `<package>:<code>`
+- `tusk fix` should generate a fused runtime under `_build`
+- that runtime should rebuild like any other `tusk` package and use normal
+  caching
 
-`std:no-stdlib` is the first concrete package-owned rule using this model.
+`std:no-stdlib` should be a good first concrete package-owned rule using this
+model.
 
 ## Motivation
 [motivation]: #motivation
@@ -69,16 +72,18 @@ A package can expose a fix provider in `tusk.toml`:
 rules = ["no-stdlib"]
 ```
 
-If `path` is omitted, `tusk-fix` probes these defaults in order:
+If `path` is omitted, `tusk-fix` should probe these defaults in order,
+preferring build-only `fix/` locations:
 
 - `fix/tusk_fix_rules/tusk_fix_rules.ml`
 - `fix/tusk_fix_rules.ml`
 - `src/tusk_fix_rules/tusk_fix_rules.ml`
 - `src/tusk_fix_rules.ml`
 
-The provider source is not compiled as part of the owning package's normal
-build. Instead, `tusk fix` discovers all providers in the workspace, generates a
-synthetic fused package, builds it, and runs that one binary.
+The provider source should not be compiled as part of the owning package's
+normal runtime build. Instead, `tusk fix` should discover all providers in the
+workspace, generate a synthetic fused package, build it, and run that one
+binary.
 
 From the user side, the command surface stays simple:
 
@@ -105,7 +110,7 @@ flowchart TD
 
 ## 1. Manifest shape
 
-The implemented manifest shape is:
+The manifest shape should be:
 
 ```toml
 [tusk.fix.provider]
@@ -113,7 +118,7 @@ path = "fix/tusk_fix_rules.ml" # optional
 rules = ["no-stdlib"]
 ```
 
-Rules are declared provider-locally, but exposed to users as
+Rules should be declared provider-locally, but exposed to users as
 `<package>:<rule>`.
 
 For example:
@@ -125,17 +130,23 @@ becomes:
 
 - `std:no-stdlib`
 
-Likewise, provider-defined diagnostic code `f0001` becomes `std:f0001`.
+Likewise, provider-defined diagnostic code `f0001` should become `std:f0001`.
 
 ## 2. Provider authoring
 
-Shared rule-authoring types live in `tusk-fix-api`.
+Shared rule-authoring types should live in `tusk-fix-api`.
 
 Provider implementations should prefer `fix/` over `src/` so build-only rule
-code does not participate in the package's runtime dependency graph.
+code does not participate in the package's runtime dependency graph. Legacy
+`src/` discovery may exist as a compatibility fallback, but it should not be
+the preferred authoring location.
 
-The fused runtime still exposes the richer `Tusk_fix` runtime surface, but
-provider authors write against the shared rule API plus `syn` helpers.
+The fused runtime should still expose the richer `Tusk_fix` runtime surface,
+but provider authors should write against the shared rule API plus `syn`
+helpers.
+
+Provider-owning packages should place rule-authoring dependencies such as
+`tusk-fix-api` in `[build-dependencies]`, not `[dependencies]`.
 
 Conceptually, a provider module looks like:
 
@@ -151,12 +162,13 @@ let diagnostic_codes () =
   No_stdlib.codes
 ```
 
-Provider support modules that live next to the entrypoint are copied into the
-generated fused runtime as sibling embedded modules.
+Provider support modules that live next to the entrypoint should be copied into
+the generated fused runtime as sibling embedded modules.
 
 ## 3. Fusion model
 
-`tusk fix` generates a workspace-specific synthetic package that depends on:
+`tusk fix` should generate a workspace-specific synthetic package that depends
+on:
 
 - `tusk-fix`
 - `tusk-fix-api`
@@ -170,8 +182,8 @@ and emits generated source that:
 - embeds provider support modules
 - registers providers before CLI execution
 
-The resulting fused runtime is rebuilt like any other `tusk` package, so it
-inherits normal build caching behavior.
+The resulting fused runtime should be rebuilt like any other `tusk` package, so
+it inherits normal build caching behavior.
 
 ## 4. Runtime model
 
@@ -187,7 +199,7 @@ subprocesses.
 
 ## 5. Config interaction
 
-The effective rule set is:
+The effective rule set should be:
 
 1. built-in rules
 2. discovered package-provided rules
@@ -209,11 +221,9 @@ Package-local overrides apply on top of workspace defaults.
 2. package-owned diagnostic codes fused into the runtime
 3. unknown-code fallback if nothing matches
 
-That makes package-provided explanations first-class.
+That should make package-provided explanations first-class.
 
 ## 7. Dependency-layering constraint
-
-The first implementation exposed a deeper problem in the build model.
 
 `std` wants to own `std:no-stdlib`, but direct normal dependency layering like:
 
@@ -225,25 +235,21 @@ The first implementation exposed a deeper problem in the build model.
 creates a cycle.
 
 That is why provider source must remain outside the owning package's normal
-build, and why dependency classes are now the required follow-up. Provider
-authoring wants build-only dependencies, not normal runtime dependencies.
+build, and why provider authoring dependencies should resolve through
+`[build-dependencies]`, not through the runtime package graph.
 
-## 8. Current status
+## 8. Dependency-class interaction
 
-Implemented:
+Package-provided rules should integrate with dependency classes like this:
 
-- provider discovery in `tusk-model`
-- fused runtime generation in `tusk-fix`
-- package-prefixed rule ids
-- package-prefixed diagnostic codes
-- default provider path probing
-- package-owned `std:no-stdlib`
-- package-owned `--explain` support
-
-Still open:
-
-- proper normal/dev/build dependency classes so provider-owning packages can
-  express build-only rule-authoring dependencies cleanly
+- normal package builds should not traverse provider build-time dependencies
+- generated fused tooling such as `tusk fix` should resolve provider packages
+  through the `Build` graph
+- provider authors should be able to depend on `tusk-fix-api`, `syn`, and other
+  rule-authoring support libraries without contaminating runtime package
+  products
+- packages should still own their rule ids and diagnostic code namespaces even
+  when those rules are compiled only into the fused runtime
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -252,8 +258,8 @@ Still open:
 - provider source is compiled in a synthetic runtime, not in the owning
   package's normal build
 - the synthetic runtime must be rebuilt when provider membership changes
-- provider authoring currently pushes on the package dependency model, which is
-  why dependency classes are now necessary
+- provider authoring pushes on the package dependency model, which is why
+  dependency classes are necessary
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
