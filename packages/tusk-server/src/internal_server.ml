@@ -42,7 +42,7 @@ let build_state ~(workspace : Workspace.t) ~config =
   let store = Tusk_store.Store.create ~workspace in
 
   let package_graph =
-    match Tusk_planner.Package_graph.create workspace with
+    match Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime workspace with
     | Ok graph -> graph
     | Error (Tusk_planner.Package_graph.MissingPackages { missing }) ->
         Log.warn "Package graph has missing dependencies at startup:";
@@ -52,7 +52,7 @@ let build_state ~(workspace : Workspace.t) ~config =
           missing;
         Log.warn "Build operations will report this error to clients.";
         let ws = Workspace.make ~root:workspace.root ~packages:[] () in
-        Tusk_planner.Package_graph.create ws
+        Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime ws
         |> Result.expect ~msg:"Failed to create empty package graph"
   in
 
@@ -82,9 +82,9 @@ let rec loop state =
   | `Request (Protocol.Ping { client_pid }) ->
       Log.debug "Server loop received: Ping";
       handle_ping state client_pid
-  | `Request (Protocol.Build { client_pid; target; target_arch; session_id }) ->
+  | `Request (Protocol.Build { client_pid; target; scope; target_arch; session_id }) ->
       Log.debug "Server loop received: Build";
-      handle_build state client_pid target target_arch session_id
+      handle_build state client_pid target scope target_arch session_id
   | `Request (Protocol.ScanWorkspace { client_pid; current_dir }) ->
       Log.debug "Server loop received: ScanWorkspace";
       handle_scan_workspace state client_pid current_dir
@@ -133,12 +133,12 @@ and handle_scan_workspace state client_pid current_dir =
     |> Result.expect ~msg:"tusk_server: workspace scan failed"
   in
   let package_graph = 
-    match Tusk_planner.Package_graph.create workspace with
+    match Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime workspace with
     | Ok graph -> graph
     | Error _ -> 
         (* Create empty graph as fallback *)
         let ws = Workspace.make ~root:workspace.root ~packages:[] () in
-        Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
+        Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime ws |> Result.expect ~msg:"Failed to create empty package graph"
   in
   let new_state = { state with workspace; package_graph; load_errors } in
   send client_pid
@@ -464,7 +464,7 @@ and handle_new_package state client_pid path name is_library =
             ^ " packages");
 
           let updated_package_graph =
-            Tusk_planner.Package_graph.create updated_workspace
+            Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime updated_workspace
             |> Result.expect ~msg:"Failed to create package graph after rescan"
           in
           let updated_state =
@@ -488,7 +488,7 @@ and handle_new_package state client_pid path name is_library =
            loop state)
 
 (** Handler for build message - spawns worker and continues loop immediately *)
-and handle_build state client_pid target target_arch session_id =
+and handle_build state client_pid target scope target_arch session_id =
   Log.debug
     ("Server: handle_build called for target: "
     ^ (match target with
@@ -504,11 +504,11 @@ and handle_build state client_pid target target_arch session_id =
     |> Result.expect ~msg:"tusk_server: workspace scan failed"
   in
   let package_graph = 
-    match Tusk_planner.Package_graph.create workspace with
+    match Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime workspace with
     | Ok graph -> graph
     | Error _ -> 
         let ws = Workspace.make ~root:workspace.root ~packages:[] () in
-        Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
+        Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime ws |> Result.expect ~msg:"Failed to create empty package graph"
   in
   let updated_state = { state with workspace; package_graph; load_errors } in
 
@@ -516,7 +516,7 @@ and handle_build state client_pid target target_arch session_id =
   Build_server.start ~workspace:updated_state.workspace ~load_errors:updated_state.load_errors
     ~toolchain:updated_state.toolchain ~store:updated_state.store
     ~concurrency:updated_state.concurrency ~session_id ~client_pid ~server_pid
-    ~target ~target_arch;
+    ~target ~scope ~target_arch;
 
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state

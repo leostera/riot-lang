@@ -14,38 +14,59 @@ This RFD adds first-class dependency classes to `tusk` manifests:
 - `[dev-dependencies]`
 - `[build-dependencies]`
 
-The goal is to let packages express intent clearly and to keep build graphs
-honest. In particular, build-only authoring dependencies such as
-`std -> tusk-fix-api` should not contaminate the normal package build graph and
-should not participate in cycle detection for checked-in artifacts.
+But the important requirement is not just new manifest sections. `tusk` must
+also treat those classes as distinct dependency graphs:
+
+- a build graph
+- a runtime graph
+- a dev graph
+
+That distinction is required so cases like this are legal:
+
+- `propane` runtime-depends on `std`
+- `std` dev-depends on `propane`
+
+That must not be rejected as a normal build cycle, because `std` does not need
+`propane` to build its checked-in runtime artifact. It only needs `propane`
+when building tests or other dev-only targets.
 
 ## Motivation
 [motivation]: #motivation
 
-The immediate motivation is `tusk-fix` package-provided rules.
+There are two concrete pressures on the build model now.
 
-`std` wants to own `std:no-stdlib`, and the provider source wants shared
-rule-authoring types from `tusk-fix-api`. But `tusk-fix-api` depends on `syn`,
-`syn` depends on `ceibo`, and `ceibo` depends on `std`. If `std` models
-`tusk-fix-api` as a normal dependency, the normal package graph gets a cycle:
+The first is package-provided `tusk-fix` rules.
+
+`std` wants to own `std:no-stdlib`, and provider authoring wants shared types
+from `tusk-fix-api`. But `tusk-fix-api` depends on `syn`, `syn` depends on
+`ceibo`, and `ceibo` depends on `std`. If `std` models `tusk-fix-api` as a
+normal dependency, the normal package graph gets a false cycle:
 
 - `std -> tusk-fix-api -> syn -> ceibo -> std`
 
-That dependency is real for build-time tooling, but not for the normal `std`
+That dependency is real for build-time tooling, but not for the runtime `std`
 library artifact.
 
-More broadly, Riot needs to distinguish:
+The second is test tooling.
 
-- dependencies needed by checked-in package artifacts
-- dependencies needed by tests/examples/bench binaries
-- dependencies needed only by build-time generators, providers, or tooling
+`propane` is a real package dependency for tests, and `std` should be able to
+use it in its own tests. At the same time, `propane` quite reasonably has a
+normal dependency on `std`.
 
-Without that split, the package graph is too coarse.
+So we need all of the following to be expressible at once:
+
+- runtime dependencies needed by checked-in package artifacts
+- dev dependencies needed by tests/examples/bench/dev-only outputs
+- build dependencies needed only by generators, providers, macros, and other
+  tooling
+
+Without separate dependency graphs, the package model remains too coarse and
+produces false cycles.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Packages can now declare three dependency sections:
+Packages can declare three dependency sections:
 
 ```toml
 [dependencies]
@@ -60,26 +81,33 @@ tusk-fix-api = { path = "../tusk-fix-api" }
 
 The intended meaning is:
 
-- `dependencies`: required for normal package artifacts
-- `dev-dependencies`: required for tests/examples/bench and other dev-only
-  package outputs
-- `build-dependencies`: required only by build-time tooling and generated
-  workflows, not by the package's checked-in runtime artifacts
+- `build-dependencies`: required only for build-time tools, codegen, fused
+  providers, and future `build.ml` hooks
+- `dependencies`: required for runtime package artifacts
+- `dev-dependencies`: required only for tests, examples, benchmarks, and other
+  dev-only package outputs
 
-Workspace manifests may also define the same sections so package manifests can
-continue using `{ workspace = true }` in the matching dependency class.
+The critical semantic rule is:
 
-For normal package builds:
+- every package has three build phases:
+  - `pkg.build`
+  - `pkg.runtime`
+  - `pkg.dev`
+- `pkg.runtime` implicitly depends on `pkg.build`
+- `pkg.dev` implicitly depends on `pkg.runtime`
+- `tusk build`, `tusk install`, and `tusk run` target the `Runtime` phase
+- `tusk test` and `tusk bench` target the `Dev` phase
+- generated tooling such as fused `tusk-fix` uses the `Build` phase when
+  resolving package-owned tooling code
 
-- `dependencies` and `dev-dependencies` participate in the package build graph
-- `build-dependencies` do not
+That means this should be valid:
 
-That gives the current repo the behavior it wants:
+```text
+propane -(runtime)-> std
+std -(dev)-> propane
+```
 
-- tests and examples can pull extra packages without pretending they are runtime
-  dependencies
-- build-only authoring helpers do not create false cycles in normal package
-  builds
+because there is no runtime cycle, only a dev-only edge back into `propane`.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -114,120 +142,253 @@ with `{ workspace = true }` resolves against the matching workspace section:
 - `dev_dependencies`
 - `build_dependencies`
 
-It should also expose helpers for:
+It should also expose helpers for the three projections:
 
-- `build_graph_dependencies = dependencies @ dev_dependencies`
+- `runtime_dependencies`
+- `dev_dependencies_for_target = dependencies @ dev_dependencies`
+- `build_tool_dependencies = build_dependencies`
+
+and, when needed for metadata traversal:
+
 - `all_dependencies = dependencies @ dev_dependencies @ build_dependencies`
 
-That keeps the core type honest while still giving planner code a clear
-“dependencies that matter for normal package builds” surface.
+The important part is that these are no longer treated as one implicit graph
+with three labels attached. The planner must choose a scope explicitly.
 
-## 3. Planner behavior
+## 3. Package phases
 
-For the current implementation:
+The planner should model three package phases:
 
-- package graph edges use `build_graph_dependencies`
-- dependency satisfaction checks use `build_graph_dependencies`
-- package hash and workspace-specific dependency hashing use
-  `build_graph_dependencies`
-- stdlib/unix/dynlink checks use `build_graph_dependencies`
+- `Build`
+- `Runtime`
+- `Dev`
 
-This matches current `tusk` behavior, where tests/examples/bench binaries are
-autodiscovered and built as part of the package build plan.
+Each phase has distinct semantics:
 
-`build_dependencies` are intentionally excluded from that graph.
+- `pkg.build`
+  - consumes `build_dependencies`
+  - does not implicitly depend on `pkg.runtime`
+- `pkg.runtime`
+  - consumes `dependencies`
+  - implicitly depends on `pkg.build`
+- `pkg.dev`
+  - consumes `dev_dependencies`
+  - implicitly depends on `pkg.runtime`
 
-## 4. Workspace loading
+This gives every package a phase chain:
+
+```text
+pkg.build -> pkg.runtime -> pkg.dev
+```
+
+The important consequence is that `pkg.build` happens first, even when the
+user only asks for a runtime or dev target.
+
+`pkg.build` should be treated as a build-tooling phase, not yet as a fully
+separate package source surface. In particular:
+
+- `pkg.build` is where build-only dependencies become available
+- `pkg.runtime` must wait for `pkg.build`
+- `pkg.build` does not itself currently produce a normal library artifact that
+  other package phases should try to link against
+
+That distinction should matter for planning: the runtime phase of a package
+should depend on the *completion* of its own build phase, but should not treat
+that build phase as a normal library dependency in its depset.
+
+## 4. Graph semantics
+
+The package graph is no longer a single node per package.
+
+Instead:
+
+- build planning selects `pkg.build`
+- runtime planning selects `pkg.runtime`
+- dev planning selects `pkg.dev`
+
+Dependency edges are phase-aware:
+
+- `pkg.build -> dep.runtime` for build-only relationships
+- `pkg.runtime -> dep.runtime` for normal package dependencies
+- `pkg.dev -> dep.runtime` for dev-only dependencies
+- implicit phase edges:
+  - `pkg.runtime -> pkg.build`
+  - `pkg.dev -> pkg.runtime`
+
+The important implementation detail should be that the implicit self-edge
+`pkg.runtime -> pkg.build` is an ordering edge, not a normal library
+dependency. It guarantees build tools run first, but the runtime depset should
+not try to resolve `.cmxa`/library artifacts out of its own build phase.
+
+Likewise, build dependencies should resolve to dependency runtime artifacts,
+not dependency build phases. That matches the real use cases we are solving:
+
+- `std.build` needs the compiled runtime artifact of `tusk-fix-api`
+- fused tooling and future build hooks need access to package code built for
+  use as tools
+- they do not currently consume a separate `dep.build` artifact surface
+
+Cycle detection must happen inside the selected graph, not across all declared
+dependency classes at once.
+
+That is what makes the `std` / `propane` case work correctly:
+
+- `propane.runtime -> std.runtime`
+- `std.dev -> propane.runtime`
+- `std.runtime -> std.build`
+- `std.dev -> std.runtime`
+- no false cycle between `std.runtime` and `propane.runtime`
+
+In other words: a dev-target build may legitimately depend on a package whose
+runtime artifact depends back on the current package. What matters is whether
+the specific target graph being built is valid, not whether the union of all
+dependency classes is acyclic.
+
+## 5. Command mapping
+
+The first command-to-phase mapping should be:
+
+- `tusk build` -> `Runtime`
+- `tusk install` -> `Runtime`
+- `tusk run <binary>` -> `Runtime`
+- `tusk test` -> `Dev`
+- `tusk bench` -> `Dev`
+- generated tool flows such as fused `tusk-fix` -> `Build`
+
+This is enough to unlock the main real-world cases without requiring a full
+target-system rewrite up front.
+
+## 6. Workspace loading vs graph construction
 
 Workspace loading should still be able to discover packages referenced through
-any dependency class so workspace-level tooling can see the full package set.
+any dependency class so tooling can see the full package set.
 
 That means:
 
-- package loading may traverse all declared dependency classes
-- package graph construction remains selective and uses only
-  `build_graph_dependencies`
+- package discovery may traverse all declared dependency classes
+- graph construction must remain scope-specific
 
-This separates “discover package metadata” from “create the normal build graph”.
+This cleanly separates:
 
-## 5. Why dev dependencies participate in normal package builds
+- “what packages exist in the workspace universe?”
+- from
+- “what packages are needed for this specific build target?”
 
-Today, `tusk` autodiscovers:
+## 7. Immediate use cases
 
-- test binaries
-- example binaries
-- benchmark binaries
+This model is required for both of these:
 
-and plans them as part of the package.
-
-So, with the current planner architecture, `dev-dependencies` must participate
-in the package build graph or those binaries would fail to link.
-
-That is a reasonable v1 interpretation:
-
-- `dependencies`: library/runtime
-- `dev-dependencies`: package-local dev outputs
-- `build-dependencies`: tool-only
-
-If Riot later introduces more target-specific planning, the semantics can be
-refined further. This RFD does not require that refactor.
-
-## 6. Immediate use case
-
-The immediate manifest change enabled by this RFD is:
+### 7.1 `std` build-only rule authoring
 
 ```toml
 [build-dependencies]
 tusk-fix-api = { path = "../tusk-fix-api" }
 ```
 
-for packages like `std` that own build-time rule providers but must not acquire
-normal runtime edges to `tusk-fix-api`.
+This puts `tusk-fix-api` on `std.build`, not on `std.runtime`, assuming the
+provider implementation itself also lives outside `src/` in a build-only
+location like `fix/`.
+
+### 7.2 `std` test-time dependency on `propane`
+
+```toml
+[dev-dependencies]
+propane = { path = "../propane" }
+```
+
+This lets `std` use `propane` in tests without pretending `propane` is part of
+the `std` runtime artifact graph.
+
+## 8. Rollout
+
+The rollout should happen in slices:
+
+### Stage 1
+
+- parse all three manifest sections
+- store them explicitly in `tusk-model`
+
+### Stage 2
+
+- introduce explicit `Build`, `Runtime`, and `Dev` package phases
+- make `pkg.runtime -> pkg.build` implicit
+- use runtime phase for `tusk build`
+- stop letting `build-dependencies` contaminate runtime package products
+- treat the self `pkg.build` edge as ordering, not as a normal runtime depset
+  dependency
+
+### Stage 3
+
+- make `tusk test` and `tusk bench` target `pkg.dev`
+- make `pkg.dev -> pkg.runtime` implicit
+- allow cases like `std -(dev)-> propane -(runtime)-> std`
+
+### Stage 4
+
+- teach generated tool flows such as fused `tusk-fix` and future `build.ml`
+  hooks to resolve against `pkg.build`
 
 ## Drawbacks
 [drawbacks]: #drawbacks
 
-- the package model grows more explicit and slightly more verbose
-- planner code must choose the correct dependency projection instead of blindly
-  using one list
-- some future tooling may want even finer distinctions than the three classes
-  here
+- planner and executor code must choose scopes explicitly instead of assuming
+  one graph
+- some commands will eventually need sharper target semantics than “runtime” vs
+  “dev”
+- debugging dependency issues becomes slightly more subtle because users need to
+  know which graph a command is using
+
+These are acceptable costs because the alternative is a package model that
+cannot represent real Riot workflows cleanly.
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-### Why not keep one dependency list
+### Why not keep one package graph and just mark dependency classes on edges
 
-Because it forces build-time and runtime concerns into the same graph and causes
-false cycles like the `std -> tusk-fix-api` case.
+Because that still encourages cycle detection and planning against the union of
+all edges, and it still leaves one package node trying to represent three
+different build products.
 
-### Why not make build-dependencies a tusk-fix-specific feature
+The requirement is not just richer metadata. The requirement is distinct phase
+selection by build target.
 
-Because the pressure is broader than `tusk-fix`. Build-time generators, macro
-tooling, codegen, and future package commands all want the same separation.
+The bootstrap work that motivated this design also exposes a second issue with
+the single-node model: ordering-only relationships and artifact dependencies
+get conflated too easily. Representing `pkg.build`, `pkg.runtime`, and
+`pkg.dev` as distinct nodes makes it much clearer which edges are:
 
-### Why not exclude dev-dependencies from the build graph too
+- pure scheduling constraints
+- library/runtime artifact dependencies
+- dev-only target relationships
 
-Because the current package planner builds dev outputs as binaries. Excluding
-them now would make declared dev dependencies largely useless without a larger
-planner refactor.
+### Why not make build-dependencies a tusk-fix-specific escape hatch
+
+Because the pressure is broader than `tusk-fix`. Macros, codegen, generators,
+future package commands, and other build-time systems want the same separation.
+
+### Why not exclude dev-dependencies from all graphs
+
+Because then they are not useful for test/example/bench targets, which defeats
+the purpose of declaring them in the first place.
 
 ## Prior art
 [prior-art]: #prior-art
 
-The split mirrors the familiar shape used by other build tools:
+The split mirrors the familiar model used by other build tools:
 
 - runtime dependencies
 - development/test dependencies
 - build-time/tooling dependencies
 
-The names chosen here intentionally match that mental model.
+What is slightly stricter here is the explicit statement that these must map to
+different dependency graphs, not just different TOML sections.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-- Should future `tusk` target planning distinguish library builds from
-  test/example/bench builds more sharply, so `dev-dependencies` can be excluded
-  from some build commands?
-- Should package commands eventually declare whether they consume normal,
-  dev-only, or build-only dependency closures?
+- Should package commands eventually declare which package phase they consume?
+- Should `tusk run` ever gain a way to opt into dev scope for explicitly
+  dev-only binaries?
+- How far should the first implementation go before Riot needs a richer
+  target-specific planning model beyond `Build`, `Runtime`, and `Dev`?

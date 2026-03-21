@@ -3,6 +3,8 @@ open Std.Collections
 open Tusk_model
 open Tusk_server
 
+type build_scope = Runtime | Dev
+
 (** Helper functions for target resolution *)
 
 let ensure_toolchains_for_targets workspace targets =
@@ -72,6 +74,15 @@ let resolve_targets workspace matches =
       (* Default to host *)
       Ok [Tusk_toolchain.get_host_triple ()]
 
+let format_execution_error_message package_name message =
+  if String.starts_with ~prefix:"Skipped (" message then
+    let skipped_len = String.length "Skipped" in
+    let suffix =
+      String.sub message skipped_len (String.length message - skipped_len)
+    in
+    "Skipped " ^ package_name ^ suffix
+  else message
+
 let command =
   let open ArgParser in
   let open Arg in
@@ -88,7 +99,7 @@ let command =
          |> help "Build for all configured targets";
        ]
 
-let build_command package_opt target_arch =
+let build_command ?(scope = Runtime) package_opt target_arch =
   let cwd =
     Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
   in
@@ -118,7 +129,12 @@ let build_command package_opt target_arch =
   let skipped_count = ref 0 in
 
   let result =
-    Local_session.build_streaming client request ?target_arch (fun event ->
+    Local_session.build_streaming client request
+      ~scope:
+        (match scope with
+        | Runtime -> Local_session.Runtime
+        | Dev -> Local_session.Dev)
+      ?target_arch (fun event ->
         match event with
         | Local_session.BuildStarted session_id -> ()
         | Local_session.BuildEvent event ->
@@ -146,8 +162,11 @@ let build_command package_opt target_arch =
             List.iter (fun (error : Tusk_executor.Package_builder.build_result) ->
               match error.status with
               | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ExecutionFailed { message }) ->
+                  let formatted_message =
+                    format_execution_error_message error.package.name message
+                  in
                   println "";
-                  println ("\027[1;31mError\027[0m: " ^ message)
+                  println ("\027[1;31mError\027[0m: " ^ formatted_message)
               | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.PlanningFailed _) ->
                   println "";
                   println ("\027[1;31mError\027[0m: Planning failed for " ^ error.package.name)

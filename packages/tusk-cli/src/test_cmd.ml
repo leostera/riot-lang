@@ -133,7 +133,9 @@ let run matches =
       (fun pkg test_names ->
         println "";
         println ("Building package '" ^ pkg ^ "'...");
-        match Build.build_command (Some pkg) None with
+        match
+          Build.build_command ~scope:Build.Dev (Some pkg) None
+        with
         | Ok () ->
             Local_session.close client;
             let client = reconnect ~workspace in

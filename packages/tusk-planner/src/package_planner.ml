@@ -8,6 +8,7 @@ module G = Std.Graph.SimpleGraph
 
 type plan_result =
   | Planned of {
+      package_key : Package.key;
       package : Package.t;
       module_graph : Module_node.t G.t;
       action_graph : Action_graph.t;
@@ -36,6 +37,11 @@ type check_deps_error = Missing of Package.t list | Failed of Package.t list
 let compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx =
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
+
+  (* Planner artifact contract version.
+     Bump this when planned output shapes or link-time artifact requirements
+     change in ways that must invalidate cached package artifacts. *)
+  H.write_string state "planner-artifacts:v2";
 
   (* Build context (includes resolved profile) *)
   Build_ctx.hash state build_ctx;
@@ -81,8 +87,17 @@ let compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx =
 
   H.finish state
 
-let check_dependencies_built ~package_graph ~package =
-  let deps = Package_graph.get_dependencies package_graph package in
+let check_dependencies_built ~package_graph ~package_key =
+  let current_package_name =
+    match Package_graph.get_node_by_key package_graph package_key with
+    | Some node -> (Package_graph.get_package node.value).Package.name
+    | None -> ""
+  in
+  let deps =
+    match Package_graph.get_node_by_key package_graph package_key with
+    | Some node -> Package_graph.get_dependencies_for_node package_graph node
+    | None -> []
+  in
 
   let depset : Dependency.t vec = vec [] in
   let unplanned = ref [] in
@@ -90,6 +105,13 @@ let check_dependencies_built ~package_graph ~package =
 
   let process_node node =
     let pkg = Package_graph.get_package node in
+    let is_self_build_phase =
+      String.equal pkg.Package.name current_package_name
+      &&
+      match Package_graph.get_scope node with
+      | Package_graph.Build -> true
+      | Package_graph.Runtime | Package_graph.Dev -> false
+    in
     match node with
     | Package_graph.Unplanned _ ->
         (* Not yet planned - unplanned dependency *)
@@ -104,8 +126,9 @@ let check_dependencies_built ~package_graph ~package =
         (* Dependency was skipped - treat as failed *)
         failed := pkg :: !failed
     | Package_graph.Built { package; artifact; depset = dep_depset; hash; _ } ->
-        let dep = Dependency.{ package; artifact; depset = dep_depset; hash } in
-        Vector.push depset dep
+        if not is_self_build_phase then
+          let dep = Dependency.{ package; artifact; depset = dep_depset; hash } in
+          Vector.push depset dep
   in
 
   List.iter process_node deps;
@@ -115,8 +138,9 @@ let check_dependencies_built ~package_graph ~package =
   else if !unplanned != [] then Error (Missing !unplanned)
   else Ok (Vector.into_iter depset |> Iterator.to_list)
 
-let plan_package ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
-  match check_dependencies_built ~package_graph ~package with
+let plan_package ~workspace ~toolchain ~store ~package_graph ~package_key
+    ~package ~build_ctx =
+  match check_dependencies_built ~package_graph ~package_key with
   | Error (Failed failed) -> Ok (FailedDependencies { package; failed })
   | Error (Missing missing) -> Ok (MissingDependencies { package; missing })
   | Ok depset ->
@@ -154,6 +178,7 @@ let plan_package ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx
         Ok
           (Planned
              {
+               package_key;
                package;
                module_graph = G.make ();
                action_graph = Action_graph.create ();
@@ -229,9 +254,10 @@ let plan_package ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx
             Ok
               (Planned
                  {
+                   package_key;
                    package;
-                    module_graph;
-                    action_graph;
+                   module_graph;
+                   action_graph;
                    hash = input_hash;
                    depset;
                  }))

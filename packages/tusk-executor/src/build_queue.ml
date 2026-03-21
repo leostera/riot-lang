@@ -8,8 +8,9 @@ type package_node = Package_graph.package_node Graph.SimpleGraph.node
 type t = {
   ready_queue : package_node Queue.t;
   later_queue : package_node Queue.t;
-  busy_tasks : (string, package_node) HashMap.t;
-  completed : (string, Package_builder.build_result) HashMap.t;
+  busy_tasks : (Package.key, package_node) HashMap.t;
+  completed : (Package.key, Package_builder.build_result) HashMap.t;
+  mutable package_graph : Package_graph.t option;
 }
 
 let create () =
@@ -18,11 +19,12 @@ let create () =
     later_queue = Queue.create ();
     busy_tasks = HashMap.create ();
     completed = HashMap.create ();
+    package_graph = None;
   }
 
-let get_package_name (node : package_node) =
-  let pkg_node = node.value in
-  (Package_graph.get_package pkg_node).name
+let get_package_key (node : package_node) = Package_graph.get_key node.value
+
+let set_package_graph t package_graph = t.package_graph <- Some package_graph
 
 let is_in_queue queue node_id =
   let found = ref false in
@@ -33,36 +35,29 @@ let is_in_queue queue node_id =
   !found
 
 let dependencies_satisfied t (node : package_node) =
-  let pkg_node = node.value in
-  let pkg = Package_graph.get_package pkg_node in
-  List.for_all
-    (fun (dep : Package.dependency) ->
-      (* OCaml stdlib modules are always available *)
-      if dep.name = "stdlib" || dep.name = "unix" || dep.name = "dynlink" 
-         || dep.name = "threads" || dep.name = "str" || dep.name = "bigarray"
-         || dep.name = "compiler-libs" || dep.name = "graphics" then true
-      else
-        match HashMap.get t.completed dep.name with
-        | Some { status = Package_builder.Built _ | Cached _ | Failed _; _ } ->
-            (* Dependency is done (built, cached, failed, or skipped) - dispatch package to worker.
-               The worker/planner will handle marking it as skipped if deps failed. *)
-            true
-        | _ -> false)
-    (Package.build_graph_dependencies pkg)
+  match t.package_graph with
+  | None -> false
+  | Some package_graph ->
+      List.for_all
+        (fun dep ->
+          match HashMap.get t.completed (Package_graph.get_key dep) with
+          | Some { status = Package_builder.Built _ | Cached _ | Failed _; _ } -> true
+          | _ -> false)
+        (Package_graph.get_dependencies_for_node package_graph node)
 
 let queue t (node : package_node) =
-  let pkg_name = get_package_name node in
-  match HashMap.get t.completed pkg_name with
+  let pkg_key = get_package_key node in
+  match HashMap.get t.completed pkg_key with
   | Some { status = Failed _; _ } -> ()
   | _ ->
-      if Option.is_some (HashMap.get t.busy_tasks pkg_name) then ()
+      if Option.is_some (HashMap.get t.busy_tasks pkg_key) then ()
       else if is_in_queue t.ready_queue node.id then ()
       else if is_in_queue t.later_queue node.id then ()
       else Queue.push t.ready_queue node
 
 let requeue_with_deps t (node : package_node) ~(deps : package_node list) =
-  let pkg_name = get_package_name node in
-  let _ = HashMap.remove t.busy_tasks pkg_name in
+  let pkg_key = get_package_key node in
+  let _ = HashMap.remove t.busy_tasks pkg_key in
   if not (is_in_queue t.later_queue node.id) then
     Queue.push t.later_queue node;
   List.iter (fun dep -> queue t dep) deps
@@ -82,8 +77,8 @@ let next t =
         if dependencies_satisfied t node then (
           (* Dependencies satisfied, return this node *)
           List.iter (fun n -> Queue.push t.ready_queue n) checked;
-          let pkg_name = get_package_name node in
-          let _ = HashMap.insert t.busy_tasks pkg_name node in
+          let pkg_key = get_package_key node in
+          let _ = HashMap.insert t.busy_tasks pkg_key node in
           Some node)
         else
           (* Dependencies not satisfied, keep looking *)
@@ -92,25 +87,26 @@ let next t =
   find_ready []
 
 let mark_completed t result =
-  let pkg_name = result.Package_builder.package.name in
-  let _ = HashMap.remove t.busy_tasks pkg_name in
-  let _ = HashMap.insert t.completed pkg_name result in
+  let pkg_key = result.Package_builder.package_key in
+  let _ = HashMap.remove t.busy_tasks pkg_key in
+  let _ = HashMap.insert t.completed pkg_key result in
   ()
 
 let mark_failed t (node : package_node) ~error =
   let pkg = Package_graph.get_package node.value in
-  let pkg_name = pkg.name in
-  let _ = HashMap.remove t.busy_tasks pkg_name in
+  let pkg_key = Package_graph.get_key node.value in
+  let _ = HashMap.remove t.busy_tasks pkg_key in
 
   let failed_result =
     Package_builder.
       {
+        package_key = pkg_key;
         package = pkg;
         status = Failed (ExecutionFailed { message = error });
         duration = Time.Duration.zero;
       }
   in
-  let _ = HashMap.insert t.completed pkg_name failed_result in
+  let _ = HashMap.insert t.completed pkg_key failed_result in
   ()
 
 let stats queue =
@@ -146,7 +142,7 @@ let is_complete t ~total_packages =
   let all_accounted_for = completed = total_packages in
   all_queues_empty && all_accounted_for
 
-let get_result queue pkg_name = HashMap.get queue.completed pkg_name
+let get_result queue pkg_key = HashMap.get queue.completed pkg_key
 
 let get_all_results queue =
   queue.completed

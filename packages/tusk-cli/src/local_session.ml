@@ -52,6 +52,7 @@ type streaming_event =
     }
 
 type build_target = BuildPackage of string | BuildAll
+type build_scope = Runtime | Dev
 
 let connect_local ~workspace =
   match Tusk_server.start_local ~workspace ~config:Tusk_server.Server_config.default with
@@ -193,7 +194,7 @@ let rec handle_streaming_events t session_id callback =
         Error (PackageNotFound { package_name; available_packages })
       else handle_streaming_events t session_id callback
 
-let build_streaming t target ?target_arch callback =
+let build_streaming t target ?(scope = Runtime) ?target_arch callback =
   match acquire_build_lock t.workspace_root with
   | Error err -> Error err
   | Ok lock_file ->
@@ -206,7 +207,17 @@ let build_streaming t target ?target_arch callback =
           in
           let session_id = Session_id.make () in
           send_request t
-            (Protocol.Build { client_pid = self (); target; target_arch; session_id });
+            (Protocol.Build
+               {
+                 client_pid = self ();
+                 target;
+                 scope =
+                   (match scope with
+                   | Runtime -> Protocol.Runtime
+                   | Dev -> Protocol.Dev);
+                 target_arch;
+                 session_id;
+               });
           let selector msg =
             match msg with
             | Protocol.ServerResponse

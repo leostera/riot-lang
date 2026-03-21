@@ -58,8 +58,11 @@ let plan_node input =
           ~includes:[]
     | None -> ());
 
-    (* Use depset directly - it's already in correct topological order from check_dependencies_built *)
+    (* Direct deps are used for linking, but compile-time includes need the
+       full transitive closure because package alias/interface modules can
+       reference transitive package modules. *)
     let all_deps = input.depset in
+    let transitive_deps = Dependency.transitive_closure all_deps in
 
     (* Check if any package (including our own) needs unix *)
     let needs_unix =
@@ -71,7 +74,7 @@ let plan_node input =
       check_pkg input.package
       || List.exists
            (fun (dep : Dependency.t) -> check_pkg dep.package)
-           all_deps
+           transitive_deps
     in
 
     (* Check if any package (including our own) needs dynlink *)
@@ -84,17 +87,20 @@ let plan_node input =
       check_pkg input.package
       || List.exists
            (fun (dep : Dependency.t) -> check_pkg dep.package)
-           all_deps
+           transitive_deps
     in
 
     let binary_libraries =
       match input.package.library with
       | Some _ ->
           let lib_name = Module_name.(of_string input.package.name |> cmxa) in
-          (* Build libraries list: unix (if needed), dynlink (if needed), dependencies, then our library *)
+          (* Binaries and commands need the full transitive runtime library
+             closure, not just direct deps, because a direct package library
+             like Std can reference modules provided by transitive deps such as
+             Kernel and Miniriot. *)
           let unix_lib = if needs_unix then [ Path.v "unix.cmxa" ] else [] in
           let dynlink_lib = if needs_dynlink then [ Path.v "dynlink.cmxa" ] else [] in
-          let dep_libs = List.map Dependency.library_cmxa all_deps in
+          let dep_libs = List.map Dependency.library_cmxa transitive_deps in
           unix_lib @ dynlink_lib @ dep_libs @ [ lib_name ]
       | None -> []
     in
@@ -104,7 +110,7 @@ let plan_node input =
       List.map
         (fun (dep : Dependency.t) ->
           Tusk_store.Store.get_artifact_dir input.store dep.artifact)
-        all_deps
+        transitive_deps
     in
 
     let binary_includes =

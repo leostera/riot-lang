@@ -9,7 +9,7 @@ open Tusk_executor
    session. *)
 
 let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
-    ~server_pid ~target ~target_arch =
+    ~server_pid ~target ~scope ~target_arch =
   Log.debug
     ("Build worker started for session " ^ Session_id.to_string session_id ^
      (match target_arch with
@@ -125,7 +125,12 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
     
     let result =
       Coordinator2.build_workspace ~workspace ~toolchain ~store
-        ~target:planner_target ~concurrency ~build_ctx ~session_id
+        ~target:planner_target
+        ~scope:
+          (match scope with
+          | Protocol.Runtime -> Tusk_planner.Package_graph.Runtime
+          | Protocol.Dev -> Tusk_planner.Package_graph.Dev)
+        ~concurrency ~build_ctx ~session_id
     in
 
     Log.debug "Build worker finished, sending result to client";
@@ -174,9 +179,12 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
                   built;
                   errors;
                 }));
-        (* Send updated package graph back to internal server even on failure *)
-        send server_pid
-          (Protocol.UpdatePackageGraph workspace_result.package_graph))
+        (* Keep the server's canonical graph runtime-shaped. *)
+        (match scope with
+        | Protocol.Runtime ->
+            send server_pid
+              (Protocol.UpdatePackageGraph workspace_result.package_graph)
+        | Protocol.Dev -> ()))
       else (
         send client_pid
           (Protocol.ServerResponse
@@ -187,9 +195,11 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
                   stats;
                   results = workspace_result.results;
                 }));
-        (* Send updated package graph back to internal server *)
-        send server_pid
-          (Protocol.UpdatePackageGraph workspace_result.package_graph))
+        (match scope with
+        | Protocol.Runtime ->
+            send server_pid
+              (Protocol.UpdatePackageGraph workspace_result.package_graph)
+        | Protocol.Dev -> ()))
   | Error err -> (
       match err with
       | Tusk_planner.Workspace_planner.PackageNotFound { name; available } ->
@@ -270,10 +280,10 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
 
 (** Start a build in a spawned worker process *)
 let start ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
-    ~server_pid ~target ~target_arch =
+    ~server_pid ~target ~scope ~target_arch =
   let _ =
     spawn (fun () ->
         init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
-          ~server_pid ~target ~target_arch)
+          ~server_pid ~target ~scope ~target_arch)
   in
   ()

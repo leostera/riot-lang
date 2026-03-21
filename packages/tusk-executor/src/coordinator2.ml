@@ -26,7 +26,7 @@ type Message.t +=
 
 (* Coordinator state with explicit worker tracking *)
 type coordinator_state = {
-  packages : Package.t list;
+  packages : Package_graph.package_node list;
   queue : Build_queue.t;
   idle_workers : Pid.t Queue.t;
   busy_workers : (Pid.t, Build_queue.package_node) HashMap.t;
@@ -44,7 +44,7 @@ let rec worker_loop ~coordinator ~workspace ~toolchain ~store ~package_graph ~bu
       let package = Package_graph.get_package node.value in
       let result =
         Package_builder.build ~workspace ~toolchain ~store ~package_graph
-          ~package ~build_ctx
+          ~package_key:(Package_graph.get_key node.value) ~package ~build_ctx
       in
 
       (* Report completion *)
@@ -122,8 +122,8 @@ and handle_build_completed state =
 
   (* Count results *)
   List.iter
-    (fun pkg ->
-      match Build_queue.get_result state.queue pkg.Package.name with
+    (fun pkg_node ->
+      match Build_queue.get_result state.queue (Package_graph.get_key pkg_node) with
       | Some result -> (
           match result.Package_builder.status with
           | Cached _ -> cached := !cached + 1
@@ -142,7 +142,8 @@ and handle_build_completed state =
   {
     results =
       List.filter_map
-        (fun (pkg : Package.t) -> Build_queue.get_result state.queue pkg.name)
+        (fun pkg_node ->
+          Build_queue.get_result state.queue (Package_graph.get_key pkg_node))
         state.packages;
     total_duration = Time.Duration.zero;
     (* Will be computed by caller *)
@@ -158,6 +159,7 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency ~bui
 
   (* Create build queue *)
   let queue = Build_queue.create () in
+  Build_queue.set_package_graph queue package_graph;
   Package_graph.iter_nodes package_graph ~fn:(fun node ->
       Build_queue.queue queue node);
 
@@ -190,10 +192,10 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency ~bui
   coordinator_loop state
 
 (* Public API - same interface as original coordinator *)
-let build_workspace ~workspace ~toolchain ~store ~target ~concurrency ~build_ctx ~session_id =
+let build_workspace ~workspace ~toolchain ~store ~target ~scope ~concurrency ~build_ctx ~session_id =
   let start = Time.Instant.now () in
 
-  match Tusk_planner.plan_workspace ~workspace ~target ~load_errors:[] with
+  match Tusk_planner.plan_workspace ~workspace ~target ~scope ~load_errors:[] with
   | Error err -> Error err
   | Ok { packages; package_graph; _ } -> (
       Telemetry.emit
@@ -207,7 +209,7 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency ~build_ctx
       | exception Package_graph.Cycle_detected cycle ->
           Error (Workspace_planner.CycleDetected { cycle })
       | nodes ->
-          let packages = List.map Package_graph.get_package nodes in
+          let packages = nodes in
 
           (* Run coordinator to completion *)
           let result =

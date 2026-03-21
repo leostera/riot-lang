@@ -80,6 +80,7 @@ let () =
   build_package ~build_results "tusk-executor" "packages/tusk-executor";
   build_package ~build_results "tusk-server" "packages/tusk-server";
   build_package ~build_results "tusk-init" "packages/tusk-init";
+  build_package ~build_results "tusk-fix-api" "packages/tusk-fix-api";
   build_package ~build_results "tusk-fix" "packages/tusk-fix";
   build_package ~build_results "tusk-cli" "packages/tusk-cli";
 

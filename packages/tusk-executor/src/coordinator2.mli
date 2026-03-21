@@ -31,6 +31,7 @@ val build_workspace :
   toolchain:Tusk_toolchain.t ->
   store:Tusk_store.Store.t ->
   target:Workspace_planner.target ->
+  scope:Package_graph.build_scope ->
   concurrency:int ->
   build_ctx:Build_ctx.t ->
   session_id:Session_id.t ->

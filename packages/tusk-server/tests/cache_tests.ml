@@ -60,12 +60,16 @@ let test_fresh_build_no_cache () =
         in
         let store = Tusk_store.Store.create ~workspace in
         let package_graph = 
-          Tusk_planner.Package_graph.create workspace |> Result.unwrap
+          Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime workspace |> Result.unwrap
         in
 
         let build =
           Tusk_executor.Package_builder.build ~workspace ~toolchain ~store ~build_ctx:(make_test_build_ctx ())
-            ~package_graph ~package
+            ~package_graph
+            ~package_key:
+              (Tusk_planner.Package_graph.package_key ~package_name:package.name
+                 Tusk_planner.Package_graph.Runtime)
+            ~package
         in
 
         match build.status with
@@ -96,19 +100,27 @@ let test_second_build_full_cache () =
         in
         let store = Tusk_store.Store.create ~workspace in
         let package_graph = 
-          Tusk_planner.Package_graph.create workspace |> Result.unwrap
+          Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime workspace |> Result.unwrap
         in
 
         let first_build =
           Tusk_executor.Package_builder.build ~workspace ~toolchain ~store ~build_ctx:(make_test_build_ctx ())
-            ~package_graph ~package
+            ~package_graph
+            ~package_key:
+              (Tusk_planner.Package_graph.package_key ~package_name:package.name
+                 Tusk_planner.Package_graph.Runtime)
+            ~package
         in
 
         match first_build.status with
         | Built _ -> (
             let second_build =
               Tusk_executor.Package_builder.build ~workspace ~toolchain ~store ~build_ctx:(make_test_build_ctx ())
-                ~package_graph ~package
+                ~package_graph
+                ~package_key:
+                  (Tusk_planner.Package_graph.package_key ~package_name:package.name
+                     Tusk_planner.Package_graph.Runtime)
+                ~package
             in
 
             match second_build.status with

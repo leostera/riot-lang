@@ -12,6 +12,7 @@ type package_plan_result = Package_planner.plan_result
 val plan_workspace :
   workspace:Workspace.t ->
   target:build_target ->
+  scope:Package_graph.build_scope ->
   load_errors:Workspace_manager.load_error list ->
   (workspace_plan_result, plan_error) result
 (** Plan the workspace - returns ordered packages to build and package graph.
@@ -22,6 +23,7 @@ val plan_package_with_graph :
   toolchain:Tusk_toolchain.t ->
   store:Tusk_store.Store.t ->
   package_graph:Package_graph.t ->
+  package_key:Package.key ->
   package:Package.t ->
   build_ctx:Build_ctx.t ->
   (package_plan_result, Planning_error.t) result

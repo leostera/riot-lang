@@ -112,6 +112,9 @@ let test_build_result_status_variants () =
   let result_cached =
     Tusk_executor.Package_builder.
       {
+        package_key =
+          Tusk_planner.Package_graph.package_key ~package_name:package.name
+            Tusk_planner.Package_graph.Runtime;
         package;
         status = Cached artifact;
         duration = Time.Duration.from_millis 5;
@@ -121,6 +124,9 @@ let test_build_result_status_variants () =
   let result_built =
     Tusk_executor.Package_builder.
       {
+        package_key =
+          Tusk_planner.Package_graph.package_key ~package_name:package.name
+            Tusk_planner.Package_graph.Runtime;
         package;
         status = Built artifact;
         duration = Time.Duration.from_millis 100;
@@ -130,6 +136,9 @@ let test_build_result_status_variants () =
   let result_failed =
     Tusk_executor.Package_builder.
       {
+        package_key =
+          Tusk_planner.Package_graph.package_key ~package_name:package.name
+            Tusk_planner.Package_graph.Runtime;
         package;
         status = Failed (ExecutionFailed { message = "compilation error" });
         duration = Time.Duration.from_millis 50;

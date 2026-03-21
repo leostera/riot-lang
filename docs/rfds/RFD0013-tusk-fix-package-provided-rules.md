@@ -23,6 +23,8 @@ The implementation that now exists follows that shape:
 
 - packages declare one `[tusk.fix.provider]`
 - provider source defaults to either:
+  - `fix/tusk_fix_rules/tusk_fix_rules.ml`
+  - `fix/tusk_fix_rules.ml`
   - `src/tusk_fix_rules/tusk_fix_rules.ml`
   - `src/tusk_fix_rules.ml`
 - rule ids are automatically namespaced as `<package>:<rule>`
@@ -69,6 +71,8 @@ rules = ["no-stdlib"]
 
 If `path` is omitted, `tusk-fix` probes these defaults in order:
 
+- `fix/tusk_fix_rules/tusk_fix_rules.ml`
+- `fix/tusk_fix_rules.ml`
 - `src/tusk_fix_rules/tusk_fix_rules.ml`
 - `src/tusk_fix_rules.ml`
 
@@ -105,7 +109,7 @@ The implemented manifest shape is:
 
 ```toml
 [tusk.fix.provider]
-path = "src/tusk_fix_rules/tusk_fix_rules.ml" # optional
+path = "fix/tusk_fix_rules.ml" # optional
 rules = ["no-stdlib"]
 ```
 
@@ -126,6 +130,9 @@ Likewise, provider-defined diagnostic code `f0001` becomes `std:f0001`.
 ## 2. Provider authoring
 
 Shared rule-authoring types live in `tusk-fix-api`.
+
+Provider implementations should prefer `fix/` over `src/` so build-only rule
+code does not participate in the package's runtime dependency graph.
 
 The fused runtime still exposes the richer `Tusk_fix` runtime surface, but
 provider authors write against the shared rule API plus `syn` helpers.

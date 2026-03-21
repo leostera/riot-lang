@@ -23,6 +23,7 @@ val build_status_to_json : build_status -> Std.Data.Json.t
 
 (** Result of building a package *)
 type build_result = {
+  package_key : Package.key;
   package : Package.t;
   status : build_status;
   duration : Time.Duration.t;
@@ -52,6 +53,7 @@ val build :
   toolchain:Tusk_toolchain.t ->
   store:Tusk_store.Store.t ->
   package_graph:Package_graph.t ->
+  package_key:Package.key ->
   package:Package.t ->
   build_ctx:Build_ctx.t ->
   build_result

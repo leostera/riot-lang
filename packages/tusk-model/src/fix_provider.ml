@@ -15,6 +15,8 @@ let normalize_rule_id package_name rule_id =
 
 let default_source_paths =
   [
+    Path.v "fix/tusk_fix_rules/tusk_fix_rules.ml";
+    Path.v "fix/tusk_fix_rules.ml";
     Path.v "src/tusk_fix_rules/tusk_fix_rules.ml";
     Path.v "src/tusk_fix_rules.ml";
   ]
@@ -27,7 +29,7 @@ let resolve_source_path provider_items ~package_path =
       |> List.find_opt (fun rel_path ->
              Fs.exists Path.(package_path / rel_path)
              |> Result.unwrap_or ~default:false)
-      |> Option.unwrap_or ~default:(Path.v "src/tusk_fix_rules.ml")
+      |> Option.unwrap_or ~default:(Path.v "fix/tusk_fix_rules.ml")
 
 let parse_provider provider_toml ~package_name ~package_path =
   match provider_toml with

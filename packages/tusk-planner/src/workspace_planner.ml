@@ -16,12 +16,13 @@ type plan_error =
   | MissingDependencies of { missing : Package_graph.missing_dependency list }
   | PackageLoadFailed of { errors : Workspace_manager.load_error list }
 
-let plan_workspace ~workspace ~target ~load_errors =
+let plan_workspace ~workspace ~target ~(scope : Package_graph.build_scope)
+    ~load_errors =
   (* Check for package load errors first *)
   if List.length load_errors > 0 then
     Error (PackageLoadFailed { errors = load_errors })
   else
-    match Package_graph.create workspace with
+    match Package_graph.create ~scope workspace with
     | Error (Package_graph.MissingPackages { missing }) ->
         Error (MissingDependencies { missing })
     | Ok package_graph ->

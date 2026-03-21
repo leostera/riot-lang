@@ -5,6 +5,7 @@ open Tusk_model
 
 type plan_result =
   | Planned of {
+      package_key : Package.key;
       package : Package.t;
       module_graph : Module_node.t Graph.SimpleGraph.t;
       action_graph : Action_graph.t;
@@ -19,6 +20,7 @@ val plan_package :
   toolchain:Tusk_toolchain.t ->
   store:Tusk_store.Store.t ->
   package_graph:Package_graph.t ->
+  package_key:Package.key ->
   package:Package.t ->
   build_ctx:Build_ctx.t ->
   (plan_result, Planning_error.t) result

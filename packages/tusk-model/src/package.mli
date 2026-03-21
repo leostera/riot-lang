@@ -2,6 +2,7 @@ open Std
 
 type dependency_source = Workspace | Path of Path.t
 type dependency_scope = Normal | Dev | Build
+type key
 type dependency = { name : string; source : dependency_source }
 type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
@@ -77,7 +78,14 @@ val from_toml :
 val to_json : t -> Std.Data.Json.t
 val from_json : Std.Data.Json.t -> (t, string) result
 
+val key_of_string : string -> key
+val key_to_string : key -> string
+val key_equal : key -> key -> bool
+val key_compare : key -> key -> int
+
 val dependencies_for_scope : dependency_scope -> t -> dependency list
+val binaries_for_scope : dependency_scope -> t -> binary list
+val for_scope : dependency_scope -> t -> t
 val build_graph_dependencies : t -> dependency list
 val all_dependencies : t -> dependency list
 

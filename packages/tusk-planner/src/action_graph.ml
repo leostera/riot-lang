@@ -185,7 +185,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
       ([], [], [])
   | { kind = Library { name; includes }; _ } ->
       let library_name = Module_name.(of_string name |> cmxa) in
-      let static_lib_name = Module_name.(of_string name |> a) in
+      let archive_name = Module_name.(of_string name |> a) in
       let shared_lib_name = Module_name.(of_string name |> cmxs) in
       let sources = [] in
 
@@ -206,9 +206,9 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
       (* Use List.unique to preserve topological order required by OCaml linker *)
       let objects = List.unique objects_with_duplicates in
 
-      (* Create static library (.cmxa + .a) *)
+      (* Create static library metadata (.cmxa). *)
       let create_lib = Action.CreateLibrary { 
-        outputs = [ library_name; static_lib_name ]; 
+        outputs = [ library_name; archive_name ];
         objects; 
         includes 
       } in
@@ -241,7 +241,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         cclib_flags = [];
       } in
       
-      let all_outputs = [ library_name; static_lib_name; shared_lib_name ] in
+      let all_outputs = [ library_name; archive_name; shared_lib_name ] in
       ([ create_lib; create_shared ], all_outputs, sources)
   | { kind = Binary { name; source; libraries; includes }; _ } ->
       let binary_mod =
@@ -282,6 +282,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
          The profile contains only the current package's target-specific flags (applied in 
          package_planner). When linking, we need flags from ALL dependencies transitively,
          which can only be determined at link-time based on the depset. *)
+      let transitive_deps = Dependency.transitive_closure depset in
       let dep_ldflags = 
         List.concat_map (fun (dep : Dependency.t) ->
           match List.assoc_opt target_platform dep.package.compiler.target_overrides with
@@ -293,7 +294,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
                   | Inherit -> [])
               | None -> [])
           | None -> []
-        ) depset
+        ) transitive_deps
       in
       
       (* Combine: current package + dependencies *)
@@ -346,12 +347,14 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
 
 let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink
     (module_graph : Module_node.t G.t) : t * Path.t list =
+  let transitive_deps = Dependency.transitive_closure depset in
+
   (* Extract dependency cache include paths - no file copying needed! *)
   let dep_cache_includes =
     List.map
       (fun (dep : Dependency.t) ->
         Tusk_store.Store.get_artifact_dir store dep.artifact)
-      depset
+      transitive_deps
   in
 
   (* Add stdlib includes if needed *)

@@ -8,6 +8,7 @@ open Std.Collections
 
 type dependency_source = Workspace | Path of Path.t
 type dependency_scope = Normal | Dev | Build
+type key = Key of string
 type dependency = { name : string; source : dependency_source }
 type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
@@ -57,12 +58,72 @@ type t = {
 }
 
 let equal a b = a.name = b.name && a.path = b.path
+let key_of_string value = Key value
+let key_to_string (Key value) = value
+let key_equal left right = String.equal (key_to_string left) (key_to_string right)
+let key_compare left right = String.compare (key_to_string left) (key_to_string right)
 
 let dependencies_for_scope scope (pkg : t) =
   match scope with
   | Normal -> pkg.dependencies
   | Dev -> pkg.dev_dependencies
   | Build -> pkg.build_dependencies
+
+let binary_scope (bin : binary) =
+  let path_str = Path.to_string bin.path in
+  if
+    String.starts_with ~prefix:"tests/" path_str
+    || String.starts_with ~prefix:"examples/" path_str
+    || String.starts_with ~prefix:"bench/" path_str
+  then Dev
+  else Normal
+
+let binaries_for_scope scope (pkg : t) =
+  match scope with
+  | Normal ->
+      List.filter (fun bin -> binary_scope bin = Normal) pkg.binaries
+  | Dev -> pkg.binaries
+  | Build -> []
+
+let sources_for_scope scope (pkg : t) =
+  match scope with
+  | Normal ->
+      { pkg.sources with tests = []; examples = []; bench = [] }
+  | Dev -> pkg.sources
+  | Build ->
+      {
+        pkg.sources with
+        src = [];
+        native = [];
+        tests = [];
+        examples = [];
+        bench = [];
+      }
+
+let for_scope scope (pkg : t) =
+  match scope with
+  | Normal ->
+      {
+        pkg with
+        dev_dependencies = [];
+        build_dependencies = [];
+        binaries = binaries_for_scope Normal pkg;
+        sources = sources_for_scope Normal pkg;
+      }
+  | Dev ->
+      {
+        pkg with
+        build_dependencies = [];
+      }
+  | Build ->
+      {
+        pkg with
+        dependencies = [];
+        dev_dependencies = [];
+        library = None;
+        binaries = [];
+        sources = sources_for_scope Build pkg;
+      }
 
 let build_graph_dependencies (pkg : t) = pkg.dependencies @ pkg.dev_dependencies
 

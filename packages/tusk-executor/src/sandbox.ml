@@ -28,6 +28,7 @@ let create ~workspace ~package_name =
 let get_dir t = t.dir
 
 let copy_object_files ~store ~sandbox ~package ~depset =
+  let depset = Tusk_planner.Dependency.transitive_closure depset in
   List.iter
     (fun dep ->
       let abs_paths =

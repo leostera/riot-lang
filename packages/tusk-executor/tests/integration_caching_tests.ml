@@ -55,20 +55,28 @@ let test_package_cache_hit_skips_planning () =
         let store = Tusk_store.Store.create ~workspace in
         let toolchain = Lazy.force test_toolchain in
         let package = make_simple_package tmpdir "test_pkg" in
-        let package_graph = Tusk_planner.Package_graph.create workspace in
+        let package_graph = Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime workspace in
 
         let first_build =
           Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
             ~build_ctx:(make_test_build_ctx ())
-            ~package_graph ~package
+            ~package_graph
+            ~package_key:
+              (Tusk_planner.Package_graph.package_key ~package_name:package.name
+                 Tusk_planner.Package_graph.Runtime)
+            ~package
         in
 
         match first_build.status with
         | Built artifact -> (
             let second_build =
               Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
-            ~build_ctx:(make_test_build_ctx ())
-                ~package_graph ~package
+                ~build_ctx:(make_test_build_ctx ())
+                ~package_graph
+                ~package_key:
+                  (Tusk_planner.Package_graph.package_key ~package_name:package.name
+                     Tusk_planner.Package_graph.Runtime)
+                ~package
             in
 
             match second_build.status with
@@ -103,12 +111,16 @@ let test_package_cache_miss_on_source_change () =
         let store = Tusk_store.Store.create ~workspace in
         let toolchain = Lazy.force test_toolchain in
         let package = make_simple_package tmpdir "test_pkg" in
-        let package_graph = Tusk_planner.Package_graph.create workspace in
+        let package_graph = Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime workspace in
 
         let first_build =
           Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
             ~build_ctx:(make_test_build_ctx ())
-            ~package_graph ~package
+            ~package_graph
+            ~package_key:
+              (Tusk_planner.Package_graph.package_key ~package_name:package.name
+                 Tusk_planner.Package_graph.Runtime)
+            ~package
         in
 
         let ml_file = Path.(package.path / Path.v "src" / Path.v "lib.ml") in
@@ -122,7 +134,12 @@ let test_package_cache_miss_on_source_change () =
         let second_build =
           Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
             ~build_ctx:(make_test_build_ctx ())
-            ~package_graph ~package:package_modified
+            ~package_graph
+            ~package_key:
+              (Tusk_planner.Package_graph.package_key
+                 ~package_name:package_modified.name
+                 Tusk_planner.Package_graph.Runtime)
+            ~package:package_modified
         in
 
         match (first_build.status, second_build.status) with

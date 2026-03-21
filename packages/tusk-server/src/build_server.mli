@@ -12,6 +12,7 @@ val start :
   client_pid:Std.Pid.t ->
   server_pid:Std.Pid.t ->
   target:Protocol.target ->
+  scope:Protocol.build_scope ->
   target_arch:string option ->
   unit
 (** Start a build in a spawned worker process. This function returns immediately

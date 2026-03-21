@@ -89,6 +89,7 @@ and handle_build_completed state =
 
 let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency ~build_ctx =
   let queue = Build_queue.create () in
+  Build_queue.set_package_graph queue package_graph;
 
   (* Queue all package nodes BEFORE starting pool *)
   Package_graph.iter_nodes package_graph ~fn:(fun node ->
@@ -101,7 +102,7 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency ~bui
         let package = Package_graph.get_package node.value in
         let result =
           Package_builder.build ~workspace ~toolchain ~store ~package_graph
-            ~package ~build_ctx
+            ~package_key:(Package_graph.get_key node.value) ~package ~build_ctx
         in
         send owner (TaskCompleted result))
       ()
@@ -116,7 +117,11 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency ~bui
 let build_workspace ~workspace ~toolchain ~store ~target ~concurrency ~build_ctx =
   let start = Time.Instant.now () in
 
-  match Tusk_planner.plan_workspace ~workspace ~target ~load_errors:[] with
+  match
+    Tusk_planner.plan_workspace ~workspace ~target
+      ~scope:Tusk_planner.Package_graph.Runtime
+      ~load_errors:[]
+  with
   | Error err -> Error err
   | Ok { packages; package_graph; _ } -> (
       Telemetry.emit
@@ -142,7 +147,9 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency ~build_ctx
           let results =
             List.filter_map
               (fun (pkg : Package.t) ->
-                Build_queue.get_result state.queue pkg.name)
+                Build_queue.get_result state.queue
+                  (Package_graph.package_key ~package_name:pkg.name
+                     Package_graph.Runtime))
               packages
           in
 
