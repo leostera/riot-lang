@@ -37,7 +37,6 @@ members = [
   "packages/tusk-server",
   "packages/tusk-store",
   "packages/tusk-toolchain",
-  # "packages/tusk-fmt",
 ]
 
 [dependencies]
@@ -46,13 +45,7 @@ members = [
 [tusk.fix]
 rules = [
   "no-stdlib", 
-  "snake-case-type-names", 
-  "descriptive-type-variables",
-  "snake-case-function-names",
   "-class-case-module-names",
-  "snake-case-variable-names",
-  "no-prime-variables",
-  "snake-case-argument-names"
 ]
 
 [profile.debug]

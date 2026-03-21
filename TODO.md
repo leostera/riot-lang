@@ -11,7 +11,7 @@
 - [x] Argument names should use `snake_case` instead of `camelCase` (`snake-case-argument-names`)
 - [ ] Prefer multiline strings like `{| ... |}` over concatenated string literals
 - [ ] warn against custom operators
-- [ ] Named arguments should come first, then arguments with defaults, then positional arguments
+- [x] Named arguments should come first, then arguments with defaults, then positional arguments (`ordered-argument-kinds`)
 - [ ] Prefer `t`-first functions when named arguments are present
 - [ ] Keep named arguments alphabetically sorted
 - [ ] Record field names should use `snake_case`
@@ -119,4 +119,3 @@ Std:
     * int_of_string -> Int.parse
     * float_of_int  -> Float.from_int int
     * 
-

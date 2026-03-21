@@ -348,6 +348,85 @@ let tests =
             Test.assert_true
               (String.contains entry.body "display_name");
             Ok ());
+    Test.case "ordered-argument-kinds flags labeled arguments after positional ones" (fun () ->
+        let source = "let render current_user ~display_name = current_user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Ordered_argument_kinds.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0111" ] ~actual:codes;
+        Ok ());
+    Test.case "ordered-argument-kinds flags optional arguments after positional ones" (fun () ->
+        let source = "let render current_user ?page_size = current_user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Ordered_argument_kinds.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0111" ] ~actual:codes;
+        Ok ());
+    Test.case "ordered-argument-kinds flags labeled arguments after optional ones" (fun () ->
+        let source = "let render ?page_size ~display_name current_user = current_user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Ordered_argument_kinds.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes =
+          result.diagnostics
+          |> List.filter_map Tusk_fix.Diagnostic.code
+          |> List.map Tusk_fix.Diagnostic_code.to_id
+          |> List.sort String.compare
+        in
+        Test.assert_equal ~expected:[ "F0111" ] ~actual:codes;
+        Ok ());
+    Test.case "ordered-argument-kinds keeps compliant argument order clean" (fun () ->
+        let source = "let render ~display_name ?page_size current_user = current_user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Ordered_argument_kinds.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "ordered-argument-kinds reports only one issue per function" (fun () ->
+        let source = "let render current_user ~display_name ?page_size = current_user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Ordered_argument_kinds.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:1
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains argument-order violations" (fun () ->
+        match Tusk_fix.Diagnostic_code.explain "F0111" with
+        | None -> Error "Expected explanation for F0111"
+        | Some entry ->
+            Test.assert_equal ~expected:"F0111"
+              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
+            Test.assert_true
+              (String.contains entry.body "labeled arguments");
+            Ok ());
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let pipeline =
@@ -433,6 +512,26 @@ let tests =
                   ~mode:Tusk_fix.Runner.Check [ file ]
               in
               Test.assert_equal ~expected:0
+                ~actual:result.summary.remaining_diagnostics;
+              Ok ()));
+    Test.case "workspace rule overrides keep builtins enabled by default" (fun () ->
+        with_tempdir "tusk_fix_default_rules" (fun tmpdir ->
+              let workspace_toml = Path.(tmpdir / Path.v "tusk.toml") in
+              let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "app") in
+              let src_dir = Path.(package_dir / Path.v "src") in
+              let file = Path.(src_dir / Path.v "file.ml") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file workspace_toml
+                "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [\"-snake-case-type-names\"]\n";
+              write_file Path.(package_dir / Path.v "tusk.toml")
+                "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[lib]\npath = \"src/app.ml\"\n";
+              write_file file "let renderUser x = x\n";
+              let result =
+                Tusk_fix.Runner.run_files
+                  ~pipeline_for_file:(Tusk_fix.Config.pipeline_for_file (Tusk_fix.Config.load_scope ~cwd:tmpdir))
+                  ~mode:Tusk_fix.Runner.Check [ file ]
+              in
+              Test.assert_equal ~expected:1
                 ~actual:result.summary.remaining_diagnostics;
               Ok ()));
     Test.case "config table uses explicit rule state" (fun () ->

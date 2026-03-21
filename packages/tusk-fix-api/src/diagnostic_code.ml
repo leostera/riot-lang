@@ -118,7 +118,7 @@ let title = function
   | ConcatenatedStringLiteral -> "Prefer multiline string literals"
   | CustomOperatorDefinition -> "Avoid custom operators"
   | CamelCaseArgumentName -> "Argument names should be snake_case"
-  | NamedArgumentOrder -> "Keep named arguments first"
+  | NamedArgumentOrder -> "Order argument kinds"
   | TFirstNamedArgs -> "Prefer t-first positional arguments"
   | SortedNamedArguments -> "Sort named arguments alphabetically"
   | CamelCaseRecordFieldName -> "Record fields should be snake_case"
@@ -343,7 +343,7 @@ Examples:
       {|
 Function parameters should be ordered as:
 1. labeled arguments
-2. optional arguments with defaults
+2. optional arguments
 3. positional arguments
 
 Why this rule exists:
@@ -425,7 +425,7 @@ let rule_id = function
   | ConcatenatedStringLiteral -> "multiline-string-style"
   | CustomOperatorDefinition -> "custom-operator-style"
   | CamelCaseArgumentName -> "snake-case-argument-names"
-  | NamedArgumentOrder -> "argument-order-style"
+  | NamedArgumentOrder -> "ordered-argument-kinds"
   | TFirstNamedArgs -> "t-first-arg-style"
   | SortedNamedArguments -> "named-arg-sort-style"
   | CamelCaseRecordFieldName -> "record-field-name-style"
@@ -463,7 +463,7 @@ let message = function
   | CamelCaseArgumentName ->
       "Argument names should use snake_case instead of camelCase."
   | NamedArgumentOrder ->
-      "Place labeled arguments first, then optional defaults, then positional arguments."
+      "Order function parameters as labeled, then optional, then positional."
   | TFirstNamedArgs ->
       "When a function takes t with named arguments, keep t first among positional arguments."
   | SortedNamedArguments ->

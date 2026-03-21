@@ -18,6 +18,7 @@ let builtin_rule_factories () =
     ("snake-case-variable-names", Rules.Snake_case_variable_names.make);
     ("no-prime-variables", Rules.No_prime_variables.make);
     ("snake-case-argument-names", Rules.Snake_case_argument_names.make);
+    ("ordered-argument-kinds", Rules.Ordered_argument_kinds.make);
   ]
 
 let package_rules () =

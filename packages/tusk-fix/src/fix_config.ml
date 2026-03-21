@@ -227,10 +227,8 @@ let effective_rule_states scope file =
   | None -> default_rule_states ()
   | Some scope ->
       let base_states =
-        if List.length scope.workspace_config.rules = 0 then
-          default_rule_states ()
-        else
-          apply_rule_overrides [] scope.workspace_config.rules
+        default_rule_states ()
+        |> fun states -> apply_rule_overrides states scope.workspace_config.rules
       in
       match find_package_scope scope file with
       | Some package_scope ->
