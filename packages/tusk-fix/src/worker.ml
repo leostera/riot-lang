@@ -26,12 +26,14 @@ let run_file config file_path =
 let rec worker_loop config =
   send config.coordinator (Messages.WorkerReady (self ()));
   let selector = function
-    | Messages.RunTask file -> `select file
+    | Messages.RunTask file -> `select (`RunTask file)
+    | Messages.Stop -> `select `Stop
     | _ -> `skip
   in
 
   match receive ~selector () with
-  | file_path ->
+  | `Stop -> Ok ()
+  | `RunTask file_path ->
       let result = run_file config file_path in
       send config.coordinator (Messages.FileResult { worker = self (); result });
       worker_loop config

@@ -14,7 +14,7 @@ val start : config -> Pid.t
     
     The worker will:
     1. Send WorkerReady message to coordinator
-    2. Wait for LintTask message
+    2. Wait for RunTask or Stop message
     3. Lint the file
     4. Send results back to coordinator
     5. Repeat

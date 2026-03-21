@@ -13,6 +13,8 @@ let command =
          |> help "List all available diagnostic codes in the current tusk-fix runtime";
          flag "check" |> long "check"
          |> help "Check for fixable issues without modifying files";
+         option "limit" |> long "limit"
+         |> help "Stop after surfacing at most N diagnostics";
          option "explain" |> long "explain"
          |> help "Explain a diagnostic code (e.g. F0001 or std:f0001)";
          option "format" |> long "format"
@@ -73,6 +75,38 @@ let print_parse_diagnostics result =
   if List.length result.Runner.parse_diagnostics > 0 then
     Syn.DiagnosticReporter.print ~file:(Path.to_string result.file)
       ~source:result.final_source result.parse_diagnostics
+
+let diagnostic_count result =
+  List.length result.Runner.parse_diagnostics + List.length result.diagnostics
+
+let rec take n xs =
+  if n <= 0 then
+    []
+  else
+    match xs with
+    | [] -> []
+    | x :: rest -> x :: take (n - 1) rest
+
+let clip_result_to_limit remaining result =
+  if remaining <= 0 then
+    {
+      result with
+      Runner.parse_diagnostics = [];
+      diagnostics = [];
+    }
+  else
+    let parse_count = List.length result.Runner.parse_diagnostics in
+    if parse_count >= remaining then
+      {
+        result with
+        Runner.parse_diagnostics = take remaining result.parse_diagnostics;
+        diagnostics = [];
+      }
+    else
+      {
+        result with
+        Runner.diagnostics = take (remaining - parse_count) result.diagnostics;
+      }
 
 let print_text_result mode result =
   let rel = relative_to_cwd result.Runner.file in
@@ -260,7 +294,7 @@ let list_diagnostics format =
   if format = Reporter.Text then print "\n";
   Ok ()
 
-let run_with_coordinator ~format ~mode ~scope files =
+let run_with_coordinator ~format ~mode ~scope ~limit files =
   let concurrency =
     let recommended = System.available_parallelism in
     if recommended <= 0 then 1 else recommended
@@ -270,8 +304,8 @@ let run_with_coordinator ~format ~mode ~scope files =
       ("Scanning " ^ Int.to_string (List.length files) ^ " files with "
      ^ Int.to_string concurrency ^ " workers...");
   let owner = self () in
-  ignore (Coordinator.start { files; concurrency; mode; scope; owner });
-  let rec loop results_rev =
+  let coordinator = Coordinator.start { files; concurrency; mode; scope; owner } in
+  let rec loop results_rev diagnostics_seen limit_reached =
     let selector = function
       | Messages.FileResult result -> `select (`FileResult result)
       | Messages.AllComplete summary -> `select (`AllComplete summary)
@@ -279,24 +313,51 @@ let run_with_coordinator ~format ~mode ~scope files =
     in
     match receive ~selector () with
     | `FileResult { Messages.result; _ } ->
+        let remaining_budget =
+          match limit with
+          | None -> None
+          | Some max_diagnostics -> Some (max_diagnostics - diagnostics_seen)
+        in
+        let result =
+          match remaining_budget with
+          | None -> result
+          | Some remaining -> clip_result_to_limit remaining result
+        in
+        let diagnostics_seen = diagnostics_seen + diagnostic_count result in
+        let limit_reached_now =
+          match limit with
+          | Some max_diagnostics when diagnostics_seen >= max_diagnostics -> true
+          | _ -> false
+        in
+        if limit_reached_now && not limit_reached then
+          send coordinator Messages.StopRequested;
         (match format with
         | Reporter.Text -> print_text_result mode result
         | Reporter.Json -> ());
-        loop (result :: results_rev)
-    | `AllComplete summary ->
-        let result = Runner.{ files = List.rev results_rev; summary } in
+        loop (result :: results_rev) diagnostics_seen (limit_reached || limit_reached_now)
+    | `AllComplete _summary ->
+        let files = List.rev results_rev in
+        let summary = Runner.summarize files in
+        let result = Runner.{ files; summary } in
         (match format with
         | Reporter.Json ->
             print (Data.Json.to_string (Runner.run_result_to_json result));
             print "\n"
-        | Reporter.Text -> print_text_summary mode summary);
+        | Reporter.Text ->
+            if limit_reached then (
+              println "";
+              println
+                ("\027[1;33m!\027[0m Reached diagnostic limit "
+               ^ (limit |> Option.map Int.to_string |> Option.unwrap_or ~default:"0")
+               ^ "; stopped early"));
+            print_text_summary mode summary);
         if
           summary.failed_files > 0
           || summary.remaining_diagnostics > 0
         then Error (Failure "Issues remain after tusk fix")
         else Ok ()
   in
-  loop []
+  loop [] 0 false
 
 let run matches =
   let cwd =
@@ -313,6 +374,12 @@ let run matches =
     match ArgParser.get_one matches "format" |> Option.unwrap_or ~default:"text" with
     | "json" -> Reporter.Json
     | _ -> Reporter.Text
+  in
+  let limit =
+    match ArgParser.get_int matches "limit" with
+    | Some n when n > 0 -> Some n
+    | Some _ -> raise (Failure "--limit must be greater than 0")
+    | None -> None
   in
   match
     ArgParser.get_flag matches "list-rules",
@@ -332,7 +399,7 @@ let run matches =
     println "No OCaml files found.";
     Ok ())
   else
-    run_with_coordinator ~format ~mode ~scope files
+    run_with_coordinator ~format ~mode ~scope ~limit files
 
 let main ~args =
   match ArgParser.get_matches command args with

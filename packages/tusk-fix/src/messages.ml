@@ -8,5 +8,7 @@ type file_result = {
 type Message.t +=
   | WorkerReady of Pid.t
   | RunTask of Path.t
+  | Stop
+  | StopRequested
   | FileResult of file_result
   | AllComplete of Runner.summary

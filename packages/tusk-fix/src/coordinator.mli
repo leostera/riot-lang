@@ -20,5 +20,6 @@ val start : config -> Pid.t
     3. Distribute work to idle workers
     4. Receive and print diagnostics as they arrive
     5. Track completion
-    6. Send AllComplete message to owner when done
+    6. Stop workers when the queue drains or early termination is requested
+    7. Send AllComplete message to owner when done
 *)
