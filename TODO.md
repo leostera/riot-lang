@@ -36,7 +36,7 @@
 
 - [ ] Redundant `else ()` can be removed
 
-- [ ] Warn about using `open!` 
+- [x] Warn about using `open!` (`no-open-bang`)
 
 - [ ] Match on bool being redundant like `match foo () with | true -> ... | ....` shoul be `if foo () then ... else ...` -- ths check can inspect both branches and suggest accordingly, if the branches are `true -> ...` and `_ -> ()` then we just suggest `if foo() then ...` without an else. If the branch matches on `false` we can suggest `if not foo () then ...`, if both branches have code (and not just return a `()`) then we can suggest the full `if cond then .. else ..`
 

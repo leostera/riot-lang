@@ -269,12 +269,26 @@ module ModuleTypeDeclaration : sig
   val name : t -> string
 end
 
+module OpenStatement : sig
+  type t = {
+    syntax_node : syntax_node;
+    module_path : ModulePath.t;
+    bang_token : Token.t option;
+  }
+
+  val syntax_node : t -> syntax_node
+  val module_path : t -> ModulePath.t
+  val bang_token : t -> Token.t option
+  val has_bang : t -> bool
+end
+
 module Item : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
     | LetBinding of LetBinding.t
     | ModuleDeclaration of ModuleDeclaration.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
+    | OpenStatement of OpenStatement.t
     | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node

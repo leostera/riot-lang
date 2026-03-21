@@ -299,6 +299,26 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains argument-order violations" (fun () ->
         assert_explanation_contains ~code:"F0111" ~snippet:"labeled arguments");
+    Test.case "no-open-bang flags forceful open statements" (fun () ->
+        let source = "open! List\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make ~rules:[ Tusk_fix.Rules.No_open_bang.make () ] ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0125" ] ~actual:codes;
+        Ok ());
+    Test.case "no-open-bang keeps plain open statements clean" (fun () ->
+        let source = "open List\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make ~rules:[ Tusk_fix.Rules.No_open_bang.make () ] ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains open! violations" (fun () ->
+        assert_explanation_contains ~code:"F0125" ~snippet:"open!");
     Test.case "alphabetized-named-arguments flags unsorted labeled arguments" (fun () ->
         let source = "let render ~zebra ~alpha current_user = current_user\n" in
         let pipeline =

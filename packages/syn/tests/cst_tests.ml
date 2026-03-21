@@ -183,6 +183,22 @@ let tests =
               ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
             Ok ()
         | _ -> Error "expected first item to be a module type declaration");
+    Test.case "cst open statements preserve open! structurally" (fun () ->
+        let result = Syn.parse ~filename:"sample.ml" "open! Std.List\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.OpenStatement stmt :: _ ->
+            Test.assert_true (Syn.Cst.OpenStatement.has_bang stmt);
+            Test.assert_equal ~expected:(Some "List")
+              ~actual:
+                (Syn.Cst.OpenStatement.module_path stmt
+                |> Syn.Cst.ModulePath.name);
+            Ok ()
+        | _ -> Error "expected first item to be an open statement");
     Test.case "cst source files collect let bindings recursively" (fun () ->
         let source =
           "let top_level = 1\nlet render x = let local_value = x in local_value\n"

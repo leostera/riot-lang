@@ -329,12 +329,26 @@ module ModuleTypeDeclaration = struct
   let name decl = Token.text decl.module_type_name
 end
 
+module OpenStatement = struct
+  type t = {
+    syntax_node : syntax_node;
+    module_path : ModulePath.t;
+    bang_token : Token.t option;
+  }
+
+  let syntax_node stmt = stmt.syntax_node
+  let module_path stmt = stmt.module_path
+  let bang_token stmt = stmt.bang_token
+  let has_bang stmt = Option.is_some stmt.bang_token
+end
+
 module Item = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
     | LetBinding of LetBinding.t
     | ModuleDeclaration of ModuleDeclaration.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
+    | OpenStatement of OpenStatement.t
     | Unknown of syntax_node
 
   let syntax_node = function
@@ -342,6 +356,7 @@ module Item = struct
     | LetBinding binding -> LetBinding.syntax_node binding
     | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
+    | OpenStatement stmt -> OpenStatement.syntax_node stmt
     | Unknown node -> node
 end
 
@@ -756,6 +771,34 @@ let module_type_declaration_from_node node =
              { syntax_node = node; module_type_name = token module_type_name }
   | _ -> None
 
+let open_statement_from_node node =
+  let tokens = direct_non_trivia_tokens node in
+  let bang_token_opt =
+    tokens
+    |> List.find_opt (fun tok -> String.equal (Ceibo.Red.SyntaxToken.text tok) "!")
+    |> Option.map token
+  in
+  let module_segments =
+    tokens
+    |> List.filter (fun tok ->
+           let text = Ceibo.Red.SyntaxToken.text tok in
+           not
+             (String.equal text "open"
+             || String.equal text "!"
+             || String.equal text "."))
+    |> List.map token
+  in
+  match module_segments with
+  | [] -> None
+  | _ ->
+      Some
+        OpenStatement.
+          {
+            syntax_node = node;
+            module_path = ModulePath.{ syntax_node = node; segments = module_segments };
+            bang_token = bang_token_opt;
+          }
+
 let rec collect_let_bindings node =
   let bindings_here =
     match Ceibo.Red.SyntaxNode.kind node with
@@ -805,6 +848,10 @@ let rec items_from_node node =
   | Syntax_kind.MODULE_TYPE_DECL -> (
       match module_type_declaration_from_node node with
       | Some decl -> [ Item.ModuleTypeDeclaration decl ]
+      | None -> [ Item.Unknown node ])
+  | Syntax_kind.OPEN_STMT -> (
+      match open_statement_from_node node with
+      | Some stmt -> [ Item.OpenStatement stmt ]
       | None -> [ Item.Unknown node ])
   | _ -> [ Item.Unknown node ]
 
