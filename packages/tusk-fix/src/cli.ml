@@ -169,14 +169,13 @@ let rule_to_json rule =
 
 let list_rules_text rules =
   let format_code = function
-    | Some code -> code
+    | Some code -> String.lowercase_ascii code
     | None -> "-"
   in
   rules
   |> List.map (fun rule ->
          format_code (Rule.code rule)
-         ^ "  " ^ Rule.id rule ^ "  " ^ Rule.name rule ^ "\n    "
-         ^ Rule.description rule)
+         ^ ":" ^ Rule.id rule ^ " - " ^ Rule.description rule)
   |> String.concat "\n"
 
 let list_rules_output ~format =
