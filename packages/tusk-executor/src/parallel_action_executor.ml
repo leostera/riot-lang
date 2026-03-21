@@ -1,8 +1,6 @@
 open Std
 open Std.Collections
 open Std.Time
-open Std.Type
-
 open Tusk_planner
 open Tusk_store
 module G = Graph.SimpleGraph
@@ -27,7 +25,12 @@ type execution_result = Action_queue.execution_result = {
 }
 
 type t = { completed : (G.Node_id.t, execution_result) HashMap.t }
-type Message.t += ActionCompleted of execution_result
+type Message.t +=
+  | ActionCompleted of {
+      worker_pid : Pid.t;
+      result : execution_result;
+    }
+  | AssignAction of Action_node.t
 
 let make_flags_absolute sandbox_dir flags =
   List.map
@@ -451,10 +454,19 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
                     completed_at;
                   }))))
 
+let rec worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed =
+  match receive_any () with
+  | AssignAction node ->
+      let result = execute_node ~completed toolchain sandbox_dir node in
+      send coordinator (ActionCompleted { worker_pid = self (); result });
+      worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed
+  | _ -> worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed
+
 let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
   let sandbox_dir = Sandbox.get_dir sandbox in
   let sorted_nodes = Action_graph.nodes action_graph in
   let total_nodes = List.length sorted_nodes in
+  let coordinator_pid = self () in
 
   Log.info
     ("Starting parallel action executor: total_nodes="
@@ -465,37 +477,33 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
   (* Queue all action nodes BEFORE starting pool *)
   List.iter (fun node -> Action_queue.queue queue node) sorted_nodes;
 
-  let pool : Action_node.t WorkerPool.DynamicWorkerPool.t =
-    WorkerPool.DynamicWorkerPool.start ~concurrency ~owner:(self ())
-      ~worker_fn:(fun ~owner ~task ->
-        let (node : Action_node.t) = task in
-        let result =
-          execute_node ~completed:queue.completed toolchain sandbox_dir node
-        in
-        send owner (ActionCompleted result))
-      ()
+  let workers =
+    List.make ~len:concurrency ~fn:(fun _ ->
+        spawn (fun () ->
+            worker_loop ~coordinator:coordinator_pid ~toolchain ~sandbox_dir
+              ~completed:queue.completed))
   in
+  let idle_workers = Queue.create () in
+  List.iter (fun pid -> Queue.push idle_workers pid) workers;
+  let busy_workers : (Pid.t, Action_node.t) HashMap.t = HashMap.create () in
+  let completed_count = ref 0 in
 
-  let task_ref = pool.task_ref in
-
-  let selector msg =
-    match msg with
-    | WorkerPool.DynamicWorkerPool.WorkerReady worker -> (
-        let worker_ref =
-          WorkerPool.DynamicWorkerPool.get_worker_task_ref worker
-        in
-        match Ref.type_equal task_ref worker_ref with
-        | Some Type.Equal ->
-            `select
-              (`WorkerReady
-                 (worker : Action_node.t WorkerPool.DynamicWorkerPool.worker))
-        | None -> `skip)
-    | ActionCompleted result -> `select (`ActionCompleted result)
-    | _ -> `skip
+  let rec drain_work_queue () =
+    match Queue.pop idle_workers with
+    | None -> ()
+    | Some worker_pid -> (
+        match Action_queue.next queue with
+        | None ->
+            Queue.push idle_workers worker_pid
+        | Some node ->
+            let _ = HashMap.insert busy_workers worker_pid node in
+            send worker_pid (AssignAction node);
+            drain_work_queue ())
   in
 
   let rec dispatch_loop () =
-    if Action_queue.is_complete queue ~total_nodes then (
+    drain_work_queue ();
+    if !completed_count = total_nodes then (
       let _, _, _, completed, succeeded, failed = Action_queue.stats queue in
       Log.info
         ("Action executor: all done, completed="
@@ -504,24 +512,12 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
         ^ Int.to_string failed ^ " total=" ^ Int.to_string total_nodes);
       ())
     else
-      match receive ~selector () with
-      | `WorkerReady worker -> (
-          match Action_queue.next queue with
-          | None ->
-              let ready, waiting, busy, _, _, _ = Action_queue.stats queue in
-              Log.debug
-                ("No work available for worker (ready="
-                ^ Int.to_string ready ^ " waiting=" ^ Int.to_string waiting
-                ^ " busy=" ^ Int.to_string busy ^ ")");
-              dispatch_loop ()
-          | Some node ->
-              Log.debug
-                ("Dispatching action node " ^ G.Node_id.to_string node.id
-                ^ " to worker");
-              WorkerPool.DynamicWorkerPool.send_task pool worker node;
-              dispatch_loop ())
-      | `ActionCompleted result ->
+      match receive_any () with
+      | ActionCompleted { worker_pid; result } ->
           Action_queue.mark_completed queue result;
+          completed_count := !completed_count + 1;
+          let _ = HashMap.remove busy_workers worker_pid in
+          Queue.push idle_workers worker_pid;
 
           let status_str =
             match result.status with
@@ -550,8 +546,8 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
                 ^ String.concat ", " (List.map G.Node_id.to_string failed))
           | Skipped -> Log.warn "Action skipped due to failed dependencies"
           | _ -> ());
-
           dispatch_loop ()
+      | _ -> dispatch_loop ()
   in
 
   dispatch_loop ();

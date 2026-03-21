@@ -169,6 +169,16 @@ let build ~workspace ~toolchain ~store ~package_graph ~package_key
   Log.info
     ("Package " ^ package.Package.name
     ^ ": computing content hash with dependencies");
+  let package_scope =
+    match Tusk_planner.Package_graph.get_node_by_key package_graph package_key with
+    | Some node -> Tusk_planner.Package_graph.get_scope node.value
+    | None -> Tusk_planner.Package_graph.Runtime
+  in
+  let emit_visible_progress =
+    match package_scope with
+    | Tusk_planner.Package_graph.Build -> false
+    | Tusk_planner.Package_graph.Runtime | Tusk_planner.Package_graph.Dev -> true
+  in
   match
     Tusk_planner.plan_package_with_graph ~workspace ~toolchain ~store
       ~package_graph ~package_key ~package ~build_ctx
@@ -239,9 +249,10 @@ let build ~workspace ~toolchain ~store ~package_graph ~package_key
         ("Package " ^ package.Package.name ^ ": hash="
         ^ Std.Crypto.Digest.hex package_hash);
 
-      Telemetry.emit
-        (BuildStarted
-           { session_id; package; target = Workspace_planner.Package package.name });
+      if emit_visible_progress then
+        Telemetry.emit
+          (BuildStarted
+             { session_id; package; target = Workspace_planner.Package package.name });
 
       match Tusk_store.Store.get store package_hash with
       | Some artifact ->
@@ -276,15 +287,16 @@ let build ~workspace ~toolchain ~store ~package_graph ~package_key
           let duration =
             Instant.duration_since ~earlier:start (Instant.now ())
           in
-          Telemetry.emit
-            (BuildCompleted
-               {
-                 session_id;
-                 package;
-                 target = Workspace_planner.Package package.name;
-                 status = `Cached;
-                 duration;
-               });
+          if emit_visible_progress then
+            Telemetry.emit
+              (BuildCompleted
+                 {
+                   session_id;
+                   package;
+                   target = Workspace_planner.Package package.name;
+                   status = `Cached;
+                   duration;
+                 });
           { package_key = planned_key; package; status = Cached artifact; duration }
        | None -> (
           Log.info
@@ -295,9 +307,10 @@ let build ~workspace ~toolchain ~store ~package_graph ~package_key
             ^ " nodes");
 
           (* Emit CompilationStarted for fresh builds *)
-          Telemetry.emit
-            (CompilationStarted
-               { session_id; package; target = Workspace_planner.Package package.name });
+          if emit_visible_progress && List.length (Action_graph.nodes action_graph) > 0 then
+            Telemetry.emit
+              (CompilationStarted
+                 { session_id; package; target = Workspace_planner.Package package.name });
 
           (* Mark as Planned in package graph *)
           (match Tusk_planner.Package_graph.get_node_by_key package_graph planned_key with
@@ -425,15 +438,16 @@ let build ~workspace ~toolchain ~store ~package_graph ~package_key
               let duration =
                 Instant.duration_since ~earlier:start (Instant.now ())
               in
-              Telemetry.emit
-                (BuildCompleted
-                   {
-                     session_id;
-                     package;
-                     target = Workspace_planner.Package package.name;
-                     status = `Fresh;
-                     duration;
-                   });
+              if emit_visible_progress then
+                Telemetry.emit
+                  (BuildCompleted
+                     {
+                       session_id;
+                       package;
+                       target = Workspace_planner.Package package.name;
+                       status = `Fresh;
+                       duration;
+                     });
               { package_key = planned_key; package; status = Built artifact; duration }
           | Error err ->
               let duration =

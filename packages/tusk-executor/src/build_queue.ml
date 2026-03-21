@@ -68,11 +68,7 @@ let next t =
     | None ->
         (* Ready queue exhausted, move checked items to later queue *)
         List.iter (fun node -> Queue.push t.later_queue node) checked;
-        (* Transfer later to ready and try again if we haven't checked anything yet *)
-        if checked = [] && not (Queue.is_empty t.later_queue) then (
-          Queue.transfer ~src:t.later_queue ~dst:t.ready_queue;
-          find_ready [])
-        else None
+        None
     | Some node ->
         if dependencies_satisfied t node then (
           (* Dependencies satisfied, return this node *)
@@ -90,7 +86,15 @@ let mark_completed t result =
   let pkg_key = result.Package_builder.package_key in
   let _ = HashMap.remove t.busy_tasks pkg_key in
   let _ = HashMap.insert t.completed pkg_key result in
-  ()
+
+  let rec transfer () =
+    match Queue.pop t.later_queue with
+    | None -> ()
+    | Some node ->
+        Queue.push t.ready_queue node;
+        transfer ()
+  in
+  transfer ()
 
 let mark_failed t (node : package_node) ~error =
   let pkg = Package_graph.get_package node.value in
