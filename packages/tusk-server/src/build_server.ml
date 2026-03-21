@@ -124,7 +124,7 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
     in
     
     let result =
-      Coordinator2.build_workspace ~workspace ~toolchain ~store
+      Coordinator.build_workspace ~workspace ~toolchain ~store
         ~target:planner_target
         ~scope:
           (match scope with

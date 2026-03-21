@@ -13,11 +13,11 @@ type package_error = Telemetry_events.package_error =
   | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list }
 
 let convert_action_error = function
-  | Parallel_action_executor.ExecutionFailed { message } ->
+  | Action_executor.ExecutionFailed { message } ->
       Telemetry_events.ActionExecutionFailed { message }
-  | Parallel_action_executor.OutputsNotCreated { missing } ->
+  | Action_executor.OutputsNotCreated { missing } ->
       Telemetry_events.ActionOutputsNotCreated { missing }
-  | Parallel_action_executor.DependenciesFailed { failed } ->
+  | Action_executor.DependenciesFailed { failed } ->
       Telemetry_events.ActionDependenciesFailed { failed }
 
 let package_error_to_string = function
@@ -343,7 +343,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package_key
           let do_build sandbox =
             let sandbox_dir = Sandbox.get_dir sandbox in
             let exec_result =
-              Parallel_action_executor.execute ~action_graph ~sandbox ~store
+              Action_executor.execute ~action_graph ~sandbox ~store
                 toolchain ~concurrency:System.available_parallelism
             in
 
@@ -351,8 +351,8 @@ let build ~workspace ~toolchain ~store ~package_graph ~package_key
             let failed_actions =
               HashMap.to_list exec_result.completed
               |> List.filter_map (fun (_id, result) ->
-                  match result.Parallel_action_executor.status with
-                  | Parallel_action_executor.Failed err -> Some err
+                  match result.Action_executor.status with
+                  | Action_executor.Failed err -> Some err
                   | _ -> None)
             in
 

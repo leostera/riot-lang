@@ -28,18 +28,10 @@ type execution_result = {
 (** Collection of execution results *)
 type t = { completed : (G.Node_id.t, execution_result) HashMap.t }
 
-(** Execute an action graph sequentially (for debugging/testing).
-    
-    Executes actions in topological order, one at a time.
-    Does not use caching.
-    
-    @param action_graph The graph of actions to execute
-    @param sandbox The build sandbox
-    @param store The artifact store (unused)
-    @param toolchain The OCaml toolchain
-    @param concurrency Ignored (sequential execution)
-    @return Execution results for all actions
-*)
+(** Execute an action graph with dependency-aware parallelism.
+
+    Passing `concurrency = 1` uses the same code path with serialized
+    execution. *)
 val execute :
   action_graph:Action_graph.t ->
   sandbox:Sandbox.t ->

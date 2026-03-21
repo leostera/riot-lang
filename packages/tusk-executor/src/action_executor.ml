@@ -1,7 +1,6 @@
 open Std
 open Std.Collections
 open Std.Time
-
 open Tusk_planner
 open Tusk_store
 module G = Graph.SimpleGraph
@@ -27,6 +26,13 @@ type execution_result = Action_queue.execution_result = {
 
 type t = { completed : (G.Node_id.t, execution_result) HashMap.t }
 
+type Message.t +=
+  | ActionCompleted of {
+      worker_pid : Pid.t;
+      result : execution_result;
+    }
+  | AssignAction of Action_node.t
+
 let make_flags_absolute sandbox_dir flags =
   List.map
     (fun flag ->
@@ -42,7 +48,15 @@ let run_action ocamlc sandbox_dir action =
     ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
-      let abs_includes = List.map (Path.join sandbox_dir) includes in
+      let abs_includes =
+        List.map
+          (fun inc ->
+            let inc_str = Path.to_string inc in
+            if Path.is_absolute inc then inc
+            else if String.starts_with ~prefix:"+" inc_str then inc
+            else Path.join sandbox_dir inc)
+          includes
+      in
       let abs_flags = make_flags_absolute sandbox_dir flags in
       Tusk_toolchain.Ocamlc.compile_interface ocamlc ~cwd:sandbox_dir
         ~includes:abs_includes ~flags:abs_flags ~output:abs_output abs_source
@@ -50,7 +64,15 @@ let run_action ocamlc sandbox_dir action =
       { source; outputs = output :: _; includes; flags } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
-      let abs_includes = List.map (Path.join sandbox_dir) includes in
+      let abs_includes =
+        List.map
+          (fun inc ->
+            let inc_str = Path.to_string inc in
+            if Path.is_absolute inc then inc
+            else if String.starts_with ~prefix:"+" inc_str then inc
+            else Path.join sandbox_dir inc)
+          includes
+      in
       let abs_flags = make_flags_absolute sandbox_dir flags in
       Tusk_toolchain.Ocamlc.compile_impl ocamlc ~cwd:sandbox_dir
         ~includes:abs_includes ~flags:abs_flags ~output:abs_output abs_source
@@ -58,14 +80,21 @@ let run_action ocamlc sandbox_dir action =
     ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
-      let abs_includes = List.map (Path.join sandbox_dir) includes in
+      let abs_includes =
+        List.map
+          (fun inc ->
+            let inc_str = Path.to_string inc in
+            if Path.is_absolute inc then inc
+            else if String.starts_with ~prefix:"+" inc_str then inc
+            else Path.join sandbox_dir inc)
+          includes
+      in
       let abs_flags = make_flags_absolute sandbox_dir flags in
       Tusk_toolchain.Ocamlc.generate_interface ocamlc ~cwd:sandbox_dir
         ~includes:abs_includes ~flags:abs_flags ~output:abs_output abs_source
   | Action.CompileC { source; outputs = output :: _; ccflags } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
-      (* Include the directory containing the source file so headers can be found *)
       let source_dir =
         match Path.parent source with
         | Some dir -> [ Path.join sandbox_dir dir ]
@@ -76,38 +105,48 @@ let run_action ocamlc sandbox_dir action =
         ~includes:source_dir ~ccflags ~output:abs_output abs_source
   | Action.CreateLibrary { outputs = output :: _; objects; includes } ->
       let abs_output = Path.join sandbox_dir output in
-      let abs_objects = List.map (Path.join sandbox_dir) objects in
-      let abs_includes = List.map (Path.join sandbox_dir) includes in
-      Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:sandbox_dir
-        ~includes:abs_includes ~output:abs_output abs_objects
-  | Action.CreateExecutable
-      { outputs = output :: _; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } -> (
-      let abs_output = Path.join sandbox_dir output in
-      let abs_objects = List.map (Path.join sandbox_dir) objects in
-
-      (* Libraries are now found via -I includes pointing to cache, keep as filenames *)
-      let abs_libraries = libraries in
-
-      (* Includes can be absolute (cache dirs) or relative (sandbox dir) - make relative ones absolute *)
+      let rel_objects = objects in
       let abs_includes =
         List.map
           (fun inc ->
-            if Path.is_absolute inc then inc else Path.join sandbox_dir inc)
+            let inc_str = Path.to_string inc in
+            if Path.is_absolute inc then inc
+            else if String.starts_with ~prefix:"+" inc_str then inc
+            else Path.join sandbox_dir inc)
           includes
       in
-      
-      (* Foreign cclibs are absolute paths, keep them as-is *)
+      Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:sandbox_dir
+        ~includes:abs_includes ~output:abs_output rel_objects
+  | Action.CreateExecutable
+      { outputs = output :: _; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } -> (
+      Log.debug
+        ("[ACTION_EXECUTOR] CreateExecutable: output="
+        ^ Path.to_string output ^ ", " ^ Int.to_string (List.length objects)
+        ^ " objects, " ^ Int.to_string (List.length libraries)
+        ^ " libraries: [" ^ String.concat ", " (List.map Path.to_string libraries)
+        ^ "], cclibs: [" ^ String.concat ", " (List.map Path.to_string cclibs)
+        ^ "], ccopt_flags: [" ^ String.concat ", " ccopt_flags
+        ^ "], cclib_flags: [" ^ String.concat ", " cclib_flags ^ "]");
+      let abs_output = Path.join sandbox_dir output in
+      let abs_objects = List.map (Path.join sandbox_dir) objects in
+      let abs_libraries = libraries in
+      let abs_includes =
+        List.map
+          (fun inc ->
+            let inc_str = Path.to_string inc in
+            if Path.is_absolute inc then inc
+            else if String.starts_with ~prefix:"+" inc_str then inc
+            else Path.join sandbox_dir inc)
+          includes
+      in
       let abs_cclibs = cclibs in
-      
       let result =
         Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
-          ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs 
-          ~ccopt_flags ~cclib_flags ~output:abs_output
-          abs_objects
+          ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs
+          ~ccopt_flags ~cclib_flags ~output:abs_output abs_objects
       in
       match result with
       | Tusk_toolchain.Ocamlc.Success _ ->
-          (* Make the executable file executable *)
           (match Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755) with
           | Ok () -> result
           | Error err ->
@@ -118,27 +157,30 @@ let run_action ocamlc sandbox_dir action =
       | _ -> result)
   | Action.CreateSharedLibrary
       { outputs = output :: _; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } -> (
+      Log.debug
+        ("[ACTION_EXECUTOR] CreateSharedLibrary: output="
+        ^ Path.to_string output ^ ", " ^ Int.to_string (List.length objects)
+        ^ " objects, " ^ Int.to_string (List.length libraries)
+        ^ " libraries: [" ^ String.concat ", " (List.map Path.to_string libraries)
+        ^ "], cclibs: [" ^ String.concat ", " (List.map Path.to_string cclibs)
+        ^ "], ccopt_flags: [" ^ String.concat ", " ccopt_flags
+        ^ "], cclib_flags: [" ^ String.concat ", " cclib_flags ^ "]");
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
-
-      (* Libraries are now found via -I includes pointing to cache, keep as filenames *)
       let abs_libraries = libraries in
-
-      (* Includes can be absolute (cache dirs) or relative (sandbox dir) - make relative ones absolute *)
       let abs_includes =
         List.map
           (fun inc ->
-            if Path.is_absolute inc then inc else Path.join sandbox_dir inc)
+            let inc_str = Path.to_string inc in
+            if Path.is_absolute inc then inc
+            else if String.starts_with ~prefix:"+" inc_str then inc
+            else Path.join sandbox_dir inc)
           includes
       in
-      
-      (* Foreign cclibs are absolute paths, keep them as-is *)
       let abs_cclibs = cclibs in
-      
       Tusk_toolchain.Ocamlc.create_shared_library ocamlc ~cwd:sandbox_dir
-        ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs 
-        ~ccopt_flags ~cclib_flags ~output:abs_output
-        abs_objects)
+        ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs
+        ~ccopt_flags ~cclib_flags ~output:abs_output abs_objects)
   | Action.CompileInterface { outputs = []; _ }
   | Action.CompileImplementation { outputs = []; _ }
   | Action.GenerateInterface { outputs = []; _ }
@@ -148,86 +190,89 @@ let run_action ocamlc sandbox_dir action =
   | Action.CreateSharedLibrary { outputs = []; _ } ->
       Tusk_toolchain.Ocamlc.Failed "Action has no outputs"
   | Action.CopyFile { source; destination } -> (
-      let src_path = Path.join sandbox_dir source in
+      let src_path =
+        if Path.is_absolute source then source else Path.join sandbox_dir source
+      in
       let dst_path = Path.join sandbox_dir destination in
       match Fs.copy ~src:src_path ~dst:dst_path with
       | Ok () -> Tusk_toolchain.Ocamlc.Success "Copied"
       | Error _ ->
           Tusk_toolchain.Ocamlc.Failed
-            ("Copy failed: " ^ Path.to_string source ^ " -> " ^
-               (Path.to_string destination)))
+            ("Copy failed: " ^ Path.to_string source ^ " -> "
+           ^ Path.to_string destination))
   | Action.WriteFile { destination; content } -> (
       let dest_path = Path.join sandbox_dir destination in
+      Log.debug
+        ("WriteFile: writing to " ^ Path.to_string dest_path ^ " ("
+        ^ Int.to_string (String.length content) ^ " bytes)");
       match Fs.write content dest_path with
-      | Ok () -> Tusk_toolchain.Ocamlc.Success "Written"
+      | Ok () ->
+          Log.debug
+            ("WriteFile: success - file written to " ^ Path.to_string dest_path);
+          Tusk_toolchain.Ocamlc.Success "Written"
       | Error err ->
           let msg = IO.error_message err in
           Log.error ("WriteFile: failed - " ^ msg);
           Tusk_toolchain.Ocamlc.Failed
             ("Write failed: " ^ Path.to_string destination ^ " - " ^ msg))
   | Action.BuildForeignDependency { name; path; build_cmd; outputs; env } -> (
-      (* Execute foreign build command in the foreign package directory *)
-      Log.info ("Building foreign dependency: " ^ name ^ " at " ^ Path.to_string path);
-      
+      let build_cmd_str = String.concat " " build_cmd in
+      Log.info ("   \027[1;32mCompiling\027[0m " ^ name ^ " (" ^ build_cmd_str ^ ")");
       match build_cmd with
       | [] -> Tusk_toolchain.Ocamlc.Failed "BuildForeignDependency: empty build_cmd"
       | cmd_name :: cmd_args ->
-          Log.debug ("Executing: " ^ String.concat " " build_cmd ^ " in " ^ Path.to_string path);
-          
-          (* Execute the build command in the foreign directory *)
-          let cmd = Command.make ~cwd:(Path.to_string path) ~env ~args:cmd_args cmd_name in
+          let normalized_path = Path.normalize path in
+          Log.debug
+            ("Executing: " ^ build_cmd_str ^ " in "
+           ^ Path.to_string normalized_path);
+          let cmd =
+            Command.make ~cwd:(Path.to_string normalized_path) ~env ~args:cmd_args
+              cmd_name
+          in
           match Command.output cmd with
           | Ok output when output.Command.status = 0 ->
               Log.debug ("Foreign build succeeded: " ^ name);
-              if String.length output.Command.stdout > 0 then 
+              if String.length output.Command.stdout > 0 then
                 Log.debug ("stdout: " ^ output.Command.stdout);
-              
-              (* Verify that all expected outputs were created *)
-              let abs_outputs = List.map (Path.join path) outputs in
-              let missing = List.filter (fun out ->
-                match Fs.exists out with
-                | Ok true -> false
-                | Ok false | Error _ -> true
-              ) abs_outputs in
-              
+              let abs_outputs =
+                List.map (fun out -> Path.normalize (Path.join path out)) outputs
+              in
+              let missing =
+                List.filter
+                  (fun out ->
+                    match Fs.exists out with
+                    | Ok true -> false
+                    | Ok false | Error _ -> true)
+                  abs_outputs
+              in
               if List.length missing > 0 then
-                Tusk_toolchain.Ocamlc.Failed 
-                  ("Foreign build succeeded but outputs not created: " ^ 
-                   String.concat ", " (List.map Path.to_string missing))
-              else
-                Tusk_toolchain.Ocamlc.Success ("Built foreign dependency: " ^ name)
+                Tusk_toolchain.Ocamlc.Failed
+                  ("Foreign build succeeded but outputs not created: "
+                 ^ String.concat ", " (List.map Path.to_string missing))
+              else Tusk_toolchain.Ocamlc.Success ("Built foreign dependency: " ^ name)
           | Ok output ->
-              Log.error ("Foreign build failed: " ^ name ^ " - exit code " ^ 
-                        Int.to_string output.Command.status);
-              if String.length output.Command.stderr > 0 then 
+              Log.error
+                ("Foreign build failed: " ^ name ^ " - exit code "
+               ^ Int.to_string output.Command.status);
+              if String.length output.Command.stderr > 0 then
                 Log.error ("stderr: " ^ output.Command.stderr);
-              Tusk_toolchain.Ocamlc.Failed 
-                ("Foreign build failed: " ^ name ^ " - exit code " ^ 
-                 Int.to_string output.Command.status)
+              Tusk_toolchain.Ocamlc.Failed
+                ("Foreign build failed: " ^ name ^ " - exit code "
+               ^ Int.to_string output.Command.status)
           | Error (Command.SystemError msg) ->
               Log.error ("Failed to execute foreign build: " ^ msg);
-              Tusk_toolchain.Ocamlc.Failed 
-                ("Failed to execute foreign build command: " ^ msg)
-      )
+              Tusk_toolchain.Ocamlc.Failed
+                ("Failed to execute foreign build command: " ^ msg))
 
 let execute_actions toolchain sandbox_dir actions =
   let ocamlc = Tusk_toolchain.ocamlc toolchain in
-  let errors = ref [] in
   let rec execute_next = function
-    | [] -> 
-        let error_list = !errors in
-        if List.length error_list > 0 then
-          (* Combine all errors with double newlines for readability *)
-          Error (String.concat "\n\n" (List.rev error_list))
-        else
-          Ok ()
-    | action :: rest ->
+    | [] -> Ok ()
+    | action :: rest -> (
         let result = run_action ocamlc sandbox_dir action in
-        (match result with
-        | Tusk_toolchain.Ocamlc.Success _ -> ()
-        | Tusk_toolchain.Ocamlc.Failed err ->
-            errors := err :: !errors);
-        execute_next rest
+        match result with
+        | Tusk_toolchain.Ocamlc.Success _ -> execute_next rest
+        | Tusk_toolchain.Ocamlc.Failed err -> Error err)
   in
   execute_next actions
 
@@ -235,7 +280,9 @@ let verify_outputs outputs =
   let missing =
     List.filter
       (fun out ->
-        match Fs.exists out with Ok true -> false | Ok false | Error _ -> true)
+        match Fs.exists out with
+        | Ok true -> false
+        | Ok false | Error _ -> true)
       outputs
   in
   if List.length missing > 0 then Error missing else Ok ()
@@ -250,13 +297,7 @@ let has_failed_dependencies completed (node : Action_node.t) =
 
 let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
   let start = Instant.now () in
-  (* TODO: Thread session_id through for proper filtering *)
-  let session_id = Tusk_model.Session_id.of_string "action-exec" in
-
   if has_failed_dependencies completed node then (
-    Log.info
-      ("Action node " ^ G.Node_id.to_string node.id
-      ^ ": Skipped (failed dependencies)");
     let now = Instant.now () in
     {
       node_id = node.id;
@@ -265,15 +306,18 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
       started_at = start;
       completed_at = now;
     })
-  else (
+  else
     let actions = node.value.actions in
     let outputs = node.value.outs in
     let sources = node.value.srcs in
-
     Telemetry.emit
       Telemetry_events.(
-        ActionStarted { session_id; package = node.value.package; action = node });
-
+        ActionStarted
+          {
+            session_id = Tusk_model.Session_id.of_string "action";
+            package = node.value.package;
+            action = node;
+          });
     let copy_result =
       List.fold_left
         (fun acc src_path ->
@@ -283,26 +327,25 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
               let pkg_dir = node.value.package.path in
               let abs_src = Path.join pkg_dir src_path in
               let abs_dst = Path.join sandbox_dir src_path in
+              Log.debug
+                ("[EXECUTOR] Copying source: " ^ Path.to_string src_path ^ " from "
+               ^ Path.to_string abs_src);
               (match Path.parent abs_dst with
               | Some dst_dir -> (
-                  match Fs.create_dir_all dst_dir with Ok () | Error _ -> ())
+                  match Fs.create_dir_all dst_dir with
+                  | Ok () | Error _ -> ())
               | None -> ());
               Fs.copy ~src:abs_src ~dst:abs_dst)
         (Ok ()) sources
     in
-
     let completed_at = Instant.now () in
     let duration = Instant.duration_since ~earlier:start completed_at in
-
     match copy_result with
     | Error err ->
         let msg = IO.error_message err in
         {
           node_id = node.id;
-          status =
-            Failed
-              (ExecutionFailed
-                 { message = "Failed to copy sources: " ^ msg });
+          status = Failed (ExecutionFailed { message = "Failed to copy sources: " ^ msg });
           duration;
           started_at = start;
           completed_at;
@@ -313,8 +356,12 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
             Telemetry.emit
               Telemetry_events.(
                 ActionFailed
-                  { session_id; package = node.value.package; action = node; error = msg });
-
+                  {
+                    session_id = Tusk_model.Session_id.of_string "action";
+                    package = node.value.package;
+                    action = node;
+                    error = msg;
+                  });
             {
               node_id = node.id;
               status = Failed (ExecutionFailed { message = msg });
@@ -322,89 +369,126 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
               started_at = start;
               completed_at;
             }
-        | Ok () -> (
-            let abs_outputs = List.map (Path.join sandbox_dir) outputs in
-            match verify_outputs abs_outputs with
-            | Error missing ->
-                {
-                  node_id = node.id;
-                  status = Failed (OutputsNotCreated { missing });
-                  duration;
-                  started_at = start;
-                  completed_at;
-                }
-            | Ok () ->
-                {
-                  node_id = node.id;
-                  status = Executed;
-                  duration;
-                  started_at = start;
-                  completed_at;
-                })))
+        | Ok () ->
+            let needs_output_verification =
+              List.exists
+                (function
+                  | Action.BuildForeignDependency _ -> false
+                  | _ -> true)
+                actions
+            in
+            if not needs_output_verification then
+              {
+                node_id = node.id;
+                status = Executed;
+                duration;
+                started_at = start;
+                completed_at;
+              }
+            else
+              let abs_outputs = List.map (Path.join sandbox_dir) outputs in
+              match verify_outputs abs_outputs with
+              | Error missing ->
+                  {
+                    node_id = node.id;
+                    status = Failed (OutputsNotCreated { missing });
+                    duration;
+                    started_at = start;
+                    completed_at;
+                  }
+              | Ok () ->
+                  {
+                    node_id = node.id;
+                    status = Executed;
+                    duration;
+                    started_at = start;
+                    completed_at;
+                  })
 
-let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency:_ =
+let rec worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed =
+  match receive_any () with
+  | AssignAction node ->
+      let result = execute_node ~completed toolchain sandbox_dir node in
+      send coordinator (ActionCompleted { worker_pid = self (); result });
+      worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed
+  | _ -> worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed
+
+let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
   let sandbox_dir = Sandbox.get_dir sandbox in
   let sorted_nodes = Action_graph.nodes action_graph in
   let total_nodes = List.length sorted_nodes in
-
+  let coordinator_pid = self () in
   Log.info
-    ("Starting action executor (sequential, no caching): total_nodes="
-    ^ Int.to_string total_nodes);
-
-  let completed = HashMap.create () in
-
-  List.iter
-    (fun node ->
-      let result = execute_node ~completed toolchain sandbox_dir node in
-      let _ = HashMap.insert completed node.id result in
-
-      let status_str =
-        match result.status with
-        | Cached _ -> "cached"
-        | Executed -> "executed"
-        | Failed _ -> "failed"
-        | Skipped -> "skipped"
-      in
+    ("Starting action executor: total_nodes=" ^ Int.to_string total_nodes
+    ^ " concurrency=" ^ Int.to_string concurrency);
+  let queue = Action_queue.create () in
+  List.iter (fun node -> Action_queue.queue queue node) sorted_nodes;
+  let workers =
+    List.make ~len:concurrency ~fn:(fun _ ->
+        spawn (fun () ->
+            worker_loop ~coordinator:coordinator_pid ~toolchain ~sandbox_dir
+              ~completed:queue.completed))
+  in
+  let idle_workers = Queue.create () in
+  List.iter (fun pid -> Queue.push idle_workers pid) workers;
+  let busy_workers : (Pid.t, Action_node.t) HashMap.t = HashMap.create () in
+  let completed_count = ref 0 in
+  let rec drain_work_queue () =
+    match Queue.pop idle_workers with
+    | None -> ()
+    | Some worker_pid -> (
+        match Action_queue.next queue with
+        | None ->
+            Queue.push idle_workers worker_pid
+        | Some node ->
+            let _ = HashMap.insert busy_workers worker_pid node in
+            send worker_pid (AssignAction node);
+            drain_work_queue ())
+  in
+  let rec dispatch_loop () =
+    drain_work_queue ();
+    if !completed_count = total_nodes then (
+      let _, _, _, completed, succeeded, failed = Action_queue.stats queue in
       Log.info
-        ("Action node " ^ G.Node_id.to_string result.node_id ^ " completed: "
-        ^ status_str ^ " ("
-        ^ Int.to_string (Duration.to_millis result.duration)
-        ^ "ms)");
-
-      match result.status with
-      | Failed (ExecutionFailed { message }) ->
-          Log.error ("Action failed: " ^ message)
-      | Failed (OutputsNotCreated { missing }) ->
-          Log.error
-            ("Expected outputs not created: "
-            ^ String.concat ", " (List.map Path.to_string missing))
-      | Failed (DependenciesFailed { failed }) ->
-          Log.error
-            ("Action dependencies failed: "
-            ^ String.concat ", " (List.map G.Node_id.to_string failed))
-      | Skipped -> Log.warn "Action skipped due to failed dependencies"
-      | _ -> ())
-    sorted_nodes;
-
-  let succeeded =
-    completed
-    |> HashMap.into_iter
-    |> Iter.Iterator.filter ~fn:(fun (_, result) ->
-           match result.status with Cached _ | Executed -> true | _ -> false)
-    |> Iter.Iterator.count
+        ("Action executor: all done, completed="
+        ^ Int.to_string completed ^ " succeeded=" ^ Int.to_string succeeded
+        ^ " failed=" ^ Int.to_string failed ^ " total="
+        ^ Int.to_string total_nodes);
+      ())
+    else
+      match receive_any () with
+      | ActionCompleted { worker_pid; result } ->
+          Action_queue.mark_completed queue result;
+          completed_count := !completed_count + 1;
+          let _ = HashMap.remove busy_workers worker_pid in
+          Queue.push idle_workers worker_pid;
+          let status_str =
+            match result.status with
+            | Cached _ -> "cached"
+            | Executed -> "executed"
+            | Failed _ -> "failed"
+            | Skipped -> "skipped"
+          in
+          Log.info
+            ("Action node " ^ G.Node_id.to_string result.node_id ^ " completed: "
+           ^ status_str ^ " ("
+           ^ Int.to_string (Duration.to_millis result.duration)
+           ^ "ms)");
+          (match result.status with
+          | Failed (ExecutionFailed { message }) ->
+              Log.error ("Action failed: " ^ message)
+          | Failed (OutputsNotCreated { missing }) ->
+              Log.error
+                ("Expected outputs not created: "
+               ^ String.concat ", " (List.map Path.to_string missing))
+          | Failed (DependenciesFailed { failed }) ->
+              Log.error
+                ("Action dependencies failed: "
+               ^ String.concat ", " (List.map G.Node_id.to_string failed))
+          | Skipped -> Log.warn "Action skipped due to failed dependencies"
+          | _ -> ());
+          dispatch_loop ()
+      | _ -> dispatch_loop ()
   in
-  let failed =
-    completed
-    |> HashMap.into_iter
-    |> Iter.Iterator.filter ~fn:(fun (_, result) ->
-           match result.status with Failed _ | Skipped -> true | _ -> false)
-    |> Iter.Iterator.count
-  in
-
-  Log.info
-    ("Action executor: all done, completed="
-    ^ Int.to_string (HashMap.len completed)
-    ^ " succeeded=" ^ Int.to_string succeeded ^ " failed="
-    ^ Int.to_string failed ^ " total=" ^ Int.to_string total_nodes);
-
-  { completed }
+  dispatch_loop ();
+  { completed = queue.completed }
