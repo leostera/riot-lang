@@ -9,6 +9,8 @@ let command =
        [
          flag "list-rules" |> long "list-rules"
          |> help "List all available rules in the current tusk-fix runtime";
+         flag "list-diagnostics" |> long "list-diagnostics"
+         |> help "List all available diagnostic codes in the current tusk-fix runtime";
          flag "check" |> long "check"
          |> help "Check for fixable issues without modifying files";
          option "explain" |> long "explain"
@@ -142,41 +144,94 @@ let explain_code code =
       Ok ()
   | None -> Error (Failure ("Unknown tusk-fix diagnostic code: " ^ code))
 
+let split_rule_id rule_id =
+  match String.index_opt rule_id ':' with
+  | Some idx ->
+      let package_name = String.sub rule_id 0 idx in
+      let local_id =
+        String.sub rule_id (idx + 1) (String.length rule_id - idx - 1)
+      in
+      package_name, local_id
+  | None -> "riot", rule_id
+
+let compare_package_name left right =
+  match left = "riot", right = "riot" with
+  | true, true | false, false -> String.compare left right
+  | true, false -> -1
+  | false, true -> 1
+
+let display_rule_id rule =
+  let package_name, local_id = split_rule_id (Rule.id rule) in
+  package_name ^ ":" ^ local_id
+
 let sorted_rules () =
-  let compare_codes left right =
-    match left, right with
-    | Some left, Some right -> String.compare left right
-    | None, Some _ -> -1
-    | Some _, None -> 1
-    | None, None -> 0
-  in
   Pipeline.default_rules ()
   |> List.sort (fun left right ->
-         match compare_codes (Rule.code left) (Rule.code right) with
-         | 0 -> String.compare (Rule.id left) (Rule.id right)
-         | cmp -> cmp)
+         let left_package, left_local = split_rule_id (Rule.id left) in
+         let right_package, right_local = split_rule_id (Rule.id right) in
+         let package_cmp = compare_package_name left_package right_package in
+         if package_cmp != 0 then
+           package_cmp
+         else
+           String.compare left_local right_local)
+
+let sorted_diagnostics () =
+  Explanations.all ()
+  |> List.sort (fun left right ->
+         let code_cmp =
+           String.compare
+             (String.lowercase_ascii left.Explanation.code)
+             (String.lowercase_ascii right.Explanation.code)
+         in
+         if code_cmp != 0 then
+           code_cmp
+         else
+           String.compare left.rule_id right.rule_id)
 
 let rule_to_json rule =
   let open Data.Json in
   Object
     [
       ("id", string (Rule.id rule));
-      ("code", match Rule.code rule with Some code -> string code | None -> null);
-      ("name", string (Rule.name rule));
       ("description", string (Rule.description rule));
       ("enabled", bool (Rule.enabled rule));
     ]
 
+let diagnostic_to_json entry =
+  let open Data.Json in
+  Object
+    [
+      ("code", string entry.Explanation.code);
+      ("rule_id", string entry.rule_id);
+      ("message", string entry.message);
+    ]
+
 let list_rules_text rules =
-  let format_code = function
-    | Some code -> String.lowercase_ascii code
-    | None -> "-"
-  in
   let bold text = "\027[1m" ^ text ^ "\027[0m" in
-  rules
-  |> List.map (fun rule ->
-         bold (format_code (Rule.code rule) ^ ":" ^ Rule.id rule)
-         ^ " - " ^ Rule.description rule)
+  let rec build_lines current_package acc = function
+    | [] -> List.rev acc
+    | rule :: rest ->
+        let package_name, _ = split_rule_id (Rule.id rule) in
+        let acc =
+          match current_package with
+          | Some current when not (String.equal current package_name) ->
+              ""
+              :: (bold (display_rule_id rule) ^ " - " ^ Rule.description rule)
+              :: acc
+          | _ ->
+              (bold (display_rule_id rule) ^ " - " ^ Rule.description rule)
+              :: acc
+        in
+        build_lines (Some package_name) acc rest
+  in
+  build_lines None [] rules |> String.concat "\n"
+
+let list_diagnostics_text entries =
+  let bold text = "\027[1m" ^ text ^ "\027[0m" in
+  entries
+  |> List.map (fun entry ->
+         bold (String.lowercase_ascii entry.Explanation.code)
+         ^ " (" ^ entry.rule_id ^ ") - " ^ entry.message)
   |> String.concat "\n"
 
 let list_rules_output ~format =
@@ -187,8 +242,21 @@ let list_rules_output ~format =
       Data.Json.Array (List.map rule_to_json rules)
       |> Data.Json.to_string
 
+let list_diagnostics_output ~format =
+  let entries = sorted_diagnostics () in
+  match format with
+  | Reporter.Text -> list_diagnostics_text entries
+  | Reporter.Json ->
+      Data.Json.Array (List.map diagnostic_to_json entries)
+      |> Data.Json.to_string
+
 let list_rules format =
   print (list_rules_output ~format);
+  if format = Reporter.Text then print "\n";
+  Ok ()
+
+let list_diagnostics format =
+  print (list_diagnostics_output ~format);
   if format = Reporter.Text then print "\n";
   Ok ()
 
@@ -246,10 +314,15 @@ let run matches =
     | "json" -> Reporter.Json
     | _ -> Reporter.Text
   in
-  match ArgParser.get_flag matches "list-rules", ArgParser.get_one matches "explain" with
-  | true, _ -> list_rules format
-  | false, Some code -> explain_code code
-  | false, None ->
+  match
+    ArgParser.get_flag matches "list-rules",
+    ArgParser.get_flag matches "list-diagnostics",
+    ArgParser.get_one matches "explain"
+  with
+  | true, _, _ -> list_rules format
+  | false, true, _ -> list_diagnostics format
+  | false, false, Some code -> explain_code code
+  | false, false, None ->
   let target = resolve_target matches in
   let files =
     resolve_files target

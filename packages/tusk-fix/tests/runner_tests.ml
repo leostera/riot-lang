@@ -669,16 +669,39 @@ let tests =
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true
           (String.contains output
-             "\027[1mf0101:snake-case-type-names\027[0m - Type names should use snake_case instead of camelCase");
+             "\027[1mriot:snake-case-type-names\027[0m - Type names should use snake_case instead of camelCase");
         Test.assert_true
-          (not
-             (String.contains output
-                "Snake Case Type Names"));
+          (String.contains output
+             "\027[1mriot:snake-case-variable-names\027[0m - Variable names should use snake_case instead of camelCase");
+        Test.assert_true
+          (not (String.contains output "\027[1msnake-case-type-names\027[0m"));
+        Test.assert_true
+          (not (String.contains output "f0101:snake-case-type-names"));
         Ok ());
     Test.case "cli list-rules json output includes builtin rules" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Json in
         Test.assert_true (String.contains output "\"snake-case-type-names\"");
-        Test.assert_true (String.contains output "\"F0101\"");
+        Test.assert_true
+          (not (String.contains output "\"F0101\""));
+        Ok ());
+    Test.case "cli list-diagnostics text output includes builtin and package diagnostics" (fun () ->
+        let output =
+          Tusk_fix.Cli.list_diagnostics_output ~format:Tusk_fix.Reporter.Text
+        in
+        Test.assert_true
+          (String.contains output
+             "\027[1mf0101\027[0m (snake-case-type-names) - Type names should use snake_case instead of camelCase.");
+        Test.assert_true
+          (String.contains output
+             "\027[1mf0102\027[0m (descriptive-type-variables) - Avoid one-letter type variable names like 'a or 'b in type definitions.");
+        Ok ());
+    Test.case "cli list-diagnostics json output includes builtin and package diagnostics" (fun () ->
+        let output =
+          Tusk_fix.Cli.list_diagnostics_output ~format:Tusk_fix.Reporter.Json
+        in
+        Test.assert_true (String.contains output "\"code\":\"F0101\"");
+        Test.assert_true (String.contains output "\"rule_id\":\"snake-case-type-names\"");
+        Test.assert_true (String.contains output "\"code\":\"F0102\"");
         Ok ());
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
