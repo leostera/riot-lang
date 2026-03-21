@@ -258,7 +258,113 @@ The first command-to-phase mapping should be:
 This is enough to unlock the main real-world cases without requiring a full
 target-system rewrite up front.
 
-## 6. Workspace loading vs graph construction
+## 6. Execution model
+
+The executor should schedule scoped package nodes, not plain package names.
+
+That means the queue works over nodes like:
+
+- `kernel.build`
+- `kernel.runtime`
+- `std.build`
+- `std.runtime`
+- `std.dev`
+
+rather than over plain package names.
+
+The scheduling model should be:
+
+1. construct the scoped package graph for the requested command scope
+2. enqueue all reachable scoped nodes
+3. repeatedly pick any node whose dependencies are already completed
+4. if a node is not ready yet, postpone it and retry later
+5. mark completion by scoped package key, not by plain package name
+
+This preserves the existing “try work, postpone blocked nodes, retry after
+more completions” behavior, but makes it phase-aware.
+
+### 6.1 Runtime build example
+
+For:
+
+```text
+syn -(runtime)-> ceibo -(runtime)-> std -(runtime)-> { kernel, miniriot }
+```
+
+a `tusk build syn` graph should look conceptually like:
+
+```text
+kernel.build   -> kernel.runtime
+miniriot.build -> miniriot.runtime -> kernel.runtime
+std.build      -> std.runtime      -> { kernel.runtime, miniriot.runtime }
+ceibo.build    -> ceibo.runtime    -> std.runtime
+syn.build      -> syn.runtime      -> ceibo.runtime
+```
+
+The important thing is that each runtime node depends on:
+
+- its own build phase
+- the runtime phases of its declared dependencies
+
+So the executor is free to start any `*.build` node that has no unsatisfied
+build-only dependencies, and runtime nodes unlock naturally as those finish.
+
+### 6.2 Dev build example
+
+For:
+
+```text
+propane -(runtime)-> std
+std -(dev)-> propane
+```
+
+a `tusk test std:...` graph should look conceptually like:
+
+```text
+std.build      -> std.runtime -> std.dev
+propane.build  -> propane.runtime
+
+propane.runtime -> std.runtime
+std.dev         -> propane.runtime
+```
+
+This is the key case the old single-node package graph could not represent.
+
+There is no runtime cycle:
+
+- `propane.runtime -> std.runtime`
+
+and there is no invalid build cycle:
+
+- `std.dev -> propane.runtime`
+
+because `std.dev` is a distinct node from `std.runtime`.
+
+### 6.3 Ordering vs artifact dependencies
+
+One subtle but important rule is that not every edge means “treat this as a
+normal library dependency.”
+
+Specifically:
+
+- `pkg.runtime -> pkg.build` is an ordering edge
+- `pkg.dev -> pkg.runtime` is both an ordering edge and a target relationship
+
+The executor should wait for those dependencies to complete, but the planner
+should not automatically treat `pkg.build` as a library artifact that
+`pkg.runtime` links against.
+
+In practice this means:
+
+- self build-phase edges gate scheduling
+- runtime depsets still contain only real package dependency artifacts
+- build phases can stay mostly invisible to end users even though they are
+  first-class scheduling nodes
+
+This distinction is what keeps the scoped graph honest without accidentally
+inventing fake “build artifact libraries” for every package.
+
+## 7. Workspace loading vs graph construction
 
 Workspace loading should still be able to discover packages referenced through
 any dependency class so tooling can see the full package set.
@@ -274,11 +380,11 @@ This cleanly separates:
 - from
 - “what packages are needed for this specific build target?”
 
-## 7. Immediate use cases
+## 8. Immediate use cases
 
 This model is required for both of these:
 
-### 7.1 `std` build-only rule authoring
+### 8.1 `std` build-only rule authoring
 
 ```toml
 [build-dependencies]
@@ -289,7 +395,7 @@ This puts `tusk-fix-api` on `std.build`, not on `std.runtime`, assuming the
 provider implementation itself also lives outside `src/` in a build-only
 location like `fix/`.
 
-### 7.2 `std` test-time dependency on `propane`
+### 8.2 `std` test-time dependency on `propane`
 
 ```toml
 [dev-dependencies]
@@ -299,7 +405,7 @@ propane = { path = "../propane" }
 This lets `std` use `propane` in tests without pretending `propane` is part of
 the `std` runtime artifact graph.
 
-## 8. Rollout
+## 9. Rollout
 
 The rollout should happen in slices:
 
