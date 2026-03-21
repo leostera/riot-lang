@@ -665,6 +665,41 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains parameter count limits" (fun () ->
         assert_explanation_contains ~code:"F0123" ~snippet:"record-shaped concept");
+    Test.case "limit-parenthesis-depth flags deeply parenthesized expressions" (fun () ->
+        let source = "let wrapped = (((((value)))))\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_parenthesis_depth.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0124" ] ~actual:codes;
+        Ok ());
+    Test.case "limit-parenthesis-depth keeps shallower expressions clean" (fun () ->
+        let source = "let wrapped = ((((value))))\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_parenthesis_depth.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "limit-parenthesis-depth reports one issue per deep chain" (fun () ->
+        let source = "let wrapped = ((((((value))))))\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_parenthesis_depth.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:1
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains parenthesis depth limits" (fun () ->
+        assert_explanation_contains ~code:"F0124" ~snippet:"parenthesized expressions");
     Test.case "cli list-rules text output prints one rule per line" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true

@@ -261,6 +261,25 @@ let tests =
                 Ok ()
             | _ -> Error "expected infix expression value")
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst preserves parenthesized expressions structurally" (fun () ->
+        let source = "let wrapped = (((((value)))))\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding binding :: _ ->
+            let rec depth = function
+              | Syn.Cst.Expression.ParenthesizedExpression expr ->
+                  1 + depth (Syn.Cst.ParenthesizedExpression.inner expr)
+              | _ -> 0
+            in
+            Test.assert_equal ~expected:5
+              ~actual:(depth (Syn.Cst.LetBinding.value binding));
+            Ok ()
+        | _ -> Error "expected first item to be a let binding");
   ]
 
 let () =

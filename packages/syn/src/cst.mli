@@ -15,6 +15,7 @@ end
 type expression =
   | StringLiteral of string_literal
   | InfixExpression of infix_expression
+  | ParenthesizedExpression of parenthesized_expression
   | Unknown of syntax_node
 
 and string_literal = {
@@ -29,10 +30,16 @@ and infix_expression = {
   right : expression;
 }
 
+and parenthesized_expression = {
+  syntax_node : syntax_node;
+  inner : expression;
+}
+
 module Expression : sig
   type t = expression =
     | StringLiteral of string_literal
     | InfixExpression of infix_expression
+    | ParenthesizedExpression of parenthesized_expression
     | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node
@@ -62,6 +69,16 @@ module InfixExpression : sig
   val operator_token : t -> Token.t
   val operator : t -> string
   val right : t -> Expression.t
+end
+
+module ParenthesizedExpression : sig
+  type t = parenthesized_expression = {
+    syntax_node : syntax_node;
+    inner : expression;
+  }
+
+  val syntax_node : t -> syntax_node
+  val inner : t -> Expression.t
 end
 
 module TypeVariable : sig

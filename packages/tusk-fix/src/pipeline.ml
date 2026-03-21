@@ -13,6 +13,7 @@ let builtin_rule_factories () =
   [
     ("avoid-single-letter-function-names", Rules.Avoid_single_letter_function_names.make);
     ("avoid-single-letter-type-names", Rules.Avoid_single_letter_type_names.make);
+    ("limit-parenthesis-depth", Rules.Limit_parenthesis_depth.make);
     ("no-inline-parameter-type-annotations", Rules.No_inline_parameter_type_annotations.make);
     ("no-function-shorthand", Rules.No_function_shorthand.make);
     ("limit-function-parameters", Rules.Limit_function_parameters.make);

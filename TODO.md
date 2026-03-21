@@ -21,7 +21,7 @@
 - [x] Avoid single-letter type names except for `t` (`avoid-single-letter-type-names`)
 - [x] Prefer function sigantures in the form of `let foo : <sign> = fn x y z -> ...` rather than inlineed in params like `let foo (x : int) (y : bool) ...` (`no-inline-parameter-type-annotations`)
 - [x] Prefer function definitions with explicit params like `let foo x y = x + y` and `let foo = fn x y -> x + y` instead of `let foo = function | x -> x +1` -- we want to discourage those inlined functions and ideally nudge towards `let foo = fn ... -> ...` since it makes adding a signature easier later (`no-function-shorthand`)
-- [ ] Warn about depth of parenthesized expressions! ~5 parens is too much
+- [x] Warn about depth of parenthesized expressions! ~5 parens is too much (`limit-parenthesis-depth`)
 
 - [x] Warn about functions with many params (complex check) in a few ways: (`limit-function-parameters`)
       1. if there are only unnamed params, 5 is too much

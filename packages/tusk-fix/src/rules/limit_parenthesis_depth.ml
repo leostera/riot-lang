@@ -1,0 +1,78 @@
+open Std
+
+let rule_id = "limit-parenthesis-depth"
+let rule_name = "Limit Parenthesis Depth"
+let rule_code = "F0124"
+
+let rule_description =
+  "Deep chains of parenthesized expressions should be avoided"
+
+let rule_message =
+  "Deep chains of parenthesized expressions should be avoided."
+
+let rule_explain =
+  {|
+Deep chains of parenthesized expressions should be avoided.
+
+Why this rule exists:
+- Heavy parenthesization usually means the expression wants to be decomposed.
+- Once the nesting gets deep, it becomes hard to scan and easy to misread.
+
+Examples:
+  Bad:    let value = (((((compute x)))))
+  Better: let value = compute x
+  Better: let inner = compute x in inner
+
+If you need this many parentheses, the expression probably wants a name or a flatter shape.
+|}
+
+let max_parenthesis_depth = 5
+
+let make_diagnostic expr depth =
+  Diagnostic.make ~severity:Warning
+    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~span:(Syn.Cst.ParenthesizedExpression.syntax_node expr |> Syn.Ceibo.Red.SyntaxNode.span)
+    ~suggestion:
+      ("Reduce parenthesis depth from " ^ Int.to_string depth
+     ^ " by removing redundant grouping or extracting a named value")
+    ()
+
+let rec parenthesis_chain_depth = function
+  | Syn.Cst.Expression.ParenthesizedExpression expr ->
+      1 + parenthesis_chain_depth (Syn.Cst.ParenthesizedExpression.inner expr)
+  | _ -> 0
+
+let rec diagnostics_for_expression ~inside_parenthesized_chain = function
+  | Syn.Cst.Expression.StringLiteral _
+  | Syn.Cst.Expression.Unknown _ ->
+      []
+  | Syn.Cst.Expression.InfixExpression expr ->
+      diagnostics_for_expression ~inside_parenthesized_chain
+        (Syn.Cst.InfixExpression.left expr)
+      @ diagnostics_for_expression ~inside_parenthesized_chain
+          (Syn.Cst.InfixExpression.right expr)
+  | Syn.Cst.Expression.ParenthesizedExpression expr ->
+      let inner = Syn.Cst.ParenthesizedExpression.inner expr in
+      let nested = diagnostics_for_expression ~inside_parenthesized_chain:true inner in
+      if inside_parenthesized_chain then
+        nested
+      else
+        let depth = parenthesis_chain_depth (Syn.Cst.Expression.ParenthesizedExpression expr) in
+        if depth >= max_parenthesis_depth then
+          make_diagnostic expr depth :: nested
+        else
+          nested
+
+let check_tree (ctx : Rule.context) _red_root =
+  match ctx.cst with
+  | None -> []
+  | Some source_file ->
+      Syn.Cst.SourceFile.let_bindings source_file
+      |> List.concat_map (fun binding ->
+             diagnostics_for_expression ~inside_parenthesized_chain:false
+               (Syn.Cst.LetBinding.value binding))
+
+let make () =
+  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
+    ~description:rule_description ~message:rule_message ~explain:rule_explain
+    ~run:check_tree ()

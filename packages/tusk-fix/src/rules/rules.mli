@@ -1,5 +1,6 @@
 module Avoid_single_letter_function_names = Avoid_single_letter_function_names
 module Avoid_single_letter_type_names = Avoid_single_letter_type_names
+module Limit_parenthesis_depth = Limit_parenthesis_depth
 module No_inline_parameter_type_annotations = No_inline_parameter_type_annotations
 module No_function_shorthand = No_function_shorthand
 module Limit_function_parameters = Limit_function_parameters

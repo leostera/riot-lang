@@ -20,6 +20,7 @@ end
 type expression =
   | StringLiteral of string_literal
   | InfixExpression of infix_expression
+  | ParenthesizedExpression of parenthesized_expression
   | Unknown of syntax_node
 
 and string_literal = {
@@ -34,15 +35,22 @@ and infix_expression = {
   right : expression;
 }
 
+and parenthesized_expression = {
+  syntax_node : syntax_node;
+  inner : expression;
+}
+
 module Expression = struct
   type t = expression =
     | StringLiteral of string_literal
     | InfixExpression of infix_expression
+    | ParenthesizedExpression of parenthesized_expression
     | Unknown of syntax_node
 
   let syntax_node = function
     | StringLiteral expr -> expr.syntax_node
     | InfixExpression expr -> expr.syntax_node
+    | ParenthesizedExpression expr -> expr.syntax_node
     | Unknown node -> node
 end
 
@@ -70,6 +78,16 @@ module InfixExpression = struct
   let operator_token expr = expr.operator_token
   let operator expr = Token.text expr.operator_token
   let right expr = expr.right
+end
+
+module ParenthesizedExpression = struct
+  type t = parenthesized_expression = {
+    syntax_node : syntax_node;
+    inner : expression;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let inner expr = expr.inner
 end
 
 module TypeVariable = struct
@@ -388,7 +406,13 @@ let rec expression_from_node node =
       | _ -> Expression.Unknown node)
   | Syntax_kind.PAREN_EXPR -> (
       match direct_non_trivia_nodes node with
-      | inner :: _ -> expression_from_node inner
+      | inner_node :: _ ->
+          Expression.ParenthesizedExpression
+            ParenthesizedExpression.
+              {
+                syntax_node = node;
+                inner = expression_from_node inner_node;
+              }
       | [] -> Expression.Unknown node)
   | _ -> Expression.Unknown node
 

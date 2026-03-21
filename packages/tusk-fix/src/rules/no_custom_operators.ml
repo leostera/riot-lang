@@ -71,6 +71,8 @@ let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.StringLiteral _
   | Syn.Cst.Expression.Unknown _ ->
       []
+  | Syn.Cst.Expression.ParenthesizedExpression expr ->
+      diagnostics_for_expression (Syn.Cst.ParenthesizedExpression.inner expr)
   | Syn.Cst.Expression.InfixExpression expr ->
       let nested =
         diagnostics_for_expression (Syn.Cst.InfixExpression.left expr)
