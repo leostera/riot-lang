@@ -3,9 +3,26 @@ open Std.Collections
 
 let rule_id = "class-case-module-names"
 let rule_name = "Class Case Module Names"
+let rule_code = "F0104"
 
 let rule_description =
   "Module names should use ClassCase instead of underscores"
+
+let rule_message =
+  "Module names should use ClassCase without underscores."
+
+let rule_explain =
+  {|
+Module names should use ClassCase without underscores.
+
+Why this rule exists:
+- Mixed styles like Foo_bar are harder to scan than either FooBar or foo_bar.
+- Riot uses ClassCase for modules and snake_case for values. Mixing the two in one identifier makes the boundary blurry.
+
+Examples:
+  Bad:    module Foo_bar = struct ... end
+  Better: module FooBar = struct ... end
+|}
 
 let contains_underscore text =
   String.exists (fun ch -> ch = '_') text
@@ -42,7 +59,7 @@ let make_diagnostic token =
   let original = Syn.Ceibo.Red.SyntaxToken.text token in
   let replacement = to_class_case original in
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known Diagnostic_code.JiraffeCaseModuleName)
+    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
     ()
@@ -82,5 +99,6 @@ let check_tree (ctx : Rule.context) _red_root =
            | _ -> None)
 
 let make () =
-  Rule.make ~id:rule_id ~name:rule_name ~description:rule_description
+  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
+    ~description:rule_description ~message:rule_message ~explain:rule_explain
     ~run:check_tree ()

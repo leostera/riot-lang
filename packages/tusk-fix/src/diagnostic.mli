@@ -7,7 +7,11 @@ type severity = Tusk_fix_api.Diagnostic.severity =
   | Hint
 
 type kind = Tusk_fix_api.Diagnostic.kind =
-  | Known of Diagnostic_code.t
+  | Known of {
+      code : string;
+      rule_id : string;
+      message : string;
+    }
   | Generic of {
       rule_id : string;
       message : string;
@@ -41,7 +45,7 @@ val severity : t -> severity
 val message : t -> string
 val span : t -> Syn.Ceibo.Span.t
 val rule_id : t -> string
-val code : t -> Diagnostic_code.t option
+val code : t -> string option
 val code_id : t -> string option
 val suggestion : t -> string option
 val fix : t -> Fix.fix option
@@ -51,7 +55,7 @@ type grouped = {
   message : string;
   spans : Syn.Ceibo.Span.t list;
   rule_id : string;
-  code : Diagnostic_code.t option;
+  code : string option;
   suggestion : string option;
   fix : Fix.fix option;
 }

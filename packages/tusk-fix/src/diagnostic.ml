@@ -7,7 +7,11 @@ type severity = Tusk_fix_api.Diagnostic.severity =
   | Hint
 
 type kind = Tusk_fix_api.Diagnostic.kind =
-  | Known of Diagnostic_code.t
+  | Known of {
+      code : string;
+      rule_id : string;
+      message : string;
+    }
   | Generic of {
       rule_id : string;
       message : string;
@@ -47,7 +51,7 @@ let header_label severity rule_id code =
   match code with
   | Some code ->
       "[" ^ severity_to_string severity ^ "] " ^ rule_id ^ " ("
-      ^ Diagnostic_code.to_id code
+      ^ code
       ^ ")"
   | None -> "[" ^ severity_to_string severity ^ "] " ^ rule_id
 
@@ -55,7 +59,7 @@ let colored_header_label severity rule_id code =
   match code with
   | Some code ->
       "[" ^ severity_to_colored_string severity ^ "] " ^ rule_id ^ " ("
-      ^ Diagnostic_code.to_id code
+      ^ code
       ^ ")"
   | None -> "[" ^ severity_to_colored_string severity ^ "] " ^ rule_id
 
@@ -63,7 +67,7 @@ let explain_hint severity = function
   | Some code ->
       "  For more information about this "
       ^ severity_to_string severity
-      ^ ", try `tusk fix --explain " ^ Diagnostic_code.to_id code ^ "`"
+      ^ ", try `tusk fix --explain " ^ code ^ "`"
   | None -> ""
 
 let to_string diag =
@@ -201,7 +205,7 @@ type grouped = {
   message : string;
   spans : Syn.Ceibo.Span.t list;
   rule_id : string;
-  code : Diagnostic_code.t option;
+  code : string option;
   suggestion : string option;
   fix : Fix.fix option;
 }
@@ -236,9 +240,7 @@ let group_diagnostics (diags : t list) : grouped list =
          in
          let spans = List.map snd spans in
          let code =
-           match code_id with
-           | Some code_id -> Diagnostic_code.of_id code_id
-           | None -> None
+           code_id
          in
          ( {
              severity;

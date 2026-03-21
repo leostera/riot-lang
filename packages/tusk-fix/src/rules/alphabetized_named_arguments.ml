@@ -2,9 +2,22 @@ open Std
 
 let rule_id = "alphabetized-named-arguments"
 let rule_name = "Alphabetized Named Arguments"
+let rule_code = "F0113"
 
 let rule_description =
   "Labeled and optional arguments should be alphabetized within their groups"
+
+let rule_message =
+  "Keep labeled and optional arguments alphabetically sorted within their groups."
+
+let rule_explain =
+  {|
+Named arguments should be kept in alphabetical order within their kind groups.
+
+Why this rule exists:
+- Alphabetical order removes needless bikeshedding.
+- It also makes it easier to spot missing, duplicated, or newly inserted arguments in code review.
+|}
 
 let parameter_name parameter =
   match Syn.Cst.Parameter.name parameter with
@@ -18,7 +31,7 @@ let parameter_span parameter =
 let make_diagnostic ~previous_name parameter =
   let current_name = parameter_name parameter in
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known Diagnostic_code.SortedNamedArguments)
+    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
     ~span:(parameter_span parameter)
     ~suggestion:
       ("Place " ^ current_name ^ " before " ^ previous_name
@@ -76,5 +89,6 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_binding
 
 let make () =
-  Rule.make ~id:rule_id ~name:rule_name ~description:rule_description
+  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
+    ~description:rule_description ~message:rule_message ~explain:rule_explain
     ~run:check_tree ()

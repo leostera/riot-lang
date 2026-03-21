@@ -3,13 +3,11 @@ open Std
 let registered_providers = cell []
 
 let clear () =
-  registered_providers := [];
-  Diagnostic_code.clear_package_codes ()
+  registered_providers := []
 
 let providers () = List.rev !registered_providers
 
 let register_provider provider =
-  Diagnostic_code.register_package_codes (Provider.diagnostic_codes provider);
   registered_providers := provider :: !registered_providers
 
 let register_providers providers =

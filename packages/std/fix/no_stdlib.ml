@@ -6,51 +6,105 @@ module Api = Tusk_fix_api
 let package_name = "std"
 let package_rule_id = package_name ^ ":no-stdlib"
 
-let unix_code =
-  Api.Diagnostic_code.
+let unix_body =
+  {|
+Direct calls into Unix bypass Riot's scheduling and portability boundaries.
+
+Why this rule exists:
+- Riot code runs on top of a cooperative actor runtime.
+- A blocking Unix call can stall the scheduler and delay unrelated actors.
+- Direct Unix usage also hard-codes platform details into packages that should stay platform-agnostic.
+
+What to do instead:
+- Prefer package-owned Riot abstractions when they exist.
+- Push true OS boundaries down into the packages that are supposed to own them, like kernel.
+- If you really need a Unix boundary, introduce it deliberately instead of sprinkling Unix calls through application code.
+|}
+
+let sys_body =
+  {|
+Direct Sys usage reaches into process-global runtime state instead of going through Riot-owned boundaries.
+
+Why this rule exists:
+- Sys exposes host and runtime details directly from OCaml.
+- That makes portability and policy decisions leak into packages that should not own them.
+- It also makes it harder to keep behavior consistent across the ecosystem.
+
+What to do instead:
+- Prefer Riot wrappers for system information and runtime behavior.
+- Keep process-global and platform-global logic in boundary-owning packages.
+|}
+
+let stdlib_body =
+  {|
+Code outside the runtime boundary should go through Riot's Std layer instead of referencing Stdlib directly.
+
+Why this rule exists:
+- Riot is trying to provide a coherent programming stack, not just a pile of packages.
+- Routing code through Std gives the ecosystem one owned surface instead of ad hoc direct references into Stdlib.
+- That leaves room for better defaults, portability adjustments, and package-wide conventions.
+
+What to do instead:
+- Replace Stdlib references with Std when the Riot surface already owns that API.
+- If Std does not yet expose something important, that is usually a signal to extend Std deliberately rather than bypass it forever.
+|}
+
+let pervasives_body =
+  {|
+Pervasives is the historical pre-Stdlib module and should not appear in modern Riot code.
+
+Why this rule exists:
+- Pervasives is legacy OCaml surface area.
+- Riot code should point at the current owned surface, not historic compatibility layers.
+
+What to do instead:
+- Replace direct Pervasives references with Std.
+|}
+
+let unix_explanation =
+  Api.Explanation.
     {
-      package_name;
-      local_id = "f0001";
+      code = "std:f0001";
       rule_id = package_rule_id;
       title = "Direct Unix usage";
-      body = Api.Diagnostic_code.body DirectUnixUsage;
-      message = Api.Diagnostic_code.message DirectUnixUsage;
+      body = unix_body;
+      message =
+        "Direct usage of Unix is discouraged. Use package-owned Riot abstractions instead.";
     }
 
-let sys_code =
-  Api.Diagnostic_code.
+let sys_explanation =
+  Api.Explanation.
     {
-      package_name;
-      local_id = "f0002";
+      code = "std:f0002";
       rule_id = package_rule_id;
       title = "Direct Sys usage";
-      body = Api.Diagnostic_code.body DirectSysUsage;
-      message = Api.Diagnostic_code.message DirectSysUsage;
+      body = sys_body;
+      message =
+        "Direct usage of Sys is discouraged. Use package-owned Riot abstractions instead.";
     }
 
-let stdlib_code =
-  Api.Diagnostic_code.
+let stdlib_explanation =
+  Api.Explanation.
     {
-      package_name;
-      local_id = "f0003";
+      code = "std:f0003";
       rule_id = package_rule_id;
       title = "Direct Stdlib usage";
-      body = Api.Diagnostic_code.body DirectStdlibUsage;
-      message = Api.Diagnostic_code.message DirectStdlibUsage;
+      body = stdlib_body;
+      message = "Direct usage of Stdlib is discouraged. Use Std instead.";
     }
 
-let pervasives_code =
-  Api.Diagnostic_code.
+let pervasives_explanation =
+  Api.Explanation.
     {
-      package_name;
-      local_id = "f0004";
+      code = "std:f0004";
       rule_id = package_rule_id;
       title = "Direct Pervasives usage";
-      body = Api.Diagnostic_code.body DirectPervasivesUsage;
-      message = Api.Diagnostic_code.message DirectPervasivesUsage;
+      body = pervasives_body;
+      message = "Direct usage of Pervasives is discouraged. Use Std instead.";
     }
 
-let diagnostic_codes () = [ unix_code; sys_code; stdlib_code; pervasives_code ]
+let explanations () =
+  [ unix_explanation; sys_explanation; stdlib_explanation; pervasives_explanation ]
 
 let forbidden_modules = [ "Stdlib"; "Pervasives"; "Unix"; "Sys" ]
 
@@ -58,11 +112,11 @@ let replacement_for = function
   | "Stdlib" | "Pervasives" -> Some "Std"
   | _ -> None
 
-let package_code_for_module = function
-  | "Unix" -> Some unix_code
-  | "Sys" -> Some sys_code
-  | "Stdlib" -> Some stdlib_code
-  | "Pervasives" -> Some pervasives_code
+let explanation_for_module = function
+  | "Unix" -> Some unix_explanation
+  | "Sys" -> Some sys_explanation
+  | "Stdlib" -> Some stdlib_explanation
+  | "Pervasives" -> Some pervasives_explanation
   | _ -> None
 
 let make_message text =
@@ -95,9 +149,14 @@ let make_diagnostic token =
   let suggestion = make_suggestion text in
   let fix = replacement_for text |> Option.map (make_fix token) in
   let kind =
-    match package_code_for_module text with
+    match explanation_for_module text with
     | Some entry ->
-        Api.Diagnostic.Known (Api.Diagnostic_code.PackageProvided entry)
+        Api.Diagnostic.Known
+          {
+            code = entry.code;
+            rule_id = entry.rule_id;
+            message = entry.message;
+          }
     | None ->
         Api.Diagnostic.Generic { rule_id = package_rule_id; message = make_message text }
   in
@@ -182,4 +241,6 @@ let rule () =
   Api.Rule.make ~id:package_rule_id ~name:"No OCaml Stdlib"
     ~description:
       "Detects direct Stdlib, Unix, Sys, and Pervasives usage from the Std package boundary"
+    ~explain:
+      "The std package should not reference Stdlib, Unix, Sys, or Pervasives directly. Use Std or boundary-owning Riot packages instead."
     ~run:check_tree ()

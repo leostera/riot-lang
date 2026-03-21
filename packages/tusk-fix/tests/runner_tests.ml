@@ -31,6 +31,19 @@ let with_tempdir prefix fn =
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
+let diagnostic_codes diagnostics =
+  diagnostics
+  |> List.filter_map Tusk_fix.Diagnostic.code
+  |> List.sort String.compare
+
+let assert_explanation_contains ~code ~snippet =
+  match Tusk_fix.Explanations.explain code with
+  | None -> Error ("Expected explanation for " ^ code)
+  | Some entry ->
+      Test.assert_equal ~expected:code ~actual:entry.code;
+      Test.assert_true (String.contains entry.body snippet);
+      Ok ()
+
 let tests =
   [
     Test.case "snake-case-type-names exposes safe fixes" (fun () ->
@@ -50,23 +63,13 @@ let tests =
     Test.case "snake-case-type-names emits stable diagnostic codes" (fun () ->
         let source = "type userProfile = int\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0101" ] ~actual:codes;
         Ok ());
     Test.case "descriptive-type-variables flags short type parameters" (fun () ->
         let source = "type ('a, 'error) resultish = ('a, 'error) result\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0102" ] ~actual:codes;
         Ok ());
     Test.case "descriptive-type-variables keeps descriptive type parameters clean" (fun () ->
@@ -84,32 +87,13 @@ let tests =
           ~actual:(List.length result.diagnostics);
         Ok ());
     Test.case "diagnostic code registry explains type-name violations" (fun () ->
-        match Tusk_fix.Diagnostic_code.explain "F0101" with
-        | None -> Error "Expected explanation for F0101"
-        | Some entry ->
-            Test.assert_equal ~expected:"F0101"
-              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
-            Test.assert_true
-              (String.contains entry.body "snake_case");
-            Ok ());
+        assert_explanation_contains ~code:"F0101" ~snippet:"snake_case");
     Test.case "diagnostic code registry explains short type variables" (fun () ->
-        match Tusk_fix.Diagnostic_code.explain "F0102" with
-        | None -> Error "Expected explanation for F0102"
-        | Some entry ->
-            Test.assert_equal ~expected:"F0102"
-              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
-            Test.assert_true
-              (String.contains entry.body "'value");
-            Ok ());
+        assert_explanation_contains ~code:"F0102" ~snippet:"'value");
     Test.case "snake-case-function-names flags camelCase function bindings" (fun () ->
         let source = "let userProfile x = x\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0103" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-function-names flags explicit fun bindings" (fun () ->
@@ -132,43 +116,21 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[] ~actual:codes;
         Ok ());
     Test.case "snake-case-function-names flags local camelCase function bindings" (fun () ->
         let source = "let render x = let userProfile y = y in userProfile x\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0103" ] ~actual:codes;
         Ok ());
     Test.case "diagnostic code registry explains function-name violations" (fun () ->
-        match Tusk_fix.Diagnostic_code.explain "F0103" with
-        | None -> Error "Expected explanation for F0103"
-        | Some entry ->
-            Test.assert_equal ~expected:"F0103"
-              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
-            Test.assert_true
-              (String.contains entry.body "parse_user");
-            Ok ());
+        assert_explanation_contains ~code:"F0103" ~snippet:"parse_user");
     Test.case "class-case-module-names flags jiraffe-cased modules" (fun () ->
         let source = "module Foo_bar = struct end\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0104" ] ~actual:codes;
         Ok ());
     Test.case "class-case-module-names flags jiraffe-cased module types" (fun () ->
@@ -184,34 +146,17 @@ let tests =
           ~actual:(List.length result.diagnostics);
         Ok ());
     Test.case "diagnostic code registry explains module-name violations" (fun () ->
-        match Tusk_fix.Diagnostic_code.explain "F0104" with
-        | None -> Error "Expected explanation for F0104"
-        | Some entry ->
-            Test.assert_equal ~expected:"F0104"
-              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
-            Test.assert_true
-              (String.contains entry.body "FooBar");
-            Ok ());
+        assert_explanation_contains ~code:"F0104" ~snippet:"FooBar");
     Test.case "snake-case-variable-names flags camelCase value bindings" (fun () ->
         let source = "let currentUser = 42\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0105" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-variable-names flags local camelCase value bindings" (fun () ->
         let source = "let render x = let currentUser = x in currentUser\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0105" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-variable-names keeps compliant values clean" (fun () ->
@@ -225,43 +170,21 @@ let tests =
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         Test.assert_equal ~expected:1
           ~actual:(List.length result.diagnostics);
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0103" ] ~actual:codes;
         Ok ());
     Test.case "diagnostic code registry explains variable-name violations" (fun () ->
-        match Tusk_fix.Diagnostic_code.explain "F0105" with
-        | None -> Error "Expected explanation for F0105"
-        | Some entry ->
-            Test.assert_equal ~expected:"F0105"
-              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
-            Test.assert_true
-              (String.contains entry.body "current_user");
-            Ok ());
+        assert_explanation_contains ~code:"F0105" ~snippet:"current_user");
     Test.case "no-prime-variables flags prime-suffixed value bindings" (fun () ->
         let source = "let current_user' = 42\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0106" ] ~actual:codes;
         Ok ());
     Test.case "no-prime-variables flags local prime-suffixed value bindings" (fun () ->
         let source = "let render x = let state' = x in state'\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0106" ] ~actual:codes;
         Ok ());
     Test.case "no-prime-variables keeps non-prime values clean" (fun () ->
@@ -287,45 +210,23 @@ let tests =
           ~actual:(List.length result.diagnostics);
         Ok ());
     Test.case "diagnostic code registry explains prime-variable violations" (fun () ->
-        match Tusk_fix.Diagnostic_code.explain "F0106" with
-        | None -> Error "Expected explanation for F0106"
-        | Some entry ->
-            Test.assert_equal ~expected:"F0106"
-              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
-            Test.assert_true
-              (String.contains entry.body "state2");
-            Ok ());
+        assert_explanation_contains ~code:"F0106" ~snippet:"state2");
     Test.case "snake-case-argument-names flags camelCase positional arguments" (fun () ->
         let source = "let render userId = userId\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0110" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-argument-names flags camelCase labeled arguments" (fun () ->
         let source = "let render ~displayName current_user = current_user\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0110" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-argument-names flags camelCase optional arguments" (fun () ->
         let source = "let render ?pageSize current_user = current_user\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0110" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-argument-names keeps compliant arguments clean" (fun () ->
@@ -340,14 +241,7 @@ let tests =
           ~actual:(List.length result.diagnostics);
         Ok ());
     Test.case "diagnostic code registry explains argument-name violations" (fun () ->
-        match Tusk_fix.Diagnostic_code.explain "F0110" with
-        | None -> Error "Expected explanation for F0110"
-        | Some entry ->
-            Test.assert_equal ~expected:"F0110"
-              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
-            Test.assert_true
-              (String.contains entry.body "display_name");
-            Ok ());
+        assert_explanation_contains ~code:"F0110" ~snippet:"display_name");
     Test.case "ordered-argument-kinds flags labeled arguments after positional ones" (fun () ->
         let source = "let render current_user ~display_name = current_user\n" in
         let pipeline =
@@ -356,12 +250,7 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0111" ] ~actual:codes;
         Ok ());
     Test.case "ordered-argument-kinds flags optional arguments after positional ones" (fun () ->
@@ -372,12 +261,7 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0111" ] ~actual:codes;
         Ok ());
     Test.case "ordered-argument-kinds flags labeled arguments after optional ones" (fun () ->
@@ -388,12 +272,7 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0111" ] ~actual:codes;
         Ok ());
     Test.case "ordered-argument-kinds keeps compliant argument order clean" (fun () ->
@@ -419,14 +298,7 @@ let tests =
           ~actual:(List.length result.diagnostics);
         Ok ());
     Test.case "diagnostic code registry explains argument-order violations" (fun () ->
-        match Tusk_fix.Diagnostic_code.explain "F0111" with
-        | None -> Error "Expected explanation for F0111"
-        | Some entry ->
-            Test.assert_equal ~expected:"F0111"
-              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
-            Test.assert_true
-              (String.contains entry.body "labeled arguments");
-            Ok ());
+        assert_explanation_contains ~code:"F0111" ~snippet:"labeled arguments");
     Test.case "alphabetized-named-arguments flags unsorted labeled arguments" (fun () ->
         let source = "let render ~zebra ~alpha current_user = current_user\n" in
         let pipeline =
@@ -435,12 +307,7 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0113" ] ~actual:codes;
         Ok ());
     Test.case "alphabetized-named-arguments flags unsorted optional arguments" (fun () ->
@@ -451,12 +318,7 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0113" ] ~actual:codes;
         Ok ());
     Test.case "alphabetized-named-arguments keeps each kind group independent" (fun () ->
@@ -482,14 +344,53 @@ let tests =
           ~actual:(List.length result.diagnostics);
         Ok ());
     Test.case "diagnostic code registry explains named-argument sorting violations" (fun () ->
-        match Tusk_fix.Diagnostic_code.explain "F0113" with
-        | None -> Error "Expected explanation for F0113"
-        | Some entry ->
-            Test.assert_equal ~expected:"F0113"
-              ~actual:(Tusk_fix.Diagnostic_code.to_id entry.code);
-            Test.assert_true
-              (String.contains entry.body "Alphabetical order");
-            Ok ());
+        assert_explanation_contains ~code:"F0113" ~snippet:"Alphabetical order");
+    Test.case "t-first-named-arguments flags t after other positional arguments" (fun () ->
+        let source = "let render ~width ~height other t = t\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.T_first_named_arguments.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0112" ] ~actual:codes;
+        Ok ());
+    Test.case "t-first-named-arguments keeps t-first positional arguments clean" (fun () ->
+        let source = "let render ~width ~height t other = t\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.T_first_named_arguments.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "t-first-named-arguments ignores functions without named arguments" (fun () ->
+        let source = "let render other t = t\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.T_first_named_arguments.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "t-first-named-arguments ignores functions without positional t" (fun () ->
+        let source = "let render ~width other current = current\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.T_first_named_arguments.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains t-first named argument violations" (fun () ->
+        assert_explanation_contains ~code:"F0112" ~snippet:"receiver");
     Test.case "snake-case-type-names ignores non-type camelCase identifiers" (fun () ->
         let source = "let userProfile = 42\n" in
         let pipeline =
@@ -498,12 +399,7 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes =
-          result.diagnostics
-          |> List.filter_map Tusk_fix.Diagnostic.code
-          |> List.map Tusk_fix.Diagnostic_code.to_id
-          |> List.sort String.compare
-        in
+        let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[] ~actual:codes;
         Ok ());
     Test.case "snake-case-type-names ignores module qualifiers in extensible types" (fun () ->
@@ -778,7 +674,7 @@ let tests =
               |> Result.expect ~msg:"mkdir fix";
               write_file
                 Path.(package_dir / Path.v "fix" / Path.v "no_stdlib_provider.ml")
-                "let name = \"std\"\nlet rules () = []\nlet diagnostic_codes () = []\n";
+                "let name = \"std\"\nlet rules () = []\nlet explanations () = []\n";
               let scope =
                 Tusk_fix.Config.load_scope ~cwd:tmpdir
                 |> Option.expect ~msg:"expected workspace scope"
@@ -807,7 +703,7 @@ let tests =
               write_file Path.(package_dir / Path.v "tusk.toml")
                 "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[tusk.fix.provider]\nrules = [\"demo-rule\"]\n";
               write_file Path.(fix_dir / Path.v "tusk_fix_rules.ml")
-                "let name = \"demo\"\nlet rules () = []\nlet diagnostic_codes () = []\n";
+                "let name = \"demo\"\nlet rules () = []\nlet explanations () = []\n";
               let scope =
                 Tusk_fix.Config.load_scope ~cwd:tmpdir
                 |> Option.expect ~msg:"expected workspace scope"
@@ -837,7 +733,7 @@ let tests =
               write_file Path.(package_dir / Path.v "tusk.toml")
                 "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[tusk.fix.provider]\nrules = [\"demo-rule\"]\n";
               write_file Path.(provider_dir / Path.v "tusk_fix_rules.ml")
-                "let name = \"demo\"\nlet rules () = []\nlet diagnostic_codes () = []\n";
+                "let name = \"demo\"\nlet rules () = []\nlet explanations () = []\n";
               let scope =
                 Tusk_fix.Config.load_scope ~cwd:tmpdir
                 |> Option.expect ~msg:"expected workspace scope"
@@ -870,7 +766,7 @@ let tests =
                 "[package]\nname = \"helper\"\nversion = \"0.1.0\"\n\n[lib]\npath = \"src/helper.ml\"\n";
               write_file Path.(helper_src_dir / Path.v "helper.ml") "let value = 1\n";
               write_file Path.(fix_dir / Path.v "tusk_fix_rules.ml")
-                "let name = \"demo\"\nlet rules () = []\nlet diagnostic_codes () = []\n";
+                "let name = \"demo\"\nlet rules () = []\nlet explanations () = []\n";
               let providers =
                 [
                   Tusk_model.Fix_provider.

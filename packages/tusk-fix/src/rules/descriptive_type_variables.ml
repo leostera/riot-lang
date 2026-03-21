@@ -3,9 +3,30 @@ open Std.Collections
 
 let rule_id = "descriptive-type-variables"
 let rule_name = "Descriptive Type Variables"
+let rule_code = "F0102"
 
 let rule_description =
   "Type variables in type definitions should use descriptive names instead of short placeholders"
+
+let rule_message =
+  "Avoid one-letter type variable names like 'a or 'b in type definitions."
+
+let rule_explain =
+  {|
+Avoid one-letter type variable names like 'a and 'b in real type definitions.
+
+Why this rule exists:
+- Short type variables are compact but not descriptive.
+- In public APIs they force the reader to reverse-engineer intent from context.
+
+What to do instead:
+- Use names that communicate role.
+- Prefer names like 'value, 'error, 'state, or 'msg when those roles matter.
+
+Examples:
+  Bad:    type ('a, 'b) resultish = ...
+  Better: type ('value, 'error) resultish = ...
+|}
 
 let is_lower_alpha ch = ch >= 'a' && ch <= 'z'
 
@@ -15,7 +36,7 @@ let should_flag_type_variable_name name =
 let make_diagnostic type_variable =
   let original = Syn.Cst.TypeVariable.text type_variable in
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known Diagnostic_code.ShortTypeVariableName)
+    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
     ~span:
       (Syn.Cst.TypeVariable.syntax_node type_variable
       |> Syn.Ceibo.Red.SyntaxNode.span)
@@ -46,5 +67,6 @@ let check_tree (ctx : Rule.context) _red_root =
            | _ -> [])
 
 let make () =
-  Rule.make ~id:rule_id ~name:rule_name ~description:rule_description
+  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
+    ~description:rule_description ~message:rule_message ~explain:rule_explain
     ~run:check_tree ()

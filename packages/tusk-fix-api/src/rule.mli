@@ -10,15 +10,22 @@ type context = {
 
 val make :
   id:string ->
+  ?code:string ->
   name:string ->
   description:string ->
+  ?message:string ->
+  explain:string ->
   ?enabled:bool ->
   run:(context -> red_tree -> Diagnostic.t list) ->
   unit ->
   t
 
 val id : t -> string
+val code : t -> string option
 val name : t -> string
 val description : t -> string
+val message : t -> string option
+val explain : t -> string
+val explanation : t -> Explanation.t option
 val enabled : t -> bool
 val run : t -> context -> red_tree -> Diagnostic.t list

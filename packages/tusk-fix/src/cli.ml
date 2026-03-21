@@ -134,9 +134,9 @@ let print_text_summary mode summary =
          ^ Int.to_string summary.remaining_diagnostics ^ " issues remain")
 
 let explain_code code =
-  match Diagnostic_code.explain code with
+  match Explanations.explain code with
   | Some entry ->
-      print (Diagnostic_code.format_explanation entry);
+      print (Explanations.format entry);
       Ok ()
   | None -> Error (Failure ("Unknown tusk-fix diagnostic code: " ^ code))
 

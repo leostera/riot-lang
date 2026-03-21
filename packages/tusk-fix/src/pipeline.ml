@@ -20,6 +20,7 @@ let builtin_rule_factories () =
     ("snake-case-argument-names", Rules.Snake_case_argument_names.make);
     ("ordered-argument-kinds", Rules.Ordered_argument_kinds.make);
     ("alphabetized-named-arguments", Rules.Alphabetized_named_arguments.make);
+    ("t-first-named-arguments", Rules.T_first_named_arguments.make);
   ]
 
 let package_rules () =
@@ -40,6 +41,11 @@ let filtered_builtin_rules package_rules =
   |> List.map (fun make_rule -> make_rule ())
   |> List.filter (fun rule ->
          not (List.mem (unqualified_rule_id (Rule.id rule)) shadowed_ids))
+
+let builtin_rules () =
+  builtin_rule_factories ()
+  |> List.map snd
+  |> List.map (fun make_rule -> make_rule ())
 
 let run pipeline ?filename source =
   let parse_result =

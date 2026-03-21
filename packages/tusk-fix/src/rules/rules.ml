@@ -7,3 +7,4 @@ module No_prime_variables = No_prime_variables
 module Snake_case_argument_names = Snake_case_argument_names
 module Ordered_argument_kinds = Ordered_argument_kinds
 module Alphabetized_named_arguments = Alphabetized_named_arguments
+module T_first_named_arguments = T_first_named_arguments

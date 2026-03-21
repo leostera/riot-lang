@@ -18,5 +18,6 @@ module Messages = Messages
 module Worker = Worker
 module Coordinator = Coordinator
 module Config = Fix_config
-module Diagnostic_code = Diagnostic_code
+module Explanation = Explanation
+module Explanations = Explanations
 module Fused_runtime = Fused_runtime

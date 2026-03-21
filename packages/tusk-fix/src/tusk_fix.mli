@@ -18,7 +18,7 @@ module Provider : module type of Provider
 (** Package-provided tusk-fix rule surface *)
 
 module Provider_registry : module type of Provider_registry
-(** Runtime registry for package-provided rules and diagnostic codes *)
+(** Runtime registry for package-provided rules and explanations *)
 
 module Reporter : module type of Reporter
 (** Diagnostic output formatting *)
@@ -53,8 +53,11 @@ module Coordinator : module type of Coordinator
 module Config : module type of Fix_config
 (** Workspace and package-local configuration resolution for `tusk fix` *)
 
-module Diagnostic_code : module type of Diagnostic_code
-(** Diagnostic code registry and explanation text for `tusk fix` *)
+module Explanation : module type of Explanation
+(** Shared explanation entry type used by built-in and provider rules *)
+
+module Explanations : module type of Explanations
+(** Explanation lookup for loaded built-in and provider rules *)
 
 module Fused_runtime : module type of Fused_runtime
 (** Build-time fused runtime planning for package-provided rules *)
