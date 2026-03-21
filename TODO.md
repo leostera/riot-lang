@@ -5,7 +5,7 @@
 - [x] Type names should use `snake_case` instead of `camelCase` (`snake-case-type-names`)
 - [x] Warn on type variable names like `'a` or `'b` in type definitions; suggest descriptive names like `'value` and `'error`
 - [x] Function names should use `snake_case` instead of `camelCase`
-- [ ] Module names should be ClassCased and not Jiraffe_cased
+- [x] Module names should be ClassCased and not Jiraffe_cased (`class-case-module-names`)
 - [ ] Variable names should use `snake_case` instead of `camelCase`
 - [ ] Variable names should not contain `'`; prefer `x2` over `x'`
 - [ ] Prefer `Module.{ field = value }` over `{ Module.field = value }`
@@ -39,6 +39,22 @@
 
 - [ ] useless booleans comparisons in conditionals like `if is_ready = true then ...` that should be flagged and recommended to rewrite as `if is_ready then ...` -- same for `if flag <> false then ...` and prefer `if flag then  ...` -- same for `if b = false then ...` prefer `if not b then ...` 
 
+## Package specific lint rules
+
+Miniriot:
+- [ ] If a while or for loop doesn't immediately have a `yield ()` at the beginning of it, we should warn about it
+
+Std:
+- [ ] `ignore (List.map f xs)` or `ignore (Iter.map f iter)` is likely a bug and should be `List.iter f xs` or `Iter.iter f iter` -- i fogret the xact iterators api but you'll figure it out -- the same applies with `let _ = Mod.map f xs` 
+
+- [ ] Needles `(fun x -> foo x)` due to eta-expansion, they can just put `foo` in there
+- [ ] Needless or redundant parenthesis or begin/end blocks
+- [ ] Prefer `fun x  -> match x  with | ....` over `function | A -> ... | B ...`
+
+
+- [ ] Prefer pipeline over very nested function calls so `(foo (bar (baz (hex 1))))` into `hex 1 |> baz |> bar |> foo`
+
+- [ ] Redundant `else ()` can be removed
 
 
 ## Package specific lint rules
@@ -47,4 +63,9 @@ Miniriot:
 - [ ] If a while or for loop doesn't immediately have a `yield ()` at the beginning of it, we should warn about it
 
 Std:
-- [ ] 
+- [ ] `ignore (List.map f xs)` or `ignore (Iter.map f iter)` is likely a bug and should be `List.iter f xs` or `Iter.iter f iter` -- i fogret the xact iterators api but you'll figure it out -- the same applies with `let _ = Mod.map f xs` 
+
+- [ ] if someone uses `<>` we should tell them its `!=` now
+- [ ] Double List.rev 
+
+

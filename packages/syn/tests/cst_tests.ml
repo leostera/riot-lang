@@ -80,6 +80,34 @@ let tests =
             Test.assert_false (Syn.Cst.LetBinding.is_function binding);
             Ok ()
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst module declarations expose declared module names" (fun () ->
+        let result = Syn.parse ~filename:"sample.ml" "module Foo_bar = struct end\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.ModuleDeclaration decl :: _ ->
+            Test.assert_equal ~expected:"Foo_bar"
+              ~actual:(Syn.Cst.ModuleDeclaration.name decl);
+            Ok ()
+        | _ -> Error "expected first item to be a module declaration");
+    Test.case "cst module type declarations expose declared names" (fun () ->
+        let result = Syn.parse ~filename:"sample.ml" "module type Foo_bar = sig end\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.ModuleTypeDeclaration decl :: _ ->
+            Test.assert_equal ~expected:"Foo_bar"
+              ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
+            Ok ()
+        | _ -> Error "expected first item to be a module type declaration");
   ]
 
 let () =

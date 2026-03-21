@@ -418,7 +418,7 @@ let rule_id = function
   | CamelCaseTypeName -> "snake-case-type-names"
   | ShortTypeVariableName -> "descriptive-type-variables"
   | CamelCaseFunctionName -> "snake-case-function-names"
-  | JiraffeCaseModuleName -> "module-name-style"
+  | JiraffeCaseModuleName -> "class-case-module-names"
   | CamelCaseVariableName -> "variable-name-style"
   | PrimeVariableName -> "variable-prime-style"
   | QualifiedRecordField -> "qualified-record-field-style"

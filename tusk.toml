@@ -48,7 +48,8 @@ rules = [
   "no-stdlib", 
   "snake-case-type-names", 
   "descriptive-type-variables",
-  "snake-case-function-names"
+  "snake-case-function-names",
+  "class-case-module-names"
 ]
 
 [profile.debug]

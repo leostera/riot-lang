@@ -109,15 +109,41 @@ module LetBinding = struct
     | _ -> false
 end
 
+module ModuleDeclaration = struct
+  type t = {
+    syntax_node : syntax_node;
+    module_name : Token.t;
+  }
+
+  let syntax_node decl = decl.syntax_node
+  let module_name_token decl = decl.module_name
+  let name decl = Token.text decl.module_name
+end
+
+module ModuleTypeDeclaration = struct
+  type t = {
+    syntax_node : syntax_node;
+    module_type_name : Token.t;
+  }
+
+  let syntax_node decl = decl.syntax_node
+  let module_type_name_token decl = decl.module_type_name
+  let name decl = Token.text decl.module_type_name
+end
+
 module Item = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
     | LetBinding of LetBinding.t
+    | ModuleDeclaration of ModuleDeclaration.t
+    | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | Unknown of syntax_node
 
   let syntax_node = function
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
     | LetBinding binding -> LetBinding.syntax_node binding
+    | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
+    | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
     | Unknown node -> node
 end
 
@@ -235,6 +261,19 @@ let let_binding_from_node ~is_recursive_binding node =
       | _ -> None)
   | [] -> None
 
+let module_declaration_from_node node =
+  match direct_non_trivia_tokens node with
+  | _module_kw :: module_name :: _ ->
+      Some ModuleDeclaration.{ syntax_node = node; module_name = token module_name }
+  | _ -> None
+
+let module_type_declaration_from_node node =
+  match direct_non_trivia_tokens node with
+  | _module_kw :: _type_kw :: module_type_name :: _ ->
+      Some ModuleTypeDeclaration.
+             { syntax_node = node; module_type_name = token module_type_name }
+  | _ -> None
+
 let rec items_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.TYPE_DECL -> (
@@ -242,10 +281,7 @@ let rec items_from_node node =
       | Some decl -> [ Item.TypeDeclaration decl ]
       | None -> [ Item.Unknown node ])
   | Syntax_kind.TYPE_MUTUAL_DECL ->
-      direct_non_trivia_nodes node
-      |> List.filter (fun child ->
-             Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL)
-      |> List.concat_map items_from_node
+      direct_non_trivia_nodes node |> List.concat_map items_from_node
   | Syntax_kind.LET_BINDING -> (
       match let_binding_from_node ~is_recursive_binding:false node with
       | Some binding -> [ Item.LetBinding binding ]
@@ -260,6 +296,14 @@ let rec items_from_node node =
              let kind = Ceibo.Red.SyntaxNode.kind child in
              kind = Syntax_kind.LET_BINDING || kind = Syntax_kind.LET_REC_BINDING)
       |> List.concat_map items_from_node
+  | Syntax_kind.MODULE_DECL -> (
+      match module_declaration_from_node node with
+      | Some decl -> [ Item.ModuleDeclaration decl ]
+      | None -> [ Item.Unknown node ])
+  | Syntax_kind.MODULE_TYPE_DECL -> (
+      match module_type_declaration_from_node node with
+      | Some decl -> [ Item.ModuleTypeDeclaration decl ]
+      | None -> [ Item.Unknown node ])
   | _ -> [ Item.Unknown node ]
 
 let of_green_tree tree =

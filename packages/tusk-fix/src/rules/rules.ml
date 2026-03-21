@@ -1,3 +1,4 @@
 module Type_name_style = Type_name_style
 module Type_variable_name_style = Type_variable_name_style
 module Function_name_style = Function_name_style
+module Module_name_style = Module_name_style

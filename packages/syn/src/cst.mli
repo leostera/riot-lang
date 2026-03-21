@@ -77,10 +77,34 @@ module LetBinding : sig
   val is_function : t -> bool
 end
 
+module ModuleDeclaration : sig
+  type t = {
+    syntax_node : syntax_node;
+    module_name : Token.t;
+  }
+
+  val syntax_node : t -> syntax_node
+  val module_name_token : t -> Token.t
+  val name : t -> string
+end
+
+module ModuleTypeDeclaration : sig
+  type t = {
+    syntax_node : syntax_node;
+    module_type_name : Token.t;
+  }
+
+  val syntax_node : t -> syntax_node
+  val module_type_name_token : t -> Token.t
+  val name : t -> string
+end
+
 module Item : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
     | LetBinding of LetBinding.t
+    | ModuleDeclaration of ModuleDeclaration.t
+    | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node
