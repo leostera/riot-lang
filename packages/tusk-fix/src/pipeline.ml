@@ -14,6 +14,7 @@ let builtin_rule_factories () =
     ("avoid-single-letter-function-names", Rules.Avoid_single_letter_function_names.make);
     ("avoid-single-letter-type-names", Rules.Avoid_single_letter_type_names.make);
     ("limit-parenthesis-depth", Rules.Limit_parenthesis_depth.make);
+    ("limit-nested-match-depth", Rules.Limit_nested_match_depth.make);
     ("limit-open-statements", Rules.Limit_open_statements.make);
     ("no-exn-suffix-functions", Rules.No_exn_suffix_functions.make);
     ("no-unnecessary-rec", Rules.No_unnecessary_rec.make);

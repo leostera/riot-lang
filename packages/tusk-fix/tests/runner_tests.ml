@@ -997,6 +997,69 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains parenthesis depth limits" (fun () ->
         assert_explanation_contains ~code:"F0124" ~snippet:"parenthesized expressions");
+    Test.case "limit-nested-match-depth flags triple-nested matches" (fun () ->
+        let source =
+          {|
+let render x y z =
+  match x with
+  | _ ->
+      match y with
+      | _ ->
+          match z with
+          | _ -> 1
+|}
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_nested_match_depth.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0135" ] ~actual:codes;
+        Ok ());
+    Test.case "limit-nested-match-depth keeps shallower matches clean" (fun () ->
+        let source =
+          {|
+let render x y =
+  match x with
+  | _ ->
+      match y with
+      | _ -> 1
+|}
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_nested_match_depth.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "limit-nested-match-depth reports one issue per match tower" (fun () ->
+        let source =
+          {|
+let render x y z =
+  match x with
+  | _ ->
+      match y with
+      | _ ->
+          match z with
+          | _ -> 1
+|}
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Limit_nested_match_depth.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:1
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains nested match depth limits" (fun () ->
+        assert_explanation_contains ~code:"F0135" ~snippet:"match towers");
     Test.case "cli list-rules text output prints one rule per line" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true
