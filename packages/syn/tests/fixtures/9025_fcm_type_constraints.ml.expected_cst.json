@@ -1,0 +1,226 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 195
+      }
+    },
+    "items": [
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 53,
+              "end": 145
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 74,
+                "end": 79
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "iter",
+                "span": {
+                  "start": 74,
+                  "end": 78
+                }
+              }
+            ]
+          },
+          "type_params": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_PARAM",
+                "span": {
+                  "start": 59,
+                  "end": 64
+                }
+              },
+              "type_variable": {
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 59,
+                    "end": 64
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "item",
+                  "span": {
+                    "start": 60,
+                    "end": 64
+                  }
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "TYPE_PARAM",
+                "span": {
+                  "start": 66,
+                  "end": 72
+                }
+              },
+              "type_variable": {
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 66,
+                    "end": 72
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "state",
+                  "span": {
+                    "start": 67,
+                    "end": 72
+                  }
+                }
+              }
+            }
+          ],
+          "type_definition": {
+            "tag": "first_class_module",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_TYPE",
+              "span": {
+                "start": 83,
+                "end": 143
+              }
+            },
+            "module_type_syntax_node": {
+              "kind": "MODULE_TYPE_PATH",
+              "span": {
+                "start": 91,
+                "end": 96
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 145,
+              "end": 195
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 150,
+                "end": 158
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "handler",
+                "span": {
+                  "start": 150,
+                  "end": 157
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "first_class_module",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_TYPE",
+              "span": {
+                "start": 160,
+                "end": 194
+              }
+            },
+            "module_type_syntax_node": {
+              "kind": "MODULE_TYPE_PATH",
+              "span": {
+                "start": 168,
+                "end": 176
+              }
+            }
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 74,
+            "end": 79
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 74,
+              "end": 79
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "iter",
+              "span": {
+                "start": 74,
+                "end": 78
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 150,
+            "end": 158
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 150,
+              "end": 158
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "handler",
+              "span": {
+                "start": 150,
+                "end": 157
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

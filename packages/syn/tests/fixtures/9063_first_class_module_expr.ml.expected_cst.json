@@ -1,0 +1,372 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 69
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 35
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 10
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "driver",
+              "span": {
+                "start": 4,
+                "end": 10
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "driver",
+            "span": {
+              "start": 4,
+              "end": 10
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "first_class_module",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_EXPR",
+              "span": {
+                "start": 13,
+                "end": 35
+              }
+            },
+            "module_syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 21,
+                "end": 34
+              }
+            },
+            "module_type_syntax_node": null
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 36,
+              "end": 68
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 40,
+                "end": 51
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "constrained",
+              "span": {
+                "start": 40,
+                "end": 51
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "constrained",
+            "span": {
+              "start": 40,
+              "end": 51
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "first_class_module",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_EXPR",
+              "span": {
+                "start": 54,
+                "end": 68
+              }
+            },
+            "module_syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 62,
+                "end": 64
+              }
+            },
+            "module_type_syntax_node": {
+              "kind": "MODULE_TYPE_PATH",
+              "span": {
+                "start": 66,
+                "end": 67
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 35
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 10
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "driver",
+            "span": {
+              "start": 4,
+              "end": 10
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "driver",
+          "span": {
+            "start": 4,
+            "end": 10
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "first_class_module",
+          "syntax_node": {
+            "kind": "FIRST_CLASS_MODULE_EXPR",
+            "span": {
+              "start": 13,
+              "end": 35
+            }
+          },
+          "module_syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 21,
+              "end": 34
+            }
+          },
+          "module_type_syntax_node": null
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 36,
+            "end": 68
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 40,
+              "end": 51
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "constrained",
+            "span": {
+              "start": 40,
+              "end": 51
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "constrained",
+          "span": {
+            "start": 40,
+            "end": 51
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "first_class_module",
+          "syntax_node": {
+            "kind": "FIRST_CLASS_MODULE_EXPR",
+            "span": {
+              "start": 54,
+              "end": 68
+            }
+          },
+          "module_syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 62,
+              "end": 64
+            }
+          },
+          "module_type_syntax_node": {
+            "kind": "MODULE_TYPE_PATH",
+            "span": {
+              "start": 66,
+              "end": 67
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "first_class_module",
+        "syntax_node": {
+          "kind": "FIRST_CLASS_MODULE_EXPR",
+          "span": {
+            "start": 13,
+            "end": 35
+          }
+        },
+        "module_syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 21,
+            "end": 34
+          }
+        },
+        "module_type_syntax_node": null
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 21,
+            "end": 34
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 21,
+              "end": 34
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Sqlite",
+              "span": {
+                "start": 21,
+                "end": 27
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": ".",
+              "span": {
+                "start": 27,
+                "end": 28
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Driver",
+              "span": {
+                "start": 28,
+                "end": 34
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "first_class_module",
+        "syntax_node": {
+          "kind": "FIRST_CLASS_MODULE_EXPR",
+          "span": {
+            "start": 54,
+            "end": 68
+          }
+        },
+        "module_syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 62,
+            "end": 64
+          }
+        },
+        "module_type_syntax_node": {
+          "kind": "MODULE_TYPE_PATH",
+          "span": {
+            "start": 66,
+            "end": 67
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 62,
+            "end": 64
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 62,
+              "end": 64
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "M",
+              "span": {
+                "start": 62,
+                "end": 63
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

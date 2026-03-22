@@ -67,6 +67,10 @@ type pattern =
   | Identifier of identifier_pattern
   | Wildcard of wildcard_pattern
   | Literal of pattern_literal
+  | Lazy of lazy_pattern
+  | Exception of exception_pattern
+  | Range of range_pattern
+  | FirstClassModule of first_class_module_pattern
   | PolyVariant of poly_variant_pattern
   | Constructor of constructor_pattern
   | Tuple of tuple_pattern
@@ -87,6 +91,28 @@ and identifier_pattern = {
 
 and wildcard_pattern = {
   syntax_node : syntax_node;
+}
+
+and lazy_pattern = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+}
+
+and exception_pattern = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+}
+
+and range_pattern = {
+  syntax_node : syntax_node;
+  lower_token : Token.t;
+  upper_token : Token.t;
+}
+
+and first_class_module_pattern = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  module_type_syntax_node : syntax_node option;
 }
 
 and poly_variant_pattern = {
@@ -264,6 +290,8 @@ type expression =
   | Path of path_expression
   | Literal of literal
   | PolyVariant of poly_variant_expression
+  | FirstClassModule of first_class_module_expression
+  | LetModule of let_module_expression
   | Assert of assert_expression
   | Lazy of lazy_expression
   | While of while_expression
@@ -300,6 +328,19 @@ and poly_variant_expression = {
   syntax_node : syntax_node;
   tag_token : Token.t;
   payload : expression option;
+}
+
+and first_class_module_expression = {
+  syntax_node : syntax_node;
+  module_syntax_node : syntax_node;
+  module_type_syntax_node : syntax_node option;
+}
+
+and let_module_expression = {
+  syntax_node : syntax_node;
+  module_name_token : Token.t;
+  module_expression_syntax_node : syntax_node;
+  body : expression;
 }
 
 and assert_expression = {
@@ -499,6 +540,8 @@ module Expression = struct
     | Path of path_expression
     | Literal of literal
     | PolyVariant of poly_variant_expression
+    | FirstClassModule of first_class_module_expression
+    | LetModule of let_module_expression
     | Assert of assert_expression
     | Lazy of lazy_expression
     | While of while_expression
@@ -538,6 +581,8 @@ module Expression = struct
         | Literal.Unit { syntax_node } ->
             syntax_node)
     | PolyVariant expr -> expr.syntax_node
+    | FirstClassModule expr -> expr.syntax_node
+    | LetModule expr -> expr.syntax_node
     | Assert expr -> expr.syntax_node
     | Lazy expr -> expr.syntax_node
     | While expr -> expr.syntax_node
@@ -574,6 +619,10 @@ module Pattern = struct
     | Identifier of identifier_pattern
     | Wildcard of wildcard_pattern
     | Literal of pattern_literal
+    | Lazy of lazy_pattern
+    | Exception of exception_pattern
+    | Range of range_pattern
+    | FirstClassModule of first_class_module_pattern
     | PolyVariant of poly_variant_pattern
     | Constructor of constructor_pattern
     | Tuple of tuple_pattern
@@ -597,6 +646,10 @@ module Pattern = struct
     | Literal (PatternLiteral.Bool { syntax_node; _ })
     | Literal (PatternLiteral.Unit { syntax_node }) ->
         syntax_node
+    | Lazy pattern -> pattern.syntax_node
+    | Exception pattern -> pattern.syntax_node
+    | Range pattern -> pattern.syntax_node
+    | FirstClassModule pattern -> pattern.syntax_node
     | PolyVariant pattern -> pattern.syntax_node
     | Constructor pattern -> pattern.syntax_node
     | Tuple pattern -> pattern.syntax_node
@@ -1010,6 +1063,10 @@ module TypeDefinition = struct
     | Alias of {
         syntax_node : syntax_node;
       }
+    | FirstClassModule of {
+        syntax_node : syntax_node;
+        module_type_syntax_node : syntax_node;
+      }
     | Record of RecordField.t list
     | Variant of VariantConstructor.t list
     | PolyVariant of PolyVariantTag.t list
@@ -1101,43 +1158,28 @@ module OpenStatement = struct
   let has_bang stmt = Option.is_some stmt.bang_token
 end
 
-module ValueDeclaration = struct
-  type t = {
-    syntax_node : syntax_node;
-    name_token : Token.t;
-    type_syntax_node : syntax_node;
-  }
+type value_declaration = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  type_syntax_node : syntax_node;
+}
 
-  let syntax_node decl = decl.syntax_node
-  let name_token decl = decl.name_token
-  let name decl = Token.text decl.name_token
-  let type_syntax_node decl = decl.type_syntax_node
-end
+type external_declaration = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  type_syntax_node : syntax_node;
+  primitive_name_tokens : Token.t list;
+}
 
-module ExternalDeclaration = struct
-  type t = {
-    syntax_node : syntax_node;
-    name_token : Token.t;
-    type_syntax_node : syntax_node;
-    primitive_name_tokens : Token.t list;
-  }
+type include_statement = {
+  syntax_node : syntax_node;
+  included_syntax_node : syntax_node;
+}
 
-  let syntax_node decl = decl.syntax_node
-  let name_token decl = decl.name_token
-  let name decl = Token.text decl.name_token
-  let type_syntax_node decl = decl.type_syntax_node
-  let primitive_name_tokens decl = decl.primitive_name_tokens
-end
-
-module IncludeStatement = struct
-  type t = {
-    syntax_node : syntax_node;
-    included_syntax_node : syntax_node;
-  }
-
-  let syntax_node stmt = stmt.syntax_node
-  let included_syntax_node stmt = stmt.included_syntax_node
-end
+type exception_declaration = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+}
 
 module Item = struct
   type t =
@@ -1147,9 +1189,10 @@ module Item = struct
     | ModuleDeclaration of ModuleDeclaration.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t
-    | ValueDeclaration of ValueDeclaration.t
-    | ExternalDeclaration of ExternalDeclaration.t
-    | IncludeStatement of IncludeStatement.t
+    | ValueDeclaration of value_declaration
+    | ExternalDeclaration of external_declaration
+    | IncludeStatement of include_statement
+    | ExceptionDeclaration of exception_declaration
     | Unknown of syntax_node
 
   let syntax_node = function
@@ -1159,9 +1202,10 @@ module Item = struct
     | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
     | OpenStatement stmt -> OpenStatement.syntax_node stmt
-    | ValueDeclaration decl -> ValueDeclaration.syntax_node decl
-    | ExternalDeclaration decl -> ExternalDeclaration.syntax_node decl
-    | IncludeStatement stmt -> IncludeStatement.syntax_node stmt
+    | ValueDeclaration decl -> decl.syntax_node
+    | ExternalDeclaration decl -> decl.syntax_node
+    | IncludeStatement stmt -> stmt.syntax_node
+    | ExceptionDeclaration decl -> decl.syntax_node
     | Unknown node -> node
 end
 

@@ -1,0 +1,173 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 89
+      }
+    },
+    "items": [
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 0,
+              "end": 36
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 5,
+                "end": 15
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "transport",
+                "span": {
+                  "start": 5,
+                  "end": 14
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "first_class_module",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_TYPE",
+              "span": {
+                "start": 17,
+                "end": 35
+              }
+            },
+            "module_type_syntax_node": {
+              "kind": "MODULE_TYPE_PATH",
+              "span": {
+                "start": 25,
+                "end": 34
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 36,
+              "end": 89
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 41,
+                "end": 48
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "driver",
+                "span": {
+                  "start": 41,
+                  "end": 47
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "first_class_module",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_TYPE",
+              "span": {
+                "start": 50,
+                "end": 88
+              }
+            },
+            "module_type_syntax_node": {
+              "kind": "MODULE_TYPE_PATH",
+              "span": {
+                "start": 58,
+                "end": 65
+              }
+            }
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 5,
+            "end": 15
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 5,
+              "end": 15
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "transport",
+              "span": {
+                "start": 5,
+                "end": 14
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 41,
+            "end": 48
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 41,
+              "end": 48
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "driver",
+              "span": {
+                "start": 41,
+                "end": 47
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

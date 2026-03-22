@@ -1,0 +1,256 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 109
+      }
+    },
+    "items": [
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 0,
+              "end": 58
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 5,
+                "end": 7
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "span": {
+                  "start": 5,
+                  "end": 6
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "first_class_module",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_TYPE",
+              "span": {
+                "start": 9,
+                "end": 57
+              }
+            },
+            "module_type_syntax_node": {
+              "kind": "MODULE_TYPE_PATH",
+              "span": {
+                "start": 17,
+                "end": 19
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 58,
+              "end": 108
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 62,
+                "end": 63
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 62,
+                "end": 63
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 62,
+              "end": 63
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "first_class_module",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_EXPR",
+              "span": {
+                "start": 66,
+                "end": 108
+              }
+            },
+            "module_syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 74,
+                "end": 76
+              }
+            },
+            "module_type_syntax_node": null
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 58,
+            "end": 108
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 62,
+              "end": 63
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 62,
+              "end": 63
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 62,
+            "end": 63
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "first_class_module",
+          "syntax_node": {
+            "kind": "FIRST_CLASS_MODULE_EXPR",
+            "span": {
+              "start": 66,
+              "end": 108
+            }
+          },
+          "module_syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 74,
+              "end": 76
+            }
+          },
+          "module_type_syntax_node": null
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 5,
+            "end": 7
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 5,
+              "end": 7
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 5,
+                "end": 6
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "first_class_module",
+        "syntax_node": {
+          "kind": "FIRST_CLASS_MODULE_EXPR",
+          "span": {
+            "start": 66,
+            "end": 108
+          }
+        },
+        "module_syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 74,
+            "end": 76
+          }
+        },
+        "module_type_syntax_node": null
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 74,
+            "end": 76
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 74,
+              "end": 76
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "M",
+              "span": {
+                "start": 74,
+                "end": 75
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -235,6 +235,48 @@ let tests =
                    (Ceibo.Red.SyntaxNode.kind included_syntax_node));
             Ok ()
         | _ -> Error "expected first item to be an include statement");
+    Test.case "cst exception declarations preserve declared names" (fun () ->
+        let result = Syn.parse ~filename:"sample.ml" "exception Not_found\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ExceptionDeclaration { name_token; _ } :: _ ->
+            Test.assert_equal ~expected:"Not_found"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Ok ()
+        | _ -> Error "expected first item to be an exception declaration");
+    Test.case "cst type declarations preserve first-class module type definitions"
+      (fun () ->
+        let result =
+          Syn.parse ~filename:"sample.ml"
+            "type transport = (module Transport)\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.TypeDeclaration
+            {
+              type_definition =
+                Syn.Cst.TypeDefinition.FirstClassModule
+                  {
+                    module_type_syntax_node;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"MODULE_TYPE_PATH"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind module_type_syntax_node));
+            Ok ()
+        | _ -> Error "expected first-class module type definition");
     Test.case "cst open statements preserve open! structurally" (fun () ->
         let result = Syn.parse ~filename:"sample.ml" "open! Std.List\n" in
         let cst =
@@ -749,6 +791,124 @@ let tests =
               ~actual:(Syn.Cst.Token.text label_token);
             Ok ()
         | _ -> Error "expected optional shorthand apply argument");
+    Test.case "cst local opens preserve module paths from token-only syntax"
+      (fun () ->
+        let source = "let x =\n  let open List in\n  map f xs\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LocalOpen
+                  {
+                    module_path = { segments = [ module_name ]; _ };
+                    body = Syn.Cst.Expression.Apply _;
+                    via_let_open = true;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"List"
+              ~actual:(Syn.Cst.Token.text module_name);
+            Ok ()
+        | _ -> Error "expected local open expression");
+    Test.case "cst prefix local opens preserve module paths and body expressions"
+      (fun () ->
+        let source = "let x = M.{ field = 42 }\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LocalOpen
+                  {
+                    module_path = { segments = [ module_name ]; _ };
+                    body =
+                      Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal _);
+                    via_let_open = false;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"M"
+              ~actual:(Syn.Cst.Token.text module_name);
+            Ok ()
+        | _ -> Error "expected prefix local open expression");
+    Test.case "cst first-class module expressions preserve module and type nodes"
+      (fun () ->
+        let source = "let x = (module M : S)\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.FirstClassModule
+                  {
+                    module_syntax_node;
+                    module_type_syntax_node = Some module_type_syntax_node;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"MODULE_PATH"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind module_syntax_node));
+            Test.assert_equal ~expected:"MODULE_TYPE_PATH"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind module_type_syntax_node));
+            Ok ()
+        | _ -> Error "expected first-class module expression");
+    Test.case "cst let-module expressions preserve module name and body"
+      (fun () ->
+        let source = "let run driver = let module D = (val driver) in D.execute ()\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LetModule
+                  {
+                    module_name_token;
+                    module_expression_syntax_node;
+                    body = Syn.Cst.Expression.Apply _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"D"
+              ~actual:(Syn.Cst.Token.text module_name_token);
+            Test.assert_equal ~expected:"FIRST_CLASS_MODULE_EXPR"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind module_expression_syntax_node));
+            Ok ()
+        | _ -> Error "expected let-module expression");
     Test.case "cst field access preserves nested qualified field access structurally" (fun () ->
         let source = "let render record = record.Module.field\n" in
         let result = Syn.parse ~filename:"sample.ml" source in
@@ -920,6 +1080,123 @@ let tests =
                 |> Ceibo.Red.SyntaxNode.kind |> SyntaxKind.to_string);
             Ok ()
         | _ -> Error "expected faithful alias typed pattern structure");
+    Test.case "cst lazy patterns preserve the wrapped pattern" (fun () ->
+        let source = "let f x = match x with | (lazy y) -> y\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      [
+                        {
+                          pattern =
+                            Syn.Cst.Pattern.Parenthesized
+                              {
+                                inner =
+                                  Syn.Cst.Pattern.Lazy
+                                    {
+                                      pattern =
+                                        Syn.Cst.Pattern.Identifier { name_token; _ };
+                                      _;
+                                    };
+                                _;
+                              };
+                          _;
+                        };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"y"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Ok ()
+        | _ -> Error "expected lazy pattern structure");
+    Test.case "cst exception patterns preserve the wrapped constructor" (fun () ->
+        let source =
+          "let f x = match x with exception Not_found -> None | y -> Some y\n"
+        in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Exception
+                            {
+                              pattern =
+                                Syn.Cst.Pattern.Constructor { constructor_path; _ };
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "Not_found")
+              ~actual:(Syn.Cst.ModulePath.name constructor_path);
+            Ok ()
+        | _ -> Error "expected exception pattern structure");
+    Test.case "cst range patterns preserve the written bounds" (fun () ->
+        let source =
+          "let f x = match x with | 'a' .. 'z' -> \"lowercase\" | _ -> \"other\"\n"
+        in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Range
+                            {
+                              lower_token;
+                              upper_token;
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"'a'"
+              ~actual:(Syn.Cst.Token.text lower_token);
+            Test.assert_equal ~expected:"'z'"
+              ~actual:(Syn.Cst.Token.text upper_token);
+            Ok ()
+        | _ -> Error "expected range pattern structure");
     Test.case "cst record expressions preserve literal fields structurally" (fun () ->
         let source = "let point = { x = 1; y = 2 }\n" in
         let result = Syn.parse ~filename:"sample.ml" source in

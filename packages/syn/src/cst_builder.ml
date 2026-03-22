@@ -57,6 +57,15 @@ let ident_path_from_node node =
   in
   Cst.ModulePath.{ syntax_node = node; segments = parts }
 
+let module_path_like_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.MODULE_PATH | Syntax_kind.MODULE_TYPE_PATH ->
+      module_path_from_node node
+  | Syntax_kind.IDENT_EXPR ->
+      ident_path_from_node node
+  | _ ->
+      Cst.ModulePath.{ syntax_node = node; segments = List.map token (direct_non_trivia_tokens node) }
+
 let is_parameter_like_kind = function
   | Syntax_kind.IDENT_PATTERN
   | Syntax_kind.WILDCARD_PATTERN
@@ -208,6 +217,49 @@ let rec pattern_from_node node =
       | [] -> Cst.Pattern.Unknown node)
   | Syntax_kind.WILDCARD_PATTERN ->
       Cst.Pattern.Wildcard { syntax_node = node }
+  | Syntax_kind.LAZY_PATTERN -> (
+      match direct_non_trivia_nodes node with
+      | inner_node :: _ ->
+          Cst.Pattern.Lazy
+            {
+              syntax_node = node;
+              pattern = pattern_from_node inner_node;
+            }
+      | _ -> Cst.Pattern.Unknown node)
+  | Syntax_kind.EXCEPTION_PATTERN -> (
+      match direct_non_trivia_nodes node with
+      | inner_node :: _ ->
+          Cst.Pattern.Exception
+            {
+              syntax_node = node;
+              pattern = pattern_from_node inner_node;
+            }
+      | _ -> Cst.Pattern.Unknown node)
+  | Syntax_kind.RANGE_PATTERN -> (
+      match direct_non_trivia_tokens node with
+      | lower_syntax_token :: _range_syntax_token :: upper_syntax_token :: _ ->
+          Cst.Pattern.Range
+            {
+              syntax_node = node;
+              lower_token = token lower_syntax_token;
+              upper_token = token upper_syntax_token;
+            }
+      | _ -> Cst.Pattern.Unknown node)
+  | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> (
+      match direct_non_trivia_tokens node with
+      | _lparen :: _module_kw :: name_syntax_token :: _ ->
+          Cst.Pattern.FirstClassModule
+            {
+              syntax_node = node;
+              name_token = token name_syntax_token;
+              module_type_syntax_node =
+                (direct_non_trivia_nodes node
+                |> List.find_opt (fun child ->
+                       let kind = Ceibo.Red.SyntaxNode.kind child in
+                       kind = Syntax_kind.MODULE_TYPE_PATH
+                       || kind = Syntax_kind.MODULE_TYPE_OF));
+            }
+      | _ -> Cst.Pattern.Unknown node)
   | Syntax_kind.STRING_LITERAL -> (
       match direct_non_trivia_tokens node with
       | literal_syntax_token :: _ ->
@@ -558,6 +610,25 @@ and expression_from_node node =
                        | expr -> Some expr));
             }
       | None -> Cst.Expression.Unknown node)
+  | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | module_syntax_node :: _ ->
+          Cst.Expression.FirstClassModule
+            {
+              syntax_node = node;
+              module_syntax_node;
+              module_type_syntax_node =
+                (direct_non_trivia_nodes node
+                |> List.find_opt (fun child ->
+                       let kind = Ceibo.Red.SyntaxNode.kind child in
+                       kind = Syntax_kind.MODULE_TYPE_PATH
+                       || kind = Syntax_kind.MODULE_TYPE_OF));
+            }
+      | [] -> Cst.Expression.Unknown node)
+  | Syntax_kind.LET_MODULE_EXPR -> (
+      match let_module_expression_from_node node with
+      | Some expr -> Cst.Expression.LetModule expr
+      | None -> Cst.Expression.Unknown node)
   | Syntax_kind.TYPED_EXPR -> (
       match direct_non_trivia_nodes node with
       | expr_node :: type_node :: _ ->
@@ -805,26 +876,60 @@ and record_update_expression_from_node node =
   | [] -> None
 
 and local_open_expression_from_node node =
-  let module_path_of_scope_node child =
-    match Ceibo.Red.SyntaxNode.kind child with
-    | Syntax_kind.MODULE_PATH -> Some (module_path_from_node child)
-    | Syntax_kind.IDENT_EXPR -> Some (ident_path_from_node child)
-    | _ -> None
-  in
   let non_trivia_children = direct_non_trivia_nodes node in
+  let non_trivia_tokens = direct_non_trivia_tokens node in
   let via_let_open =
-    direct_non_trivia_tokens node
+    non_trivia_tokens
     |> List.exists (fun tok ->
            String.equal (Ceibo.Red.SyntaxToken.text tok) "let")
   in
-  let body_expr =
-    List.rev non_trivia_children
-    |> List.find_map (fun child ->
-           match expression_from_node child with
-           | Cst.Expression.Unknown _ -> None
-           | expr -> Some expr)
+  let module_path =
+    let rec collect_after_open = function
+      | [] -> []
+      | syntax_token :: rest ->
+          if String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "open" then
+            collect_module_tokens [] rest
+          else collect_after_open rest
+    and collect_module_tokens acc = function
+      | [] -> List.rev acc
+      | syntax_token :: rest ->
+          let text = Ceibo.Red.SyntaxToken.text syntax_token in
+          if String.equal text "in" then
+            List.rev acc
+          else if String.equal text "." then
+            collect_module_tokens acc rest
+          else collect_module_tokens (token syntax_token :: acc) rest
+    in
+    match collect_after_open non_trivia_tokens with
+    | [] -> None
+    | lifted_segments ->
+        Some Cst.ModulePath.{ syntax_node = node; segments = lifted_segments }
   in
-  match List.find_map module_path_of_scope_node non_trivia_children, body_expr with
+  let prefix_module_path =
+    match non_trivia_children with
+    | module_path_node :: _body_node :: _ ->
+        Some (module_path_like_from_node module_path_node)
+    | _ -> None
+  in
+  let module_path =
+    if via_let_open then module_path else prefix_module_path
+  in
+  let body_expr =
+    if via_let_open then
+      List.rev non_trivia_children
+      |> List.find_map (fun child ->
+             match expression_from_node child with
+             | Cst.Expression.Unknown _ -> None
+             | expr -> Some expr)
+    else
+      match non_trivia_children with
+      | _module_path_node :: body_node :: _ -> (
+          match expression_from_node body_node with
+          | Cst.Expression.Unknown _ -> None
+          | expr -> Some expr)
+      | _ -> None
+  in
+  match module_path, body_expr with
   | Some lifted_module_path, Some lifted_body ->
       Some
         {
@@ -832,6 +937,18 @@ and local_open_expression_from_node node =
           module_path = lifted_module_path;
           body = lifted_body;
           via_let_open;
+        }
+  | _ -> None
+
+and let_module_expression_from_node node =
+  match direct_non_trivia_tokens node, direct_non_trivia_nodes node with
+  | _let_kw :: _module_kw :: module_name_token :: _, module_expression_syntax_node :: body_node :: _ ->
+      Some
+        {
+          syntax_node = node;
+          module_name_token = token module_name_token;
+          module_expression_syntax_node;
+          body = expression_from_node body_node;
         }
   | _ -> None
 
@@ -1094,12 +1211,18 @@ let type_definition_from_node node =
             | [] -> Cst.TypeDefinition.Abstract
             | first :: _ ->
                 let kind = Ceibo.Red.SyntaxNode.kind first in
-                if kind = Syntax_kind.TYPE_CONSTR || kind = Syntax_kind.TYPE_ARROW
-                   || kind = Syntax_kind.TYPE_TUPLE || kind = Syntax_kind.TYPE_VAR
-                   || kind = Syntax_kind.TYPE_ALIAS
-                then
-                  Cst.TypeDefinition.Alias { syntax_node = first }
-                else Cst.TypeDefinition.Other first)
+        if kind = Syntax_kind.TYPE_CONSTR || kind = Syntax_kind.TYPE_ARROW
+           || kind = Syntax_kind.TYPE_TUPLE || kind = Syntax_kind.TYPE_VAR
+           || kind = Syntax_kind.TYPE_ALIAS
+        then
+          Cst.TypeDefinition.Alias { syntax_node = first }
+        else if kind = Syntax_kind.FIRST_CLASS_MODULE_TYPE then
+          match direct_non_trivia_nodes first with
+          | module_type_syntax_node :: _ ->
+              Cst.TypeDefinition.FirstClassModule
+                { syntax_node = first; module_type_syntax_node }
+          | [] -> Cst.TypeDefinition.Other first
+        else Cst.TypeDefinition.Other first)
 
 let type_declaration_from_node node =
   let lifted_type_params =
@@ -1251,12 +1374,8 @@ let value_declaration_from_node node =
       match List.rev direct_children with
       | lifted_type_syntax_node :: _ ->
           Some
-            Cst.ValueDeclaration.
-              {
-                syntax_node = node;
-                name_token = lifted_name_token;
-                type_syntax_node = lifted_type_syntax_node;
-              }
+            ({ syntax_node = node; name_token = lifted_name_token; type_syntax_node = lifted_type_syntax_node }
+              : Cst.value_declaration)
       | [] -> None)
   | None -> None
 
@@ -1278,13 +1397,13 @@ let external_declaration_from_node node =
       match direct_children with
       | lifted_type_syntax_node :: _ ->
           Some
-            Cst.ExternalDeclaration.
-              {
-                syntax_node = node;
-                name_token = lifted_name_token;
-                type_syntax_node = lifted_type_syntax_node;
-                primitive_name_tokens = lifted_primitive_name_tokens;
-              }
+            ({
+               syntax_node = node;
+               name_token = lifted_name_token;
+               type_syntax_node = lifted_type_syntax_node;
+               primitive_name_tokens = lifted_primitive_name_tokens;
+             }
+              : Cst.external_declaration)
       | _ -> None)
   | None -> None
 
@@ -1292,12 +1411,17 @@ let include_statement_from_node node =
   match direct_non_trivia_nodes node with
   | lifted_included_syntax_node :: _ ->
       Some
-        Cst.IncludeStatement.
-          {
-            syntax_node = node;
-            included_syntax_node = lifted_included_syntax_node;
-          }
+        ({ syntax_node = node; included_syntax_node = lifted_included_syntax_node }
+          : Cst.include_statement)
   | [] -> None
+
+let exception_declaration_from_node node =
+  match direct_non_trivia_tokens node with
+  | _exception_kw :: name_syntax_token :: _ ->
+      Some
+        ({ syntax_node = node; name_token = token name_syntax_token }
+          : Cst.exception_declaration)
+  | _ -> None
 
 let rec collect_let_bindings node =
   let bindings_here =
@@ -1384,6 +1508,10 @@ let rec items_from_node node =
       match include_statement_from_node node with
       | Some stmt -> [ Cst.Item.IncludeStatement stmt ]
       | None -> [ Cst.Item.Unknown node ])
+  | Syntax_kind.EXCEPTION_DECL -> (
+      match exception_declaration_from_node node with
+      | Some decl -> [ Cst.Item.ExceptionDeclaration decl ]
+      | None -> [ Cst.Item.Unknown node ])
   | _ -> (
       match expression_from_node node with
       | Cst.Expression.Unknown _ -> [ Cst.Item.Unknown node ]
@@ -1407,6 +1535,14 @@ let of_green_tree tree =
 
 let rec validate_pattern ~context = function
   | Cst.Pattern.Identifier _ | Cst.Pattern.Wildcard _ | Cst.Pattern.Literal _ -> ()
+  | Cst.Pattern.Lazy { pattern; _ } ->
+      validate_pattern ~context:("pattern.lazy" :: context) pattern
+  | Cst.Pattern.Exception { pattern; _ } ->
+      validate_pattern ~context:("pattern.exception" :: context) pattern
+  | Cst.Pattern.Range _ ->
+      ()
+  | Cst.Pattern.FirstClassModule _ ->
+      ()
   | Cst.Pattern.PolyVariant { payload; _ } ->
       Option.iter
         (validate_pattern ~context:("pattern.poly_variant.payload" :: context))
@@ -1474,7 +1610,11 @@ and validate_apply_argument ~context = function
         value
 
 and validate_expression ~context = function
-  | Cst.Expression.Path _ | Cst.Expression.Literal _ -> ()
+  | Cst.Expression.Path _ | Cst.Expression.Literal _
+  | Cst.Expression.FirstClassModule _ ->
+      ()
+  | Cst.Expression.LetModule { body; _ } ->
+      validate_expression ~context:("expression.let_module.body" :: context) body
   | Cst.Expression.PolyVariant { payload; _ } ->
       Option.iter
         (validate_expression ~context:("expression.poly_variant.payload" :: context))
@@ -1608,6 +1748,7 @@ and validate_match_case ~context ({ pattern; guard; body; _ } : Cst.match_case) 
 let validate_type_definition ~context = function
   | Cst.TypeDefinition.Abstract -> ()
   | Cst.TypeDefinition.Alias _ -> ()
+  | Cst.TypeDefinition.FirstClassModule _ -> ()
   | Cst.TypeDefinition.Record _ -> ()
   | Cst.TypeDefinition.Variant _ -> ()
   | Cst.TypeDefinition.PolyVariant _ -> ()
@@ -1627,7 +1768,8 @@ let validate_item ~context = function
       validate_expression ~context:("item.expression" :: context) expr
   | Cst.Item.ModuleDeclaration _ | Cst.Item.ModuleTypeDeclaration _
   | Cst.Item.OpenStatement _ | Cst.Item.ValueDeclaration _
-  | Cst.Item.ExternalDeclaration _ | Cst.Item.IncludeStatement _ ->
+  | Cst.Item.ExternalDeclaration _ | Cst.Item.IncludeStatement _
+  | Cst.Item.ExceptionDeclaration _ ->
       ()
   | Cst.Item.Unknown syntax_node ->
       bail ~message:"unsupported structure item during Ceibo -> CST lifting"

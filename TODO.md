@@ -39,15 +39,15 @@
 - [ ] Prefer adding real CST node shapes over convenience projections when a fixture fails
 - [ ] Keep `packages/syn/src/cst.ml` focused on types and `packages/syn/src/cst_builder.ml` focused on lifting
 - [ ] Use `python3 packages/syn/tests/test_runner.py cst --refresh-clean` after each syntax slice to refresh all newly supported `.expected_cst.json` fixtures
-- [ ] Current fixture frontier: `103` failures after the latest full `cst --refresh-clean` pass
+- [ ] Current fixture frontier: `58` failures after the latest full `cst --refresh-clean` pass
 - [ ] Keep the current unsupported frontier explicit by fixing one syntax family at a time:
   - [ ] destructuring `let` bindings and mutual `let`
   - [x] record/update/index/assignment expressions
   - [x] type annotations and coercions
   - [x] loops / begin / assert / lazy expressions
-  - [ ] lazy / exception / range patterns
+  - [x] lazy / exception / range patterns
   - [ ] polymorphic variants / object syntax / attributes / extensions
-  - [ ] module/signature / first-class module coverage
+  - [x] module/signature / first-class module coverage
   - [ ] operator patterns / binding operators / index operators
   - [x] include / val / external / signature items
 
@@ -149,6 +149,15 @@
 - [ ] If a module has a single type definition, prefer it be called `t`
 
 - [x] useless booleans comparisons in conditionals like `if is_ready = true then ...` that should be flagged and recommended to rewrite as `if is_ready then ...` -- same for `if flag <> false then ...` and prefer `if flag then  ...` -- same for `if b = false then ...` prefer `if not b then ...` (`no-boolean-comparisons-in-conditionals`)
+
+- [ ] If a module has a public record type _and_ accessor functions like 
+      ```
+      // .mli
+      type t = { field: string }
+      val field : t -> string
+      ```
+
+      suggest to make the type opaque 
 
 ## Built-in rules about packages 
 

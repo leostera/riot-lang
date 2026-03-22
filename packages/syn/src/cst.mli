@@ -55,6 +55,10 @@ type pattern =
   | Identifier of identifier_pattern
   | Wildcard of wildcard_pattern
   | Literal of pattern_literal
+  | Lazy of lazy_pattern
+  | Exception of exception_pattern
+  | Range of range_pattern
+  | FirstClassModule of first_class_module_pattern
   | PolyVariant of poly_variant_pattern
   | Constructor of constructor_pattern
   | Tuple of tuple_pattern
@@ -75,6 +79,28 @@ and identifier_pattern = {
 
 and wildcard_pattern = {
   syntax_node : syntax_node;
+}
+
+and lazy_pattern = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+}
+
+and exception_pattern = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+}
+
+and range_pattern = {
+  syntax_node : syntax_node;
+  lower_token : Token.t;
+  upper_token : Token.t;
+}
+
+and first_class_module_pattern = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  module_type_syntax_node : syntax_node option;
 }
 
 and poly_variant_pattern = {
@@ -228,6 +254,8 @@ type expression =
   | Path of path_expression
   | Literal of literal
   | PolyVariant of poly_variant_expression
+  | FirstClassModule of first_class_module_expression
+  | LetModule of let_module_expression
   | Assert of assert_expression
   | Lazy of lazy_expression
   | While of while_expression
@@ -264,6 +292,19 @@ and poly_variant_expression = {
   syntax_node : syntax_node;
   tag_token : Token.t;
   payload : expression option;
+}
+
+and first_class_module_expression = {
+  syntax_node : syntax_node;
+  module_syntax_node : syntax_node;
+  module_type_syntax_node : syntax_node option;
+}
+
+and let_module_expression = {
+  syntax_node : syntax_node;
+  module_name_token : Token.t;
+  module_expression_syntax_node : syntax_node;
+  body : expression;
 }
 
 and assert_expression = {
@@ -463,6 +504,8 @@ module Expression : sig
     | Path of path_expression
     | Literal of literal
     | PolyVariant of poly_variant_expression
+    | FirstClassModule of first_class_module_expression
+    | LetModule of let_module_expression
     | Assert of assert_expression
     | Lazy of lazy_expression
     | While of while_expression
@@ -498,6 +541,10 @@ module Pattern : sig
     | Identifier of identifier_pattern
     | Wildcard of wildcard_pattern
     | Literal of pattern_literal
+    | Lazy of lazy_pattern
+    | Exception of exception_pattern
+    | Range of range_pattern
+    | FirstClassModule of first_class_module_pattern
     | PolyVariant of poly_variant_pattern
     | Constructor of constructor_pattern
     | Tuple of tuple_pattern
@@ -881,6 +928,10 @@ module TypeDefinition : sig
     | Alias of {
         syntax_node : syntax_node;
       }
+    | FirstClassModule of {
+        syntax_node : syntax_node;
+        module_type_syntax_node : syntax_node;
+      }
     | Record of RecordField.t list
     | Variant of VariantConstructor.t list
     | PolyVariant of PolyVariantTag.t list
@@ -958,43 +1009,28 @@ module OpenStatement : sig
   val has_bang : t -> bool
 end
 
-module ValueDeclaration : sig
-  type t = {
-    syntax_node : syntax_node;
-    name_token : Token.t;
-    type_syntax_node : syntax_node;
-  }
+type value_declaration = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  type_syntax_node : syntax_node;
+}
 
-  val syntax_node : t -> syntax_node
-  val name_token : t -> Token.t
-  val name : t -> string
-  val type_syntax_node : t -> syntax_node
-end
+type external_declaration = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  type_syntax_node : syntax_node;
+  primitive_name_tokens : Token.t list;
+}
 
-module ExternalDeclaration : sig
-  type t = {
-    syntax_node : syntax_node;
-    name_token : Token.t;
-    type_syntax_node : syntax_node;
-    primitive_name_tokens : Token.t list;
-  }
+type include_statement = {
+  syntax_node : syntax_node;
+  included_syntax_node : syntax_node;
+}
 
-  val syntax_node : t -> syntax_node
-  val name_token : t -> Token.t
-  val name : t -> string
-  val type_syntax_node : t -> syntax_node
-  val primitive_name_tokens : t -> Token.t list
-end
-
-module IncludeStatement : sig
-  type t = {
-    syntax_node : syntax_node;
-    included_syntax_node : syntax_node;
-  }
-
-  val syntax_node : t -> syntax_node
-  val included_syntax_node : t -> syntax_node
-end
+type exception_declaration = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+}
 
 module Item : sig
   type t =
@@ -1004,9 +1040,10 @@ module Item : sig
     | ModuleDeclaration of ModuleDeclaration.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t
-    | ValueDeclaration of ValueDeclaration.t
-    | ExternalDeclaration of ExternalDeclaration.t
-    | IncludeStatement of IncludeStatement.t
+    | ValueDeclaration of value_declaration
+    | ExternalDeclaration of external_declaration
+    | IncludeStatement of include_statement
+    | ExceptionDeclaration of exception_declaration
     | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node

@@ -98,6 +98,36 @@ and pattern_to_json = function
           ("tag", Json.String "wildcard");
           ("syntax_node", syntax_node_to_json syntax_node);
         ]
+  | Cst.Pattern.Lazy { syntax_node; pattern } ->
+      Json.Object
+        [
+          ("tag", Json.String "lazy");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("pattern", pattern_to_json pattern);
+        ]
+  | Cst.Pattern.Exception { syntax_node; pattern } ->
+      Json.Object
+        [
+          ("tag", Json.String "exception");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("pattern", pattern_to_json pattern);
+        ]
+  | Cst.Pattern.Range { syntax_node; lower_token; upper_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "range");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("lower_token", token_to_json lower_token);
+          ("upper_token", token_to_json upper_token);
+        ]
+  | Cst.Pattern.FirstClassModule { syntax_node; name_token; module_type_syntax_node } ->
+      Json.Object
+        [
+          ("tag", Json.String "first_class_module");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("name_token", token_to_json name_token);
+          ("module_type_syntax_node", option_to_json syntax_node_to_json module_type_syntax_node);
+        ]
   | Cst.Pattern.Literal literal ->
       Json.Object
         [
@@ -304,6 +334,24 @@ and expression_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("tag_token", token_to_json tag_token);
           ("payload", option_to_json expression_to_json payload);
+        ]
+  | Cst.Expression.FirstClassModule { syntax_node; module_syntax_node; module_type_syntax_node } ->
+      Json.Object
+        [
+          ("tag", Json.String "first_class_module");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("module_syntax_node", syntax_node_to_json module_syntax_node);
+          ("module_type_syntax_node", option_to_json syntax_node_to_json module_type_syntax_node);
+        ]
+  | Cst.Expression.LetModule
+      { syntax_node; module_name_token; module_expression_syntax_node; body } ->
+      Json.Object
+        [
+          ("tag", Json.String "let_module");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("module_name_token", token_to_json module_name_token);
+          ("module_expression_syntax_node", syntax_node_to_json module_expression_syntax_node);
+          ("body", expression_to_json body);
         ]
   | Cst.Expression.Assert { syntax_node; asserted } ->
       Json.Object
@@ -618,6 +666,13 @@ let type_definition_to_json = function
           ("tag", Json.String "alias");
           ("syntax_node", syntax_node_to_json syntax_node);
         ]
+  | Cst.TypeDefinition.FirstClassModule { syntax_node; module_type_syntax_node } ->
+      Json.Object
+        [
+          ("tag", Json.String "first_class_module");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("module_type_syntax_node", syntax_node_to_json module_type_syntax_node);
+        ]
   | Cst.TypeDefinition.Record fields ->
       Json.Object
         [
@@ -694,32 +749,35 @@ let open_statement_to_json stmt =
       ("bang_token", option_to_json token_to_json (Cst.OpenStatement.bang_token stmt));
     ]
 
-let value_declaration_to_json decl =
+let value_declaration_to_json (decl : Cst.value_declaration) =
   Json.Object
     [
-      ("syntax_node", syntax_node_to_json (Cst.ValueDeclaration.syntax_node decl));
-      ("name_token", token_to_json (Cst.ValueDeclaration.name_token decl));
-      ("type_syntax_node", syntax_node_to_json (Cst.ValueDeclaration.type_syntax_node decl));
+      ("syntax_node", syntax_node_to_json decl.syntax_node);
+      ("name_token", token_to_json decl.name_token);
+      ("type_syntax_node", syntax_node_to_json decl.type_syntax_node);
     ]
 
-let external_declaration_to_json decl =
+let external_declaration_to_json (decl : Cst.external_declaration) =
   Json.Object
     [
-      ("syntax_node", syntax_node_to_json (Cst.ExternalDeclaration.syntax_node decl));
-      ("name_token", token_to_json (Cst.ExternalDeclaration.name_token decl));
-      ("type_syntax_node", syntax_node_to_json (Cst.ExternalDeclaration.type_syntax_node decl));
-      ( "primitive_name_tokens",
-        Json.Array
-          (List.map token_to_json (Cst.ExternalDeclaration.primitive_name_tokens decl))
-      );
+      ("syntax_node", syntax_node_to_json decl.syntax_node);
+      ("name_token", token_to_json decl.name_token);
+      ("type_syntax_node", syntax_node_to_json decl.type_syntax_node);
+      ("primitive_name_tokens", Json.Array (List.map token_to_json decl.primitive_name_tokens));
     ]
 
-let include_statement_to_json stmt =
+let include_statement_to_json (stmt : Cst.include_statement) =
   Json.Object
     [
-      ("syntax_node", syntax_node_to_json (Cst.IncludeStatement.syntax_node stmt));
-      ( "included_syntax_node",
-        syntax_node_to_json (Cst.IncludeStatement.included_syntax_node stmt) );
+      ("syntax_node", syntax_node_to_json stmt.syntax_node);
+      ("included_syntax_node", syntax_node_to_json stmt.included_syntax_node);
+    ]
+
+let exception_declaration_to_json (decl : Cst.exception_declaration) =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json decl.syntax_node);
+      ("name_token", token_to_json decl.name_token);
     ]
 
 let item_to_json = function
@@ -776,6 +834,12 @@ let item_to_json = function
         [
           ("tag", Json.String "include_statement");
           ("item", include_statement_to_json stmt);
+        ]
+  | Cst.Item.ExceptionDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "exception_declaration");
+          ("item", exception_declaration_to_json decl);
         ]
   | Cst.Item.Unknown syntax_node ->
       Json.Object
