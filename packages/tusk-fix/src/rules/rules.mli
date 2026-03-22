@@ -2,6 +2,7 @@ module Avoid_single_letter_function_names = Avoid_single_letter_function_names
 module Avoid_single_letter_type_names = Avoid_single_letter_type_names
 module Limit_parenthesis_depth = Limit_parenthesis_depth
 module Limit_open_statements = Limit_open_statements
+module No_exn_suffix_functions = No_exn_suffix_functions
 module No_unnecessary_rec = No_unnecessary_rec
 module No_useless_let_return = No_useless_let_return
 module No_redundant_else_unit = No_redundant_else_unit

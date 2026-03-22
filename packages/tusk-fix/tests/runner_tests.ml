@@ -354,6 +354,41 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains open-count violations" (fun () ->
         assert_explanation_contains ~code:"F0126" ~snippet:"two open statements");
+    Test.case "no-exn-suffix-functions flags exception-style function names" (fun () ->
+        let source = "let parse_exn text = text\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_exn_suffix_functions.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0134" ] ~actual:codes;
+        Ok ());
+    Test.case "no-exn-suffix-functions flags local exception-style function names" (fun () ->
+        let source = "let render text = let parse_exn value = value in parse_exn text\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_exn_suffix_functions.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0134" ] ~actual:codes;
+        Ok ());
+    Test.case "no-exn-suffix-functions ignores non-function bindings" (fun () ->
+        let source = "let parse_exn = cached_value\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_exn_suffix_functions.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains _exn function names" (fun () ->
+        assert_explanation_contains ~code:"F0134" ~snippet:"parse_exn");
     Test.case "no-unnecessary-rec flags recursive bindings without self-reference" (fun () ->
         let source = "let rec render x = x + 1\n" in
         let pipeline =

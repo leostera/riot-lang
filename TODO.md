@@ -120,7 +120,7 @@
 - [ ] Prefer `Module.(var.field)` for access to record fields instead of `var.Module.field`
 
 - [ ]  warn about nested matches (3 matches trigger a warning)
-- [ ]  warn about _exn functions
+- [x]  warn about _exn functions (`no-exn-suffix-functions`)
 
 
 
