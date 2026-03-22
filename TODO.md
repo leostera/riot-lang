@@ -94,7 +94,8 @@
 - [x] `let () = foo () in ..` this shoudl just be `foo ();` (`prefer-sequences-over-let-unit`)
 
 - [ ] Needles `(fun x -> foo x)` due to eta-expansion, they can just put `foo` in there
-- [ ] Needless or redundant parenthesis or begin/end blocks
+- [x] Needless or redundant parenthesis (`no-redundant-parentheses`)
+- [ ] Needless or redundant begin/end blocks
 - [ ] Prefer `fun x  -> match x  with | ....` over `function | A -> ... | B ...`
 
 - [ ] bool positional parameters in functions: suggest a named param or an enum
