@@ -2,6 +2,7 @@
 
 - Feature Name: `<fill_me_in_with_a_unique_ident>`
 - Start Date: `<YYYY-MM-DD>`
+- Status: `<presented|accepted|rejected|implemented>`
 - RFD PR: [leostera/borg#0000](https://github.com/leostera/borg/pull/0000)
 - Borg Issue: [leostera/borg#0000](https://github.com/leostera/borg/issues/0000)
 
