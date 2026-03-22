@@ -34,18 +34,18 @@ let rec string_literal_chain_size = function
   | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
       string_literal_chain_size receiver
   | Syn.Cst.Expression.Fun expr ->
-      string_literal_chain_size (Syn.Cst.FunExpression.body expr)
+      string_literal_chain_size expr.body
   | Syn.Cst.Expression.Function expr ->
-      Syn.Cst.FunctionExpression.cases expr
-      |> List.find_map (fun case ->
-             match Syn.Cst.MatchCase.guard case with
+      expr.cases
+      |> List.find_map (fun (case : Syn.Cst.match_case) ->
+             match case.guard with
              | Some guard -> (
                  match string_literal_chain_size guard with
                  | Some _ as size -> size
-                 | None -> string_literal_chain_size (Syn.Cst.MatchCase.body case))
-             | None -> string_literal_chain_size (Syn.Cst.MatchCase.body case))
+                 | None -> string_literal_chain_size case.body)
+             | None -> string_literal_chain_size case.body)
   | Syn.Cst.Expression.Parenthesized expr ->
-      string_literal_chain_size (Syn.Cst.ParenthesizedExpression.inner expr)
+      string_literal_chain_size expr.inner
   | Syn.Cst.Expression.Infix expr
     when String.equal (Syn.Cst.InfixExpression.operator expr) "^" -> (
       match
@@ -55,38 +55,38 @@ let rec string_literal_chain_size = function
       | Some left_count, Some right_count -> Some (left_count + right_count)
       | _ -> None)
   | Syn.Cst.Expression.Let expr -> (
-      match string_literal_chain_size (Syn.Cst.LetExpression.bound_value expr) with
+      match string_literal_chain_size expr.bound_value with
       | Some _ as size -> size
-      | None -> string_literal_chain_size (Syn.Cst.LetExpression.body expr))
+      | None -> string_literal_chain_size expr.body)
   | Syn.Cst.Expression.Match expr -> (
-      match string_literal_chain_size (Syn.Cst.MatchExpression.scrutinee expr) with
+      match string_literal_chain_size expr.scrutinee with
       | Some _ as size -> size
       | None ->
-          Syn.Cst.MatchExpression.cases expr
-          |> List.find_map (fun case ->
-                 match Syn.Cst.MatchCase.guard case with
+          expr.cases
+          |> List.find_map (fun (case : Syn.Cst.match_case) ->
+                 match case.guard with
                  | Some guard -> (
                      match string_literal_chain_size guard with
                      | Some _ as size -> size
-                     | None -> string_literal_chain_size (Syn.Cst.MatchCase.body case))
-                 | None -> string_literal_chain_size (Syn.Cst.MatchCase.body case)))
+                     | None -> string_literal_chain_size case.body)
+                 | None -> string_literal_chain_size case.body))
   | Syn.Cst.Expression.Try expr -> (
-      match string_literal_chain_size (Syn.Cst.TryExpression.body expr) with
+      match string_literal_chain_size expr.body with
       | Some _ as size -> size
       | None ->
-          Syn.Cst.TryExpression.cases expr
-          |> List.find_map (fun case ->
-                 match Syn.Cst.MatchCase.guard case with
+          expr.cases
+          |> List.find_map (fun (case : Syn.Cst.match_case) ->
+                 match case.guard with
                  | Some guard -> (
                      match string_literal_chain_size guard with
                      | Some _ as size -> size
-                     | None -> string_literal_chain_size (Syn.Cst.MatchCase.body case))
-                 | None -> string_literal_chain_size (Syn.Cst.MatchCase.body case)))
+                     | None -> string_literal_chain_size case.body)
+                 | None -> string_literal_chain_size case.body))
   | Syn.Cst.Expression.If expr -> (
-      match string_literal_chain_size (Syn.Cst.IfExpression.then_branch expr) with
+      match string_literal_chain_size expr.then_branch with
       | Some _ as size -> size
       | None -> (
-          match Syn.Cst.IfExpression.else_branch expr with
+          match expr.else_branch with
           | Some else_branch -> string_literal_chain_size else_branch
           | None -> None))
   | Syn.Cst.Expression.Infix _

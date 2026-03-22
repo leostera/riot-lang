@@ -29,7 +29,7 @@ Examples:
 
 let rec unwrap_parens = function
   | Syn.Cst.Expression.Parenthesized expr ->
-      unwrap_parens (Syn.Cst.ParenthesizedExpression.inner expr)
+      unwrap_parens expr.inner
   | expr -> expr
 
 let binding_name = function
@@ -57,18 +57,18 @@ let body_name = function
   | _ ->
       None
 
-let make_diagnostic expr =
+let make_diagnostic (expr : Syn.Cst.let_expression) =
   Diagnostic.make ~severity:Warning
     ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
-    ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.LetExpression.syntax_node expr))
+    ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:"Replace this let-binding with its bound expression."
     ()
 
 let diagnostic_for_expression = function
   | Syn.Cst.Expression.Let expr -> (
       match
-        binding_name (Syn.Cst.LetExpression.binding_pattern expr),
-        body_name (unwrap_parens (Syn.Cst.LetExpression.body expr))
+        binding_name expr.binding_pattern,
+        body_name (unwrap_parens expr.body)
       with
       | Some let_name, Some body_name when String.equal let_name body_name ->
           Some (make_diagnostic expr)

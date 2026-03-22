@@ -331,50 +331,35 @@ and parenthesized_pattern = {
   inner : pattern;
 }
 
-module PositionalParameter : sig
-  type t = {
-    syntax_node : syntax_node;
-    name_token : Token.t option;
-  }
+type positional_parameter = {
+  syntax_node : syntax_node;
+  name_token : Token.t option;
+}
 
-  val syntax_node : t -> syntax_node
-  val name_token : t -> Token.t option
-  val name : t -> string option
-end
+type labeled_parameter = {
+  syntax_node : syntax_node;
+  label_token : Token.t;
+  binding_name_token : Token.t option;
+}
 
-module LabeledParameter : sig
-  type t = {
-    syntax_node : syntax_node;
-    label_token : Token.t;
-    binding_name_token : Token.t option;
-  }
+type optional_parameter = {
+  syntax_node : syntax_node;
+  label_token : Token.t;
+  binding_name_token : Token.t option;
+  has_default : bool;
+}
 
-  val syntax_node : t -> syntax_node
-  val label_token : t -> Token.t
-  val label : t -> string
-  val binding_name_token : t -> Token.t option
-end
-
-module OptionalParameter : sig
-  type t = {
-    syntax_node : syntax_node;
-    label_token : Token.t;
-    binding_name_token : Token.t option;
-    has_default : bool;
-  }
-
-  val syntax_node : t -> syntax_node
-  val label_token : t -> Token.t
-  val label : t -> string
-  val binding_name_token : t -> Token.t option
-  val has_default : t -> bool
-end
+type parameter =
+  | Positional of positional_parameter
+  | Labeled of labeled_parameter
+  | Optional of optional_parameter
+  | LocallyAbstract of syntax_node
 
 module Parameter : sig
-  type t =
-    | Positional of PositionalParameter.t
-    | Labeled of LabeledParameter.t
-    | Optional of OptionalParameter.t
+  type t = parameter =
+    | Positional of positional_parameter
+    | Labeled of labeled_parameter
+    | Optional of optional_parameter
     | LocallyAbstract of syntax_node
 
   val syntax_node : t -> syntax_node
@@ -827,175 +812,6 @@ module Pattern : sig
   val syntax_node : t -> syntax_node
 end
 
-module PolyVariantPattern : sig
-  type t = poly_variant_pattern = {
-    syntax_node : syntax_node;
-    tag_token : Token.t;
-    payload : pattern option;
-  }
-
-  val syntax_node : t -> syntax_node
-  val tag_token : t -> Token.t
-  val tag : t -> string
-  val payload : t -> Pattern.t option
-end
-
-module ArrayPattern : sig
-  type t = array_pattern = {
-    syntax_node : syntax_node;
-    elements : pattern list;
-  }
-
-  val syntax_node : t -> syntax_node
-  val elements : t -> Pattern.t list
-end
-
-module RecordPattern : sig
-  type t = record_pattern = {
-    syntax_node : syntax_node;
-    fields : record_pattern_field list;
-  }
-
-  val syntax_node : t -> syntax_node
-  val fields : t -> record_pattern_field list
-end
-
-module RecordPatternField : sig
-  type t = record_pattern_field = {
-    syntax_node : syntax_node;
-    field_path : ModulePath.t;
-    pattern : pattern option;
-  }
-
-  val syntax_node : t -> syntax_node
-  val field_path : t -> ModulePath.t
-  val pattern : t -> Pattern.t option
-end
-
-module ParenthesizedPattern : sig
-  type t = parenthesized_pattern = {
-    syntax_node : syntax_node;
-    inner : pattern;
-  }
-
-  val syntax_node : t -> syntax_node
-  val inner : t -> Pattern.t
-end
-
-module PathExpression : sig
-  type t = path_expression = {
-    syntax_node : syntax_node;
-    path : ModulePath.t;
-  }
-
-  val syntax_node : t -> syntax_node
-  val path : t -> ModulePath.t
-end
-
-module PolyVariantExpression : sig
-  type t = poly_variant_expression = {
-    syntax_node : syntax_node;
-    tag_token : Token.t;
-    payload : expression option;
-  }
-
-  val syntax_node : t -> syntax_node
-  val tag_token : t -> Token.t
-  val tag : t -> string
-  val payload : t -> Expression.t option
-end
-
-module AssertExpression : sig
-  type t = assert_expression = {
-    syntax_node : syntax_node;
-    asserted : expression;
-  }
-
-  val syntax_node : t -> syntax_node
-  val asserted : t -> Expression.t
-end
-
-module LazyExpression : sig
-  type t = lazy_expression = {
-    syntax_node : syntax_node;
-    body : expression;
-  }
-
-  val syntax_node : t -> syntax_node
-  val body : t -> Expression.t
-end
-
-module WhileExpression : sig
-  type t = while_expression = {
-    syntax_node : syntax_node;
-    condition : expression;
-    body : expression;
-  }
-
-  val syntax_node : t -> syntax_node
-  val condition : t -> Expression.t
-  val body : t -> Expression.t
-end
-
-module ForExpression : sig
-  type t = for_expression = {
-    syntax_node : syntax_node;
-    iterator_token : Token.t;
-    start_expr : expression;
-    direction_token : Token.t;
-    end_expr : expression;
-    body : expression;
-  }
-
-  val syntax_node : t -> syntax_node
-  val iterator_token : t -> Token.t
-  val iterator_name : t -> string
-  val start_expr : t -> Expression.t
-  val direction_token : t -> Token.t
-  val direction : t -> string
-  val end_expr : t -> Expression.t
-  val body : t -> Expression.t
-end
-
-module ApplyExpression : sig
-  type t = apply_expression = {
-    syntax_node : syntax_node;
-    callee : expression;
-    argument : apply_argument;
-  }
-
-  val syntax_node : t -> syntax_node
-  val callee : t -> Expression.t
-  val argument : t -> apply_argument
-end
-
-module IndexExpression : sig
-  type t = index_expression = {
-    syntax_node : syntax_node;
-    collection : expression;
-    index : expression;
-  }
-
-  val syntax_node : t -> syntax_node
-  val collection : t -> Expression.t
-  val index : t -> Expression.t
-end
-
-module AssignExpression : sig
-  type t = assign_expression = {
-    syntax_node : syntax_node;
-    target : expression;
-    operator_token : Token.t;
-    value : expression;
-  }
-
-  val syntax_node : t -> syntax_node
-  val target : t -> Expression.t
-  val operator_token : t -> Token.t
-  val operator : t -> string
-  val value : t -> Expression.t
-end
-
 module InfixExpression : sig
   type t = infix_expression = {
     syntax_node : syntax_node;
@@ -1017,120 +833,6 @@ module RecordExpression : sig
     | Update of record_update_expression
 
   val syntax_node : t -> syntax_node
-end
-
-module RecordExpressionField : sig
-  type t = record_expression_field = {
-    syntax_node : syntax_node;
-    field_path : ModulePath.t;
-    value : expression option;
-  }
-
-  val syntax_node : t -> syntax_node
-  val field_path : t -> ModulePath.t
-  val value : t -> Expression.t option
-end
-
-module FunExpression : sig
-  type t = fun_expression = {
-    syntax_node : syntax_node;
-    parameters : Parameter.t list;
-    body : expression;
-  }
-
-  val syntax_node : t -> syntax_node
-  val parameters : t -> Parameter.t list
-  val body : t -> Expression.t
-end
-
-module FunctionExpression : sig
-  type t = function_expression = {
-    syntax_node : syntax_node;
-    cases : match_case list;
-  }
-
-  val syntax_node : t -> syntax_node
-  val cases : t -> match_case list
-end
-
-module LetExpression : sig
-  type t = let_expression = {
-    syntax_node : syntax_node;
-    binding_pattern : pattern;
-    bound_value : expression;
-    and_bindings : let_binding list;
-    body : expression;
-    is_recursive : bool;
-  }
-
-  val syntax_node : t -> syntax_node
-  val binding_pattern : t -> Pattern.t
-  val bound_value : t -> Expression.t
-  val and_bindings : t -> let_binding list
-  val body : t -> Expression.t
-  val is_recursive : t -> bool
-end
-
-module MatchCase : sig
-  type t = match_case = {
-    syntax_node : syntax_node;
-    pattern : pattern;
-    guard : expression option;
-    body : expression;
-  }
-
-  val syntax_node : t -> syntax_node
-  val pattern : t -> Pattern.t
-  val guard : t -> Expression.t option
-  val body : t -> Expression.t
-end
-
-module MatchExpression : sig
-  type t = match_expression = {
-    syntax_node : syntax_node;
-    scrutinee : expression;
-    cases : match_case list;
-  }
-
-  val syntax_node : t -> syntax_node
-  val scrutinee : t -> Expression.t
-  val cases : t -> match_case list
-end
-
-module TryExpression : sig
-  type t = try_expression = {
-    syntax_node : syntax_node;
-    body : expression;
-    cases : match_case list;
-  }
-
-  val syntax_node : t -> syntax_node
-  val body : t -> Expression.t
-  val cases : t -> match_case list
-end
-
-module IfExpression : sig
-  type t = if_expression = {
-    syntax_node : syntax_node;
-    condition : expression;
-    then_branch : expression;
-    else_branch : expression option;
-  }
-
-  val syntax_node : t -> syntax_node
-  val condition : t -> Expression.t
-  val then_branch : t -> Expression.t
-  val else_branch : t -> Expression.t option
-end
-
-module ParenthesizedExpression : sig
-  type t = parenthesized_expression = {
-    syntax_node : syntax_node;
-    inner : expression;
-  }
-
-  val syntax_node : t -> syntax_node
-  val inner : t -> Expression.t
 end
 
 module TypeVariable : sig

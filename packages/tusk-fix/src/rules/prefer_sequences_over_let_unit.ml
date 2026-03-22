@@ -33,16 +33,16 @@ let rec is_unit_pattern = function
   | _ ->
       false
 
-let make_diagnostic expr =
+let make_diagnostic (expr : Syn.Cst.let_expression) =
   Diagnostic.make ~severity:Warning
     ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
-    ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.LetExpression.syntax_node expr))
+    ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:"Replace this let-unit binding with a `;` sequence."
     ()
 
 let diagnostic_for_expression = function
   | Syn.Cst.Expression.Let expr
-    when is_unit_pattern (Syn.Cst.LetExpression.binding_pattern expr) ->
+    when is_unit_pattern expr.binding_pattern ->
       Some (make_diagnostic expr)
   | _ -> None
 

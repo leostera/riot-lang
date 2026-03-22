@@ -357,66 +357,47 @@ and parenthesized_pattern = {
   inner : pattern;
 }
 
-module PositionalParameter = struct
-  type t = {
-    syntax_node : syntax_node;
-    name_token : Token.t option;
-  }
+type positional_parameter = {
+  syntax_node : syntax_node;
+  name_token : Token.t option;
+}
 
-  let syntax_node param = param.syntax_node
-  let name_token param = param.name_token
+type labeled_parameter = {
+  syntax_node : syntax_node;
+  label_token : Token.t;
+  binding_name_token : Token.t option;
+}
 
-  let name param =
-    match param.name_token with
-    | Some token -> Some (Token.text token)
-    | None -> None
-end
+type optional_parameter = {
+  syntax_node : syntax_node;
+  label_token : Token.t;
+  binding_name_token : Token.t option;
+  has_default : bool;
+}
 
-module LabeledParameter = struct
-  type t = {
-    syntax_node : syntax_node;
-    label_token : Token.t;
-    binding_name_token : Token.t option;
-  }
-
-  let syntax_node param = param.syntax_node
-  let label_token param = param.label_token
-  let label param = Token.text param.label_token
-  let binding_name_token param = param.binding_name_token
-end
-
-module OptionalParameter = struct
-  type t = {
-    syntax_node : syntax_node;
-    label_token : Token.t;
-    binding_name_token : Token.t option;
-    has_default : bool;
-  }
-
-  let syntax_node param = param.syntax_node
-  let label_token param = param.label_token
-  let label param = Token.text param.label_token
-  let binding_name_token param = param.binding_name_token
-  let has_default param = param.has_default
-end
+type parameter =
+  | Positional of positional_parameter
+  | Labeled of labeled_parameter
+  | Optional of optional_parameter
+  | LocallyAbstract of syntax_node
 
 module Parameter = struct
-  type t =
-    | Positional of PositionalParameter.t
-    | Labeled of LabeledParameter.t
-    | Optional of OptionalParameter.t
+  type t = parameter =
+    | Positional of positional_parameter
+    | Labeled of labeled_parameter
+    | Optional of optional_parameter
     | LocallyAbstract of syntax_node
 
   let syntax_node = function
-    | Positional param -> PositionalParameter.syntax_node param
-    | Labeled param -> LabeledParameter.syntax_node param
-    | Optional param -> OptionalParameter.syntax_node param
+    | Positional param -> param.syntax_node
+    | Labeled param -> param.syntax_node
+    | Optional param -> param.syntax_node
     | LocallyAbstract node -> node
 
   let name_token = function
-    | Positional param -> PositionalParameter.name_token param
-    | Labeled param -> Some (LabeledParameter.label_token param)
-    | Optional param -> Some (OptionalParameter.label_token param)
+    | Positional param -> param.name_token
+    | Labeled param -> Some param.label_token
+    | Optional param -> Some param.label_token
     | LocallyAbstract _ -> None
 
   let name param =
@@ -429,7 +410,7 @@ module Parameter = struct
     | Positional _ | LocallyAbstract _ -> false
 
   let has_default = function
-    | Optional param -> OptionalParameter.has_default param
+    | Optional param -> param.has_default
     | Positional _ | Labeled _ | LocallyAbstract _ -> false
 end
 
@@ -953,195 +934,6 @@ module Pattern = struct
     | Parenthesized pattern -> pattern.syntax_node
 end
 
-module IdentifierPattern = struct
-  type t = identifier_pattern = {
-    syntax_node : syntax_node;
-    name_token : Token.t;
-  }
-
-  let syntax_node pattern = pattern.syntax_node
-  let name_token pattern = pattern.name_token
-  let name pattern = Token.text pattern.name_token
-end
-
-module WildcardPattern = struct
-  type t = wildcard_pattern = {
-    syntax_node : syntax_node;
-  }
-
-  let syntax_node pattern = pattern.syntax_node
-end
-
-module PolyVariantPattern = struct
-  type t = poly_variant_pattern = {
-    syntax_node : syntax_node;
-    tag_token : Token.t;
-    payload : pattern option;
-  }
-
-  let syntax_node pattern = pattern.syntax_node
-  let tag_token pattern = pattern.tag_token
-  let tag pattern = Token.text pattern.tag_token
-  let payload pattern = pattern.payload
-end
-
-module ParenthesizedPattern = struct
-  type t = parenthesized_pattern = {
-    syntax_node : syntax_node;
-    inner : pattern;
-  }
-
-  let syntax_node pattern = pattern.syntax_node
-  let inner pattern = pattern.inner
-end
-
-module ArrayPattern = struct
-  type t = array_pattern = {
-    syntax_node : syntax_node;
-    elements : pattern list;
-  }
-
-  let syntax_node pattern = pattern.syntax_node
-  let elements pattern = pattern.elements
-end
-
-module RecordPattern = struct
-  type t = record_pattern = {
-    syntax_node : syntax_node;
-    fields : record_pattern_field list;
-  }
-
-  let syntax_node pattern = pattern.syntax_node
-  let fields pattern = pattern.fields
-end
-
-module RecordPatternField = struct
-  type t = record_pattern_field = {
-    syntax_node : syntax_node;
-    field_path : ModulePath.t;
-    pattern : pattern option;
-  }
-
-  let syntax_node field = field.syntax_node
-  let field_path field = field.field_path
-  let pattern field = field.pattern
-end
-
-module PathExpression = struct
-  type t = path_expression = {
-    syntax_node : syntax_node;
-    path : ModulePath.t;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let path expr = expr.path
-end
-
-module PolyVariantExpression = struct
-  type t = poly_variant_expression = {
-    syntax_node : syntax_node;
-    tag_token : Token.t;
-    payload : expression option;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let tag_token expr = expr.tag_token
-  let tag expr = Token.text expr.tag_token
-  let payload expr = expr.payload
-end
-
-module AssertExpression = struct
-  type t = assert_expression = {
-    syntax_node : syntax_node;
-    asserted : expression;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let asserted expr = expr.asserted
-end
-
-module LazyExpression = struct
-  type t = lazy_expression = {
-    syntax_node : syntax_node;
-    body : expression;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let body expr = expr.body
-end
-
-module WhileExpression = struct
-  type t = while_expression = {
-    syntax_node : syntax_node;
-    condition : expression;
-    body : expression;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let condition expr = expr.condition
-  let body expr = expr.body
-end
-
-module ForExpression = struct
-  type t = for_expression = {
-    syntax_node : syntax_node;
-    iterator_token : Token.t;
-    start_expr : expression;
-    direction_token : Token.t;
-    end_expr : expression;
-    body : expression;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let iterator_token expr = expr.iterator_token
-  let iterator_name expr = Token.text expr.iterator_token
-  let start_expr expr = expr.start_expr
-  let direction_token expr = expr.direction_token
-  let direction expr = Token.text expr.direction_token
-  let end_expr expr = expr.end_expr
-  let body expr = expr.body
-end
-
-
-module ApplyExpression = struct
-  type t = apply_expression = {
-    syntax_node : syntax_node;
-    callee : expression;
-    argument : apply_argument;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let callee expr = expr.callee
-  let argument expr = expr.argument
-end
-
-module IndexExpression = struct
-  type t = index_expression = {
-    syntax_node : syntax_node;
-    collection : expression;
-    index : expression;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let collection expr = expr.collection
-  let index expr = expr.index
-end
-
-module AssignExpression = struct
-  type t = assign_expression = {
-    syntax_node : syntax_node;
-    target : expression;
-    operator_token : Token.t;
-    value : expression;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let target expr = expr.target
-  let operator_token expr = expr.operator_token
-  let operator expr = Token.text expr.operator_token
-  let value expr = expr.value
-end
-
 module InfixExpression = struct
   type t = infix_expression = {
     syntax_node : syntax_node;
@@ -1165,120 +957,6 @@ module RecordExpression = struct
   let syntax_node = function
     | Literal expr -> expr.syntax_node
     | Update expr -> expr.syntax_node
-end
-
-module RecordExpressionField = struct
-  type t = record_expression_field = {
-    syntax_node : syntax_node;
-    field_path : ModulePath.t;
-    value : expression option;
-  }
-
-  let syntax_node field = field.syntax_node
-  let field_path field = field.field_path
-  let value field = field.value
-end
-
-module FunExpression = struct
-  type t = fun_expression = {
-    syntax_node : syntax_node;
-    parameters : Parameter.t list;
-    body : expression;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let parameters expr = expr.parameters
-  let body expr = expr.body
-end
-
-module FunctionExpression = struct
-  type t = function_expression = {
-    syntax_node : syntax_node;
-    cases : match_case list;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let cases expr = expr.cases
-end
-
-module LetExpression = struct
-  type t = let_expression = {
-    syntax_node : syntax_node;
-    binding_pattern : pattern;
-    bound_value : expression;
-    and_bindings : let_binding list;
-    body : expression;
-    is_recursive : bool;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let binding_pattern expr = expr.binding_pattern
-  let bound_value expr = expr.bound_value
-  let and_bindings expr = expr.and_bindings
-  let body expr = expr.body
-  let is_recursive expr = expr.is_recursive
-end
-
-module MatchCase = struct
-  type t = match_case = {
-    syntax_node : syntax_node;
-    pattern : pattern;
-    guard : expression option;
-    body : expression;
-  }
-
-  let syntax_node case = case.syntax_node
-  let pattern case = case.pattern
-  let guard case = case.guard
-  let body case = case.body
-end
-
-module MatchExpression = struct
-  type t = match_expression = {
-    syntax_node : syntax_node;
-    scrutinee : expression;
-    cases : match_case list;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let scrutinee expr = expr.scrutinee
-  let cases expr = expr.cases
-end
-
-module TryExpression = struct
-  type t = try_expression = {
-    syntax_node : syntax_node;
-    body : expression;
-    cases : match_case list;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let body expr = expr.body
-  let cases expr = expr.cases
-end
-
-module IfExpression = struct
-  type t = if_expression = {
-    syntax_node : syntax_node;
-    condition : expression;
-    then_branch : expression;
-    else_branch : expression option;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let condition expr = expr.condition
-  let then_branch expr = expr.then_branch
-  let else_branch expr = expr.else_branch
-end
-
-module ParenthesizedExpression = struct
-  type t = parenthesized_expression = {
-    syntax_node : syntax_node;
-    inner : expression;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let inner expr = expr.inner
 end
 
 module TypeVariable = struct

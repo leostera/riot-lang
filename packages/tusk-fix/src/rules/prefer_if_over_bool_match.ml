@@ -36,7 +36,7 @@ type case_pattern_kind =
 let rec is_unit_expression = function
   | Syn.Cst.Expression.Literal (Syn.Cst.Literal.Unit _) -> true
   | Syn.Cst.Expression.Parenthesized expr ->
-      is_unit_expression (Syn.Cst.ParenthesizedExpression.inner expr)
+      is_unit_expression expr.inner
   | _ -> false
 
 let rec case_pattern_kind = function
@@ -49,25 +49,34 @@ let rec case_pattern_kind = function
   | Syn.Cst.Pattern.Parenthesized { inner; _ } -> case_pattern_kind inner
   | Syn.Cst.Pattern.Identifier _ | Syn.Cst.Pattern.Literal _ ->
       OtherPattern
+  | Syn.Cst.Pattern.Attribute _ | Syn.Cst.Pattern.Extension _
+  | Syn.Cst.Pattern.Lazy _ | Syn.Cst.Pattern.Exception _
+  | Syn.Cst.Pattern.Range _ | Syn.Cst.Pattern.Operator _
+  | Syn.Cst.Pattern.FirstClassModule _ | Syn.Cst.Pattern.PolyVariant _
+  | Syn.Cst.Pattern.PolyVariantInherit _ | Syn.Cst.Pattern.Constructor _
+  | Syn.Cst.Pattern.Tuple _ | Syn.Cst.Pattern.List _ | Syn.Cst.Pattern.Array _
+  | Syn.Cst.Pattern.Record _ | Syn.Cst.Pattern.Cons _ | Syn.Cst.Pattern.Or _
+  | Syn.Cst.Pattern.Alias _ | Syn.Cst.Pattern.Typed _ ->
+      OtherPattern
 
-let suggestion_for_match expr =
-  match Syn.Cst.MatchExpression.cases expr with
+let suggestion_for_match (expr : Syn.Cst.match_expression) =
+  match expr.cases with
   | [ first_case; second_case ] -> (
       match
-        case_pattern_kind (Syn.Cst.MatchCase.pattern first_case),
-        case_pattern_kind (Syn.Cst.MatchCase.pattern second_case)
+        case_pattern_kind first_case.pattern,
+        case_pattern_kind second_case.pattern
       with
       | TruePattern, FalsePattern ->
           "Rewrite this match as `if <condition> then ... else ...`."
       | FalsePattern, TruePattern ->
           "Rewrite this match as `if not <condition> then ... else ...`."
       | TruePattern, WildcardPattern ->
-          if is_unit_expression (Syn.Cst.MatchCase.body second_case) then
+          if is_unit_expression second_case.body then
             "Rewrite this match as `if <condition> then ...`."
           else
             "Rewrite this match as `if <condition> then ... else ...`."
       | FalsePattern, WildcardPattern ->
-          if is_unit_expression (Syn.Cst.MatchCase.body second_case) then
+          if is_unit_expression second_case.body then
             "Rewrite this match as `if not <condition> then ...`."
           else
             "Rewrite this match as `if not <condition> then ... else ...`."
@@ -81,15 +90,15 @@ let suggestion_for_match expr =
           "Rewrite this boolean match as an `if` expression.")
   | _ -> "Rewrite this boolean match as an `if` expression."
 
-let should_flag_match expr =
-  match Syn.Cst.MatchExpression.cases expr with
+let should_flag_match (expr : Syn.Cst.match_expression) =
+  match expr.cases with
   | [ first_case; second_case ] ->
-      Syn.Cst.MatchCase.guard first_case = None
-      && Syn.Cst.MatchCase.guard second_case = None
+      first_case.guard = None
+      && second_case.guard = None
       &&
       match
-        case_pattern_kind (Syn.Cst.MatchCase.pattern first_case),
-        case_pattern_kind (Syn.Cst.MatchCase.pattern second_case)
+        case_pattern_kind first_case.pattern,
+        case_pattern_kind second_case.pattern
       with
       | TruePattern, FalsePattern
       | FalsePattern, TruePattern
@@ -104,10 +113,10 @@ let should_flag_match expr =
       | _ -> false
   | _ -> false
 
-let make_diagnostic expr =
+let make_diagnostic (expr : Syn.Cst.match_expression) =
   Diagnostic.make ~severity:Warning
     ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
-    ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.MatchExpression.syntax_node expr))
+    ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:(suggestion_for_match expr)
     ()
 

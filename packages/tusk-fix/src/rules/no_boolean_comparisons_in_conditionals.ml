@@ -29,7 +29,7 @@ Examples:
 
 let rec unwrap_parens = function
   | Syn.Cst.Expression.Parenthesized expr ->
-      unwrap_parens (Syn.Cst.ParenthesizedExpression.inner expr)
+      unwrap_parens expr.inner
   | expr -> expr
 
 let bool_literal_value = function
@@ -39,7 +39,7 @@ let bool_literal_value = function
 
 let comparison_operands expr =
   match unwrap_parens expr with
-  | Syn.Cst.Expression.Infix cmp ->
+  | Syn.Cst.Expression.Infix (cmp : Syn.Cst.infix_expression) ->
       let op = Syn.Cst.InfixExpression.operator cmp in
       if String.equal op "=" || String.equal op "!=" || String.equal op "<>" then
         Some (op, Syn.Cst.InfixExpression.left cmp, Syn.Cst.InfixExpression.right cmp)
@@ -74,16 +74,16 @@ let suggestion_for_condition expr =
       | _ -> "Simplify this boolean comparison.")
   | None -> "Simplify this boolean comparison."
 
-let make_diagnostic if_expr =
+let make_diagnostic (if_expr : Syn.Cst.if_expression) =
   Diagnostic.make ~severity:Warning
     ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
-    ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.IfExpression.syntax_node if_expr))
-    ~suggestion:(suggestion_for_condition (Syn.Cst.IfExpression.condition if_expr))
+    ~span:(Syn.Ceibo.Red.SyntaxNode.span if_expr.syntax_node)
+    ~suggestion:(suggestion_for_condition if_expr.condition)
     ()
 
 let diagnostic_for_expression = function
   | Syn.Cst.Expression.If if_expr
-    when should_flag_condition (Syn.Cst.IfExpression.condition if_expr) ->
+    when should_flag_condition if_expr.condition ->
       Some (make_diagnostic if_expr)
   | _ -> None
 

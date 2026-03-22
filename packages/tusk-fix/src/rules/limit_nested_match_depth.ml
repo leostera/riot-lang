@@ -42,9 +42,9 @@ let rec child_expressions = function
   | Syn.Cst.Expression.Literal _ ->
       []
   | Syn.Cst.Expression.Apply expr ->
-      Syn.Cst.ApplyExpression.callee expr
+      expr.callee
       ::
-      (match Syn.Cst.ApplyExpression.argument expr with
+      (match expr.argument with
       | Syn.Cst.Positional argument -> [ argument ]
       | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } ->
           Option.to_list value)
@@ -53,41 +53,39 @@ let rec child_expressions = function
   | Syn.Cst.Expression.Infix expr ->
       [ Syn.Cst.InfixExpression.left expr; Syn.Cst.InfixExpression.right expr ]
   | Syn.Cst.Expression.Fun expr ->
-      [ Syn.Cst.FunExpression.body expr ]
+      [ expr.body ]
   | Syn.Cst.Expression.Function expr ->
-      Syn.Cst.FunctionExpression.cases expr
-      |> List.concat_map (fun case ->
-             (match Syn.Cst.MatchCase.guard case with
+      expr.cases
+      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+             (match case.guard with
              | Some guard -> [ guard ]
              | None -> [])
-             @ [ Syn.Cst.MatchCase.body case ])
+             @ [ case.body ])
   | Syn.Cst.Expression.Let expr ->
-      [ Syn.Cst.LetExpression.bound_value expr; Syn.Cst.LetExpression.body expr ]
+      [ expr.bound_value; expr.body ]
   | Syn.Cst.Expression.Match expr ->
-      Syn.Cst.MatchExpression.scrutinee expr
-      :: (Syn.Cst.MatchExpression.cases expr
-         |> List.concat_map (fun case ->
-                (match Syn.Cst.MatchCase.guard case with
+      expr.scrutinee
+      :: (expr.cases
+         |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+                (match case.guard with
                 | Some guard -> [ guard ]
                 | None -> [])
-                @ [ Syn.Cst.MatchCase.body case ]))
+                @ [ case.body ]))
   | Syn.Cst.Expression.Try expr ->
-      Syn.Cst.TryExpression.body expr
-      :: (Syn.Cst.TryExpression.cases expr
-         |> List.concat_map (fun case ->
-                (match Syn.Cst.MatchCase.guard case with
+      expr.body
+      :: (expr.cases
+         |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+                (match case.guard with
                 | Some guard -> [ guard ]
                 | None -> [])
-                @ [ Syn.Cst.MatchCase.body case ]))
+                @ [ case.body ]))
   | Syn.Cst.Expression.If expr ->
-      let base =
-        [ Syn.Cst.IfExpression.condition expr; Syn.Cst.IfExpression.then_branch expr ]
-      in
-      (match Syn.Cst.IfExpression.else_branch expr with
+      let base = [ expr.condition; expr.then_branch ] in
+      (match expr.else_branch with
       | Some else_branch -> base @ [ else_branch ]
       | None -> base)
   | Syn.Cst.Expression.Parenthesized expr ->
-      [ Syn.Cst.ParenthesizedExpression.inner expr ]
+      [ expr.inner ]
   | _ ->
       []
 
@@ -103,10 +101,10 @@ let rec match_chain_depth = function
         |> max_list)
   | expr -> child_expressions expr |> List.map match_chain_depth |> max_list
 
-let make_diagnostic expr depth =
+let make_diagnostic (expr : Syn.Cst.match_expression) depth =
   Diagnostic.make ~severity:Warning
     ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
-    ~span:(Syn.Cst.MatchExpression.syntax_node expr |> Syn.Ceibo.Red.SyntaxNode.span)
+    ~span:(expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
     ~suggestion:
       ("Reduce nested match depth from " ^ Int.to_string depth
      ^ " by extracting a helper or flattening the control flow.")

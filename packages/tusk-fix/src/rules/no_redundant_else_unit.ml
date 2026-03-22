@@ -27,19 +27,19 @@ Examples:
 let rec is_unit_expression = function
   | Syn.Cst.Expression.Literal (Syn.Cst.Literal.Unit _) -> true
   | Syn.Cst.Expression.Parenthesized expr ->
-      is_unit_expression (Syn.Cst.ParenthesizedExpression.inner expr)
+      is_unit_expression expr.inner
   | _ -> false
 
-let make_diagnostic expr =
+let make_diagnostic (expr : Syn.Cst.if_expression) =
   Diagnostic.make ~severity:Warning
     ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
-    ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.IfExpression.syntax_node expr))
+    ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:"Remove else () from this if expression."
     ()
 
 let diagnostic_for_expression = function
   | Syn.Cst.Expression.If expr -> (
-      match Syn.Cst.IfExpression.else_branch expr with
+      match expr.else_branch with
       | Some else_branch when is_unit_expression else_branch ->
           Some (make_diagnostic expr)
       | _ -> None)

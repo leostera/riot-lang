@@ -419,7 +419,7 @@ let tests =
         | Syn.Cst.Item.LetBinding binding :: _ -> (
             match Syn.Cst.LetBinding.value binding with
             | Syn.Cst.Expression.If expr -> (
-                match Syn.Cst.IfExpression.else_branch expr with
+                match expr.else_branch with
                 | Some (Syn.Cst.Expression.Literal (Syn.Cst.Literal.Unit _)) -> Ok ()
                 | _ -> Error "expected unit else branch")
             | _ -> Error "expected if expression value")
@@ -967,7 +967,7 @@ let tests =
         | Syn.Cst.Item.LetBinding binding :: _ ->
             let rec depth = function
               | Syn.Cst.Expression.Parenthesized expr ->
-                  1 + depth (Syn.Cst.ParenthesizedExpression.inner expr)
+                  1 + depth expr.inner
               | _ -> 0
             in
             Test.assert_equal ~expected:5

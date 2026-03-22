@@ -28,10 +28,10 @@ If you need this many parentheses, the expression probably wants a name or a fla
 
 let max_parenthesis_depth = 5
 
-let make_diagnostic expr depth =
+let make_diagnostic (expr : Syn.Cst.parenthesized_expression) depth =
   Diagnostic.make ~severity:Warning
     ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
-    ~span:(Syn.Cst.ParenthesizedExpression.syntax_node expr |> Syn.Ceibo.Red.SyntaxNode.span)
+    ~span:(expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
     ~suggestion:
       ("Reduce parenthesis depth from " ^ Int.to_string depth
      ^ " by removing redundant grouping or extracting a named value")
@@ -39,7 +39,7 @@ let make_diagnostic expr depth =
 
 let rec parenthesis_chain_depth = function
   | Syn.Cst.Expression.Parenthesized expr ->
-      1 + parenthesis_chain_depth (Syn.Cst.ParenthesizedExpression.inner expr)
+      1 + parenthesis_chain_depth expr.inner
   | _ -> 0
 
 let rec diagnostics_for_expression ~inside_parenthesized_chain = function
@@ -48,9 +48,9 @@ let rec diagnostics_for_expression ~inside_parenthesized_chain = function
       []
   | Syn.Cst.Expression.Apply expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
-        (Syn.Cst.ApplyExpression.callee expr)
+        expr.callee
       @
-      (match Syn.Cst.ApplyExpression.argument expr with
+      (match expr.argument with
       | Syn.Cst.Positional argument ->
           diagnostics_for_expression ~inside_parenthesized_chain argument
       | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } -> (
@@ -65,58 +65,57 @@ let rec diagnostics_for_expression ~inside_parenthesized_chain = function
       @ diagnostics_for_expression ~inside_parenthesized_chain
           (Syn.Cst.InfixExpression.right expr)
   | Syn.Cst.Expression.Fun expr ->
-      Syn.Cst.FunExpression.body expr
-      |> diagnostics_for_expression ~inside_parenthesized_chain
+      expr.body |> diagnostics_for_expression ~inside_parenthesized_chain
   | Syn.Cst.Expression.Function expr ->
-      Syn.Cst.FunctionExpression.cases expr
-      |> List.concat_map (fun case ->
-             (match Syn.Cst.MatchCase.guard case with
+      expr.cases
+      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+             (match case.guard with
              | Some guard ->
                  diagnostics_for_expression ~inside_parenthesized_chain guard
              | None -> [])
              @ diagnostics_for_expression ~inside_parenthesized_chain
-                 (Syn.Cst.MatchCase.body case))
+                 case.body)
   | Syn.Cst.Expression.Let expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
-        (Syn.Cst.LetExpression.bound_value expr)
+        expr.bound_value
       @ diagnostics_for_expression ~inside_parenthesized_chain
-          (Syn.Cst.LetExpression.body expr)
+          expr.body
   | Syn.Cst.Expression.Match expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
-        (Syn.Cst.MatchExpression.scrutinee expr)
+        expr.scrutinee
       @
-      (Syn.Cst.MatchExpression.cases expr
-      |> List.concat_map (fun case ->
-             (match Syn.Cst.MatchCase.guard case with
+      (expr.cases
+      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+             (match case.guard with
              | Some guard ->
                  diagnostics_for_expression ~inside_parenthesized_chain guard
              | None -> [])
              @ diagnostics_for_expression ~inside_parenthesized_chain
-                 (Syn.Cst.MatchCase.body case)))
+                 case.body))
   | Syn.Cst.Expression.Try expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
-        (Syn.Cst.TryExpression.body expr)
+        expr.body
       @
-      (Syn.Cst.TryExpression.cases expr
-      |> List.concat_map (fun case ->
-             (match Syn.Cst.MatchCase.guard case with
+      (expr.cases
+      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+             (match case.guard with
              | Some guard ->
                  diagnostics_for_expression ~inside_parenthesized_chain guard
              | None -> [])
              @ diagnostics_for_expression ~inside_parenthesized_chain
-                 (Syn.Cst.MatchCase.body case)))
+                 case.body))
   | Syn.Cst.Expression.If expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
-        (Syn.Cst.IfExpression.condition expr)
+        expr.condition
       @ diagnostics_for_expression ~inside_parenthesized_chain
-          (Syn.Cst.IfExpression.then_branch expr)
+          expr.then_branch
       @
-      (match Syn.Cst.IfExpression.else_branch expr with
+      (match expr.else_branch with
       | Some else_branch ->
           diagnostics_for_expression ~inside_parenthesized_chain else_branch
       | None -> [])
   | Syn.Cst.Expression.Parenthesized expr ->
-      let inner = Syn.Cst.ParenthesizedExpression.inner expr in
+      let inner = expr.inner in
       let nested = diagnostics_for_expression ~inside_parenthesized_chain:true inner in
       if inside_parenthesized_chain then
         nested

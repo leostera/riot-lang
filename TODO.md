@@ -47,6 +47,7 @@
 - [ ] Keep moving `Syn.Cst` toward a faithful `Ceibo -> Cst` lift driven by the fixture corpus
 - [ ] Prefer adding real CST node shapes over convenience projections when a fixture fails
 - [ ] Keep [packages/syn/src/cst.ml](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/src/cst.ml) focused on types, [packages/syn/src/cst_builder.ml](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/src/cst_builder.ml) focused on lifting, and [packages/syn/src/cst_json.ml](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/src/cst_json.ml) focused on snapshot serialization
+- [~] Keep shrinking redundant record-accessor modules from `Syn.Cst`; family-level helpers may stay temporarily, but plain public records should be accessed directly
 - [ ] Replace coarse `*_syntax_node` placeholders with typed CST where possible:
   - [ ] core types
   - [ ] module types

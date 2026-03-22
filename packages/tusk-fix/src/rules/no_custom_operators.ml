@@ -72,9 +72,9 @@ let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.Literal _ ->
       []
   | Syn.Cst.Expression.Apply expr ->
-      diagnostics_for_expression (Syn.Cst.ApplyExpression.callee expr)
+      diagnostics_for_expression expr.callee
       @
-      (match Syn.Cst.ApplyExpression.argument expr with
+      (match expr.argument with
       | Syn.Cst.Positional argument -> diagnostics_for_expression argument
       | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } -> (
           match value with
@@ -83,42 +83,42 @@ let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
       diagnostics_for_expression receiver
   | Syn.Cst.Expression.Fun expr ->
-      diagnostics_for_expression (Syn.Cst.FunExpression.body expr)
+      diagnostics_for_expression expr.body
   | Syn.Cst.Expression.Function expr ->
-      Syn.Cst.FunctionExpression.cases expr
-      |> List.concat_map (fun case ->
-             (match Syn.Cst.MatchCase.guard case with
+      expr.cases
+      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+             (match case.guard with
              | Some guard -> diagnostics_for_expression guard
              | None -> [])
-             @ diagnostics_for_expression (Syn.Cst.MatchCase.body case))
+             @ diagnostics_for_expression case.body)
   | Syn.Cst.Expression.Parenthesized expr ->
-      diagnostics_for_expression (Syn.Cst.ParenthesizedExpression.inner expr)
+      diagnostics_for_expression expr.inner
   | Syn.Cst.Expression.Let expr ->
-      diagnostics_for_expression (Syn.Cst.LetExpression.bound_value expr)
-      @ diagnostics_for_expression (Syn.Cst.LetExpression.body expr)
+      diagnostics_for_expression expr.bound_value
+      @ diagnostics_for_expression expr.body
   | Syn.Cst.Expression.Match expr ->
-      diagnostics_for_expression (Syn.Cst.MatchExpression.scrutinee expr)
+      diagnostics_for_expression expr.scrutinee
       @
-      (Syn.Cst.MatchExpression.cases expr
-      |> List.concat_map (fun case ->
-             (match Syn.Cst.MatchCase.guard case with
+      (expr.cases
+      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+             (match case.guard with
              | Some guard -> diagnostics_for_expression guard
              | None -> [])
-             @ diagnostics_for_expression (Syn.Cst.MatchCase.body case)))
+             @ diagnostics_for_expression case.body))
   | Syn.Cst.Expression.Try expr ->
-      diagnostics_for_expression (Syn.Cst.TryExpression.body expr)
+      diagnostics_for_expression expr.body
       @
-      (Syn.Cst.TryExpression.cases expr
-      |> List.concat_map (fun case ->
-             (match Syn.Cst.MatchCase.guard case with
+      (expr.cases
+      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+             (match case.guard with
              | Some guard -> diagnostics_for_expression guard
              | None -> [])
-             @ diagnostics_for_expression (Syn.Cst.MatchCase.body case)))
+             @ diagnostics_for_expression case.body))
   | Syn.Cst.Expression.If expr ->
-      diagnostics_for_expression (Syn.Cst.IfExpression.condition expr)
-      @ diagnostics_for_expression (Syn.Cst.IfExpression.then_branch expr)
+      diagnostics_for_expression expr.condition
+      @ diagnostics_for_expression expr.then_branch
       @
-      (match Syn.Cst.IfExpression.else_branch expr with
+      (match expr.else_branch with
       | Some else_branch -> diagnostics_for_expression else_branch
       | None -> [])
   | Syn.Cst.Expression.Infix expr ->

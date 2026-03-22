@@ -361,46 +361,42 @@ let parameter_from_node node =
       match first_ident_token_in_subtree node with
       | Some label_name_token ->
           Cst.Parameter.Labeled
-            Cst.LabeledParameter.
-              {
-                syntax_node = node;
-                label_token = label_name_token;
-                binding_name_token = None;
-              }
+            {
+              syntax_node = node;
+              label_token = label_name_token;
+              binding_name_token = None;
+            }
       | None -> unsupported_parameter node)
   | Syntax_kind.OPTIONAL_PARAM -> (
       match first_ident_token_in_subtree node with
       | Some label_name_token ->
           Cst.Parameter.Optional
-            Cst.OptionalParameter.
-              {
-                syntax_node = node;
-                label_token = label_name_token;
-                binding_name_token = None;
-                has_default = false;
-              }
+            {
+              syntax_node = node;
+              label_token = label_name_token;
+              binding_name_token = None;
+              has_default = false;
+            }
       | None -> unsupported_parameter node)
   | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> (
       match direct_non_trivia_nodes node |> List.find_map first_ident_token_in_subtree with
       | Some label_name_token ->
           Cst.Parameter.Optional
-            Cst.OptionalParameter.
-              {
-                syntax_node = node;
-                label_token = label_name_token;
-                binding_name_token = None;
-                has_default = true;
-              }
+            {
+              syntax_node = node;
+              label_token = label_name_token;
+              binding_name_token = None;
+              has_default = true;
+            }
       | None -> unsupported_parameter node)
   | Syntax_kind.TYPE_CONSTRAINT ->
       Cst.Parameter.LocallyAbstract node
   | _ ->
       Cst.Parameter.Positional
-        Cst.PositionalParameter.
-          {
-            syntax_node = node;
-            name_token = simple_pattern_name_token node;
-          }
+        {
+          syntax_node = node;
+          name_token = simple_pattern_name_token node;
+        }
 
 let rec take_tokens_until_equals acc = function
   | [] -> List.rev acc
@@ -882,16 +878,15 @@ and record_pattern_field_from_node node =
   | [] -> None
   | _ ->
       Some
-        Cst.RecordPatternField.
-          {
-            syntax_node = node;
-            field_path = lifted_field_path;
-            pattern =
-              (direct_non_trivia_nodes node
-              |> List.find_opt (fun child ->
-                     is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
-              |> Option.map pattern_from_node);
-          }
+        {
+          syntax_node = node;
+          field_path = lifted_field_path;
+          pattern =
+            (direct_non_trivia_nodes node
+            |> List.find_opt (fun child ->
+                   is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+            |> Option.map pattern_from_node);
+        }
 
 let rec apply_argument_from_node node =
   let first_nontrivia_expression_child node =
@@ -1476,25 +1471,23 @@ and index_expression_from_node node =
   match direct_non_trivia_nodes node with
   | collection_node :: index_node :: _ ->
       Some
-        Cst.IndexExpression.
-          {
-            syntax_node = node;
-            collection = expression_from_node collection_node;
-            index = expression_from_node index_node;
-          }
+        {
+          syntax_node = node;
+          collection = expression_from_node collection_node;
+          index = expression_from_node index_node;
+        }
   | _ -> None
 
 and assign_expression_from_node node =
   match direct_non_trivia_nodes node, direct_non_trivia_tokens node with
   | target_node :: value_node :: _, operator_syntax_token :: _ ->
       Some
-        Cst.AssignExpression.
-          {
-            syntax_node = node;
-            target = expression_from_node target_node;
-            operator_token = token operator_syntax_token;
-            value = expression_from_node value_node;
-          }
+        {
+          syntax_node = node;
+          target = expression_from_node target_node;
+          operator_token = token operator_syntax_token;
+          value = expression_from_node value_node;
+        }
   | _ -> None
 
 and prefix_expression_from_node node =
@@ -1539,12 +1532,11 @@ and record_expression_field_from_node node =
   | [] -> None
   | _ ->
       Some
-        Cst.RecordExpressionField.
-          {
-            syntax_node = node;
-            field_path = lifted_field_path;
-            value = record_field_value_from_node node;
-          }
+        {
+          syntax_node = node;
+          field_path = lifted_field_path;
+          value = record_field_value_from_node node;
+        }
 
 and record_literal_expression_from_node node =
   let fields =
@@ -1672,15 +1664,14 @@ and fun_expression_from_node node =
   match List.rev (direct_non_trivia_nodes node) with
   | body_node :: rev_param_nodes ->
       Some
-        Cst.FunExpression.
-          {
-            syntax_node = node;
-            parameters =
-              rev_param_nodes
-              |> List.rev
-              |> List.map parameter_from_node;
-            body = expression_from_node body_node;
-          }
+        {
+          syntax_node = node;
+          parameters =
+            rev_param_nodes
+            |> List.rev
+            |> List.map parameter_from_node;
+          body = expression_from_node body_node;
+        }
   | [] -> None
 
 and function_expression_from_node node =
@@ -1690,7 +1681,7 @@ and function_expression_from_node node =
            Ceibo.Red.SyntaxNode.kind child = Syntax_kind.MATCH_CASE)
     |> List.filter_map match_case_from_node
   in
-  Some Cst.FunctionExpression.{ syntax_node = node; cases = match_cases }
+  Some { Cst.syntax_node = node; cases = match_cases }
 
 and let_expression_from_node ~is_recursive_binding node =
   match let_expression_parts ~is_recursive_binding node with
@@ -1737,17 +1728,16 @@ and let_expression_from_node ~is_recursive_binding node =
         | [] -> None
       in
       Some
-        Cst.LetExpression.
-          {
-            syntax_node = node;
-            binding_pattern = pattern_from_node binding_pattern_node;
-            bound_value = expression_from_node bound_value_node;
-            and_bindings =
-              and_binding_nodes
-              |> List.filter_map lift_and_binding;
-            body = expression_from_node body_node;
-            is_recursive = is_recursive_binding;
-          }
+        {
+          syntax_node = node;
+          binding_pattern = pattern_from_node binding_pattern_node;
+          bound_value = expression_from_node bound_value_node;
+          and_bindings =
+            and_binding_nodes
+            |> List.filter_map lift_and_binding;
+          body = expression_from_node body_node;
+          is_recursive = is_recursive_binding;
+        }
   | _ -> None
 
 and match_case_from_node node =
@@ -1772,32 +1762,29 @@ and match_case_from_node node =
           match List.rev body_exprs with
           | body_expr :: _ ->
               Some
-                Cst.MatchCase.
-                  {
-                    syntax_node = node;
-                    pattern = pattern_from_node pattern_node;
-                    guard = None;
-                    body = body_expr;
-                  }
+                {
+                  syntax_node = node;
+                  pattern = pattern_from_node pattern_node;
+                  guard = None;
+                  body = body_expr;
+                }
           | [] -> None)
       | guard_expr :: body_expr :: _, true ->
           Some
-            Cst.MatchCase.
-              {
-                syntax_node = node;
-                pattern = pattern_from_node pattern_node;
-                guard = Some guard_expr;
-                body = body_expr;
-              }
+            {
+              syntax_node = node;
+              pattern = pattern_from_node pattern_node;
+              guard = Some guard_expr;
+              body = body_expr;
+            }
       | body_expr :: _, true ->
           Some
-            Cst.MatchCase.
-              {
-                syntax_node = node;
-                pattern = pattern_from_node pattern_node;
-                guard = None;
-                body = body_expr;
-              })
+            {
+              syntax_node = node;
+              pattern = pattern_from_node pattern_node;
+              guard = None;
+              body = body_expr;
+            })
   | [] -> None
 
 and match_expression_from_node node =
@@ -1810,12 +1797,11 @@ and match_expression_from_node node =
         |> List.filter_map match_case_from_node
       in
       Some
-        Cst.MatchExpression.
-          {
-            syntax_node = node;
-            scrutinee = expression_from_node scrutinee_node;
-            cases = match_cases;
-          }
+        {
+          syntax_node = node;
+          scrutinee = expression_from_node scrutinee_node;
+          cases = match_cases;
+        }
   | [] -> None
 
 and try_expression_from_node node =
@@ -1828,12 +1814,11 @@ and try_expression_from_node node =
         |> List.filter_map match_case_from_node
       in
       Some
-        Cst.TryExpression.
-          {
-            syntax_node = node;
-            body = expression_from_node body_node;
-            cases = match_cases;
-          }
+        {
+          syntax_node = node;
+          body = expression_from_node body_node;
+          cases = match_cases;
+        }
   | [] -> None
 
 and type_variable_from_node node =
@@ -2604,13 +2589,13 @@ let rec validate_pattern ~context = function
         elements
   | Cst.Pattern.Record { fields; _ } ->
       List.iteri
-        (fun index field ->
+        (fun index (field : Cst.record_pattern_field) ->
           Option.iter
             (validate_pattern
                ~context:
                  (("pattern.record.field[" ^ Int.to_string index ^ "].pattern")
                  :: context))
-            (Cst.RecordPatternField.pattern field))
+            field.pattern)
         fields
   | Cst.Pattern.Cons { head; tail; _ } ->
       validate_pattern ~context:("pattern.cons.head" :: context) head;
@@ -2778,13 +2763,13 @@ and validate_expression ~context = function
       validate_expression ~context:("expression.index.index" :: context) index
   | Cst.Expression.ObjectUpdate { fields; _ } ->
       List.iteri
-        (fun index field ->
+        (fun index (field : Cst.record_expression_field) ->
           Option.iter
             (validate_expression
                ~context:
                  (("expression.object_update.field[" ^ Int.to_string index ^ "].value")
                  :: context))
-            (Cst.RecordExpressionField.value field))
+            field.value)
         fields
   | Cst.Expression.Assign { target; value; _ } ->
       validate_expression ~context:("expression.assign.target" :: context) target;
@@ -2817,24 +2802,24 @@ and validate_expression ~context = function
         elements
   | Cst.Expression.Record (Cst.RecordExpression.Literal { fields; _ }) ->
       List.iteri
-        (fun index field ->
+        (fun index (field : Cst.record_expression_field) ->
           Option.iter
             (validate_expression
                ~context:
                  (("expression.record.field[" ^ Int.to_string index ^ "].value")
                  :: context))
-            (Cst.RecordExpressionField.value field))
+            field.value)
         fields
   | Cst.Expression.Record (Cst.RecordExpression.Update { base; fields; _ }) ->
       validate_expression ~context:("expression.record.base" :: context) base;
       List.iteri
-        (fun index field ->
+        (fun index (field : Cst.record_expression_field) ->
           Option.iter
             (validate_expression
                ~context:
                  (("expression.record.field[" ^ Int.to_string index ^ "].value")
                  :: context))
-            (Cst.RecordExpressionField.value field))
+            field.value)
         fields
   | Cst.Expression.LocalOpen { body; _ } ->
       validate_expression ~context:("expression.local_open.body" :: context) body

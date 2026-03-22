@@ -26,7 +26,7 @@ Examples:
 
 let rec unwrap_parens = function
   | Syn.Cst.Expression.Parenthesized expr ->
-      unwrap_parens (Syn.Cst.ParenthesizedExpression.inner expr)
+      unwrap_parens expr.inner
   | expr -> expr
 
 let expression_of_apply_argument = function
@@ -36,7 +36,7 @@ let expression_of_apply_argument = function
 let rec nested_call_count expr =
   match unwrap_parens expr with
   | Syn.Cst.Expression.Apply apply ->
-      (match expression_of_apply_argument (Syn.Cst.ApplyExpression.argument apply) with
+      (match expression_of_apply_argument apply.argument with
       | Some argument -> 1 + nested_call_count argument
       | None -> 1)
   | _ -> 0

@@ -37,7 +37,7 @@ let explanations () = [ explanation ]
 
 let rec unwrap_parens = function
   | Syn.Cst.Expression.Parenthesized expr ->
-      unwrap_parens (Syn.Cst.ParenthesizedExpression.inner expr)
+      unwrap_parens expr.inner
   | expr -> expr
 
 let path_text path =
@@ -55,7 +55,7 @@ let ends_with_list_rev path =
 
 let is_list_rev = function
   | Syn.Cst.Expression.Path expr ->
-      ends_with_list_rev (Syn.Cst.PathExpression.path expr)
+      ends_with_list_rev expr.path
   | _ -> false
 
 let expression_of_apply_argument = function
@@ -65,13 +65,13 @@ let expression_of_apply_argument = function
 
 let diagnostic_for_expression = function
   | Syn.Cst.Expression.Apply outer
-    when is_list_rev (unwrap_parens (Syn.Cst.ApplyExpression.callee outer)) -> (
+    when is_list_rev (unwrap_parens outer.callee) -> (
         match
-          Syn.Cst.ApplyExpression.argument outer |> expression_of_apply_argument
+          outer.argument |> expression_of_apply_argument
           |> Option.map unwrap_parens
         with
         | Some (Syn.Cst.Expression.Apply inner)
-          when is_list_rev (unwrap_parens (Syn.Cst.ApplyExpression.callee inner))
+          when is_list_rev (unwrap_parens inner.callee)
             ->
               Some
                 (Api.Diagnostic.make ~severity:Warning
@@ -82,19 +82,17 @@ let diagnostic_for_expression = function
                           rule_id = explanation.rule_id;
                           message = explanation.message;
                         })
-                   ~span:
-                     (Syn.Cst.ApplyExpression.syntax_node outer
-                     |> Syn.Ceibo.Red.SyntaxNode.span)
+                   ~span:(outer.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
                    ~suggestion:
                      ("Replace " ^ path_text
-                        (match unwrap_parens (Syn.Cst.ApplyExpression.callee outer) with
+                        (match unwrap_parens outer.callee with
                         | Syn.Cst.Expression.Path expr ->
-                            Syn.Cst.PathExpression.path expr
+                            expr.path
                         | _ -> panic "expected path expression")
                     ^ " (" ^ path_text
-                        (match unwrap_parens (Syn.Cst.ApplyExpression.callee inner) with
+                        (match unwrap_parens inner.callee with
                         | Syn.Cst.Expression.Path expr ->
-                            Syn.Cst.PathExpression.path expr
+                            expr.path
                         | _ -> panic "expected path expression")
                     ^ " xs) with xs or keep only one rev if order matters.")
                    ())
