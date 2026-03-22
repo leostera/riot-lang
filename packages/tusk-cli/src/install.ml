@@ -46,6 +46,34 @@ let build_package package_name =
         false
     | Error _ -> false
 
+let install_temp_path dst =
+  let dir = Path.dirname dst in
+  let name = Path.basename dst in
+  let pid = System.OsProcess.current_pid () in
+  let nonce = Random.bits () in
+  Path.(dir / Path.v ("." ^ name ^ ".install-" ^ Int.to_string pid ^ "-" ^ Int.to_string nonce))
+
+let cleanup_temp_file path =
+  match Fs.remove_file path with
+  | Ok () -> ()
+  | Error _ -> ()
+
+let install_binary_atomically ~src ~dst ~permissions =
+  let temp_path = install_temp_path dst in
+  match Fs.copy ~src ~dst:temp_path with
+  | Error err -> Error err
+  | Ok () -> (
+      match Fs.set_permissions temp_path permissions with
+      | Error err ->
+          cleanup_temp_file temp_path;
+          Error err
+      | Ok () -> (
+          match Fs.rename ~src:temp_path ~dst with
+          | Ok () -> Ok ()
+          | Error err ->
+              cleanup_temp_file temp_path;
+              Error err))
+
 let run matches =
   let open ArgParser in
   let binary_name =
@@ -111,9 +139,11 @@ let run matches =
 
             (* Always promote to project root *)
             let project_binary = Path.(workspace_root / Path.v binary_name) in
-            (match Fs.copy ~src:binary_path ~dst:project_binary with
+            (match
+               install_binary_atomically ~src:binary_path ~dst:project_binary
+                 ~permissions:perms
+             with
             | Ok () ->
-                ignore (Fs.set_permissions project_binary perms);
                 println
                   ("✅ Promoted " ^ binary_name ^ " to "
                   ^ Path.to_string project_binary)
@@ -130,9 +160,11 @@ let run matches =
                in
 
                let dest_path = Path.(tusk_bin_dir / Path.v binary_name) in
-               match Fs.copy ~src:binary_path ~dst:dest_path with
+               match
+                 install_binary_atomically ~src:binary_path ~dst:dest_path
+                   ~permissions:perms
+               with
                | Ok () ->
-                   ignore (Fs.set_permissions dest_path perms);
                    println
                      ("✅ Installed " ^ binary_name ^ " to "
                      ^ Path.to_string dest_path);
