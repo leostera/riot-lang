@@ -1,6 +1,25 @@
 open Syn
 open Std
 
+let parse_file ~file ~source =
+  let tokens = Lexer.tokenize source in
+  if String.ends_with ~suffix:".mli" file then
+    Parser.parse_interface ~source tokens
+  else Parser.parse_implementation ~source tokens
+
+let parse_result_to_ceibo_json result =
+  let kind_to_json kind = Data.Json.String (SyntaxKind.to_string kind) in
+  let text_to_json text = Data.Json.String text in
+  let tree_json =
+    Ceibo.Green.to_json ~kind_to_json ~text_to_json
+      (Ceibo.Green.Node result.Parser.tree)
+  in
+  Data.Json.Object
+    [
+      ("tree", tree_json);
+      ("diagnostics", Data.Json.Array (List.map Diagnostic.to_json result.diagnostics));
+    ]
+
 let handle_token_stream sub_matches =
   let file =
     ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required"
@@ -41,12 +60,7 @@ let handle_parse sub_matches =
       Log.error ("Error reading file " ^ file);
       exit 1
   | Ok source ->
-      let tokens = Lexer.tokenize source in
-      let result =
-        if String.ends_with ~suffix:".mli" file then
-          Parser.parse_interface ~source tokens
-        else Parser.parse_implementation ~source tokens
-      in
+      let result = parse_file ~file ~source in
 
       if json then
         let kind_to_json kind = Data.Json.String (SyntaxKind.to_string kind) in
@@ -60,28 +74,51 @@ let handle_parse sub_matches =
           in
           println (Data.Json.to_string tree_json)
         else
-          let tree_json =
-            Ceibo.Green.to_json ~kind_to_json ~text_to_json
-              (Ceibo.Green.Node result.tree)
-          in
-
-          let output =
-            Data.Json.Object
-              [
-                ("tree", tree_json);
-                ( "diagnostics",
-                  Data.Json.Array
-                    (List.map Diagnostic.to_json result.diagnostics) );
-              ]
-          in
-
-          println (Data.Json.to_string output)
+          println (Data.Json.to_string (parse_result_to_ceibo_json result))
       else if result.diagnostics != [] then
         DiagnosticReporter.print ~file ~source result.diagnostics
       else (
         Log.info "Parsed successfully";
         let width = Ceibo.Green.width (Ceibo.Green.Node result.tree) in
         Log.info ("Tree width: " ^ Int.to_string width ^ " bytes"))
+
+let handle_print_ceibo sub_matches =
+  let file =
+    ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required"
+  in
+  match Fs.read (Path.v file) with
+  | Error _err ->
+      Log.error ("Error reading file " ^ file);
+      exit 1
+  | Ok source ->
+      parse_file ~file ~source
+      |> parse_result_to_ceibo_json
+      |> Data.Json.to_string
+      |> println
+
+let handle_print_cst sub_matches =
+  let file =
+    ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required"
+  in
+  match Fs.read (Path.v file) with
+  | Error _err ->
+      Log.error ("Error reading file " ^ file);
+      exit 1
+  | Ok source ->
+      let result = parse_file ~file ~source in
+      let json =
+        if result.diagnostics != [] then
+          Data.Json.Object
+            [
+              ("status", Data.Json.String "parse_error");
+              ( "diagnostics",
+                Data.Json.Array (List.map Diagnostic.to_json result.diagnostics) );
+            ]
+        else
+          CstBuilder.create_from_ceibo result.tree
+          |> CstJson.of_result
+      in
+      println (Data.Json.to_string json)
 
 let handle_explain sub_matches =
   let error_code =
@@ -126,6 +163,22 @@ let () =
                   flag "red-tree" |> long "red-tree"
                   |> help "Output red tree (with spans) instead of green tree";
                 ];
+           command "print-ceibo"
+           |> about "Print lossless Ceibo parse result as JSON"
+           |> args
+                [
+                  positional "FILE"
+                  |> help "OCaml source file to parse"
+                  |> required true;
+                ];
+           command "print-cst"
+           |> about "Print typed CST lift result as JSON"
+           |> args
+                [
+                  positional "FILE"
+                  |> help "OCaml source file to lift"
+                  |> required true;
+                ];
            (* explain subcommand *)
            command "explain"
            |> about "Explain an error code"
@@ -147,6 +200,8 @@ let () =
       match ArgParser.get_subcommand matches with
       | Some ("tokenize", sub_matches) -> handle_token_stream sub_matches
       | Some ("parse", sub_matches) -> handle_parse sub_matches
+      | Some ("print-ceibo", sub_matches) -> handle_print_ceibo sub_matches
+      | Some ("print-cst", sub_matches) -> handle_print_cst sub_matches
       | Some ("explain", sub_matches) -> handle_explain sub_matches
       | _ ->
           ArgParser.print_help cmd;

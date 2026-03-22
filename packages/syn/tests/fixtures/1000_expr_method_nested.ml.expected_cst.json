@@ -1,0 +1,15 @@
+{
+  "status": "error",
+  "error": {
+    "message": "unsupported expression shape during Ceibo -> CST lifting",
+    "syntax_kind": "METHOD_CALL_EXPR",
+    "span": {
+      "start": 8,
+      "end": 33
+    },
+    "context": [
+      "item.let_binding.value",
+      "source_file.items[0]"
+    ]
+  }
+}

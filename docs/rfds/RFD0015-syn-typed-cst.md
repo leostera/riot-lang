@@ -1,6 +1,6 @@
-# RFD0015 - Syn Typed CST
+# RFD0015 - Syn Faithful CST
 
-- Feature Name: `syn_typed_cst`
+- Feature Name: `syn_faithful_cst`
 - Start Date: `2026-03-21`
 - RFD PR: [leostera/riot#0000](https://github.com/leostera/riot/pull/0000)
 - Riot Issue: [leostera/riot#0000](https://github.com/leostera/riot/issues/0000)
@@ -19,13 +19,17 @@ The central requirement is:
   per parse result
 - `Syn.Cst` should only be produced for parse results with no parser
   diagnostics
-- `Syn.Cst` should provide ergonomic, compiler-checked structural access
-- every CST node and token should retain a path back to exact source spans and
-  raw syntax so fix rules remain precise
+- `Syn.Cst` should be a faithful lift of the parsed syntax, not a
+  lint-convenience projection
+- `Syn.Cst` should not contain `Unknown` nodes
+- CST lifting should fail fast when the parsed syntax cannot be represented
+  faithfully
+- helper predicates such as `is_function` or `has_default` should live outside
+  the core tree definitions
 
-The intent is to make tooling such as `tusk-fix`, `tusk-eval`, and future
-macro/codegen systems easier to write without sacrificing the exact source
-fidelity that fix rules require.
+The intent is to make tooling such as `tusk-fix`, `tusk-eval`, the future
+formatter, and the future typechecker easier to write without sacrificing the
+exact source fidelity that fix rules require.
 
 ## Motivation
 [motivation]: #motivation
@@ -63,6 +67,7 @@ now a foundation for:
 - parser-backed diagnostics
 - future macros
 - future formatting and rewrite tooling
+- the future typechecker
 - other source-analysis tools that want structure, not just tokens
 
 These consumers want two things at once:
@@ -74,7 +79,8 @@ These consumers want two things at once:
 stable typed layer for the second.
 
 The proposal in this RFD is to add that typed layer without replacing the
-lossless tree.
+lossless tree, and to make that layer faithful enough that it can become the
+shared structural surface for more than lint rules.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -87,21 +93,41 @@ Contributors should think of `syn` as exposing two related syntax surfaces:
   - always exists, even when parsing reports diagnostics
   - remains the right surface for exact source edits and low-level traversal
 - `Syn.Cst`
-  - a typed, pattern-matchable concrete syntax API
+  - a typed, pattern-matchable concrete syntax tree
   - fully materialized from the same parse when parsing succeeds without
     diagnostics
   - easier to use for analysis and linting
+  - structured faithfully enough that later passes can rely on it as the
+    parser-shaped representation of the program
 
-The important point is that `Syn.Cst` should not be a lossy AST.
+The important point is that `Syn.Cst` should not be a lossy AST and should not
+be a lint-specific convenience projection.
 
 It should still be a concrete syntax tree. That means it should preserve
 syntactic distinctions that matter for tooling, such as:
 
+- `fun x -> ...` vs `function | ...`
+- `let` vs `let rec`
 - parenthesized vs unparenthesized expressions
+- `begin ... end` vs `( ... )`
 - labeled and optional arguments
-- record syntax shape
 - local opens
+- record syntax shape
 - module-path-qualified names
+
+If two concrete forms are grouped under one outer family, the inner payload
+should still preserve which form was written.
+
+For example:
+
+- `Expression.Literal literal_expr` is fine
+- but `literal_expr` should still distinguish string, int, bool, unit, and
+  other literal forms
+
+Likewise:
+
+- `Expression.Function function_expr` is fine
+- but `function_expr` should still distinguish `fun` from `function`
 
 ### What rule authors should write
 
@@ -118,13 +144,18 @@ match Syn.Ceibo.Red.SyntaxNode.kind node with
 rule authors should be able to write something like:
 
 ```ocaml
-match item with
-| Syn.Cst.Item.TypeDeclaration decl ->
-    let name = Syn.Cst.TypeDeclaration.name_token decl in
+let diagnostic_for_decl = function
+| Syn.Cst.Item.TypeDeclaration
+    {
+      name;
+      manifest = Some { body; _ };
+      _;
+    } ->
     ...
+| _ -> None
 ```
 
-This would make lint rules:
+This should make lint rules:
 
 - shorter
 - easier to review
@@ -136,7 +167,7 @@ This would make lint rules:
 Fix rules should still produce edits against exact spans or tokens:
 
 ```ocaml
-let token = Syn.Cst.TypeDeclaration.name_token decl in
+let token = decl.name.token in
 Fix.make_text_edit
   ~span:(Syn.Ceibo.Red.SyntaxToken.span token.syntax_token)
   ~new_text:"user_profile"
@@ -160,11 +191,13 @@ flowchart TD
   B --> C[parser]
   C --> D[Ceibo green tree]
   D --> E[Ceibo red view]
-  D --> F[fully materialized typed CST]
-  E --> G[exact spans and tokens]
-  F --> H[ergonomic rule matching]
-  G --> I[diagnostics and fixes]
-  H --> I
+  D --> F[create_from_ceibo]
+  F -->|Ok| G[typed CST]
+  F -->|Error| H[lift error]
+  E --> I[exact spans and tokens]
+  G --> J[ergonomic structural matching]
+  I --> K[diagnostics and fixes]
+  J --> K
 ```
 
 The CST should not replace the raw tree. It should make the raw tree easier to
@@ -174,107 +207,129 @@ The key invariant should be:
 
 - `tree` always exists
 - `diagnostics` may exist
-- `cst = Some _` should mean there were no parse errors
+- `cst = Some _` should mean there were no parse diagnostics and the Ceibo to
+  CST lift succeeded
 - `cst = None` should mean the caller must stay on diagnostics or raw-tree
   tooling
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-## 1. Core design
+## 1. Core invariants
 
-`syn` should continue to parse source into a lossless `Ceibo` tree.
+The CST should satisfy these invariants:
 
-In addition, it should expose a typed CST layer with these properties:
+- it should be built from `Ceibo`, not independently from the token stream
+- it should not drop concrete distinctions that the parsed program recorded
+- it should not expose `Unknown` nodes in the public tree
+- it should either produce a complete typed CST or fail
+- it should retain exact `Ceibo` identity for nodes and tokens
 
-- typed nodes and tokens
-- recursive, fully typed node families for declarations, expressions, patterns,
-  types, modules, signatures, and other concrete syntax categories
-- pattern-matchable sum types for syntax families such as `expr`, `pattern`,
-  and `type_expr`
-- exact links back to raw `Ceibo.Red` nodes or tokens
-- generated definitions rather than handwritten wrappers
-- only produced for parse results with no parser diagnostics
+`Syn.Cst` should therefore be a faithful lift, not a best-effort partial
+view.
 
-The typed CST should be a structured projection of the parsed concrete syntax,
-not a separate semantic AST.
+## 2. Public API
 
-## 2. API shape
-
-The API should look conceptually like:
+`syn` should expose one public CST construction function:
 
 ```ocaml
 module Cst : sig
-  type source_file
-
-  type syntax_node = (SyntaxKind.t, string) Ceibo.Red.syntax_node
-  type syntax_token = (SyntaxKind.t, string) Ceibo.Red.syntax_token
-
-  module Item : sig
-    type t =
-      | TypeDeclaration of TypeDeclaration.t
-      | ModuleDeclaration of ModuleDeclaration.t
-      | LetBinding of LetBinding.t
-  end
-
-  type expr =
-    | LetExpr of LetExpr.t
-    | MatchExpr of MatchExpr.t
-    | ApplyExpr of ApplyExpr.t
-    | IdentExpr of IdentExpr.t
-    | TupleExpr of TupleExpr.t
-
-  type pattern =
-    | VarPattern of VarPattern.t
-    | TuplePattern of TuplePattern.t
-    | ConstructorPattern of ConstructorPattern.t
-
-  val syntax_node_of_source_file : source_file -> syntax_node
-end
-```
-
-Specific typed nodes should expose structural fields:
-
-```ocaml
-module TypeDeclaration : sig
-  type t = {
-    syntax_node : syntax_node;
-    type_keyword : token;
-    type_name : TypeName.t;
-    parameters : type_parameter list;
-    manifest : type_expr option;
-    constraints : type_constraint list;
-    attributes : attribute list;
+  type error = {
+    message : string;
+    syntax_kind : Syntax_kind.t;
+    span : Ceibo.Span.t;
+    context : string list;
   }
 
-  val syntax_node : t -> syntax_node
-  val name_token : t -> token
+  val create_from_ceibo :
+    (Syntax_kind.t, string) Ceibo.Green.node -> (source_file, error) result
 end
 ```
 
-And recursively typed families should look like:
+The parser should continue to return:
 
 ```ocaml
-type expr =
-  | LetExpr of let_expr
-  | MatchExpr of match_expr
-  | ApplyExpr of apply_expr
-  | IdentExpr of ident_expr
-  | TupleExpr of tuple_expr
-
-and let_expr = {
-  syntax_node : syntax_node;
-  pattern : pattern;
-  value : expr;
-  body : expr;
+type parse_result = {
+  tree : Ceibo.Green.t;
+  cst : Cst.source_file option;
+  diagnostics : Diagnostic.t list;
 }
 ```
 
-This structure should make it possible to write pattern-match-driven tooling
-without manually indexing into raw child arrays or repeatedly materializing
-typed child views.
+But `parse_result.cst` should be treated as a convenience field, not the
+authoritative constructor. The authoritative API should be
+`Cst.create_from_ceibo`.
 
-## 3. Relationship to `Ceibo`
+## 3. Internal lifting model
+
+The implementation inside `cst.ml` should use a private exception-backed
+control flow to bail out quickly:
+
+```ocaml
+type error = {
+  message : string;
+  syntax_kind : Syntax_kind.t;
+  span : Ceibo.Span.t;
+  context : string list;
+}
+
+exception Bail of error
+
+let bail ... = raise (Bail error)
+
+let rec lift_expression ... = ...
+let rec lift_pattern ... = ...
+let rec lift_type ... = ...
+
+let lift ceibo = ...
+
+let create_from_ceibo ceibo =
+  match lift ceibo with
+  | cst -> Ok cst
+  | exception Bail error -> Error error
+```
+
+This should let the internal lifting code:
+
+- be assertive about expected shapes
+- fail fast
+- avoid threading `result` through every internal helper
+
+While still giving public consumers a normal result-based API.
+
+## 4. CST shape rules
+
+The CST should follow these shape rules:
+
+- broad grouped families at the outer layer are fine
+- concrete distinctions should be preserved inside family payloads
+- boolean fields should not stand in for meaningful syntax variants
+- accessor-only wrapper modules should not be the primary API
+- convenience predicates and derived views should live outside the core tree
+
+Examples:
+
+- `Expression.Literal literal_expr` is good
+- `literal_expr` should still distinguish string, int, float, char, bool, unit,
+  constructor-constants, and quoted strings where applicable
+
+- `Expression.Let let_expr` is good
+- `let_expr` should still distinguish `let` from `let rec`
+
+- `Expression.Function function_expr` is good
+- `function_expr` should still distinguish `fun` from `function`
+
+- `Expression.Wrapped wrapped_expr` is good
+- `wrapped_expr` should still distinguish `(expr)` from `begin expr end`
+
+Helpers such as these should live in a separate module like `Syn.Matchers`:
+
+- `LetBinding.is_function`
+- `Parameter.has_default`
+- `TypeDeclaration.name`
+- `Expression.is_literal`
+
+## 5. Relationship to `Ceibo`
 
 `Ceibo` should remain canonical for:
 
@@ -283,7 +338,7 @@ typed child views.
 - spans
 - exact source reproduction
 - low-level tree traversals
-- future incremental parsing
+- parser recovery
 
 `Syn.Cst` should remain a layer on top of that.
 
@@ -294,114 +349,68 @@ Every CST token should likewise retain:
 - raw token handle
 - span
 - text access
-- presence/missing information where applicable
+- presence or missing information where applicable
 
 That is what keeps fix rules precise.
 
-## 4. Parse result construction
+## 6. Fixture-driven coverage
 
-The CST should be constructed once per parse result and then shared by
-consumers.
+The faithful lift should be driven by the existing parser fixture suite instead
+of by a handwritten grammar checklist in this RFD.
 
-The parse result should therefore look conceptually like:
+For each fixture in
+[packages/syn/tests/fixtures](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/tests/fixtures),
+the project should compare two versioned artifacts:
 
-```ocaml
-type parse_result = {
-  tree : Ceibo.Green.t;
-  cst : Cst.source_file option;
-  diagnostics : Diagnostic.t list;
-}
-```
+- `<fixture>.expected_lossless.json`
+- `<fixture>.expected_cst.json`
 
-That allows `tusk-fix`, future typechecking, and other tooling to parse once
-per file, obtain one stable CST, and run multiple passes over the same
-structured tree when parsing succeeds.
+Those artifacts should be produced by the `syn` binary itself:
 
-## 5. Parse diagnostics and CST availability
+- `syn print-ceibo <file>`
+- `syn print-cst <file>`
 
-Because `syn` is resilient, the raw `Ceibo` tree should remain the recovery
-surface.
+This should become the practical coverage tracker for `Syn.Cst`.
 
-The first typed CST should take the simpler approach:
+If a fixture parses successfully but the CST lift is still missing some syntax,
+then `print-cst` should return a structured lift error and the corresponding
+`expected_cst` snapshot should make that gap visible until the lift is
+implemented.
 
-- if parsing reports diagnostics, `cst` should be `None`
-- if `cst` exists, callers should be able to assume the parse was structurally
-  valid enough for typed traversal
+When extending the CST, the development loop should be:
 
-This keeps the initial CST simpler:
+1. pick a failing fixture
+2. extend the CST types if needed
+3. extend the `Ceibo -> Cst` lift
+4. update the fixture snapshot
+5. repeat until the fixture passes
 
-- typed nodes do not need to model parser recovery
-- rule authors do not need to reason about malformed structural variants
-- the existence of a CST becomes a simple signal for downstream tooling
+That keeps the coverage work grounded in real parser inputs and keeps the CST
+honest about the exact syntax Riot already parses.
 
-This matches the current `tusk-fix` pipeline well, because lint rules already
-skip structural analysis when parse diagnostics are present.
-
-## 6. Code generation
-
-The typed CST should be generated from syntax metadata rather than maintained
-by hand.
-
-That generator should define:
-
-- the typed node families
-- field layouts
-- accessor functions
-- pattern-matchable wrapper variants
-- the full recursive CST construction from parsed syntax
-
-Hand-maintaining wrappers for the full OCaml grammar would be too error-prone
-and would drift from the parser.
-
-## 7. Tooling integration
-
-`tusk-fix` should eventually consume `Syn.Cst` as its primary structural API.
-
-That should let rules ask questions like:
-
-- what is the declared type name here?
-- what module path is being opened?
-- what are the named arguments of this function declaration?
-- is this string expression a concatenation chain of string literals?
-
-without spelling those questions as raw `SyntaxKind` traversals.
-
-At the same time, `tusk-fix` should keep emitting edits as exact text edits over
-`Ceibo` spans.
-
-That split should look like:
-
-- structure from `Syn.Cst`
-- precision from `Ceibo`
-
-And the execution model should be:
-
-- if `cst = Some tree`, run typed structural rules
-- if `cst = None`, report parse diagnostics and skip CST-dependent analysis
-
-## 8. Suggested rollout
+## Suggested rollout
 
 The rollout should happen in slices:
 
 ### Stage 1
 
-- define syntax metadata for a small useful subset of nodes
-- implement generated typed CST nodes
-- add `cst` to `parse_result`
-- keep all current `Ceibo` APIs unchanged
+- define the faithful-lift contract
+- add `create_from_ceibo`
+- remove `Unknown` from the public CST surface
+- add lift errors with context breadcrumbs
 
 ### Stage 2
 
-- cover declaration and expression nodes used most often by `tusk-fix`
-- migrate one or two lint rules to `Syn.Cst`
-- validate that fixes still target exact spans cleanly
-- keep the invariant that CST-backed rules run only on diagnostics-free parses
+- cover expressions, patterns, and type expressions
+- add CST tests that prove faithful distinctions
+- move convenience helpers into `Syn.Matchers`
 
 ### Stage 3
 
-- expand CST coverage across the grammar
-- add convenience iterators and visitors
-- make `tusk-fix` use `Syn.Cst` by default for new built-in rules
+- cover declarations, module syntax, class syntax, and signatures
+- migrate `tusk-fix` to depend on faithful CST nodes rather than convenience
+  wrappers
+- keep the fixture snapshots as the coverage tracker
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -436,11 +445,29 @@ Because Riot still needs the lossless tree for:
 - exact source spans
 - trivia preservation
 - precise fixes
-- future incremental parsing and structural sharing
 - parser recovery
 
 Replacing `Ceibo` would optimize the wrong thing and would likely make precise
 rewrites harder, not easier.
+
+### Why not keep a convenience-shaped CST
+
+Because a convenience-shaped CST will quickly drift toward lint-specific
+shortcuts:
+
+- booleans instead of meaningful syntax variants
+- flattened paths that lose concrete distinctions
+- payloads that normalize away the source form too early
+
+That would help individual rules in the short term but would be a bad
+foundation for:
+
+- a formatter
+- a typechecker
+- general structural analysis
+
+The CST should therefore model the parsed syntax faithfully first, and only
+then offer convenience through separate helper layers.
 
 ### Why not expose only lightweight typed views over raw nodes
 
@@ -461,20 +488,22 @@ rather than a chain of on-demand child views.
 Because that makes the first design significantly more complex:
 
 - every typed node family has to model malformed structure
-- callers have to reason about `Missing`, `Unexpected`, or `Error` cases
+- callers have to reason about recovery nodes
 - the invariant "typed traversal is safe when CST exists" disappears
 
 The simpler first step should be:
 
 - always produce `Ceibo`
 - only produce `Cst` when parsing is clean
+- make faithful CST lifting either succeed or fail
 
 If Riot later needs recovery-aware typed syntax, that should be a follow-up
 design rather than a requirement for the first CST.
 
 ### Why not expose a semantic AST instead
 
-Because linting and rewriting need concrete syntax, not normalized syntax.
+Because linting, formatting, and rewriting need concrete syntax, not normalized
+syntax.
 
 A semantic AST would collapse distinctions that tools often care about, such as:
 
@@ -482,7 +511,7 @@ A semantic AST would collapse distinctions that tools often care about, such as:
 - parentheses
 - optional argument syntax
 - exact path qualification
-- malformed-but-present syntax
+- concrete local-open forms
 
 The typed layer should therefore remain a CST, not an AST.
 
@@ -508,24 +537,18 @@ The strongest shared lesson is:
 [unresolved-questions]: #unresolved-questions
 
 - What syntax metadata format should drive code generation for typed nodes?
-- How much of the grammar should be covered before `tusk-fix` starts depending
-  on `Syn.Cst` for new rules?
-- Should Riot eventually add a second, recovery-aware CST mode for interactive
-  tooling, or should malformed-file tooling remain on the raw `Ceibo` layer?
+- Should the fixture runner grow snapshot-refresh tooling for both lossless and
+  CST artifacts?
+- How should parser-facing APIs expose lift failures for debugging without
+  complicating normal parse consumers?
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities
 
-Once Riot has a typed CST, it could support:
+Once Riot has a faithful typed CST, it could support:
 
-- safer formatter development
-- CST-driven rewrite helpers on top of exact text edits
-- typed macro input helpers
-- richer editor features
-- syntax-schema-driven documentation for the OCaml grammar as `syn` models it
-
-The most important follow-up, though, should remain modest:
-
-- get a typed CST that makes lint rules significantly easier to write
-- keep `Ceibo` as the exact source-fidelity layer underneath
-- use `cst` presence as a simple "no parse errors" signal for structural tools
+- formatter passes over exact syntax structure
+- richer `tusk-fix` rewrites
+- parser-backed editor tooling
+- structural refactorings
+- a future typechecker built on shared parser-shaped nodes

@@ -3,8 +3,9 @@
 Unified test runner for syn parser.
 
 Usage:
-  # Run all fixture tests
+  # Run Ceibo fixture tests
   python3 test_runner.py fixtures
+  python3 test_runner.py cst
   
   # Run specific fixture tests (filter by prefix/pattern)
   python3 test_runner.py fixtures --filter 08
@@ -19,7 +20,7 @@ Usage:
   # Debug a specific file with trivia analysis
   python3 test_runner.py debug <file>
   
-  # Run all tests (fixtures + diagnostics + codebase)
+  # Run all tests (ceibo fixtures + cst fixtures + diagnostics + codebase)
   python3 test_runner.py all
 """
 
@@ -78,6 +79,27 @@ class TestRunner:
             return fallback[0]
 
         return self.workspace_root / "_build" / "debug" / "out" / "syn" / "syn"
+
+    def discover_fixture_sources(
+        self, filter_pattern: Optional[str] = None
+    ) -> List[Path]:
+        patterns = (
+            [f"*{filter_pattern}*.ml", f"*{filter_pattern}*.mli"]
+            if filter_pattern
+            else ["*.ml", "*.mli"]
+        )
+
+        fixtures: List[Path] = []
+        for pattern in patterns:
+            fixtures.extend(self.fixtures_dir.glob(pattern))
+
+        fixtures = [
+            fixture
+            for fixture in fixtures
+            if not str(fixture).endswith(".expected_lossless.json")
+            and not str(fixture).endswith(".expected_cst.json")
+        ]
+        return sorted(fixtures)
         
     def run_syn(self, args: List[str], file_path: Path) -> Tuple[str, int]:
         """Run syn command and return (output, returncode)."""
@@ -392,8 +414,8 @@ class TestRunner:
 
         return count
 
-    def fixture_failure_summary(self, fixture_path: Path) -> str:
-        output, returncode = self.run_syn(["parse", "--json"], fixture_path)
+    def ceibo_fixture_failure_summary(self, fixture_path: Path) -> str:
+        output, returncode = self.run_syn(["print-ceibo"], fixture_path)
         if returncode != 0:
             if self.did_timeout(output, returncode):
                 return f"{RED}✗{NC} {fixture_path.name} (parser timed out)"
@@ -419,15 +441,15 @@ class TestRunner:
         return f"{RED}✗{NC} {fixture_path.name} ({', '.join(parts)})"
     
     def test_fixture(self, fixture_path: Path, verbose: bool = False) -> bool:
-        """Test a single fixture file. Returns True if passed."""
-        expected_path = Path(str(fixture_path) + ".expected")
+        """Test a single Ceibo fixture file. Returns True if passed."""
+        expected_path = Path(str(fixture_path) + ".expected_lossless.json")
         
         # Read source
         with open(fixture_path, 'r') as f:
             source = f.read()
         
-        # Parse the file (green tree)
-        output, returncode = self.run_syn(["parse", "--json"], fixture_path)
+        # Parse the file (Ceibo JSON)
+        output, returncode = self.run_syn(["print-ceibo"], fixture_path)
         if returncode != 0:
             if verbose:
                 if self.did_timeout(output, returncode):
@@ -485,10 +507,10 @@ class TestRunner:
                 print(f"{RED}Empty parse tree - feature not implemented{NC}")
             return False
         
-        # If .expected file doesn't exist, create it with actual output
+        # If .expected_lossless.json file doesn't exist, create it with actual output
         if not expected_path.exists():
             if verbose:
-                print(f"{YELLOW}Creating .expected file for {fixture_path.name}{NC}")
+                print(f"{YELLOW}Creating .expected_lossless.json for {fixture_path.name}{NC}")
             expected_path.write_text(self.format_expected_json(actual))
             return True
         
@@ -518,8 +540,8 @@ class TestRunner:
         return normalized_actual == normalized_expected
 
     def refresh_fixture_if_clean(self, fixture_path: Path) -> bool:
-        expected_path = Path(str(fixture_path) + ".expected")
-        output, returncode = self.run_syn(["parse", "--json"], fixture_path)
+        expected_path = Path(str(fixture_path) + ".expected_lossless.json")
+        output, returncode = self.run_syn(["print-ceibo"], fixture_path)
         if returncode != 0:
             return False
 
@@ -551,17 +573,16 @@ class TestRunner:
         verbose: bool = False,
         refresh_clean: bool = False,
     ) -> Tuple[int, int]:
-        """Run fixture tests. Returns (passed, failed)."""
-        print(f"\n{BLUE}Running fixture tests...{NC}")
+        """Run Ceibo fixture tests. Returns (passed, failed)."""
+        print(f"\n{BLUE}Running Ceibo fixture tests...{NC}")
         if filter_pattern:
             print(f"Filter: {filter_pattern}")
         print()
         
-        # Find matching fixtures
-        pattern = f"*{filter_pattern}*.ml" if filter_pattern else "*.ml"
-        fixtures = sorted(self.fixtures_dir.glob(pattern))
+        fixtures = self.discover_fixture_sources(filter_pattern)
         
         if not fixtures:
+            pattern = filter_pattern or "*"
             print(f"{YELLOW}No fixtures found matching: {pattern}{NC}")
             return 0, 0
         
@@ -570,10 +591,6 @@ class TestRunner:
         failed_summaries = []
         
         for fixture in fixtures:
-            # Skip .expected files
-            if fixture.suffix == ".expected":
-                continue
-            
             basename = fixture.name
             result = self.test_fixture(fixture, verbose=verbose)
             
@@ -589,7 +606,7 @@ class TestRunner:
                         print(f"{basename}... {YELLOW}REFRESHED{NC}")
                 else:
                     failed += 1
-                    failed_summaries.append(self.fixture_failure_summary(fixture))
+                    failed_summaries.append(self.ceibo_fixture_failure_summary(fixture))
                     if verbose:
                         print(f"{basename}... {RED}FAILED{NC}")
         
@@ -598,6 +615,103 @@ class TestRunner:
             for summary in failed_summaries:
                 print(f"  {summary}")
         
+        print(f"\n{BLUE}Results:{NC} {passed} passed, {failed} failed")
+        return passed, failed
+
+    def cst_fixture_failure_summary(self, fixture_path: Path) -> str:
+        output, returncode = self.run_syn(["print-cst"], fixture_path)
+        if returncode != 0:
+            if self.did_timeout(output, returncode):
+                return f"{RED}✗{NC} {fixture_path.name} (CST lift timed out)"
+            return f"{RED}✗{NC} {fixture_path.name} (CST lift failed)"
+
+        try:
+            result = json.loads(output.strip())
+        except json.JSONDecodeError:
+            return f"{RED}✗{NC} {fixture_path.name} (invalid CST JSON output)"
+
+        status = result.get("status", "unknown")
+        return f"{RED}✗{NC} {fixture_path.name} (status={status})"
+
+    def test_cst_fixture(self, fixture_path: Path, verbose: bool = False) -> bool:
+        expected_path = Path(str(fixture_path) + ".expected_cst.json")
+        output, returncode = self.run_syn(["print-cst"], fixture_path)
+        if returncode != 0:
+            if verbose:
+                if self.did_timeout(output, returncode):
+                    print(f"{RED}CST lift timed out for {fixture_path.name}{NC}")
+                else:
+                    print(f"{RED}CST lift failed for {fixture_path.name}{NC}")
+            return False
+
+        actual = output.strip()
+
+        try:
+            json.loads(actual)
+        except json.JSONDecodeError:
+            if verbose:
+                print(f"{RED}Invalid CST JSON output{NC}")
+            return False
+
+        if not expected_path.exists():
+            if verbose:
+                print(f"{YELLOW}Creating .expected_cst.json for {fixture_path.name}{NC}")
+            expected_path.write_text(self.format_expected_json(actual))
+            return True
+
+        with open(expected_path, "r") as f:
+            expected = f.read().strip()
+
+        try:
+            normalized_actual = self.normalize_expected_json(actual)
+            normalized_expected = self.normalize_expected_json(expected)
+        except json.JSONDecodeError:
+            if verbose:
+                print(f"{RED}Could not normalize CST JSON for comparison{NC}")
+            return False
+
+        return normalized_actual == normalized_expected
+
+    def run_cst_fixtures(
+        self,
+        filter_pattern: Optional[str] = None,
+        verbose: bool = False,
+    ) -> Tuple[int, int]:
+        print(f"\n{BLUE}Running CST fixture tests...{NC}")
+        if filter_pattern:
+            print(f"Filter: {filter_pattern}")
+        print()
+
+        fixtures = self.discover_fixture_sources(filter_pattern)
+
+        if not fixtures:
+            pattern = filter_pattern or "*"
+            print(f"{YELLOW}No fixtures found matching: {pattern}{NC}")
+            return 0, 0
+
+        passed = 0
+        failed = 0
+        failed_summaries = []
+
+        for fixture in fixtures:
+            basename = fixture.name
+            result = self.test_cst_fixture(fixture, verbose=verbose)
+
+            if result:
+                passed += 1
+                if verbose:
+                    print(f"{basename}... {GREEN}PASSED{NC}")
+            else:
+                failed += 1
+                failed_summaries.append(self.cst_fixture_failure_summary(fixture))
+                if verbose:
+                    print(f"{basename}... {RED}FAILED{NC}")
+
+        if failed_summaries:
+            print(f"\n{YELLOW}Failed CST fixtures:{NC}")
+            for summary in failed_summaries:
+                print(f"  {summary}")
+
         print(f"\n{BLUE}Results:{NC} {passed} passed, {failed} failed")
         return passed, failed
     
@@ -814,7 +928,7 @@ def main():
     
     parser.add_argument(
         "command",
-        choices=["fixtures", "diagnostics", "codebase", "debug", "all"],
+        choices=["fixtures", "cst", "diagnostics", "codebase", "debug", "all"],
         help="Test mode to run"
     )
     
@@ -887,6 +1001,11 @@ def main():
         passed, failed = runner.run_diagnostics(args.filter, verbose=args.verbose)
         if failed > 0:
             exit_code = 1
+
+    elif args.command == "cst":
+        passed, failed = runner.run_cst_fixtures(args.filter, verbose=args.verbose)
+        if failed > 0:
+            exit_code = 1
     
     elif args.command == "codebase":
         passed, failed = runner.run_codebase(args.verbose)
@@ -902,6 +1021,11 @@ def main():
             verbose=args.verbose, refresh_clean=args.refresh_clean
         )
         
+        # Run CST fixtures
+        cst_passed, cst_failed = runner.run_cst_fixtures(
+            verbose=args.verbose
+        )
+
         # Run diagnostics
         diag_passed, diag_failed = runner.run_diagnostics(verbose=args.verbose)
         
@@ -909,13 +1033,14 @@ def main():
         code_passed, code_failed = runner.run_codebase(args.verbose)
         
         # Summary
-        total_passed = fix_passed + diag_passed + code_passed
-        total_failed = fix_failed + diag_failed + code_failed
+        total_passed = fix_passed + cst_passed + diag_passed + code_passed
+        total_failed = fix_failed + cst_failed + diag_failed + code_failed
         
         print(f"\n{BLUE}{'=' * 80}{NC}")
         print(f"{BLUE}OVERALL RESULTS{NC}")
         print(f"{BLUE}{'=' * 80}{NC}")
         print(f"Fixtures: {fix_passed} passed, {fix_failed} failed")
+        print(f"CST fixtures: {cst_passed} passed, {cst_failed} failed")
         print(f"Diagnostics: {diag_passed} passed, {diag_failed} failed")
         print(f"Codebase: {code_passed} passed, {code_failed} failed")
         print(f"{BLUE}Total: {total_passed} passed, {total_failed} failed{NC}")

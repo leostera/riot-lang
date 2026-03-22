@@ -87,6 +87,12 @@ module Cst : module type of Cst
 
     `Cst` is only produced for parse results without diagnostics. *)
 
+module CstBuilder : module type of Cst_builder
+(** Faithful Ceibo-to-CST lift with a result-based API. *)
+
+module CstJson : module type of Cst_json
+(** JSON serialization helpers for the typed CST and lift errors. *)
+
 module Parser : module type of Parser
 (** OCaml parser that produces Ceibo trees. *)
 

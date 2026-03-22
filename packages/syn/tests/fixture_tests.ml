@@ -16,6 +16,13 @@ let parse_result_to_json result =
         Json.Array (List.map Diagnostic.to_json result.Parser.diagnostics) );
     ]
 
+let normalize_json json =
+  Json.to_string json
+
+let parse_expected_json raw_json =
+  Json.of_string raw_json
+  |> Result.expect ~msg:"Failed to parse expected JSON fixture"
+
 let test_fixture fixture_path expected_path =
   let source =
     Fs.read (Path.v fixture_path) |> Result.expect ~msg:"Failed to read fixture"
@@ -27,8 +34,8 @@ let test_fixture fixture_path expected_path =
 
   let parse_result = Syn.parse ~filename:fixture_path source in
   let actual_json = parse_result_to_json parse_result in
-  let actual_str = Json.to_string actual_json in
-  let expected_str = String.trim expected_json in
+  let actual_str = normalize_json actual_json in
+  let expected_str = parse_expected_json expected_json |> normalize_json in
 
   if actual_str = expected_str then Ok ()
   else
@@ -51,7 +58,7 @@ let discover_fixtures () =
         String.ends_with ~suffix:".ml" path
         || String.ends_with ~suffix:".mli" path
       then
-        let expected_path = path ^ ".expected" in
+        let expected_path = path ^ ".expected_lossless.json" in
         let exists =
           Fs.exists (Path.v expected_path) |> Result.unwrap_or ~default:false
         in

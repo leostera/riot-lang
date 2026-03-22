@@ -81,10 +81,11 @@ type parse_result = {
           source had syntax errors. *)
   cst : Cst.source_file option;
       (** Fully materialized typed CST when parsing succeeded without
-          diagnostics.
+          diagnostics and the Ceibo-to-CST lift succeeded.
 
-          `None` means parser diagnostics were produced and callers should stay
-          on diagnostics or the raw lossless tree. *)
+          `None` means parser diagnostics were produced or the current CST
+          lift does not yet cover the parsed syntax, so callers should stay on
+          diagnostics or the raw lossless tree. *)
   diagnostics : Diagnostic.t list;
       (** List of parse errors and warnings.
 
@@ -96,7 +97,7 @@ type parse_result = {
     The parser **always** returns a parse result, even if the source code is
     malformed. The `diagnostics` field indicates whether there were any
     problems, and the `cst` field is only populated when those diagnostics are
-    empty.
+    empty and the typed CST lift succeeds.
 
     This design enables:
     - IDE features that work on incomplete code

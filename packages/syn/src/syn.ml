@@ -10,6 +10,8 @@ module Diagnostic = Diagnostic
 module Parser = Parser
 module DiagnosticReporter = Diagnostic_reporter
 module Cst = Cst
+module CstBuilder = Cst_builder
+module CstJson = Cst_json
 
 let tokenize source = Lexer.tokenize source
 

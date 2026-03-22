@@ -10269,7 +10269,11 @@ and parse ~parse_item ~source ~tokens =
 
   let diagnostics = List.rev (Cell.get parser.diagnostics) |> dedupe_diagnostics in
   let cst =
-    if List.length diagnostics = 0 then Some (Cst.of_green_tree tree) else None
+    if List.length diagnostics = 0 then
+      match Cst_builder.create_from_ceibo tree with
+      | Ok cst -> Some cst
+      | Error _ -> None
+    else None
   in
   { tree; cst; diagnostics }
 

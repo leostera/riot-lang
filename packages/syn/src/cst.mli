@@ -143,6 +143,11 @@ type expression =
   | Apply of apply_expression
   | FieldAccess of field_access_expression
   | Infix of infix_expression
+  | Tuple of tuple_expression
+  | List of list_expression
+  | Array of array_expression
+  | Record of record_expression
+  | LocalOpen of local_open_expression
   | Fun of fun_expression
   | Function of function_expression
   | Let of let_expression
@@ -174,6 +179,32 @@ and infix_expression = {
   left : expression;
   operator_token : Token.t;
   right : expression;
+}
+
+and tuple_expression = {
+  syntax_node : syntax_node;
+  elements : expression list;
+}
+
+and list_expression = {
+  syntax_node : syntax_node;
+  elements : expression list;
+}
+
+and array_expression = {
+  syntax_node : syntax_node;
+  elements : expression list;
+}
+
+and record_expression = {
+  syntax_node : syntax_node;
+}
+
+and local_open_expression = {
+  syntax_node : syntax_node;
+  module_path : ModulePath.t;
+  body : expression;
+  via_let_open : bool;
 }
 
 and fun_expression = {
@@ -233,6 +264,11 @@ module Expression : sig
     | Apply of apply_expression
     | FieldAccess of field_access_expression
     | Infix of infix_expression
+    | Tuple of tuple_expression
+    | List of list_expression
+    | Array of array_expression
+    | Record of record_expression
+    | LocalOpen of local_open_expression
     | Fun of fun_expression
     | Function of function_expression
     | Let of let_expression
@@ -463,6 +499,9 @@ end
 module TypeDefinition : sig
   type t =
     | Abstract
+    | Alias of {
+        syntax_node : syntax_node;
+      }
     | Record of RecordField.t list
     | Variant of VariantConstructor.t list
     | PolyVariant of PolyVariantTag.t list
@@ -566,5 +605,4 @@ end
 
 type source_file = SourceFile.t
 
-val of_green_tree : green_node -> source_file
 val syntax_node_of_source_file : source_file -> syntax_node
