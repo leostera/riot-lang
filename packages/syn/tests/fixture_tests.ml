@@ -32,7 +32,7 @@ let test_fixture fixture_path expected_path =
     |> Result.expect ~msg:"Failed to read expected"
   in
 
-  let parse_result = Syn.parse ~filename:fixture_path source in
+  let parse_result = Syn.parse ~filename:(Path.v fixture_path) source in
   let actual_json = parse_result_to_json parse_result in
   let actual_str = normalize_json actual_json in
   let expected_str = parse_expected_json expected_json |> normalize_json in

@@ -17,6 +17,11 @@ module Token = struct
   let span token = Ceibo.Red.SyntaxToken.span token.syntax_token
 end
 
+type attribute = {
+  syntax_node : syntax_node;
+  tokens : Token.t list;
+}
+
 module ModulePath = struct
   type t = {
     syntax_node : syntax_node;
@@ -286,12 +291,19 @@ end
 
 type literal = Literal.t
 
+type exception_declaration = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+}
+
 type expression =
   | Path of path_expression
   | Literal of literal
+  | Attribute of attribute
   | PolyVariant of poly_variant_expression
   | FirstClassModule of first_class_module_expression
   | LetModule of let_module_expression
+  | LetException of let_exception_expression
   | Assert of assert_expression
   | Lazy of lazy_expression
   | While of while_expression
@@ -340,6 +352,12 @@ and let_module_expression = {
   syntax_node : syntax_node;
   module_name_token : Token.t;
   module_expression_syntax_node : syntax_node;
+  body : expression;
+}
+
+and let_exception_expression = {
+  syntax_node : syntax_node;
+  exception_declaration : exception_declaration;
   body : expression;
 }
 
@@ -496,10 +514,21 @@ and function_expression = {
   cases : match_case list;
 }
 
+and let_binding = {
+  syntax_node : syntax_node;
+  attributes : attribute list;
+  binding_pattern : pattern;
+  binding_name : Token.t option;
+  parameters : Parameter.t list;
+  value : expression;
+  is_recursive : bool;
+}
+
 and let_expression = {
   syntax_node : syntax_node;
   binding_pattern : pattern;
   bound_value : expression;
+  and_bindings : let_binding list;
   body : expression;
   is_recursive : bool;
 }
@@ -539,9 +568,11 @@ module Expression = struct
   type t = expression =
     | Path of path_expression
     | Literal of literal
+    | Attribute of attribute
     | PolyVariant of poly_variant_expression
     | FirstClassModule of first_class_module_expression
     | LetModule of let_module_expression
+    | LetException of let_exception_expression
     | Assert of assert_expression
     | Lazy of lazy_expression
     | While of while_expression
@@ -580,9 +611,11 @@ module Expression = struct
         | Literal.Bool { syntax_node; _ }
         | Literal.Unit { syntax_node } ->
             syntax_node)
+    | Attribute attr -> attr.syntax_node
     | PolyVariant expr -> expr.syntax_node
     | FirstClassModule expr -> expr.syntax_node
     | LetModule expr -> expr.syntax_node
+    | LetException expr -> expr.syntax_node
     | Assert expr -> expr.syntax_node
     | Lazy expr -> expr.syntax_node
     | While expr -> expr.syntax_node
@@ -917,6 +950,7 @@ module LetExpression = struct
     syntax_node : syntax_node;
     binding_pattern : pattern;
     bound_value : expression;
+    and_bindings : let_binding list;
     body : expression;
     is_recursive : bool;
   }
@@ -924,6 +958,7 @@ module LetExpression = struct
   let syntax_node expr = expr.syntax_node
   let binding_pattern expr = expr.binding_pattern
   let bound_value expr = expr.bound_value
+  let and_bindings expr = expr.and_bindings
   let body expr = expr.body
   let is_recursive expr = expr.is_recursive
 end
@@ -1093,16 +1128,18 @@ module TypeDeclaration = struct
 end
 
 module LetBinding = struct
-  type t = {
+  type t = let_binding = {
     syntax_node : syntax_node;
+    attributes : attribute list;
     binding_pattern : pattern;
     binding_name : Token.t option;
     parameters : Parameter.t list;
-    value : Expression.t;
+    value : expression;
     is_recursive : bool;
   }
 
   let syntax_node binding = binding.syntax_node
+  let attributes binding = binding.attributes
   let binding_pattern binding = binding.binding_pattern
   let binding_name_token binding = binding.binding_name
   let name binding =
@@ -1176,11 +1213,6 @@ type include_statement = {
   included_syntax_node : syntax_node;
 }
 
-type exception_declaration = {
-  syntax_node : syntax_node;
-  name_token : Token.t;
-}
-
 module Item = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
@@ -1209,20 +1241,48 @@ module Item = struct
     | Unknown node -> node
 end
 
+type implementation = {
+  syntax_node : syntax_node;
+  items : Item.t list;
+  let_bindings : LetBinding.t list;
+  expressions : Expression.t list;
+}
+
+type interface = {
+  syntax_node : syntax_node;
+  items : Item.t list;
+  let_bindings : LetBinding.t list;
+  expressions : Expression.t list;
+}
+
+type t =
+  | Implementation of implementation
+  | Interface of interface
+
+type source_file = t
+
 module SourceFile = struct
-  type t = {
-    syntax_node : syntax_node;
-    items : Item.t list;
-    let_bindings : LetBinding.t list;
-    expressions : Expression.t list;
-  }
+  type t = source_file
 
-  let syntax_node source_file = source_file.syntax_node
-  let items source_file = source_file.items
-  let let_bindings source_file = source_file.let_bindings
-  let expressions source_file = source_file.expressions
+  let syntax_node = function
+    | Implementation source_file -> source_file.syntax_node
+    | Interface source_file -> source_file.syntax_node
+
+  let items = function
+    | Implementation source_file -> source_file.items
+    | Interface source_file -> source_file.items
+
+  let let_bindings = function
+    | Implementation source_file -> source_file.let_bindings
+    | Interface source_file -> source_file.let_bindings
+
+  let expressions = function
+    | Implementation source_file -> source_file.expressions
+    | Interface source_file -> source_file.expressions
+
+  let kind = function
+    | Implementation _ -> `Implementation
+    | Interface _ -> `Interface
 end
-
-type source_file = SourceFile.t
 
 let syntax_node_of_source_file source_file = SourceFile.syntax_node source_file

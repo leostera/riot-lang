@@ -6,20 +6,41 @@ let expect_some value ~msg =
   | Some value -> Ok value
   | None -> Error msg
 
+let sample_ml = Path.v "sample.ml"
+let sample_mli = Path.v "sample.mli"
+
+let parse_ml source = Syn.parse ~filename:sample_ml source
+let parse_mli source = Syn.parse ~filename:sample_mli source
+
 let tests =
   [
     Test.case "cst exists for diagnostics-free parse" (fun () ->
-        let result = Syn.parse ~filename:"sample.ml" "type userProfile = int\n" in
+        let result = parse_ml "type userProfile = int\n" in
         Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
         Test.assert_true (Option.is_some result.cst);
+        (match result.cst with
+        | Some cst ->
+            Test.assert_equal ~expected:`Implementation
+              ~actual:(Syn.Cst.SourceFile.kind cst)
+        | None -> ());
+        Ok ());
+    Test.case "cst root distinguishes interfaces from implementations" (fun () ->
+        let result = parse_mli "val create : int -> int\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        Test.assert_equal ~expected:`Interface
+          ~actual:(Syn.Cst.SourceFile.kind cst);
         Ok ());
     Test.case "cst is absent when parse diagnostics exist" (fun () ->
-        let result = Syn.parse ~filename:"sample.ml" "let x =\n" in
+        let result = parse_ml "let x =\n" in
         Test.assert_true (List.length result.diagnostics > 0);
         Test.assert_true (Option.is_none result.cst);
         Ok ());
     Test.case "cst type declarations keep last module-path segment as name" (fun () ->
-        let result = Syn.parse ~filename:"sample.ml" "type Message.t += Added\n" in
+        let result = parse_ml "type Message.t += Added\n" in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -34,7 +55,7 @@ let tests =
         | _ -> Error "expected first item to be a type declaration");
     Test.case "cst type declarations expose direct type parameters" (fun () ->
         let result =
-          Syn.parse ~filename:"sample.ml" "type ('a, 'error) resultish = int\n"
+          parse_ml "type ('a, 'error) resultish = int\n"
         in
         let cst =
           expect_some result.cst
@@ -54,7 +75,7 @@ let tests =
         | _ -> Error "expected first item to be a type declaration");
     Test.case "cst type declarations expose record fields structurally" (fun () ->
         let result =
-          Syn.parse ~filename:"sample.ml"
+          parse_ml
             "type user = { mutable userName : string; created_at : int }\n"
         in
         let cst =
@@ -81,7 +102,7 @@ let tests =
         | _ -> Error "expected first item to be a type declaration");
     Test.case "cst type declarations expose variant constructors structurally" (fun () ->
         let result =
-          Syn.parse ~filename:"sample.ml"
+          parse_ml
             "type user = | Guest_user | RegisteredUser of int\n"
         in
         let cst =
@@ -106,7 +127,7 @@ let tests =
         | _ -> Error "expected first item to be a type declaration");
     Test.case "cst type declarations expose polyvariant tags structurally" (fun () ->
         let result =
-          Syn.parse ~filename:"sample.ml"
+          parse_ml
             "type user = [ `guest_user | `RegisteredUser of int ]\n"
         in
         let cst =
@@ -128,7 +149,7 @@ let tests =
             | _ -> Error "expected polyvariant type definition")
         | _ -> Error "expected first item to be a type declaration");
     Test.case "cst let bindings expose function binding names" (fun () ->
-        let result = Syn.parse ~filename:"sample.ml" "let userProfile x = x\n" in
+        let result = parse_ml "let userProfile x = x\n" in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -143,7 +164,7 @@ let tests =
             Ok ()
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst let bindings distinguish value bindings from function bindings" (fun () ->
-        let result = Syn.parse ~filename:"sample.ml" "let userProfile = 42\n" in
+        let result = parse_ml "let userProfile = 42\n" in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -156,7 +177,7 @@ let tests =
             Ok ()
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst module declarations expose declared module names" (fun () ->
-        let result = Syn.parse ~filename:"sample.ml" "module Foo_bar = struct end\n" in
+        let result = parse_ml "module Foo_bar = struct end\n" in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -170,7 +191,7 @@ let tests =
             Ok ()
         | _ -> Error "expected first item to be a module declaration");
     Test.case "cst module type declarations expose declared names" (fun () ->
-        let result = Syn.parse ~filename:"sample.ml" "module type Foo_bar = sig end\n" in
+        let result = parse_ml "module type Foo_bar = sig end\n" in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -184,7 +205,7 @@ let tests =
             Ok ()
         | _ -> Error "expected first item to be a module type declaration");
     Test.case "cst value declarations preserve names and type nodes" (fun () ->
-        let result = Syn.parse ~filename:"sample.mli" "val create : name:string -> person\n" in
+        let result = parse_mli "val create : name:string -> person\n" in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -202,7 +223,7 @@ let tests =
         | _ -> Error "expected first item to be a value declaration");
     Test.case "cst external declarations preserve primitive names" (fun () ->
         let result =
-          Syn.parse ~filename:"sample.ml"
+          parse_ml
             "external sqrt : float -> float = \"caml_sqrt_float\"\n"
         in
         let cst =
@@ -220,7 +241,7 @@ let tests =
         | _ -> Error "expected first item to be an external declaration");
     Test.case "cst include statements preserve included syntax nodes" (fun () ->
         let result =
-          Syn.parse ~filename:"sample.mli" "include module type of Stdlib.Array\n"
+          parse_mli "include module type of Stdlib.Array\n"
         in
         let cst =
           expect_some result.cst
@@ -236,7 +257,7 @@ let tests =
             Ok ()
         | _ -> Error "expected first item to be an include statement");
     Test.case "cst exception declarations preserve declared names" (fun () ->
-        let result = Syn.parse ~filename:"sample.ml" "exception Not_found\n" in
+        let result = parse_ml "exception Not_found\n" in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -251,7 +272,7 @@ let tests =
     Test.case "cst type declarations preserve first-class module type definitions"
       (fun () ->
         let result =
-          Syn.parse ~filename:"sample.ml"
+          parse_ml
             "type transport = (module Transport)\n"
         in
         let cst =
@@ -278,7 +299,7 @@ let tests =
             Ok ()
         | _ -> Error "expected first-class module type definition");
     Test.case "cst open statements preserve open! structurally" (fun () ->
-        let result = Syn.parse ~filename:"sample.ml" "open! Std.List\n" in
+        let result = parse_ml "open! Std.List\n" in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -297,7 +318,7 @@ let tests =
         let source =
           "let top_level = 1\nlet render x = let local_value = x in local_value\n"
         in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -315,7 +336,7 @@ let tests =
         let source =
           "let render userId ~displayName ?pageSize current_user = current_user\n"
         in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -339,7 +360,7 @@ let tests =
         | None -> Error "expected render binding parameters");
     Test.case "cst let bindings preserve recursive markers" (fun () ->
         let source = "let rec loop x = loop x\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -352,7 +373,7 @@ let tests =
         | [] -> Error "expected recursive let binding");
     Test.case "cst let bindings expose infix string concatenation values" (fun () ->
         let source = "let banner = \"a\" ^ \"b\" ^ \"c\"\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -369,7 +390,7 @@ let tests =
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst let bindings expose custom infix operators structurally" (fun () ->
         let source = "let composed = f %> g\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -386,7 +407,7 @@ let tests =
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst let bindings expose if expressions and unit else branches" (fun () ->
         let source = "let render ok = if ok then log () else ()\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -403,7 +424,7 @@ let tests =
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst if expressions preserve boolean literal comparisons" (fun () ->
         let source = "let render ok = if ok = true then log () else ()\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -436,7 +457,7 @@ let tests =
     Test.case "cst typed expressions preserve the wrapped expression and type node"
       (fun () ->
         let source = "let render = (value : user_t)\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -465,7 +486,7 @@ let tests =
         | _ -> Error "expected typed expression value");
     Test.case "cst coerce expressions preserve optional source types" (fun () ->
         let source = "let render = (value : user_t :> display_t)\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -499,7 +520,7 @@ let tests =
         | _ -> Error "expected coerce expression value");
     Test.case "cst source files keep top-level let-in expressions as items" (fun () ->
         let source = "let a, b = pair in a\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -530,7 +551,7 @@ let tests =
         | _ -> Error "expected top-level let expression item");
     Test.case "cst let expressions expose unit-pattern sequencing structurally" (fun () ->
         let source = "let render () = let () = log () in flush ()\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -554,7 +575,7 @@ let tests =
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst let bindings expose fun expressions structurally" (fun () ->
         let source = "let render = fun value -> value\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -581,7 +602,7 @@ let tests =
         | _ -> Error "expected first item to be a let binding with a fun expression");
     Test.case "cst let bindings expose function expressions structurally" (fun () ->
         let source = "let render = function | 0 -> \"zero\" | _ -> \"other\"\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -599,7 +620,7 @@ let tests =
         | _ -> Error "expected first item to be a let binding with a function expression");
     Test.case "cst match expressions expose boolean cases structurally" (fun () ->
         let source = "let render flag = match flag with true -> 1 | false -> 0\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -641,7 +662,7 @@ let tests =
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst try expressions expose handlers structurally" (fun () ->
         let source = "let render value = try render_inner value with exn -> raise exn\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -672,7 +693,7 @@ let tests =
         | _ -> Error "expected first item to be a let binding with a try expression");
     Test.case "cst source files collect recognized expressions recursively" (fun () ->
         let source = "let changed = (left <> right)\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -689,7 +710,7 @@ let tests =
         Ok ());
     Test.case "cst let bindings expose apply and field access expressions structurally" (fun () ->
         let source = "let reversed = List.rev (List.rev xs)\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -728,7 +749,7 @@ let tests =
     Test.case "cst apply expressions preserve labeled arguments structurally"
       (fun () ->
         let source = "let x = f ~y:1\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -763,7 +784,7 @@ let tests =
     Test.case "cst apply expressions preserve optional shorthand arguments"
       (fun () ->
         let source = "let x = f ?y\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -794,7 +815,7 @@ let tests =
     Test.case "cst local opens preserve module paths from token-only syntax"
       (fun () ->
         let source = "let x =\n  let open List in\n  map f xs\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -821,7 +842,7 @@ let tests =
     Test.case "cst prefix local opens preserve module paths and body expressions"
       (fun () ->
         let source = "let x = M.{ field = 42 }\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -849,7 +870,7 @@ let tests =
     Test.case "cst first-class module expressions preserve module and type nodes"
       (fun () ->
         let source = "let x = (module M : S)\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -881,7 +902,7 @@ let tests =
     Test.case "cst let-module expressions preserve module name and body"
       (fun () ->
         let source = "let run driver = let module D = (val driver) in D.execute ()\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -911,7 +932,7 @@ let tests =
         | _ -> Error "expected let-module expression");
     Test.case "cst field access preserves nested qualified field access structurally" (fun () ->
         let source = "let render record = record.Module.field\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -946,7 +967,7 @@ let tests =
         | _ -> Error "expected nested field access structure");
     Test.case "cst preserves parenthesized expressions structurally" (fun () ->
         let source = "let wrapped = (((((value)))))\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -968,7 +989,7 @@ let tests =
         let source =
           "let render = function | Some (head, _) -> head | None -> 0\n"
         in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1033,7 +1054,7 @@ let tests =
         let source =
           "let render value = match value with | (user : user_t) as current_user -> current_user\n"
         in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1082,7 +1103,7 @@ let tests =
         | _ -> Error "expected faithful alias typed pattern structure");
     Test.case "cst lazy patterns preserve the wrapped pattern" (fun () ->
         let source = "let f x = match x with | (lazy y) -> y\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1125,7 +1146,7 @@ let tests =
         let source =
           "let f x = match x with exception Not_found -> None | y -> Some y\n"
         in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1162,7 +1183,7 @@ let tests =
         let source =
           "let f x = match x with | 'a' .. 'z' -> \"lowercase\" | _ -> \"other\"\n"
         in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1199,7 +1220,7 @@ let tests =
         | _ -> Error "expected range pattern structure");
     Test.case "cst record expressions preserve literal fields structurally" (fun () ->
         let source = "let point = { x = 1; y = 2 }\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1231,7 +1252,7 @@ let tests =
     Test.case "cst record update expressions preserve base and updated fields"
       (fun () ->
         let source = "let point = { point with x = 3 }\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1260,7 +1281,7 @@ let tests =
     Test.case "cst index and assign expressions preserve the written target"
       (fun () ->
         let source = "let x = arr.(0) <- 5\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1299,7 +1320,7 @@ let tests =
     Test.case "cst record patterns preserve field punning and nested patterns"
       (fun () ->
         let source = "let x = match r with { user = { id }; name } -> id\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1359,7 +1380,7 @@ let tests =
         | _ -> Error "expected record pattern structure");
     Test.case "cst array patterns preserve literal element patterns" (fun () ->
         let source = "let x = match xs with [| 1; value |] -> value\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1400,7 +1421,7 @@ let tests =
     Test.case "cst string indexing reuses the shared index expression shape"
       (fun () ->
         let source = "let x = s.[0]\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1429,7 +1450,7 @@ let tests =
         | _ -> Error "expected string index expression");
     Test.case "cst polyvariant expressions preserve tags and payloads" (fun () ->
         let source = "let x = `Point { y = 1; z = 2 }\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1458,7 +1479,7 @@ let tests =
         | _ -> Error "expected polyvariant expression");
     Test.case "cst polyvariant patterns preserve tags and payloads" (fun () ->
         let source = "let x = match y with `Point (a, b) -> a\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1511,7 +1532,7 @@ let tests =
         | _ -> Error "expected polyvariant pattern");
     Test.case "cst nested record updates preserve expression bases" (fun () ->
         let source = "let x = { { point with a = 1 } with b = 2 }\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1545,7 +1566,7 @@ let tests =
         | _ -> Error "expected nested record update");
     Test.case "cst assert expressions preserve the asserted value" (fun () ->
         let source = "let x = assert true\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1571,7 +1592,7 @@ let tests =
         | _ -> Error "expected assert expression");
     Test.case "cst lazy expressions preserve the wrapped body" (fun () ->
         let source = "let x = lazy (1 + 2)\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1599,7 +1620,7 @@ let tests =
     Test.case "cst while expressions preserve the condition and body"
       (fun () ->
         let source = "let x = while !y < 10 do y := !y + 1 done\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -1624,7 +1645,7 @@ let tests =
         | _ -> Error "expected while expression");
     Test.case "cst for expressions preserve iterator and direction" (fun () ->
         let source = "let x = for i = 0 downto 1 do f i done\n" in
-        let result = Syn.parse ~filename:"sample.ml" source in
+        let result = parse_ml source in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"

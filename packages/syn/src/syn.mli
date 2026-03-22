@@ -26,34 +26,53 @@ open Std
 
     ## Lexing Only
 
-    ```ocaml let source = "let x = 42" in let tokens = Syn.tokenize source in
-    List.iter (fun tok -> Printf.printf "%s\n" (Token.show_kind tok.kind) )
-    tokens ```
+    ```ocaml 
+    let source = "let x = 42" in let tokens = Syn.tokenize source in
+    List.iter 
+      (fun tok -> Printf.printf "%s\n" (Token.show_kind tok.kind) )
+      tokens 
+    ```
 
     ## Full Parsing
 
-    ```ocaml let source = "let x = 1 + 2" in let result = Syn.parse source in
+    ```ocaml 
+    let source = "let x = 1 + 2" in let result = Syn.parse source in
 
-    (* Check for errors *) if result.diagnostics != [] then List.iter (fun diag
-    -> print ("Error: " ^ (Diagnostic.to_string diag) ^ "\n") )
-    result.diagnostics;
+    (* Check for errors *) 
+    if result.diagnostics != [] then 
+      List.iter
+        (fun diag -> print ("Error: " ^ (Diagnostic.to_string diag) ^ "\n") )
+        result.diagnostics;
 
-    (* Work with the tree *) let root = Ceibo.Red.new_root result.tree in (* ...
-    traverse tree ... *) ```
+    (* Work with the tree *) 
+    let root = Ceibo.Red.new_root result.tree in 
+    (* ... traverse tree ... *)
+    ```
 
     ## Working with Parse Errors
 
     The parser never fails - it produces a tree even from malformed code:
 
-    ```ocaml let source = "let x = " in (* incomplete *) let result = Syn.parse
-    source in
+    ```ocaml 
+    let source = "let x = " in 
+    (* incomplete *) 
+    let result = Syn.parse source in
 
-    (* result.tree is a valid tree with ERROR/MISSING nodes *) (*
-    result.diagnostics contains structured error info *)
+    (* result.tree is a valid tree with ERROR/MISSING nodes *) 
+    (* result.diagnostics contains structured error info *)
 
-    match result.diagnostics with | [] -> Printf.printf "No errors\n" | errs ->
-    List.iter (fun err -> Printf.printf "%s at %s\n" (Diagnostic.to_string err)
-    (Ceibo.Span.to_string err.span) ) errs ``` *)
+    match result.diagnostics with 
+    | [] -> Printf.printf "No errors\n" 
+    | errs -> 
+        List.iter 
+          (fun err -> 
+            Printf.printf "%s at %s\n" 
+              (Diagnostic.to_string err)
+              (Ceibo.Span.to_string err.span)) 
+          errs
+
+    ```
+*)
 
 (** # Module Exports *)
 
@@ -115,7 +134,7 @@ val parse_implementation : string -> Parser.parse_result
 (** `parse_implementation source` parses .ml source code into a Ceibo green tree
     with diagnostics. *)
 
-val parse : filename:string -> string -> Parser.parse_result
+val parse : filename:Std.Path.t -> string -> Parser.parse_result
 (** `parse ~filename source` parses source code into a Ceibo green tree with
     diagnostics.
 

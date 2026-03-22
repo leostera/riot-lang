@@ -79,7 +79,7 @@ type parse_result = {
           This is an immutable, position-independent tree that preserves all
           source information. It may contain ERROR and MISSING nodes if the
           source had syntax errors. *)
-  cst : Cst.source_file option;
+  cst : Cst.t option;
       (** Fully materialized typed CST when parsing succeeded without
           diagnostics and the Ceibo-to-CST lift succeeded.
 

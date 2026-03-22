@@ -11,7 +11,7 @@ let test_diagnostic test_path diagnostic_path =
     |> Result.expect ~msg:"Failed to read diagnostic file"
   in
 
-  let parse_result = Syn.parse ~filename:test_path source in
+  let parse_result = Syn.parse ~filename:(Path.v test_path) source in
   let actual_diagnostics = parse_result.Parser.diagnostics in
 
   let expected_json =

@@ -355,10 +355,8 @@ That is what keeps fix rules precise.
 
 ## 6. Fixture-driven coverage
 
-The faithful lift should be driven by the existing parser fixture suite instead
-of by a handwritten grammar checklist in this RFD.
-
-For each fixture in
+The faithful lift should be driven by the existing parser fixture suite. For
+each fixture in
 [packages/syn/tests/fixtures](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/tests/fixtures),
 the project should compare two versioned artifacts:
 

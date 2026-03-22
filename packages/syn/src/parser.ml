@@ -13,7 +13,7 @@ open Std.Collections
 
 type parse_result = {
   tree : (Syntax_kind.t, string) Ceibo.Green.node;
-  cst : Cst.source_file option;
+  cst : Cst.t option;
   diagnostics : Diagnostic.t list;
 }
 (** Parse result type *)
@@ -10216,7 +10216,7 @@ and parse_signature_item parser =
       let diagnostic = unexpected_top_level_item_diagnostic parser tok ~signature:true in
       make_error_node parser ~diagnostic ~consumed_tokens:[ tok ]
 
-and parse ~parse_item ~source ~tokens =
+and parse ~cst_kind ~parse_item ~source ~tokens =
   let parser = create ~source tokens in
 
   let same_diagnostic left right =
@@ -10270,7 +10270,7 @@ and parse ~parse_item ~source ~tokens =
   let diagnostics = List.rev (Cell.get parser.diagnostics) |> dedupe_diagnostics in
   let cst =
     if List.length diagnostics = 0 then
-      match Cst_builder.create_from_ceibo tree with
+      match Cst_builder.create_from_ceibo ~kind:cst_kind tree with
       | Ok cst -> Some cst
       | Error _ -> None
     else None
@@ -10279,11 +10279,12 @@ and parse ~parse_item ~source ~tokens =
 
 (** Parse interface file (.mli) *)
 let parse_interface ~source tokens =
-  parse ~parse_item:parse_signature_item ~source ~tokens
+  parse ~cst_kind:`Interface ~parse_item:parse_signature_item ~source ~tokens
 
 (** Parse implementation file (.ml) *)
 let parse_implementation ~source tokens =
-  parse ~parse_item:parse_structure_item ~source ~tokens
+  parse ~cst_kind:`Implementation ~parse_item:parse_structure_item ~source
+    ~tokens
  
  
  

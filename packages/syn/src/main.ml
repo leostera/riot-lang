@@ -115,7 +115,12 @@ let handle_print_cst sub_matches =
                 Data.Json.Array (List.map Diagnostic.to_json result.diagnostics) );
             ]
         else
-          CstBuilder.create_from_ceibo result.tree
+          CstBuilder.create_from_ceibo
+            ~kind:
+              (if String.ends_with ~suffix:".mli" file then
+                 `Interface
+               else `Implementation)
+            result.tree
           |> CstJson.of_result
       in
       println (Data.Json.to_string json)

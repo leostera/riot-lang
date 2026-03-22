@@ -851,6 +851,11 @@ let item_to_json = function
 let of_source_file source_file =
   Json.Object
     [
+      ( "kind",
+        Json.String
+          (match Cst.SourceFile.kind source_file with
+          | `Implementation -> "implementation"
+          | `Interface -> "interface") );
       ("syntax_node", syntax_node_to_json (Cst.SourceFile.syntax_node source_file));
       ("items", Json.Array (List.map item_to_json (Cst.SourceFile.items source_file)));
       ( "let_bindings",

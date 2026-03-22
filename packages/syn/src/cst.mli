@@ -12,6 +12,11 @@ module Token : sig
   val span : t -> Ceibo.Span.t
 end
 
+type attribute = {
+  syntax_node : syntax_node;
+  tokens : Token.t list;
+}
+
 module ModulePath : sig
   type t = {
     syntax_node : syntax_node;
@@ -250,12 +255,19 @@ end
 
 type literal = Literal.t
 
+type exception_declaration = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+}
+
 type expression =
   | Path of path_expression
   | Literal of literal
+  | Attribute of attribute
   | PolyVariant of poly_variant_expression
   | FirstClassModule of first_class_module_expression
   | LetModule of let_module_expression
+  | LetException of let_exception_expression
   | Assert of assert_expression
   | Lazy of lazy_expression
   | While of while_expression
@@ -304,6 +316,12 @@ and let_module_expression = {
   syntax_node : syntax_node;
   module_name_token : Token.t;
   module_expression_syntax_node : syntax_node;
+  body : expression;
+}
+
+and let_exception_expression = {
+  syntax_node : syntax_node;
+  exception_declaration : exception_declaration;
   body : expression;
 }
 
@@ -460,10 +478,21 @@ and function_expression = {
   cases : match_case list;
 }
 
+and let_binding = {
+  syntax_node : syntax_node;
+  attributes : attribute list;
+  binding_pattern : pattern;
+  binding_name : Token.t option;
+  parameters : Parameter.t list;
+  value : expression;
+  is_recursive : bool;
+}
+
 and let_expression = {
   syntax_node : syntax_node;
   binding_pattern : pattern;
   bound_value : expression;
+  and_bindings : let_binding list;
   body : expression;
   is_recursive : bool;
 }
@@ -503,9 +532,11 @@ module Expression : sig
   type t = expression =
     | Path of path_expression
     | Literal of literal
+    | Attribute of attribute
     | PolyVariant of poly_variant_expression
     | FirstClassModule of first_class_module_expression
     | LetModule of let_module_expression
+    | LetException of let_exception_expression
     | Assert of assert_expression
     | Lazy of lazy_expression
     | While of while_expression
@@ -792,6 +823,7 @@ module LetExpression : sig
     syntax_node : syntax_node;
     binding_pattern : pattern;
     bound_value : expression;
+    and_bindings : let_binding list;
     body : expression;
     is_recursive : bool;
   }
@@ -799,6 +831,7 @@ module LetExpression : sig
   val syntax_node : t -> syntax_node
   val binding_pattern : t -> Pattern.t
   val bound_value : t -> Expression.t
+  val and_bindings : t -> let_binding list
   val body : t -> Expression.t
   val is_recursive : t -> bool
 end
@@ -954,16 +987,18 @@ module TypeDeclaration : sig
 end
 
 module LetBinding : sig
-  type t = {
+  type t = let_binding = {
     syntax_node : syntax_node;
+    attributes : attribute list;
     binding_pattern : pattern;
     binding_name : Token.t option;
     parameters : Parameter.t list;
-    value : Expression.t;
+    value : expression;
     is_recursive : bool;
   }
 
   val syntax_node : t -> syntax_node
+  val attributes : t -> attribute list
   val binding_pattern : t -> Pattern.t
   val binding_name_token : t -> Token.t option
   val name : t -> string
@@ -1027,11 +1062,6 @@ type include_statement = {
   included_syntax_node : syntax_node;
 }
 
-type exception_declaration = {
-  syntax_node : syntax_node;
-  name_token : Token.t;
-}
-
 module Item : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
@@ -1049,20 +1079,34 @@ module Item : sig
   val syntax_node : t -> syntax_node
 end
 
+type implementation = {
+  syntax_node : syntax_node;
+  items : Item.t list;
+  let_bindings : LetBinding.t list;
+  expressions : Expression.t list;
+}
+
+type interface = {
+  syntax_node : syntax_node;
+  items : Item.t list;
+  let_bindings : LetBinding.t list;
+  expressions : Expression.t list;
+}
+
+type t =
+  | Implementation of implementation
+  | Interface of interface
+
+type source_file = t
+
 module SourceFile : sig
-  type t = {
-    syntax_node : syntax_node;
-    items : Item.t list;
-    let_bindings : LetBinding.t list;
-    expressions : Expression.t list;
-  }
+  type t = source_file
 
   val syntax_node : t -> syntax_node
   val items : t -> Item.t list
   val let_bindings : t -> LetBinding.t list
   val expressions : t -> Expression.t list
+  val kind : t -> [ `Implementation | `Interface ]
 end
-
-type source_file = SourceFile.t
 
 val syntax_node_of_source_file : source_file -> syntax_node

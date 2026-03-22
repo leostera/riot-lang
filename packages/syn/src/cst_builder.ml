@@ -66,6 +66,9 @@ let module_path_like_from_node node =
   | _ ->
       Cst.ModulePath.{ syntax_node = node; segments = List.map token (direct_non_trivia_tokens node) }
 
+let attribute_from_node node =
+  { Cst.syntax_node = node; tokens = List.map token (direct_non_trivia_tokens node) }
+
 let is_parameter_like_kind = function
   | Syntax_kind.IDENT_PATTERN
   | Syntax_kind.WILDCARD_PATTERN
@@ -129,10 +132,67 @@ let rec simple_pattern_name_token node =
          |> List.rev
          |> List.find_opt (fun child ->
                 Ceibo.Red.SyntaxNode.kind child = Syntax_kind.IDENT_PATTERN)
-       with
+      with
       | Some child -> name_token_from_ident_pattern child
       | None -> None)
   | _ -> None
+
+let is_attribute_node node =
+  Ceibo.Red.SyntaxNode.kind node = Syntax_kind.ATTRIBUTE_EXPR
+
+let is_let_binding_node node =
+  let kind = Ceibo.Red.SyntaxNode.kind node in
+  kind = Syntax_kind.LET_BINDING || kind = Syntax_kind.LET_REC_BINDING
+
+let split_at_first_and_binding nodes =
+  let rec loop acc = function
+    | child :: rest when is_let_binding_node child ->
+        (List.rev acc, child :: rest)
+    | child :: rest ->
+        loop (child :: acc) rest
+    | [] -> (List.rev acc, [])
+  in
+  loop [] nodes
+
+let let_expression_parts ~is_recursive_binding node =
+  let is_recursive_binding =
+    is_recursive_binding
+    || List.exists
+         (fun syntax_token ->
+           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "rec")
+         (direct_non_trivia_tokens node)
+  in
+  let binding_children =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child -> not (is_attribute_node child))
+  in
+  match binding_children with
+  | exception_decl :: rest
+    when Ceibo.Red.SyntaxNode.kind exception_decl = Syntax_kind.EXCEPTION_DECL ->
+      (match List.rev rest with
+      | body_node :: _ ->
+          Some (`Exception (exception_decl, body_node))
+      | [] -> None)
+  | binding_pattern_node :: rest -> (
+      match List.rev rest with
+      | body_node :: rev_prefix ->
+          let prefix = List.rev rev_prefix in
+          let binding_prefix, and_binding_nodes =
+            split_at_first_and_binding prefix
+          in
+          (match List.rev binding_prefix with
+          | bound_value_node :: rev_param_nodes ->
+              Some
+                (`Value
+                  ( is_recursive_binding,
+                    binding_pattern_node,
+                    List.rev rev_param_nodes,
+                    bound_value_node,
+                    and_binding_nodes,
+                    body_node ))
+          | [] -> None)
+      | [] -> None)
+  | [] -> None
 
 let first_ident_token_in_subtree node =
   let rec go_node node =
@@ -466,6 +526,8 @@ and expression_from_node node =
   | Syntax_kind.MODULE_PATH ->
       Cst.Expression.Path
         { syntax_node = node; path = module_path_from_node node }
+  | Syntax_kind.ATTRIBUTE_EXPR ->
+      Cst.Expression.Attribute (attribute_from_node node)
   | Syntax_kind.UNIT_LITERAL ->
       Cst.Expression.Literal (Cst.Literal.Unit { syntax_node = node })
   | Syntax_kind.FIELD_ACCESS_EXPR -> (
@@ -629,6 +691,30 @@ and expression_from_node node =
       match let_module_expression_from_node node with
       | Some expr -> Cst.Expression.LetModule expr
       | None -> Cst.Expression.Unknown node)
+  | Syntax_kind.LET_EXPR -> (
+      match let_expression_parts ~is_recursive_binding:false node with
+      | Some (`Exception (exception_decl_node, body_node)) -> (
+          match direct_non_trivia_tokens exception_decl_node with
+          | _exception_kw :: name_syntax_token :: _ ->
+              Cst.Expression.LetException
+                {
+                  syntax_node = node;
+                  exception_declaration =
+                    {
+                      syntax_node = exception_decl_node;
+                      name_token = token name_syntax_token;
+                    };
+                  body = expression_from_node body_node;
+                }
+          | _ -> Cst.Expression.Unknown node)
+      | _ -> (
+          match let_expression_from_node ~is_recursive_binding:false node with
+          | Some expr -> Cst.Expression.Let expr
+          | None -> Cst.Expression.Unknown node))
+  | Syntax_kind.LET_REC_EXPR -> (
+      match let_expression_from_node ~is_recursive_binding:true node with
+      | Some expr -> Cst.Expression.Let expr
+      | None -> Cst.Expression.Unknown node)
   | Syntax_kind.TYPED_EXPR -> (
       match direct_non_trivia_nodes node with
       | expr_node :: type_node :: _ ->
@@ -702,14 +788,6 @@ and expression_from_node node =
   | Syntax_kind.FUNCTION_EXPR -> (
       match function_expression_from_node node with
       | Some expr -> Cst.Expression.Function expr
-      | None -> Cst.Expression.Unknown node)
-  | Syntax_kind.LET_EXPR -> (
-      match let_expression_from_node ~is_recursive_binding:false node with
-      | Some expr -> Cst.Expression.Let expr
-      | None -> Cst.Expression.Unknown node)
-  | Syntax_kind.LET_REC_EXPR -> (
-      match let_expression_from_node ~is_recursive_binding:true node with
-      | Some expr -> Cst.Expression.Let expr
       | None -> Cst.Expression.Unknown node)
   | Syntax_kind.MATCH_EXPR -> (
       match match_expression_from_node node with
@@ -977,28 +1055,62 @@ and function_expression_from_node node =
   Some Cst.FunctionExpression.{ syntax_node = node; cases = match_cases }
 
 and let_expression_from_node ~is_recursive_binding node =
-  let is_recursive_binding =
-    is_recursive_binding
-    || List.exists
-         (fun syntax_token ->
-           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "rec")
-         (direct_non_trivia_tokens node)
-  in
-  match direct_non_trivia_nodes node with
-  | binding_pattern_node :: rest -> (
-      match List.rev rest with
-      | body_node :: bound_value_node :: _ ->
-          Some
-            Cst.LetExpression.
-              {
-                syntax_node = node;
-                binding_pattern = pattern_from_node binding_pattern_node;
-                bound_value = expression_from_node bound_value_node;
-                body = expression_from_node body_node;
-                is_recursive = is_recursive_binding;
-              }
-      | _ -> None)
-  | [] -> None
+  match let_expression_parts ~is_recursive_binding node with
+  | Some
+      (`Value
+        ( is_recursive_binding,
+          binding_pattern_node,
+          _parameter_nodes,
+          bound_value_node,
+          and_binding_nodes,
+          body_node )) ->
+      let lift_and_binding node =
+        let direct_children = direct_non_trivia_nodes node in
+        let binding_attributes =
+          direct_children
+          |> List.filter is_attribute_node
+          |> List.map attribute_from_node
+        in
+        let binding_children =
+          direct_children |> List.filter (fun child -> not (is_attribute_node child))
+        in
+        match binding_children with
+        | nested_binding_pattern_node :: rest -> (
+            match List.rev rest with
+            | value_node :: rev_param_nodes ->
+                Some
+                  Cst.LetBinding.
+                    {
+                      syntax_node = node;
+                      attributes = binding_attributes;
+                      binding_pattern = pattern_from_node nested_binding_pattern_node;
+                      binding_name =
+                        simple_pattern_name_token nested_binding_pattern_node;
+                      parameters =
+                        rev_param_nodes
+                        |> List.rev
+                        |> List.filter (fun child ->
+                               is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
+                        |> List.map parameter_from_node;
+                      value = expression_from_node value_node;
+                      is_recursive = is_recursive_binding;
+                    }
+            | [] -> None)
+        | [] -> None
+      in
+      Some
+        Cst.LetExpression.
+          {
+            syntax_node = node;
+            binding_pattern = pattern_from_node binding_pattern_node;
+            bound_value = expression_from_node bound_value_node;
+            and_bindings =
+              and_binding_nodes
+              |> List.filter_map lift_and_binding;
+            body = expression_from_node body_node;
+            is_recursive = is_recursive_binding;
+          }
+  | _ -> None
 
 and match_case_from_node node =
   let non_trivia_children = direct_non_trivia_nodes node in
@@ -1254,7 +1366,16 @@ let let_binding_from_node ~is_recursive_binding node =
            String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "rec")
          (direct_non_trivia_tokens node)
   in
-  match direct_non_trivia_nodes node with
+  let direct_children = direct_non_trivia_nodes node in
+  let binding_attributes =
+    direct_children
+    |> List.filter is_attribute_node
+    |> List.map attribute_from_node
+  in
+  let binding_children =
+    direct_children |> List.filter (fun child -> not (is_attribute_node child))
+  in
+  match binding_children with
   | binding_pattern_node :: rest -> (
       match List.rev rest with
       | value_node :: rev_param_nodes ->
@@ -1262,6 +1383,7 @@ let let_binding_from_node ~is_recursive_binding node =
             Cst.LetBinding.
               {
                 syntax_node = node;
+                attributes = binding_attributes;
                 binding_pattern = pattern_from_node binding_pattern_node;
                 binding_name = simple_pattern_name_token binding_pattern_node;
                 parameters =
@@ -1277,34 +1399,31 @@ let let_binding_from_node ~is_recursive_binding node =
   | [] -> None
 
 let let_expression_binding_from_node ~is_recursive_binding node =
-  let is_recursive_binding =
-    is_recursive_binding
-    || List.exists
-         (fun syntax_token ->
-           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "rec")
-         (direct_non_trivia_tokens node)
-  in
-  match direct_non_trivia_nodes node with
-  | binding_pattern_node :: rest -> (
-      match List.rev rest with
-      | _body_node :: bound_value_node :: rev_param_nodes ->
+  match let_expression_parts ~is_recursive_binding node with
+  | Some
+      (`Value
+        ( is_recursive_binding,
+          binding_pattern_node,
+          rev_param_nodes,
+          bound_value_node,
+          _and_binding_nodes,
+          _body_node )) ->
           Some
             Cst.LetBinding.
               {
                 syntax_node = node;
+                attributes = [];
                 binding_pattern = pattern_from_node binding_pattern_node;
                 binding_name = simple_pattern_name_token binding_pattern_node;
                 parameters =
                   rev_param_nodes
-                  |> List.rev
                   |> List.filter (fun child ->
                          is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
                   |> List.map parameter_from_node;
                 value = expression_from_node bound_value_node;
                 is_recursive = is_recursive_binding;
               }
-      | _ -> None)
-  | [] -> None
+  | _ -> None
 
 let module_declaration_from_node node =
   match direct_non_trivia_tokens node with
@@ -1517,7 +1636,7 @@ let rec items_from_node node =
       | Cst.Expression.Unknown _ -> [ Cst.Item.Unknown node ]
       | expr -> [ Cst.Item.Expression expr ])
 
-let of_green_tree tree =
+let build_source_file_body tree =
   let root = Ceibo.Red.new_root tree in
   let file_items =
     direct_non_trivia_nodes root
@@ -1525,13 +1644,7 @@ let of_green_tree tree =
   in
   let file_let_bindings = collect_let_bindings root in
   let file_expressions = collect_expressions root in
-  Cst.SourceFile.
-    {
-      syntax_node = root;
-      items = file_items;
-      let_bindings = file_let_bindings;
-      expressions = file_expressions;
-    }
+  (root, file_items, file_let_bindings, file_expressions)
 
 let rec validate_pattern ~context = function
   | Cst.Pattern.Identifier _ | Cst.Pattern.Wildcard _ | Cst.Pattern.Literal _ -> ()
@@ -1611,10 +1724,14 @@ and validate_apply_argument ~context = function
 
 and validate_expression ~context = function
   | Cst.Expression.Path _ | Cst.Expression.Literal _
+  | Cst.Expression.Attribute _
   | Cst.Expression.FirstClassModule _ ->
       ()
   | Cst.Expression.LetModule { body; _ } ->
       validate_expression ~context:("expression.let_module.body" :: context) body
+  | Cst.Expression.LetException { body; _ } ->
+      validate_expression ~context:("expression.let_exception.body" :: context)
+        body
   | Cst.Expression.PolyVariant { payload; _ } ->
       Option.iter
         (validate_expression ~context:("expression.poly_variant.payload" :: context))
@@ -1708,9 +1825,22 @@ and validate_expression ~context = function
             ~context:(("expression.function.case[" ^ Int.to_string index ^ "]") :: context)
             case)
         cases
-  | Cst.Expression.Let { binding_pattern; bound_value; body; _ } ->
+  | Cst.Expression.Let { binding_pattern; bound_value; and_bindings; body; _ } ->
       validate_pattern ~context:("expression.let.pattern" :: context) binding_pattern;
       validate_expression ~context:("expression.let.bound_value" :: context) bound_value;
+      List.iteri
+        (fun index binding ->
+          validate_pattern
+            ~context:
+              (("expression.let.and_bindings[" ^ Int.to_string index ^ "].pattern")
+              :: context)
+            (Cst.LetBinding.binding_pattern binding);
+          validate_expression
+            ~context:
+              (("expression.let.and_bindings[" ^ Int.to_string index ^ "].value")
+              :: context)
+            (Cst.LetBinding.value binding))
+        and_bindings;
       validate_expression ~context:("expression.let.body" :: context) body
   | Cst.Expression.Match { scrutinee; cases; _ } ->
       validate_expression ~context:("expression.match.scrutinee" :: context) scrutinee;
@@ -1775,30 +1905,37 @@ let validate_item ~context = function
       bail ~message:"unsupported structure item during Ceibo -> CST lifting"
         ~syntax_node ~context
 
-let validate_source_file ({ items; let_bindings; expressions; _ } : Cst.source_file) =
+let validate_source_file source_file =
   List.iteri
     (fun index item ->
       validate_item ~context:[ "source_file.items[" ^ Int.to_string index ^ "]" ] item)
-    items;
+    (Cst.SourceFile.items source_file);
   List.iteri
     (fun index binding ->
       validate_expression
         ~context:[ "source_file.let_bindings[" ^ Int.to_string index ^ "].value" ]
         (Cst.LetBinding.value binding))
-    let_bindings;
+    (Cst.SourceFile.let_bindings source_file);
   List.iteri
     (fun index expr ->
       validate_expression
         ~context:[ "source_file.expressions[" ^ Int.to_string index ^ "]" ]
         expr)
-    expressions
+    (Cst.SourceFile.expressions source_file)
 
-let lift tree =
-  let cst = of_green_tree tree in
+let lift ~kind tree =
+  let syntax_node, items, let_bindings, expressions = build_source_file_body tree in
+  let cst =
+    match kind with
+    | `Implementation ->
+        Cst.Implementation { syntax_node; items; let_bindings; expressions }
+    | `Interface ->
+        Cst.Interface { syntax_node; items; let_bindings; expressions }
+  in
   validate_source_file cst;
   cst
 
-let create_from_ceibo tree =
-  match lift tree with
+let create_from_ceibo ~kind tree =
+  match lift ~kind tree with
   | cst -> Ok cst
   | exception Bail error -> Error error

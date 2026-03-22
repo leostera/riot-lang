@@ -24,6 +24,6 @@ let parse_implementation source =
   Parser.parse_implementation ~source tokens
 
 let parse ~filename source =
-  (* Decide based on file extension *)
-  if String.ends_with ~suffix:".mli" filename then parse_interface source
-  else parse_implementation source
+  match Path.extension filename with
+  | Some ".mli" -> parse_interface source
+  | _ -> parse_implementation source
