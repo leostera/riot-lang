@@ -119,7 +119,7 @@
         `Module.{ field = value }` over `{ Module.field = value }`
 
         basically prefer scoped module qualification syntax over inline qualified field syntax
-- [ ] Prefer `Module.(var.field)` for access to record fields instead of `var.Module.field`
+- [x] Prefer `Module.(var.field)` for access to record fields instead of `var.Module.field` (`prefer-scoped-field-access`)
 
 - [x]  warn about nested matches (3 matches trigger a warning) (`limit-nested-match-depth`)
 - [x]  warn about _exn functions (`no-exn-suffix-functions`)

@@ -498,7 +498,7 @@ let tests =
         in
         Test.assert_equal ~expected:[ "<>" ] ~actual:operators;
         Ok ());
-    Test.case "cst let bindings expose apply and path expressions structurally" (fun () ->
+    Test.case "cst let bindings expose apply and field access expressions structurally" (fun () ->
         let source = "let reversed = List.rev (List.rev xs)\n" in
         let result = Syn.parse ~filename:"sample.ml" source in
         let cst =
@@ -511,14 +511,55 @@ let tests =
             match Syn.Cst.LetBinding.value binding with
             | Syn.Cst.Expression.Apply outer -> (
                 match Syn.Cst.ApplyExpression.callee outer with
-                | Syn.Cst.Expression.Path path ->
+                | Syn.Cst.Expression.FieldAccess
+                    {
+                      receiver = Syn.Cst.Expression.Path { path; _ };
+                      field_name;
+                      _;
+                    } ->
                     Test.assert_equal ~expected:(Some "rev")
-                      ~actual:
-                        (Syn.Cst.PathExpression.path path |> Syn.Cst.ModulePath.name);
+                      ~actual:(Some (Syn.Cst.Token.text field_name));
+                    Test.assert_equal ~expected:(Some "List")
+                      ~actual:(Syn.Cst.ModulePath.name path);
                     Ok ()
-                | _ -> Error "expected path expression callee")
+                | _ -> Error "expected field access callee")
             | _ -> Error "expected apply expression value")
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst field access preserves nested qualified field access structurally" (fun () ->
+        let source = "let render record = record.Module.field\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.FieldAccess
+                  {
+                    receiver =
+                      Syn.Cst.Expression.FieldAccess
+                        {
+                          receiver = Syn.Cst.Expression.Path { path; _ };
+                          field_name = module_name;
+                          _;
+                        };
+                    field_name;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "record")
+              ~actual:(Syn.Cst.ModulePath.name path);
+            Test.assert_equal ~expected:"Module"
+              ~actual:(Syn.Cst.Token.text module_name);
+            Test.assert_equal ~expected:"field"
+              ~actual:(Syn.Cst.Token.text field_name);
+            Ok ()
+        | _ -> Error "expected nested field access structure");
     Test.case "cst preserves parenthesized expressions structurally" (fun () ->
         let source = "let wrapped = (((((value)))))\n" in
         let result = Syn.parse ~filename:"sample.ml" source in

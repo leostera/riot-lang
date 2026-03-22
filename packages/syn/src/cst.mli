@@ -141,6 +141,7 @@ type expression =
   | Path of path_expression
   | Literal of literal
   | Apply of apply_expression
+  | FieldAccess of field_access_expression
   | Infix of infix_expression
   | Fun of fun_expression
   | Function of function_expression
@@ -160,6 +161,12 @@ and apply_expression = {
   syntax_node : syntax_node;
   callee : expression;
   argument : expression;
+}
+
+and field_access_expression = {
+  syntax_node : syntax_node;
+  receiver : expression;
+  field_name : Token.t;
 }
 
 and infix_expression = {
@@ -224,6 +231,7 @@ module Expression : sig
     | Path of path_expression
     | Literal of literal
     | Apply of apply_expression
+    | FieldAccess of field_access_expression
     | Infix of infix_expression
     | Fun of fun_expression
     | Function of function_expression

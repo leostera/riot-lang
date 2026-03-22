@@ -52,6 +52,8 @@ let rec diagnostics_for_expression ~inside_parenthesized_chain = function
         (Syn.Cst.ApplyExpression.callee expr)
       @ diagnostics_for_expression ~inside_parenthesized_chain
           (Syn.Cst.ApplyExpression.argument expr)
+  | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
+      diagnostics_for_expression ~inside_parenthesized_chain receiver
   | Syn.Cst.Expression.Infix expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
         (Syn.Cst.InfixExpression.left expr)

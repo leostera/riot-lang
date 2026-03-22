@@ -177,6 +177,7 @@ type expression =
   | Path of path_expression
   | Literal of literal
   | Apply of apply_expression
+  | FieldAccess of field_access_expression
   | Infix of infix_expression
   | Fun of fun_expression
   | Function of function_expression
@@ -196,6 +197,12 @@ and apply_expression = {
   syntax_node : syntax_node;
   callee : expression;
   argument : expression;
+}
+
+and field_access_expression = {
+  syntax_node : syntax_node;
+  receiver : expression;
+  field_name : Token.t;
 }
 
 and infix_expression = {
@@ -260,6 +267,7 @@ module Expression = struct
     | Path of path_expression
     | Literal of literal
     | Apply of apply_expression
+    | FieldAccess of field_access_expression
     | Infix of infix_expression
     | Fun of fun_expression
     | Function of function_expression
@@ -280,6 +288,7 @@ module Expression = struct
         | Literal.Unit { syntax_node } ->
             syntax_node)
     | Apply expr -> expr.syntax_node
+    | FieldAccess expr -> expr.syntax_node
     | Infix expr -> expr.syntax_node
     | Fun expr -> expr.syntax_node
     | Function expr -> expr.syntax_node
@@ -885,7 +894,7 @@ let rec expression_from_node node =
   | Syntax_kind.UNIT_LITERAL ->
       Expression.Literal (Literal.Unit { syntax_node = node })
   | Syntax_kind.FIELD_ACCESS_EXPR -> (
-      match path_expression_from_field_access node with
+      match field_access_expression_from_node node with
       | Some expr -> expr
       | None -> Expression.Unknown node)
   | Syntax_kind.STRING_LITERAL -> (
@@ -999,23 +1008,16 @@ let rec expression_from_node node =
       | [] -> Expression.Unknown node)
   | _ -> Expression.Unknown node
 
-and path_expression_from_field_access node =
+and field_access_expression_from_node node =
   match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
-  | receiver_node :: _, field_token :: _ -> (
-      match expression_from_node receiver_node with
-      | Expression.Path receiver ->
-          let path_segments =
-            ModulePath.segments (PathExpression.path receiver)
-            @ [ token field_token ]
-          in
-          Some
-            (Expression.Path
-               PathExpression.
-                 {
-                   syntax_node = node;
-                   path = ModulePath.{ syntax_node = node; segments = path_segments };
-                 })
-      | _ -> None)
+  | receiver_node :: _, field_token :: _ ->
+      Some
+        (Expression.FieldAccess
+           {
+             syntax_node = node;
+             receiver = expression_from_node receiver_node;
+             field_name = token field_token;
+           })
   | _ -> None
 
 and fun_expression_from_node node =

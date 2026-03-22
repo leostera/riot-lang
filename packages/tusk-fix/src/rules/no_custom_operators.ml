@@ -75,6 +75,8 @@ let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.Apply expr ->
       diagnostics_for_expression (Syn.Cst.ApplyExpression.callee expr)
       @ diagnostics_for_expression (Syn.Cst.ApplyExpression.argument expr)
+  | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
+      diagnostics_for_expression receiver
   | Syn.Cst.Expression.Fun expr ->
       diagnostics_for_expression (Syn.Cst.FunExpression.body expr)
   | Syn.Cst.Expression.Function expr ->

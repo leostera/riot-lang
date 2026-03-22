@@ -1182,6 +1182,30 @@ let render x y z =
         Ok ());
     Test.case "diagnostic code registry explains redundant begin/end" (fun () ->
         assert_explanation_contains ~code:"F0139" ~snippet:"begin ... end");
+    Test.case "prefer-scoped-field-access flags module-qualified record access" (fun () ->
+        let source = "let render record = record.Module.field\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_scoped_field_access.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0140" ] ~actual:codes;
+        Ok ());
+    Test.case "prefer-scoped-field-access keeps normal field access clean" (fun () ->
+        let source = "let render record = record.field\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_scoped_field_access.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains scoped field access" (fun () ->
+        assert_explanation_contains ~code:"F0140" ~snippet:"Module.(record.field)");
     Test.case "cli list-rules text output prints one rule per line" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true

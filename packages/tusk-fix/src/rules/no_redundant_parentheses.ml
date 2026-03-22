@@ -31,6 +31,8 @@ let rec child_expressions = function
       []
   | Syn.Cst.Expression.Apply expr ->
       [ Syn.Cst.ApplyExpression.callee expr; Syn.Cst.ApplyExpression.argument expr ]
+  | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
+      [ receiver ]
   | Syn.Cst.Expression.Infix expr ->
       [ Syn.Cst.InfixExpression.left expr; Syn.Cst.InfixExpression.right expr ]
   | Syn.Cst.Expression.Fun expr ->
@@ -89,6 +91,7 @@ let is_obviously_redundant = function
   | Syn.Cst.Expression.Parenthesized _ ->
       true
   | Syn.Cst.Expression.Apply _
+  | Syn.Cst.Expression.FieldAccess _
   | Syn.Cst.Expression.Infix _
   | Syn.Cst.Expression.Fun _
   | Syn.Cst.Expression.Function _
