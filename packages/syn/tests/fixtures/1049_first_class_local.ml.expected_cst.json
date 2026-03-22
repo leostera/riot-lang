@@ -53,12 +53,24 @@
                 "end": 23
               }
             },
-            "module_expression_syntax_node": {
-              "kind": "STRUCT_EXPR",
-              "span": {
-                "start": 26,
-                "end": 53
-              }
+            "module_expression": {
+              "tag": "structure",
+              "syntax_node": {
+                "kind": "STRUCT_EXPR",
+                "span": {
+                  "start": 26,
+                  "end": 53
+                }
+              },
+              "item_syntax_nodes": [
+                {
+                  "kind": "LET_BINDING",
+                  "span": {
+                    "start": 37,
+                    "end": 47
+                  }
+                }
+              ]
             },
             "body": {
               "tag": "apply",
@@ -233,12 +245,24 @@
             "end": 23
           }
         },
-        "module_expression_syntax_node": {
-          "kind": "STRUCT_EXPR",
-          "span": {
-            "start": 26,
-            "end": 53
-          }
+        "module_expression": {
+          "tag": "structure",
+          "syntax_node": {
+            "kind": "STRUCT_EXPR",
+            "span": {
+              "start": 26,
+              "end": 53
+            }
+          },
+          "item_syntax_nodes": [
+            {
+              "kind": "LET_BINDING",
+              "span": {
+                "start": 37,
+                "end": 47
+              }
+            }
+          ]
         },
         "body": {
           "tag": "apply",

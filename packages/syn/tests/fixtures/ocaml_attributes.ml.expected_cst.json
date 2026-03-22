@@ -610,7 +610,89 @@
               "start": 314,
               "end": 315
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "attribute",
+            "syntax_node": {
+              "kind": "ATTRIBUTE_EXPR",
+              "span": {
+                "start": 318,
+                "end": 409
+              }
+            },
+            "module_expression": {
+              "tag": "structure",
+              "syntax_node": {
+                "kind": "STRUCT_EXPR",
+                "span": {
+                  "start": 318,
+                  "end": 392
+                }
+              },
+              "item_syntax_nodes": [
+                {
+                  "kind": "TYPE_DECL",
+                  "span": {
+                    "start": 327,
+                    "end": 361
+                  }
+                },
+                {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 361,
+                    "end": 388
+                  }
+                }
+              ]
+            },
+            "attribute": {
+              "syntax_node": {
+                "kind": "ATTRIBUTE_EXPR",
+                "span": {
+                  "start": 393,
+                  "end": 399
+                }
+              },
+              "tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "[",
+                  "span": {
+                    "start": 393,
+                    "end": 394
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "@",
+                  "span": {
+                    "start": 394,
+                    "end": 395
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "foo",
+                  "span": {
+                    "start": 395,
+                    "end": 398
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "]",
+                  "span": {
+                    "start": 398,
+                    "end": 399
+                  }
+                }
+              ]
+            }
+          },
+          "is_recursive": false
         }
       },
       {
@@ -757,7 +839,106 @@
               "start": 638,
               "end": 639
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": {
+            "tag": "attribute",
+            "syntax_node": {
+              "kind": "ATTRIBUTE_EXPR",
+              "span": {
+                "start": 642,
+                "end": 651
+              }
+            },
+            "module_type": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 642,
+                    "end": 644
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "T",
+                    "span": {
+                      "start": 642,
+                      "end": 643
+                    }
+                  }
+                ]
+              }
+            },
+            "attribute": {
+              "syntax_node": {
+                "kind": "ATTRIBUTE_EXPR",
+                "span": {
+                  "start": 644,
+                  "end": 650
+                }
+              },
+              "tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "[",
+                  "span": {
+                    "start": 644,
+                    "end": 645
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "@",
+                  "span": {
+                    "start": 645,
+                    "end": 646
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "foo",
+                  "span": {
+                    "start": 646,
+                    "end": 649
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "]",
+                  "span": {
+                    "start": 649,
+                    "end": 650
+                  }
+                }
+              ]
+            }
+          },
+          "module_expression": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_PATH",
+                "span": {
+                  "start": 653,
+                  "end": 657
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "Int",
+                  "span": {
+                    "start": 653,
+                    "end": 656
+                  }
+                }
+              ]
+            }
+          },
+          "is_recursive": false
         }
       },
       {
@@ -777,7 +958,176 @@
               "start": 664,
               "end": 665
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": {
+            "tag": "parenthesized",
+            "syntax_node": {
+              "kind": "PAREN_EXPR",
+              "span": {
+                "start": 668,
+                "end": 696
+              }
+            },
+            "inner": {
+              "tag": "with",
+              "syntax_node": {
+                "kind": "MODULE_TYPE_EXPR",
+                "span": {
+                  "start": 669,
+                  "end": 695
+                }
+              },
+              "base": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 669,
+                      "end": 671
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "T",
+                      "span": {
+                        "start": 669,
+                        "end": 670
+                      }
+                    }
+                  ]
+                }
+              },
+              "constraints": [
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTRAINT",
+                    "span": {
+                      "start": 676,
+                      "end": 695
+                    }
+                  },
+                  "type_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "span": {
+                      "start": 681,
+                      "end": 682
+                    }
+                  },
+                  "replacement_type": {
+                    "tag": "attribute",
+                    "syntax_node": {
+                      "kind": "ATTRIBUTE_EXPR",
+                      "span": {
+                        "start": 685,
+                        "end": 695
+                      }
+                    },
+                    "type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 685,
+                          "end": 689
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 685,
+                            "end": 689
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 685,
+                              "end": 688
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    },
+                    "attribute": {
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 689,
+                          "end": 695
+                        }
+                      },
+                      "tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "[",
+                          "span": {
+                            "start": 689,
+                            "end": 690
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "@",
+                          "span": {
+                            "start": 690,
+                            "end": 691
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "foo",
+                          "span": {
+                            "start": 691,
+                            "end": 694
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "]",
+                          "span": {
+                            "start": 694,
+                            "end": 695
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "is_destructive": false
+                }
+              ]
+            }
+          },
+          "module_expression": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_PATH",
+                "span": {
+                  "start": 699,
+                  "end": 704
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "Int",
+                  "span": {
+                    "start": 699,
+                    "end": 702
+                  }
+                }
+              ]
+            }
+          },
+          "is_recursive": false
         }
       },
       {
@@ -812,11 +1162,26 @@
                 "end": 734
               }
             },
-            "module_syntax_node": {
-              "kind": "MODULE_PATH",
-              "span": {
-                "start": 720,
-                "end": 724
+            "module_expression": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 720,
+                    "end": 724
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Int",
+                    "span": {
+                      "start": 720,
+                      "end": 723
+                    }
+                  }
+                ]
               }
             },
             "module_type": {
@@ -930,11 +1295,26 @@
                 "end": 783
               }
             },
-            "module_syntax_node": {
-              "kind": "MODULE_PATH",
-              "span": {
-                "start": 751,
-                "end": 755
+            "module_expression": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 751,
+                    "end": 755
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Int",
+                    "span": {
+                      "start": 751,
+                      "end": 754
+                    }
+                  }
+                ]
               }
             },
             "module_type": {
@@ -2283,11 +2663,26 @@
             "end": 734
           }
         },
-        "module_syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 720,
-            "end": 724
+        "module_expression": {
+          "tag": "path",
+          "path": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 720,
+                "end": 724
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "Int",
+                "span": {
+                  "start": 720,
+                  "end": 723
+                }
+              }
+            ]
           }
         },
         "module_type": {
@@ -2375,11 +2770,26 @@
             "end": 783
           }
         },
-        "module_syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 751,
-            "end": 755
+        "module_expression": {
+          "tag": "path",
+          "path": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 751,
+                "end": 755
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "Int",
+                "span": {
+                  "start": 751,
+                  "end": 754
+                }
+              }
+            ]
           }
         },
         "module_type": {

@@ -57,12 +57,24 @@
                 "end": 45
               }
             },
-            "module_syntax_node": {
-              "kind": "STRUCT_EXPR",
-              "span": {
-                "start": 18,
-                "end": 44
-              }
+            "module_expression": {
+              "tag": "structure",
+              "syntax_node": {
+                "kind": "STRUCT_EXPR",
+                "span": {
+                  "start": 18,
+                  "end": 44
+                }
+              },
+              "item_syntax_nodes": [
+                {
+                  "kind": "LET_BINDING",
+                  "span": {
+                    "start": 29,
+                    "end": 38
+                  }
+                }
+              ]
             },
             "module_type": null
           },
@@ -116,12 +128,24 @@
               "end": 45
             }
           },
-          "module_syntax_node": {
-            "kind": "STRUCT_EXPR",
-            "span": {
-              "start": 18,
-              "end": 44
-            }
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 18,
+                "end": 44
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "LET_BINDING",
+                "span": {
+                  "start": 29,
+                  "end": 38
+                }
+              }
+            ]
           },
           "module_type": null
         },
@@ -197,12 +221,24 @@
             "end": 45
           }
         },
-        "module_syntax_node": {
-          "kind": "STRUCT_EXPR",
-          "span": {
-            "start": 18,
-            "end": 44
-          }
+        "module_expression": {
+          "tag": "structure",
+          "syntax_node": {
+            "kind": "STRUCT_EXPR",
+            "span": {
+              "start": 18,
+              "end": 44
+            }
+          },
+          "item_syntax_nodes": [
+            {
+              "kind": "LET_BINDING",
+              "span": {
+                "start": 29,
+                "end": 38
+              }
+            }
+          ]
         },
         "module_type": null
       }

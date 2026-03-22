@@ -267,14 +267,69 @@ and module_type_to_json = function
               ] );
         ]
 
-let exception_declaration_to_json (decl : Cst.exception_declaration) =
+and module_expression_to_json = function
+  | Cst.ModuleExpression.Path path ->
+      Json.Object
+        [
+          ("tag", Json.String "path");
+          ("path", module_path_to_json path);
+        ]
+  | Cst.ModuleExpression.Structure { syntax_node; item_syntax_nodes } ->
+      Json.Object
+        [
+          ("tag", Json.String "structure");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ( "item_syntax_nodes",
+            Json.Array (List.map syntax_node_to_json item_syntax_nodes) );
+        ]
+  | Cst.ModuleExpression.Functor { syntax_node; parameters; body } ->
+      Json.Object
+        [
+          ("tag", Json.String "functor");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("parameters", Json.Array (List.map functor_parameter_to_json parameters));
+          ("body", module_expression_to_json body);
+        ]
+  | Cst.ModuleExpression.Apply { syntax_node; callee; argument } ->
+      Json.Object
+        [
+          ("tag", Json.String "apply");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("callee", module_expression_to_json callee);
+          ("argument", module_expression_to_json argument);
+        ]
+  | Cst.ModuleExpression.Unpack { syntax_node; expression; module_type } ->
+      Json.Object
+        [
+          ("tag", Json.String "unpack");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("expression", expression_to_json expression);
+          ("module_type", option_to_json module_type_to_json module_type);
+        ]
+  | Cst.ModuleExpression.Parenthesized { syntax_node; inner } ->
+      Json.Object
+        [
+          ("tag", Json.String "parenthesized");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("inner", module_expression_to_json inner);
+        ]
+  | Cst.ModuleExpression.Attribute { syntax_node; module_expression; attribute } ->
+      Json.Object
+        [
+          ("tag", Json.String "attribute");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("module_expression", module_expression_to_json module_expression);
+          ("attribute", attribute_to_json attribute);
+        ]
+
+and exception_declaration_to_json (decl : Cst.exception_declaration) =
   Json.Object
     [
       ("syntax_node", syntax_node_to_json decl.syntax_node);
       ("name_token", token_to_json decl.name_token);
     ]
 
-let rec pattern_literal_to_json = function
+and pattern_literal_to_json = function
   | Cst.PatternLiteral.String { syntax_node; literal_token } ->
       Json.Object
         [
@@ -688,22 +743,22 @@ and expression_to_json = function
           ("tag_token", token_to_json tag_token);
           ("payload", option_to_json expression_to_json payload);
         ]
-  | Cst.Expression.FirstClassModule { syntax_node; module_syntax_node; module_type } ->
+  | Cst.Expression.FirstClassModule { syntax_node; module_expression; module_type } ->
       Json.Object
         [
           ("tag", Json.String "first_class_module");
           ("syntax_node", syntax_node_to_json syntax_node);
-          ("module_syntax_node", syntax_node_to_json module_syntax_node);
+          ("module_expression", module_expression_to_json module_expression);
           ("module_type", option_to_json module_type_to_json module_type);
         ]
   | Cst.Expression.LetModule
-      { syntax_node; module_name_token; module_expression_syntax_node; body } ->
+      { syntax_node; module_name_token; module_expression; body } ->
       Json.Object
         [
           ("tag", Json.String "let_module");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("module_name_token", token_to_json module_name_token);
-          ("module_expression_syntax_node", syntax_node_to_json module_expression_syntax_node);
+          ("module_expression", module_expression_to_json module_expression);
           ("body", expression_to_json body);
         ]
   | Cst.Expression.LetException
@@ -1120,6 +1175,16 @@ let module_declaration_to_json decl =
     [
       ("syntax_node", syntax_node_to_json (Cst.ModuleDeclaration.syntax_node decl));
       ("module_name", token_to_json (Cst.ModuleDeclaration.module_name_token decl));
+      ( "functor_parameters",
+        Json.Array
+          (List.map functor_parameter_to_json
+             (Cst.ModuleDeclaration.functor_parameters decl)) );
+      ( "module_type",
+        option_to_json module_type_to_json (Cst.ModuleDeclaration.module_type decl) );
+      ( "module_expression",
+        option_to_json module_expression_to_json
+          (Cst.ModuleDeclaration.module_expression decl) );
+      ("is_recursive", Json.Bool (Cst.ModuleDeclaration.is_recursive decl));
     ]
 
 let module_type_declaration_to_json decl =

@@ -27,7 +27,27 @@
               "start": 78,
               "end": 84
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": {
+            "tag": "signature",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 87,
+                "end": 214
+              }
+            },
+            "signature_syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 87,
+                "end": 214
+              }
+            }
+          },
+          "module_expression": null,
+          "is_recursive": false
         }
       }
     ],

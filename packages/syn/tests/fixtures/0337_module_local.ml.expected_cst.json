@@ -65,11 +65,26 @@
                 "end": 22
               }
             },
-            "module_expression_syntax_node": {
-              "kind": "MODULE_PATH",
-              "span": {
-                "start": 25,
-                "end": 27
+            "module_expression": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 25,
+                    "end": 27
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "N",
+                    "span": {
+                      "start": 25,
+                      "end": 26
+                    }
+                  }
+                ]
               }
             },
             "body": {
@@ -178,11 +193,26 @@
               "end": 22
             }
           },
-          "module_expression_syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 25,
-              "end": 27
+          "module_expression": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_PATH",
+                "span": {
+                  "start": 25,
+                  "end": 27
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "N",
+                  "span": {
+                    "start": 25,
+                    "end": 26
+                  }
+                }
+              ]
             }
           },
           "body": {
@@ -254,11 +284,26 @@
             "end": 22
           }
         },
-        "module_expression_syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 25,
-            "end": 27
+        "module_expression": {
+          "tag": "path",
+          "path": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 25,
+                "end": 27
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "N",
+                "span": {
+                  "start": 25,
+                  "end": 26
+                }
+              }
+            ]
           }
         },
         "body": {

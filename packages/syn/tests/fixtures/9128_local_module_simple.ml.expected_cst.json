@@ -65,12 +65,24 @@
                 "end": 64
               }
             },
-            "module_expression_syntax_node": {
-              "kind": "STRUCT_EXPR",
-              "span": {
-                "start": 67,
-                "end": 94
-              }
+            "module_expression": {
+              "tag": "structure",
+              "syntax_node": {
+                "kind": "STRUCT_EXPR",
+                "span": {
+                  "start": 67,
+                  "end": 94
+                }
+              },
+              "item_syntax_nodes": [
+                {
+                  "kind": "LET_BINDING",
+                  "span": {
+                    "start": 78,
+                    "end": 88
+                  }
+                }
+              ]
             },
             "body": {
               "tag": "field_access",
@@ -178,12 +190,24 @@
               "end": 64
             }
           },
-          "module_expression_syntax_node": {
-            "kind": "STRUCT_EXPR",
-            "span": {
-              "start": 67,
-              "end": 94
-            }
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 67,
+                "end": 94
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "LET_BINDING",
+                "span": {
+                  "start": 78,
+                  "end": 88
+                }
+              }
+            ]
           },
           "body": {
             "tag": "field_access",
@@ -313,12 +337,24 @@
             "end": 64
           }
         },
-        "module_expression_syntax_node": {
-          "kind": "STRUCT_EXPR",
-          "span": {
-            "start": 67,
-            "end": 94
-          }
+        "module_expression": {
+          "tag": "structure",
+          "syntax_node": {
+            "kind": "STRUCT_EXPR",
+            "span": {
+              "start": 67,
+              "end": 94
+            }
+          },
+          "item_syntax_nodes": [
+            {
+              "kind": "LET_BINDING",
+              "span": {
+                "start": 78,
+                "end": 88
+              }
+            }
+          ]
         },
         "body": {
           "tag": "field_access",

@@ -655,14 +655,14 @@ and poly_variant_expression = {
 
 and first_class_module_expression = {
   syntax_node : syntax_node;
-  module_syntax_node : syntax_node;
+  module_expression : module_expression;
   module_type : module_type option;
 }
 
 and let_module_expression = {
   syntax_node : syntax_node;
   module_name_token : Token.t;
-  module_expression_syntax_node : syntax_node;
+  module_expression : module_expression;
   body : expression;
 }
 
@@ -891,6 +891,37 @@ and parenthesized_expression = {
   inner : expression;
 }
 
+and module_expression =
+  | Path of ModulePath.t
+  | Structure of {
+      syntax_node : syntax_node;
+      item_syntax_nodes : syntax_node list;
+    }
+  | Functor of {
+      syntax_node : syntax_node;
+      parameters : functor_parameter list;
+      body : module_expression;
+    }
+  | Apply of {
+      syntax_node : syntax_node;
+      callee : module_expression;
+      argument : module_expression;
+    }
+  | Unpack of {
+      syntax_node : syntax_node;
+      expression : expression;
+      module_type : module_type option;
+    }
+  | Parenthesized of {
+      syntax_node : syntax_node;
+      inner : module_expression;
+    }
+  | Attribute of {
+      syntax_node : syntax_node;
+      module_expression : module_expression;
+      attribute : attribute;
+    }
+
 module Expression = struct
   type t = expression =
     | Path of path_expression
@@ -982,6 +1013,49 @@ module Expression = struct
     | Try expr -> expr.syntax_node
     | If expr -> expr.syntax_node
     | Parenthesized expr -> expr.syntax_node
+end
+
+module ModuleExpression = struct
+  type t = module_expression =
+    | Path of ModulePath.t
+    | Structure of {
+        syntax_node : syntax_node;
+        item_syntax_nodes : syntax_node list;
+      }
+    | Functor of {
+        syntax_node : syntax_node;
+        parameters : functor_parameter list;
+        body : module_expression;
+      }
+    | Apply of {
+        syntax_node : syntax_node;
+        callee : module_expression;
+        argument : module_expression;
+      }
+    | Unpack of {
+        syntax_node : syntax_node;
+        expression : expression;
+        module_type : module_type option;
+      }
+    | Parenthesized of {
+        syntax_node : syntax_node;
+        inner : module_expression;
+      }
+    | Attribute of {
+        syntax_node : syntax_node;
+        module_expression : module_expression;
+        attribute : attribute;
+      }
+
+  let syntax_node = function
+    | Path path -> ModulePath.syntax_node path
+    | Structure { syntax_node; _ }
+    | Functor { syntax_node; _ }
+    | Apply { syntax_node; _ }
+    | Unpack { syntax_node; _ }
+    | Parenthesized { syntax_node; _ }
+    | Attribute { syntax_node; _ } ->
+        syntax_node
 end
 
 module Pattern = struct
@@ -1218,10 +1292,18 @@ module ModuleDeclaration = struct
   type t = {
     syntax_node : syntax_node;
     module_name : Token.t;
+    functor_parameters : functor_parameter list;
+    module_type : module_type option;
+    module_expression : module_expression option;
+    is_recursive : bool;
   }
 
   let syntax_node decl = decl.syntax_node
   let module_name_token decl = decl.module_name
+  let functor_parameters decl = decl.functor_parameters
+  let module_type decl = decl.module_type
+  let module_expression decl = decl.module_expression
+  let is_recursive decl = decl.is_recursive
   let name decl = Token.text decl.module_name
 end
 

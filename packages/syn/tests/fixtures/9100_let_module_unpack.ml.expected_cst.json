@@ -84,12 +84,45 @@
                 "end": 138
               }
             },
-            "module_expression_syntax_node": {
-              "kind": "FIRST_CLASS_MODULE_EXPR",
-              "span": {
-                "start": 141,
-                "end": 153
-              }
+            "module_expression": {
+              "tag": "unpack",
+              "syntax_node": {
+                "kind": "FIRST_CLASS_MODULE_EXPR",
+                "span": {
+                  "start": 141,
+                  "end": 153
+                }
+              },
+              "expression": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 146,
+                    "end": 152
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 146,
+                      "end": 152
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "driver",
+                      "span": {
+                        "start": 146,
+                        "end": 152
+                      }
+                    }
+                  ]
+                }
+              },
+              "module_type": null
             },
             "body": {
               "tag": "apply",
@@ -242,11 +275,65 @@
                 "end": 243
               }
             },
-            "module_expression_syntax_node": {
-              "kind": "FIRST_CLASS_MODULE_EXPR",
-              "span": {
-                "start": 246,
-                "end": 267
+            "module_expression": {
+              "tag": "unpack",
+              "syntax_node": {
+                "kind": "FIRST_CLASS_MODULE_EXPR",
+                "span": {
+                  "start": 246,
+                  "end": 267
+                }
+              },
+              "expression": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 251,
+                    "end": 257
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 251,
+                      "end": 257
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "driver",
+                      "span": {
+                        "start": 251,
+                        "end": 257
+                      }
+                    }
+                  ]
+                }
+              },
+              "module_type": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 260,
+                      "end": 266
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Driver",
+                      "span": {
+                        "start": 260,
+                        "end": 266
+                      }
+                    }
+                  ]
+                }
               }
             },
             "body": {
@@ -400,12 +487,63 @@
                 "end": 355
               }
             },
-            "module_expression_syntax_node": {
-              "kind": "FIRST_CLASS_MODULE_EXPR",
-              "span": {
-                "start": 358,
-                "end": 377
-              }
+            "module_expression": {
+              "tag": "unpack",
+              "syntax_node": {
+                "kind": "FIRST_CLASS_MODULE_EXPR",
+                "span": {
+                  "start": 358,
+                  "end": 377
+                }
+              },
+              "expression": {
+                "tag": "field_access",
+                "syntax_node": {
+                  "kind": "FIELD_ACCESS_EXPR",
+                  "span": {
+                    "start": 363,
+                    "end": 376
+                  }
+                },
+                "receiver": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 363,
+                      "end": 369
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 363,
+                        "end": 369
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "cursor",
+                        "span": {
+                          "start": 363,
+                          "end": 369
+                        }
+                      }
+                    ]
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "driver",
+                  "span": {
+                    "start": 370,
+                    "end": 376
+                  }
+                }
+              },
+              "module_type": null
             },
             "body": {
               "tag": "match",
@@ -803,12 +941,45 @@
               "end": 138
             }
           },
-          "module_expression_syntax_node": {
-            "kind": "FIRST_CLASS_MODULE_EXPR",
-            "span": {
-              "start": 141,
-              "end": 153
-            }
+          "module_expression": {
+            "tag": "unpack",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_EXPR",
+              "span": {
+                "start": 141,
+                "end": 153
+              }
+            },
+            "expression": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 146,
+                  "end": 152
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 146,
+                    "end": 152
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "driver",
+                    "span": {
+                      "start": 146,
+                      "end": 152
+                    }
+                  }
+                ]
+              }
+            },
+            "module_type": null
           },
           "body": {
             "tag": "apply",
@@ -958,11 +1129,65 @@
               "end": 243
             }
           },
-          "module_expression_syntax_node": {
-            "kind": "FIRST_CLASS_MODULE_EXPR",
-            "span": {
-              "start": 246,
-              "end": 267
+          "module_expression": {
+            "tag": "unpack",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_EXPR",
+              "span": {
+                "start": 246,
+                "end": 267
+              }
+            },
+            "expression": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 251,
+                  "end": 257
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 251,
+                    "end": 257
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "driver",
+                    "span": {
+                      "start": 251,
+                      "end": 257
+                    }
+                  }
+                ]
+              }
+            },
+            "module_type": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 260,
+                    "end": 266
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Driver",
+                    "span": {
+                      "start": 260,
+                      "end": 266
+                    }
+                  }
+                ]
+              }
             }
           },
           "body": {
@@ -1113,12 +1338,63 @@
               "end": 355
             }
           },
-          "module_expression_syntax_node": {
-            "kind": "FIRST_CLASS_MODULE_EXPR",
-            "span": {
-              "start": 358,
-              "end": 377
-            }
+          "module_expression": {
+            "tag": "unpack",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_EXPR",
+              "span": {
+                "start": 358,
+                "end": 377
+              }
+            },
+            "expression": {
+              "tag": "field_access",
+              "syntax_node": {
+                "kind": "FIELD_ACCESS_EXPR",
+                "span": {
+                  "start": 363,
+                  "end": 376
+                }
+              },
+              "receiver": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 363,
+                    "end": 369
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 363,
+                      "end": 369
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "cursor",
+                      "span": {
+                        "start": 363,
+                        "end": 369
+                      }
+                    }
+                  ]
+                }
+              },
+              "field_name": {
+                "kind": "IDENT_EXPR",
+                "text": "driver",
+                "span": {
+                  "start": 370,
+                  "end": 376
+                }
+              }
+            },
+            "module_type": null
           },
           "body": {
             "tag": "match",
@@ -1460,12 +1736,45 @@
             "end": 138
           }
         },
-        "module_expression_syntax_node": {
-          "kind": "FIRST_CLASS_MODULE_EXPR",
-          "span": {
-            "start": 141,
-            "end": 153
-          }
+        "module_expression": {
+          "tag": "unpack",
+          "syntax_node": {
+            "kind": "FIRST_CLASS_MODULE_EXPR",
+            "span": {
+              "start": 141,
+              "end": 153
+            }
+          },
+          "expression": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 146,
+                "end": 152
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 146,
+                  "end": 152
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "driver",
+                  "span": {
+                    "start": 146,
+                    "end": 152
+                  }
+                }
+              ]
+            }
+          },
+          "module_type": null
         },
         "body": {
           "tag": "apply",
@@ -1720,11 +2029,65 @@
             "end": 243
           }
         },
-        "module_expression_syntax_node": {
-          "kind": "FIRST_CLASS_MODULE_EXPR",
-          "span": {
-            "start": 246,
-            "end": 267
+        "module_expression": {
+          "tag": "unpack",
+          "syntax_node": {
+            "kind": "FIRST_CLASS_MODULE_EXPR",
+            "span": {
+              "start": 246,
+              "end": 267
+            }
+          },
+          "expression": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 251,
+                "end": 257
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 251,
+                  "end": 257
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "driver",
+                  "span": {
+                    "start": 251,
+                    "end": 257
+                  }
+                }
+              ]
+            }
+          },
+          "module_type": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_TYPE_PATH",
+                "span": {
+                  "start": 260,
+                  "end": 266
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "Driver",
+                  "span": {
+                    "start": 260,
+                    "end": 266
+                  }
+                }
+              ]
+            }
           }
         },
         "body": {
@@ -1980,12 +2343,63 @@
             "end": 355
           }
         },
-        "module_expression_syntax_node": {
-          "kind": "FIRST_CLASS_MODULE_EXPR",
-          "span": {
-            "start": 358,
-            "end": 377
-          }
+        "module_expression": {
+          "tag": "unpack",
+          "syntax_node": {
+            "kind": "FIRST_CLASS_MODULE_EXPR",
+            "span": {
+              "start": 358,
+              "end": 377
+            }
+          },
+          "expression": {
+            "tag": "field_access",
+            "syntax_node": {
+              "kind": "FIELD_ACCESS_EXPR",
+              "span": {
+                "start": 363,
+                "end": 376
+              }
+            },
+            "receiver": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 363,
+                  "end": 369
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 363,
+                    "end": 369
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "cursor",
+                    "span": {
+                      "start": 363,
+                      "end": 369
+                    }
+                  }
+                ]
+              }
+            },
+            "field_name": {
+              "kind": "IDENT_EXPR",
+              "text": "driver",
+              "span": {
+                "start": 370,
+                "end": 376
+              }
+            }
+          },
+          "module_type": null
         },
         "body": {
           "tag": "match",

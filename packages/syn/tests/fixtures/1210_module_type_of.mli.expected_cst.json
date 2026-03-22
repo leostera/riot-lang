@@ -27,7 +27,39 @@
               "start": 7,
               "end": 16
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": {
+            "tag": "type_of",
+            "syntax_node": {
+              "kind": "MODULE_TYPE_OF",
+              "span": {
+                "start": 19,
+                "end": 44
+              }
+            },
+            "module_path": {
+              "syntax_node": {
+                "kind": "MODULE_TYPE_PATH",
+                "span": {
+                  "start": 34,
+                  "end": 44
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "Websocket",
+                  "span": {
+                    "start": 34,
+                    "end": 43
+                  }
+                }
+              ]
+            }
+          },
+          "module_expression": null,
+          "is_recursive": false
         }
       }
     ],

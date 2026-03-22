@@ -32,6 +32,10 @@ let unsupported_expression node =
   bail ~message:"unsupported expression shape during Ceibo -> CST lifting"
     ~syntax_node:node ~context:[ "expression" ]
 
+let unsupported_module_expression node =
+  bail ~message:"unsupported module expression shape during Ceibo -> CST lifting"
+    ~syntax_node:node ~context:[ "module_expression" ]
+
 let unsupported_item node =
   bail ~message:"unsupported structure item during Ceibo -> CST lifting"
     ~syntax_node:node ~context:[ "item" ]
@@ -94,6 +98,12 @@ let attributes_from_node node =
          Ceibo.Red.SyntaxNode.kind child = Syntax_kind.ATTRIBUTE_EXPR)
   |> List.map attribute_from_node
 
+let non_paren_tokens node =
+  direct_non_trivia_tokens node
+  |> List.filter (fun syntax_token ->
+         let text = Ceibo.Red.SyntaxToken.text syntax_token in
+         not (String.equal text "(" || String.equal text ")"))
+
 let is_type_syntax_kind = function
   | Syntax_kind.TYPE_VAR
   | Syntax_kind.TYPE_CONSTR
@@ -133,6 +143,30 @@ let rec can_lift_module_type_node node =
       match direct_non_trivia_tokens node with
       | first :: _ ->
           String.equal (Ceibo.Red.SyntaxToken.text first) "sig"
+      | [] -> false)
+  | _ ->
+      false
+
+let rec can_lift_module_expression_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.MODULE_PATH
+  | Syntax_kind.STRUCT_EXPR
+  | Syntax_kind.MODULE_APPLICATION
+  | Syntax_kind.FIRST_CLASS_MODULE_EXPR ->
+      true
+  | Syntax_kind.FUNCTOR_TYPE -> (
+      match direct_non_trivia_tokens node with
+      | first :: _ ->
+          String.equal (Ceibo.Red.SyntaxToken.text first) "functor"
+      | [] -> false)
+  | Syntax_kind.PAREN_EXPR ->
+      direct_non_trivia_nodes node |> List.exists can_lift_module_expression_node
+  | Syntax_kind.ATTRIBUTE_EXPR ->
+      direct_non_trivia_nodes node |> List.exists can_lift_module_expression_node
+  | Syntax_kind.IDENT_EXPR -> (
+      match direct_non_trivia_tokens node with
+      | first :: _ ->
+          not (String.equal (Ceibo.Red.SyntaxToken.text first) "sig")
       | [] -> false)
   | _ ->
       false
@@ -1105,6 +1139,88 @@ let rec apply_argument_from_node node =
       | _ -> unsupported_expression node)
   | _ -> Cst.Positional (expression_from_node node)
 
+and module_expression_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.IDENT_EXPR ->
+      Cst.ModuleExpression.Path (ident_path_from_node node)
+  | Syntax_kind.MODULE_PATH ->
+      Cst.ModuleExpression.Path (module_path_from_node node)
+  | Syntax_kind.STRUCT_EXPR ->
+      Cst.ModuleExpression.Structure
+        {
+          syntax_node = node;
+          item_syntax_nodes = direct_non_trivia_nodes node;
+        }
+  | Syntax_kind.FUNCTOR_TYPE -> (
+      match direct_non_trivia_tokens node, List.rev (direct_non_trivia_nodes node) with
+      | functor_kw :: _, body_node :: rev_parameter_nodes
+        when String.equal (Ceibo.Red.SyntaxToken.text functor_kw) "functor" ->
+          Cst.ModuleExpression.Functor
+            {
+              syntax_node = node;
+              parameters =
+                List.rev rev_parameter_nodes
+                |> List.filter (fun child ->
+                       Ceibo.Red.SyntaxNode.kind child = Syntax_kind.FUNCTOR_PARAM)
+                |> List.map functor_parameter_from_node;
+              body = module_expression_from_node body_node;
+            }
+      | _ ->
+          unsupported_module_expression node)
+  | Syntax_kind.MODULE_APPLICATION -> (
+      match direct_non_trivia_nodes node with
+      | callee_node :: argument_node :: _ ->
+          Cst.ModuleExpression.Apply
+            {
+              syntax_node = node;
+              callee = module_expression_from_node callee_node;
+              argument = module_expression_from_node argument_node;
+            }
+      | _ ->
+          unsupported_module_expression node)
+  | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> (
+      match non_paren_tokens node, direct_non_trivia_nodes node with
+      | val_kw :: _, expression_node :: _
+        when String.equal (Ceibo.Red.SyntaxToken.text val_kw) "val" ->
+          Cst.ModuleExpression.Unpack
+            {
+              syntax_node = node;
+              expression = expression_from_node expression_node;
+              module_type =
+                (direct_non_trivia_nodes node
+                |> List.find_opt can_lift_module_type_node
+                |> Option.map module_type_from_node);
+            }
+      | _ ->
+          unsupported_module_expression node)
+  | Syntax_kind.PAREN_EXPR -> (
+      match direct_non_trivia_nodes node |> List.find_opt can_lift_module_expression_node with
+      | Some inner_node ->
+          Cst.ModuleExpression.Parenthesized
+            { syntax_node = node; inner = module_expression_from_node inner_node }
+      | None ->
+          unsupported_module_expression node)
+  | Syntax_kind.ATTRIBUTE_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | first_child :: rest -> (
+          match
+            List.find_opt can_lift_module_expression_node (first_child :: rest),
+            List.find_opt is_attribute_node rest
+          with
+          | Some payload_node, Some attribute_node ->
+              Cst.ModuleExpression.Attribute
+                {
+                  syntax_node = node;
+                  module_expression = module_expression_from_node payload_node;
+                  attribute = attribute_from_node attribute_node;
+                }
+          | _ ->
+              unsupported_module_expression node)
+      | [] ->
+          unsupported_module_expression node)
+  | _ ->
+      unsupported_module_expression node
+
 and expression_from_node node =
   let known_expression_children node =
     direct_non_trivia_nodes node
@@ -1286,18 +1402,19 @@ and expression_from_node node =
             }
       | None -> unsupported_expression node)
   | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> (
-      match direct_non_trivia_nodes node with
-      | module_syntax_node :: _ ->
+      match non_paren_tokens node, direct_non_trivia_nodes node with
+      | module_kw :: _, module_expression_node :: _
+        when String.equal (Ceibo.Red.SyntaxToken.text module_kw) "module" ->
           Cst.Expression.FirstClassModule
             {
               syntax_node = node;
-              module_syntax_node;
+              module_expression = module_expression_from_node module_expression_node;
               module_type =
                 (direct_non_trivia_nodes node
                 |> List.find_opt can_lift_module_type_node
                 |> Option.map module_type_from_node);
             }
-      | [] -> unsupported_expression node)
+      | _ -> unsupported_expression node)
   | Syntax_kind.LET_MODULE_EXPR -> (
       match let_module_expression_from_node node with
       | Some expr -> Cst.Expression.LetModule expr
@@ -1834,13 +1951,17 @@ and local_open_expression_from_node node =
   | _ -> None
 
 and let_module_expression_from_node node =
-  match direct_non_trivia_tokens node, direct_non_trivia_nodes node with
-  | _let_kw :: _module_kw :: module_name_token :: _, module_expression_syntax_node :: body_node :: _ ->
+  let direct_children = direct_non_trivia_nodes node in
+  let payload_children =
+    direct_children |> List.filter (fun child -> not (is_attribute_node child))
+  in
+  match direct_non_trivia_tokens node, payload_children with
+  | _let_kw :: _module_kw :: module_name_token :: _, module_expression_node :: body_node :: _ ->
       Some
         {
           syntax_node = node;
           module_name_token = token module_name_token;
-          module_expression_syntax_node;
+          module_expression = module_expression_from_node module_expression_node;
           body = expression_from_node body_node;
         }
   | _ -> None
@@ -2314,10 +2435,68 @@ let let_expression_binding_from_node ~is_recursive_binding node =
 
 let module_declaration_from_node node =
   match direct_non_trivia_tokens node with
-  | _module_kw :: module_name :: _ ->
-  Some
-    Cst.ModuleDeclaration.
-      { syntax_node = node; module_name = token module_name }
+  | _module_kw :: rest -> (
+      let is_recursive_declaration, module_name =
+        match rest with
+        | rec_kw :: module_name :: _
+          when String.equal (Ceibo.Red.SyntaxToken.text rec_kw) "rec" ->
+            (true, module_name)
+        | module_name :: _ ->
+            (false, module_name)
+        | [] ->
+            bail ~message:"expected module name during Ceibo -> CST lifting"
+              ~syntax_node:node ~context:[ "item"; "module_declaration" ]
+      in
+      let direct_children = direct_non_trivia_nodes node in
+      let has_equals =
+        direct_non_trivia_tokens node
+        |> List.exists (fun syntax_token ->
+               String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "=")
+      in
+      let lifted_module_expression =
+        if has_equals then
+          direct_children
+          |> List.rev
+          |> List.find_opt can_lift_module_expression_node
+          |> Option.map module_expression_from_node
+        else
+          None
+      in
+      let module_type_search_children =
+        if has_equals then
+          match
+            direct_children
+            |> List.rev
+            |> List.find_opt can_lift_module_expression_node
+          with
+          | Some module_expression_node ->
+              direct_children
+              |> List.filter (fun child ->
+                     child != module_expression_node)
+          | None ->
+              direct_children
+        else
+          direct_children
+      in
+      let lifted_module_type =
+        module_type_search_children
+        |> List.find_opt can_lift_module_type_node
+        |> Option.map module_type_from_node
+      in
+      Some
+        Cst.ModuleDeclaration.
+          {
+            syntax_node = node;
+            module_name = token module_name;
+            functor_parameters =
+              direct_children
+              |> List.filter (fun child ->
+                     Ceibo.Red.SyntaxNode.kind child = Syntax_kind.FUNCTOR_PARAM)
+              |> List.map functor_parameter_from_node;
+            module_type = lifted_module_type;
+            module_expression = lifted_module_expression;
+            is_recursive = is_recursive_declaration;
+          })
   | _ -> None
 
 let module_type_declaration_from_node node =

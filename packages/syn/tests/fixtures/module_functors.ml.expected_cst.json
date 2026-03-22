@@ -27,7 +27,69 @@
               "start": 27,
               "end": 28
             }
-          }
+          },
+          "functor_parameters": [
+            {
+              "syntax_node": {
+                "kind": "FUNCTOR_PARAM",
+                "span": {
+                  "start": 29,
+                  "end": 37
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "X",
+                "span": {
+                  "start": 30,
+                  "end": 31
+                }
+              },
+              "module_type": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 34,
+                      "end": 35
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "S",
+                      "span": {
+                        "start": 34,
+                        "end": 35
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 39,
+                "end": 64
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 48,
+                  "end": 61
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -47,7 +109,108 @@
               "start": 99,
               "end": 100
             }
-          }
+          },
+          "functor_parameters": [
+            {
+              "syntax_node": {
+                "kind": "FUNCTOR_PARAM",
+                "span": {
+                  "start": 101,
+                  "end": 109
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "X",
+                "span": {
+                  "start": 102,
+                  "end": 103
+                }
+              },
+              "module_type": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 106,
+                      "end": 107
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "S",
+                      "span": {
+                        "start": 106,
+                        "end": 107
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "FUNCTOR_PARAM",
+                "span": {
+                  "start": 109,
+                  "end": 117
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Y",
+                "span": {
+                  "start": 110,
+                  "end": 111
+                }
+              },
+              "module_type": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 114,
+                      "end": 115
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "T",
+                      "span": {
+                        "start": 114,
+                        "end": 115
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 119,
+                "end": 150
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 128,
+                  "end": 147
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -67,7 +230,64 @@
               "start": 185,
               "end": 186
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "MODULE_APPLICATION",
+              "span": {
+                "start": 189,
+                "end": 193
+              }
+            },
+            "callee": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 189,
+                    "end": 190
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "F",
+                    "span": {
+                      "start": 189,
+                      "end": 190
+                    }
+                  }
+                ]
+              }
+            },
+            "argument": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 191,
+                    "end": 192
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "X",
+                    "span": {
+                      "start": 191,
+                      "end": 192
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "is_recursive": false
         }
       },
       {
@@ -87,7 +307,128 @@
               "start": 238,
               "end": 239
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "MODULE_APPLICATION",
+              "span": {
+                "start": 242,
+                "end": 252
+              }
+            },
+            "callee": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "MODULE_APPLICATION",
+                "span": {
+                  "start": 242,
+                  "end": 249
+                }
+              },
+              "callee": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "MODULE_APPLICATION",
+                  "span": {
+                    "start": 242,
+                    "end": 246
+                  }
+                },
+                "callee": {
+                  "tag": "path",
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 242,
+                        "end": 243
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "F",
+                        "span": {
+                          "start": 242,
+                          "end": 243
+                        }
+                      }
+                    ]
+                  }
+                },
+                "argument": {
+                  "tag": "path",
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 244,
+                        "end": 245
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "X",
+                        "span": {
+                          "start": 244,
+                          "end": 245
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "argument": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 247,
+                      "end": 248
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Y",
+                      "span": {
+                        "start": 247,
+                        "end": 248
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "argument": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 250,
+                    "end": 251
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Z",
+                    "span": {
+                      "start": 250,
+                      "end": 251
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "is_recursive": false
         }
       },
       {
@@ -107,7 +448,128 @@
               "start": 286,
               "end": 287
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "MODULE_APPLICATION",
+              "span": {
+                "start": 290,
+                "end": 300
+              }
+            },
+            "callee": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 290,
+                    "end": 291
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "F",
+                    "span": {
+                      "start": 290,
+                      "end": 291
+                    }
+                  }
+                ]
+              }
+            },
+            "argument": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "MODULE_APPLICATION",
+                "span": {
+                  "start": 292,
+                  "end": 299
+                }
+              },
+              "callee": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 292,
+                      "end": 293
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "G",
+                      "span": {
+                        "start": 292,
+                        "end": 293
+                      }
+                    }
+                  ]
+                }
+              },
+              "argument": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "MODULE_APPLICATION",
+                  "span": {
+                    "start": 294,
+                    "end": 298
+                  }
+                },
+                "callee": {
+                  "tag": "path",
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 294,
+                        "end": 295
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "H",
+                        "span": {
+                          "start": 294,
+                          "end": 295
+                        }
+                      }
+                    ]
+                  }
+                },
+                "argument": {
+                  "tag": "path",
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 296,
+                        "end": 297
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "X",
+                        "span": {
+                          "start": 296,
+                          "end": 297
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "is_recursive": false
         }
       },
       {
@@ -127,7 +589,90 @@
               "start": 349,
               "end": 350
             }
-          }
+          },
+          "functor_parameters": [
+            {
+              "syntax_node": {
+                "kind": "FUNCTOR_PARAM",
+                "span": {
+                  "start": 351,
+                  "end": 359
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "X",
+                "span": {
+                  "start": 352,
+                  "end": 353
+                }
+              },
+              "module_type": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 356,
+                      "end": 357
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "S",
+                      "span": {
+                        "start": 356,
+                        "end": 357
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "module_type": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_TYPE_PATH",
+                "span": {
+                  "start": 361,
+                  "end": 363
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "T",
+                  "span": {
+                    "start": 361,
+                    "end": 362
+                  }
+                }
+              ]
+            }
+          },
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 365,
+                "end": 390
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 374,
+                  "end": 387
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {

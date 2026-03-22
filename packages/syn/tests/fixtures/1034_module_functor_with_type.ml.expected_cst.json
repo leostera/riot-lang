@@ -27,7 +27,129 @@
               "start": 7,
               "end": 8
             }
-          }
+          },
+          "functor_parameters": [
+            {
+              "syntax_node": {
+                "kind": "FUNCTOR_PARAM",
+                "span": {
+                  "start": 9,
+                  "end": 35
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "X",
+                "span": {
+                  "start": 10,
+                  "end": 11
+                }
+              },
+              "module_type": {
+                "tag": "with",
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_EXPR",
+                  "span": {
+                    "start": 14,
+                    "end": 33
+                  }
+                },
+                "base": {
+                  "tag": "path",
+                  "path": {
+                    "syntax_node": {
+                      "kind": "MODULE_TYPE_PATH",
+                      "span": {
+                        "start": 14,
+                        "end": 16
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "S",
+                        "span": {
+                          "start": 14,
+                          "end": 15
+                        }
+                      }
+                    ]
+                  }
+                },
+                "constraints": [
+                  {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTRAINT",
+                      "span": {
+                        "start": 21,
+                        "end": 33
+                      }
+                    },
+                    "type_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 26,
+                        "end": 27
+                      }
+                    },
+                    "replacement_type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 30,
+                          "end": 33
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 30,
+                            "end": 33
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 30,
+                              "end": 33
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    },
+                    "is_destructive": false
+                  }
+                ]
+              }
+            }
+          ],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 37,
+                "end": 65
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "LET_BINDING",
+                "span": {
+                  "start": 46,
+                  "end": 62
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       }
     ],

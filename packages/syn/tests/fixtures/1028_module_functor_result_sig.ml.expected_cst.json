@@ -27,7 +27,85 @@
               "start": 7,
               "end": 8
             }
-          }
+          },
+          "functor_parameters": [
+            {
+              "syntax_node": {
+                "kind": "FUNCTOR_PARAM",
+                "span": {
+                  "start": 9,
+                  "end": 17
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "X",
+                "span": {
+                  "start": 10,
+                  "end": 11
+                }
+              },
+              "module_type": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 14,
+                      "end": 15
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "S",
+                      "span": {
+                        "start": 14,
+                        "end": 15
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "module_type": {
+            "tag": "signature",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 19,
+                "end": 40
+              }
+            },
+            "signature_syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 19,
+                "end": 40
+              }
+            }
+          },
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 43,
+                "end": 71
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "LET_BINDING",
+                "span": {
+                  "start": 52,
+                  "end": 68
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       }
     ],

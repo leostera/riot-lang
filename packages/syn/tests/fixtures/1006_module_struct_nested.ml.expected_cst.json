@@ -27,7 +27,29 @@
               "start": 7,
               "end": 8
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 11,
+                "end": 61
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "MODULE_DECL",
+                "span": {
+                  "start": 20,
+                  "end": 57
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       }
     ],

@@ -84,12 +84,31 @@
                 "end": 78
               }
             },
-            "module_expression_syntax_node": {
-              "kind": "STRUCT_EXPR",
-              "span": {
-                "start": 81,
-                "end": 161
-              }
+            "module_expression": {
+              "tag": "structure",
+              "syntax_node": {
+                "kind": "STRUCT_EXPR",
+                "span": {
+                  "start": 81,
+                  "end": 161
+                }
+              },
+              "item_syntax_nodes": [
+                {
+                  "kind": "TYPE_DECL",
+                  "span": {
+                    "start": 92,
+                    "end": 109
+                  }
+                },
+                {
+                  "kind": "TYPE_DECL",
+                  "span": {
+                    "start": 109,
+                    "end": 158
+                  }
+                }
+              ]
             },
             "body": {
               "tag": "apply",
@@ -258,12 +277,31 @@
               "end": 78
             }
           },
-          "module_expression_syntax_node": {
-            "kind": "STRUCT_EXPR",
-            "span": {
-              "start": 81,
-              "end": 161
-            }
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 81,
+                "end": 161
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 92,
+                  "end": 109
+                }
+              },
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 109,
+                  "end": 158
+                }
+              }
+            ]
           },
           "body": {
             "tag": "apply",
@@ -376,12 +414,31 @@
             "end": 78
           }
         },
-        "module_expression_syntax_node": {
-          "kind": "STRUCT_EXPR",
-          "span": {
-            "start": 81,
-            "end": 161
-          }
+        "module_expression": {
+          "tag": "structure",
+          "syntax_node": {
+            "kind": "STRUCT_EXPR",
+            "span": {
+              "start": 81,
+              "end": 161
+            }
+          },
+          "item_syntax_nodes": [
+            {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 92,
+                "end": 109
+              }
+            },
+            {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 109,
+                "end": 158
+              }
+            }
+          ]
         },
         "body": {
           "tag": "apply",

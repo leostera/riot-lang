@@ -27,7 +27,52 @@
               "start": 7,
               "end": 8
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": {
+            "tag": "signature",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 11,
+                "end": 64
+              }
+            },
+            "signature_syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 11,
+                "end": 64
+              }
+            }
+          },
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 67,
+                "end": 110
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 76,
+                  "end": 92
+                }
+              },
+              {
+                "kind": "LET_BINDING",
+                "span": {
+                  "start": 92,
+                  "end": 106
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       }
     ],

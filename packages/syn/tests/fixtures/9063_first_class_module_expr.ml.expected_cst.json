@@ -57,11 +57,42 @@
                 "end": 35
               }
             },
-            "module_syntax_node": {
-              "kind": "MODULE_PATH",
-              "span": {
-                "start": 21,
-                "end": 34
+            "module_expression": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 21,
+                    "end": 34
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Sqlite",
+                    "span": {
+                      "start": 21,
+                      "end": 27
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 27,
+                      "end": 28
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Driver",
+                    "span": {
+                      "start": 28,
+                      "end": 34
+                    }
+                  }
+                ]
               }
             },
             "module_type": null
@@ -116,11 +147,26 @@
                 "end": 68
               }
             },
-            "module_syntax_node": {
-              "kind": "MODULE_PATH",
-              "span": {
-                "start": 62,
-                "end": 64
+            "module_expression": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 62,
+                    "end": 64
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "M",
+                    "span": {
+                      "start": 62,
+                      "end": 63
+                    }
+                  }
+                ]
               }
             },
             "module_type": {
@@ -196,11 +242,42 @@
               "end": 35
             }
           },
-          "module_syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 21,
-              "end": 34
+          "module_expression": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_PATH",
+                "span": {
+                  "start": 21,
+                  "end": 34
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "Sqlite",
+                  "span": {
+                    "start": 21,
+                    "end": 27
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 27,
+                    "end": 28
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "Driver",
+                  "span": {
+                    "start": 28,
+                    "end": 34
+                  }
+                }
+              ]
             }
           },
           "module_type": null
@@ -252,11 +329,26 @@
               "end": 68
             }
           },
-          "module_syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 62,
-              "end": 64
+          "module_expression": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_PATH",
+                "span": {
+                  "start": 62,
+                  "end": 64
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "M",
+                  "span": {
+                    "start": 62,
+                    "end": 63
+                  }
+                }
+              ]
             }
           },
           "module_type": {
@@ -295,11 +387,42 @@
             "end": 35
           }
         },
-        "module_syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 21,
-            "end": 34
+        "module_expression": {
+          "tag": "path",
+          "path": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 21,
+                "end": 34
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "Sqlite",
+                "span": {
+                  "start": 21,
+                  "end": 27
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 27,
+                  "end": 28
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "Driver",
+                "span": {
+                  "start": 28,
+                  "end": 34
+                }
+              }
+            ]
           }
         },
         "module_type": null
@@ -313,11 +436,26 @@
             "end": 68
           }
         },
-        "module_syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 62,
-            "end": 64
+        "module_expression": {
+          "tag": "path",
+          "path": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 62,
+                "end": 64
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "M",
+                "span": {
+                  "start": 62,
+                  "end": 63
+                }
+              }
+            ]
           }
         },
         "module_type": {

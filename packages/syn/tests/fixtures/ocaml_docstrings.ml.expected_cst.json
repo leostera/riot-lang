@@ -27,7 +27,94 @@
               "start": 272,
               "end": 278
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": {
+            "tag": "signature",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 281,
+                "end": 3575
+              }
+            },
+            "signature_syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 281,
+                "end": 3575
+              }
+            }
+          },
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 3578,
+                "end": 5363
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "LET_BINDING",
+                "span": {
+                  "start": 3624,
+                  "end": 3641
+                }
+              },
+              {
+                "kind": "EXCEPTION_DECL",
+                "span": {
+                  "start": 3924,
+                  "end": 4007
+                }
+              },
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 4007,
+                  "end": 4172
+                }
+              },
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 4172,
+                  "end": 4334
+                }
+              },
+              {
+                "kind": "CLASS_DECL",
+                "span": {
+                  "start": 4334,
+                  "end": 4834
+                }
+              },
+              {
+                "kind": "CLASS_TYPE_DECL",
+                "span": {
+                  "start": 4834,
+                  "end": 5099
+                }
+              },
+              {
+                "kind": "MODULE_DECL",
+                "span": {
+                  "start": 5099,
+                  "end": 5202
+                }
+              },
+              {
+                "kind": "MODULE_TYPE_DECL",
+                "span": {
+                  "start": 5259,
+                  "end": 5360
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -109,7 +196,36 @@
               "start": 12212,
               "end": 12213
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 12216,
+                "end": 12360
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 12225,
+                  "end": 12345
+                }
+              },
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 12345,
+                  "end": 12357
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -191,7 +307,36 @@
               "start": 12754,
               "end": 12755
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 12758,
+                "end": 12813
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 12780,
+                  "end": 12790
+                }
+              },
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 12790,
+                  "end": 12810
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -273,7 +418,36 @@
               "start": 12973,
               "end": 12974
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 12977,
+                "end": 13034
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 13000,
+                  "end": 13010
+                }
+              },
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 13010,
+                  "end": 13031
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -355,7 +529,36 @@
               "start": 13194,
               "end": 13195
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 13198,
+                "end": 13255
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 13221,
+                  "end": 13231
+                }
+              },
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 13231,
+                  "end": 13252
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -437,7 +640,36 @@
               "start": 13432,
               "end": 13433
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 13436,
+                "end": 13495
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 13460,
+                  "end": 13470
+                }
+              },
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 13470,
+                  "end": 13492
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -519,7 +751,36 @@
               "start": 13672,
               "end": 13673
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 13676,
+                "end": 13819
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 13742,
+                  "end": 13752
+                }
+              },
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 13752,
+                  "end": 13816
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -601,7 +862,36 @@
               "start": 13974,
               "end": 13975
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 13978,
+                "end": 14067
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 14017,
+                  "end": 14027
+                }
+              },
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 14027,
+                  "end": 14064
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -683,7 +973,36 @@
               "start": 14295,
               "end": 14296
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 14299,
+                "end": 14390
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 14339,
+                  "end": 14349
+                }
+              },
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 14349,
+                  "end": 14387
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -765,7 +1084,29 @@
               "start": 14618,
               "end": 14619
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 14622,
+                "end": 14661
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 14640,
+                  "end": 14658
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -847,7 +1188,29 @@
               "start": 14789,
               "end": 14790
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 14793,
+                "end": 14834
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 14812,
+                  "end": 14831
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       },
       {
@@ -929,7 +1292,21 @@
               "start": 15004,
               "end": 15005
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 15008,
+                "end": 15029
+              }
+            },
+            "item_syntax_nodes": []
+          },
+          "is_recursive": false
         }
       },
       {
@@ -1011,7 +1388,21 @@
               "start": 15125,
               "end": 15126
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 15129,
+                "end": 15151
+              }
+            },
+            "item_syntax_nodes": []
+          },
+          "is_recursive": false
         }
       },
       {
@@ -1093,7 +1484,21 @@
               "start": 15247,
               "end": 15248
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 15251,
+                "end": 15273
+              }
+            },
+            "item_syntax_nodes": []
+          },
+          "is_recursive": false
         }
       },
       {
@@ -1175,7 +1580,21 @@
               "start": 15369,
               "end": 15370
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 15373,
+                "end": 15394
+              }
+            },
+            "item_syntax_nodes": []
+          },
+          "is_recursive": false
         }
       },
       {
@@ -1257,7 +1676,21 @@
               "start": 15490,
               "end": 15491
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 15494,
+                "end": 15516
+              }
+            },
+            "item_syntax_nodes": []
+          },
+          "is_recursive": false
         }
       },
       {
@@ -1339,7 +1772,21 @@
               "start": 15612,
               "end": 15613
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 15616,
+                "end": 15638
+              }
+            },
+            "item_syntax_nodes": []
+          },
+          "is_recursive": false
         }
       },
       {
@@ -1421,7 +1868,21 @@
               "start": 15734,
               "end": 15735
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 15738,
+                "end": 15761
+              }
+            },
+            "item_syntax_nodes": []
+          },
+          "is_recursive": false
         }
       },
       {
@@ -1503,7 +1964,21 @@
               "start": 15857,
               "end": 15858
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 15861,
+                "end": 15896
+              }
+            },
+            "item_syntax_nodes": []
+          },
+          "is_recursive": false
         }
       },
       {
@@ -1585,7 +2060,21 @@
               "start": 16034,
               "end": 16035
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 16038,
+                "end": 16071
+              }
+            },
+            "item_syntax_nodes": []
+          },
+          "is_recursive": false
         }
       },
       {

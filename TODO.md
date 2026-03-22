@@ -59,7 +59,7 @@
 - [ ] Next parity slices:
   - [x] standalone attribute and extension items
   - [x] typed module-type tree
-  - [ ] typed module-expression tree
+  - [x] typed module-expression tree
   - [ ] attributed expressions and attributed items as faithful wrappers instead of token shells
 
 ### OCaml Structure Parity Checklist
@@ -162,9 +162,7 @@
 #### Present But Opaque
 
 - [ ] Core types still have opaque branches and missing families even though the first typed `core_type` tree is in place
-- [ ] Module expressions are still raw syntax in places like:
-  - [ ] `let_module_expression.module_expression_syntax_node`
-  - [ ] `first_class_module_expression.module_syntax_node`
+- [x] First-class module expressions, `let module`, and module declarations now lift through `module_expression`
 - [ ] Module types are still raw syntax in places like:
   - [x] first-class module expressions / patterns / type definitions now lift through `module_type`
   - [ ] class type bodies and some declaration sites still keep raw syntax

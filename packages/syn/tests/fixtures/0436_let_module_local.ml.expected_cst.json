@@ -29,12 +29,24 @@
               "end": 12
             }
           },
-          "module_expression_syntax_node": {
-            "kind": "STRUCT_EXPR",
-            "span": {
-              "start": 15,
-              "end": 37
-            }
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 15,
+                "end": 37
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "LET_BINDING",
+                "span": {
+                  "start": 24,
+                  "end": 33
+                }
+              }
+            ]
           },
           "body": {
             "tag": "field_access",
@@ -165,12 +177,24 @@
             "end": 12
           }
         },
-        "module_expression_syntax_node": {
-          "kind": "STRUCT_EXPR",
-          "span": {
-            "start": 15,
-            "end": 37
-          }
+        "module_expression": {
+          "tag": "structure",
+          "syntax_node": {
+            "kind": "STRUCT_EXPR",
+            "span": {
+              "start": 15,
+              "end": 37
+            }
+          },
+          "item_syntax_nodes": [
+            {
+              "kind": "LET_BINDING",
+              "span": {
+                "start": 24,
+                "end": 33
+              }
+            }
+          ]
         },
         "body": {
           "tag": "field_access",

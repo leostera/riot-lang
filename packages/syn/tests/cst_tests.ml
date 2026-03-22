@@ -185,9 +185,20 @@ let tests =
         in
         let items = Syn.Cst.SourceFile.items cst in
         match items with
-        | Syn.Cst.Item.ModuleDeclaration decl :: _ ->
+        | Syn.Cst.Item.ModuleDeclaration
+            {
+              module_name;
+              functor_parameters = [];
+              module_type = None;
+              module_expression =
+                Some
+                  (Syn.Cst.ModuleExpression.Structure { item_syntax_nodes = []; _ });
+              is_recursive = false;
+              _;
+            }
+          :: _ ->
             Test.assert_equal ~expected:"Foo_bar"
-              ~actual:(Syn.Cst.ModuleDeclaration.name decl);
+              ~actual:(Syn.Cst.Token.text module_name);
             Ok ()
         | _ -> Error "expected first item to be a module declaration");
     Test.case "cst module type declarations expose declared names" (fun () ->
@@ -920,17 +931,16 @@ let tests =
               value =
                 Syn.Cst.Expression.FirstClassModule
                   {
-                    module_syntax_node;
+                    module_expression =
+                      Syn.Cst.ModuleExpression.Path module_path;
                     module_type = Some (Syn.Cst.ModuleType.Path module_type_path);
                     _;
                   };
               _;
             }
           :: _ ->
-            Test.assert_equal ~expected:"MODULE_PATH"
-              ~actual:
-                (SyntaxKind.to_string
-                   (Ceibo.Red.SyntaxNode.kind module_syntax_node));
+            Test.assert_equal ~expected:(Some "M")
+              ~actual:(Syn.Cst.ModulePath.name module_path);
             Test.assert_equal ~expected:(Some "S")
               ~actual:(Syn.Cst.ModulePath.name module_type_path);
             Ok ()
@@ -984,7 +994,14 @@ let tests =
                 Syn.Cst.Expression.LetModule
                   {
                     module_name_token;
-                    module_expression_syntax_node;
+                    module_expression =
+                      Syn.Cst.ModuleExpression.Unpack
+                        {
+                          expression =
+                            Syn.Cst.Expression.Path { path = module_path; _ };
+                          module_type = None;
+                          _;
+                        };
                     body = Syn.Cst.Expression.Apply _;
                     _;
                   };
@@ -993,10 +1010,8 @@ let tests =
           :: _ ->
             Test.assert_equal ~expected:"D"
               ~actual:(Syn.Cst.Token.text module_name_token);
-            Test.assert_equal ~expected:"FIRST_CLASS_MODULE_EXPR"
-              ~actual:
-                (SyntaxKind.to_string
-                   (Ceibo.Red.SyntaxNode.kind module_expression_syntax_node));
+            Test.assert_equal ~expected:(Some "driver")
+              ~actual:(Syn.Cst.ModulePath.name module_path);
             Ok ()
         | _ -> Error "expected let-module expression");
     Test.case "cst field access preserves nested qualified field access structurally" (fun () ->

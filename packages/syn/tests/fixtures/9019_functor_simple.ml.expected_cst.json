@@ -27,7 +27,69 @@
               "start": 7,
               "end": 11
             }
-          }
+          },
+          "functor_parameters": [
+            {
+              "syntax_node": {
+                "kind": "FUNCTOR_PARAM",
+                "span": {
+                  "start": 12,
+                  "end": 20
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "M",
+                "span": {
+                  "start": 13,
+                  "end": 14
+                }
+              },
+              "module_type": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 17,
+                      "end": 18
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "S",
+                      "span": {
+                        "start": 17,
+                        "end": 18
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "module_type": null,
+          "module_expression": {
+            "tag": "structure",
+            "syntax_node": {
+              "kind": "STRUCT_EXPR",
+              "span": {
+                "start": 22,
+                "end": 47
+              }
+            },
+            "item_syntax_nodes": [
+              {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 31,
+                  "end": 44
+                }
+              }
+            ]
+          },
+          "is_recursive": false
         }
       }
     ],

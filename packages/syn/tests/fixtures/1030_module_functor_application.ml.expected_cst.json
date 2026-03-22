@@ -27,7 +27,64 @@
               "start": 7,
               "end": 8
             }
-          }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "MODULE_APPLICATION",
+              "span": {
+                "start": 11,
+                "end": 16
+              }
+            },
+            "callee": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 11,
+                    "end": 13
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "F",
+                    "span": {
+                      "start": 11,
+                      "end": 12
+                    }
+                  }
+                ]
+              }
+            },
+            "argument": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 14,
+                    "end": 15
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "X",
+                    "span": {
+                      "start": 14,
+                      "end": 15
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "is_recursive": false
         }
       }
     ],

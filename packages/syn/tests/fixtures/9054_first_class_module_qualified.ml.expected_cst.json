@@ -112,11 +112,58 @@
                     "end": 94
                   }
                 },
-                "module_syntax_node": {
-                  "kind": "MODULE_PATH",
-                  "span": {
-                    "start": 76,
-                    "end": 93
+                "module_expression": {
+                  "tag": "path",
+                  "path": {
+                    "syntax_node": {
+                      "kind": "MODULE_PATH",
+                      "span": {
+                        "start": 76,
+                        "end": 93
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Std",
+                        "span": {
+                          "start": 76,
+                          "end": 79
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "span": {
+                          "start": 79,
+                          "end": 80
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Net",
+                        "span": {
+                          "start": 80,
+                          "end": 83
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "span": {
+                          "start": 83,
+                          "end": 84
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "TcpClient",
+                        "span": {
+                          "start": 84,
+                          "end": 93
+                        }
+                      }
+                    ]
                   }
                 },
                 "module_type": null
@@ -213,11 +260,74 @@
                     "end": 144
                   }
                 },
-                "module_syntax_node": {
-                  "kind": "MODULE_PATH",
-                  "span": {
-                    "start": 136,
-                    "end": 143
+                "module_expression": {
+                  "tag": "path",
+                  "path": {
+                    "syntax_node": {
+                      "kind": "MODULE_PATH",
+                      "span": {
+                        "start": 136,
+                        "end": 143
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "A",
+                        "span": {
+                          "start": 136,
+                          "end": 137
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "span": {
+                          "start": 137,
+                          "end": 138
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "B",
+                        "span": {
+                          "start": 138,
+                          "end": 139
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "span": {
+                          "start": 139,
+                          "end": 140
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "C",
+                        "span": {
+                          "start": 140,
+                          "end": 141
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "span": {
+                          "start": 141,
+                          "end": 142
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "D",
+                        "span": {
+                          "start": 142,
+                          "end": 143
+                        }
+                      }
+                    ]
                   }
                 },
                 "module_type": null
@@ -356,11 +466,58 @@
                       "end": 234
                     }
                   },
-                  "module_syntax_node": {
-                    "kind": "MODULE_PATH",
-                    "span": {
-                      "start": 216,
-                      "end": 233
+                  "module_expression": {
+                    "tag": "path",
+                    "path": {
+                      "syntax_node": {
+                        "kind": "MODULE_PATH",
+                        "span": {
+                          "start": 216,
+                          "end": 233
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "Std",
+                          "span": {
+                            "start": 216,
+                            "end": 219
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": ".",
+                          "span": {
+                            "start": 219,
+                            "end": 220
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "Net",
+                          "span": {
+                            "start": 220,
+                            "end": 223
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": ".",
+                          "span": {
+                            "start": 223,
+                            "end": 224
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "TcpClient",
+                          "span": {
+                            "start": 224,
+                            "end": 233
+                          }
+                        }
+                      ]
                     }
                   },
                   "module_type": null
@@ -489,11 +646,58 @@
                   "end": 94
                 }
               },
-              "module_syntax_node": {
-                "kind": "MODULE_PATH",
-                "span": {
-                  "start": 76,
-                  "end": 93
+              "module_expression": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_PATH",
+                    "span": {
+                      "start": 76,
+                      "end": 93
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Std",
+                      "span": {
+                        "start": 76,
+                        "end": 79
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 79,
+                        "end": 80
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Net",
+                      "span": {
+                        "start": 80,
+                        "end": 83
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 83,
+                        "end": 84
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "TcpClient",
+                      "span": {
+                        "start": 84,
+                        "end": 93
+                      }
+                    }
+                  ]
                 }
               },
               "module_type": null
@@ -587,11 +791,74 @@
                   "end": 144
                 }
               },
-              "module_syntax_node": {
-                "kind": "MODULE_PATH",
-                "span": {
-                  "start": 136,
-                  "end": 143
+              "module_expression": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_PATH",
+                    "span": {
+                      "start": 136,
+                      "end": 143
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "A",
+                      "span": {
+                        "start": 136,
+                        "end": 137
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 137,
+                        "end": 138
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "B",
+                      "span": {
+                        "start": 138,
+                        "end": 139
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 139,
+                        "end": 140
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "C",
+                      "span": {
+                        "start": 140,
+                        "end": 141
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 141,
+                        "end": 142
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "D",
+                      "span": {
+                        "start": 142,
+                        "end": 143
+                      }
+                    }
+                  ]
                 }
               },
               "module_type": null
@@ -727,11 +994,58 @@
                     "end": 234
                   }
                 },
-                "module_syntax_node": {
-                  "kind": "MODULE_PATH",
-                  "span": {
-                    "start": 216,
-                    "end": 233
+                "module_expression": {
+                  "tag": "path",
+                  "path": {
+                    "syntax_node": {
+                      "kind": "MODULE_PATH",
+                      "span": {
+                        "start": 216,
+                        "end": 233
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Std",
+                        "span": {
+                          "start": 216,
+                          "end": 219
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "span": {
+                          "start": 219,
+                          "end": 220
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Net",
+                        "span": {
+                          "start": 220,
+                          "end": 223
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "span": {
+                          "start": 223,
+                          "end": 224
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "TcpClient",
+                        "span": {
+                          "start": 224,
+                          "end": 233
+                        }
+                      }
+                    ]
                   }
                 },
                 "module_type": null
@@ -823,11 +1137,58 @@
                 "end": 94
               }
             },
-            "module_syntax_node": {
-              "kind": "MODULE_PATH",
-              "span": {
-                "start": 76,
-                "end": 93
+            "module_expression": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 76,
+                    "end": 93
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Std",
+                    "span": {
+                      "start": 76,
+                      "end": 79
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 79,
+                      "end": 80
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Net",
+                    "span": {
+                      "start": 80,
+                      "end": 83
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 83,
+                      "end": 84
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "TcpClient",
+                    "span": {
+                      "start": 84,
+                      "end": 93
+                    }
+                  }
+                ]
               }
             },
             "module_type": null
@@ -872,11 +1233,58 @@
             "end": 94
           }
         },
-        "module_syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 76,
-            "end": 93
+        "module_expression": {
+          "tag": "path",
+          "path": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 76,
+                "end": 93
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "Std",
+                "span": {
+                  "start": 76,
+                  "end": 79
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 79,
+                  "end": 80
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "Net",
+                "span": {
+                  "start": 80,
+                  "end": 83
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 83,
+                  "end": 84
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "TcpClient",
+                "span": {
+                  "start": 84,
+                  "end": 93
+                }
+              }
+            ]
           }
         },
         "module_type": null
@@ -930,11 +1338,74 @@
                 "end": 144
               }
             },
-            "module_syntax_node": {
-              "kind": "MODULE_PATH",
-              "span": {
-                "start": 136,
-                "end": 143
+            "module_expression": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 136,
+                    "end": 143
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "A",
+                    "span": {
+                      "start": 136,
+                      "end": 137
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 137,
+                      "end": 138
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "B",
+                    "span": {
+                      "start": 138,
+                      "end": 139
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 139,
+                      "end": 140
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "C",
+                    "span": {
+                      "start": 140,
+                      "end": 141
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 141,
+                      "end": 142
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "D",
+                    "span": {
+                      "start": 142,
+                      "end": 143
+                    }
+                  }
+                ]
               }
             },
             "module_type": null
@@ -979,11 +1450,74 @@
             "end": 144
           }
         },
-        "module_syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 136,
-            "end": 143
+        "module_expression": {
+          "tag": "path",
+          "path": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 136,
+                "end": 143
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "A",
+                "span": {
+                  "start": 136,
+                  "end": 137
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 137,
+                  "end": 138
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "B",
+                "span": {
+                  "start": 138,
+                  "end": 139
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 139,
+                  "end": 140
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "C",
+                "span": {
+                  "start": 140,
+                  "end": 141
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 141,
+                  "end": 142
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "D",
+                "span": {
+                  "start": 142,
+                  "end": 143
+                }
+              }
+            ]
           }
         },
         "module_type": null
@@ -1079,11 +1613,58 @@
                   "end": 234
                 }
               },
-              "module_syntax_node": {
-                "kind": "MODULE_PATH",
-                "span": {
-                  "start": 216,
-                  "end": 233
+              "module_expression": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_PATH",
+                    "span": {
+                      "start": 216,
+                      "end": 233
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Std",
+                      "span": {
+                        "start": 216,
+                        "end": 219
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 219,
+                        "end": 220
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Net",
+                      "span": {
+                        "start": 220,
+                        "end": 223
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 223,
+                        "end": 224
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "TcpClient",
+                      "span": {
+                        "start": 224,
+                        "end": 233
+                      }
+                    }
+                  ]
                 }
               },
               "module_type": null
@@ -1201,11 +1782,58 @@
               "end": 234
             }
           },
-          "module_syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 216,
-              "end": 233
+          "module_expression": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_PATH",
+                "span": {
+                  "start": 216,
+                  "end": 233
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "Std",
+                  "span": {
+                    "start": 216,
+                    "end": 219
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 219,
+                    "end": 220
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "Net",
+                  "span": {
+                    "start": 220,
+                    "end": 223
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 223,
+                    "end": 224
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "TcpClient",
+                  "span": {
+                    "start": 224,
+                    "end": 233
+                  }
+                }
+              ]
             }
           },
           "module_type": null
@@ -1236,11 +1864,58 @@
             "end": 234
           }
         },
-        "module_syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 216,
-            "end": 233
+        "module_expression": {
+          "tag": "path",
+          "path": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 216,
+                "end": 233
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "Std",
+                "span": {
+                  "start": 216,
+                  "end": 219
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 219,
+                  "end": 220
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "Net",
+                "span": {
+                  "start": 220,
+                  "end": 223
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 223,
+                  "end": 224
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "TcpClient",
+                "span": {
+                  "start": 224,
+                  "end": 233
+                }
+              }
+            ]
           }
         },
         "module_type": null
