@@ -1,0 +1,65 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 13
+      }
+    },
+    "items": [
+      {
+        "tag": "include_statement",
+        "item": {
+          "syntax_node": {
+            "kind": "INCLUDE_STMT",
+            "span": {
+              "start": 0,
+              "end": 13
+            }
+          },
+          "included_syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 8,
+              "end": 13
+            }
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 8,
+            "end": 13
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 8,
+              "end": 13
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "List",
+              "span": {
+                "start": 8,
+                "end": 12
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

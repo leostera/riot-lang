@@ -77,22 +77,25 @@
               }
             },
             "argument": {
-              "tag": "literal",
-              "literal": {
-                "tag": "int",
-                "syntax_node": {
-                  "kind": "INT_LITERAL",
-                  "span": {
-                    "start": 12,
-                    "end": 13
-                  }
-                },
-                "literal_token": {
-                  "kind": "INT_LITERAL",
-                  "text": "0",
-                  "span": {
-                    "start": 12,
-                    "end": 13
+              "tag": "positional",
+              "value": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 12,
+                      "end": 13
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "0",
+                    "span": {
+                      "start": 12,
+                      "end": 13
+                    }
                   }
                 }
               }
@@ -310,22 +313,25 @@
             }
           },
           "argument": {
-            "tag": "literal",
-            "literal": {
-              "tag": "int",
-              "syntax_node": {
-                "kind": "INT_LITERAL",
-                "span": {
-                  "start": 12,
-                  "end": 13
-                }
-              },
-              "literal_token": {
-                "kind": "INT_LITERAL",
-                "text": "0",
-                "span": {
-                  "start": 12,
-                  "end": 13
+            "tag": "positional",
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 12,
+                    "end": 13
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "0",
+                  "span": {
+                    "start": 12,
+                    "end": 13
+                  }
                 }
               }
             }
@@ -401,22 +407,25 @@
             }
           },
           "argument": {
-            "tag": "literal",
-            "literal": {
-              "tag": "int",
-              "syntax_node": {
-                "kind": "INT_LITERAL",
-                "span": {
-                  "start": 12,
-                  "end": 13
-                }
-              },
-              "literal_token": {
-                "kind": "INT_LITERAL",
-                "text": "0",
-                "span": {
-                  "start": 12,
-                  "end": 13
+            "tag": "positional",
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 12,
+                    "end": 13
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "0",
+                  "span": {
+                    "start": 12,
+                    "end": 13
+                  }
                 }
               }
             }
@@ -596,22 +605,25 @@
           }
         },
         "argument": {
-          "tag": "literal",
-          "literal": {
-            "tag": "int",
-            "syntax_node": {
-              "kind": "INT_LITERAL",
-              "span": {
-                "start": 12,
-                "end": 13
-              }
-            },
-            "literal_token": {
-              "kind": "INT_LITERAL",
-              "text": "0",
-              "span": {
-                "start": 12,
-                "end": 13
+          "tag": "positional",
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 12,
+                  "end": 13
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "0",
+                "span": {
+                  "start": 12,
+                  "end": 13
+                }
               }
             }
           }

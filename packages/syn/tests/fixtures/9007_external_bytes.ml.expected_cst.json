@@ -1,0 +1,53 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 64
+      }
+    },
+    "items": [
+      {
+        "tag": "external_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "EXTERNAL_DECL",
+            "span": {
+              "start": 0,
+              "end": 64
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "sha256_bytes",
+            "span": {
+              "start": 9,
+              "end": 21
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_ARROW",
+            "span": {
+              "start": 24,
+              "end": 39
+            }
+          },
+          "primitive_name_tokens": [
+            {
+              "kind": "STRING_LITERAL",
+              "text": "\"kernel_crypto_sha256\"",
+              "span": {
+                "start": 41,
+                "end": 63
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": []
+  }
+}

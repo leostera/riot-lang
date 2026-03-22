@@ -293,7 +293,25 @@
                       }
                     ]
                   },
-                  "value": null
+                  "value": {
+                    "tag": "poly_variant",
+                    "syntax_node": {
+                      "kind": "POLY_VARIANT_EXPR",
+                      "span": {
+                        "start": 106,
+                        "end": 111
+                      }
+                    },
+                    "tag_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Null",
+                      "span": {
+                        "start": 107,
+                        "end": 111
+                      }
+                    },
+                    "payload": null
+                  }
                 },
                 {
                   "syntax_node": {
@@ -322,7 +340,25 @@
                       }
                     ]
                   },
-                  "value": null
+                  "value": {
+                    "tag": "poly_variant",
+                    "syntax_node": {
+                      "kind": "POLY_VARIANT_EXPR",
+                      "span": {
+                        "start": 122,
+                        "end": 127
+                      }
+                    },
+                    "tag_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Pipe",
+                      "span": {
+                        "start": 123,
+                        "end": 127
+                      }
+                    },
+                    "payload": null
+                  }
                 },
                 {
                   "syntax_node": {
@@ -351,7 +387,25 @@
                       }
                     ]
                   },
-                  "value": null
+                  "value": {
+                    "tag": "poly_variant",
+                    "syntax_node": {
+                      "kind": "POLY_VARIANT_EXPR",
+                      "span": {
+                        "start": 138,
+                        "end": 144
+                      }
+                    },
+                    "tag_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Pipe",
+                      "span": {
+                        "start": 139,
+                        "end": 143
+                      }
+                    },
+                    "payload": null
+                  }
                 }
               ]
             },
@@ -641,7 +695,25 @@
                     }
                   ]
                 },
-                "value": null
+                "value": {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_EXPR",
+                    "span": {
+                      "start": 106,
+                      "end": 111
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Null",
+                    "span": {
+                      "start": 107,
+                      "end": 111
+                    }
+                  },
+                  "payload": null
+                }
               },
               {
                 "syntax_node": {
@@ -670,7 +742,25 @@
                     }
                   ]
                 },
-                "value": null
+                "value": {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_EXPR",
+                    "span": {
+                      "start": 122,
+                      "end": 127
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Pipe",
+                    "span": {
+                      "start": 123,
+                      "end": 127
+                    }
+                  },
+                  "payload": null
+                }
               },
               {
                 "syntax_node": {
@@ -699,7 +789,25 @@
                     }
                   ]
                 },
-                "value": null
+                "value": {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_EXPR",
+                    "span": {
+                      "start": 138,
+                      "end": 144
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Pipe",
+                    "span": {
+                      "start": 139,
+                      "end": 143
+                    }
+                  },
+                  "payload": null
+                }
               }
             ]
           },
@@ -1098,7 +1206,25 @@
                   }
                 ]
               },
-              "value": null
+              "value": {
+                "tag": "poly_variant",
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_EXPR",
+                  "span": {
+                    "start": 106,
+                    "end": 111
+                  }
+                },
+                "tag_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Null",
+                  "span": {
+                    "start": 107,
+                    "end": 111
+                  }
+                },
+                "payload": null
+              }
             },
             {
               "syntax_node": {
@@ -1127,7 +1253,25 @@
                   }
                 ]
               },
-              "value": null
+              "value": {
+                "tag": "poly_variant",
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_EXPR",
+                  "span": {
+                    "start": 122,
+                    "end": 127
+                  }
+                },
+                "tag_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Pipe",
+                  "span": {
+                    "start": 123,
+                    "end": 127
+                  }
+                },
+                "payload": null
+              }
             },
             {
               "syntax_node": {
@@ -1156,7 +1300,25 @@
                   }
                 ]
               },
-              "value": null
+              "value": {
+                "tag": "poly_variant",
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_EXPR",
+                  "span": {
+                    "start": 138,
+                    "end": 144
+                  }
+                },
+                "tag_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Pipe",
+                  "span": {
+                    "start": 139,
+                    "end": 143
+                  }
+                },
+                "payload": null
+              }
             }
           ]
         },
@@ -1229,7 +1391,25 @@
                 }
               ]
             },
-            "value": null
+            "value": {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_EXPR",
+                "span": {
+                  "start": 106,
+                  "end": 111
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Null",
+                "span": {
+                  "start": 107,
+                  "end": 111
+                }
+              },
+              "payload": null
+            }
           },
           {
             "syntax_node": {
@@ -1258,7 +1438,25 @@
                 }
               ]
             },
-            "value": null
+            "value": {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_EXPR",
+                "span": {
+                  "start": 122,
+                  "end": 127
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Pipe",
+                "span": {
+                  "start": 123,
+                  "end": 127
+                }
+              },
+              "payload": null
+            }
           },
           {
             "syntax_node": {
@@ -1287,9 +1485,84 @@
                 }
               ]
             },
-            "value": null
+            "value": {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_EXPR",
+                "span": {
+                  "start": 138,
+                  "end": 144
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Pipe",
+                "span": {
+                  "start": 139,
+                  "end": 143
+                }
+              },
+              "payload": null
+            }
           }
         ]
+      },
+      {
+        "tag": "poly_variant",
+        "syntax_node": {
+          "kind": "POLY_VARIANT_EXPR",
+          "span": {
+            "start": 106,
+            "end": 111
+          }
+        },
+        "tag_token": {
+          "kind": "IDENT_EXPR",
+          "text": "Null",
+          "span": {
+            "start": 107,
+            "end": 111
+          }
+        },
+        "payload": null
+      },
+      {
+        "tag": "poly_variant",
+        "syntax_node": {
+          "kind": "POLY_VARIANT_EXPR",
+          "span": {
+            "start": 122,
+            "end": 127
+          }
+        },
+        "tag_token": {
+          "kind": "IDENT_EXPR",
+          "text": "Pipe",
+          "span": {
+            "start": 123,
+            "end": 127
+          }
+        },
+        "payload": null
+      },
+      {
+        "tag": "poly_variant",
+        "syntax_node": {
+          "kind": "POLY_VARIANT_EXPR",
+          "span": {
+            "start": 138,
+            "end": 144
+          }
+        },
+        "tag_token": {
+          "kind": "IDENT_EXPR",
+          "text": "Pipe",
+          "span": {
+            "start": 139,
+            "end": 143
+          }
+        },
+        "payload": null
       }
     ]
   }

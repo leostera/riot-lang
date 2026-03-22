@@ -141,15 +141,9 @@
               }
             },
             "argument": {
-              "tag": "path",
-              "syntax_node": {
-                "kind": "IDENT_EXPR",
-                "span": {
-                  "start": 87,
-                  "end": 91
-                }
-              },
-              "path": {
+              "tag": "positional",
+              "value": {
+                "tag": "path",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -157,16 +151,25 @@
                     "end": 91
                   }
                 },
-                "segments": [
-                  {
+                "path": {
+                  "syntax_node": {
                     "kind": "IDENT_EXPR",
-                    "text": "iter",
                     "span": {
                       "start": 87,
                       "end": 91
                     }
-                  }
-                ]
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "iter",
+                      "span": {
+                        "start": 87,
+                        "end": 91
+                      }
+                    }
+                  ]
+                }
               }
             }
           },
@@ -667,15 +670,9 @@
             }
           },
           "argument": {
-            "tag": "path",
-            "syntax_node": {
-              "kind": "IDENT_EXPR",
-              "span": {
-                "start": 87,
-                "end": 91
-              }
-            },
-            "path": {
+            "tag": "positional",
+            "value": {
+              "tag": "path",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -683,16 +680,25 @@
                   "end": 91
                 }
               },
-              "segments": [
-                {
+              "path": {
+                "syntax_node": {
                   "kind": "IDENT_EXPR",
-                  "text": "iter",
                   "span": {
                     "start": 87,
                     "end": 91
                   }
-                }
-              ]
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "iter",
+                    "span": {
+                      "start": 87,
+                      "end": 91
+                    }
+                  }
+                ]
+              }
             }
           }
         },
@@ -1095,15 +1101,9 @@
           }
         },
         "argument": {
-          "tag": "path",
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 87,
-              "end": 91
-            }
-          },
-          "path": {
+          "tag": "positional",
+          "value": {
+            "tag": "path",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -1111,16 +1111,25 @@
                 "end": 91
               }
             },
-            "segments": [
-              {
+            "path": {
+              "syntax_node": {
                 "kind": "IDENT_EXPR",
-                "text": "iter",
                 "span": {
                   "start": 87,
                   "end": 91
                 }
-              }
-            ]
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "iter",
+                  "span": {
+                    "start": 87,
+                    "end": 91
+                  }
+                }
+              ]
+            }
           }
         }
       },

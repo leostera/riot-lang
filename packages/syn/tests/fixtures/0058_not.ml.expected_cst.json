@@ -85,22 +85,25 @@
               }
             },
             "argument": {
-              "tag": "literal",
-              "literal": {
-                "tag": "bool",
-                "syntax_node": {
-                  "kind": "BOOL_LITERAL",
-                  "span": {
-                    "start": 12,
-                    "end": 16
-                  }
-                },
-                "literal_token": {
-                  "kind": "BOOL_LITERAL",
-                  "text": "true",
-                  "span": {
-                    "start": 12,
-                    "end": 16
+              "tag": "positional",
+              "value": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "bool",
+                  "syntax_node": {
+                    "kind": "BOOL_LITERAL",
+                    "span": {
+                      "start": 12,
+                      "end": 16
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "BOOL_LITERAL",
+                    "text": "true",
+                    "span": {
+                      "start": 12,
+                      "end": 16
+                    }
                   }
                 }
               }
@@ -185,22 +188,25 @@
             }
           },
           "argument": {
-            "tag": "literal",
-            "literal": {
-              "tag": "bool",
-              "syntax_node": {
-                "kind": "BOOL_LITERAL",
-                "span": {
-                  "start": 12,
-                  "end": 16
-                }
-              },
-              "literal_token": {
-                "kind": "BOOL_LITERAL",
-                "text": "true",
-                "span": {
-                  "start": 12,
-                  "end": 16
+            "tag": "positional",
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "bool",
+                "syntax_node": {
+                  "kind": "BOOL_LITERAL",
+                  "span": {
+                    "start": 12,
+                    "end": 16
+                  }
+                },
+                "literal_token": {
+                  "kind": "BOOL_LITERAL",
+                  "text": "true",
+                  "span": {
+                    "start": 12,
+                    "end": 16
+                  }
                 }
               }
             }
@@ -249,22 +255,25 @@
           }
         },
         "argument": {
-          "tag": "literal",
-          "literal": {
-            "tag": "bool",
-            "syntax_node": {
-              "kind": "BOOL_LITERAL",
-              "span": {
-                "start": 12,
-                "end": 16
-              }
-            },
-            "literal_token": {
-              "kind": "BOOL_LITERAL",
-              "text": "true",
-              "span": {
-                "start": 12,
-                "end": 16
+          "tag": "positional",
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "bool",
+              "syntax_node": {
+                "kind": "BOOL_LITERAL",
+                "span": {
+                  "start": 12,
+                  "end": 16
+                }
+              },
+              "literal_token": {
+                "kind": "BOOL_LITERAL",
+                "text": "true",
+                "span": {
+                  "start": 12,
+                  "end": 16
+                }
               }
             }
           }

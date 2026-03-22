@@ -1,0 +1,73 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 110
+      }
+    },
+    "items": [
+      {
+        "tag": "value_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "VAL_DECL",
+            "span": {
+              "start": 68,
+              "end": 110
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "foo",
+            "span": {
+              "start": 72,
+              "end": 75
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_ARROW",
+            "span": {
+              "start": 80,
+              "end": 110
+            }
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 72,
+            "end": 75
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 72,
+              "end": 75
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "foo",
+              "span": {
+                "start": 72,
+                "end": 75
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

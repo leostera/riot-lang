@@ -216,15 +216,9 @@
                     }
                   },
                   "argument": {
-                    "tag": "path",
-                    "syntax_node": {
-                      "kind": "IDENT_EXPR",
-                      "span": {
-                        "start": 72,
-                        "end": 76
-                      }
-                    },
-                    "path": {
+                    "tag": "positional",
+                    "value": {
+                      "tag": "path",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -232,16 +226,25 @@
                           "end": 76
                         }
                       },
-                      "segments": [
-                        {
+                      "path": {
+                        "syntax_node": {
                           "kind": "IDENT_EXPR",
-                          "text": "rest",
                           "span": {
                             "start": 72,
                             "end": 76
                           }
-                        }
-                      ]
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "rest",
+                            "span": {
+                              "start": 72,
+                              "end": 76
+                            }
+                          }
+                        ]
+                      }
                     }
                   }
                 }
@@ -471,15 +474,9 @@
                       }
                     },
                     "argument": {
-                      "tag": "path",
-                      "syntax_node": {
-                        "kind": "IDENT_EXPR",
-                        "span": {
-                          "start": 118,
-                          "end": 122
-                        }
-                      },
-                      "path": {
+                      "tag": "positional",
+                      "value": {
+                        "tag": "path",
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
@@ -487,16 +484,25 @@
                             "end": 122
                           }
                         },
-                        "segments": [
-                          {
+                        "path": {
+                          "syntax_node": {
                             "kind": "IDENT_EXPR",
-                            "text": "rest",
                             "span": {
                               "start": 118,
                               "end": 122
                             }
-                          }
-                        ]
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "rest",
+                              "span": {
+                                "start": 118,
+                                "end": 122
+                              }
+                            }
+                          ]
+                        }
                       }
                     }
                   }
@@ -714,15 +720,9 @@
                   }
                 },
                 "argument": {
-                  "tag": "path",
-                  "syntax_node": {
-                    "kind": "IDENT_EXPR",
-                    "span": {
-                      "start": 72,
-                      "end": 76
-                    }
-                  },
-                  "path": {
+                  "tag": "positional",
+                  "value": {
+                    "tag": "path",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -730,16 +730,25 @@
                         "end": 76
                       }
                     },
-                    "segments": [
-                      {
+                    "path": {
+                      "syntax_node": {
                         "kind": "IDENT_EXPR",
-                        "text": "rest",
                         "span": {
                           "start": 72,
                           "end": 76
                         }
-                      }
-                    ]
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "rest",
+                          "span": {
+                            "start": 72,
+                            "end": 76
+                          }
+                        }
+                      ]
+                    }
                   }
                 }
               }
@@ -969,15 +978,9 @@
                     }
                   },
                   "argument": {
-                    "tag": "path",
-                    "syntax_node": {
-                      "kind": "IDENT_EXPR",
-                      "span": {
-                        "start": 118,
-                        "end": 122
-                      }
-                    },
-                    "path": {
+                    "tag": "positional",
+                    "value": {
+                      "tag": "path",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -985,16 +988,25 @@
                           "end": 122
                         }
                       },
-                      "segments": [
-                        {
+                      "path": {
+                        "syntax_node": {
                           "kind": "IDENT_EXPR",
-                          "text": "rest",
                           "span": {
                             "start": 118,
                             "end": 122
                           }
-                        }
-                      ]
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "rest",
+                            "span": {
+                              "start": 118,
+                              "end": 122
+                            }
+                          }
+                        ]
+                      }
                     }
                   }
                 }
@@ -1176,15 +1188,9 @@
                 }
               },
               "argument": {
-                "tag": "path",
-                "syntax_node": {
-                  "kind": "IDENT_EXPR",
-                  "span": {
-                    "start": 72,
-                    "end": 76
-                  }
-                },
-                "path": {
+                "tag": "positional",
+                "value": {
+                  "tag": "path",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -1192,16 +1198,25 @@
                       "end": 76
                     }
                   },
-                  "segments": [
-                    {
+                  "path": {
+                    "syntax_node": {
                       "kind": "IDENT_EXPR",
-                      "text": "rest",
                       "span": {
                         "start": 72,
                         "end": 76
                       }
-                    }
-                  ]
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "rest",
+                        "span": {
+                          "start": 72,
+                          "end": 76
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -1431,15 +1446,9 @@
                   }
                 },
                 "argument": {
-                  "tag": "path",
-                  "syntax_node": {
-                    "kind": "IDENT_EXPR",
-                    "span": {
-                      "start": 118,
-                      "end": 122
-                    }
-                  },
-                  "path": {
+                  "tag": "positional",
+                  "value": {
+                    "tag": "path",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -1447,16 +1456,25 @@
                         "end": 122
                       }
                     },
-                    "segments": [
-                      {
+                    "path": {
+                      "syntax_node": {
                         "kind": "IDENT_EXPR",
-                        "text": "rest",
                         "span": {
                           "start": 118,
                           "end": 122
                         }
-                      }
-                    ]
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "rest",
+                          "span": {
+                            "start": 118,
+                            "end": 122
+                          }
+                        }
+                      ]
+                    }
                   }
                 }
               }
@@ -1556,15 +1574,9 @@
           }
         },
         "argument": {
-          "tag": "path",
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 72,
-              "end": 76
-            }
-          },
-          "path": {
+          "tag": "positional",
+          "value": {
+            "tag": "path",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -1572,16 +1584,25 @@
                 "end": 76
               }
             },
-            "segments": [
-              {
+            "path": {
+              "syntax_node": {
                 "kind": "IDENT_EXPR",
-                "text": "rest",
                 "span": {
                   "start": 72,
                   "end": 76
                 }
-              }
-            ]
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "rest",
+                  "span": {
+                    "start": 72,
+                    "end": 76
+                  }
+                }
+              ]
+            }
           }
         }
       },
@@ -1785,15 +1806,9 @@
             }
           },
           "argument": {
-            "tag": "path",
-            "syntax_node": {
-              "kind": "IDENT_EXPR",
-              "span": {
-                "start": 118,
-                "end": 122
-              }
-            },
-            "path": {
+            "tag": "positional",
+            "value": {
+              "tag": "path",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -1801,16 +1816,25 @@
                   "end": 122
                 }
               },
-              "segments": [
-                {
+              "path": {
+                "syntax_node": {
                   "kind": "IDENT_EXPR",
-                  "text": "rest",
                   "span": {
                     "start": 118,
                     "end": 122
                   }
-                }
-              ]
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "rest",
+                    "span": {
+                      "start": 118,
+                      "end": 122
+                    }
+                  }
+                ]
+              }
             }
           }
         }
@@ -2074,15 +2098,9 @@
           }
         },
         "argument": {
-          "tag": "path",
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 118,
-              "end": 122
-            }
-          },
-          "path": {
+          "tag": "positional",
+          "value": {
+            "tag": "path",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -2090,16 +2108,25 @@
                 "end": 122
               }
             },
-            "segments": [
-              {
+            "path": {
+              "syntax_node": {
                 "kind": "IDENT_EXPR",
-                "text": "rest",
                 "span": {
                   "start": 118,
                   "end": 122
                 }
-              }
-            ]
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "rest",
+                  "span": {
+                    "start": 118,
+                    "end": 122
+                  }
+                }
+              ]
+            }
           }
         }
       },

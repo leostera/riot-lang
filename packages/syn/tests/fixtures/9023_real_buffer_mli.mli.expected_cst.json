@@ -1,0 +1,297 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 130
+      }
+    },
+    "items": [
+      {
+        "tag": "value_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "VAL_DECL",
+            "span": {
+              "start": 0,
+              "end": 22
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "create",
+            "span": {
+              "start": 4,
+              "end": 10
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_ARROW",
+            "span": {
+              "start": 13,
+              "end": 22
+            }
+          }
+        }
+      },
+      {
+        "tag": "value_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "VAL_DECL",
+            "span": {
+              "start": 22,
+              "end": 49
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "contents",
+            "span": {
+              "start": 26,
+              "end": 34
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_ARROW",
+            "span": {
+              "start": 37,
+              "end": 49
+            }
+          }
+        }
+      },
+      {
+        "tag": "value_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "VAL_DECL",
+            "span": {
+              "start": 49,
+              "end": 71
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "length",
+            "span": {
+              "start": 53,
+              "end": 59
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_ARROW",
+            "span": {
+              "start": 62,
+              "end": 71
+            }
+          }
+        }
+      },
+      {
+        "tag": "value_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "VAL_DECL",
+            "span": {
+              "start": 71,
+              "end": 93
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "clear",
+            "span": {
+              "start": 75,
+              "end": 80
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_ARROW",
+            "span": {
+              "start": 83,
+              "end": 93
+            }
+          }
+        }
+      },
+      {
+        "tag": "value_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "VAL_DECL",
+            "span": {
+              "start": 93,
+              "end": 130
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "add_string",
+            "span": {
+              "start": 97,
+              "end": 107
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_ARROW",
+            "span": {
+              "start": 110,
+              "end": 130
+            }
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4,
+            "end": 10
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4,
+              "end": 10
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "create",
+              "span": {
+                "start": 4,
+                "end": 10
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 26,
+            "end": 34
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 26,
+              "end": 34
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "contents",
+              "span": {
+                "start": 26,
+                "end": 34
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 53,
+            "end": 59
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 53,
+              "end": 59
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "length",
+              "span": {
+                "start": 53,
+                "end": 59
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 75,
+            "end": 80
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 75,
+              "end": 80
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "clear",
+              "span": {
+                "start": 75,
+                "end": 80
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 97,
+            "end": 107
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 97,
+              "end": 107
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "add_string",
+              "span": {
+                "start": 97,
+                "end": 107
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

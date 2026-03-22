@@ -103,79 +103,82 @@
               }
             },
             "argument": {
-              "tag": "list",
-              "syntax_node": {
-                "kind": "LIST_EXPR",
-                "span": {
-                  "start": 22,
-                  "end": 33
-                }
-              },
-              "elements": [
-                {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "int",
-                    "syntax_node": {
-                      "kind": "INT_LITERAL",
-                      "span": {
-                        "start": 24,
-                        "end": 25
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "INT_LITERAL",
-                      "text": "1",
-                      "span": {
-                        "start": 24,
-                        "end": 25
-                      }
-                    }
+              "tag": "positional",
+              "value": {
+                "tag": "list",
+                "syntax_node": {
+                  "kind": "LIST_EXPR",
+                  "span": {
+                    "start": 22,
+                    "end": 33
                   }
                 },
-                {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "int",
-                    "syntax_node": {
-                      "kind": "INT_LITERAL",
-                      "span": {
-                        "start": 27,
-                        "end": 28
+                "elements": [
+                  {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 24,
+                          "end": 25
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "1",
+                        "span": {
+                          "start": 24,
+                          "end": 25
+                        }
                       }
-                    },
-                    "literal_token": {
-                      "kind": "INT_LITERAL",
-                      "text": "2",
-                      "span": {
-                        "start": 27,
-                        "end": 28
+                    }
+                  },
+                  {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 27,
+                          "end": 28
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "2",
+                        "span": {
+                          "start": 27,
+                          "end": 28
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 30,
+                          "end": 31
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "3",
+                        "span": {
+                          "start": 30,
+                          "end": 31
+                        }
                       }
                     }
                   }
-                },
-                {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "int",
-                    "syntax_node": {
-                      "kind": "INT_LITERAL",
-                      "span": {
-                        "start": 30,
-                        "end": 31
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "INT_LITERAL",
-                      "text": "3",
-                      "span": {
-                        "start": 30,
-                        "end": 31
-                      }
-                    }
-                  }
-                }
-              ]
+                ]
+              }
             }
           },
           "is_recursive": false
@@ -275,6 +278,147 @@
             }
           },
           "argument": {
+            "tag": "positional",
+            "value": {
+              "tag": "list",
+              "syntax_node": {
+                "kind": "LIST_EXPR",
+                "span": {
+                  "start": 22,
+                  "end": 33
+                }
+              },
+              "elements": [
+                {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 24,
+                        "end": 25
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "1",
+                      "span": {
+                        "start": 24,
+                        "end": 25
+                      }
+                    }
+                  }
+                },
+                {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 27,
+                        "end": 28
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "2",
+                      "span": {
+                        "start": 27,
+                        "end": 28
+                      }
+                    }
+                  }
+                },
+                {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 30,
+                        "end": 31
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "3",
+                      "span": {
+                        "start": 30,
+                        "end": 31
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 8,
+            "end": 33
+          }
+        },
+        "callee": {
+          "tag": "field_access",
+          "syntax_node": {
+            "kind": "FIELD_ACCESS_EXPR",
+            "span": {
+              "start": 8,
+              "end": 22
+            }
+          },
+          "receiver": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 8,
+                "end": 13
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 13
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "Array",
+                  "span": {
+                    "start": 8,
+                    "end": 13
+                  }
+                }
+              ]
+            }
+          },
+          "field_name": {
+            "kind": "IDENT_EXPR",
+            "text": "of_list",
+            "span": {
+              "start": 14,
+              "end": 21
+            }
+          }
+        },
+        "argument": {
+          "tag": "positional",
+          "value": {
             "tag": "list",
             "syntax_node": {
               "kind": "LIST_EXPR",
@@ -349,141 +493,6 @@
               }
             ]
           }
-        },
-        "is_recursive": false
-      }
-    ],
-    "expressions": [
-      {
-        "tag": "apply",
-        "syntax_node": {
-          "kind": "APPLY_EXPR",
-          "span": {
-            "start": 8,
-            "end": 33
-          }
-        },
-        "callee": {
-          "tag": "field_access",
-          "syntax_node": {
-            "kind": "FIELD_ACCESS_EXPR",
-            "span": {
-              "start": 8,
-              "end": 22
-            }
-          },
-          "receiver": {
-            "tag": "path",
-            "syntax_node": {
-              "kind": "IDENT_EXPR",
-              "span": {
-                "start": 8,
-                "end": 13
-              }
-            },
-            "path": {
-              "syntax_node": {
-                "kind": "IDENT_EXPR",
-                "span": {
-                  "start": 8,
-                  "end": 13
-                }
-              },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "Array",
-                  "span": {
-                    "start": 8,
-                    "end": 13
-                  }
-                }
-              ]
-            }
-          },
-          "field_name": {
-            "kind": "IDENT_EXPR",
-            "text": "of_list",
-            "span": {
-              "start": 14,
-              "end": 21
-            }
-          }
-        },
-        "argument": {
-          "tag": "list",
-          "syntax_node": {
-            "kind": "LIST_EXPR",
-            "span": {
-              "start": 22,
-              "end": 33
-            }
-          },
-          "elements": [
-            {
-              "tag": "literal",
-              "literal": {
-                "tag": "int",
-                "syntax_node": {
-                  "kind": "INT_LITERAL",
-                  "span": {
-                    "start": 24,
-                    "end": 25
-                  }
-                },
-                "literal_token": {
-                  "kind": "INT_LITERAL",
-                  "text": "1",
-                  "span": {
-                    "start": 24,
-                    "end": 25
-                  }
-                }
-              }
-            },
-            {
-              "tag": "literal",
-              "literal": {
-                "tag": "int",
-                "syntax_node": {
-                  "kind": "INT_LITERAL",
-                  "span": {
-                    "start": 27,
-                    "end": 28
-                  }
-                },
-                "literal_token": {
-                  "kind": "INT_LITERAL",
-                  "text": "2",
-                  "span": {
-                    "start": 27,
-                    "end": 28
-                  }
-                }
-              }
-            },
-            {
-              "tag": "literal",
-              "literal": {
-                "tag": "int",
-                "syntax_node": {
-                  "kind": "INT_LITERAL",
-                  "span": {
-                    "start": 30,
-                    "end": 31
-                  }
-                },
-                "literal_token": {
-                  "kind": "INT_LITERAL",
-                  "text": "3",
-                  "span": {
-                    "start": 30,
-                    "end": 31
-                  }
-                }
-              }
-            }
-          ]
         }
       },
       {

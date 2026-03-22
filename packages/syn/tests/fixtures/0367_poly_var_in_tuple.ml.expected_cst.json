@@ -64,7 +64,86 @@
                   "end": 19
                 }
               },
-              "elements": []
+              "elements": [
+                {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_EXPR",
+                    "span": {
+                      "start": 9,
+                      "end": 13
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "X",
+                    "span": {
+                      "start": 10,
+                      "end": 11
+                    }
+                  },
+                  "payload": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 12,
+                          "end": 13
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "1",
+                        "span": {
+                          "start": 12,
+                          "end": 13
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_EXPR",
+                    "span": {
+                      "start": 15,
+                      "end": 19
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Y",
+                    "span": {
+                      "start": 16,
+                      "end": 17
+                    }
+                  },
+                  "payload": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 18,
+                          "end": 19
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "2",
+                        "span": {
+                          "start": 18,
+                          "end": 19
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
             }
           },
           "is_recursive": false
@@ -125,7 +204,86 @@
                 "end": 19
               }
             },
-            "elements": []
+            "elements": [
+              {
+                "tag": "poly_variant",
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_EXPR",
+                  "span": {
+                    "start": 9,
+                    "end": 13
+                  }
+                },
+                "tag_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "X",
+                  "span": {
+                    "start": 10,
+                    "end": 11
+                  }
+                },
+                "payload": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 12,
+                        "end": 13
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "1",
+                      "span": {
+                        "start": 12,
+                        "end": 13
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "tag": "poly_variant",
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_EXPR",
+                  "span": {
+                    "start": 15,
+                    "end": 19
+                  }
+                },
+                "tag_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Y",
+                  "span": {
+                    "start": 16,
+                    "end": 17
+                  }
+                },
+                "payload": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 18,
+                        "end": 19
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "2",
+                      "span": {
+                        "start": 18,
+                        "end": 19
+                      }
+                    }
+                  }
+                }
+              }
+            ]
           }
         },
         "is_recursive": false
@@ -150,7 +308,86 @@
               "end": 19
             }
           },
-          "elements": []
+          "elements": [
+            {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_EXPR",
+                "span": {
+                  "start": 9,
+                  "end": 13
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "X",
+                "span": {
+                  "start": 10,
+                  "end": 11
+                }
+              },
+              "payload": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 12,
+                      "end": 13
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "1",
+                    "span": {
+                      "start": 12,
+                      "end": 13
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_EXPR",
+                "span": {
+                  "start": 15,
+                  "end": 19
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Y",
+                "span": {
+                  "start": 16,
+                  "end": 17
+                }
+              },
+              "payload": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 18,
+                      "end": 19
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "2",
+                    "span": {
+                      "start": 18,
+                      "end": 19
+                    }
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       {
@@ -162,7 +399,125 @@
             "end": 19
           }
         },
-        "elements": []
+        "elements": [
+          {
+            "tag": "poly_variant",
+            "syntax_node": {
+              "kind": "POLY_VARIANT_EXPR",
+              "span": {
+                "start": 9,
+                "end": 13
+              }
+            },
+            "tag_token": {
+              "kind": "IDENT_EXPR",
+              "text": "X",
+              "span": {
+                "start": 10,
+                "end": 11
+              }
+            },
+            "payload": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 12,
+                    "end": 13
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "1",
+                  "span": {
+                    "start": 12,
+                    "end": 13
+                  }
+                }
+              }
+            }
+          },
+          {
+            "tag": "poly_variant",
+            "syntax_node": {
+              "kind": "POLY_VARIANT_EXPR",
+              "span": {
+                "start": 15,
+                "end": 19
+              }
+            },
+            "tag_token": {
+              "kind": "IDENT_EXPR",
+              "text": "Y",
+              "span": {
+                "start": 16,
+                "end": 17
+              }
+            },
+            "payload": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 18,
+                    "end": 19
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "2",
+                  "span": {
+                    "start": 18,
+                    "end": 19
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "poly_variant",
+        "syntax_node": {
+          "kind": "POLY_VARIANT_EXPR",
+          "span": {
+            "start": 9,
+            "end": 13
+          }
+        },
+        "tag_token": {
+          "kind": "IDENT_EXPR",
+          "text": "X",
+          "span": {
+            "start": 10,
+            "end": 11
+          }
+        },
+        "payload": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 12,
+                "end": 13
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "1",
+              "span": {
+                "start": 12,
+                "end": 13
+              }
+            }
+          }
+        }
       },
       {
         "tag": "literal",
@@ -181,6 +536,45 @@
             "span": {
               "start": 12,
               "end": 13
+            }
+          }
+        }
+      },
+      {
+        "tag": "poly_variant",
+        "syntax_node": {
+          "kind": "POLY_VARIANT_EXPR",
+          "span": {
+            "start": 15,
+            "end": 19
+          }
+        },
+        "tag_token": {
+          "kind": "IDENT_EXPR",
+          "text": "Y",
+          "span": {
+            "start": 16,
+            "end": 17
+          }
+        },
+        "payload": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 18,
+                "end": 19
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "2",
+              "span": {
+                "start": 18,
+                "end": 19
+              }
             }
           }
         }

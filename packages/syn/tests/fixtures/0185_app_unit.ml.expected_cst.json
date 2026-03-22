@@ -85,14 +85,17 @@
               }
             },
             "argument": {
-              "tag": "literal",
-              "literal": {
-                "tag": "unit",
-                "syntax_node": {
-                  "kind": "UNIT_LITERAL",
-                  "span": {
-                    "start": 10,
-                    "end": 12
+              "tag": "positional",
+              "value": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "unit",
+                  "syntax_node": {
+                    "kind": "UNIT_LITERAL",
+                    "span": {
+                      "start": 10,
+                      "end": 12
+                    }
                   }
                 }
               }
@@ -177,14 +180,17 @@
             }
           },
           "argument": {
-            "tag": "literal",
-            "literal": {
-              "tag": "unit",
-              "syntax_node": {
-                "kind": "UNIT_LITERAL",
-                "span": {
-                  "start": 10,
-                  "end": 12
+            "tag": "positional",
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "unit",
+                "syntax_node": {
+                  "kind": "UNIT_LITERAL",
+                  "span": {
+                    "start": 10,
+                    "end": 12
+                  }
                 }
               }
             }
@@ -233,14 +239,17 @@
           }
         },
         "argument": {
-          "tag": "literal",
-          "literal": {
-            "tag": "unit",
-            "syntax_node": {
-              "kind": "UNIT_LITERAL",
-              "span": {
-                "start": 10,
-                "end": 12
+          "tag": "positional",
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "unit",
+              "syntax_node": {
+                "kind": "UNIT_LITERAL",
+                "span": {
+                  "start": 10,
+                  "end": 12
+                }
               }
             }
           }

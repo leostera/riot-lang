@@ -1,0 +1,53 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 51
+      }
+    },
+    "items": [
+      {
+        "tag": "external_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "EXTERNAL_DECL",
+            "span": {
+              "start": 0,
+              "end": 51
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "sqrt",
+            "span": {
+              "start": 9,
+              "end": 13
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_ARROW",
+            "span": {
+              "start": 16,
+              "end": 31
+            }
+          },
+          "primitive_name_tokens": [
+            {
+              "kind": "STRING_LITERAL",
+              "text": "\"caml_sqrt_float\"",
+              "span": {
+                "start": 33,
+                "end": 50
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": []
+  }
+}

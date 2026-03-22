@@ -94,14 +94,17 @@
                 }
               },
               "argument": {
-                "tag": "literal",
-                "literal": {
-                  "tag": "unit",
-                  "syntax_node": {
-                    "kind": "UNIT_LITERAL",
-                    "span": {
-                      "start": 17,
-                      "end": 19
+                "tag": "positional",
+                "value": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "unit",
+                    "syntax_node": {
+                      "kind": "UNIT_LITERAL",
+                      "span": {
+                        "start": 17,
+                        "end": 19
+                      }
                     }
                   }
                 }
@@ -210,14 +213,17 @@
               }
             },
             "argument": {
-              "tag": "literal",
-              "literal": {
-                "tag": "unit",
-                "syntax_node": {
-                  "kind": "UNIT_LITERAL",
-                  "span": {
-                    "start": 17,
-                    "end": 19
+              "tag": "positional",
+              "value": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "unit",
+                  "syntax_node": {
+                    "kind": "UNIT_LITERAL",
+                    "span": {
+                      "start": 17,
+                      "end": 19
+                    }
                   }
                 }
               }
@@ -290,14 +296,17 @@
             }
           },
           "argument": {
-            "tag": "literal",
-            "literal": {
-              "tag": "unit",
-              "syntax_node": {
-                "kind": "UNIT_LITERAL",
-                "span": {
-                  "start": 17,
-                  "end": 19
+            "tag": "positional",
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "unit",
+                "syntax_node": {
+                  "kind": "UNIT_LITERAL",
+                  "span": {
+                    "start": 17,
+                    "end": 19
+                  }
                 }
               }
             }
@@ -357,14 +366,17 @@
           }
         },
         "argument": {
-          "tag": "literal",
-          "literal": {
-            "tag": "unit",
-            "syntax_node": {
-              "kind": "UNIT_LITERAL",
-              "span": {
-                "start": 17,
-                "end": 19
+          "tag": "positional",
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "unit",
+              "syntax_node": {
+                "kind": "UNIT_LITERAL",
+                "span": {
+                  "start": 17,
+                  "end": 19
+                }
               }
             }
           }

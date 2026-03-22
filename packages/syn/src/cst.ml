@@ -67,6 +67,7 @@ type pattern =
   | Identifier of identifier_pattern
   | Wildcard of wildcard_pattern
   | Literal of pattern_literal
+  | PolyVariant of poly_variant_pattern
   | Constructor of constructor_pattern
   | Tuple of tuple_pattern
   | List of list_pattern
@@ -86,6 +87,12 @@ and identifier_pattern = {
 
 and wildcard_pattern = {
   syntax_node : syntax_node;
+}
+
+and poly_variant_pattern = {
+  syntax_node : syntax_node;
+  tag_token : Token.t;
+  payload : pattern option;
 }
 
 and constructor_pattern = {
@@ -256,6 +263,11 @@ type literal = Literal.t
 type expression =
   | Path of path_expression
   | Literal of literal
+  | PolyVariant of poly_variant_expression
+  | Assert of assert_expression
+  | Lazy of lazy_expression
+  | While of while_expression
+  | For of for_expression
   | Apply of apply_expression
   | Prefix of prefix_expression
   | FieldAccess of field_access_expression
@@ -284,10 +296,58 @@ and path_expression = {
   path : ModulePath.t;
 }
 
+and poly_variant_expression = {
+  syntax_node : syntax_node;
+  tag_token : Token.t;
+  payload : expression option;
+}
+
+and assert_expression = {
+  syntax_node : syntax_node;
+  asserted : expression;
+}
+
+and lazy_expression = {
+  syntax_node : syntax_node;
+  body : expression;
+}
+
+and while_expression = {
+  syntax_node : syntax_node;
+  condition : expression;
+  body : expression;
+}
+
+and for_expression = {
+  syntax_node : syntax_node;
+  iterator_token : Token.t;
+  start_expr : expression;
+  direction_token : Token.t;
+  end_expr : expression;
+  body : expression;
+}
+
+and apply_argument =
+  | Positional of expression
+  | Labeled of labeled_apply_argument
+  | Optional of optional_apply_argument
+
+and labeled_apply_argument = {
+  syntax_node : syntax_node;
+  label_token : Token.t;
+  value : expression option;
+}
+
+and optional_apply_argument = {
+  syntax_node : syntax_node;
+  label_token : Token.t;
+  value : expression option;
+}
+
 and apply_expression = {
   syntax_node : syntax_node;
   callee : expression;
-  argument : expression;
+  argument : apply_argument;
 }
 
 and prefix_expression = {
@@ -438,6 +498,11 @@ module Expression = struct
   type t = expression =
     | Path of path_expression
     | Literal of literal
+    | PolyVariant of poly_variant_expression
+    | Assert of assert_expression
+    | Lazy of lazy_expression
+    | While of while_expression
+    | For of for_expression
     | Apply of apply_expression
     | Prefix of prefix_expression
     | FieldAccess of field_access_expression
@@ -472,6 +537,11 @@ module Expression = struct
         | Literal.Bool { syntax_node; _ }
         | Literal.Unit { syntax_node } ->
             syntax_node)
+    | PolyVariant expr -> expr.syntax_node
+    | Assert expr -> expr.syntax_node
+    | Lazy expr -> expr.syntax_node
+    | While expr -> expr.syntax_node
+    | For expr -> expr.syntax_node
     | Apply expr -> expr.syntax_node
     | Prefix expr -> expr.syntax_node
     | FieldAccess expr -> expr.syntax_node
@@ -504,6 +574,7 @@ module Pattern = struct
     | Identifier of identifier_pattern
     | Wildcard of wildcard_pattern
     | Literal of pattern_literal
+    | PolyVariant of poly_variant_pattern
     | Constructor of constructor_pattern
     | Tuple of tuple_pattern
     | List of list_pattern
@@ -526,6 +597,7 @@ module Pattern = struct
     | Literal (PatternLiteral.Bool { syntax_node; _ })
     | Literal (PatternLiteral.Unit { syntax_node }) ->
         syntax_node
+    | PolyVariant pattern -> pattern.syntax_node
     | Constructor pattern -> pattern.syntax_node
     | Tuple pattern -> pattern.syntax_node
     | List pattern -> pattern.syntax_node
@@ -556,6 +628,19 @@ module WildcardPattern = struct
   }
 
   let syntax_node pattern = pattern.syntax_node
+end
+
+module PolyVariantPattern = struct
+  type t = poly_variant_pattern = {
+    syntax_node : syntax_node;
+    tag_token : Token.t;
+    payload : pattern option;
+  }
+
+  let syntax_node pattern = pattern.syntax_node
+  let tag_token pattern = pattern.tag_token
+  let tag pattern = Token.text pattern.tag_token
+  let payload pattern = pattern.payload
 end
 
 module ParenthesizedPattern = struct
@@ -610,12 +695,77 @@ module PathExpression = struct
   let path expr = expr.path
 end
 
+module PolyVariantExpression = struct
+  type t = poly_variant_expression = {
+    syntax_node : syntax_node;
+    tag_token : Token.t;
+    payload : expression option;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let tag_token expr = expr.tag_token
+  let tag expr = Token.text expr.tag_token
+  let payload expr = expr.payload
+end
+
+module AssertExpression = struct
+  type t = assert_expression = {
+    syntax_node : syntax_node;
+    asserted : expression;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let asserted expr = expr.asserted
+end
+
+module LazyExpression = struct
+  type t = lazy_expression = {
+    syntax_node : syntax_node;
+    body : expression;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let body expr = expr.body
+end
+
+module WhileExpression = struct
+  type t = while_expression = {
+    syntax_node : syntax_node;
+    condition : expression;
+    body : expression;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let condition expr = expr.condition
+  let body expr = expr.body
+end
+
+module ForExpression = struct
+  type t = for_expression = {
+    syntax_node : syntax_node;
+    iterator_token : Token.t;
+    start_expr : expression;
+    direction_token : Token.t;
+    end_expr : expression;
+    body : expression;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let iterator_token expr = expr.iterator_token
+  let iterator_name expr = Token.text expr.iterator_token
+  let start_expr expr = expr.start_expr
+  let direction_token expr = expr.direction_token
+  let direction expr = Token.text expr.direction_token
+  let end_expr expr = expr.end_expr
+  let body expr = expr.body
+end
+
 
 module ApplyExpression = struct
   type t = apply_expression = {
     syntax_node : syntax_node;
     callee : expression;
-    argument : expression;
+    argument : apply_argument;
   }
 
   let syntax_node expr = expr.syntax_node
@@ -951,6 +1101,44 @@ module OpenStatement = struct
   let has_bang stmt = Option.is_some stmt.bang_token
 end
 
+module ValueDeclaration = struct
+  type t = {
+    syntax_node : syntax_node;
+    name_token : Token.t;
+    type_syntax_node : syntax_node;
+  }
+
+  let syntax_node decl = decl.syntax_node
+  let name_token decl = decl.name_token
+  let name decl = Token.text decl.name_token
+  let type_syntax_node decl = decl.type_syntax_node
+end
+
+module ExternalDeclaration = struct
+  type t = {
+    syntax_node : syntax_node;
+    name_token : Token.t;
+    type_syntax_node : syntax_node;
+    primitive_name_tokens : Token.t list;
+  }
+
+  let syntax_node decl = decl.syntax_node
+  let name_token decl = decl.name_token
+  let name decl = Token.text decl.name_token
+  let type_syntax_node decl = decl.type_syntax_node
+  let primitive_name_tokens decl = decl.primitive_name_tokens
+end
+
+module IncludeStatement = struct
+  type t = {
+    syntax_node : syntax_node;
+    included_syntax_node : syntax_node;
+  }
+
+  let syntax_node stmt = stmt.syntax_node
+  let included_syntax_node stmt = stmt.included_syntax_node
+end
+
 module Item = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
@@ -959,6 +1147,9 @@ module Item = struct
     | ModuleDeclaration of ModuleDeclaration.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t
+    | ValueDeclaration of ValueDeclaration.t
+    | ExternalDeclaration of ExternalDeclaration.t
+    | IncludeStatement of IncludeStatement.t
     | Unknown of syntax_node
 
   let syntax_node = function
@@ -968,6 +1159,9 @@ module Item = struct
     | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
     | OpenStatement stmt -> OpenStatement.syntax_node stmt
+    | ValueDeclaration decl -> ValueDeclaration.syntax_node decl
+    | ExternalDeclaration decl -> ExternalDeclaration.syntax_node decl
+    | IncludeStatement stmt -> IncludeStatement.syntax_node stmt
     | Unknown node -> node
 end
 

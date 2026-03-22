@@ -1,0 +1,2849 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 665
+      }
+    },
+    "items": [
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 43,
+              "end": 84
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 48,
+                "end": 54
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "color",
+                "span": {
+                  "start": 48,
+                  "end": 53
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "poly_variant",
+            "tags": [
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 64,
+                    "end": 69
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Red",
+                  "span": {
+                    "start": 65,
+                    "end": 68
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 69,
+                    "end": 76
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Green",
+                  "span": {
+                    "start": 70,
+                    "end": 75
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 76,
+                    "end": 82
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Blue",
+                  "span": {
+                    "start": 77,
+                    "end": 81
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 84,
+              "end": 170
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 89,
+                "end": 104
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "extended_color",
+                "span": {
+                  "start": 89,
+                  "end": 103
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "poly_variant",
+            "tags": [
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 120,
+                    "end": 128
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Yellow",
+                  "span": {
+                    "start": 121,
+                    "end": 127
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 128,
+                    "end": 136
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Orange",
+                  "span": {
+                    "start": 129,
+                    "end": 135
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 170,
+              "end": 229
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 175,
+                "end": 184
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "io_error",
+                "span": {
+                  "start": 175,
+                  "end": 183
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "poly_variant",
+            "tags": [
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 194,
+                    "end": 199
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Eof",
+                  "span": {
+                    "start": 195,
+                    "end": 198
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 199,
+                    "end": 208
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Timeout",
+                  "span": {
+                    "start": 200,
+                    "end": 207
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 208,
+                    "end": 227
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Connection_closed",
+                  "span": {
+                    "start": 209,
+                    "end": 226
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 229,
+              "end": 332
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 246,
+                "end": 256
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "io_result",
+                "span": {
+                  "start": 246,
+                  "end": 255
+                }
+              }
+            ]
+          },
+          "type_params": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_PARAM",
+                "span": {
+                  "start": 235,
+                  "end": 238
+                }
+              },
+              "type_variable": {
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 235,
+                    "end": 238
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "ok",
+                  "span": {
+                    "start": 236,
+                    "end": 238
+                  }
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "TYPE_PARAM",
+                "span": {
+                  "start": 240,
+                  "end": 244
+                }
+              },
+              "type_variable": {
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 240,
+                    "end": 244
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "err",
+                  "span": {
+                    "start": 241,
+                    "end": 244
+                  }
+                }
+              }
+            }
+          ],
+          "type_definition": {
+            "tag": "alias",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 258,
+                "end": 332
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 332,
+              "end": 457
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 336,
+                "end": 340
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "test",
+              "span": {
+                "start": 336,
+                "end": 340
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "test",
+            "span": {
+              "start": 336,
+              "end": 340
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "function",
+            "syntax_node": {
+              "kind": "FUNCTION_EXPR",
+              "span": {
+                "start": 343,
+                "end": 457
+              }
+            },
+            "cases": [
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 352,
+                    "end": 365
+                  }
+                },
+                "pattern": {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_PATTERN",
+                    "span": {
+                      "start": 352,
+                      "end": 357
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Red",
+                    "span": {
+                      "start": 353,
+                      "end": 356
+                    }
+                  },
+                  "payload": null
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 360,
+                        "end": 365
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"red\"",
+                      "span": {
+                        "start": 360,
+                        "end": 365
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 366,
+                    "end": 385
+                  }
+                },
+                "pattern": {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_PATTERN",
+                    "span": {
+                      "start": 368,
+                      "end": 375
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Green",
+                    "span": {
+                      "start": 369,
+                      "end": 374
+                    }
+                  },
+                  "payload": null
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 378,
+                        "end": 385
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"green\"",
+                      "span": {
+                        "start": 378,
+                        "end": 385
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 386,
+                    "end": 403
+                  }
+                },
+                "pattern": {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_PATTERN",
+                    "span": {
+                      "start": 388,
+                      "end": 394
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Blue",
+                    "span": {
+                      "start": 389,
+                      "end": 393
+                    }
+                  },
+                  "payload": null
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 397,
+                        "end": 403
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"blue\"",
+                      "span": {
+                        "start": 397,
+                        "end": 403
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 457,
+              "end": 598
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 461,
+                "end": 474
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "handle_result",
+              "span": {
+                "start": 461,
+                "end": 474
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "handle_result",
+            "span": {
+              "start": 461,
+              "end": 474
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "function",
+            "syntax_node": {
+              "kind": "FUNCTION_EXPR",
+              "span": {
+                "start": 477,
+                "end": 598
+              }
+            },
+            "cases": [
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 490,
+                    "end": 521
+                  }
+                },
+                "pattern": {
+                  "tag": "constructor",
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 490,
+                      "end": 509
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "CONSTRUCTOR_PATTERN",
+                      "span": {
+                        "start": 490,
+                        "end": 509
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Error",
+                        "span": {
+                          "start": 490,
+                          "end": 495
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": [
+                    {
+                      "tag": "poly_variant",
+                      "syntax_node": {
+                        "kind": "POLY_VARIANT_PATTERN",
+                        "span": {
+                          "start": 496,
+                          "end": 509
+                        }
+                      },
+                      "tag_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "Would_block",
+                        "span": {
+                          "start": 497,
+                          "end": 508
+                        }
+                      },
+                      "payload": null
+                    }
+                  ]
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 512,
+                        "end": 521
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"blocked\"",
+                      "span": {
+                        "start": 512,
+                        "end": 521
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 524,
+                    "end": 545
+                  }
+                },
+                "pattern": {
+                  "tag": "constructor",
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 526,
+                      "end": 537
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "CONSTRUCTOR_PATTERN",
+                      "span": {
+                        "start": 526,
+                        "end": 537
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Error",
+                        "span": {
+                          "start": 526,
+                          "end": 531
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": [
+                    {
+                      "tag": "poly_variant",
+                      "syntax_node": {
+                        "kind": "POLY_VARIANT_PATTERN",
+                        "span": {
+                          "start": 532,
+                          "end": 537
+                        }
+                      },
+                      "tag_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "Eof",
+                        "span": {
+                          "start": 533,
+                          "end": 536
+                        }
+                      },
+                      "payload": null
+                    }
+                  ]
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 540,
+                        "end": 545
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"eof\"",
+                      "span": {
+                        "start": 540,
+                        "end": 545
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 548,
+                    "end": 562
+                  }
+                },
+                "pattern": {
+                  "tag": "constructor",
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 550,
+                      "end": 554
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "CONSTRUCTOR_PATTERN",
+                      "span": {
+                        "start": 550,
+                        "end": 554
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Ok",
+                        "span": {
+                          "start": 550,
+                          "end": 552
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": [
+                    {
+                      "tag": "identifier",
+                      "syntax_node": {
+                        "kind": "IDENT_PATTERN",
+                        "span": {
+                          "start": 553,
+                          "end": 554
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "x",
+                        "span": {
+                          "start": 553,
+                          "end": 554
+                        }
+                      }
+                    }
+                  ]
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 558,
+                        "end": 562
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"ok\"",
+                      "span": {
+                        "start": 558,
+                        "end": 562
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 598,
+              "end": 665
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 602,
+                "end": 609
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "complex",
+              "span": {
+                "start": 602,
+                "end": 609
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "complex",
+            "span": {
+              "start": 602,
+              "end": 609
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "function",
+            "syntax_node": {
+              "kind": "FUNCTION_EXPR",
+              "span": {
+                "start": 612,
+                "end": 665
+              }
+            },
+            "cases": [
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 621,
+                    "end": 635
+                  }
+                },
+                "pattern": {
+                  "tag": "constructor",
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 621,
+                      "end": 631
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "CONSTRUCTOR_PATTERN",
+                      "span": {
+                        "start": 621,
+                        "end": 631
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Some",
+                        "span": {
+                          "start": 621,
+                          "end": 625
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": [
+                    {
+                      "tag": "poly_variant",
+                      "syntax_node": {
+                        "kind": "POLY_VARIANT_PATTERN",
+                        "span": {
+                          "start": 626,
+                          "end": 631
+                        }
+                      },
+                      "tag_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "Foo",
+                        "span": {
+                          "start": 627,
+                          "end": 630
+                        }
+                      },
+                      "payload": null
+                    }
+                  ]
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 634,
+                        "end": 635
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "1",
+                      "span": {
+                        "start": 634,
+                        "end": 635
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 636,
+                    "end": 652
+                  }
+                },
+                "pattern": {
+                  "tag": "constructor",
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 638,
+                      "end": 648
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "CONSTRUCTOR_PATTERN",
+                      "span": {
+                        "start": 638,
+                        "end": 648
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Some",
+                        "span": {
+                          "start": 638,
+                          "end": 642
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": [
+                    {
+                      "tag": "poly_variant",
+                      "syntax_node": {
+                        "kind": "POLY_VARIANT_PATTERN",
+                        "span": {
+                          "start": 643,
+                          "end": 648
+                        }
+                      },
+                      "tag_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "Bar",
+                        "span": {
+                          "start": 644,
+                          "end": 647
+                        }
+                      },
+                      "payload": null
+                    }
+                  ]
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 651,
+                        "end": 652
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "2",
+                      "span": {
+                        "start": 651,
+                        "end": 652
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 653,
+                    "end": 664
+                  }
+                },
+                "pattern": {
+                  "tag": "constructor",
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 655,
+                      "end": 660
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "CONSTRUCTOR_PATTERN",
+                      "span": {
+                        "start": 655,
+                        "end": 660
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "None",
+                        "span": {
+                          "start": 655,
+                          "end": 659
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 663,
+                        "end": 664
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "0",
+                      "span": {
+                        "start": 663,
+                        "end": 664
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 332,
+            "end": 457
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 336,
+              "end": 340
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "test",
+            "span": {
+              "start": 336,
+              "end": 340
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "test",
+          "span": {
+            "start": 336,
+            "end": 340
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "function",
+          "syntax_node": {
+            "kind": "FUNCTION_EXPR",
+            "span": {
+              "start": 343,
+              "end": 457
+            }
+          },
+          "cases": [
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 352,
+                  "end": 365
+                }
+              },
+              "pattern": {
+                "tag": "poly_variant",
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_PATTERN",
+                  "span": {
+                    "start": 352,
+                    "end": 357
+                  }
+                },
+                "tag_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Red",
+                  "span": {
+                    "start": 353,
+                    "end": 356
+                  }
+                },
+                "payload": null
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 360,
+                      "end": 365
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"red\"",
+                    "span": {
+                      "start": 360,
+                      "end": 365
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 366,
+                  "end": 385
+                }
+              },
+              "pattern": {
+                "tag": "poly_variant",
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_PATTERN",
+                  "span": {
+                    "start": 368,
+                    "end": 375
+                  }
+                },
+                "tag_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Green",
+                  "span": {
+                    "start": 369,
+                    "end": 374
+                  }
+                },
+                "payload": null
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 378,
+                      "end": 385
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"green\"",
+                    "span": {
+                      "start": 378,
+                      "end": 385
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 386,
+                  "end": 403
+                }
+              },
+              "pattern": {
+                "tag": "poly_variant",
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_PATTERN",
+                  "span": {
+                    "start": 388,
+                    "end": 394
+                  }
+                },
+                "tag_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Blue",
+                  "span": {
+                    "start": 389,
+                    "end": 393
+                  }
+                },
+                "payload": null
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 397,
+                      "end": 403
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"blue\"",
+                    "span": {
+                      "start": 397,
+                      "end": 403
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 457,
+            "end": 598
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 461,
+              "end": 474
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "handle_result",
+            "span": {
+              "start": 461,
+              "end": 474
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "handle_result",
+          "span": {
+            "start": 461,
+            "end": 474
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "function",
+          "syntax_node": {
+            "kind": "FUNCTION_EXPR",
+            "span": {
+              "start": 477,
+              "end": 598
+            }
+          },
+          "cases": [
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 490,
+                  "end": 521
+                }
+              },
+              "pattern": {
+                "tag": "constructor",
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 490,
+                    "end": 509
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 490,
+                      "end": 509
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Error",
+                      "span": {
+                        "start": 490,
+                        "end": 495
+                      }
+                    }
+                  ]
+                },
+                "arguments": [
+                  {
+                    "tag": "poly_variant",
+                    "syntax_node": {
+                      "kind": "POLY_VARIANT_PATTERN",
+                      "span": {
+                        "start": 496,
+                        "end": 509
+                      }
+                    },
+                    "tag_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Would_block",
+                      "span": {
+                        "start": 497,
+                        "end": 508
+                      }
+                    },
+                    "payload": null
+                  }
+                ]
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 512,
+                      "end": 521
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"blocked\"",
+                    "span": {
+                      "start": 512,
+                      "end": 521
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 524,
+                  "end": 545
+                }
+              },
+              "pattern": {
+                "tag": "constructor",
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 526,
+                    "end": 537
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 526,
+                      "end": 537
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Error",
+                      "span": {
+                        "start": 526,
+                        "end": 531
+                      }
+                    }
+                  ]
+                },
+                "arguments": [
+                  {
+                    "tag": "poly_variant",
+                    "syntax_node": {
+                      "kind": "POLY_VARIANT_PATTERN",
+                      "span": {
+                        "start": 532,
+                        "end": 537
+                      }
+                    },
+                    "tag_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Eof",
+                      "span": {
+                        "start": 533,
+                        "end": 536
+                      }
+                    },
+                    "payload": null
+                  }
+                ]
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 540,
+                      "end": 545
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"eof\"",
+                    "span": {
+                      "start": 540,
+                      "end": 545
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 548,
+                  "end": 562
+                }
+              },
+              "pattern": {
+                "tag": "constructor",
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 550,
+                    "end": 554
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 550,
+                      "end": 554
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Ok",
+                      "span": {
+                        "start": 550,
+                        "end": 552
+                      }
+                    }
+                  ]
+                },
+                "arguments": [
+                  {
+                    "tag": "identifier",
+                    "syntax_node": {
+                      "kind": "IDENT_PATTERN",
+                      "span": {
+                        "start": 553,
+                        "end": 554
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 553,
+                        "end": 554
+                      }
+                    }
+                  }
+                ]
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 558,
+                      "end": 562
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"ok\"",
+                    "span": {
+                      "start": 558,
+                      "end": 562
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 598,
+            "end": 665
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 602,
+              "end": 609
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "complex",
+            "span": {
+              "start": 602,
+              "end": 609
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "complex",
+          "span": {
+            "start": 602,
+            "end": 609
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "function",
+          "syntax_node": {
+            "kind": "FUNCTION_EXPR",
+            "span": {
+              "start": 612,
+              "end": 665
+            }
+          },
+          "cases": [
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 621,
+                  "end": 635
+                }
+              },
+              "pattern": {
+                "tag": "constructor",
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 621,
+                    "end": 631
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 621,
+                      "end": 631
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Some",
+                      "span": {
+                        "start": 621,
+                        "end": 625
+                      }
+                    }
+                  ]
+                },
+                "arguments": [
+                  {
+                    "tag": "poly_variant",
+                    "syntax_node": {
+                      "kind": "POLY_VARIANT_PATTERN",
+                      "span": {
+                        "start": 626,
+                        "end": 631
+                      }
+                    },
+                    "tag_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Foo",
+                      "span": {
+                        "start": 627,
+                        "end": 630
+                      }
+                    },
+                    "payload": null
+                  }
+                ]
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 634,
+                      "end": 635
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "1",
+                    "span": {
+                      "start": 634,
+                      "end": 635
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 636,
+                  "end": 652
+                }
+              },
+              "pattern": {
+                "tag": "constructor",
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 638,
+                    "end": 648
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 638,
+                      "end": 648
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Some",
+                      "span": {
+                        "start": 638,
+                        "end": 642
+                      }
+                    }
+                  ]
+                },
+                "arguments": [
+                  {
+                    "tag": "poly_variant",
+                    "syntax_node": {
+                      "kind": "POLY_VARIANT_PATTERN",
+                      "span": {
+                        "start": 643,
+                        "end": 648
+                      }
+                    },
+                    "tag_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Bar",
+                      "span": {
+                        "start": 644,
+                        "end": 647
+                      }
+                    },
+                    "payload": null
+                  }
+                ]
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 651,
+                      "end": 652
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "2",
+                    "span": {
+                      "start": 651,
+                      "end": 652
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 653,
+                  "end": 664
+                }
+              },
+              "pattern": {
+                "tag": "constructor",
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 655,
+                    "end": 660
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 655,
+                      "end": 660
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "None",
+                      "span": {
+                        "start": 655,
+                        "end": 659
+                      }
+                    }
+                  ]
+                },
+                "arguments": []
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 663,
+                      "end": 664
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "0",
+                    "span": {
+                      "start": 663,
+                      "end": 664
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 48,
+            "end": 54
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 48,
+              "end": 54
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "color",
+              "span": {
+                "start": 48,
+                "end": 53
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 89,
+            "end": 104
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 89,
+              "end": 104
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "extended_color",
+              "span": {
+                "start": 89,
+                "end": 103
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 175,
+            "end": 184
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 175,
+              "end": 184
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "io_error",
+              "span": {
+                "start": 175,
+                "end": 183
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 246,
+            "end": 256
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 246,
+              "end": 256
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "io_result",
+              "span": {
+                "start": 246,
+                "end": 255
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "function",
+        "syntax_node": {
+          "kind": "FUNCTION_EXPR",
+          "span": {
+            "start": 343,
+            "end": 457
+          }
+        },
+        "cases": [
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 352,
+                "end": 365
+              }
+            },
+            "pattern": {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_PATTERN",
+                "span": {
+                  "start": 352,
+                  "end": 357
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Red",
+                "span": {
+                  "start": 353,
+                  "end": 356
+                }
+              },
+              "payload": null
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 360,
+                    "end": 365
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"red\"",
+                  "span": {
+                    "start": 360,
+                    "end": 365
+                  }
+                }
+              }
+            }
+          },
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 366,
+                "end": 385
+              }
+            },
+            "pattern": {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_PATTERN",
+                "span": {
+                  "start": 368,
+                  "end": 375
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Green",
+                "span": {
+                  "start": 369,
+                  "end": 374
+                }
+              },
+              "payload": null
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 378,
+                    "end": 385
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"green\"",
+                  "span": {
+                    "start": 378,
+                    "end": 385
+                  }
+                }
+              }
+            }
+          },
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 386,
+                "end": 403
+              }
+            },
+            "pattern": {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_PATTERN",
+                "span": {
+                  "start": 388,
+                  "end": 394
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Blue",
+                "span": {
+                  "start": 389,
+                  "end": 393
+                }
+              },
+              "payload": null
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 397,
+                    "end": 403
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"blue\"",
+                  "span": {
+                    "start": 397,
+                    "end": 403
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 360,
+              "end": 365
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"red\"",
+            "span": {
+              "start": 360,
+              "end": 365
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 378,
+              "end": 385
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"green\"",
+            "span": {
+              "start": 378,
+              "end": 385
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 397,
+              "end": 403
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"blue\"",
+            "span": {
+              "start": 397,
+              "end": 403
+            }
+          }
+        }
+      },
+      {
+        "tag": "function",
+        "syntax_node": {
+          "kind": "FUNCTION_EXPR",
+          "span": {
+            "start": 477,
+            "end": 598
+          }
+        },
+        "cases": [
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 490,
+                "end": 521
+              }
+            },
+            "pattern": {
+              "tag": "constructor",
+              "syntax_node": {
+                "kind": "CONSTRUCTOR_PATTERN",
+                "span": {
+                  "start": 490,
+                  "end": 509
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 490,
+                    "end": 509
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Error",
+                    "span": {
+                      "start": 490,
+                      "end": 495
+                    }
+                  }
+                ]
+              },
+              "arguments": [
+                {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_PATTERN",
+                    "span": {
+                      "start": 496,
+                      "end": 509
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Would_block",
+                    "span": {
+                      "start": 497,
+                      "end": 508
+                    }
+                  },
+                  "payload": null
+                }
+              ]
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 512,
+                    "end": 521
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"blocked\"",
+                  "span": {
+                    "start": 512,
+                    "end": 521
+                  }
+                }
+              }
+            }
+          },
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 524,
+                "end": 545
+              }
+            },
+            "pattern": {
+              "tag": "constructor",
+              "syntax_node": {
+                "kind": "CONSTRUCTOR_PATTERN",
+                "span": {
+                  "start": 526,
+                  "end": 537
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 526,
+                    "end": 537
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Error",
+                    "span": {
+                      "start": 526,
+                      "end": 531
+                    }
+                  }
+                ]
+              },
+              "arguments": [
+                {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_PATTERN",
+                    "span": {
+                      "start": 532,
+                      "end": 537
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Eof",
+                    "span": {
+                      "start": 533,
+                      "end": 536
+                    }
+                  },
+                  "payload": null
+                }
+              ]
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 540,
+                    "end": 545
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"eof\"",
+                  "span": {
+                    "start": 540,
+                    "end": 545
+                  }
+                }
+              }
+            }
+          },
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 548,
+                "end": 562
+              }
+            },
+            "pattern": {
+              "tag": "constructor",
+              "syntax_node": {
+                "kind": "CONSTRUCTOR_PATTERN",
+                "span": {
+                  "start": 550,
+                  "end": 554
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 550,
+                    "end": 554
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Ok",
+                    "span": {
+                      "start": 550,
+                      "end": 552
+                    }
+                  }
+                ]
+              },
+              "arguments": [
+                {
+                  "tag": "identifier",
+                  "syntax_node": {
+                    "kind": "IDENT_PATTERN",
+                    "span": {
+                      "start": 553,
+                      "end": 554
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "span": {
+                      "start": 553,
+                      "end": 554
+                    }
+                  }
+                }
+              ]
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 558,
+                    "end": 562
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"ok\"",
+                  "span": {
+                    "start": 558,
+                    "end": 562
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 512,
+              "end": 521
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"blocked\"",
+            "span": {
+              "start": 512,
+              "end": 521
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 540,
+              "end": 545
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"eof\"",
+            "span": {
+              "start": 540,
+              "end": 545
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 558,
+              "end": 562
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"ok\"",
+            "span": {
+              "start": 558,
+              "end": 562
+            }
+          }
+        }
+      },
+      {
+        "tag": "function",
+        "syntax_node": {
+          "kind": "FUNCTION_EXPR",
+          "span": {
+            "start": 612,
+            "end": 665
+          }
+        },
+        "cases": [
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 621,
+                "end": 635
+              }
+            },
+            "pattern": {
+              "tag": "constructor",
+              "syntax_node": {
+                "kind": "CONSTRUCTOR_PATTERN",
+                "span": {
+                  "start": 621,
+                  "end": 631
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 621,
+                    "end": 631
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Some",
+                    "span": {
+                      "start": 621,
+                      "end": 625
+                    }
+                  }
+                ]
+              },
+              "arguments": [
+                {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_PATTERN",
+                    "span": {
+                      "start": 626,
+                      "end": 631
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Foo",
+                    "span": {
+                      "start": 627,
+                      "end": 630
+                    }
+                  },
+                  "payload": null
+                }
+              ]
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 634,
+                    "end": 635
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "1",
+                  "span": {
+                    "start": 634,
+                    "end": 635
+                  }
+                }
+              }
+            }
+          },
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 636,
+                "end": 652
+              }
+            },
+            "pattern": {
+              "tag": "constructor",
+              "syntax_node": {
+                "kind": "CONSTRUCTOR_PATTERN",
+                "span": {
+                  "start": 638,
+                  "end": 648
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 638,
+                    "end": 648
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Some",
+                    "span": {
+                      "start": 638,
+                      "end": 642
+                    }
+                  }
+                ]
+              },
+              "arguments": [
+                {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_PATTERN",
+                    "span": {
+                      "start": 643,
+                      "end": 648
+                    }
+                  },
+                  "tag_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Bar",
+                    "span": {
+                      "start": 644,
+                      "end": 647
+                    }
+                  },
+                  "payload": null
+                }
+              ]
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 651,
+                    "end": 652
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "2",
+                  "span": {
+                    "start": 651,
+                    "end": 652
+                  }
+                }
+              }
+            }
+          },
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 653,
+                "end": 664
+              }
+            },
+            "pattern": {
+              "tag": "constructor",
+              "syntax_node": {
+                "kind": "CONSTRUCTOR_PATTERN",
+                "span": {
+                  "start": 655,
+                  "end": 660
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 655,
+                    "end": 660
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "None",
+                    "span": {
+                      "start": 655,
+                      "end": 659
+                    }
+                  }
+                ]
+              },
+              "arguments": []
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 663,
+                    "end": 664
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "0",
+                  "span": {
+                    "start": 663,
+                    "end": 664
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 634,
+              "end": 635
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "1",
+            "span": {
+              "start": 634,
+              "end": 635
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 651,
+              "end": 652
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "2",
+            "span": {
+              "start": 651,
+              "end": 652
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 663,
+              "end": 664
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "0",
+            "span": {
+              "start": 663,
+              "end": 664
+            }
+          }
+        }
+      }
+    ]
+  }
+}

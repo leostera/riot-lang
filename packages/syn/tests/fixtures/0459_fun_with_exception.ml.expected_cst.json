@@ -191,33 +191,27 @@
                   }
                 },
                 "argument": {
-                  "tag": "parenthesized",
-                  "syntax_node": {
-                    "kind": "PAREN_EXPR",
-                    "span": {
-                      "start": 37,
-                      "end": 66
-                    }
-                  },
-                  "inner": {
-                    "tag": "apply",
+                  "tag": "positional",
+                  "value": {
+                    "tag": "parenthesized",
                     "syntax_node": {
-                      "kind": "APPLY_EXPR",
+                      "kind": "PAREN_EXPR",
                       "span": {
-                        "start": 38,
-                        "end": 65
+                        "start": 37,
+                        "end": 66
                       }
                     },
-                    "callee": {
-                      "tag": "path",
+                    "inner": {
+                      "tag": "apply",
                       "syntax_node": {
-                        "kind": "IDENT_EXPR",
+                        "kind": "APPLY_EXPR",
                         "span": {
                           "start": 38,
-                          "end": 54
+                          "end": 65
                         }
                       },
-                      "path": {
+                      "callee": {
+                        "tag": "path",
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
@@ -225,35 +219,47 @@
                             "end": 54
                           }
                         },
-                        "segments": [
-                          {
+                        "path": {
+                          "syntax_node": {
                             "kind": "IDENT_EXPR",
-                            "text": "Invalid_argument",
                             "span": {
                               "start": 38,
                               "end": 54
                             }
-                          }
-                        ]
-                      }
-                    },
-                    "argument": {
-                      "tag": "literal",
-                      "literal": {
-                        "tag": "string",
-                        "syntax_node": {
-                          "kind": "STRING_LITERAL",
-                          "span": {
-                            "start": 55,
-                            "end": 65
-                          }
-                        },
-                        "literal_token": {
-                          "kind": "STRING_LITERAL",
-                          "text": "\"negative\"",
-                          "span": {
-                            "start": 55,
-                            "end": 65
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "Invalid_argument",
+                              "span": {
+                                "start": 38,
+                                "end": 54
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "argument": {
+                        "tag": "positional",
+                        "value": {
+                          "tag": "literal",
+                          "literal": {
+                            "tag": "string",
+                            "syntax_node": {
+                              "kind": "STRING_LITERAL",
+                              "span": {
+                                "start": 55,
+                                "end": 65
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "STRING_LITERAL",
+                              "text": "\"negative\"",
+                              "span": {
+                                "start": 55,
+                                "end": 65
+                              }
+                            }
                           }
                         }
                       }
@@ -477,33 +483,27 @@
                 }
               },
               "argument": {
-                "tag": "parenthesized",
-                "syntax_node": {
-                  "kind": "PAREN_EXPR",
-                  "span": {
-                    "start": 37,
-                    "end": 66
-                  }
-                },
-                "inner": {
-                  "tag": "apply",
+                "tag": "positional",
+                "value": {
+                  "tag": "parenthesized",
                   "syntax_node": {
-                    "kind": "APPLY_EXPR",
+                    "kind": "PAREN_EXPR",
                     "span": {
-                      "start": 38,
-                      "end": 65
+                      "start": 37,
+                      "end": 66
                     }
                   },
-                  "callee": {
-                    "tag": "path",
+                  "inner": {
+                    "tag": "apply",
                     "syntax_node": {
-                      "kind": "IDENT_EXPR",
+                      "kind": "APPLY_EXPR",
                       "span": {
                         "start": 38,
-                        "end": 54
+                        "end": 65
                       }
                     },
-                    "path": {
+                    "callee": {
+                      "tag": "path",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -511,35 +511,47 @@
                           "end": 54
                         }
                       },
-                      "segments": [
-                        {
+                      "path": {
+                        "syntax_node": {
                           "kind": "IDENT_EXPR",
-                          "text": "Invalid_argument",
                           "span": {
                             "start": 38,
                             "end": 54
                           }
-                        }
-                      ]
-                    }
-                  },
-                  "argument": {
-                    "tag": "literal",
-                    "literal": {
-                      "tag": "string",
-                      "syntax_node": {
-                        "kind": "STRING_LITERAL",
-                        "span": {
-                          "start": 55,
-                          "end": 65
-                        }
-                      },
-                      "literal_token": {
-                        "kind": "STRING_LITERAL",
-                        "text": "\"negative\"",
-                        "span": {
-                          "start": 55,
-                          "end": 65
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "Invalid_argument",
+                            "span": {
+                              "start": 38,
+                              "end": 54
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "argument": {
+                      "tag": "positional",
+                      "value": {
+                        "tag": "literal",
+                        "literal": {
+                          "tag": "string",
+                          "syntax_node": {
+                            "kind": "STRING_LITERAL",
+                            "span": {
+                              "start": 55,
+                              "end": 65
+                            }
+                          },
+                          "literal_token": {
+                            "kind": "STRING_LITERAL",
+                            "text": "\"negative\"",
+                            "span": {
+                              "start": 55,
+                              "end": 65
+                            }
+                          }
                         }
                       }
                     }
@@ -727,33 +739,27 @@
               }
             },
             "argument": {
-              "tag": "parenthesized",
-              "syntax_node": {
-                "kind": "PAREN_EXPR",
-                "span": {
-                  "start": 37,
-                  "end": 66
-                }
-              },
-              "inner": {
-                "tag": "apply",
+              "tag": "positional",
+              "value": {
+                "tag": "parenthesized",
                 "syntax_node": {
-                  "kind": "APPLY_EXPR",
+                  "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 38,
-                    "end": 65
+                    "start": 37,
+                    "end": 66
                   }
                 },
-                "callee": {
-                  "tag": "path",
+                "inner": {
+                  "tag": "apply",
                   "syntax_node": {
-                    "kind": "IDENT_EXPR",
+                    "kind": "APPLY_EXPR",
                     "span": {
                       "start": 38,
-                      "end": 54
+                      "end": 65
                     }
                   },
-                  "path": {
+                  "callee": {
+                    "tag": "path",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -761,35 +767,47 @@
                         "end": 54
                       }
                     },
-                    "segments": [
-                      {
+                    "path": {
+                      "syntax_node": {
                         "kind": "IDENT_EXPR",
-                        "text": "Invalid_argument",
                         "span": {
                           "start": 38,
                           "end": 54
                         }
-                      }
-                    ]
-                  }
-                },
-                "argument": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "string",
-                    "syntax_node": {
-                      "kind": "STRING_LITERAL",
-                      "span": {
-                        "start": 55,
-                        "end": 65
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "STRING_LITERAL",
-                      "text": "\"negative\"",
-                      "span": {
-                        "start": 55,
-                        "end": 65
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "Invalid_argument",
+                          "span": {
+                            "start": 38,
+                            "end": 54
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "argument": {
+                    "tag": "positional",
+                    "value": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "string",
+                        "syntax_node": {
+                          "kind": "STRING_LITERAL",
+                          "span": {
+                            "start": 55,
+                            "end": 65
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "STRING_LITERAL",
+                          "text": "\"negative\"",
+                          "span": {
+                            "start": 55,
+                            "end": 65
+                          }
+                        }
                       }
                     }
                   }
@@ -944,33 +962,27 @@
             }
           },
           "argument": {
-            "tag": "parenthesized",
-            "syntax_node": {
-              "kind": "PAREN_EXPR",
-              "span": {
-                "start": 37,
-                "end": 66
-              }
-            },
-            "inner": {
-              "tag": "apply",
+            "tag": "positional",
+            "value": {
+              "tag": "parenthesized",
               "syntax_node": {
-                "kind": "APPLY_EXPR",
+                "kind": "PAREN_EXPR",
                 "span": {
-                  "start": 38,
-                  "end": 65
+                  "start": 37,
+                  "end": 66
                 }
               },
-              "callee": {
-                "tag": "path",
+              "inner": {
+                "tag": "apply",
                 "syntax_node": {
-                  "kind": "IDENT_EXPR",
+                  "kind": "APPLY_EXPR",
                   "span": {
                     "start": 38,
-                    "end": 54
+                    "end": 65
                   }
                 },
-                "path": {
+                "callee": {
+                  "tag": "path",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -978,35 +990,47 @@
                       "end": 54
                     }
                   },
-                  "segments": [
-                    {
+                  "path": {
+                    "syntax_node": {
                       "kind": "IDENT_EXPR",
-                      "text": "Invalid_argument",
                       "span": {
                         "start": 38,
                         "end": 54
                       }
-                    }
-                  ]
-                }
-              },
-              "argument": {
-                "tag": "literal",
-                "literal": {
-                  "tag": "string",
-                  "syntax_node": {
-                    "kind": "STRING_LITERAL",
-                    "span": {
-                      "start": 55,
-                      "end": 65
-                    }
-                  },
-                  "literal_token": {
-                    "kind": "STRING_LITERAL",
-                    "text": "\"negative\"",
-                    "span": {
-                      "start": 55,
-                      "end": 65
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Invalid_argument",
+                        "span": {
+                          "start": 38,
+                          "end": 54
+                        }
+                      }
+                    ]
+                  }
+                },
+                "argument": {
+                  "tag": "positional",
+                  "value": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "string",
+                      "syntax_node": {
+                        "kind": "STRING_LITERAL",
+                        "span": {
+                          "start": 55,
+                          "end": 65
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "STRING_LITERAL",
+                        "text": "\"negative\"",
+                        "span": {
+                          "start": 55,
+                          "end": 65
+                        }
+                      }
                     }
                   }
                 }
@@ -1201,33 +1225,27 @@
           }
         },
         "argument": {
-          "tag": "parenthesized",
-          "syntax_node": {
-            "kind": "PAREN_EXPR",
-            "span": {
-              "start": 37,
-              "end": 66
-            }
-          },
-          "inner": {
-            "tag": "apply",
+          "tag": "positional",
+          "value": {
+            "tag": "parenthesized",
             "syntax_node": {
-              "kind": "APPLY_EXPR",
+              "kind": "PAREN_EXPR",
               "span": {
-                "start": 38,
-                "end": 65
+                "start": 37,
+                "end": 66
               }
             },
-            "callee": {
-              "tag": "path",
+            "inner": {
+              "tag": "apply",
               "syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "APPLY_EXPR",
                 "span": {
                   "start": 38,
-                  "end": 54
+                  "end": 65
                 }
               },
-              "path": {
+              "callee": {
+                "tag": "path",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -1235,35 +1253,47 @@
                     "end": 54
                   }
                 },
-                "segments": [
-                  {
+                "path": {
+                  "syntax_node": {
                     "kind": "IDENT_EXPR",
-                    "text": "Invalid_argument",
                     "span": {
                       "start": 38,
                       "end": 54
                     }
-                  }
-                ]
-              }
-            },
-            "argument": {
-              "tag": "literal",
-              "literal": {
-                "tag": "string",
-                "syntax_node": {
-                  "kind": "STRING_LITERAL",
-                  "span": {
-                    "start": 55,
-                    "end": 65
-                  }
-                },
-                "literal_token": {
-                  "kind": "STRING_LITERAL",
-                  "text": "\"negative\"",
-                  "span": {
-                    "start": 55,
-                    "end": 65
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Invalid_argument",
+                      "span": {
+                        "start": 38,
+                        "end": 54
+                      }
+                    }
+                  ]
+                }
+              },
+              "argument": {
+                "tag": "positional",
+                "value": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 55,
+                        "end": 65
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"negative\"",
+                      "span": {
+                        "start": 55,
+                        "end": 65
+                      }
+                    }
                   }
                 }
               }
@@ -1348,22 +1378,25 @@
             }
           },
           "argument": {
-            "tag": "literal",
-            "literal": {
-              "tag": "string",
-              "syntax_node": {
-                "kind": "STRING_LITERAL",
-                "span": {
-                  "start": 55,
-                  "end": 65
-                }
-              },
-              "literal_token": {
-                "kind": "STRING_LITERAL",
-                "text": "\"negative\"",
-                "span": {
-                  "start": 55,
-                  "end": 65
+            "tag": "positional",
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 55,
+                    "end": 65
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"negative\"",
+                  "span": {
+                    "start": 55,
+                    "end": 65
+                  }
                 }
               }
             }
@@ -1409,22 +1442,25 @@
           }
         },
         "argument": {
-          "tag": "literal",
-          "literal": {
-            "tag": "string",
-            "syntax_node": {
-              "kind": "STRING_LITERAL",
-              "span": {
-                "start": 55,
-                "end": 65
-              }
-            },
-            "literal_token": {
-              "kind": "STRING_LITERAL",
-              "text": "\"negative\"",
-              "span": {
-                "start": 55,
-                "end": 65
+          "tag": "positional",
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "string",
+              "syntax_node": {
+                "kind": "STRING_LITERAL",
+                "span": {
+                  "start": 55,
+                  "end": 65
+                }
+              },
+              "literal_token": {
+                "kind": "STRING_LITERAL",
+                "text": "\"negative\"",
+                "span": {
+                  "start": 55,
+                  "end": 65
+                }
               }
             }
           }

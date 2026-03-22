@@ -183,6 +183,58 @@ let tests =
               ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
             Ok ()
         | _ -> Error "expected first item to be a module type declaration");
+    Test.case "cst value declarations preserve names and type nodes" (fun () ->
+        let result = Syn.parse ~filename:"sample.mli" "val create : name:string -> person\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ValueDeclaration { name_token; type_syntax_node; _ } :: _ ->
+            Test.assert_equal ~expected:"create"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:"TYPE_ARROW"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind type_syntax_node));
+            Ok ()
+        | _ -> Error "expected first item to be a value declaration");
+    Test.case "cst external declarations preserve primitive names" (fun () ->
+        let result =
+          Syn.parse ~filename:"sample.ml"
+            "external sqrt : float -> float = \"caml_sqrt_float\"\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ExternalDeclaration { name_token; primitive_name_tokens; _ } :: _ ->
+            Test.assert_equal ~expected:"sqrt"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:[ "\"caml_sqrt_float\"" ]
+              ~actual:(List.map Syn.Cst.Token.text primitive_name_tokens);
+            Ok ()
+        | _ -> Error "expected first item to be an external declaration");
+    Test.case "cst include statements preserve included syntax nodes" (fun () ->
+        let result =
+          Syn.parse ~filename:"sample.mli" "include module type of Stdlib.Array\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.IncludeStatement { included_syntax_node; _ } :: _ ->
+            Test.assert_equal ~expected:"MODULE_TYPE_OF"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind included_syntax_node));
+            Ok ()
+        | _ -> Error "expected first item to be an include statement");
     Test.case "cst open statements preserve open! structurally" (fun () ->
         let result = Syn.parse ~filename:"sample.ml" "open! Std.List\n" in
         let cst =
@@ -605,13 +657,24 @@ let tests =
         | Syn.Cst.Item.LetBinding binding :: _ -> (
             match Syn.Cst.LetBinding.value binding with
             | Syn.Cst.Expression.Apply outer -> (
-                match Syn.Cst.ApplyExpression.callee outer with
-                | Syn.Cst.Expression.FieldAccess
-                    {
-                      receiver = Syn.Cst.Expression.Path { path; _ };
-                      field_name;
-                      _;
-                    } ->
+                match outer with
+                | {
+                 callee =
+                   Syn.Cst.Expression.FieldAccess
+                     {
+                       receiver = Syn.Cst.Expression.Path { path; _ };
+                       field_name;
+                       _;
+                     };
+                 argument =
+                   Syn.Cst.Positional
+                     (Syn.Cst.Expression.Parenthesized
+                       {
+                         inner = Syn.Cst.Expression.Apply _;
+                         _;
+                       });
+                 _;
+                } ->
                     Test.assert_equal ~expected:(Some "rev")
                       ~actual:(Some (Syn.Cst.Token.text field_name));
                     Test.assert_equal ~expected:(Some "List")
@@ -620,6 +683,72 @@ let tests =
                 | _ -> Error "expected field access callee")
             | _ -> Error "expected apply expression value")
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst apply expressions preserve labeled arguments structurally"
+      (fun () ->
+        let source = "let x = f ~y:1\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Apply
+                  {
+                    callee = Syn.Cst.Expression.Path _;
+                    argument =
+                      Syn.Cst.Labeled
+                        {
+                          label_token;
+                          value =
+                            Some
+                              (Syn.Cst.Expression.Literal
+                                (Syn.Cst.Literal.Int _));
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"y"
+              ~actual:(Syn.Cst.Token.text label_token);
+            Ok ()
+        | _ -> Error "expected labeled apply argument");
+    Test.case "cst apply expressions preserve optional shorthand arguments"
+      (fun () ->
+        let source = "let x = f ?y\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Apply
+                  {
+                    argument =
+                      Syn.Cst.Optional
+                        {
+                          label_token;
+                          value = None;
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"y"
+              ~actual:(Syn.Cst.Token.text label_token);
+            Ok ()
+        | _ -> Error "expected optional shorthand apply argument");
     Test.case "cst field access preserves nested qualified field access structurally" (fun () ->
         let source = "let render record = record.Module.field\n" in
         let result = Syn.parse ~filename:"sample.ml" source in
@@ -1021,6 +1150,229 @@ let tests =
               ~actual:(Syn.Cst.Token.text literal_token);
             Ok ()
         | _ -> Error "expected string index expression");
+    Test.case "cst polyvariant expressions preserve tags and payloads" (fun () ->
+        let source = "let x = `Point { y = 1; z = 2 }\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.PolyVariant
+                  {
+                    tag_token;
+                    payload =
+                      Some
+                        (Syn.Cst.Expression.Record
+                          (Syn.Cst.RecordExpression.Literal { fields; _ }));
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Point"
+              ~actual:(Syn.Cst.Token.text tag_token);
+            Test.assert_equal ~expected:2 ~actual:(List.length fields);
+            Ok ()
+        | _ -> Error "expected polyvariant expression");
+    Test.case "cst polyvariant patterns preserve tags and payloads" (fun () ->
+        let source = "let x = match y with `Point (a, b) -> a\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      [
+                        {
+                          pattern =
+                            Syn.Cst.Pattern.PolyVariant
+                              {
+                                tag_token;
+                                payload =
+                                  Some
+                                    (Syn.Cst.Pattern.Parenthesized
+                                      {
+                                        inner =
+                                          Syn.Cst.Pattern.Tuple
+                                            {
+                                              elements =
+                                                [
+                                                  Syn.Cst.Pattern.Identifier { name_token; _ };
+                                                  _;
+                                                ];
+                                              _;
+                                            };
+                                        _;
+                                      });
+                                _;
+                              };
+                          _;
+                        };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Point"
+              ~actual:(Syn.Cst.Token.text tag_token);
+            Test.assert_equal ~expected:"a"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Ok ()
+        | _ -> Error "expected polyvariant pattern");
+    Test.case "cst nested record updates preserve expression bases" (fun () ->
+        let source = "let x = { { point with a = 1 } with b = 2 }\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Record
+                  (Syn.Cst.RecordExpression.Update
+                    {
+                      base =
+                        Syn.Cst.Expression.Record
+                          (Syn.Cst.RecordExpression.Update
+                            {
+                              base = Syn.Cst.Expression.Path { path; _ };
+                              _;
+                            });
+                      fields = [ { field_path; _ } ];
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "point")
+              ~actual:(Syn.Cst.ModulePath.name path);
+            Test.assert_equal ~expected:(Some "b")
+              ~actual:(Syn.Cst.ModulePath.name field_path);
+            Ok ()
+        | _ -> Error "expected nested record update");
+    Test.case "cst assert expressions preserve the asserted value" (fun () ->
+        let source = "let x = assert true\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Assert
+                  {
+                    asserted =
+                      Syn.Cst.Expression.Literal
+                        (Syn.Cst.Literal.Bool { literal_token; _ });
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"true"
+              ~actual:(Syn.Cst.Token.text literal_token);
+            Ok ()
+        | _ -> Error "expected assert expression");
+    Test.case "cst lazy expressions preserve the wrapped body" (fun () ->
+        let source = "let x = lazy (1 + 2)\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Lazy
+                  {
+                    body =
+                      Syn.Cst.Expression.Parenthesized
+                        {
+                          inner = Syn.Cst.Expression.Infix _;
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Ok ()
+        | _ -> Error "expected lazy expression");
+    Test.case "cst while expressions preserve the condition and body"
+      (fun () ->
+        let source = "let x = while !y < 10 do y := !y + 1 done\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.While
+                  {
+                    condition = Syn.Cst.Expression.Infix _;
+                    body = Syn.Cst.Expression.Assign { operator_token; _ };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:":="
+              ~actual:(Syn.Cst.Token.text operator_token);
+            Ok ()
+        | _ -> Error "expected while expression");
+    Test.case "cst for expressions preserve iterator and direction" (fun () ->
+        let source = "let x = for i = 0 downto 1 do f i done\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.For
+                  {
+                    iterator_token;
+                    direction_token;
+                    body = Syn.Cst.Expression.Apply _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"i"
+              ~actual:(Syn.Cst.Token.text iterator_token);
+            Test.assert_equal ~expected:"downto"
+              ~actual:(Syn.Cst.Token.text direction_token);
+            Ok ()
+        | _ -> Error "expected for expression");
   ]
 
 let () =

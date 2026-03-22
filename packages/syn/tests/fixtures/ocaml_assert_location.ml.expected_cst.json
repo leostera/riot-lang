@@ -1,0 +1,141 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 124
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 70,
+              "end": 91
+            }
+          },
+          "binding_pattern": {
+            "tag": "literal",
+            "literal": {
+              "tag": "unit",
+              "syntax_node": {
+                "kind": "UNIT_LITERAL",
+                "span": {
+                  "start": 74,
+                  "end": 76
+                }
+              }
+            }
+          },
+          "binding_name": null,
+          "parameters": [],
+          "value": {
+            "tag": "assert",
+            "syntax_node": {
+              "kind": "ASSERT_EXPR",
+              "span": {
+                "start": 79,
+                "end": 91
+              }
+            },
+            "asserted": {
+              "tag": "literal",
+              "literal": {
+                "tag": "bool",
+                "syntax_node": {
+                  "kind": "BOOL_LITERAL",
+                  "span": {
+                    "start": 86,
+                    "end": 91
+                  }
+                },
+                "literal_token": {
+                  "kind": "BOOL_LITERAL",
+                  "text": "false",
+                  "span": {
+                    "start": 86,
+                    "end": 91
+                  }
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "unit",
+          "syntax_node": {
+            "kind": "UNIT_LITERAL",
+            "span": {
+              "start": 74,
+              "end": 76
+            }
+          }
+        }
+      },
+      {
+        "tag": "assert",
+        "syntax_node": {
+          "kind": "ASSERT_EXPR",
+          "span": {
+            "start": 79,
+            "end": 91
+          }
+        },
+        "asserted": {
+          "tag": "literal",
+          "literal": {
+            "tag": "bool",
+            "syntax_node": {
+              "kind": "BOOL_LITERAL",
+              "span": {
+                "start": 86,
+                "end": 91
+              }
+            },
+            "literal_token": {
+              "kind": "BOOL_LITERAL",
+              "text": "false",
+              "span": {
+                "start": 86,
+                "end": 91
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "bool",
+          "syntax_node": {
+            "kind": "BOOL_LITERAL",
+            "span": {
+              "start": 86,
+              "end": 91
+            }
+          },
+          "literal_token": {
+            "kind": "BOOL_LITERAL",
+            "text": "false",
+            "span": {
+              "start": 86,
+              "end": 91
+            }
+          }
+        }
+      }
+    ]
+  }
+}

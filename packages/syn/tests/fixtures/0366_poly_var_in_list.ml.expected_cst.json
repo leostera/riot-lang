@@ -55,7 +55,65 @@
                 "end": 31
               }
             },
-            "elements": []
+            "elements": [
+              {
+                "tag": "poly_variant",
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_EXPR",
+                  "span": {
+                    "start": 10,
+                    "end": 14
+                  }
+                },
+                "tag_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Red",
+                  "span": {
+                    "start": 11,
+                    "end": 14
+                  }
+                },
+                "payload": null
+              },
+              {
+                "tag": "poly_variant",
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_EXPR",
+                  "span": {
+                    "start": 16,
+                    "end": 21
+                  }
+                },
+                "tag_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Blue",
+                  "span": {
+                    "start": 17,
+                    "end": 21
+                  }
+                },
+                "payload": null
+              },
+              {
+                "tag": "poly_variant",
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_EXPR",
+                  "span": {
+                    "start": 23,
+                    "end": 30
+                  }
+                },
+                "tag_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Green",
+                  "span": {
+                    "start": 24,
+                    "end": 29
+                  }
+                },
+                "payload": null
+              }
+            ]
           },
           "is_recursive": false
         }
@@ -106,7 +164,65 @@
               "end": 31
             }
           },
-          "elements": []
+          "elements": [
+            {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_EXPR",
+                "span": {
+                  "start": 10,
+                  "end": 14
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Red",
+                "span": {
+                  "start": 11,
+                  "end": 14
+                }
+              },
+              "payload": null
+            },
+            {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_EXPR",
+                "span": {
+                  "start": 16,
+                  "end": 21
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Blue",
+                "span": {
+                  "start": 17,
+                  "end": 21
+                }
+              },
+              "payload": null
+            },
+            {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_EXPR",
+                "span": {
+                  "start": 23,
+                  "end": 30
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Green",
+                "span": {
+                  "start": 24,
+                  "end": 29
+                }
+              },
+              "payload": null
+            }
+          ]
         },
         "is_recursive": false
       }
@@ -121,7 +237,122 @@
             "end": 31
           }
         },
-        "elements": []
+        "elements": [
+          {
+            "tag": "poly_variant",
+            "syntax_node": {
+              "kind": "POLY_VARIANT_EXPR",
+              "span": {
+                "start": 10,
+                "end": 14
+              }
+            },
+            "tag_token": {
+              "kind": "IDENT_EXPR",
+              "text": "Red",
+              "span": {
+                "start": 11,
+                "end": 14
+              }
+            },
+            "payload": null
+          },
+          {
+            "tag": "poly_variant",
+            "syntax_node": {
+              "kind": "POLY_VARIANT_EXPR",
+              "span": {
+                "start": 16,
+                "end": 21
+              }
+            },
+            "tag_token": {
+              "kind": "IDENT_EXPR",
+              "text": "Blue",
+              "span": {
+                "start": 17,
+                "end": 21
+              }
+            },
+            "payload": null
+          },
+          {
+            "tag": "poly_variant",
+            "syntax_node": {
+              "kind": "POLY_VARIANT_EXPR",
+              "span": {
+                "start": 23,
+                "end": 30
+              }
+            },
+            "tag_token": {
+              "kind": "IDENT_EXPR",
+              "text": "Green",
+              "span": {
+                "start": 24,
+                "end": 29
+              }
+            },
+            "payload": null
+          }
+        ]
+      },
+      {
+        "tag": "poly_variant",
+        "syntax_node": {
+          "kind": "POLY_VARIANT_EXPR",
+          "span": {
+            "start": 10,
+            "end": 14
+          }
+        },
+        "tag_token": {
+          "kind": "IDENT_EXPR",
+          "text": "Red",
+          "span": {
+            "start": 11,
+            "end": 14
+          }
+        },
+        "payload": null
+      },
+      {
+        "tag": "poly_variant",
+        "syntax_node": {
+          "kind": "POLY_VARIANT_EXPR",
+          "span": {
+            "start": 16,
+            "end": 21
+          }
+        },
+        "tag_token": {
+          "kind": "IDENT_EXPR",
+          "text": "Blue",
+          "span": {
+            "start": 17,
+            "end": 21
+          }
+        },
+        "payload": null
+      },
+      {
+        "tag": "poly_variant",
+        "syntax_node": {
+          "kind": "POLY_VARIANT_EXPR",
+          "span": {
+            "start": 23,
+            "end": 30
+          }
+        },
+        "tag_token": {
+          "kind": "IDENT_EXPR",
+          "text": "Green",
+          "span": {
+            "start": 24,
+            "end": 29
+          }
+        },
+        "payload": null
       }
     ]
   }

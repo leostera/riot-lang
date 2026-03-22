@@ -194,6 +194,12 @@ let rec take_tokens_until_equals acc = function
 
 let rec pattern_from_node node =
   let pattern_children node = direct_non_trivia_nodes node |> List.map pattern_from_node in
+  let poly_variant_tag_token node =
+    match direct_non_trivia_tokens node with
+    | _backtick :: tag_syntax_token :: _ -> Some (token tag_syntax_token)
+    | tag_syntax_token :: _ -> Some (token tag_syntax_token)
+    | [] -> None
+  in
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.IDENT_PATTERN -> (
       match direct_non_trivia_tokens node with
@@ -254,6 +260,21 @@ let rec pattern_from_node node =
       | [] -> Cst.Pattern.Unknown node)
   | Syntax_kind.UNIT_LITERAL ->
       Cst.Pattern.Literal (Cst.PatternLiteral.Unit { syntax_node = node })
+  | Syntax_kind.POLY_VARIANT_PATTERN -> (
+      match poly_variant_tag_token node with
+      | Some tag_token ->
+          Cst.Pattern.PolyVariant
+            {
+              syntax_node = node;
+              tag_token;
+              payload =
+                (direct_non_trivia_nodes node
+                |> List.find_map (fun child ->
+                       match pattern_from_node child with
+                       | Cst.Pattern.Unknown _ -> None
+                       | pattern -> Some pattern));
+            }
+      | None -> Cst.Pattern.Unknown node)
   | Syntax_kind.CONSTRUCTOR_PATTERN ->
       Cst.Pattern.Constructor
         {
@@ -341,13 +362,50 @@ and record_pattern_field_from_node node =
                      | pattern -> Some pattern));
           }
 
-let rec expression_from_node node =
+let rec apply_argument_from_node node =
+  let first_nontrivia_expression_child node =
+    direct_non_trivia_nodes node
+    |> List.find_map (fun child ->
+           match expression_from_node child with
+           | Cst.Expression.Unknown _ -> None
+           | expr -> Some expr)
+  in
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.LABELED_ARG -> (
+      match direct_non_trivia_tokens node with
+      | _sigil :: label_syntax_token :: _ ->
+          Cst.Labeled
+            {
+              syntax_node = node;
+              label_token = token label_syntax_token;
+              value = first_nontrivia_expression_child node;
+            }
+      | _ -> Cst.Positional (Cst.Expression.Unknown node))
+  | Syntax_kind.OPTIONAL_ARG -> (
+      match direct_non_trivia_tokens node with
+      | _sigil :: label_syntax_token :: _ ->
+          Cst.Optional
+            {
+              syntax_node = node;
+              label_token = token label_syntax_token;
+              value = first_nontrivia_expression_child node;
+            }
+      | _ -> Cst.Positional (Cst.Expression.Unknown node))
+  | _ -> Cst.Positional (expression_from_node node)
+
+and expression_from_node node =
   let known_expression_children node =
     direct_non_trivia_nodes node
     |> List.filter_map (fun child ->
            match expression_from_node child with
            | Cst.Expression.Unknown _ -> None
            | expr -> Some expr)
+  in
+  let poly_variant_tag_token node =
+    match direct_non_trivia_tokens node with
+    | _backtick :: tag_syntax_token :: _ -> Some (token tag_syntax_token)
+    | tag_syntax_token :: _ -> Some (token tag_syntax_token)
+    | [] -> None
   in
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.IDENT_EXPR ->
@@ -424,6 +482,57 @@ let rec expression_from_node node =
                  literal_token = token literal_syntax_token;
                })
       | [] -> Cst.Expression.Unknown node)
+  | Syntax_kind.ASSERT_EXPR -> (
+      match
+        direct_non_trivia_nodes node
+        |> List.find_map (fun child ->
+               match expression_from_node child with
+               | Cst.Expression.Unknown _ -> None
+               | expr -> Some expr)
+      with
+      | Some asserted ->
+          Cst.Expression.Assert { syntax_node = node; asserted }
+      | None -> Cst.Expression.Unknown node)
+  | Syntax_kind.LAZY_EXPR -> (
+      match
+        direct_non_trivia_nodes node
+        |> List.find_map (fun child ->
+               match expression_from_node child with
+               | Cst.Expression.Unknown _ -> None
+               | expr -> Some expr)
+      with
+      | Some body -> Cst.Expression.Lazy { syntax_node = node; body }
+      | None -> Cst.Expression.Unknown node)
+  | Syntax_kind.WHILE_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | condition_node :: body_node :: _ ->
+          Cst.Expression.While
+            {
+              syntax_node = node;
+              condition = expression_from_node condition_node;
+              body = expression_from_node body_node;
+            }
+      | _ -> Cst.Expression.Unknown node)
+  | Syntax_kind.FOR_EXPR -> (
+      let non_trivia_tokens = direct_non_trivia_tokens node in
+      let direction_token =
+        non_trivia_tokens
+        |> List.find_opt (fun syntax_token ->
+               let text = Ceibo.Red.SyntaxToken.text syntax_token in
+               String.equal text "to" || String.equal text "downto")
+      in
+      match direct_non_trivia_nodes node, non_trivia_tokens, direction_token with
+      | start_node :: end_node :: body_node :: _, _for_kw :: iterator_syntax_token :: _, Some direction_syntax_token ->
+          Cst.Expression.For
+            {
+              syntax_node = node;
+              iterator_token = token iterator_syntax_token;
+              start_expr = expression_from_node start_node;
+              direction_token = token direction_syntax_token;
+              end_expr = expression_from_node end_node;
+              body = expression_from_node body_node;
+            }
+      | _ -> Cst.Expression.Unknown node)
   | Syntax_kind.APPLY_EXPR -> (
       match direct_non_trivia_nodes node with
       | callee_node :: argument_node :: _ ->
@@ -431,9 +540,24 @@ let rec expression_from_node node =
             {
               syntax_node = node;
               callee = expression_from_node callee_node;
-                argument = expression_from_node argument_node;
+              argument = apply_argument_from_node argument_node;
             }
       | _ -> Cst.Expression.Unknown node)
+  | Syntax_kind.POLY_VARIANT_EXPR -> (
+      match poly_variant_tag_token node with
+      | Some tag_token ->
+          Cst.Expression.PolyVariant
+            {
+              syntax_node = node;
+              tag_token;
+              payload =
+                (direct_non_trivia_nodes node
+                |> List.find_map (fun child ->
+                       match expression_from_node child with
+                       | Cst.Expression.Unknown _ -> None
+                       | expr -> Some expr));
+            }
+      | None -> Cst.Expression.Unknown node)
   | Syntax_kind.TYPED_EXPR -> (
       match direct_non_trivia_nodes node with
       | expr_node :: type_node :: _ ->
@@ -648,26 +772,37 @@ and record_literal_expression_from_node node =
   Some ({ syntax_node = node; fields } : Cst.record_literal_expression)
 
 and record_update_expression_from_node node =
-  match
-    direct_non_trivia_nodes node
-    |> List.filter (fun child ->
-           Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD)
-  with
-  | base_node :: field_nodes -> (
-      match record_expression_field_from_node base_node with
-      | Some { field_path; value = None; _ } ->
+  match direct_non_trivia_nodes node with
+  | base_node :: rest -> (
+      let lifted_base =
+        match Ceibo.Red.SyntaxNode.kind base_node with
+        | Syntax_kind.RECORD_FIELD -> (
+            match record_expression_field_from_node base_node with
+            | Some { field_path; value = None; _ } ->
+                Some
+                  (Cst.Expression.Path
+                     { syntax_node = base_node; path = field_path })
+            | _ -> None)
+        | _ -> (
+            match expression_from_node base_node with
+            | Cst.Expression.Unknown _ -> None
+            | expr -> Some expr)
+      in
+      match lifted_base with
+      | Some base ->
           Some
             ( {
                 syntax_node = node;
-                base =
-                  Cst.Expression.Path
-                    { syntax_node = base_node; path = field_path };
+                base;
                 fields =
-                  field_nodes |> List.filter_map record_expression_field_from_node;
+                  rest
+                  |> List.filter (fun child ->
+                         Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD)
+                  |> List.filter_map record_expression_field_from_node;
               }
               : Cst.record_update_expression )
-      | _ -> None)
-  | _ -> None
+      | None -> None)
+  | [] -> None
 
 and local_open_expression_from_node node =
   let module_path_of_scope_node child =
@@ -1093,6 +1228,77 @@ let open_statement_from_node node =
             bang_token = bang_token_opt;
           }
 
+let declaration_name_token_from_node node =
+  let operator_token_from_node node =
+    direct_non_trivia_tokens node
+    |> List.find_opt (fun syntax_token ->
+           let text = Ceibo.Red.SyntaxToken.text syntax_token in
+           not (String.equal text "(" || String.equal text ")"))
+    |> Option.map token
+  in
+  direct_non_trivia_nodes node
+  |> List.find_map (fun child ->
+         match Ceibo.Red.SyntaxNode.kind child with
+         | Syntax_kind.IDENT_EXPR ->
+             direct_non_trivia_tokens child |> List.find_opt (fun _ -> true) |> Option.map token
+         | Syntax_kind.OPERATOR_PATTERN -> operator_token_from_node child
+         | _ -> None)
+
+let value_declaration_from_node node =
+  let direct_children = direct_non_trivia_nodes node in
+  match declaration_name_token_from_node node with
+  | Some lifted_name_token -> (
+      match List.rev direct_children with
+      | lifted_type_syntax_node :: _ ->
+          Some
+            Cst.ValueDeclaration.
+              {
+                syntax_node = node;
+                name_token = lifted_name_token;
+                type_syntax_node = lifted_type_syntax_node;
+              }
+      | [] -> None)
+  | None -> None
+
+let external_declaration_from_node node =
+  let direct_children = direct_non_trivia_nodes node in
+  let lifted_primitive_name_tokens =
+    direct_non_trivia_tokens node
+    |> List.filter (fun syntax_token ->
+           Ceibo.Red.SyntaxToken.kind syntax_token = Syntax_kind.STRING_LITERAL)
+    |> List.map token
+  in
+  let external_name_token =
+    match direct_non_trivia_tokens node with
+    | _external_kw :: name_syntax_token :: _ -> Some (token name_syntax_token)
+    | _ -> None
+  in
+  match external_name_token with
+  | Some lifted_name_token -> (
+      match direct_children with
+      | lifted_type_syntax_node :: _ ->
+          Some
+            Cst.ExternalDeclaration.
+              {
+                syntax_node = node;
+                name_token = lifted_name_token;
+                type_syntax_node = lifted_type_syntax_node;
+                primitive_name_tokens = lifted_primitive_name_tokens;
+              }
+      | _ -> None)
+  | None -> None
+
+let include_statement_from_node node =
+  match direct_non_trivia_nodes node with
+  | lifted_included_syntax_node :: _ ->
+      Some
+        Cst.IncludeStatement.
+          {
+            syntax_node = node;
+            included_syntax_node = lifted_included_syntax_node;
+          }
+  | [] -> None
+
 let rec collect_let_bindings node =
   let bindings_here =
     match Ceibo.Red.SyntaxNode.kind node with
@@ -1166,6 +1372,18 @@ let rec items_from_node node =
       match open_statement_from_node node with
       | Some stmt -> [ Cst.Item.OpenStatement stmt ]
       | None -> [ Cst.Item.Unknown node ])
+  | Syntax_kind.VAL_DECL -> (
+      match value_declaration_from_node node with
+      | Some decl -> [ Cst.Item.ValueDeclaration decl ]
+      | None -> [ Cst.Item.Unknown node ])
+  | Syntax_kind.EXTERNAL_DECL -> (
+      match external_declaration_from_node node with
+      | Some decl -> [ Cst.Item.ExternalDeclaration decl ]
+      | None -> [ Cst.Item.Unknown node ])
+  | Syntax_kind.INCLUDE_STMT -> (
+      match include_statement_from_node node with
+      | Some stmt -> [ Cst.Item.IncludeStatement stmt ]
+      | None -> [ Cst.Item.Unknown node ])
   | _ -> (
       match expression_from_node node with
       | Cst.Expression.Unknown _ -> [ Cst.Item.Unknown node ]
@@ -1189,6 +1407,10 @@ let of_green_tree tree =
 
 let rec validate_pattern ~context = function
   | Cst.Pattern.Identifier _ | Cst.Pattern.Wildcard _ | Cst.Pattern.Literal _ -> ()
+  | Cst.Pattern.PolyVariant { payload; _ } ->
+      Option.iter
+        (validate_pattern ~context:("pattern.poly_variant.payload" :: context))
+        payload
   | Cst.Pattern.Constructor { arguments; _ } ->
       List.iteri
         (fun index argument ->
@@ -1239,11 +1461,41 @@ and validate_parameter ~context = function
       bail ~message:"unsupported parameter shape during Ceibo -> CST lifting"
         ~syntax_node ~context
 
+and validate_apply_argument ~context = function
+  | Cst.Positional expr ->
+      validate_expression ~context:("apply_argument.positional" :: context) expr
+  | Cst.Labeled { value; _ } ->
+      Option.iter
+        (validate_expression ~context:("apply_argument.labeled.value" :: context))
+        value
+  | Cst.Optional { value; _ } ->
+      Option.iter
+        (validate_expression ~context:("apply_argument.optional.value" :: context))
+        value
+
 and validate_expression ~context = function
   | Cst.Expression.Path _ | Cst.Expression.Literal _ -> ()
+  | Cst.Expression.PolyVariant { payload; _ } ->
+      Option.iter
+        (validate_expression ~context:("expression.poly_variant.payload" :: context))
+        payload
+  | Cst.Expression.Assert { asserted; _ } ->
+      validate_expression ~context:("expression.assert.asserted" :: context)
+        asserted
+  | Cst.Expression.Lazy { body; _ } ->
+      validate_expression ~context:("expression.lazy.body" :: context) body
+  | Cst.Expression.While { condition; body; _ } ->
+      validate_expression ~context:("expression.while.condition" :: context)
+        condition;
+      validate_expression ~context:("expression.while.body" :: context) body
+  | Cst.Expression.For { start_expr; end_expr; body; _ } ->
+      validate_expression ~context:("expression.for.start" :: context) start_expr;
+      validate_expression ~context:("expression.for.end" :: context) end_expr;
+      validate_expression ~context:("expression.for.body" :: context) body
   | Cst.Expression.Apply { callee; argument; _ } ->
       validate_expression ~context:("expression.apply.callee" :: context) callee;
-      validate_expression ~context:("expression.apply.argument" :: context) argument
+      validate_apply_argument ~context:("expression.apply.argument" :: context)
+        argument
   | Cst.Expression.Prefix { operand; _ } ->
       validate_expression ~context:("expression.prefix.operand" :: context)
         operand
@@ -1374,7 +1626,8 @@ let validate_item ~context = function
   | Cst.Item.Expression expr ->
       validate_expression ~context:("item.expression" :: context) expr
   | Cst.Item.ModuleDeclaration _ | Cst.Item.ModuleTypeDeclaration _
-  | Cst.Item.OpenStatement _ ->
+  | Cst.Item.OpenStatement _ | Cst.Item.ValueDeclaration _
+  | Cst.Item.ExternalDeclaration _ | Cst.Item.IncludeStatement _ ->
       ()
   | Cst.Item.Unknown syntax_node ->
       bail ~message:"unsupported structure item during Ceibo -> CST lifting"

@@ -1,0 +1,136 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 23
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 22
+            }
+          },
+          "binding_pattern": {
+            "tag": "parenthesized",
+            "syntax_node": {
+              "kind": "PAREN_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 12
+              }
+            },
+            "inner": {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "POLY_VARIANT_PATTERN",
+                "span": {
+                  "start": 5,
+                  "end": 11
+                }
+              },
+              "tag_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Tag",
+                "span": {
+                  "start": 6,
+                  "end": 9
+                }
+              },
+              "payload": {
+                "tag": "identifier",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 10,
+                    "end": 11
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 10,
+                    "end": 11
+                  }
+                }
+              }
+            }
+          },
+          "binding_name": null,
+          "parameters": [],
+          "value": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 15,
+                "end": 22
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 15,
+                  "end": 22
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "variant",
+                  "span": {
+                    "start": 15,
+                    "end": 22
+                  }
+                }
+              ]
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 15,
+            "end": 22
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 15,
+              "end": 22
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "variant",
+              "span": {
+                "start": 15,
+                "end": 22
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
