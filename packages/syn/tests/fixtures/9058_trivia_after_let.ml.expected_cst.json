@@ -131,6 +131,7 @@
                       }
                     },
                     "path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -138,16 +139,14 @@
                           "end": 28
                         }
                       },
-                      "segments": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "Unix",
-                          "span": {
-                            "start": 24,
-                            "end": 28
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "Unix",
+                        "span": {
+                          "start": 24,
+                          "end": 28
                         }
-                      ]
+                      }
                     }
                   },
                   "field_name": {
@@ -171,6 +170,7 @@
                       }
                     },
                     "path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -178,16 +178,14 @@
                           "end": 39
                         }
                       },
-                      "segments": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "fd",
-                          "span": {
-                            "start": 37,
-                            "end": 39
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "fd",
+                        "span": {
+                          "start": 37,
+                          "end": 39
                         }
-                      ]
+                      }
                     }
                   }
                 }
@@ -204,6 +202,7 @@
                     }
                   },
                   "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -211,16 +210,14 @@
                         "end": 44
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "addr",
-                        "span": {
-                          "start": 40,
-                          "end": 44
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "addr",
+                      "span": {
+                        "start": 40,
+                        "end": 44
                       }
-                    ]
+                    }
                   }
                 }
               }
@@ -271,6 +268,7 @@
                         }
                       },
                       "path": {
+                        "tag": "ident",
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
@@ -278,16 +276,14 @@
                             "end": 52
                           }
                         },
-                        "segments": [
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "Unix",
-                            "span": {
-                              "start": 48,
-                              "end": 52
-                            }
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "Unix",
+                          "span": {
+                            "start": 48,
+                            "end": 52
                           }
-                        ]
+                        }
                       }
                     },
                     "field_name": {
@@ -311,6 +307,7 @@
                         }
                       },
                       "path": {
+                        "tag": "ident",
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
@@ -318,16 +315,14 @@
                             "end": 66
                           }
                         },
-                        "segments": [
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "fd",
-                            "span": {
-                              "start": 64,
-                              "end": 66
-                            }
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "fd",
+                          "span": {
+                            "start": 64,
+                            "end": 66
                           }
-                        ]
+                        }
                       }
                     }
                   }
@@ -353,6 +348,7 @@
                         }
                       },
                       "path": {
+                        "tag": "ident",
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
@@ -360,16 +356,14 @@
                             "end": 71
                           }
                         },
-                        "segments": [
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "Unix",
-                            "span": {
-                              "start": 67,
-                              "end": 71
-                            }
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "Unix",
+                          "span": {
+                            "start": 67,
+                            "end": 71
                           }
-                        ]
+                        }
                       }
                     },
                     "field_name": {
@@ -533,6 +527,7 @@
                     }
                   },
                   "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -540,16 +535,14 @@
                         "end": 28
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "Unix",
-                        "span": {
-                          "start": 24,
-                          "end": 28
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Unix",
+                      "span": {
+                        "start": 24,
+                        "end": 28
                       }
-                    ]
+                    }
                   }
                 },
                 "field_name": {
@@ -573,6 +566,7 @@
                     }
                   },
                   "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -580,16 +574,14 @@
                         "end": 39
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "fd",
-                        "span": {
-                          "start": 37,
-                          "end": 39
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "fd",
+                      "span": {
+                        "start": 37,
+                        "end": 39
                       }
-                    ]
+                    }
                   }
                 }
               }
@@ -606,6 +598,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -613,16 +606,14 @@
                       "end": 44
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "addr",
-                      "span": {
-                        "start": 40,
-                        "end": 44
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "addr",
+                    "span": {
+                      "start": 40,
+                      "end": 44
                     }
-                  ]
+                  }
                 }
               }
             }
@@ -673,6 +664,7 @@
                       }
                     },
                     "path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -680,16 +672,14 @@
                           "end": 52
                         }
                       },
-                      "segments": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "Unix",
-                          "span": {
-                            "start": 48,
-                            "end": 52
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "Unix",
+                        "span": {
+                          "start": 48,
+                          "end": 52
                         }
-                      ]
+                      }
                     }
                   },
                   "field_name": {
@@ -713,6 +703,7 @@
                       }
                     },
                     "path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -720,16 +711,14 @@
                           "end": 66
                         }
                       },
-                      "segments": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "fd",
-                          "span": {
-                            "start": 64,
-                            "end": 66
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "fd",
+                        "span": {
+                          "start": 64,
+                          "end": 66
                         }
-                      ]
+                      }
                     }
                   }
                 }
@@ -755,6 +744,7 @@
                       }
                     },
                     "path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -762,16 +752,14 @@
                           "end": 71
                         }
                       },
-                      "segments": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "Unix",
-                          "span": {
-                            "start": 67,
-                            "end": 71
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "Unix",
+                        "span": {
+                          "start": 67,
+                          "end": 71
                         }
-                      ]
+                      }
                     }
                   },
                   "field_name": {
@@ -861,6 +849,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -868,16 +857,14 @@
                       "end": 28
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "Unix",
-                      "span": {
-                        "start": 24,
-                        "end": 28
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Unix",
+                    "span": {
+                      "start": 24,
+                      "end": 28
                     }
-                  ]
+                  }
                 }
               },
               "field_name": {
@@ -901,6 +888,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -908,16 +896,14 @@
                       "end": 39
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "fd",
-                      "span": {
-                        "start": 37,
-                        "end": 39
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "fd",
+                    "span": {
+                      "start": 37,
+                      "end": 39
                     }
-                  ]
+                  }
                 }
               }
             }
@@ -934,6 +920,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -941,16 +928,14 @@
                     "end": 44
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "addr",
-                    "span": {
-                      "start": 40,
-                      "end": 44
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "addr",
+                  "span": {
+                    "start": 40,
+                    "end": 44
                   }
-                ]
+                }
               }
             }
           }
@@ -1001,6 +986,7 @@
                     }
                   },
                   "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -1008,16 +994,14 @@
                         "end": 52
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "Unix",
-                        "span": {
-                          "start": 48,
-                          "end": 52
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Unix",
+                      "span": {
+                        "start": 48,
+                        "end": 52
                       }
-                    ]
+                    }
                   }
                 },
                 "field_name": {
@@ -1041,6 +1025,7 @@
                     }
                   },
                   "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -1048,16 +1033,14 @@
                         "end": 66
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "fd",
-                        "span": {
-                          "start": 64,
-                          "end": 66
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "fd",
+                      "span": {
+                        "start": 64,
+                        "end": 66
                       }
-                    ]
+                    }
                   }
                 }
               }
@@ -1083,6 +1066,7 @@
                     }
                   },
                   "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -1090,16 +1074,14 @@
                         "end": 71
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "Unix",
-                        "span": {
-                          "start": 67,
-                          "end": 71
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Unix",
+                      "span": {
+                        "start": 67,
+                        "end": 71
                       }
-                    ]
+                    }
                   }
                 },
                 "field_name": {
@@ -1176,6 +1158,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -1183,16 +1166,14 @@
                     "end": 28
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "Unix",
-                    "span": {
-                      "start": 24,
-                      "end": 28
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Unix",
+                  "span": {
+                    "start": 24,
+                    "end": 28
                   }
-                ]
+                }
               }
             },
             "field_name": {
@@ -1216,6 +1197,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -1223,16 +1205,14 @@
                     "end": 39
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "fd",
-                    "span": {
-                      "start": 37,
-                      "end": 39
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "fd",
+                  "span": {
+                    "start": 37,
+                    "end": 39
                   }
-                ]
+                }
               }
             }
           }
@@ -1249,6 +1229,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -1256,16 +1237,14 @@
                   "end": 44
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "addr",
-                  "span": {
-                    "start": 40,
-                    "end": 44
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "addr",
+                "span": {
+                  "start": 40,
+                  "end": 44
                 }
-              ]
+              }
             }
           }
         }
@@ -1298,6 +1277,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -1305,16 +1285,14 @@
                   "end": 28
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "Unix",
-                  "span": {
-                    "start": 24,
-                    "end": 28
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Unix",
+                "span": {
+                  "start": 24,
+                  "end": 28
                 }
-              ]
+              }
             }
           },
           "field_name": {
@@ -1338,6 +1316,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -1345,16 +1324,14 @@
                   "end": 39
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "fd",
-                  "span": {
-                    "start": 37,
-                    "end": 39
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "fd",
+                "span": {
+                  "start": 37,
+                  "end": 39
                 }
-              ]
+              }
             }
           }
         }
@@ -1378,6 +1355,7 @@
             }
           },
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -1385,16 +1363,14 @@
                 "end": 28
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "Unix",
-                "span": {
-                  "start": 24,
-                  "end": 28
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "Unix",
+              "span": {
+                "start": 24,
+                "end": 28
               }
-            ]
+            }
           }
         },
         "field_name": {
@@ -1416,6 +1392,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -1423,16 +1400,14 @@
               "end": 28
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Unix",
-              "span": {
-                "start": 24,
-                "end": 28
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "Unix",
+            "span": {
+              "start": 24,
+              "end": 28
             }
-          ]
+          }
         }
       },
       {
@@ -1445,6 +1420,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -1452,16 +1428,14 @@
               "end": 39
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "fd",
-              "span": {
-                "start": 37,
-                "end": 39
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "fd",
+            "span": {
+              "start": 37,
+              "end": 39
             }
-          ]
+          }
         }
       },
       {
@@ -1474,6 +1448,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -1481,16 +1456,14 @@
               "end": 44
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "addr",
-              "span": {
-                "start": 40,
-                "end": 44
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "addr",
+            "span": {
+              "start": 40,
+              "end": 44
             }
-          ]
+          }
         }
       },
       {
@@ -1539,6 +1512,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -1546,16 +1520,14 @@
                       "end": 52
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "Unix",
-                      "span": {
-                        "start": 48,
-                        "end": 52
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Unix",
+                    "span": {
+                      "start": 48,
+                      "end": 52
                     }
-                  ]
+                  }
                 }
               },
               "field_name": {
@@ -1579,6 +1551,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -1586,16 +1559,14 @@
                       "end": 66
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "fd",
-                      "span": {
-                        "start": 64,
-                        "end": 66
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "fd",
+                    "span": {
+                      "start": 64,
+                      "end": 66
                     }
-                  ]
+                  }
                 }
               }
             }
@@ -1621,6 +1592,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -1628,16 +1600,14 @@
                       "end": 71
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "Unix",
-                      "span": {
-                        "start": 67,
-                        "end": 71
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Unix",
+                    "span": {
+                      "start": 67,
+                      "end": 71
                     }
-                  ]
+                  }
                 }
               },
               "field_name": {
@@ -1713,6 +1683,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -1720,16 +1691,14 @@
                     "end": 52
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "Unix",
-                    "span": {
-                      "start": 48,
-                      "end": 52
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Unix",
+                  "span": {
+                    "start": 48,
+                    "end": 52
                   }
-                ]
+                }
               }
             },
             "field_name": {
@@ -1753,6 +1722,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -1760,16 +1730,14 @@
                     "end": 66
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "fd",
-                    "span": {
-                      "start": 64,
-                      "end": 66
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "fd",
+                  "span": {
+                    "start": 64,
+                    "end": 66
                   }
-                ]
+                }
               }
             }
           }
@@ -1795,6 +1763,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -1802,16 +1771,14 @@
                     "end": 71
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "Unix",
-                    "span": {
-                      "start": 67,
-                      "end": 71
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Unix",
+                  "span": {
+                    "start": 67,
+                    "end": 71
                   }
-                ]
+                }
               }
             },
             "field_name": {
@@ -1853,6 +1820,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -1860,16 +1828,14 @@
                   "end": 52
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "Unix",
-                  "span": {
-                    "start": 48,
-                    "end": 52
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Unix",
+                "span": {
+                  "start": 48,
+                  "end": 52
                 }
-              ]
+              }
             }
           },
           "field_name": {
@@ -1893,6 +1859,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -1900,16 +1867,14 @@
                   "end": 66
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "fd",
-                  "span": {
-                    "start": 64,
-                    "end": 66
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "fd",
+                "span": {
+                  "start": 64,
+                  "end": 66
                 }
-              ]
+              }
             }
           }
         }
@@ -1933,6 +1898,7 @@
             }
           },
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -1940,16 +1906,14 @@
                 "end": 52
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "Unix",
-                "span": {
-                  "start": 48,
-                  "end": 52
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "Unix",
+              "span": {
+                "start": 48,
+                "end": 52
               }
-            ]
+            }
           }
         },
         "field_name": {
@@ -1971,6 +1935,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -1978,16 +1943,14 @@
               "end": 52
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Unix",
-              "span": {
-                "start": 48,
-                "end": 52
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "Unix",
+            "span": {
+              "start": 48,
+              "end": 52
             }
-          ]
+          }
         }
       },
       {
@@ -2000,6 +1963,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -2007,16 +1971,14 @@
               "end": 66
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "fd",
-              "span": {
-                "start": 64,
-                "end": 66
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "fd",
+            "span": {
+              "start": 64,
+              "end": 66
             }
-          ]
+          }
         }
       },
       {
@@ -2038,6 +2000,7 @@
             }
           },
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -2045,16 +2008,14 @@
                 "end": 71
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "Unix",
-                "span": {
-                  "start": 67,
-                  "end": 71
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "Unix",
+              "span": {
+                "start": 67,
+                "end": 71
               }
-            ]
+            }
           }
         },
         "field_name": {
@@ -2076,6 +2037,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -2083,16 +2045,14 @@
               "end": 71
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Unix",
-              "span": {
-                "start": 67,
-                "end": 71
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "Unix",
+            "span": {
+              "start": 67,
+              "end": 71
             }
-          ]
+          }
         }
       },
       {

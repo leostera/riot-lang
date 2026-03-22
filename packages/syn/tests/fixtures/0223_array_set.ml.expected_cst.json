@@ -76,6 +76,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -83,16 +84,14 @@
                       "end": 11
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "arr",
-                      "span": {
-                        "start": 8,
-                        "end": 11
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "arr",
+                    "span": {
+                      "start": 8,
+                      "end": 11
                     }
-                  ]
+                  }
                 }
               },
               "index": {
@@ -216,6 +215,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -223,16 +223,14 @@
                     "end": 11
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "arr",
-                    "span": {
-                      "start": 8,
-                      "end": 11
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "arr",
+                  "span": {
+                    "start": 8,
+                    "end": 11
                   }
-                ]
+                }
               }
             },
             "index": {
@@ -319,6 +317,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -326,16 +325,14 @@
                   "end": 11
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "arr",
-                  "span": {
-                    "start": 8,
-                    "end": 11
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "arr",
+                "span": {
+                  "start": 8,
+                  "end": 11
                 }
-              ]
+              }
             }
           },
           "index": {
@@ -409,6 +406,7 @@
             }
           },
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -416,16 +414,14 @@
                 "end": 11
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "arr",
-                "span": {
-                  "start": 8,
-                  "end": 11
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "arr",
+              "span": {
+                "start": 8,
+                "end": 11
               }
-            ]
+            }
           }
         },
         "index": {
@@ -460,6 +456,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -467,16 +464,14 @@
               "end": 11
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "arr",
-              "span": {
-                "start": 8,
-                "end": 11
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "arr",
+            "span": {
+              "start": 8,
+              "end": 11
             }
-          ]
+          }
         }
       },
       {

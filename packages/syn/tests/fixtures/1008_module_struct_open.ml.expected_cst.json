@@ -116,6 +116,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -123,16 +124,14 @@
                   "end": 47
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "length",
-                  "span": {
-                    "start": 41,
-                    "end": 47
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "length",
+                "span": {
+                  "start": 41,
+                  "end": 47
                 }
-              ]
+              }
             }
           },
           "argument": {

@@ -76,6 +76,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -83,16 +84,14 @@
                       "end": 14
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "matrix",
-                      "span": {
-                        "start": 8,
-                        "end": 14
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "matrix",
+                    "span": {
+                      "start": 8,
+                      "end": 14
                     }
-                  ]
+                  }
                 }
               },
               "index": {
@@ -208,6 +207,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -215,16 +215,14 @@
                     "end": 14
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "matrix",
-                    "span": {
-                      "start": 8,
-                      "end": 14
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "matrix",
+                  "span": {
+                    "start": 8,
+                    "end": 14
                   }
-                ]
+                }
               }
             },
             "index": {
@@ -303,6 +301,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -310,16 +309,14 @@
                   "end": 14
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "matrix",
-                  "span": {
-                    "start": 8,
-                    "end": 14
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "matrix",
+                "span": {
+                  "start": 8,
+                  "end": 14
                 }
-              ]
+              }
             }
           },
           "index": {
@@ -385,6 +382,7 @@
             }
           },
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -392,16 +390,14 @@
                 "end": 14
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "matrix",
-                "span": {
-                  "start": 8,
-                  "end": 14
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "matrix",
+              "span": {
+                "start": 8,
+                "end": 14
               }
-            ]
+            }
           }
         },
         "index": {
@@ -436,6 +432,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -443,16 +440,14 @@
               "end": 14
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "matrix",
-              "span": {
-                "start": 8,
-                "end": 14
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "matrix",
+            "span": {
+              "start": 8,
+              "end": 14
             }
-          ]
+          }
         }
       },
       {

@@ -85,6 +85,7 @@
                     }
                   },
                   "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -92,16 +93,14 @@
                         "end": 35
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "expensive_computation",
-                        "span": {
-                          "start": 14,
-                          "end": 35
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "expensive_computation",
+                      "span": {
+                        "start": 14,
+                        "end": 35
                       }
-                    ]
+                    }
                   }
                 },
                 "argument": {
@@ -201,6 +200,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -208,16 +208,14 @@
                       "end": 35
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "expensive_computation",
-                      "span": {
-                        "start": 14,
-                        "end": 35
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "expensive_computation",
+                    "span": {
+                      "start": 14,
+                      "end": 35
                     }
-                  ]
+                  }
                 }
               },
               "argument": {
@@ -280,6 +278,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -287,16 +286,14 @@
                     "end": 35
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "expensive_computation",
-                    "span": {
-                      "start": 14,
-                      "end": 35
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "expensive_computation",
+                  "span": {
+                    "start": 14,
+                    "end": 35
                   }
-                ]
+                }
               }
             },
             "argument": {
@@ -346,6 +343,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -353,16 +351,14 @@
                   "end": 35
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "expensive_computation",
-                  "span": {
-                    "start": 14,
-                    "end": 35
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "expensive_computation",
+                "span": {
+                  "start": 14,
+                  "end": 35
                 }
-              ]
+              }
             }
           },
           "argument": {
@@ -402,6 +398,7 @@
             }
           },
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -409,16 +406,14 @@
                 "end": 35
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expensive_computation",
-                "span": {
-                  "start": 14,
-                  "end": 35
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "expensive_computation",
+              "span": {
+                "start": 14,
+                "end": 35
               }
-            ]
+            }
           }
         },
         "argument": {
@@ -448,6 +443,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -455,16 +451,14 @@
               "end": 35
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expensive_computation",
-              "span": {
-                "start": 14,
-                "end": 35
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "expensive_computation",
+            "span": {
+              "start": 14,
+              "end": 35
             }
-          ]
+          }
         }
       },
       {

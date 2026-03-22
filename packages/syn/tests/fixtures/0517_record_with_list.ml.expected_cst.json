@@ -68,6 +68,7 @@
                   }
                 },
                 "field_path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
@@ -75,16 +76,14 @@
                       "end": 29
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "items",
-                      "span": {
-                        "start": 10,
-                        "end": 15
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "items",
+                    "span": {
+                      "start": 10,
+                      "end": 15
                     }
-                  ]
+                  }
                 },
                 "value": {
                   "tag": "list",
@@ -225,6 +224,7 @@
                 }
               },
               "field_path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
@@ -232,16 +232,14 @@
                     "end": 29
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "items",
-                    "span": {
-                      "start": 10,
-                      "end": 15
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "items",
+                  "span": {
+                    "start": 10,
+                    "end": 15
                   }
-                ]
+                }
               },
               "value": {
                 "tag": "list",
@@ -345,6 +343,7 @@
               }
             },
             "field_path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "RECORD_FIELD",
                 "span": {
@@ -352,16 +351,14 @@
                   "end": 29
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "items",
-                  "span": {
-                    "start": 10,
-                    "end": 15
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "items",
+                "span": {
+                  "start": 10,
+                  "end": 15
                 }
-              ]
+              }
             },
             "value": {
               "tag": "list",

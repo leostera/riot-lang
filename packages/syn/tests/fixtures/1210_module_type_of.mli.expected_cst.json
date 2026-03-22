@@ -39,6 +39,7 @@
               }
             },
             "module_path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "MODULE_TYPE_PATH",
                 "span": {
@@ -46,16 +47,14 @@
                   "end": 44
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "Websocket",
-                  "span": {
-                    "start": 34,
-                    "end": 43
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Websocket",
+                "span": {
+                  "start": 34,
+                  "end": 43
                 }
-              ]
+              }
             }
           },
           "module_expression": null,

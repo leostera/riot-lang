@@ -21,6 +21,7 @@
             }
           },
           "type_name": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
@@ -28,16 +29,14 @@
                 "end": 19
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "pair",
-                "span": {
-                  "start": 14,
-                  "end": 18
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "pair",
+              "span": {
+                "start": 14,
+                "end": 18
               }
-            ]
+            }
           },
           "type_params": [
             {

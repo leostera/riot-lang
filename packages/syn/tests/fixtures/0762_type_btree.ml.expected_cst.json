@@ -21,6 +21,7 @@
             }
           },
           "type_name": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
@@ -28,16 +29,14 @@
                 "end": 14
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "btree",
-                "span": {
-                  "start": 8,
-                  "end": 13
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "btree",
+              "span": {
+                "start": 8,
+                "end": 13
               }
-            ]
+            }
           },
           "type_params": [
             {
@@ -124,6 +123,7 @@
                         }
                       },
                       "constructor_path": {
+                        "tag": "ident",
                         "syntax_node": {
                           "kind": "TYPE_CONSTR",
                           "span": {
@@ -131,16 +131,14 @@
                             "end": 43
                           }
                         },
-                        "segments": [
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "btree",
-                            "span": {
-                              "start": 37,
-                              "end": 42
-                            }
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "btree",
+                          "span": {
+                            "start": 37,
+                            "end": 42
                           }
-                        ]
+                        }
                       },
                       "arguments": [
                         {
@@ -191,6 +189,7 @@
                         }
                       },
                       "constructor_path": {
+                        "tag": "ident",
                         "syntax_node": {
                           "kind": "TYPE_CONSTR",
                           "span": {
@@ -198,16 +197,14 @@
                             "end": 59
                           }
                         },
-                        "segments": [
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "btree",
-                            "span": {
-                              "start": 53,
-                              "end": 58
-                            }
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "btree",
+                          "span": {
+                            "start": 53,
+                            "end": 58
                           }
-                        ]
+                        }
                       },
                       "arguments": [
                         {

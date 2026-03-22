@@ -21,6 +21,7 @@
             }
           },
           "type_name": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
@@ -28,16 +29,14 @@
                 "end": 12
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "action",
-                "span": {
-                  "start": 5,
-                  "end": 11
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "action",
+              "span": {
+                "start": 5,
+                "end": 11
               }
-            ]
+            }
           },
           "type_params": [],
           "type_definition": {
@@ -87,6 +86,7 @@
                         }
                       },
                       "constructor_path": {
+                        "tag": "ident",
                         "syntax_node": {
                           "kind": "TYPE_CONSTR",
                           "span": {
@@ -94,16 +94,14 @@
                             "end": 31
                           }
                         },
-                        "segments": [
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "int",
-                            "span": {
-                              "start": 27,
-                              "end": 30
-                            }
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 27,
+                            "end": 30
                           }
-                        ]
+                        }
                       },
                       "arguments": []
                     },
@@ -117,6 +115,7 @@
                         }
                       },
                       "constructor_path": {
+                        "tag": "ident",
                         "syntax_node": {
                           "kind": "TYPE_CONSTR",
                           "span": {
@@ -124,16 +123,14 @@
                             "end": 38
                           }
                         },
-                        "segments": [
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "unit",
-                            "span": {
-                              "start": 34,
-                              "end": 38
-                            }
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "unit",
+                          "span": {
+                            "start": 34,
+                            "end": 38
                           }
-                        ]
+                        }
                       },
                       "arguments": []
                     }
@@ -166,6 +163,7 @@
                     }
                   },
                   "constructor_path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
@@ -173,16 +171,14 @@
                         "end": 55
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "int",
-                        "span": {
-                          "start": 51,
-                          "end": 54
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "int",
+                      "span": {
+                        "start": 51,
+                        "end": 54
                       }
-                    ]
+                    }
                   },
                   "arguments": []
                 }

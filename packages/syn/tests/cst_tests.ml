@@ -876,7 +876,7 @@ let tests =
               value =
                 Syn.Cst.Expression.LocalOpen
                   {
-                    module_path = { segments = [ module_name ]; _ };
+                    module_path = Syn.Cst.ModulePath.Ident { name_token = module_name; _ };
                     body = Syn.Cst.Expression.Apply _;
                     via_let_open = true;
                     _;
@@ -903,7 +903,7 @@ let tests =
               value =
                 Syn.Cst.Expression.LocalOpen
                   {
-                    module_path = { segments = [ module_name ]; _ };
+                    module_path = Syn.Cst.ModulePath.Ident { name_token = module_name; _ };
                     body =
                       Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal _);
                     via_let_open = false;
@@ -945,6 +945,64 @@ let tests =
               ~actual:(Syn.Cst.ModulePath.name module_type_path);
             Ok ()
         | _ -> Error "expected first-class module expression");
+    Test.case "cst qualified module paths preserve recursive structure" (fun () ->
+        let source = "let x = (module Std.Net.TcpClient : Std.Net.Transport)\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.FirstClassModule
+                  {
+                    module_expression =
+                      Syn.Cst.ModuleExpression.Path
+                        (Syn.Cst.ModulePath.Qualified
+                          {
+                            prefix =
+                              Syn.Cst.ModulePath.Qualified
+                                {
+                                  prefix = Syn.Cst.ModulePath.Ident { name_token = root; _ };
+                                  name_token = mid;
+                                  _;
+                                };
+                            name_token = leaf;
+                            _;
+                          });
+                    module_type =
+                      Some
+                        (Syn.Cst.ModuleType.Path
+                          (Syn.Cst.ModulePath.Qualified
+                            {
+                              prefix =
+                                Syn.Cst.ModulePath.Qualified
+                                  {
+                                    prefix = Syn.Cst.ModulePath.Ident { name_token = type_root; _ };
+                                    name_token = type_mid;
+                                    _;
+                                  };
+                              name_token = type_leaf;
+                              _;
+                            }));
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Std" ~actual:(Syn.Cst.Token.text root);
+            Test.assert_equal ~expected:"Net" ~actual:(Syn.Cst.Token.text mid);
+            Test.assert_equal ~expected:"TcpClient"
+              ~actual:(Syn.Cst.Token.text leaf);
+            Test.assert_equal ~expected:"Std" ~actual:(Syn.Cst.Token.text type_root);
+            Test.assert_equal ~expected:"Net" ~actual:(Syn.Cst.Token.text type_mid);
+            Test.assert_equal ~expected:"Transport"
+              ~actual:(Syn.Cst.Token.text type_leaf);
+            Ok ()
+        | _ -> Error "expected qualified first-class module path");
     Test.case "cst module type declarations expose typed module type bodies"
       (fun () ->
         let result =

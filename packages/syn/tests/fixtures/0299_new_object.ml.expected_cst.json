@@ -58,6 +58,7 @@
               }
             },
             "class_path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "MODULE_PATH",
                 "span": {
@@ -65,16 +66,14 @@
                   "end": 21
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "my_class",
-                  "span": {
-                    "start": 12,
-                    "end": 20
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "my_class",
+                "span": {
+                  "start": 12,
+                  "end": 20
                 }
-              ]
+              }
             }
           },
           "is_recursive": false
@@ -128,6 +127,7 @@
             }
           },
           "class_path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
@@ -135,16 +135,14 @@
                 "end": 21
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "my_class",
-                "span": {
-                  "start": 12,
-                  "end": 20
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "my_class",
+              "span": {
+                "start": 12,
+                "end": 20
               }
-            ]
+            }
           }
         },
         "is_recursive": false
@@ -161,6 +159,7 @@
           }
         },
         "class_path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "MODULE_PATH",
             "span": {
@@ -168,16 +167,14 @@
               "end": 21
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "my_class",
-              "span": {
-                "start": 12,
-                "end": 20
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "my_class",
+            "span": {
+              "start": 12,
+              "end": 20
             }
-          ]
+          }
         }
       }
     ]

@@ -38,6 +38,7 @@
               }
             },
             "constructor_path": {
+              "tag": "qualified",
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
@@ -45,24 +46,40 @@
                   "end": 18
                 }
               },
-              "segments": [
-                {
+              "prefix": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 11,
+                    "end": 18
+                  }
+                },
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "Unix",
                   "span": {
                     "start": 11,
                     "end": 15
                   }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "t",
-                  "span": {
-                    "start": 16,
-                    "end": 17
-                  }
                 }
-              ]
+              },
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 15,
+                  "end": 16
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "span": {
+                  "start": 16,
+                  "end": 17
+                }
+              }
             },
             "arguments": []
           }

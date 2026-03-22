@@ -38,6 +38,7 @@
               }
             },
             "constructor_path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
@@ -45,16 +46,14 @@
                   "end": 18
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "string",
-                  "span": {
-                    "start": 11,
-                    "end": 17
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "string",
+                "span": {
+                  "start": 11,
+                  "end": 17
                 }
-              ]
+              }
             },
             "arguments": []
           }

@@ -33,6 +33,7 @@
           "module_expression": {
             "tag": "path",
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "MODULE_PATH",
                 "span": {
@@ -40,16 +41,14 @@
                   "end": 16
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "List",
-                  "span": {
-                    "start": 11,
-                    "end": 15
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "List",
+                "span": {
+                  "start": 11,
+                  "end": 15
                 }
-              ]
+              }
             }
           },
           "is_recursive": false

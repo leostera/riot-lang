@@ -21,6 +21,7 @@
             }
           },
           "type_name": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
@@ -28,16 +29,14 @@
                 "end": 15
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "transport",
-                "span": {
-                  "start": 5,
-                  "end": 14
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "transport",
+              "span": {
+                "start": 5,
+                "end": 14
               }
-            ]
+            }
           },
           "type_params": [],
           "type_definition": {
@@ -52,6 +51,7 @@
             "module_type": {
               "tag": "path",
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "MODULE_TYPE_PATH",
                   "span": {
@@ -59,16 +59,14 @@
                     "end": 34
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "Transport",
-                    "span": {
-                      "start": 25,
-                      "end": 34
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Transport",
+                  "span": {
+                    "start": 25,
+                    "end": 34
                   }
-                ]
+                }
               }
             }
           }
@@ -85,6 +83,7 @@
             }
           },
           "type_name": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
@@ -92,16 +91,14 @@
                 "end": 48
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "driver",
-                "span": {
-                  "start": 41,
-                  "end": 47
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "driver",
+              "span": {
+                "start": 41,
+                "end": 47
               }
-            ]
+            }
           },
           "type_params": [],
           "type_definition": {
@@ -125,6 +122,7 @@
               "base": {
                 "tag": "path",
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "MODULE_TYPE_PATH",
                     "span": {
@@ -132,16 +130,14 @@
                       "end": 65
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "Driver",
-                      "span": {
-                        "start": 58,
-                        "end": 64
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Driver",
+                    "span": {
+                      "start": 58,
+                      "end": 64
                     }
-                  ]
+                  }
                 }
               },
               "constraints": [
@@ -171,6 +167,7 @@
                       }
                     },
                     "constructor_path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
@@ -178,16 +175,14 @@
                           "end": 87
                         }
                       },
-                      "segments": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "int",
-                          "span": {
-                            "start": 84,
-                            "end": 87
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 84,
+                          "end": 87
                         }
-                      ]
+                      }
                     },
                     "arguments": []
                   },

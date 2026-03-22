@@ -39,7 +39,7 @@
 ## Current State
 
 - [x] The `Syn.Cst` fixture corpus is green: `1180 passed, 0 failed`
-- [x] The current CST fixture frontier has been driven to `0`
+- [x] The CST structure checklist is complete
 - [ ] Strengthen the CST corpus so we can compare `Syn.Cst` structure against the stock OCaml parsetree more confidently
 
 ## Syn.Cst Fidelity
@@ -53,7 +53,7 @@
   - [~] module types
   - [ ] class type bodies
   - [ ] signature-item internals
-- [ ] Replace flattened `ModulePath.segments` with a recursive path CST
+- [x] Replace flattened identifier/path segments with a recursive `Ident` CST
 - [x] Make successful CST creation rule out public `Unknown` shapes by construction rather than by validation convention
 - [ ] Add a stronger fixture/checklist pass for syntax that the stock parsetree distinguishes sharply
 - [ ] Next parity slices:

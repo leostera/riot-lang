@@ -21,6 +21,7 @@
             }
           },
           "module_path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "OPEN_STMT",
               "span": {
@@ -28,16 +29,14 @@
                 "end": 10
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "List",
-                "span": {
-                  "start": 5,
-                  "end": 9
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "List",
+              "span": {
+                "start": 5,
+                "end": 9
               }
-            ]
+            }
           },
           "bang_token": null
         }

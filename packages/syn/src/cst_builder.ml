@@ -65,17 +65,55 @@ let direct_non_trivia_tokens node =
            Some tok
        | _ -> None)
 
+let module_path_from_tokens ~syntax_node syntax_tokens =
+  let rec skip_to_name = function
+    | [] -> None
+    | syntax_token :: rest ->
+        if String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "." then
+          skip_to_name rest
+        else Some (syntax_token, rest)
+  in
+  let rec build prefix = function
+    | [] -> prefix
+    | dot_token :: rest
+      when String.equal (Ceibo.Red.SyntaxToken.text dot_token) "." -> (
+        match skip_to_name rest with
+        | Some (name_syntax_token, tail) ->
+            build
+              (Cst.Ident.Qualified
+                {
+                  syntax_node;
+                  prefix;
+                  dot_token = token dot_token;
+                  name_token = token name_syntax_token;
+                })
+              tail
+        | None -> prefix)
+    | _unexpected :: rest ->
+        build prefix rest
+  in
+  match skip_to_name syntax_tokens with
+  | Some (name_syntax_token, rest) ->
+      build
+        (Cst.Ident.Ident
+           { syntax_node; name_token = token name_syntax_token })
+        rest
+  | None ->
+      bail ~message:"expected at least one path segment during Ceibo -> CST lifting"
+        ~syntax_node ~context:[ "module_path" ]
+
 let module_path_from_node node =
-  let parts = direct_non_trivia_tokens node |> List.map token in
-  Cst.ModulePath.{ syntax_node = node; segments = parts }
+  let parts = direct_non_trivia_tokens node in
+  module_path_from_tokens ~syntax_node:node parts
 
 let ident_path_from_node node =
-  let parts =
-    match direct_non_trivia_tokens node with
-    | first :: _ -> [ token first ]
-    | [] -> []
-  in
-  Cst.ModulePath.{ syntax_node = node; segments = parts }
+  match direct_non_trivia_tokens node with
+  | first :: _ ->
+      Cst.Ident.Ident
+        { syntax_node = node; name_token = token first }
+  | [] ->
+      bail ~message:"expected identifier path segment during Ceibo -> CST lifting"
+        ~syntax_node:node ~context:[ "module_path"; "ident" ]
 
 let module_path_like_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
@@ -84,7 +122,7 @@ let module_path_like_from_node node =
   | Syntax_kind.IDENT_EXPR ->
       ident_path_from_node node
   | _ ->
-      Cst.ModulePath.{ syntax_node = node; segments = List.map token (direct_non_trivia_tokens node) }
+      module_path_from_tokens ~syntax_node:node (direct_non_trivia_tokens node)
 
 let attribute_from_node node : Cst.attribute =
   { Cst.syntax_node = node; tokens = List.map token (direct_non_trivia_tokens node) }
@@ -655,17 +693,17 @@ and core_type_from_node node =
     with
     | Some path_node -> module_path_from_node path_node
     | None ->
-        let segment_tokens =
+        let path_tokens =
           direct_non_trivia_tokens node
           |> List.filter (fun syntax_token ->
-                 is_identifier_like_text (Ceibo.Red.SyntaxToken.text syntax_token))
-          |> List.map token
+                 let text = Ceibo.Red.SyntaxToken.text syntax_token in
+                 is_identifier_like_text text || String.equal text ".")
         in
-        if List.length segment_tokens = 0 then
+        if List.length path_tokens = 0 then
           bail ~message:"expected type constructor path during Ceibo -> CST lifting"
             ~syntax_node:node ~context:[ "core_type.constr" ]
         else
-          Cst.ModulePath.{ syntax_node = node; segments = segment_tokens }
+          module_path_from_tokens ~syntax_node:node path_tokens
   and object_type_field_from_node node =
     match
       first_ident_token_in_subtree node,
@@ -1093,9 +1131,9 @@ and record_pattern_field_from_node node =
     let tokens =
       direct_non_trivia_tokens node |> take_tokens_until_equals []
     in
-    Cst.ModulePath.{ syntax_node = node; segments = List.map token tokens }
+    module_path_from_tokens ~syntax_node:node tokens
   in
-  match Cst.ModulePath.segments lifted_field_path with
+  match Cst.Ident.segments lifted_field_path with
   | [] -> None
   | _ ->
       Some
@@ -1818,7 +1856,7 @@ and record_field_path_from_node node =
   let tokens =
     direct_non_trivia_tokens node |> take_tokens_until_equals []
   in
-  Cst.ModulePath.{ syntax_node = node; segments = List.map token tokens }
+  module_path_from_tokens ~syntax_node:node tokens
 
 and record_field_value_from_node node =
   direct_non_trivia_nodes node
@@ -1830,7 +1868,7 @@ and record_field_value_from_node node =
 
 and record_expression_field_from_node node =
   let lifted_field_path = record_field_path_from_node node in
-  match Cst.ModulePath.segments lifted_field_path with
+  match Cst.Ident.segments lifted_field_path with
   | [] -> None
   | _ ->
       Some
@@ -1904,14 +1942,12 @@ and local_open_expression_from_node node =
           let text = Ceibo.Red.SyntaxToken.text syntax_token in
           if String.equal text "in" then
             List.rev acc
-          else if String.equal text "." then
-            collect_module_tokens acc rest
-          else collect_module_tokens (token syntax_token :: acc) rest
+          else collect_module_tokens (syntax_token :: acc) rest
     in
     match collect_after_open non_trivia_tokens with
     | [] -> None
-    | lifted_segments ->
-        Some Cst.ModulePath.{ syntax_node = node; segments = lifted_segments }
+    | lifted_tokens ->
+        Some (module_path_from_tokens ~syntax_node:node lifted_tokens)
   in
   let prefix_module_path =
     match non_trivia_children with
@@ -2242,7 +2278,9 @@ let type_declaration_name_path node =
          match Ceibo.Red.SyntaxNode.kind child with
          | Syntax_kind.MODULE_PATH -> module_path_from_node child
          | Syntax_kind.IDENT_EXPR -> ident_path_from_node child
-         | _ -> Cst.ModulePath.{ syntax_node = child; segments = [] })
+         | _ ->
+             bail ~message:"expected type declaration name path during Ceibo -> CST lifting"
+               ~syntax_node:child ~context:[ "type_declaration"; "name" ])
 
 let type_definition_from_node node =
   if Ceibo.Red.SyntaxNode.kind node = Syntax_kind.TYPE_EXTENSIBLE then
@@ -2353,7 +2391,7 @@ let type_declaration_from_node node =
   in
   match type_declaration_name_path node with
   | Some lifted_type_name -> (
-      match Cst.ModulePath.last_segment lifted_type_name with
+      match Cst.Ident.last_segment lifted_type_name with
       | Some _ ->
           Some
             Cst.TypeDeclaration.
@@ -2581,24 +2619,22 @@ let open_statement_from_node node =
            String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "!")
     |> Option.map token
   in
-  let module_segments =
+  let module_tokens =
     tokens
     |> List.filter (fun syntax_token ->
            let text = Ceibo.Red.SyntaxToken.text syntax_token in
            not
              (String.equal text "open"
-             || String.equal text "!"
-             || String.equal text "."))
-    |> List.map token
+             || String.equal text "!"))
   in
-  match module_segments with
+  match module_tokens with
   | [] -> None
   | _ ->
       Some
         Cst.OpenStatement.
           {
             syntax_node = node;
-            module_path = Cst.ModulePath.{ syntax_node = node; segments = module_segments };
+            module_path = module_path_from_tokens ~syntax_node:node module_tokens;
             bang_token = bang_token_opt;
           }
 

@@ -104,6 +104,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -111,16 +112,14 @@
                     "end": 24
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "n",
-                    "span": {
-                      "start": 23,
-                      "end": 24
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "n",
+                  "span": {
+                    "start": 23,
+                    "end": 24
                   }
-                ]
+                }
               }
             },
             "body": {
@@ -179,6 +178,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -186,16 +186,14 @@
                       "end": 46
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "m",
-                      "span": {
-                        "start": 45,
-                        "end": 46
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "m",
+                    "span": {
+                      "start": 45,
+                      "end": 46
                     }
-                  ]
+                  }
                 }
               },
               "body": {
@@ -226,6 +224,7 @@
                       }
                     },
                     "path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -233,16 +232,14 @@
                           "end": 57
                         }
                       },
-                      "segments": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "f",
-                          "span": {
-                            "start": 56,
-                            "end": 57
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "f",
+                        "span": {
+                          "start": 56,
+                          "end": 57
                         }
-                      ]
+                      }
                     }
                   },
                   "argument": {
@@ -257,6 +254,7 @@
                         }
                       },
                       "path": {
+                        "tag": "ident",
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
@@ -264,16 +262,14 @@
                             "end": 59
                           }
                         },
-                        "segments": [
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "i",
-                            "span": {
-                              "start": 58,
-                              "end": 59
-                            }
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "i",
+                          "span": {
+                            "start": 58,
+                            "end": 59
                           }
-                        ]
+                        }
                       }
                     }
                   }
@@ -290,6 +286,7 @@
                       }
                     },
                     "path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -297,16 +294,14 @@
                           "end": 61
                         }
                       },
-                      "segments": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "j",
-                          "span": {
-                            "start": 60,
-                            "end": 61
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "j",
+                        "span": {
+                          "start": 60,
+                          "end": 61
                         }
-                      ]
+                      }
                     }
                   }
                 }
@@ -410,6 +405,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -417,16 +413,14 @@
                   "end": 24
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "n",
-                  "span": {
-                    "start": 23,
-                    "end": 24
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "n",
+                "span": {
+                  "start": 23,
+                  "end": 24
                 }
-              ]
+              }
             }
           },
           "body": {
@@ -485,6 +479,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -492,16 +487,14 @@
                     "end": 46
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "m",
-                    "span": {
-                      "start": 45,
-                      "end": 46
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "m",
+                  "span": {
+                    "start": 45,
+                    "end": 46
                   }
-                ]
+                }
               }
             },
             "body": {
@@ -532,6 +525,7 @@
                     }
                   },
                   "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -539,16 +533,14 @@
                         "end": 57
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "f",
-                        "span": {
-                          "start": 56,
-                          "end": 57
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "f",
+                      "span": {
+                        "start": 56,
+                        "end": 57
                       }
-                    ]
+                    }
                   }
                 },
                 "argument": {
@@ -563,6 +555,7 @@
                       }
                     },
                     "path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -570,16 +563,14 @@
                           "end": 59
                         }
                       },
-                      "segments": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "i",
-                          "span": {
-                            "start": 58,
-                            "end": 59
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "i",
+                        "span": {
+                          "start": 58,
+                          "end": 59
                         }
-                      ]
+                      }
                     }
                   }
                 }
@@ -596,6 +587,7 @@
                     }
                   },
                   "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -603,16 +595,14 @@
                         "end": 61
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "j",
-                        "span": {
-                          "start": 60,
-                          "end": 61
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "j",
+                      "span": {
+                        "start": 60,
+                        "end": 61
                       }
-                    ]
+                    }
                   }
                 }
               }
@@ -679,6 +669,7 @@
             }
           },
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -686,16 +677,14 @@
                 "end": 24
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "n",
-                "span": {
-                  "start": 23,
-                  "end": 24
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "n",
+              "span": {
+                "start": 23,
+                "end": 24
               }
-            ]
+            }
           }
         },
         "body": {
@@ -754,6 +743,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -761,16 +751,14 @@
                   "end": 46
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "m",
-                  "span": {
-                    "start": 45,
-                    "end": 46
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "m",
+                "span": {
+                  "start": 45,
+                  "end": 46
                 }
-              ]
+              }
             }
           },
           "body": {
@@ -801,6 +789,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -808,16 +797,14 @@
                       "end": 57
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "f",
-                      "span": {
-                        "start": 56,
-                        "end": 57
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "f",
+                    "span": {
+                      "start": 56,
+                      "end": 57
                     }
-                  ]
+                  }
                 }
               },
               "argument": {
@@ -832,6 +819,7 @@
                     }
                   },
                   "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -839,16 +827,14 @@
                         "end": 59
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "i",
-                        "span": {
-                          "start": 58,
-                          "end": 59
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "i",
+                      "span": {
+                        "start": 58,
+                        "end": 59
                       }
-                    ]
+                    }
                   }
                 }
               }
@@ -865,6 +851,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -872,16 +859,14 @@
                       "end": 61
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "j",
-                      "span": {
-                        "start": 60,
-                        "end": 61
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "j",
+                    "span": {
+                      "start": 60,
+                      "end": 61
                     }
-                  ]
+                  }
                 }
               }
             }
@@ -919,6 +904,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -926,16 +912,14 @@
               "end": 24
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "n",
-              "span": {
-                "start": 23,
-                "end": 24
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "n",
+            "span": {
+              "start": 23,
+              "end": 24
             }
-          ]
+          }
         }
       },
       {
@@ -994,6 +978,7 @@
             }
           },
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -1001,16 +986,14 @@
                 "end": 46
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "m",
-                "span": {
-                  "start": 45,
-                  "end": 46
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "m",
+              "span": {
+                "start": 45,
+                "end": 46
               }
-            ]
+            }
           }
         },
         "body": {
@@ -1041,6 +1024,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -1048,16 +1032,14 @@
                     "end": 57
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "f",
-                    "span": {
-                      "start": 56,
-                      "end": 57
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "f",
+                  "span": {
+                    "start": 56,
+                    "end": 57
                   }
-                ]
+                }
               }
             },
             "argument": {
@@ -1072,6 +1054,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -1079,16 +1062,14 @@
                       "end": 59
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "i",
-                      "span": {
-                        "start": 58,
-                        "end": 59
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "i",
+                    "span": {
+                      "start": 58,
+                      "end": 59
                     }
-                  ]
+                  }
                 }
               }
             }
@@ -1105,6 +1086,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -1112,16 +1094,14 @@
                     "end": 61
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "j",
-                    "span": {
-                      "start": 60,
-                      "end": 61
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "j",
+                  "span": {
+                    "start": 60,
+                    "end": 61
                   }
-                ]
+                }
               }
             }
           }
@@ -1158,6 +1138,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -1165,16 +1146,14 @@
               "end": 46
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "m",
-              "span": {
-                "start": 45,
-                "end": 46
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "m",
+            "span": {
+              "start": 45,
+              "end": 46
             }
-          ]
+          }
         }
       },
       {
@@ -1205,6 +1184,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -1212,16 +1192,14 @@
                   "end": 57
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "f",
-                  "span": {
-                    "start": 56,
-                    "end": 57
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "f",
+                "span": {
+                  "start": 56,
+                  "end": 57
                 }
-              ]
+              }
             }
           },
           "argument": {
@@ -1236,6 +1214,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -1243,16 +1222,14 @@
                     "end": 59
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "i",
-                    "span": {
-                      "start": 58,
-                      "end": 59
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "i",
+                  "span": {
+                    "start": 58,
+                    "end": 59
                   }
-                ]
+                }
               }
             }
           }
@@ -1269,6 +1246,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -1276,16 +1254,14 @@
                   "end": 61
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "j",
-                  "span": {
-                    "start": 60,
-                    "end": 61
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "j",
+                "span": {
+                  "start": 60,
+                  "end": 61
                 }
-              ]
+              }
             }
           }
         }
@@ -1309,6 +1285,7 @@
             }
           },
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -1316,16 +1293,14 @@
                 "end": 57
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "f",
-                "span": {
-                  "start": 56,
-                  "end": 57
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "f",
+              "span": {
+                "start": 56,
+                "end": 57
               }
-            ]
+            }
           }
         },
         "argument": {
@@ -1340,6 +1315,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -1347,16 +1323,14 @@
                   "end": 59
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "i",
-                  "span": {
-                    "start": 58,
-                    "end": 59
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "i",
+                "span": {
+                  "start": 58,
+                  "end": 59
                 }
-              ]
+              }
             }
           }
         }
@@ -1371,6 +1345,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -1378,16 +1353,14 @@
               "end": 57
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "f",
-              "span": {
-                "start": 56,
-                "end": 57
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "f",
+            "span": {
+              "start": 56,
+              "end": 57
             }
-          ]
+          }
         }
       },
       {
@@ -1400,6 +1373,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -1407,16 +1381,14 @@
               "end": 59
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "i",
-              "span": {
-                "start": 58,
-                "end": 59
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "i",
+            "span": {
+              "start": 58,
+              "end": 59
             }
-          ]
+          }
         }
       },
       {
@@ -1429,6 +1401,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -1436,16 +1409,14 @@
               "end": 61
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "j",
-              "span": {
-                "start": 60,
-                "end": 61
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "j",
+            "span": {
+              "start": 60,
+              "end": 61
             }
-          ]
+          }
         }
       }
     ]

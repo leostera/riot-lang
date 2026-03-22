@@ -57,6 +57,7 @@
                 "module_type": {
                   "tag": "path",
                   "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "MODULE_TYPE_PATH",
                       "span": {
@@ -64,16 +65,14 @@
                         "end": 30
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "S",
-                        "span": {
-                          "start": 29,
-                          "end": 30
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "S",
+                      "span": {
+                        "start": 29,
+                        "end": 30
                       }
-                    ]
+                    }
                   }
                 }
               }

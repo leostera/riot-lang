@@ -21,6 +21,7 @@
             }
           },
           "type_name": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
@@ -28,16 +29,14 @@
                 "end": 12
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "nested",
-                "span": {
-                  "start": 5,
-                  "end": 11
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "nested",
+              "span": {
+                "start": 5,
+                "end": 11
               }
-            ]
+            }
           },
           "type_params": [],
           "type_definition": {
@@ -88,6 +87,7 @@
                           }
                         },
                         "constructor_path": {
+                          "tag": "ident",
                           "syntax_node": {
                             "kind": "TYPE_CONSTR",
                             "span": {
@@ -95,16 +95,14 @@
                               "end": 19
                             }
                           },
-                          "segments": [
-                            {
-                              "kind": "IDENT_EXPR",
-                              "text": "int",
-                              "span": {
-                                "start": 15,
-                                "end": 18
-                              }
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 15,
+                              "end": 18
                             }
-                          ]
+                          }
                         },
                         "arguments": []
                       },
@@ -118,6 +116,7 @@
                           }
                         },
                         "constructor_path": {
+                          "tag": "ident",
                           "syntax_node": {
                             "kind": "TYPE_CONSTR",
                             "span": {
@@ -125,16 +124,14 @@
                               "end": 27
                             }
                           },
-                          "segments": [
-                            {
-                              "kind": "IDENT_EXPR",
-                              "text": "string",
-                              "span": {
-                                "start": 21,
-                                "end": 27
-                              }
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "string",
+                            "span": {
+                              "start": 21,
+                              "end": 27
                             }
-                          ]
+                          }
                         },
                         "arguments": []
                       }
@@ -151,6 +148,7 @@
                     }
                   },
                   "constructor_path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
@@ -158,16 +156,14 @@
                         "end": 36
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "bool",
-                        "span": {
-                          "start": 31,
-                          "end": 35
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "bool",
+                      "span": {
+                        "start": 31,
+                        "end": 35
                       }
-                    ]
+                    }
                   },
                   "arguments": []
                 }

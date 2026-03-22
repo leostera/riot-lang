@@ -60,6 +60,7 @@
             "module_expression": {
               "tag": "path",
               "path": {
+                "tag": "qualified",
                 "syntax_node": {
                   "kind": "MODULE_PATH",
                   "span": {
@@ -67,32 +68,40 @@
                     "end": 34
                   }
                 },
-                "segments": [
-                  {
+                "prefix": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "MODULE_PATH",
+                    "span": {
+                      "start": 21,
+                      "end": 34
+                    }
+                  },
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "Sqlite",
                     "span": {
                       "start": 21,
                       "end": 27
                     }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": ".",
-                    "span": {
-                      "start": 27,
-                      "end": 28
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "Driver",
-                    "span": {
-                      "start": 28,
-                      "end": 34
-                    }
                   }
-                ]
+                },
+                "dot_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 27,
+                    "end": 28
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Driver",
+                  "span": {
+                    "start": 28,
+                    "end": 34
+                  }
+                }
               }
             },
             "module_type": null
@@ -150,6 +159,7 @@
             "module_expression": {
               "tag": "path",
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "MODULE_PATH",
                   "span": {
@@ -157,21 +167,20 @@
                     "end": 64
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "M",
-                    "span": {
-                      "start": 62,
-                      "end": 63
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "M",
+                  "span": {
+                    "start": 62,
+                    "end": 63
                   }
-                ]
+                }
               }
             },
             "module_type": {
               "tag": "path",
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "MODULE_TYPE_PATH",
                   "span": {
@@ -179,16 +188,14 @@
                     "end": 67
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "S",
-                    "span": {
-                      "start": 66,
-                      "end": 67
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "S",
+                  "span": {
+                    "start": 66,
+                    "end": 67
                   }
-                ]
+                }
               }
             }
           },
@@ -245,6 +252,7 @@
           "module_expression": {
             "tag": "path",
             "path": {
+              "tag": "qualified",
               "syntax_node": {
                 "kind": "MODULE_PATH",
                 "span": {
@@ -252,32 +260,40 @@
                   "end": 34
                 }
               },
-              "segments": [
-                {
+              "prefix": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 21,
+                    "end": 34
+                  }
+                },
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "Sqlite",
                   "span": {
                     "start": 21,
                     "end": 27
                   }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": ".",
-                  "span": {
-                    "start": 27,
-                    "end": 28
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "Driver",
-                  "span": {
-                    "start": 28,
-                    "end": 34
-                  }
                 }
-              ]
+              },
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 27,
+                  "end": 28
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Driver",
+                "span": {
+                  "start": 28,
+                  "end": 34
+                }
+              }
             }
           },
           "module_type": null
@@ -332,6 +348,7 @@
           "module_expression": {
             "tag": "path",
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "MODULE_PATH",
                 "span": {
@@ -339,21 +356,20 @@
                   "end": 64
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "M",
-                  "span": {
-                    "start": 62,
-                    "end": 63
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "M",
+                "span": {
+                  "start": 62,
+                  "end": 63
                 }
-              ]
+              }
             }
           },
           "module_type": {
             "tag": "path",
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "MODULE_TYPE_PATH",
                 "span": {
@@ -361,16 +377,14 @@
                   "end": 67
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "S",
-                  "span": {
-                    "start": 66,
-                    "end": 67
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "S",
+                "span": {
+                  "start": 66,
+                  "end": 67
                 }
-              ]
+              }
             }
           }
         },
@@ -390,6 +404,7 @@
         "module_expression": {
           "tag": "path",
           "path": {
+            "tag": "qualified",
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
@@ -397,32 +412,40 @@
                 "end": 34
               }
             },
-            "segments": [
-              {
+            "prefix": {
+              "tag": "ident",
+              "syntax_node": {
+                "kind": "MODULE_PATH",
+                "span": {
+                  "start": 21,
+                  "end": 34
+                }
+              },
+              "name_token": {
                 "kind": "IDENT_EXPR",
                 "text": "Sqlite",
                 "span": {
                   "start": 21,
                   "end": 27
                 }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": ".",
-                "span": {
-                  "start": 27,
-                  "end": 28
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "Driver",
-                "span": {
-                  "start": 28,
-                  "end": 34
-                }
               }
-            ]
+            },
+            "dot_token": {
+              "kind": "IDENT_EXPR",
+              "text": ".",
+              "span": {
+                "start": 27,
+                "end": 28
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "Driver",
+              "span": {
+                "start": 28,
+                "end": 34
+              }
+            }
           }
         },
         "module_type": null
@@ -439,6 +462,7 @@
         "module_expression": {
           "tag": "path",
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
@@ -446,21 +470,20 @@
                 "end": 64
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "M",
-                "span": {
-                  "start": 62,
-                  "end": 63
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "M",
+              "span": {
+                "start": 62,
+                "end": 63
               }
-            ]
+            }
           }
         },
         "module_type": {
           "tag": "path",
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "MODULE_TYPE_PATH",
               "span": {
@@ -468,16 +491,14 @@
                 "end": 67
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "S",
-                "span": {
-                  "start": 66,
-                  "end": 67
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "S",
+              "span": {
+                "start": 66,
+                "end": 67
               }
-            ]
+            }
           }
         }
       }

@@ -22,17 +22,26 @@ type extension = {
   tokens : Token.t list;
 }
 
-module ModulePath : sig
-  type t = {
-    syntax_node : syntax_node;
-    segments : Token.t list;
-  }
+module Ident : sig
+  type t =
+    | Ident of {
+        syntax_node : syntax_node;
+        name_token : Token.t;
+      }
+    | Qualified of {
+        syntax_node : syntax_node;
+        prefix : t;
+        dot_token : Token.t;
+        name_token : Token.t;
+      }
 
   val syntax_node : t -> syntax_node
   val segments : t -> Token.t list
   val last_segment : t -> Token.t option
   val name : t -> string option
 end
+
+module ModulePath = Ident
 
 type object_type_field = {
   syntax_node : syntax_node;
@@ -77,7 +86,7 @@ and core_type =
     }
   | Constr of {
       syntax_node : syntax_node;
-      constructor_path : ModulePath.t;
+      constructor_path : Ident.t;
       arguments : core_type list;
     }
   | Alias of {
@@ -122,10 +131,10 @@ and core_type =
     }
 
 and module_type =
-  | Path of ModulePath.t
+  | Path of Ident.t
   | TypeOf of {
       syntax_node : syntax_node;
-      module_path : ModulePath.t;
+      module_path : Ident.t;
     }
   | Signature of {
       syntax_node : syntax_node;
@@ -164,7 +173,7 @@ module CoreType : sig
       }
     | Constr of {
         syntax_node : syntax_node;
-        constructor_path : ModulePath.t;
+        constructor_path : Ident.t;
         arguments : core_type list;
       }
     | Alias of {
@@ -230,10 +239,10 @@ end
 
 module ModuleType : sig
   type t = module_type =
-    | Path of ModulePath.t
+    | Path of Ident.t
     | TypeOf of {
         syntax_node : syntax_node;
-        module_path : ModulePath.t;
+        module_path : Ident.t;
       }
     | Signature of {
         syntax_node : syntax_node;
@@ -364,12 +373,12 @@ and poly_variant_pattern = {
 
 and poly_variant_inherit_pattern = {
   syntax_node : syntax_node;
-  type_path : ModulePath.t;
+  type_path : Ident.t;
 }
 
 and constructor_pattern = {
   syntax_node : syntax_node;
-  constructor_path : ModulePath.t;
+  constructor_path : Ident.t;
   arguments : pattern list;
 }
 
@@ -395,7 +404,7 @@ and record_pattern = {
 
 and record_pattern_field = {
   syntax_node : syntax_node;
-  field_path : ModulePath.t;
+  field_path : Ident.t;
   pattern : pattern option;
 }
 
@@ -539,7 +548,7 @@ type expression =
 
 and path_expression = {
   syntax_node : syntax_node;
-  path : ModulePath.t;
+  path : Ident.t;
 }
 
 and operator_expression = {
@@ -673,7 +682,7 @@ and method_call_expression = {
 
 and new_expression = {
   syntax_node : syntax_node;
-  class_path : ModulePath.t;
+  class_path : Ident.t;
 }
 
 and prefix_expression = {
@@ -764,13 +773,13 @@ and record_update_expression = {
 
 and record_expression_field = {
   syntax_node : syntax_node;
-  field_path : ModulePath.t;
+  field_path : Ident.t;
   value : expression option;
 }
 
 and local_open_expression = {
   syntax_node : syntax_node;
-  module_path : ModulePath.t;
+  module_path : Ident.t;
   body : expression;
   via_let_open : bool;
 }
@@ -837,7 +846,7 @@ and parenthesized_expression = {
 }
 
 and module_expression =
-  | Path of ModulePath.t
+  | Path of Ident.t
   | Structure of {
       syntax_node : syntax_node;
       item_syntax_nodes : syntax_node list;
@@ -913,7 +922,7 @@ end
 
 module ModuleExpression : sig
   type t = module_expression =
-    | Path of ModulePath.t
+    | Path of Ident.t
     | Structure of {
         syntax_node : syntax_node;
         item_syntax_nodes : syntax_node list;
@@ -1087,13 +1096,13 @@ end
 module TypeDeclaration : sig
   type t = {
     syntax_node : syntax_node;
-    type_name : ModulePath.t;
+    type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
   }
 
   val syntax_node : t -> syntax_node
-  val type_name : t -> ModulePath.t
+  val type_name : t -> Ident.t
   val type_params : t -> TypeParameter.t list
   val type_definition : t -> TypeDefinition.t
   val name_token : t -> Token.t
@@ -1157,12 +1166,12 @@ end
 module OpenStatement : sig
   type t = {
     syntax_node : syntax_node;
-    module_path : ModulePath.t;
+    module_path : Ident.t;
     bang_token : Token.t option;
   }
 
   val syntax_node : t -> syntax_node
-  val module_path : t -> ModulePath.t
+  val module_path : t -> Ident.t
   val bang_token : t -> Token.t option
   val has_bang : t -> bool
 end

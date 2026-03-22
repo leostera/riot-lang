@@ -68,6 +68,7 @@
                   }
                 },
                 "field_path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
@@ -75,16 +76,14 @@
                       "end": 32
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "pos",
-                      "span": {
-                        "start": 10,
-                        "end": 13
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "pos",
+                    "span": {
+                      "start": 10,
+                      "end": 13
                     }
-                  ]
+                  }
                 },
                 "value": {
                   "tag": "record",
@@ -106,6 +105,7 @@
                         }
                       },
                       "field_path": {
+                        "tag": "ident",
                         "syntax_node": {
                           "kind": "RECORD_FIELD",
                           "span": {
@@ -113,16 +113,14 @@
                             "end": 23
                           }
                         },
-                        "segments": [
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "x",
-                            "span": {
-                              "start": 18,
-                              "end": 19
-                            }
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "x",
+                          "span": {
+                            "start": 18,
+                            "end": 19
                           }
-                        ]
+                        }
                       },
                       "value": {
                         "tag": "literal",
@@ -155,6 +153,7 @@
                         }
                       },
                       "field_path": {
+                        "tag": "ident",
                         "syntax_node": {
                           "kind": "RECORD_FIELD",
                           "span": {
@@ -162,16 +161,14 @@
                             "end": 30
                           }
                         },
-                        "segments": [
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "y",
-                            "span": {
-                              "start": 25,
-                              "end": 26
-                            }
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "y",
+                          "span": {
+                            "start": 25,
+                            "end": 26
                           }
-                        ]
+                        }
                       },
                       "value": {
                         "tag": "literal",
@@ -207,6 +204,7 @@
                   }
                 },
                 "field_path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
@@ -214,16 +212,14 @@
                       "end": 48
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "name",
-                      "span": {
-                        "start": 34,
-                        "end": 38
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "name",
+                    "span": {
+                      "start": 34,
+                      "end": 38
                     }
-                  ]
+                  }
                 },
                 "value": {
                   "tag": "literal",
@@ -310,6 +306,7 @@
                 }
               },
               "field_path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
@@ -317,16 +314,14 @@
                     "end": 32
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "pos",
-                    "span": {
-                      "start": 10,
-                      "end": 13
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "pos",
+                  "span": {
+                    "start": 10,
+                    "end": 13
                   }
-                ]
+                }
               },
               "value": {
                 "tag": "record",
@@ -348,6 +343,7 @@
                       }
                     },
                     "field_path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "RECORD_FIELD",
                         "span": {
@@ -355,16 +351,14 @@
                           "end": 23
                         }
                       },
-                      "segments": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "x",
-                          "span": {
-                            "start": 18,
-                            "end": 19
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "x",
+                        "span": {
+                          "start": 18,
+                          "end": 19
                         }
-                      ]
+                      }
                     },
                     "value": {
                       "tag": "literal",
@@ -397,6 +391,7 @@
                       }
                     },
                     "field_path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "RECORD_FIELD",
                         "span": {
@@ -404,16 +399,14 @@
                           "end": 30
                         }
                       },
-                      "segments": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "y",
-                          "span": {
-                            "start": 25,
-                            "end": 26
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "y",
+                        "span": {
+                          "start": 25,
+                          "end": 26
                         }
-                      ]
+                      }
                     },
                     "value": {
                       "tag": "literal",
@@ -449,6 +442,7 @@
                 }
               },
               "field_path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
@@ -456,16 +450,14 @@
                     "end": 48
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "name",
-                    "span": {
-                      "start": 34,
-                      "end": 38
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "name",
+                  "span": {
+                    "start": 34,
+                    "end": 38
                   }
-                ]
+                }
               },
               "value": {
                 "tag": "literal",
@@ -515,6 +507,7 @@
               }
             },
             "field_path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "RECORD_FIELD",
                 "span": {
@@ -522,16 +515,14 @@
                   "end": 32
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "pos",
-                  "span": {
-                    "start": 10,
-                    "end": 13
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "pos",
+                "span": {
+                  "start": 10,
+                  "end": 13
                 }
-              ]
+              }
             },
             "value": {
               "tag": "record",
@@ -553,6 +544,7 @@
                     }
                   },
                   "field_path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "RECORD_FIELD",
                       "span": {
@@ -560,16 +552,14 @@
                         "end": 23
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "x",
-                        "span": {
-                          "start": 18,
-                          "end": 19
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 18,
+                        "end": 19
                       }
-                    ]
+                    }
                   },
                   "value": {
                     "tag": "literal",
@@ -602,6 +592,7 @@
                     }
                   },
                   "field_path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "RECORD_FIELD",
                       "span": {
@@ -609,16 +600,14 @@
                         "end": 30
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "y",
-                        "span": {
-                          "start": 25,
-                          "end": 26
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "y",
+                      "span": {
+                        "start": 25,
+                        "end": 26
                       }
-                    ]
+                    }
                   },
                   "value": {
                     "tag": "literal",
@@ -654,6 +643,7 @@
               }
             },
             "field_path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "RECORD_FIELD",
                 "span": {
@@ -661,16 +651,14 @@
                   "end": 48
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "name",
-                  "span": {
-                    "start": 34,
-                    "end": 38
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "name",
+                "span": {
+                  "start": 34,
+                  "end": 38
                 }
-              ]
+              }
             },
             "value": {
               "tag": "literal",
@@ -716,6 +704,7 @@
               }
             },
             "field_path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "RECORD_FIELD",
                 "span": {
@@ -723,16 +712,14 @@
                   "end": 23
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "x",
-                  "span": {
-                    "start": 18,
-                    "end": 19
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 18,
+                  "end": 19
                 }
-              ]
+              }
             },
             "value": {
               "tag": "literal",
@@ -765,6 +752,7 @@
               }
             },
             "field_path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "RECORD_FIELD",
                 "span": {
@@ -772,16 +760,14 @@
                   "end": 30
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "y",
-                  "span": {
-                    "start": 25,
-                    "end": 26
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "span": {
+                  "start": 25,
+                  "end": 26
                 }
-              ]
+              }
             },
             "value": {
               "tag": "literal",

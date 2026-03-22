@@ -27,24 +27,38 @@ type extension = {
   tokens : Token.t list;
 }
 
-module ModulePath = struct
-  type t = {
-    syntax_node : syntax_node;
-    segments : Token.t list;
-  }
+module Ident = struct
+  type t =
+    | Ident of {
+        syntax_node : syntax_node;
+        name_token : Token.t;
+      }
+    | Qualified of {
+        syntax_node : syntax_node;
+        prefix : t;
+        dot_token : Token.t;
+        name_token : Token.t;
+      }
 
-  let syntax_node path = path.syntax_node
-  let segments path = path.segments
-  let last_segment path =
-    match List.rev path.segments with
-    | segment :: _ -> Some segment
-    | [] -> None
+  let syntax_node = function
+    | Ident { syntax_node; _ } -> syntax_node
+    | Qualified { syntax_node; _ } -> syntax_node
+
+  let rec segments = function
+    | Ident { name_token; _ } -> [ name_token ]
+    | Qualified { prefix; name_token; _ } -> segments prefix @ [ name_token ]
+
+  let last_segment = function
+    | Ident { name_token; _ } -> Some name_token
+    | Qualified { name_token; _ } -> Some name_token
 
   let name path =
     match last_segment path with
     | Some segment -> Some (Token.text segment)
     | None -> None
 end
+
+module ModulePath = Ident
 
 type object_type_field = {
   syntax_node : syntax_node;
@@ -89,7 +103,7 @@ and core_type =
     }
   | Constr of {
       syntax_node : syntax_node;
-      constructor_path : ModulePath.t;
+      constructor_path : Ident.t;
       arguments : core_type list;
     }
   | Alias of {
@@ -134,10 +148,10 @@ and core_type =
     }
 
 and module_type =
-  | Path of ModulePath.t
+  | Path of Ident.t
   | TypeOf of {
       syntax_node : syntax_node;
-      module_path : ModulePath.t;
+      module_path : Ident.t;
     }
   | Signature of {
       syntax_node : syntax_node;
@@ -176,7 +190,7 @@ module CoreType = struct
       }
     | Constr of {
         syntax_node : syntax_node;
-        constructor_path : ModulePath.t;
+        constructor_path : Ident.t;
         arguments : core_type list;
       }
     | Alias of {
@@ -256,10 +270,10 @@ end
 
 module ModuleType = struct
   type t = module_type =
-    | Path of ModulePath.t
+    | Path of Ident.t
     | TypeOf of {
         syntax_node : syntax_node;
-        module_path : ModulePath.t;
+        module_path : Ident.t;
       }
     | Signature of {
         syntax_node : syntax_node;
@@ -287,7 +301,7 @@ module ModuleType = struct
     | Extension of extension
 
   let syntax_node = function
-    | Path path -> ModulePath.syntax_node path
+    | Path path -> Ident.syntax_node path
     | TypeOf { syntax_node; _ }
     | Signature { syntax_node; _ }
     | Functor { syntax_node; _ }
@@ -400,12 +414,12 @@ and poly_variant_pattern = {
 
 and poly_variant_inherit_pattern = {
   syntax_node : syntax_node;
-  type_path : ModulePath.t;
+  type_path : Ident.t;
 }
 
 and constructor_pattern = {
   syntax_node : syntax_node;
-  constructor_path : ModulePath.t;
+  constructor_path : Ident.t;
   arguments : pattern list;
 }
 
@@ -431,7 +445,7 @@ and record_pattern = {
 
 and record_pattern_field = {
   syntax_node : syntax_node;
-  field_path : ModulePath.t;
+  field_path : Ident.t;
   pattern : pattern option;
 }
 
@@ -594,7 +608,7 @@ type expression =
 
 and path_expression = {
   syntax_node : syntax_node;
-  path : ModulePath.t;
+  path : Ident.t;
 }
 
 and operator_expression = {
@@ -728,7 +742,7 @@ and method_call_expression = {
 
 and new_expression = {
   syntax_node : syntax_node;
-  class_path : ModulePath.t;
+  class_path : Ident.t;
 }
 
 and prefix_expression = {
@@ -819,13 +833,13 @@ and record_update_expression = {
 
 and record_expression_field = {
   syntax_node : syntax_node;
-  field_path : ModulePath.t;
+  field_path : Ident.t;
   value : expression option;
 }
 
 and local_open_expression = {
   syntax_node : syntax_node;
-  module_path : ModulePath.t;
+  module_path : Ident.t;
   body : expression;
   via_let_open : bool;
 }
@@ -892,7 +906,7 @@ and parenthesized_expression = {
 }
 
 and module_expression =
-  | Path of ModulePath.t
+  | Path of Ident.t
   | Structure of {
       syntax_node : syntax_node;
       item_syntax_nodes : syntax_node list;
@@ -1017,7 +1031,7 @@ end
 
 module ModuleExpression = struct
   type t = module_expression =
-    | Path of ModulePath.t
+    | Path of Ident.t
     | Structure of {
         syntax_node : syntax_node;
         item_syntax_nodes : syntax_node list;
@@ -1048,7 +1062,7 @@ module ModuleExpression = struct
       }
 
   let syntax_node = function
-    | Path path -> ModulePath.syntax_node path
+    | Path path -> Ident.syntax_node path
     | Structure { syntax_node; _ }
     | Functor { syntax_node; _ }
     | Apply { syntax_node; _ }
@@ -1239,7 +1253,7 @@ end
 module TypeDeclaration = struct
   type t = {
     syntax_node : syntax_node;
-    type_name : ModulePath.t;
+    type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
   }
@@ -1250,7 +1264,7 @@ module TypeDeclaration = struct
   let type_definition decl = decl.type_definition
 
   let name_token decl =
-    match ModulePath.last_segment decl.type_name with
+    match Ident.last_segment decl.type_name with
     | Some token -> token
     | None -> panic "TypeDeclaration.name_token: missing type name token"
 end
@@ -1323,7 +1337,7 @@ end
 module OpenStatement = struct
   type t = {
     syntax_node : syntax_node;
-    module_path : ModulePath.t;
+    module_path : Ident.t;
     bang_token : Token.t option;
   }
 

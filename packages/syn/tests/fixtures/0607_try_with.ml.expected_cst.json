@@ -76,6 +76,7 @@
                   }
                 },
                 "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -83,16 +84,14 @@
                       "end": 17
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "risky",
-                      "span": {
-                        "start": 12,
-                        "end": 17
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "risky",
+                    "span": {
+                      "start": 12,
+                      "end": 17
                     }
-                  ]
+                  }
                 }
               },
               "argument": {
@@ -131,6 +130,7 @@
                     }
                   },
                   "constructor_path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "CONSTRUCTOR_PATTERN",
                       "span": {
@@ -138,16 +138,14 @@
                         "end": 37
                       }
                     },
-                    "segments": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "Failure",
-                        "span": {
-                          "start": 26,
-                          "end": 33
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Failure",
+                      "span": {
+                        "start": 26,
+                        "end": 33
                       }
-                    ]
+                    }
                   },
                   "arguments": [
                     {
@@ -264,6 +262,7 @@
                 }
               },
               "path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -271,16 +270,14 @@
                     "end": 17
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "risky",
-                    "span": {
-                      "start": 12,
-                      "end": 17
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "risky",
+                  "span": {
+                    "start": 12,
+                    "end": 17
                   }
-                ]
+                }
               }
             },
             "argument": {
@@ -319,6 +316,7 @@
                   }
                 },
                 "constructor_path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "CONSTRUCTOR_PATTERN",
                     "span": {
@@ -326,16 +324,14 @@
                       "end": 37
                     }
                   },
-                  "segments": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "Failure",
-                      "span": {
-                        "start": 26,
-                        "end": 33
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Failure",
+                    "span": {
+                      "start": 26,
+                      "end": 33
                     }
-                  ]
+                  }
                 },
                 "arguments": [
                   {
@@ -415,6 +411,7 @@
               }
             },
             "path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -422,16 +419,14 @@
                   "end": 17
                 }
               },
-              "segments": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "risky",
-                  "span": {
-                    "start": 12,
-                    "end": 17
-                  }
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "risky",
+                "span": {
+                  "start": 12,
+                  "end": 17
                 }
-              ]
+              }
             }
           },
           "argument": {
@@ -470,6 +465,7 @@
                 }
               },
               "constructor_path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "CONSTRUCTOR_PATTERN",
                   "span": {
@@ -477,16 +473,14 @@
                     "end": 37
                   }
                 },
-                "segments": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "Failure",
-                    "span": {
-                      "start": 26,
-                      "end": 33
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Failure",
+                  "span": {
+                    "start": 26,
+                    "end": 33
                   }
-                ]
+                }
               },
               "arguments": [
                 {
@@ -553,6 +547,7 @@
             }
           },
           "path": {
+            "tag": "ident",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -560,16 +555,14 @@
                 "end": 17
               }
             },
-            "segments": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "risky",
-                "span": {
-                  "start": 12,
-                  "end": 17
-                }
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "risky",
+              "span": {
+                "start": 12,
+                "end": 17
               }
-            ]
+            }
           }
         },
         "argument": {
@@ -599,6 +592,7 @@
           }
         },
         "path": {
+          "tag": "ident",
           "syntax_node": {
             "kind": "IDENT_EXPR",
             "span": {
@@ -606,16 +600,14 @@
               "end": 17
             }
           },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "risky",
-              "span": {
-                "start": 12,
-                "end": 17
-              }
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "risky",
+            "span": {
+              "start": 12,
+              "end": 17
             }
-          ]
+          }
         }
       },
       {
