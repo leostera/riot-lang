@@ -1130,6 +1130,34 @@ let render x y z =
         Ok ());
     Test.case "diagnostic code registry explains eta expansion" (fun () ->
         assert_explanation_contains ~code:"F0137" ~snippet:"eta-expanded");
+    Test.case "no-redundant-reraise flags handlers that only re-raise" (fun () ->
+        let source =
+          "let render value = try render_inner value with exn -> raise exn\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_redundant_reraise.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0138" ] ~actual:codes;
+        Ok ());
+    Test.case "no-redundant-reraise keeps useful handlers clean" (fun () ->
+        let source =
+          "let render value = try render_inner value with Not_found -> default ()\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_redundant_reraise.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains redundant reraises" (fun () ->
+        assert_explanation_contains ~code:"F0138" ~snippet:"raise exn");
     Test.case "cli list-rules text output prints one rule per line" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true

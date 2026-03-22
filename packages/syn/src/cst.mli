@@ -143,8 +143,10 @@ type expression =
   | Apply of apply_expression
   | Infix of infix_expression
   | Fun of fun_expression
+  | Function of function_expression
   | Let of let_expression
   | Match of match_expression
+  | Try of try_expression
   | If of if_expression
   | Parenthesized of parenthesized_expression
   | Unknown of syntax_node
@@ -173,6 +175,11 @@ and fun_expression = {
   body : expression;
 }
 
+and function_expression = {
+  syntax_node : syntax_node;
+  cases : match_case list;
+}
+
 and let_expression = {
   syntax_node : syntax_node;
   binding_pattern : pattern;
@@ -184,6 +191,12 @@ and let_expression = {
 and match_expression = {
   syntax_node : syntax_node;
   scrutinee : expression;
+  cases : match_case list;
+}
+
+and try_expression = {
+  syntax_node : syntax_node;
+  body : expression;
   cases : match_case list;
 }
 
@@ -213,8 +226,10 @@ module Expression : sig
     | Apply of apply_expression
     | Infix of infix_expression
     | Fun of fun_expression
+    | Function of function_expression
     | Let of let_expression
     | Match of match_expression
+    | Try of try_expression
     | If of if_expression
     | Parenthesized of parenthesized_expression
     | Unknown of syntax_node
@@ -292,6 +307,16 @@ module FunExpression : sig
   val body : t -> Expression.t
 end
 
+module FunctionExpression : sig
+  type t = function_expression = {
+    syntax_node : syntax_node;
+    cases : match_case list;
+  }
+
+  val syntax_node : t -> syntax_node
+  val cases : t -> match_case list
+end
+
 module LetExpression : sig
   type t = let_expression = {
     syntax_node : syntax_node;
@@ -331,7 +356,19 @@ module MatchExpression : sig
 
   val syntax_node : t -> syntax_node
   val scrutinee : t -> Expression.t
-  val cases : t -> MatchCase.t list
+  val cases : t -> match_case list
+end
+
+module TryExpression : sig
+  type t = try_expression = {
+    syntax_node : syntax_node;
+    body : expression;
+    cases : match_case list;
+  }
+
+  val syntax_node : t -> syntax_node
+  val body : t -> Expression.t
+  val cases : t -> match_case list
 end
 
 module IfExpression : sig

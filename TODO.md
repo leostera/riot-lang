@@ -19,6 +19,7 @@
 5. After implementing a task:
    - run the narrowest relevant verification first
    - then rerun the full `syn` and `tusk-fix` test slices
+   - when smoke-checking lint output, prefer `rm -f _build/tusk.lock && timeout 180 tusk run tusk -- fix --check --limit 10 <file>`
    - if the change affects the `tusk` binary surface, rebuild `tusk-cli`
 6. Mark a task complete only after the relevant tests have passed.
 7. Commit often, with one logical slice per commit.
@@ -30,7 +31,7 @@
 - `rm -f _build/tusk.lock && timeout 180 ./tusk test tusk-fix:runner_tests`
 - `rm -f _build/tusk.lock && timeout 120 ./tusk fix --list-rules`
 - `rm -f _build/tusk.lock && timeout 120 ./tusk fix --list-diagnostics`
-- `rm -f _build/tusk.lock && timeout 120 ./tusk fix --check --limit 20 <file>`
+- `rm -f _build/tusk.lock && timeout 180 tusk run tusk -- fix --check --limit 10 <file>`
 
 ## Main goals
 
@@ -83,7 +84,7 @@
 
 - [x] Match on bool being redundant like `match foo () with | true -> ... | ....` shoul be `if foo () then ... else ...` -- ths check can inspect both branches and suggest accordingly, if the branches are `true -> ...` and `_ -> ()` then we just suggest `if foo() then ...` without an else. If the branch matches on `false` we can suggest `if not foo () then ...`, if both branches have code (and not just return a `()`) then we can suggest the full `if cond then .. else ..` (`prefer-if-over-bool-match`)
 
-- [ ] `try f x with | e -> raise e` is just `f x`
+- [x] `try f x with | e -> raise e` is just `f x` (`no-redundant-reraise`)
 
 - [x] Useless binding `let y = f x in y` is just `f x` (`no-useless-let-return`)
 
@@ -96,7 +97,7 @@
 - [x] Needles `(fun x -> foo x)` due to eta-expansion, they can just put `foo` in there (`no-eta-expansion`)
 - [x] Needless or redundant parenthesis (`no-redundant-parentheses`)
 - [ ] Needless or redundant begin/end blocks
-- [ ] Prefer `fun x  -> match x  with | ....` over `function | A -> ... | B ...`
+- [x] Prefer `fun x  -> match x  with | ....` over `function | A -> ... | B ...` (`no-function-shorthand`)
 
 - [ ] bool positional parameters in functions: suggest a named param or an enum
 
@@ -125,11 +126,11 @@
 
 
 
-- [ ] Avoid function names like `f` or `g` 
-- [ ] Avoid type single-letter type names except its `t`
+- [x] Avoid function names like `f` or `g` (`avoid-single-letter-function-names`)
+- [x] Avoid type single-letter type names except its `t` (`avoid-single-letter-type-names`)
 - [ ] If a module has a single type definition, prefer it be called `t`
 
-- [ ] useless booleans comparisons in conditionals like `if is_ready = true then ...` that should be flagged and recommended to rewrite as `if is_ready then ...` -- same for `if flag <> false then ...` and prefer `if flag then  ...` -- same for `if b = false then ...` prefer `if not b then ...` 
+- [x] useless booleans comparisons in conditionals like `if is_ready = true then ...` that should be flagged and recommended to rewrite as `if is_ready then ...` -- same for `if flag <> false then ...` and prefer `if flag then  ...` -- same for `if b = false then ...` prefer `if not b then ...` (`no-boolean-comparisons-in-conditionals`)
 
 ## Built-in rules about packages 
 

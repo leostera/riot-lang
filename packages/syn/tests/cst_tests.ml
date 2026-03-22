@@ -390,6 +390,24 @@ let tests =
               ~actual:(Syn.Cst.ModulePath.name path);
             Ok ()
         | _ -> Error "expected first item to be a let binding with a fun expression");
+    Test.case "cst let bindings expose function expressions structurally" (fun () ->
+        let source = "let render = function | 0 -> \"zero\" | _ -> \"other\"\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value = Syn.Cst.Expression.Function { cases; _ };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:2 ~actual:(List.length cases);
+            Ok ()
+        | _ -> Error "expected first item to be a let binding with a function expression");
     Test.case "cst match expressions expose boolean cases structurally" (fun () ->
         let source = "let render flag = match flag with true -> 1 | false -> 0\n" in
         let result = Syn.parse ~filename:"sample.ml" source in
@@ -432,6 +450,37 @@ let tests =
             Test.assert_equal ~expected:"false" ~actual:(Syn.Cst.Token.text second);
             Ok ()
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst try expressions expose handlers structurally" (fun () ->
+        let source = "let render value = try render_inner value with exn -> raise exn\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Try
+                  {
+                    cases =
+                      [
+                        {
+                          pattern = Syn.Cst.Pattern.Identifier { name_token; _ };
+                          body = Syn.Cst.Expression.Apply _;
+                          _;
+                        };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"exn"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Ok ()
+        | _ -> Error "expected first item to be a let binding with a try expression");
     Test.case "cst source files collect recognized expressions recursively" (fun () ->
         let source = "let changed = (left <> right)\n" in
         let result = Syn.parse ~filename:"sample.ml" source in

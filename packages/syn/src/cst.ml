@@ -179,8 +179,10 @@ type expression =
   | Apply of apply_expression
   | Infix of infix_expression
   | Fun of fun_expression
+  | Function of function_expression
   | Let of let_expression
   | Match of match_expression
+  | Try of try_expression
   | If of if_expression
   | Parenthesized of parenthesized_expression
   | Unknown of syntax_node
@@ -209,6 +211,11 @@ and fun_expression = {
   body : expression;
 }
 
+and function_expression = {
+  syntax_node : syntax_node;
+  cases : match_case list;
+}
+
 and let_expression = {
   syntax_node : syntax_node;
   binding_pattern : pattern;
@@ -220,6 +227,12 @@ and let_expression = {
 and match_expression = {
   syntax_node : syntax_node;
   scrutinee : expression;
+  cases : match_case list;
+}
+
+and try_expression = {
+  syntax_node : syntax_node;
+  body : expression;
   cases : match_case list;
 }
 
@@ -249,8 +262,10 @@ module Expression = struct
     | Apply of apply_expression
     | Infix of infix_expression
     | Fun of fun_expression
+    | Function of function_expression
     | Let of let_expression
     | Match of match_expression
+    | Try of try_expression
     | If of if_expression
     | Parenthesized of parenthesized_expression
     | Unknown of syntax_node
@@ -267,8 +282,10 @@ module Expression = struct
     | Apply expr -> expr.syntax_node
     | Infix expr -> expr.syntax_node
     | Fun expr -> expr.syntax_node
+    | Function expr -> expr.syntax_node
     | Let expr -> expr.syntax_node
     | Match expr -> expr.syntax_node
+    | Try expr -> expr.syntax_node
     | If expr -> expr.syntax_node
     | Parenthesized expr -> expr.syntax_node
     | Unknown node -> node
@@ -373,6 +390,16 @@ module FunExpression = struct
   let body expr = expr.body
 end
 
+module FunctionExpression = struct
+  type t = function_expression = {
+    syntax_node : syntax_node;
+    cases : match_case list;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let cases expr = expr.cases
+end
+
 module LetExpression = struct
   type t = let_expression = {
     syntax_node : syntax_node;
@@ -412,6 +439,18 @@ module MatchExpression = struct
 
   let syntax_node expr = expr.syntax_node
   let scrutinee expr = expr.scrutinee
+  let cases expr = expr.cases
+end
+
+module TryExpression = struct
+  type t = try_expression = {
+    syntax_node : syntax_node;
+    body : expression;
+    cases : match_case list;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let body expr = expr.body
   let cases expr = expr.cases
 end
 
@@ -906,6 +945,10 @@ let rec expression_from_node node =
       match fun_expression_from_node node with
       | Some expr -> Expression.Fun expr
       | None -> Expression.Unknown node)
+  | Syntax_kind.FUNCTION_EXPR -> (
+      match function_expression_from_node node with
+      | Some expr -> Expression.Function expr
+      | None -> Expression.Unknown node)
   | Syntax_kind.LET_EXPR -> (
       match let_expression_from_node ~is_recursive_binding:false node with
       | Some expr -> Expression.Let expr
@@ -917,6 +960,10 @@ let rec expression_from_node node =
   | Syntax_kind.MATCH_EXPR -> (
       match match_expression_from_node node with
       | Some expr -> Expression.Match expr
+      | None -> Expression.Unknown node)
+  | Syntax_kind.TRY_EXPR -> (
+      match try_expression_from_node node with
+      | Some expr -> Expression.Try expr
       | None -> Expression.Unknown node)
   | Syntax_kind.IF_EXPR -> (
       let expression_children =
@@ -988,6 +1035,15 @@ and fun_expression_from_node node =
             body = expression_from_node body_node;
           }
   | None -> None
+
+and function_expression_from_node node =
+  let match_cases =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child ->
+           Ceibo.Red.SyntaxNode.kind child = Syntax_kind.MATCH_CASE)
+    |> List.filter_map match_case_from_node
+  in
+  Some FunctionExpression.{ syntax_node = node; cases = match_cases }
 
 and let_expression_from_node ~is_recursive_binding node =
   let is_recursive_binding =
@@ -1087,6 +1143,24 @@ and match_expression_from_node node =
           {
             syntax_node = node;
             scrutinee = expression_from_node scrutinee_node;
+            cases = match_cases;
+          }
+  | [] -> None
+
+and try_expression_from_node node =
+  match direct_non_trivia_nodes node with
+  | body_node :: rest ->
+      let match_cases =
+        rest
+        |> List.filter (fun child ->
+               Ceibo.Red.SyntaxNode.kind child = Syntax_kind.MATCH_CASE)
+        |> List.filter_map match_case_from_node
+      in
+      Some
+        TryExpression.
+          {
+            syntax_node = node;
+            body = expression_from_node body_node;
             cases = match_cases;
           }
   | [] -> None
@@ -1300,7 +1374,12 @@ let let_expression_binding_from_node ~is_recursive_binding node =
 let module_declaration_from_node node =
   match direct_non_trivia_tokens node with
   | _module_kw :: module_name :: _ ->
-      Some ModuleDeclaration.{ syntax_node = node; module_name = token module_name }
+      Some
+        ModuleDeclaration.
+          {
+            syntax_node = node;
+            module_name = token module_name;
+          }
   | _ -> None
 
 let module_type_declaration_from_node node =

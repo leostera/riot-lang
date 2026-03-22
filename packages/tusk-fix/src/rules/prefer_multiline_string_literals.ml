@@ -33,6 +33,15 @@ let rec string_literal_chain_size = function
       None
   | Syn.Cst.Expression.Fun expr ->
       string_literal_chain_size (Syn.Cst.FunExpression.body expr)
+  | Syn.Cst.Expression.Function expr ->
+      Syn.Cst.FunctionExpression.cases expr
+      |> List.find_map (fun case ->
+             match Syn.Cst.MatchCase.guard case with
+             | Some guard -> (
+                 match string_literal_chain_size guard with
+                 | Some _ as size -> size
+                 | None -> string_literal_chain_size (Syn.Cst.MatchCase.body case))
+             | None -> string_literal_chain_size (Syn.Cst.MatchCase.body case))
   | Syn.Cst.Expression.Parenthesized expr ->
       string_literal_chain_size (Syn.Cst.ParenthesizedExpression.inner expr)
   | Syn.Cst.Expression.Infix expr
@@ -52,6 +61,18 @@ let rec string_literal_chain_size = function
       | Some _ as size -> size
       | None ->
           Syn.Cst.MatchExpression.cases expr
+          |> List.find_map (fun case ->
+                 match Syn.Cst.MatchCase.guard case with
+                 | Some guard -> (
+                     match string_literal_chain_size guard with
+                     | Some _ as size -> size
+                     | None -> string_literal_chain_size (Syn.Cst.MatchCase.body case))
+                 | None -> string_literal_chain_size (Syn.Cst.MatchCase.body case)))
+  | Syn.Cst.Expression.Try expr -> (
+      match string_literal_chain_size (Syn.Cst.TryExpression.body expr) with
+      | Some _ as size -> size
+      | None ->
+          Syn.Cst.TryExpression.cases expr
           |> List.find_map (fun case ->
                  match Syn.Cst.MatchCase.guard case with
                  | Some guard -> (

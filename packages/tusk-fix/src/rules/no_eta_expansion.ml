@@ -36,11 +36,26 @@ let rec child_expressions = function
       [ Syn.Cst.InfixExpression.left expr; Syn.Cst.InfixExpression.right expr ]
   | Syn.Cst.Expression.Fun expr ->
       [ Syn.Cst.FunExpression.body expr ]
+  | Syn.Cst.Expression.Function expr ->
+      Syn.Cst.FunctionExpression.cases expr
+      |> List.concat_map (fun case ->
+             (match Syn.Cst.MatchCase.guard case with
+             | Some guard -> [ guard ]
+             | None -> [])
+             @ [ Syn.Cst.MatchCase.body case ])
   | Syn.Cst.Expression.Let expr ->
       [ Syn.Cst.LetExpression.bound_value expr; Syn.Cst.LetExpression.body expr ]
   | Syn.Cst.Expression.Match expr ->
       Syn.Cst.MatchExpression.scrutinee expr
       :: (Syn.Cst.MatchExpression.cases expr
+         |> List.concat_map (fun case ->
+                (match Syn.Cst.MatchCase.guard case with
+                | Some guard -> [ guard ]
+                | None -> [])
+                @ [ Syn.Cst.MatchCase.body case ]))
+  | Syn.Cst.Expression.Try expr ->
+      Syn.Cst.TryExpression.body expr
+      :: (Syn.Cst.TryExpression.cases expr
          |> List.concat_map (fun case ->
                 (match Syn.Cst.MatchCase.guard case with
                 | Some guard -> [ guard ]

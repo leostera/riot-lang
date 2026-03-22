@@ -77,6 +77,13 @@ let rec diagnostics_for_expression = function
       @ diagnostics_for_expression (Syn.Cst.ApplyExpression.argument expr)
   | Syn.Cst.Expression.Fun expr ->
       diagnostics_for_expression (Syn.Cst.FunExpression.body expr)
+  | Syn.Cst.Expression.Function expr ->
+      Syn.Cst.FunctionExpression.cases expr
+      |> List.concat_map (fun case ->
+             (match Syn.Cst.MatchCase.guard case with
+             | Some guard -> diagnostics_for_expression guard
+             | None -> [])
+             @ diagnostics_for_expression (Syn.Cst.MatchCase.body case))
   | Syn.Cst.Expression.Parenthesized expr ->
       diagnostics_for_expression (Syn.Cst.ParenthesizedExpression.inner expr)
   | Syn.Cst.Expression.Let expr ->
@@ -86,6 +93,15 @@ let rec diagnostics_for_expression = function
       diagnostics_for_expression (Syn.Cst.MatchExpression.scrutinee expr)
       @
       (Syn.Cst.MatchExpression.cases expr
+      |> List.concat_map (fun case ->
+             (match Syn.Cst.MatchCase.guard case with
+             | Some guard -> diagnostics_for_expression guard
+             | None -> [])
+             @ diagnostics_for_expression (Syn.Cst.MatchCase.body case)))
+  | Syn.Cst.Expression.Try expr ->
+      diagnostics_for_expression (Syn.Cst.TryExpression.body expr)
+      @
+      (Syn.Cst.TryExpression.cases expr
       |> List.concat_map (fun case ->
              (match Syn.Cst.MatchCase.guard case with
              | Some guard -> diagnostics_for_expression guard
