@@ -37,6 +37,7 @@ There are currently no RFDs marked `rejected`.
 - `RFD0009` - Tusk Toolchain System Snapshot
 - `RFD0013` - Tusk Fix Package-Provided Rules
 - `RFD0014` - Tusk Dependency Classes
+- `RFD0016` - Tusk Foreign Dependency Model Snapshot
 
 ## Notes
 
