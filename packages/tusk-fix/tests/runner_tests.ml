@@ -1206,6 +1206,30 @@ let render x y z =
         Ok ());
     Test.case "diagnostic code registry explains scoped field access" (fun () ->
         assert_explanation_contains ~code:"F0140" ~snippet:"Module.(record.field)");
+    Test.case "no-public-mutable-fields flags mutable record fields in interfaces" (fun () ->
+        let source = "type t = { mutable state : int }\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_public_mutable_fields.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run ~filename:"sample.mli" pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0141" ] ~actual:codes;
+        Ok ());
+    Test.case "no-public-mutable-fields keeps implementation-only mutability clean" (fun () ->
+        let source = "type t = { mutable state : int }\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_public_mutable_fields.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run ~filename:"sample.ml" pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains public mutable fields" (fun () ->
+        assert_explanation_contains ~code:"F0141" ~snippet:"mutable field");
     Test.case "cli list-rules text output prints one rule per line" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true

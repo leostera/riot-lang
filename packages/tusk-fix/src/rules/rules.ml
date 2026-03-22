@@ -6,6 +6,7 @@ module Limit_open_statements = Limit_open_statements
 module No_eta_expansion = No_eta_expansion
 module No_redundant_begin_end = No_redundant_begin_end
 module No_redundant_reraise = No_redundant_reraise
+module No_public_mutable_fields = No_public_mutable_fields
 module Prefer_scoped_field_access = Prefer_scoped_field_access
 module No_redundant_parentheses = No_redundant_parentheses
 module No_exn_suffix_functions = No_exn_suffix_functions

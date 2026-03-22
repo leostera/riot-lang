@@ -105,7 +105,7 @@
       1. if a tuple has more than 3 elements of the same type = prefer a record 
       2. if a tuple has more than 4 elements of any type, prefer a record
 
-- [ ] warn about public types with mutable fields -- its okay ot have private mutable fields, but once they're public you risk anyone mutating them under your feet! <- for this one i think we might need to pair up the .ml with .mli ? 
+- [x] warn about public types with mutable fields -- its okay ot have private mutable fields, but once they're public you risk anyone mutating them under your feet! (`no-public-mutable-fields`)
 
 - [  ] `let open Foo in [...]` : prefer `Foo.[...]` unless its multiple let opens, like
         ```

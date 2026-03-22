@@ -20,6 +20,7 @@ let builtin_rule_factories () =
     ("no-redundant-begin-end", Rules.No_redundant_begin_end.make);
     ("no-eta-expansion", Rules.No_eta_expansion.make);
     ("no-redundant-reraise", Rules.No_redundant_reraise.make);
+    ("no-public-mutable-fields", Rules.No_public_mutable_fields.make);
     ("prefer-scoped-field-access", Rules.Prefer_scoped_field_access.make);
     ("no-exn-suffix-functions", Rules.No_exn_suffix_functions.make);
     ("no-unnecessary-rec", Rules.No_unnecessary_rec.make);
