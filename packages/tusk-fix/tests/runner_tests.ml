@@ -157,7 +157,7 @@ let tests =
         let source = "let render x = let currentUser = x in currentUser\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0105" ] ~actual:codes;
+        Test.assert_equal ~expected:[ "F0105"; "F0133" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-variable-names keeps compliant values clean" (fun () ->
         let source = "let current_user = 42\n" in
@@ -185,7 +185,7 @@ let tests =
         let source = "let render x = let state' = x in state'\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0106" ] ~actual:codes;
+        Test.assert_equal ~expected:[ "F0106"; "F0133" ] ~actual:codes;
         Ok ());
     Test.case "no-prime-variables keeps non-prime values clean" (fun () ->
         let source = "let current_user2 = 42\n" in
@@ -378,6 +378,31 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains unnecessary rec" (fun () ->
         assert_explanation_contains ~code:"F0127" ~snippet:"Remove rec");
+    Test.case "no-useless-let-return flags redundant passthrough bindings" (fun () ->
+        let source = "let render x = let value = parse x in value\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_useless_let_return.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0133" ] ~actual:codes;
+        Ok ());
+    Test.case "no-useless-let-return keeps meaningful let bodies clean" (fun () ->
+        let source = "let render x = let value = parse x in log value\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_useless_let_return.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains useless let returns" (fun () ->
+        assert_explanation_contains ~code:"F0133"
+          ~snippet:"let value = load_config () in value");
     Test.case "no-redundant-else-unit flags else branches that only return unit" (fun () ->
         let source = "let render ok = if ok then log () else ()\n" in
         let pipeline =

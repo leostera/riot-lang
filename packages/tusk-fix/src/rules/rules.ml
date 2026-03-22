@@ -3,6 +3,7 @@ module Avoid_single_letter_type_names = Avoid_single_letter_type_names
 module Limit_parenthesis_depth = Limit_parenthesis_depth
 module Limit_open_statements = Limit_open_statements
 module No_unnecessary_rec = No_unnecessary_rec
+module No_useless_let_return = No_useless_let_return
 module No_redundant_else_unit = No_redundant_else_unit
 module No_boolean_comparisons_in_conditionals = No_boolean_comparisons_in_conditionals
 module Prefer_sequences_over_let_unit = Prefer_sequences_over_let_unit

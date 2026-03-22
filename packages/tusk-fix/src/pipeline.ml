@@ -16,6 +16,7 @@ let builtin_rule_factories () =
     ("limit-parenthesis-depth", Rules.Limit_parenthesis_depth.make);
     ("limit-open-statements", Rules.Limit_open_statements.make);
     ("no-unnecessary-rec", Rules.No_unnecessary_rec.make);
+    ("no-useless-let-return", Rules.No_useless_let_return.make);
     ("no-redundant-else-unit", Rules.No_redundant_else_unit.make);
     ("no-boolean-comparisons-in-conditionals", Rules.No_boolean_comparisons_in_conditionals.make);
     ("prefer-sequences-over-let-unit", Rules.Prefer_sequences_over_let_unit.make);

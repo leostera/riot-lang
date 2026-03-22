@@ -85,7 +85,7 @@
 
 - [ ] `try f x with | e -> raise e` is just `f x`
 
-- [ ] Useless binding `let y = f x in y` is just `f x`
+- [x] Useless binding `let y = f x in y` is just `f x` (`no-useless-let-return`)
 
 - [x] Unnecessary `rec` in `let rec f x = x + 1` (`no-unnecessary-rec`)
 
