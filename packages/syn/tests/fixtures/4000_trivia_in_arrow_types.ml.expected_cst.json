@@ -40,7 +40,7 @@
           },
           "type_params": [],
           "type_definition": {
-            "tag": "other",
+            "tag": "alias",
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
@@ -82,7 +82,7 @@
           },
           "type_params": [],
           "type_definition": {
-            "tag": "other",
+            "tag": "alias",
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
@@ -124,7 +124,7 @@
           },
           "type_params": [],
           "type_definition": {
-            "tag": "other",
+            "tag": "alias",
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
@@ -166,7 +166,7 @@
           },
           "type_params": [],
           "type_definition": {
-            "tag": "other",
+            "tag": "alias",
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
@@ -208,7 +208,7 @@
           },
           "type_params": [],
           "type_definition": {
-            "tag": "other",
+            "tag": "alias",
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
@@ -250,7 +250,7 @@
           },
           "type_params": [],
           "type_definition": {
-            "tag": "other",
+            "tag": "alias",
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
@@ -292,7 +292,7 @@
           },
           "type_params": [],
           "type_definition": {
-            "tag": "other",
+            "tag": "alias",
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
@@ -334,7 +334,7 @@
           },
           "type_params": [],
           "type_definition": {
-            "tag": "other",
+            "tag": "alias",
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {

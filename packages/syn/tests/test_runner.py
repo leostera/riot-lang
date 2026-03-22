@@ -672,10 +672,29 @@ class TestRunner:
 
         return normalized_actual == normalized_expected
 
+    def refresh_cst_fixture(self, fixture_path: Path) -> bool:
+        expected_path = Path(str(fixture_path) + ".expected_cst.json")
+        output, returncode = self.run_syn(["print-cst"], fixture_path)
+        if returncode != 0:
+            return False
+
+        actual = output.strip()
+        try:
+            parsed = json.loads(actual)
+        except json.JSONDecodeError:
+            return False
+
+        if parsed.get("status") != "ok":
+            return False
+
+        expected_path.write_text(self.format_expected_json(actual))
+        return True
+
     def run_cst_fixtures(
         self,
         filter_pattern: Optional[str] = None,
         verbose: bool = False,
+        refresh_clean: bool = False,
     ) -> Tuple[int, int]:
         print(f"\n{BLUE}Running CST fixture tests...{NC}")
         if filter_pattern:
@@ -702,10 +721,16 @@ class TestRunner:
                 if verbose:
                     print(f"{basename}... {GREEN}PASSED{NC}")
             else:
-                failed += 1
-                failed_summaries.append(self.cst_fixture_failure_summary(fixture))
-                if verbose:
-                    print(f"{basename}... {RED}FAILED{NC}")
+                refreshed = refresh_clean and self.refresh_cst_fixture(fixture)
+                if refreshed:
+                    passed += 1
+                    if verbose:
+                        print(f"{basename}... {YELLOW}REFRESHED{NC}")
+                else:
+                    failed += 1
+                    failed_summaries.append(self.cst_fixture_failure_summary(fixture))
+                    if verbose:
+                        print(f"{basename}... {RED}FAILED{NC}")
 
         if failed_summaries:
             print(f"\n{YELLOW}Failed CST fixtures:{NC}")
@@ -1003,7 +1028,9 @@ def main():
             exit_code = 1
 
     elif args.command == "cst":
-        passed, failed = runner.run_cst_fixtures(args.filter, verbose=args.verbose)
+        passed, failed = runner.run_cst_fixtures(
+            args.filter, verbose=args.verbose, refresh_clean=args.refresh_clean
+        )
         if failed > 0:
             exit_code = 1
     
@@ -1023,7 +1050,7 @@ def main():
         
         # Run CST fixtures
         cst_passed, cst_failed = runner.run_cst_fixtures(
-            verbose=args.verbose
+            verbose=args.verbose, refresh_clean=args.refresh_clean
         )
 
         # Run diagnostics
