@@ -1,6 +1,7 @@
 {
   "status": "ok",
   "cst": {
+    "kind": "implementation",
     "syntax_node": {
       "kind": "SOURCE_FILE",
       "span": {
