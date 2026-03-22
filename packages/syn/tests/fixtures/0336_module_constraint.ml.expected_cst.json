@@ -95,11 +95,26 @@
                   "end": 23
                 }
               },
-              "module_type_syntax_node": {
-                "kind": "MODULE_TYPE_PATH",
-                "span": {
-                  "start": 21,
-                  "end": 22
+              "module_type": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 21,
+                      "end": 22
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "S",
+                      "span": {
+                        "start": 21,
+                        "end": 22
+                      }
+                    }
+                  ]
                 }
               }
             }
@@ -192,11 +207,26 @@
                 "end": 23
               }
             },
-            "module_type_syntax_node": {
-              "kind": "MODULE_TYPE_PATH",
-              "span": {
-                "start": 21,
-                "end": 22
+            "module_type": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "S",
+                    "span": {
+                      "start": 21,
+                      "end": 22
+                    }
+                  }
+                ]
               }
             }
           }
@@ -252,11 +282,26 @@
               "end": 23
             }
           },
-          "module_type_syntax_node": {
-            "kind": "MODULE_TYPE_PATH",
-            "span": {
-              "start": 21,
-              "end": 22
+          "module_type": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_TYPE_PATH",
+                "span": {
+                  "start": 21,
+                  "end": 22
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "S",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                }
+              ]
             }
           }
         }

@@ -76,7 +76,7 @@
                     "end": 42
                   }
                 },
-                "module_type_syntax_node": null
+                "module_type": null
               },
               "guard": null,
               "body": {
@@ -238,7 +238,7 @@
                   "end": 42
                 }
               },
-              "module_type_syntax_node": null
+              "module_type": null
             },
             "guard": null,
             "body": {

@@ -65,6 +65,19 @@ and poly_variant_tag = {
   payload_type : core_type option;
 }
 
+and module_type_constraint = {
+  syntax_node : syntax_node;
+  type_name : Token.t;
+  replacement_type : core_type;
+  is_destructive : bool;
+}
+
+and functor_parameter = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  module_type : module_type;
+}
+
 and core_type =
   | Wildcard of {
       syntax_node : syntax_node;
@@ -113,12 +126,43 @@ and core_type =
     }
   | FirstClassModule of {
       syntax_node : syntax_node;
-      module_type_syntax_node : syntax_node;
+      module_type : module_type;
     }
   | Object of {
       syntax_node : syntax_node;
       fields : object_type_field list;
     }
+
+and module_type =
+  | Path of ModulePath.t
+  | TypeOf of {
+      syntax_node : syntax_node;
+      module_path : ModulePath.t;
+    }
+  | Signature of {
+      syntax_node : syntax_node;
+      signature_syntax_node : syntax_node;
+    }
+  | Functor of {
+      syntax_node : syntax_node;
+      parameters : functor_parameter list;
+      result : module_type;
+    }
+  | With of {
+      syntax_node : syntax_node;
+      base : module_type;
+      constraints : module_type_constraint list;
+    }
+  | Parenthesized of {
+      syntax_node : syntax_node;
+      inner : module_type;
+    }
+  | Attribute of {
+      syntax_node : syntax_node;
+      module_type : module_type;
+      attribute : attribute;
+    }
+  | Extension of extension
 
 module CoreType = struct
   type t = core_type =
@@ -169,7 +213,7 @@ module CoreType = struct
       }
     | FirstClassModule of {
         syntax_node : syntax_node;
-        module_type_syntax_node : syntax_node;
+        module_type : module_type;
       }
     | Object of {
         syntax_node : syntax_node;
@@ -189,8 +233,70 @@ module CoreType = struct
     | PolyVariant { syntax_node; _ }
     | Record { syntax_node; _ }
     | FirstClassModule { syntax_node; _ }
-    | Object { syntax_node; _ } ->
+      | Object { syntax_node; _ } ->
+          syntax_node
+end
+
+module ModuleTypeConstraint = struct
+  type t = module_type_constraint = {
+    syntax_node : syntax_node;
+    type_name : Token.t;
+    replacement_type : core_type;
+    is_destructive : bool;
+  }
+end
+
+module FunctorParameter = struct
+  type t = functor_parameter = {
+    syntax_node : syntax_node;
+    name_token : Token.t;
+    module_type : module_type;
+  }
+end
+
+module ModuleType = struct
+  type t = module_type =
+    | Path of ModulePath.t
+    | TypeOf of {
+        syntax_node : syntax_node;
+        module_path : ModulePath.t;
+      }
+    | Signature of {
+        syntax_node : syntax_node;
+        signature_syntax_node : syntax_node;
+      }
+    | Functor of {
+        syntax_node : syntax_node;
+        parameters : functor_parameter list;
+        result : module_type;
+      }
+    | With of {
+        syntax_node : syntax_node;
+        base : module_type;
+        constraints : module_type_constraint list;
+      }
+    | Parenthesized of {
+        syntax_node : syntax_node;
+        inner : module_type;
+      }
+    | Attribute of {
+        syntax_node : syntax_node;
+        module_type : module_type;
+        attribute : attribute;
+      }
+    | Extension of extension
+
+  let syntax_node = function
+    | Path path -> ModulePath.syntax_node path
+    | TypeOf { syntax_node; _ }
+    | Signature { syntax_node; _ }
+    | Functor { syntax_node; _ }
+    | With { syntax_node; _ }
+    | Parenthesized { syntax_node; _ }
+    | Attribute { syntax_node; _ } ->
         syntax_node
+    | Extension extension ->
+        extension.syntax_node
 end
 
 module PatternLiteral = struct
@@ -283,7 +389,7 @@ and operator_pattern = {
 and first_class_module_pattern = {
   syntax_node : syntax_node;
   name_token : Token.t;
-  module_type_syntax_node : syntax_node option;
+  module_type : module_type option;
 }
 
 and poly_variant_pattern = {
@@ -550,7 +656,7 @@ and poly_variant_expression = {
 and first_class_module_expression = {
   syntax_node : syntax_node;
   module_syntax_node : syntax_node;
-  module_type_syntax_node : syntax_node option;
+  module_type : module_type option;
 }
 
 and let_module_expression = {
@@ -1044,7 +1150,7 @@ module TypeDefinition = struct
       }
     | FirstClassModule of {
         syntax_node : syntax_node;
-        module_type_syntax_node : syntax_node;
+        module_type : module_type;
       }
     | Object of {
         syntax_node : syntax_node;
@@ -1123,10 +1229,12 @@ module ModuleTypeDeclaration = struct
   type t = {
     syntax_node : syntax_node;
     module_type_name : Token.t;
+    module_type : module_type option;
   }
 
   let syntax_node decl = decl.syntax_node
   let module_type_name_token decl = decl.module_type_name
+  let module_type decl = decl.module_type
   let name decl = Token.text decl.module_type_name
 end
 

@@ -74,7 +74,7 @@
                   "end": 23
                 }
               },
-              "module_type_syntax_node": null
+              "module_type": null
             },
             "bound_value": {
               "tag": "path",
@@ -222,7 +222,7 @@
                 "end": 23
               }
             },
-            "module_type_syntax_node": null
+            "module_type": null
           },
           "bound_value": {
             "tag": "path",
@@ -333,7 +333,7 @@
               "end": 23
             }
           },
-          "module_type_syntax_node": null
+          "module_type": null
         },
         "bound_value": {
           "tag": "path",

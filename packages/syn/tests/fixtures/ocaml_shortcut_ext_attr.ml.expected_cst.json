@@ -1443,6 +1443,248 @@
               "start": 1529,
               "end": 1530
             }
+          },
+          "module_type": {
+            "tag": "functor",
+            "syntax_node": {
+              "kind": "FUNCTOR_TYPE",
+              "span": {
+                "start": 1533,
+                "end": 1638
+              }
+            },
+            "parameters": [
+              {
+                "syntax_node": {
+                  "kind": "FUNCTOR_PARAM",
+                  "span": {
+                    "start": 1550,
+                    "end": 1560
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "M",
+                  "span": {
+                    "start": 1551,
+                    "end": 1552
+                  }
+                },
+                "module_type": {
+                  "tag": "path",
+                  "path": {
+                    "syntax_node": {
+                      "kind": "MODULE_TYPE_PATH",
+                      "span": {
+                        "start": 1555,
+                        "end": 1556
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "S",
+                        "span": {
+                          "start": 1555,
+                          "end": 1556
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "result": {
+              "tag": "functor",
+              "syntax_node": {
+                "kind": "FUNCTOR_TYPE",
+                "span": {
+                  "start": 1563,
+                  "end": 1638
+                }
+              },
+              "parameters": [
+                {
+                  "syntax_node": {
+                    "kind": "FUNCTOR_PARAM",
+                    "span": {
+                      "start": 1563,
+                      "end": 1594
+                    }
+                  },
+                  "name_token": {
+                    "kind": "WILDCARD_PATTERN",
+                    "text": "_",
+                    "span": {
+                      "start": 1564,
+                      "end": 1565
+                    }
+                  },
+                  "module_type": {
+                    "tag": "attribute",
+                    "syntax_node": {
+                      "kind": "ATTRIBUTE_EXPR",
+                      "span": {
+                        "start": 1568,
+                        "end": 1593
+                      }
+                    },
+                    "module_type": {
+                      "tag": "parenthesized",
+                      "syntax_node": {
+                        "kind": "PAREN_EXPR",
+                        "span": {
+                          "start": 1568,
+                          "end": 1586
+                        }
+                      },
+                      "inner": {
+                        "tag": "type_of",
+                        "syntax_node": {
+                          "kind": "MODULE_TYPE_OF",
+                          "span": {
+                            "start": 1569,
+                            "end": 1585
+                          }
+                        },
+                        "module_path": {
+                          "syntax_node": {
+                            "kind": "MODULE_TYPE_PATH",
+                            "span": {
+                              "start": 1584,
+                              "end": 1585
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "M",
+                              "span": {
+                                "start": 1584,
+                                "end": 1585
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "attribute": {
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 1587,
+                          "end": 1593
+                        }
+                      },
+                      "tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "[",
+                          "span": {
+                            "start": 1587,
+                            "end": 1588
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "@",
+                          "span": {
+                            "start": 1588,
+                            "end": 1589
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "foo",
+                          "span": {
+                            "start": 1589,
+                            "end": 1592
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "]",
+                          "span": {
+                            "start": 1592,
+                            "end": 1593
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ],
+              "result": {
+                "tag": "attribute",
+                "syntax_node": {
+                  "kind": "ATTRIBUTE_EXPR",
+                  "span": {
+                    "start": 1600,
+                    "end": 1638
+                  }
+                },
+                "module_type": {
+                  "tag": "signature",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 1600,
+                      "end": 1607
+                    }
+                  },
+                  "signature_syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 1600,
+                      "end": 1607
+                    }
+                  }
+                },
+                "attribute": {
+                  "syntax_node": {
+                    "kind": "ATTRIBUTE_EXPR",
+                    "span": {
+                      "start": 1608,
+                      "end": 1614
+                    }
+                  },
+                  "tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "[",
+                      "span": {
+                        "start": 1608,
+                        "end": 1609
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "@",
+                      "span": {
+                        "start": 1609,
+                        "end": 1610
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "foo",
+                      "span": {
+                        "start": 1610,
+                        "end": 1613
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "]",
+                      "span": {
+                        "start": 1613,
+                        "end": 1614
+                      }
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -2089,6 +2331,28 @@
               "start": 1940,
               "end": 1941
             }
+          },
+          "module_type": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_TYPE_PATH",
+                "span": {
+                  "start": 1949,
+                  "end": 1952
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "S",
+                  "span": {
+                    "start": 1949,
+                    "end": 1950
+                  }
+                }
+              ]
+            }
           }
         }
       },
@@ -2175,6 +2439,23 @@
             "span": {
               "start": 2026,
               "end": 2027
+            }
+          },
+          "module_type": {
+            "tag": "signature",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 2030,
+                "end": 2422
+              }
+            },
+            "signature_syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 2030,
+                "end": 2422
+              }
             }
           }
         }

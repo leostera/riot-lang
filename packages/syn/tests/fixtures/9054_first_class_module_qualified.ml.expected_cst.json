@@ -119,7 +119,7 @@
                     "end": 93
                   }
                 },
-                "module_type_syntax_node": null
+                "module_type": null
               }
             }
           },
@@ -220,7 +220,7 @@
                     "end": 143
                   }
                 },
-                "module_type_syntax_node": null
+                "module_type": null
               }
             }
           },
@@ -363,7 +363,7 @@
                       "end": 233
                     }
                   },
-                  "module_type_syntax_node": null
+                  "module_type": null
                 },
                 "argument": {
                   "tag": "positional",
@@ -496,7 +496,7 @@
                   "end": 93
                 }
               },
-              "module_type_syntax_node": null
+              "module_type": null
             }
           }
         },
@@ -594,7 +594,7 @@
                   "end": 143
                 }
               },
-              "module_type_syntax_node": null
+              "module_type": null
             }
           }
         },
@@ -734,7 +734,7 @@
                     "end": 233
                   }
                 },
-                "module_type_syntax_node": null
+                "module_type": null
               },
               "argument": {
                 "tag": "positional",
@@ -830,7 +830,7 @@
                 "end": 93
               }
             },
-            "module_type_syntax_node": null
+            "module_type": null
           }
         }
       },
@@ -879,7 +879,7 @@
             "end": 93
           }
         },
-        "module_type_syntax_node": null
+        "module_type": null
       },
       {
         "tag": "apply",
@@ -937,7 +937,7 @@
                 "end": 143
               }
             },
-            "module_type_syntax_node": null
+            "module_type": null
           }
         }
       },
@@ -986,7 +986,7 @@
             "end": 143
           }
         },
-        "module_type_syntax_node": null
+        "module_type": null
       },
       {
         "tag": "apply",
@@ -1086,7 +1086,7 @@
                   "end": 233
                 }
               },
-              "module_type_syntax_node": null
+              "module_type": null
             },
             "argument": {
               "tag": "positional",
@@ -1208,7 +1208,7 @@
               "end": 233
             }
           },
-          "module_type_syntax_node": null
+          "module_type": null
         },
         "argument": {
           "tag": "positional",
@@ -1243,7 +1243,7 @@
             "end": 233
           }
         },
-        "module_type_syntax_node": null
+        "module_type": null
       },
       {
         "tag": "literal",

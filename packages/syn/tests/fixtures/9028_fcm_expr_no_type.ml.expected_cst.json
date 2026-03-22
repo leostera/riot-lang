@@ -64,7 +64,7 @@
                 "end": 84
               }
             },
-            "module_type_syntax_node": null
+            "module_type": null
           },
           "is_recursive": false
         }
@@ -190,7 +190,7 @@
                       "end": 117
                     }
                   },
-                  "module_type_syntax_node": null
+                  "module_type": null
                 }
               }
             },
@@ -284,11 +284,26 @@
                 "end": 142
               }
             },
-            "module_type_syntax_node": {
-              "kind": "MODULE_TYPE_PATH",
-              "span": {
-                "start": 144,
-                "end": 145
+            "module_type": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 144,
+                    "end": 145
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "S",
+                    "span": {
+                      "start": 144,
+                      "end": 145
+                    }
+                  }
+                ]
               }
             }
           },
@@ -349,7 +364,7 @@
               "end": 84
             }
           },
-          "module_type_syntax_node": null
+          "module_type": null
         },
         "is_recursive": false
       },
@@ -472,7 +487,7 @@
                     "end": 117
                   }
                 },
-                "module_type_syntax_node": null
+                "module_type": null
               }
             }
           },
@@ -563,11 +578,26 @@
               "end": 142
             }
           },
-          "module_type_syntax_node": {
-            "kind": "MODULE_TYPE_PATH",
-            "span": {
-              "start": 144,
-              "end": 145
+          "module_type": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_TYPE_PATH",
+                "span": {
+                  "start": 144,
+                  "end": 145
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "S",
+                  "span": {
+                    "start": 144,
+                    "end": 145
+                  }
+                }
+              ]
             }
           }
         },
@@ -591,7 +621,7 @@
             "end": 84
           }
         },
-        "module_type_syntax_node": null
+        "module_type": null
       },
       {
         "tag": "apply",
@@ -676,7 +706,7 @@
                   "end": 117
                 }
               },
-              "module_type_syntax_node": null
+              "module_type": null
             }
           }
         },
@@ -787,7 +817,7 @@
                 "end": 117
               }
             },
-            "module_type_syntax_node": null
+            "module_type": null
           }
         }
       },
@@ -883,7 +913,7 @@
             "end": 117
           }
         },
-        "module_type_syntax_node": null
+        "module_type": null
       },
       {
         "tag": "path",
@@ -930,11 +960,26 @@
             "end": 142
           }
         },
-        "module_type_syntax_node": {
-          "kind": "MODULE_TYPE_PATH",
-          "span": {
-            "start": 144,
-            "end": 145
+        "module_type": {
+          "tag": "path",
+          "path": {
+            "syntax_node": {
+              "kind": "MODULE_TYPE_PATH",
+              "span": {
+                "start": 144,
+                "end": 145
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "S",
+                "span": {
+                  "start": 144,
+                  "end": 145
+                }
+              }
+            ]
           }
         }
       }

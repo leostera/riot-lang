@@ -2382,6 +2382,23 @@
               "start": 17273,
               "end": 17274
             }
+          },
+          "module_type": {
+            "tag": "signature",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 17277,
+                "end": 17415
+              }
+            },
+            "signature_syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 17277,
+                "end": 17415
+              }
+            }
           }
         }
       },

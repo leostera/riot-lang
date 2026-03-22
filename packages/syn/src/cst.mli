@@ -53,6 +53,19 @@ and poly_variant_tag = {
   payload_type : core_type option;
 }
 
+and module_type_constraint = {
+  syntax_node : syntax_node;
+  type_name : Token.t;
+  replacement_type : core_type;
+  is_destructive : bool;
+}
+
+and functor_parameter = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  module_type : module_type;
+}
+
 and core_type =
   | Wildcard of {
       syntax_node : syntax_node;
@@ -101,12 +114,43 @@ and core_type =
     }
   | FirstClassModule of {
       syntax_node : syntax_node;
-      module_type_syntax_node : syntax_node;
+      module_type : module_type;
     }
   | Object of {
       syntax_node : syntax_node;
       fields : object_type_field list;
     }
+
+and module_type =
+  | Path of ModulePath.t
+  | TypeOf of {
+      syntax_node : syntax_node;
+      module_path : ModulePath.t;
+    }
+  | Signature of {
+      syntax_node : syntax_node;
+      signature_syntax_node : syntax_node;
+    }
+  | Functor of {
+      syntax_node : syntax_node;
+      parameters : functor_parameter list;
+      result : module_type;
+    }
+  | With of {
+      syntax_node : syntax_node;
+      base : module_type;
+      constraints : module_type_constraint list;
+    }
+  | Parenthesized of {
+      syntax_node : syntax_node;
+      inner : module_type;
+    }
+  | Attribute of {
+      syntax_node : syntax_node;
+      module_type : module_type;
+      attribute : attribute;
+    }
+  | Extension of extension
 
 module CoreType : sig
   type t = core_type =
@@ -157,12 +201,64 @@ module CoreType : sig
       }
     | FirstClassModule of {
         syntax_node : syntax_node;
-        module_type_syntax_node : syntax_node;
+        module_type : module_type;
       }
     | Object of {
         syntax_node : syntax_node;
         fields : object_type_field list;
       }
+
+  val syntax_node : t -> syntax_node
+end
+
+module ModuleTypeConstraint : sig
+  type t = module_type_constraint = {
+    syntax_node : syntax_node;
+    type_name : Token.t;
+    replacement_type : core_type;
+    is_destructive : bool;
+  }
+end
+
+module FunctorParameter : sig
+  type t = functor_parameter = {
+    syntax_node : syntax_node;
+    name_token : Token.t;
+    module_type : module_type;
+  }
+end
+
+module ModuleType : sig
+  type t = module_type =
+    | Path of ModulePath.t
+    | TypeOf of {
+        syntax_node : syntax_node;
+        module_path : ModulePath.t;
+      }
+    | Signature of {
+        syntax_node : syntax_node;
+        signature_syntax_node : syntax_node;
+      }
+    | Functor of {
+        syntax_node : syntax_node;
+        parameters : functor_parameter list;
+        result : module_type;
+      }
+    | With of {
+        syntax_node : syntax_node;
+        base : module_type;
+        constraints : module_type_constraint list;
+      }
+    | Parenthesized of {
+        syntax_node : syntax_node;
+        inner : module_type;
+      }
+    | Attribute of {
+        syntax_node : syntax_node;
+        module_type : module_type;
+        attribute : attribute;
+      }
+    | Extension of extension
 
   val syntax_node : t -> syntax_node
 end
@@ -257,7 +353,7 @@ and operator_pattern = {
 and first_class_module_pattern = {
   syntax_node : syntax_node;
   name_token : Token.t;
-  module_type_syntax_node : syntax_node option;
+  module_type : module_type option;
 }
 
 and poly_variant_pattern = {
@@ -505,7 +601,7 @@ and poly_variant_expression = {
 and first_class_module_expression = {
   syntax_node : syntax_node;
   module_syntax_node : syntax_node;
-  module_type_syntax_node : syntax_node option;
+  module_type : module_type option;
 }
 
 and let_module_expression = {
@@ -910,7 +1006,7 @@ module TypeDefinition : sig
       }
     | FirstClassModule of {
         syntax_node : syntax_node;
-        module_type_syntax_node : syntax_node;
+        module_type : module_type;
       }
     | Object of {
         syntax_node : syntax_node;
@@ -975,10 +1071,12 @@ module ModuleTypeDeclaration : sig
   type t = {
     syntax_node : syntax_node;
     module_type_name : Token.t;
+    module_type : module_type option;
   }
 
   val syntax_node : t -> syntax_node
   val module_type_name_token : t -> Token.t
+  val module_type : t -> module_type option
   val name : t -> string
 end
 

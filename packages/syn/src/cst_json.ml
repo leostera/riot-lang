@@ -162,12 +162,12 @@ and core_type_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("fields", Json.Array (List.map record_type_field_to_json fields));
         ]
-  | Cst.CoreType.FirstClassModule { syntax_node; module_type_syntax_node } ->
+  | Cst.CoreType.FirstClassModule { syntax_node; module_type } ->
       Json.Object
         [
           ("tag", Json.String "first_class_module");
           ("syntax_node", syntax_node_to_json syntax_node);
-          ("module_type_syntax_node", syntax_node_to_json module_type_syntax_node);
+          ("module_type", module_type_to_json module_type);
         ]
   | Cst.CoreType.Object { syntax_node; fields } ->
       Json.Object
@@ -175,6 +175,96 @@ and core_type_to_json = function
           ("tag", Json.String "object");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("fields", Json.Array (List.map object_type_field_to_json fields));
+        ]
+
+and module_type_constraint_to_json
+    ({ syntax_node; type_name; replacement_type; is_destructive } :
+      Cst.module_type_constraint) =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json syntax_node);
+      ("type_name", token_to_json type_name);
+      ("replacement_type", core_type_to_json replacement_type);
+      ("is_destructive", Json.Bool is_destructive);
+    ]
+
+and functor_parameter_to_json
+    ({ syntax_node; name_token; module_type } : Cst.functor_parameter) =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json syntax_node);
+      ("name_token", token_to_json name_token);
+      ("module_type", module_type_to_json module_type);
+    ]
+
+and module_type_to_json = function
+  | Cst.ModuleType.Path path ->
+      Json.Object
+        [
+          ("tag", Json.String "path");
+          ("path", module_path_to_json path);
+        ]
+  | Cst.ModuleType.TypeOf { syntax_node; module_path } ->
+      Json.Object
+        [
+          ("tag", Json.String "type_of");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("module_path", module_path_to_json module_path);
+        ]
+  | Cst.ModuleType.Signature { syntax_node; signature_syntax_node } ->
+      Json.Object
+        [
+          ("tag", Json.String "signature");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("signature_syntax_node", syntax_node_to_json signature_syntax_node);
+        ]
+  | Cst.ModuleType.Functor { syntax_node; parameters; result } ->
+      Json.Object
+        [
+          ("tag", Json.String "functor");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("parameters", Json.Array (List.map functor_parameter_to_json parameters));
+          ("result", module_type_to_json result);
+        ]
+  | Cst.ModuleType.With { syntax_node; base; constraints } ->
+      Json.Object
+        [
+          ("tag", Json.String "with");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("base", module_type_to_json base);
+          ( "constraints",
+            Json.Array (List.map module_type_constraint_to_json constraints) );
+        ]
+  | Cst.ModuleType.Parenthesized { syntax_node; inner } ->
+      Json.Object
+        [
+          ("tag", Json.String "parenthesized");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("inner", module_type_to_json inner);
+        ]
+  | Cst.ModuleType.Attribute { syntax_node; module_type; attribute } ->
+      Json.Object
+        [
+          ("tag", Json.String "attribute");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("module_type", module_type_to_json module_type);
+          ( "attribute",
+            Json.Object
+              [
+                ("syntax_node", syntax_node_to_json attribute.syntax_node);
+                ("tokens", Json.Array (List.map token_to_json attribute.tokens));
+              ] );
+        ]
+  | Cst.ModuleType.Extension extension ->
+      Json.Object
+        [
+          ("tag", Json.String "extension");
+          ( "extension",
+            Json.Object
+              [
+                ("syntax_node", syntax_node_to_json extension.syntax_node);
+                ("tokens", Json.Array (List.map token_to_json extension.tokens));
+              ] );
         ]
 
 let exception_declaration_to_json (decl : Cst.exception_declaration) =
@@ -284,13 +374,13 @@ and pattern_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("operator_tokens", Json.Array (List.map token_to_json operator_tokens));
         ]
-  | Cst.Pattern.FirstClassModule { syntax_node; name_token; module_type_syntax_node } ->
+  | Cst.Pattern.FirstClassModule { syntax_node; name_token; module_type } ->
       Json.Object
         [
           ("tag", Json.String "first_class_module");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("name_token", token_to_json name_token);
-          ("module_type_syntax_node", option_to_json syntax_node_to_json module_type_syntax_node);
+          ("module_type", option_to_json module_type_to_json module_type);
         ]
   | Cst.Pattern.Literal literal ->
       Json.Object
@@ -598,13 +688,13 @@ and expression_to_json = function
           ("tag_token", token_to_json tag_token);
           ("payload", option_to_json expression_to_json payload);
         ]
-  | Cst.Expression.FirstClassModule { syntax_node; module_syntax_node; module_type_syntax_node } ->
+  | Cst.Expression.FirstClassModule { syntax_node; module_syntax_node; module_type } ->
       Json.Object
         [
           ("tag", Json.String "first_class_module");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("module_syntax_node", syntax_node_to_json module_syntax_node);
-          ("module_type_syntax_node", option_to_json syntax_node_to_json module_type_syntax_node);
+          ("module_type", option_to_json module_type_to_json module_type);
         ]
   | Cst.Expression.LetModule
       { syntax_node; module_name_token; module_expression_syntax_node; body } ->
@@ -972,12 +1062,12 @@ let type_definition_to_json = function
           ("tag", Json.String "extensible");
           ("syntax_node", syntax_node_to_json syntax_node);
         ]
-  | Cst.TypeDefinition.FirstClassModule { syntax_node; module_type_syntax_node } ->
+  | Cst.TypeDefinition.FirstClassModule { syntax_node; module_type } ->
       Json.Object
         [
           ("tag", Json.String "first_class_module");
           ("syntax_node", syntax_node_to_json syntax_node);
-          ("module_type_syntax_node", syntax_node_to_json module_type_syntax_node);
+          ("module_type", module_type_to_json module_type);
         ]
   | Cst.TypeDefinition.Object { syntax_node; fields } ->
       Json.Object
@@ -1038,6 +1128,8 @@ let module_type_declaration_to_json decl =
       ("syntax_node", syntax_node_to_json (Cst.ModuleTypeDeclaration.syntax_node decl));
       ( "module_type_name",
         token_to_json (Cst.ModuleTypeDeclaration.module_type_name_token decl) );
+      ( "module_type",
+        option_to_json module_type_to_json (Cst.ModuleTypeDeclaration.module_type decl) );
     ]
 
 let open_statement_to_json stmt =

@@ -316,7 +316,8 @@ let tests =
       (fun () ->
         let result =
           parse_ml
-            "type transport = (module Transport)\n"
+            "type transport = (module Transport)\n\
+             type driver = (module Driver with type config = int)\n"
         in
         let cst =
           expect_some result.cst
@@ -324,21 +325,27 @@ let tests =
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
         match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.TypeDeclaration
-            {
-              type_definition =
-                Syn.Cst.TypeDefinition.FirstClassModule
-                  {
-                    module_type_syntax_node;
-                    _;
-                  };
-              _;
-            }
-          :: _ ->
-            Test.assert_equal ~expected:"MODULE_TYPE_PATH"
-              ~actual:
-                (SyntaxKind.to_string
-                   (Ceibo.Red.SyntaxNode.kind module_type_syntax_node));
+        | _first_decl
+          :: Syn.Cst.Item.TypeDeclaration
+               {
+                 type_definition =
+                   Syn.Cst.TypeDefinition.FirstClassModule
+                     {
+                       module_type =
+                         Syn.Cst.ModuleType.With
+                           {
+                             base = Syn.Cst.ModuleType.Path base_path;
+                             constraints;
+                             _;
+                           };
+                       _;
+                     };
+                 _;
+               }
+             :: _ ->
+            Test.assert_equal ~expected:(Some "Driver")
+              ~actual:(Syn.Cst.ModulePath.name base_path);
+            Test.assert_equal ~expected:1 ~actual:(List.length constraints);
             Ok ()
         | _ -> Error "expected first-class module type definition");
     Test.case "cst open statements preserve open! structurally" (fun () ->
@@ -914,7 +921,7 @@ let tests =
                 Syn.Cst.Expression.FirstClassModule
                   {
                     module_syntax_node;
-                    module_type_syntax_node = Some module_type_syntax_node;
+                    module_type = Some (Syn.Cst.ModuleType.Path module_type_path);
                     _;
                   };
               _;
@@ -924,12 +931,43 @@ let tests =
               ~actual:
                 (SyntaxKind.to_string
                    (Ceibo.Red.SyntaxNode.kind module_syntax_node));
-            Test.assert_equal ~expected:"MODULE_TYPE_PATH"
-              ~actual:
-                (SyntaxKind.to_string
-                   (Ceibo.Red.SyntaxNode.kind module_type_syntax_node));
+            Test.assert_equal ~expected:(Some "S")
+              ~actual:(Syn.Cst.ModulePath.name module_type_path);
             Ok ()
         | _ -> Error "expected first-class module expression");
+    Test.case "cst module type declarations expose typed module type bodies"
+      (fun () ->
+        let result =
+          parse_ml "module type F = functor (X : S) -> T\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleTypeDeclaration
+            {
+              module_type =
+                Some
+                  (Syn.Cst.ModuleType.Functor
+                    {
+                      parameters =
+                        [ { name_token; module_type = Syn.Cst.ModuleType.Path param_type; _ } ];
+                      result = Syn.Cst.ModuleType.Path result_type;
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"X"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:(Some "S")
+              ~actual:(Syn.Cst.ModulePath.name param_type);
+            Test.assert_equal ~expected:(Some "T")
+              ~actual:(Syn.Cst.ModulePath.name result_type);
+            Ok ()
+        | _ -> Error "expected module type declaration with functor body");
     Test.case "cst let-module expressions preserve module name and body"
       (fun () ->
         let source = "let run driver = let module D = (val driver) in D.execute ()\n" in

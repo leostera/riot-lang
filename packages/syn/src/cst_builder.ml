@@ -117,6 +117,26 @@ let rec can_lift_core_type_node node =
   | kind ->
       is_type_syntax_kind kind
 
+let rec can_lift_module_type_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.MODULE_TYPE_PATH
+  | Syntax_kind.MODULE_TYPE_OF
+  | Syntax_kind.MODULE_TYPE_EXPR
+  | Syntax_kind.FUNCTOR_TYPE
+  | Syntax_kind.EXTENSION_EXPR ->
+      true
+  | Syntax_kind.PAREN_EXPR ->
+      direct_non_trivia_nodes node |> List.exists can_lift_module_type_node
+  | Syntax_kind.ATTRIBUTE_EXPR ->
+      direct_non_trivia_nodes node |> List.exists can_lift_module_type_node
+  | Syntax_kind.IDENT_EXPR -> (
+      match direct_non_trivia_tokens node with
+      | first :: _ ->
+          String.equal (Ceibo.Red.SyntaxToken.text first) "sig"
+      | [] -> false)
+  | _ ->
+      false
+
 let is_pattern_syntax_kind = function
   | Syntax_kind.IDENT_PATTERN
   | Syntax_kind.WILDCARD_PATTERN
@@ -416,7 +436,176 @@ let operator_tokens_from_node node =
            || String.equal text " "))
   |> List.map token
 
-let rec core_type_from_node node =
+let rec module_type_constraint_from_node node =
+  let type_name =
+    match direct_non_trivia_tokens node with
+    | _type_kw :: type_name :: _ ->
+        token type_name
+    | _ ->
+        bail ~message:"expected type name in module type constraint during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "module_type.constraint" ]
+  in
+  let replacement_type =
+    match direct_non_trivia_nodes node |> List.find_opt can_lift_core_type_node with
+    | Some type_node ->
+        core_type_from_node type_node
+    | None ->
+        bail
+          ~message:
+            "expected replacement type in module type constraint during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "module_type.constraint" ]
+  in
+  let is_destructive =
+    direct_non_trivia_tokens node
+    |> List.exists (fun syntax_token ->
+           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":=")
+  in
+  Cst.ModuleTypeConstraint.{ syntax_node = node; type_name; replacement_type; is_destructive }
+
+and functor_parameter_from_node node =
+  let name_token =
+    match direct_non_trivia_tokens node with
+    | _lparen :: name_token :: _ ->
+        token name_token
+    | _ ->
+        bail ~message:"expected functor parameter name during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "module_type.functor.parameter" ]
+  in
+  let module_type =
+    match direct_non_trivia_nodes node |> List.find_opt can_lift_module_type_node with
+    | Some module_type_node ->
+        module_type_from_node module_type_node
+    | None ->
+        bail
+          ~message:
+            "expected functor parameter module type during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "module_type.functor.parameter" ]
+  in
+  Cst.FunctorParameter.{ syntax_node = node; name_token; module_type }
+
+and module_type_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.MODULE_TYPE_PATH ->
+      Cst.ModuleType.Path (module_path_from_node node)
+  | Syntax_kind.MODULE_TYPE_OF -> (
+      match direct_non_trivia_nodes node with
+      | module_path_node :: _ ->
+          Cst.ModuleType.TypeOf
+            {
+              syntax_node = node;
+              module_path = module_path_like_from_node module_path_node;
+            }
+      | [] ->
+          bail
+            ~message:
+              "expected module path in module type of expression during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "module_type.type_of" ])
+  | Syntax_kind.MODULE_TYPE_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | base_node :: constraint_nodes ->
+          Cst.ModuleType.With
+            {
+              syntax_node = node;
+              base = module_type_from_node base_node;
+              constraints =
+                constraint_nodes
+                |> List.filter (fun child ->
+                       Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_CONSTRAINT)
+                |> List.map module_type_constraint_from_node;
+            }
+      | [] ->
+          bail
+            ~message:
+              "expected base module type in constrained module type during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "module_type.with" ])
+  | Syntax_kind.FUNCTOR_TYPE -> (
+      match List.rev (direct_non_trivia_nodes node) with
+      | result_node :: rev_parameter_nodes ->
+          Cst.ModuleType.Functor
+            {
+              syntax_node = node;
+              parameters =
+                List.rev rev_parameter_nodes
+                |> List.filter (fun child ->
+                       Ceibo.Red.SyntaxNode.kind child = Syntax_kind.FUNCTOR_PARAM)
+                |> List.map functor_parameter_from_node;
+              result = module_type_from_node result_node;
+            }
+      | [] ->
+          bail
+            ~message:
+              "expected functor parameters and result module type during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "module_type.functor" ])
+  | Syntax_kind.PAREN_EXPR -> (
+      match direct_non_trivia_nodes node |> List.find_opt can_lift_module_type_node with
+      | Some inner_node ->
+          Cst.ModuleType.Parenthesized
+            { syntax_node = node; inner = module_type_from_node inner_node }
+      | None ->
+          bail
+            ~message:
+              "expected inner module type in parenthesized module type during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "module_type.parenthesized" ])
+  | Syntax_kind.ATTRIBUTE_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | first_child :: rest -> (
+          match
+            List.find_opt can_lift_module_type_node (first_child :: rest),
+            List.find_opt is_attribute_node rest
+          with
+          | Some payload_node, Some attribute_node ->
+              Cst.ModuleType.Attribute
+                {
+                  syntax_node = node;
+                  module_type = module_type_from_node payload_node;
+                  attribute = attribute_from_node attribute_node;
+                }
+          | _ ->
+              bail
+                ~message:
+                  "expected attributed module type payload during Ceibo -> CST lifting"
+                ~syntax_node:node ~context:[ "module_type.attribute" ])
+      | [] ->
+          bail
+            ~message:
+              "expected attributed module type contents during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "module_type.attribute" ])
+  | Syntax_kind.EXTENSION_EXPR ->
+      Cst.ModuleType.Extension (extension_from_node node)
+  | Syntax_kind.IDENT_EXPR -> (
+      match direct_non_trivia_tokens node with
+      | sig_kw :: _ when String.equal (Ceibo.Red.SyntaxToken.text sig_kw) "sig" ->
+          Cst.ModuleType.Signature
+            { syntax_node = node; signature_syntax_node = node }
+      | _ ->
+          bail
+            ~message:"unsupported module type identifier shape during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "module_type" ])
+  | _ ->
+      bail ~message:"unsupported module type shape during Ceibo -> CST lifting"
+        ~syntax_node:node ~context:[ "module_type" ]
+
+and module_type_from_first_class_module_type_node node =
+  match direct_non_trivia_nodes node with
+  | base_node :: constraint_nodes ->
+      let base = module_type_from_node base_node in
+      let constraints =
+        constraint_nodes
+        |> List.filter (fun child ->
+               Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_CONSTRAINT)
+        |> List.map module_type_constraint_from_node
+      in
+      if List.length constraints = 0 then
+        base
+      else
+        Cst.ModuleType.With { syntax_node = node; base; constraints }
+  | [] ->
+      bail
+        ~message:
+          "expected module type inside first-class module type during Ceibo -> CST lifting"
+        ~syntax_node:node ~context:[ "module_type.first_class_module" ]
+
+and core_type_from_node node =
   let child_type_nodes node =
     direct_non_trivia_nodes node
     |> List.filter can_lift_core_type_node
@@ -637,12 +826,11 @@ let rec core_type_from_node node =
             |> List.map record_type_field_from_node;
         }
   | Syntax_kind.FIRST_CLASS_MODULE_TYPE -> (
-      match direct_non_trivia_nodes node with
-      | module_type_syntax_node :: _ ->
-          Cst.CoreType.FirstClassModule { syntax_node = node; module_type_syntax_node }
-      | [] ->
-          bail ~message:"expected module type inside first-class module type during Ceibo -> CST lifting"
-            ~syntax_node:node ~context:[ "core_type.first_class_module" ])
+      Cst.CoreType.FirstClassModule
+        {
+          syntax_node = node;
+          module_type = module_type_from_first_class_module_type_node node;
+        })
   | Syntax_kind.OBJECT_TYPE ->
       Cst.CoreType.Object
         {
@@ -726,12 +914,11 @@ let rec pattern_from_node node =
             {
               syntax_node = node;
               name_token = token name_syntax_token;
-              module_type_syntax_node =
+              module_type =
                 (direct_non_trivia_nodes node
-                |> List.find_opt (fun child ->
-                       let kind = Ceibo.Red.SyntaxNode.kind child in
-                       kind = Syntax_kind.MODULE_TYPE_PATH
-                       || kind = Syntax_kind.MODULE_TYPE_OF));
+                 |> List.find_opt (fun child ->
+                        can_lift_module_type_node child)
+                 |> Option.map module_type_from_node);
             }
       | _ -> unsupported_pattern node)
   | Syntax_kind.STRING_LITERAL -> (
@@ -1105,12 +1292,10 @@ and expression_from_node node =
             {
               syntax_node = node;
               module_syntax_node;
-              module_type_syntax_node =
+              module_type =
                 (direct_non_trivia_nodes node
-                |> List.find_opt (fun child ->
-                       let kind = Ceibo.Red.SyntaxNode.kind child in
-                       kind = Syntax_kind.MODULE_TYPE_PATH
-                       || kind = Syntax_kind.MODULE_TYPE_OF));
+                |> List.find_opt can_lift_module_type_node
+                |> Option.map module_type_from_node);
             }
       | [] -> unsupported_expression node)
   | Syntax_kind.LET_MODULE_EXPR -> (
@@ -2031,11 +2216,11 @@ let type_definition_from_node node =
                              ~context:[ "type_definition.object_field" ]);
             }
         else if kind = Syntax_kind.FIRST_CLASS_MODULE_TYPE then
-          match direct_non_trivia_nodes first with
-          | module_type_syntax_node :: _ ->
-              Cst.TypeDefinition.FirstClassModule
-                { syntax_node = first; module_type_syntax_node }
-          | [] -> Cst.TypeDefinition.Other first
+          Cst.TypeDefinition.FirstClassModule
+            {
+              syntax_node = first;
+              module_type = module_type_from_first_class_module_type_node first;
+            }
         else Cst.TypeDefinition.Other first)
 
 let type_declaration_from_node node =
@@ -2140,7 +2325,15 @@ let module_type_declaration_from_node node =
   | _module_kw :: _type_kw :: module_type_name :: _ ->
       Some
         Cst.ModuleTypeDeclaration.
-          { syntax_node = node; module_type_name = token module_type_name }
+          {
+            syntax_node = node;
+            module_type_name = token module_type_name;
+            module_type =
+              (direct_non_trivia_nodes node
+              |> List.rev
+              |> List.find_opt can_lift_module_type_node
+              |> Option.map module_type_from_node);
+          }
   | _ -> None
 
 let class_declaration_from_node node =
@@ -2567,8 +2760,10 @@ let rec validate_pattern ~context = function
   | Cst.Pattern.Range _ | Cst.Pattern.Operator _
   | Cst.Pattern.PolyVariantInherit _ ->
       ()
-  | Cst.Pattern.FirstClassModule _ ->
-      ()
+  | Cst.Pattern.FirstClassModule { module_type; _ } ->
+      Option.iter
+        (validate_module_type ~context:("pattern.first_class_module.type" :: context))
+        module_type
   | Cst.Pattern.PolyVariant { payload; _ } ->
       Option.iter
         (validate_pattern ~context:("pattern.poly_variant.payload" :: context))
@@ -2618,12 +2813,43 @@ and validate_parameter ~context = function
   | Cst.Parameter.Optional _ | Cst.Parameter.LocallyAbstract _ ->
       ()
 
+and validate_module_type ~context = function
+  | Cst.ModuleType.Path _ | Cst.ModuleType.TypeOf _ | Cst.ModuleType.Signature _
+  | Cst.ModuleType.Extension _ ->
+      ()
+  | Cst.ModuleType.Parenthesized { inner; _ } ->
+      validate_module_type ~context:("module_type.parenthesized" :: context) inner
+  | Cst.ModuleType.Attribute { module_type; _ } ->
+      validate_module_type ~context:("module_type.attribute" :: context) module_type
+  | Cst.ModuleType.With { base; constraints; _ } ->
+      validate_module_type ~context:("module_type.with.base" :: context) base;
+      List.iteri
+        (fun index ({ replacement_type; _ } : Cst.module_type_constraint) ->
+          validate_core_type
+            ~context:
+              (("module_type.with.constraint[" ^ Int.to_string index ^ "].type")
+              :: context)
+            replacement_type)
+        constraints
+  | Cst.ModuleType.Functor { parameters; result; _ } ->
+      List.iteri
+        (fun index ({ module_type; _ } : Cst.functor_parameter) ->
+          validate_module_type
+            ~context:
+              (("module_type.functor.parameter[" ^ Int.to_string index ^ "]")
+              :: context)
+            module_type)
+        parameters;
+      validate_module_type ~context:("module_type.functor.result" :: context) result
+
 and validate_core_type ~context = function
   | Cst.CoreType.Wildcard _
   | Cst.CoreType.Var _
-  | Cst.CoreType.Extension _
-  | Cst.CoreType.FirstClassModule _ ->
+  | Cst.CoreType.Extension _ ->
       ()
+  | Cst.CoreType.FirstClassModule { module_type; _ } ->
+      validate_module_type ~context:("core_type.first_class_module" :: context)
+        module_type
   | Cst.CoreType.Constr { arguments; _ } ->
       List.iteri
         (fun index type_ ->
@@ -2712,9 +2938,13 @@ and validate_object_member ~context = function
 
 and validate_expression ~context = function
   | Cst.Expression.Path _ | Cst.Expression.Operator _ | Cst.Expression.Literal _
-  | Cst.Expression.Attribute _ | Cst.Expression.Extension _
-  | Cst.Expression.FirstClassModule _ ->
+  | Cst.Expression.Attribute _ | Cst.Expression.Extension _ ->
       ()
+  | Cst.Expression.FirstClassModule { module_type; _ } ->
+      Option.iter
+        (validate_module_type
+           ~context:("expression.first_class_module.type" :: context))
+        module_type
   | Cst.Expression.Object { self_pattern; members; _ } ->
       Option.iter
         (validate_pattern ~context:("expression.object.self_pattern" :: context))
@@ -2895,7 +3125,10 @@ let validate_type_definition ~context = function
   | Cst.TypeDefinition.Alias { manifest; _ } ->
       validate_core_type ~context:("type_definition.alias" :: context) manifest
   | Cst.TypeDefinition.Extensible _ -> ()
-  | Cst.TypeDefinition.FirstClassModule _ -> ()
+  | Cst.TypeDefinition.FirstClassModule { module_type; _ } ->
+      validate_module_type
+        ~context:("type_definition.first_class_module" :: context)
+        module_type
   | Cst.TypeDefinition.Object { fields; _ } ->
       List.iteri
         (fun index ({ field_type; _ } : Cst.object_type_field) ->
@@ -2962,7 +3195,11 @@ let validate_item ~context = function
   | Cst.Item.ExternalDeclaration { type_; _ } ->
       validate_core_type ~context:("item.external_declaration.type" :: context)
         type_
-  | Cst.Item.ModuleDeclaration _ | Cst.Item.ModuleTypeDeclaration _
+  | Cst.Item.ModuleTypeDeclaration { module_type; _ } ->
+      Option.iter
+        (validate_module_type ~context:("item.module_type_declaration" :: context))
+        module_type
+  | Cst.Item.ModuleDeclaration _
   | Cst.Item.OpenStatement _ | Cst.Item.IncludeStatement _
   | Cst.Item.ExceptionDeclaration _ ->
       ()

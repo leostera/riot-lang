@@ -102,12 +102,111 @@
                 "end": 143
               }
             },
-            "module_type_syntax_node": {
-              "kind": "MODULE_TYPE_PATH",
-              "span": {
-                "start": 91,
-                "end": 96
-              }
+            "module_type": {
+              "tag": "with",
+              "syntax_node": {
+                "kind": "FIRST_CLASS_MODULE_TYPE",
+                "span": {
+                  "start": 83,
+                  "end": 143
+                }
+              },
+              "base": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 91,
+                      "end": 96
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Intf",
+                      "span": {
+                        "start": 91,
+                        "end": 95
+                      }
+                    }
+                  ]
+                }
+              },
+              "constraints": [
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTRAINT",
+                    "span": {
+                      "start": 101,
+                      "end": 119
+                    }
+                  },
+                  "type_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "item",
+                    "span": {
+                      "start": 106,
+                      "end": 110
+                    }
+                  },
+                  "replacement_type": {
+                    "tag": "var",
+                    "syntax_node": {
+                      "kind": "TYPE_VAR",
+                      "span": {
+                        "start": 113,
+                        "end": 118
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "item",
+                      "span": {
+                        "start": 114,
+                        "end": 118
+                      }
+                    }
+                  },
+                  "is_destructive": false
+                },
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTRAINT",
+                    "span": {
+                      "start": 123,
+                      "end": 142
+                    }
+                  },
+                  "type_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "state",
+                    "span": {
+                      "start": 128,
+                      "end": 133
+                    }
+                  },
+                  "replacement_type": {
+                    "tag": "var",
+                    "syntax_node": {
+                      "kind": "TYPE_VAR",
+                      "span": {
+                        "start": 136,
+                        "end": 142
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "state",
+                      "span": {
+                        "start": 137,
+                        "end": 142
+                      }
+                    }
+                  },
+                  "is_destructive": false
+                }
+              ]
             }
           }
         }
@@ -151,12 +250,87 @@
                 "end": 194
               }
             },
-            "module_type_syntax_node": {
-              "kind": "MODULE_TYPE_PATH",
-              "span": {
-                "start": 168,
-                "end": 176
-              }
+            "module_type": {
+              "tag": "with",
+              "syntax_node": {
+                "kind": "FIRST_CLASS_MODULE_TYPE",
+                "span": {
+                  "start": 160,
+                  "end": 194
+                }
+              },
+              "base": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 168,
+                      "end": 176
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Handler",
+                      "span": {
+                        "start": 168,
+                        "end": 175
+                      }
+                    }
+                  ]
+                }
+              },
+              "constraints": [
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTRAINT",
+                    "span": {
+                      "start": 181,
+                      "end": 193
+                    }
+                  },
+                  "type_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "span": {
+                      "start": 186,
+                      "end": 187
+                    }
+                  },
+                  "replacement_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 190,
+                        "end": 193
+                      }
+                    },
+                    "constructor_path": {
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 190,
+                          "end": 193
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 190,
+                            "end": 193
+                          }
+                        }
+                      ]
+                    },
+                    "arguments": []
+                  },
+                  "is_destructive": false
+                }
+              ]
             }
           }
         }

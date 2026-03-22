@@ -50,7 +50,7 @@
 - [~] Keep shrinking redundant record-accessor modules from `Syn.Cst`; family-level helpers may stay temporarily, but plain public records should be accessed directly
 - [ ] Replace coarse `*_syntax_node` placeholders with typed CST where possible:
   - [ ] core types
-  - [ ] module types
+  - [~] module types
   - [ ] class type bodies
   - [ ] signature-item internals
 - [ ] Replace flattened `ModulePath.segments` with a recursive path CST
@@ -58,7 +58,7 @@
 - [ ] Add a stronger fixture/checklist pass for syntax that the stock parsetree distinguishes sharply
 - [ ] Next parity slices:
   - [x] standalone attribute and extension items
-  - [ ] typed module-type tree
+  - [x] typed module-type tree
   - [ ] typed module-expression tree
   - [ ] attributed expressions and attributed items as faithful wrappers instead of token shells
 
@@ -166,8 +166,8 @@
   - [ ] `let_module_expression.module_expression_syntax_node`
   - [ ] `first_class_module_expression.module_syntax_node`
 - [ ] Module types are still raw syntax in places like:
-  - [ ] `first_class_module_expression.module_type_syntax_node`
-  - [ ] class type bodies and other declaration sites
+  - [x] first-class module expressions / patterns / type definitions now lift through `module_type`
+  - [ ] class type bodies and some declaration sites still keep raw syntax
 - [ ] Type definitions are still opaque in several branches:
   - [ ] `TypeDefinition.Alias`
   - [ ] `TypeDefinition.Object`

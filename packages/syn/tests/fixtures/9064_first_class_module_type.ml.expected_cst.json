@@ -49,11 +49,26 @@
                 "end": 35
               }
             },
-            "module_type_syntax_node": {
-              "kind": "MODULE_TYPE_PATH",
-              "span": {
-                "start": 25,
-                "end": 34
+            "module_type": {
+              "tag": "path",
+              "path": {
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 25,
+                    "end": 34
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Transport",
+                    "span": {
+                      "start": 25,
+                      "end": 34
+                    }
+                  }
+                ]
               }
             }
           }
@@ -98,12 +113,87 @@
                 "end": 88
               }
             },
-            "module_type_syntax_node": {
-              "kind": "MODULE_TYPE_PATH",
-              "span": {
-                "start": 58,
-                "end": 65
-              }
+            "module_type": {
+              "tag": "with",
+              "syntax_node": {
+                "kind": "FIRST_CLASS_MODULE_TYPE",
+                "span": {
+                  "start": 50,
+                  "end": 88
+                }
+              },
+              "base": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 58,
+                      "end": 65
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Driver",
+                      "span": {
+                        "start": 58,
+                        "end": 64
+                      }
+                    }
+                  ]
+                }
+              },
+              "constraints": [
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTRAINT",
+                    "span": {
+                      "start": 70,
+                      "end": 87
+                    }
+                  },
+                  "type_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "config",
+                    "span": {
+                      "start": 75,
+                      "end": 81
+                    }
+                  },
+                  "replacement_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 84,
+                        "end": 87
+                      }
+                    },
+                    "constructor_path": {
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 84,
+                          "end": 87
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 84,
+                            "end": 87
+                          }
+                        }
+                      ]
+                    },
+                    "arguments": []
+                  },
+                  "is_destructive": false
+                }
+              ]
             }
           }
         }

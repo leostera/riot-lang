@@ -27,6 +27,23 @@
               "start": 54,
               "end": 55
             }
+          },
+          "module_type": {
+            "tag": "signature",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 58,
+                "end": 89
+              }
+            },
+            "signature_syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 58,
+                "end": 89
+              }
+            }
           }
         }
       },

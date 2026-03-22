@@ -630,6 +630,76 @@
               "start": 421,
               "end": 422
             }
+          },
+          "module_type": {
+            "tag": "attribute",
+            "syntax_node": {
+              "kind": "ATTRIBUTE_EXPR",
+              "span": {
+                "start": 425,
+                "end": 597
+              }
+            },
+            "module_type": {
+              "tag": "signature",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 425,
+                  "end": 570
+                }
+              },
+              "signature_syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 425,
+                  "end": 570
+                }
+              }
+            },
+            "attribute": {
+              "syntax_node": {
+                "kind": "ATTRIBUTE_EXPR",
+                "span": {
+                  "start": 571,
+                  "end": 577
+                }
+              },
+              "tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "[",
+                  "span": {
+                    "start": 571,
+                    "end": 572
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "@",
+                  "span": {
+                    "start": 572,
+                    "end": 573
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "foo",
+                  "span": {
+                    "start": 573,
+                    "end": 576
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "]",
+                  "span": {
+                    "start": 576,
+                    "end": 577
+                  }
+                }
+              ]
+            }
           }
         }
       },
@@ -649,6 +719,23 @@
             "span": {
               "start": 609,
               "end": 610
+            }
+          },
+          "module_type": {
+            "tag": "signature",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 613,
+                "end": 629
+              }
+            },
+            "signature_syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 613,
+                "end": 629
+              }
             }
           }
         }
@@ -732,7 +819,81 @@
                 "end": 724
               }
             },
-            "module_type_syntax_node": null
+            "module_type": {
+              "tag": "attribute",
+              "syntax_node": {
+                "kind": "ATTRIBUTE_EXPR",
+                "span": {
+                  "start": 726,
+                  "end": 733
+                }
+              },
+              "module_type": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 726,
+                      "end": 727
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "T",
+                      "span": {
+                        "start": 726,
+                        "end": 727
+                      }
+                    }
+                  ]
+                }
+              },
+              "attribute": {
+                "syntax_node": {
+                  "kind": "ATTRIBUTE_EXPR",
+                  "span": {
+                    "start": 727,
+                    "end": 733
+                  }
+                },
+                "tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "[",
+                    "span": {
+                      "start": 727,
+                      "end": 728
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "@",
+                    "span": {
+                      "start": 728,
+                      "end": 729
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "foo",
+                    "span": {
+                      "start": 729,
+                      "end": 732
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "]",
+                    "span": {
+                      "start": 732,
+                      "end": 733
+                    }
+                  }
+                ]
+              }
+            }
           },
           "is_recursive": false
         }
@@ -776,7 +937,141 @@
                 "end": 755
               }
             },
-            "module_type_syntax_node": null
+            "module_type": {
+              "tag": "with",
+              "syntax_node": {
+                "kind": "MODULE_TYPE_EXPR",
+                "span": {
+                  "start": 757,
+                  "end": 782
+                }
+              },
+              "base": {
+                "tag": "path",
+                "path": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 757,
+                      "end": 759
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "T",
+                      "span": {
+                        "start": 757,
+                        "end": 758
+                      }
+                    }
+                  ]
+                }
+              },
+              "constraints": [
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTRAINT",
+                    "span": {
+                      "start": 764,
+                      "end": 782
+                    }
+                  },
+                  "type_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "span": {
+                      "start": 769,
+                      "end": 770
+                    }
+                  },
+                  "replacement_type": {
+                    "tag": "attribute",
+                    "syntax_node": {
+                      "kind": "ATTRIBUTE_EXPR",
+                      "span": {
+                        "start": 773,
+                        "end": 782
+                      }
+                    },
+                    "type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 773,
+                          "end": 776
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 773,
+                            "end": 776
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 773,
+                              "end": 776
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    },
+                    "attribute": {
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 776,
+                          "end": 782
+                        }
+                      },
+                      "tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "[",
+                          "span": {
+                            "start": 776,
+                            "end": 777
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "@",
+                          "span": {
+                            "start": 777,
+                            "end": 778
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "foo",
+                          "span": {
+                            "start": 778,
+                            "end": 781
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "]",
+                          "span": {
+                            "start": 781,
+                            "end": 782
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "is_destructive": false
+                }
+              ]
+            }
           },
           "is_recursive": false
         }
@@ -1995,7 +2290,81 @@
             "end": 724
           }
         },
-        "module_type_syntax_node": null
+        "module_type": {
+          "tag": "attribute",
+          "syntax_node": {
+            "kind": "ATTRIBUTE_EXPR",
+            "span": {
+              "start": 726,
+              "end": 733
+            }
+          },
+          "module_type": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_TYPE_PATH",
+                "span": {
+                  "start": 726,
+                  "end": 727
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "T",
+                  "span": {
+                    "start": 726,
+                    "end": 727
+                  }
+                }
+              ]
+            }
+          },
+          "attribute": {
+            "syntax_node": {
+              "kind": "ATTRIBUTE_EXPR",
+              "span": {
+                "start": 727,
+                "end": 733
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 727,
+                  "end": 728
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "@",
+                "span": {
+                  "start": 728,
+                  "end": 729
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "foo",
+                "span": {
+                  "start": 729,
+                  "end": 732
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 732,
+                  "end": 733
+                }
+              }
+            ]
+          }
+        }
       },
       {
         "tag": "first_class_module",
@@ -2013,7 +2382,141 @@
             "end": 755
           }
         },
-        "module_type_syntax_node": null
+        "module_type": {
+          "tag": "with",
+          "syntax_node": {
+            "kind": "MODULE_TYPE_EXPR",
+            "span": {
+              "start": 757,
+              "end": 782
+            }
+          },
+          "base": {
+            "tag": "path",
+            "path": {
+              "syntax_node": {
+                "kind": "MODULE_TYPE_PATH",
+                "span": {
+                  "start": 757,
+                  "end": 759
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "T",
+                  "span": {
+                    "start": 757,
+                    "end": 758
+                  }
+                }
+              ]
+            }
+          },
+          "constraints": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_CONSTRAINT",
+                "span": {
+                  "start": 764,
+                  "end": 782
+                }
+              },
+              "type_name": {
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "span": {
+                  "start": 769,
+                  "end": 770
+                }
+              },
+              "replacement_type": {
+                "tag": "attribute",
+                "syntax_node": {
+                  "kind": "ATTRIBUTE_EXPR",
+                  "span": {
+                    "start": 773,
+                    "end": 782
+                  }
+                },
+                "type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 773,
+                      "end": 776
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 773,
+                        "end": 776
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 773,
+                          "end": 776
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
+                },
+                "attribute": {
+                  "syntax_node": {
+                    "kind": "ATTRIBUTE_EXPR",
+                    "span": {
+                      "start": 776,
+                      "end": 782
+                    }
+                  },
+                  "tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "[",
+                      "span": {
+                        "start": 776,
+                        "end": 777
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "@",
+                      "span": {
+                        "start": 777,
+                        "end": 778
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "foo",
+                      "span": {
+                        "start": 778,
+                        "end": 781
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "]",
+                      "span": {
+                        "start": 781,
+                        "end": 782
+                      }
+                    }
+                  ]
+                }
+              },
+              "is_destructive": false
+            }
+          ]
+        }
       },
       {
         "tag": "function",
