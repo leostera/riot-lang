@@ -1158,6 +1158,30 @@ let render x y z =
         Ok ());
     Test.case "diagnostic code registry explains redundant reraises" (fun () ->
         assert_explanation_contains ~code:"F0138" ~snippet:"raise exn");
+    Test.case "no-redundant-begin-end flags begin/end grouping" (fun () ->
+        let source = "let render value = begin value end\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_redundant_begin_end.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0139" ] ~actual:codes;
+        Ok ());
+    Test.case "no-redundant-begin-end keeps ordinary parentheses clean" (fun () ->
+        let source = "let render value = (value + 1)\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_redundant_begin_end.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains redundant begin/end" (fun () ->
+        assert_explanation_contains ~code:"F0139" ~snippet:"begin ... end");
     Test.case "cli list-rules text output prints one rule per line" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true

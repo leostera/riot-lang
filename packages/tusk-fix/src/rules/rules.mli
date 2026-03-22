@@ -4,6 +4,7 @@ module Limit_parenthesis_depth = Limit_parenthesis_depth
 module Limit_nested_match_depth = Limit_nested_match_depth
 module Limit_open_statements = Limit_open_statements
 module No_eta_expansion = No_eta_expansion
+module No_redundant_begin_end = No_redundant_begin_end
 module No_redundant_reraise = No_redundant_reraise
 module No_redundant_parentheses = No_redundant_parentheses
 module No_exn_suffix_functions = No_exn_suffix_functions

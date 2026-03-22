@@ -70,6 +70,19 @@ let rec child_expressions = function
   | Syn.Cst.Expression.Parenthesized expr ->
       [ Syn.Cst.ParenthesizedExpression.inner expr ]
 
+let opens_with_begin ({ syntax_node; _ } : Syn.Cst.parenthesized_expression) =
+  Syn.Ceibo.Red.SyntaxNode.children syntax_node
+  |> Std.Collections.Array.to_list
+  |> List.find_map (function
+         | Syn.Ceibo.Red.Token token ->
+             let text = Syn.Ceibo.Red.SyntaxToken.text token in
+             if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
+               None
+             else
+               Some (String.equal text "begin")
+         | _ -> None)
+  |> Option.unwrap_or ~default:false
+
 let is_obviously_redundant = function
   | Syn.Cst.Expression.Path _
   | Syn.Cst.Expression.Literal _
@@ -103,7 +116,9 @@ let rec diagnostics_for_expression ~inside_redundant_chain = function
           ~inside_redundant_chain:(inside_redundant_chain || is_obviously_redundant inner)
           inner
       in
-      if is_obviously_redundant inner && not inside_redundant_chain then
+      if opens_with_begin expr then
+        nested
+      else if is_obviously_redundant inner && not inside_redundant_chain then
         make_diagnostic expr :: nested
       else
         nested
