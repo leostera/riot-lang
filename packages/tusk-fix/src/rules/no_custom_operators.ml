@@ -74,7 +74,13 @@ let rec diagnostics_for_expression = function
       []
   | Syn.Cst.Expression.Apply expr ->
       diagnostics_for_expression (Syn.Cst.ApplyExpression.callee expr)
-      @ diagnostics_for_expression (Syn.Cst.ApplyExpression.argument expr)
+      @
+      (match Syn.Cst.ApplyExpression.argument expr with
+      | Syn.Cst.Positional argument -> diagnostics_for_expression argument
+      | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } -> (
+          match value with
+          | Some value -> diagnostics_for_expression value
+          | None -> []))
   | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
       diagnostics_for_expression receiver
   | Syn.Cst.Expression.Fun expr ->

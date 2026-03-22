@@ -80,8 +80,10 @@ type pattern =
   | Lazy of lazy_pattern
   | Exception of exception_pattern
   | Range of range_pattern
+  | Operator of operator_pattern
   | FirstClassModule of first_class_module_pattern
   | PolyVariant of poly_variant_pattern
+  | PolyVariantInherit of poly_variant_inherit_pattern
   | Constructor of constructor_pattern
   | Tuple of tuple_pattern
   | List of list_pattern
@@ -119,6 +121,11 @@ and range_pattern = {
   upper_token : Token.t;
 }
 
+and operator_pattern = {
+  syntax_node : syntax_node;
+  operator_tokens : Token.t list;
+}
+
 and first_class_module_pattern = {
   syntax_node : syntax_node;
   name_token : Token.t;
@@ -129,6 +136,11 @@ and poly_variant_pattern = {
   syntax_node : syntax_node;
   tag_token : Token.t;
   payload : pattern option;
+}
+
+and poly_variant_inherit_pattern = {
+  syntax_node : syntax_node;
+  type_path : ModulePath.t;
 }
 
 and constructor_pattern = {
@@ -306,6 +318,7 @@ type expression =
   | Literal of literal
   | Attribute of attribute
   | Extension of extension
+  | Object of object_expression
   | PolyVariant of poly_variant_expression
   | FirstClassModule of first_class_module_expression
   | LetModule of let_module_expression
@@ -315,9 +328,12 @@ type expression =
   | While of while_expression
   | For of for_expression
   | Apply of apply_expression
+  | MethodCall of method_call_expression
+  | New of new_expression
   | Prefix of prefix_expression
   | FieldAccess of field_access_expression
   | Index of index_expression
+  | ObjectUpdate of object_update_expression
   | Assign of assign_expression
   | Infix of infix_expression
   | Typed of typed_expression
@@ -340,6 +356,45 @@ type expression =
 and path_expression = {
   syntax_node : syntax_node;
   path : ModulePath.t;
+}
+
+and object_expression = {
+  syntax_node : syntax_node;
+  self_pattern : pattern option;
+  members : object_member list;
+}
+
+and object_member =
+  | Method of object_method
+  | Value of object_value
+  | Inherit of object_inherit
+
+and object_method = {
+  syntax_node : syntax_node;
+  attributes : attribute list;
+  name_token : Token.t;
+  body : expression option;
+  type_syntax_node : syntax_node option;
+  is_private : bool;
+  is_virtual : bool;
+  is_override : bool;
+}
+
+and object_value = {
+  syntax_node : syntax_node;
+  attributes : attribute list;
+  name_token : Token.t;
+  value : expression option;
+  type_syntax_node : syntax_node option;
+  is_mutable : bool;
+  is_virtual : bool;
+  is_override : bool;
+}
+
+and object_inherit = {
+  syntax_node : syntax_node;
+  attributes : attribute list;
+  expression : expression;
 }
 
 and poly_variant_expression = {
@@ -415,6 +470,17 @@ and apply_expression = {
   argument : apply_argument;
 }
 
+and method_call_expression = {
+  syntax_node : syntax_node;
+  receiver : expression;
+  method_name : Token.t;
+}
+
+and new_expression = {
+  syntax_node : syntax_node;
+  class_path : ModulePath.t;
+}
+
 and prefix_expression = {
   syntax_node : syntax_node;
   operator_token : Token.t;
@@ -431,6 +497,11 @@ and index_expression = {
   syntax_node : syntax_node;
   collection : expression;
   index : expression;
+}
+
+and object_update_expression = {
+  syntax_node : syntax_node;
+  fields : record_expression_field list;
 }
 
 and assign_expression = {
@@ -576,6 +647,7 @@ module Expression = struct
     | Literal of literal
     | Attribute of attribute
     | Extension of extension
+    | Object of object_expression
     | PolyVariant of poly_variant_expression
     | FirstClassModule of first_class_module_expression
     | LetModule of let_module_expression
@@ -585,9 +657,12 @@ module Expression = struct
     | While of while_expression
     | For of for_expression
     | Apply of apply_expression
+    | MethodCall of method_call_expression
+    | New of new_expression
     | Prefix of prefix_expression
     | FieldAccess of field_access_expression
     | Index of index_expression
+    | ObjectUpdate of object_update_expression
     | Assign of assign_expression
     | Infix of infix_expression
     | Typed of typed_expression
@@ -620,6 +695,7 @@ module Expression = struct
             syntax_node)
     | Attribute attr -> attr.syntax_node
     | Extension ext -> ext.syntax_node
+    | Object expr -> expr.syntax_node
     | PolyVariant expr -> expr.syntax_node
     | FirstClassModule expr -> expr.syntax_node
     | LetModule expr -> expr.syntax_node
@@ -629,9 +705,12 @@ module Expression = struct
     | While expr -> expr.syntax_node
     | For expr -> expr.syntax_node
     | Apply expr -> expr.syntax_node
+    | MethodCall expr -> expr.syntax_node
+    | New expr -> expr.syntax_node
     | Prefix expr -> expr.syntax_node
     | FieldAccess expr -> expr.syntax_node
     | Index expr -> expr.syntax_node
+    | ObjectUpdate expr -> expr.syntax_node
     | Assign expr -> expr.syntax_node
     | Infix expr -> expr.syntax_node
     | Typed expr -> expr.syntax_node
@@ -663,8 +742,10 @@ module Pattern = struct
     | Lazy of lazy_pattern
     | Exception of exception_pattern
     | Range of range_pattern
+    | Operator of operator_pattern
     | FirstClassModule of first_class_module_pattern
     | PolyVariant of poly_variant_pattern
+    | PolyVariantInherit of poly_variant_inherit_pattern
     | Constructor of constructor_pattern
     | Tuple of tuple_pattern
     | List of list_pattern
@@ -690,8 +771,10 @@ module Pattern = struct
     | Lazy pattern -> pattern.syntax_node
     | Exception pattern -> pattern.syntax_node
     | Range pattern -> pattern.syntax_node
+    | Operator pattern -> pattern.syntax_node
     | FirstClassModule pattern -> pattern.syntax_node
     | PolyVariant pattern -> pattern.syntax_node
+    | PolyVariantInherit pattern -> pattern.syntax_node
     | Constructor pattern -> pattern.syntax_node
     | Tuple pattern -> pattern.syntax_node
     | List pattern -> pattern.syntax_node
@@ -1219,6 +1302,21 @@ type external_declaration = {
   primitive_name_tokens : Token.t list;
 }
 
+type class_declaration = {
+  syntax_node : syntax_node;
+  type_params : TypeParameter.t list;
+  class_name : Token.t;
+  class_type_syntax_node : syntax_node option;
+  class_body : expression;
+}
+
+type class_type_declaration = {
+  syntax_node : syntax_node;
+  type_params : TypeParameter.t list;
+  class_type_name : Token.t;
+  class_type_body_syntax_node : syntax_node;
+}
+
 type include_statement = {
   syntax_node : syntax_node;
   included_syntax_node : syntax_node;
@@ -1229,6 +1327,8 @@ module Item = struct
     | TypeDeclaration of TypeDeclaration.t
     | LetBinding of LetBinding.t
     | Expression of Expression.t
+    | ClassDeclaration of class_declaration
+    | ClassTypeDeclaration of class_type_declaration
     | ModuleDeclaration of ModuleDeclaration.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t
@@ -1242,6 +1342,8 @@ module Item = struct
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
     | LetBinding binding -> LetBinding.syntax_node binding
     | Expression expr -> Expression.syntax_node expr
+    | ClassDeclaration decl -> decl.syntax_node
+    | ClassTypeDeclaration decl -> decl.syntax_node
     | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
     | OpenStatement stmt -> OpenStatement.syntax_node stmt

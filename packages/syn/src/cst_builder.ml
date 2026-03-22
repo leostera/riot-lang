@@ -72,6 +72,24 @@ let attribute_from_node node : Cst.attribute =
 let extension_from_node node : Cst.extension =
   { Cst.syntax_node = node; tokens = List.map token (direct_non_trivia_tokens node) }
 
+let attributes_from_node node =
+  direct_non_trivia_nodes node
+  |> List.filter (fun child ->
+         Ceibo.Red.SyntaxNode.kind child = Syntax_kind.ATTRIBUTE_EXPR)
+  |> List.map attribute_from_node
+
+let is_type_syntax_kind = function
+  | Syntax_kind.TYPE_VAR
+  | Syntax_kind.TYPE_CONSTR
+  | Syntax_kind.TYPE_TUPLE
+  | Syntax_kind.TYPE_ALIAS
+  | Syntax_kind.TYPE_ARROW
+  | Syntax_kind.TYPE_POLY_VARIANT
+  | Syntax_kind.FIRST_CLASS_MODULE_TYPE
+  | Syntax_kind.OBJECT_TYPE ->
+      true
+  | _ -> false
+
 let is_parameter_like_kind = function
   | Syntax_kind.IDENT_PATTERN
   | Syntax_kind.WILDCARD_PATTERN
@@ -308,6 +326,20 @@ let rec pattern_from_node node =
               upper_token = token upper_syntax_token;
             }
       | _ -> Cst.Pattern.Unknown node)
+  | Syntax_kind.OPERATOR_PATTERN ->
+      Cst.Pattern.Operator
+        {
+          syntax_node = node;
+          operator_tokens =
+            direct_non_trivia_tokens node
+            |> List.filter (fun syntax_token ->
+                   let text = Ceibo.Red.SyntaxToken.text syntax_token in
+                   not
+                     (String.equal text "("
+                     || String.equal text ")"
+                     || String.equal text " "))
+            |> List.map token;
+        }
   | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> (
       match direct_non_trivia_tokens node with
       | _lparen :: _module_kw :: name_syntax_token :: _ ->
@@ -390,6 +422,9 @@ let rec pattern_from_node node =
                        | pattern -> Some pattern));
             }
       | None -> Cst.Pattern.Unknown node)
+  | Syntax_kind.POLY_VARIANT_TYPE_PATTERN ->
+      Cst.Pattern.PolyVariantInherit
+        { syntax_node = node; type_path = module_path_like_from_node node }
   | Syntax_kind.CONSTRUCTOR_PATTERN ->
       Cst.Pattern.Constructor
         {
@@ -533,8 +568,20 @@ and expression_from_node node =
       Cst.Expression.Attribute (attribute_from_node node)
   | Syntax_kind.EXTENSION_EXPR ->
       Cst.Expression.Extension (extension_from_node node)
+  | Syntax_kind.OBJECT_EXPR -> (
+      match object_expression_from_node node with
+      | Some expr -> Cst.Expression.Object expr
+      | None -> Cst.Expression.Unknown node)
   | Syntax_kind.UNIT_LITERAL ->
       Cst.Expression.Literal (Cst.Literal.Unit { syntax_node = node })
+  | Syntax_kind.METHOD_CALL_EXPR -> (
+      match method_call_expression_from_node node with
+      | Some expr -> Cst.Expression.MethodCall expr
+      | None -> Cst.Expression.Unknown node)
+  | Syntax_kind.NEW_EXPR -> (
+      match new_expression_from_node node with
+      | Some expr -> Cst.Expression.New expr
+      | None -> Cst.Expression.Unknown node)
   | Syntax_kind.FIELD_ACCESS_EXPR -> (
       match field_access_expression_from_node node with
       | Some expr -> expr
@@ -782,6 +829,10 @@ and expression_from_node node =
       match record_update_expression_from_node node with
       | Some expr -> Cst.Expression.Record (Cst.RecordExpression.Update expr)
       | None -> Cst.Expression.Unknown node)
+  | Syntax_kind.OBJECT_UPDATE_EXPR -> (
+      match object_update_expression_from_node node with
+      | Some expr -> Cst.Expression.ObjectUpdate expr
+      | None -> Cst.Expression.Unknown node)
   | Syntax_kind.LOCAL_OPEN_EXPR -> (
       match local_open_expression_from_node node with
       | Some expr -> Cst.Expression.LocalOpen expr
@@ -830,6 +881,181 @@ and expression_from_node node =
             { syntax_node = node; inner = expression_from_node inner_node }
       | [] -> Cst.Expression.Unknown node)
   | _ -> Cst.Expression.Unknown node
+
+and object_method_from_node node =
+  let children_without_attributes =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child ->
+           Ceibo.Red.SyntaxNode.kind child != Syntax_kind.ATTRIBUTE_EXPR)
+  in
+  match children_without_attributes with
+  | name_node :: remainder
+    when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
+      match first_ident_token_in_subtree name_node with
+      | Some name_token ->
+          Some
+            {
+              Cst.syntax_node = node;
+              attributes = attributes_from_node node;
+              name_token;
+              body =
+                (remainder
+                |> List.rev
+                |> List.find_map (fun child ->
+                       match expression_from_node child with
+                       | Cst.Expression.Unknown _ -> None
+                       | expr -> Some expr));
+              type_syntax_node =
+                List.find_opt
+                  (fun child -> is_type_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+                  remainder;
+              is_private =
+                List.exists
+                  (fun tok -> String.equal (Ceibo.Red.SyntaxToken.text tok) "private")
+                  (direct_non_trivia_tokens node);
+              is_virtual =
+                List.exists
+                  (fun tok -> String.equal (Ceibo.Red.SyntaxToken.text tok) "virtual")
+                  (direct_non_trivia_tokens node);
+              is_override =
+                List.exists
+                  (fun tok -> String.equal (Ceibo.Red.SyntaxToken.text tok) "!")
+                  (direct_non_trivia_tokens node);
+            }
+      | None -> None)
+  | _ -> None
+
+and object_value_from_node node =
+  let children_without_attributes =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child ->
+           Ceibo.Red.SyntaxNode.kind child != Syntax_kind.ATTRIBUTE_EXPR)
+  in
+  match children_without_attributes with
+  | name_node :: remainder
+    when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
+      match first_ident_token_in_subtree name_node with
+      | Some name_token ->
+          Some
+            {
+              Cst.syntax_node = node;
+              attributes = attributes_from_node node;
+              name_token;
+              value =
+                (remainder
+                |> List.rev
+                |> List.find_map (fun child ->
+                       match expression_from_node child with
+                       | Cst.Expression.Unknown _ -> None
+                       | expr -> Some expr));
+              type_syntax_node =
+                List.find_opt
+                  (fun child -> is_type_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+                  remainder;
+              is_mutable =
+                List.exists
+                  (fun tok -> String.equal (Ceibo.Red.SyntaxToken.text tok) "mutable")
+                  (direct_non_trivia_tokens node);
+              is_virtual =
+                List.exists
+                  (fun tok -> String.equal (Ceibo.Red.SyntaxToken.text tok) "virtual")
+                  (direct_non_trivia_tokens node);
+              is_override =
+                List.exists
+                  (fun tok -> String.equal (Ceibo.Red.SyntaxToken.text tok) "!")
+                  (direct_non_trivia_tokens node);
+            }
+      | None -> None)
+  | _ -> None
+
+and object_inherit_from_node node =
+  match
+    direct_non_trivia_nodes node
+    |> List.filter (fun child ->
+           Ceibo.Red.SyntaxNode.kind child != Syntax_kind.ATTRIBUTE_EXPR)
+    |> List.find_map (fun child ->
+           match expression_from_node child with
+           | Cst.Expression.Unknown _ -> None
+           | expr -> Some expr)
+  with
+  | Some expression ->
+      Some
+        {
+          Cst.syntax_node = node;
+          attributes = attributes_from_node node;
+          expression;
+        }
+  | None -> None
+
+and object_expression_from_node node =
+  let non_trivia_children = direct_non_trivia_nodes node in
+  let self_pattern, member_children =
+    match non_trivia_children with
+    | self_node :: rest
+      when Ceibo.Red.SyntaxNode.kind self_node = Syntax_kind.OBJECT_SELF -> (
+        match direct_non_trivia_nodes self_node with
+        | pattern_node :: _ -> (Some (pattern_from_node pattern_node), rest)
+        | [] -> (None, rest))
+    | _ -> (None, non_trivia_children)
+  in
+  let rec lift_members acc = function
+    | [] -> Some (List.rev acc)
+    | child :: rest -> (
+        match Ceibo.Red.SyntaxNode.kind child with
+        | Syntax_kind.OBJECT_METHOD -> (
+            match object_method_from_node child with
+            | Some member -> lift_members (Cst.Method member :: acc) rest
+            | None -> None)
+        | Syntax_kind.OBJECT_VAL -> (
+            match object_value_from_node child with
+            | Some member -> lift_members (Cst.Value member :: acc) rest
+            | None -> None)
+        | Syntax_kind.OBJECT_INHERIT -> (
+            match object_inherit_from_node child with
+            | Some member -> lift_members (Cst.Inherit member :: acc) rest
+            | None -> None)
+        | _ -> None)
+  in
+  match lift_members [] member_children with
+  | Some members ->
+      Some { Cst.syntax_node = node; self_pattern; members }
+  | None -> None
+
+and method_call_expression_from_node node =
+  match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
+  | receiver_node :: _, method_name_tok :: _ ->
+      Some
+        {
+          Cst.syntax_node = node;
+          receiver = expression_from_node receiver_node;
+          method_name = token method_name_tok;
+        }
+  | _ -> None
+
+and new_expression_from_node node =
+  match direct_non_trivia_nodes node with
+  | class_path_node :: _ ->
+      Some
+        {
+          Cst.syntax_node = node;
+          class_path = module_path_like_from_node class_path_node;
+        }
+  | [] -> None
+
+and object_update_expression_from_node node =
+  let children = direct_non_trivia_nodes node in
+  if
+    List.for_all
+      (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD)
+      children
+  then
+    Some
+      {
+        Cst.syntax_node = node;
+        fields = List.filter_map record_expression_field_from_node children;
+      }
+  else
+    None
 
 and field_access_expression_from_node node =
   match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
@@ -1221,6 +1447,12 @@ let type_parameter_from_node node =
   in
   Cst.TypeParameter.{ syntax_node = node; type_variable = lifted_type_variable }
 
+let type_parameters_from_node node =
+  direct_non_trivia_nodes node
+  |> List.filter (fun child ->
+         Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_PARAM)
+  |> List.map type_parameter_from_node
+
 let record_field_name_token node =
   match direct_non_trivia_tokens node with
   | mutable_kw :: field_name :: _
@@ -1451,6 +1683,57 @@ let module_type_declaration_from_node node =
           { syntax_node = node; module_type_name = token module_type_name }
   | _ -> None
 
+let class_declaration_from_node node =
+  let children_without_attributes =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child ->
+           Ceibo.Red.SyntaxNode.kind child != Syntax_kind.ATTRIBUTE_EXPR
+           && Ceibo.Red.SyntaxNode.kind child != Syntax_kind.TYPE_PARAM)
+  in
+  match children_without_attributes with
+  | name_node :: remainder
+    when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
+      match first_ident_token_in_subtree name_node, List.rev remainder with
+      | Some class_name, class_body_node :: rev_prefix -> (
+          match expression_from_node class_body_node with
+          | Cst.Expression.Unknown _ -> None
+          | class_body ->
+              Some
+                {
+                  Cst.syntax_node = node;
+                  type_params = type_parameters_from_node node;
+                  class_name;
+                  class_type_syntax_node =
+                    (match List.rev rev_prefix with
+                    | class_type_syntax_node :: _ -> Some class_type_syntax_node
+                    | [] -> None);
+                  class_body;
+                })
+      | _ -> None)
+  | _ -> None
+
+let class_type_declaration_from_node node =
+  let children_without_attributes =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child ->
+           Ceibo.Red.SyntaxNode.kind child != Syntax_kind.ATTRIBUTE_EXPR
+           && Ceibo.Red.SyntaxNode.kind child != Syntax_kind.TYPE_PARAM)
+  in
+  match children_without_attributes with
+  | name_node :: body_node :: _
+    when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
+      match first_ident_token_in_subtree name_node with
+      | Some class_type_name ->
+          Some
+            {
+              Cst.syntax_node = node;
+              type_params = type_parameters_from_node node;
+              class_type_name;
+              class_type_body_syntax_node = body_node;
+            }
+      | None -> None)
+  | _ -> None
+
 let open_statement_from_node node =
   let tokens = direct_non_trivia_tokens node in
   let bang_token_opt =
@@ -1613,6 +1896,14 @@ let rec items_from_node node =
              let kind = Ceibo.Red.SyntaxNode.kind child in
              kind = Syntax_kind.LET_BINDING || kind = Syntax_kind.LET_REC_BINDING)
       |> List.concat_map items_from_node
+  | Syntax_kind.CLASS_DECL -> (
+      match class_declaration_from_node node with
+      | Some decl -> [ Cst.Item.ClassDeclaration decl ]
+      | None -> [ Cst.Item.Unknown node ])
+  | Syntax_kind.CLASS_TYPE_DECL -> (
+      match class_type_declaration_from_node node with
+      | Some decl -> [ Cst.Item.ClassTypeDeclaration decl ]
+      | None -> [ Cst.Item.Unknown node ])
   | Syntax_kind.MODULE_DECL -> (
       match module_declaration_from_node node with
       | Some decl -> [ Cst.Item.ModuleDeclaration decl ]
@@ -1672,7 +1963,8 @@ let rec validate_pattern ~context = function
       validate_pattern ~context:("pattern.lazy" :: context) pattern
   | Cst.Pattern.Exception { pattern; _ } ->
       validate_pattern ~context:("pattern.exception" :: context) pattern
-  | Cst.Pattern.Range _ ->
+  | Cst.Pattern.Range _ | Cst.Pattern.Operator _
+  | Cst.Pattern.PolyVariantInherit _ ->
       ()
   | Cst.Pattern.FirstClassModule _ ->
       ()
@@ -1742,11 +2034,34 @@ and validate_apply_argument ~context = function
         (validate_expression ~context:("apply_argument.optional.value" :: context))
         value
 
+and validate_object_member ~context = function
+  | Cst.Method { body; _ } ->
+      Option.iter
+        (validate_expression ~context:("object_member.method.body" :: context))
+        body
+  | Cst.Value { value; _ } ->
+      Option.iter
+        (validate_expression ~context:("object_member.value.value" :: context))
+        value
+  | Cst.Inherit { expression; _ } ->
+      validate_expression ~context:("object_member.inherit.expression" :: context)
+        expression
+
 and validate_expression ~context = function
   | Cst.Expression.Path _ | Cst.Expression.Literal _
   | Cst.Expression.Attribute _ | Cst.Expression.Extension _
   | Cst.Expression.FirstClassModule _ ->
       ()
+  | Cst.Expression.Object { self_pattern; members; _ } ->
+      Option.iter
+        (validate_pattern ~context:("expression.object.self_pattern" :: context))
+        self_pattern;
+      List.iteri
+        (fun index member ->
+          validate_object_member
+            ~context:(("expression.object.member[" ^ Int.to_string index ^ "]") :: context)
+            member)
+        members
   | Cst.Expression.LetModule { body; _ } ->
       validate_expression ~context:("expression.let_module.body" :: context) body
   | Cst.Expression.LetException { body; _ } ->
@@ -1773,6 +2088,11 @@ and validate_expression ~context = function
       validate_expression ~context:("expression.apply.callee" :: context) callee;
       validate_apply_argument ~context:("expression.apply.argument" :: context)
         argument
+  | Cst.Expression.MethodCall { receiver; _ } ->
+      validate_expression ~context:("expression.method_call.receiver" :: context)
+        receiver
+  | Cst.Expression.New _ ->
+      ()
   | Cst.Expression.Prefix { operand; _ } ->
       validate_expression ~context:("expression.prefix.operand" :: context)
         operand
@@ -1783,6 +2103,16 @@ and validate_expression ~context = function
       validate_expression ~context:("expression.index.collection" :: context)
         collection;
       validate_expression ~context:("expression.index.index" :: context) index
+  | Cst.Expression.ObjectUpdate { fields; _ } ->
+      List.iteri
+        (fun index field ->
+          Option.iter
+            (validate_expression
+               ~context:
+                 (("expression.object_update.field[" ^ Int.to_string index ^ "].value")
+                 :: context))
+            (Cst.RecordExpressionField.value field))
+        fields
   | Cst.Expression.Assign { target; value; _ } ->
       validate_expression ~context:("expression.assign.target" :: context) target;
       validate_expression ~context:("expression.assign.value" :: context) value
@@ -1917,6 +2247,11 @@ let validate_item ~context = function
       validate_expression ~context:("item.let_binding.value" :: context) value
   | Cst.Item.Expression expr ->
       validate_expression ~context:("item.expression" :: context) expr
+  | Cst.Item.ClassDeclaration { class_body; _ } ->
+      validate_expression ~context:("item.class_declaration.body" :: context)
+        class_body
+  | Cst.Item.ClassTypeDeclaration _ ->
+      ()
   | Cst.Item.ModuleDeclaration _ | Cst.Item.ModuleTypeDeclaration _
   | Cst.Item.OpenStatement _ | Cst.Item.ValueDeclaration _
   | Cst.Item.ExternalDeclaration _ | Cst.Item.IncludeStatement _

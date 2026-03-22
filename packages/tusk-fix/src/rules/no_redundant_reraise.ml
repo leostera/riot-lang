@@ -35,6 +35,10 @@ let path_name = function
   | Syn.Cst.Expression.Path { path; _ } -> Syn.Cst.ModulePath.name path
   | _ -> None
 
+let expression_of_apply_argument = function
+  | Syn.Cst.Positional expr -> Some expr
+  | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } -> value
+
 let rec raises_name name expr =
   match unwrap_parens expr with
   | Syn.Cst.Expression.Apply
@@ -43,7 +47,12 @@ let rec raises_name name expr =
         argument;
         _;
       } -> (
-      match Syn.Cst.ModulePath.name path, path_name (unwrap_parens argument) with
+      let argument_name =
+        match expression_of_apply_argument argument with
+        | Some argument -> path_name (unwrap_parens argument)
+        | None -> None
+      in
+      match Syn.Cst.ModulePath.name path, argument_name with
       | Some "raise", Some argument_name -> String.equal name argument_name
       | _ -> false)
   | _ -> false

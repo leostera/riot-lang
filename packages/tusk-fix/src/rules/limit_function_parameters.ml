@@ -64,22 +64,25 @@ let threshold_description counts =
 
 let make_diagnostic binding counts =
   let total = counts.positional_count + counts.named_count in
-  Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
-    ~span:
-      (Syn.Cst.LetBinding.binding_name_token binding
-      |> Syn.Cst.Token.span)
-    ~suggestion:
-      ("This function has "
-     ^ Int.to_string total
-     ^ " parameters; consider introducing a named record parameter because "
-     ^ threshold_description counts)
-    ()
+  match Syn.Cst.LetBinding.binding_name_token binding with
+  | Some token ->
+      Some
+        (Diagnostic.make ~severity:Warning
+           ~kind:
+             (Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+           ~span:(Syn.Cst.Token.span token)
+           ~suggestion:
+             ("This function has "
+            ^ Int.to_string total
+            ^ " parameters; consider introducing a named record parameter because "
+            ^ threshold_description counts)
+           ())
+  | None -> None
 
 let diagnostic_for_binding binding =
   let counts = parameter_counts binding in
   if exceeds_limit counts then
-    Some (make_diagnostic binding counts)
+    make_diagnostic binding counts
   else
     None
 

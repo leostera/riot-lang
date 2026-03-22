@@ -37,7 +37,7 @@ let has_errors diagnostics =
   List.exists (fun diag -> Diagnostic.severity diag = Diagnostic.Error) diagnostics
 
 let run_pipeline pipeline file source =
-  Pipeline.run pipeline ~filename:(Path.to_string file) source
+  Pipeline.run pipeline ~filename:file source
 
 let resolve_pipeline ?pipeline ?pipeline_for_file file =
   match pipeline_for_file with

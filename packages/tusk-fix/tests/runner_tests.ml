@@ -1213,7 +1213,9 @@ let render x y z =
             ~rules:[ Tusk_fix.Rules.No_public_mutable_fields.make () ]
             ()
         in
-        let result = Tusk_fix.Pipeline.run ~filename:"sample.mli" pipeline source in
+        let result =
+          Tusk_fix.Pipeline.run ~filename:(Path.v "sample.mli") pipeline source
+        in
         let codes = diagnostic_codes result.diagnostics in
         Test.assert_equal ~expected:[ "F0141" ] ~actual:codes;
         Ok ());
@@ -1224,7 +1226,9 @@ let render x y z =
             ~rules:[ Tusk_fix.Rules.No_public_mutable_fields.make () ]
             ()
         in
-        let result = Tusk_fix.Pipeline.run ~filename:"sample.ml" pipeline source in
+        let result =
+          Tusk_fix.Pipeline.run ~filename:(Path.v "sample.ml") pipeline source
+        in
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
@@ -1335,7 +1339,7 @@ let render x y z =
               in
               let result =
                 Tusk_fix.Pipeline.run pipeline
-                  ~filename:(Path.to_string file) "type userProfile = int\n"
+                  ~filename:file "type userProfile = int\n"
               in
               Test.assert_equal ~expected:0
                 ~actual:(List.length result.diagnostics);
@@ -1539,7 +1543,7 @@ let render x y z =
         in
         let result =
           Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ())
-            ~filename:"sample.mli" source
+            ~filename:(Path.v "sample.mli") source
         in
         Test.assert_equal ~expected:0
           ~actual:(List.length result.parse_diagnostics);

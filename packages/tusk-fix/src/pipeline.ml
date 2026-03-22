@@ -87,7 +87,11 @@ let run pipeline ?filename source =
       []
     else
       let red_tree = Syn.Ceibo.Red.new_root parse_result.tree in
-      let file_path = Option.unwrap_or ~default:"<stdin>" filename in
+      let file_path =
+        match filename with
+        | Some filename -> Path.to_string filename
+        | None -> "<stdin>"
+      in
       let ctx = Rule.{ file_path; cst = parse_result.cst } in
       pipeline.rules
       |> List.map (fun rule -> Rule.run rule ctx red_tree)

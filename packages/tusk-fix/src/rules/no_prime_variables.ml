@@ -54,11 +54,10 @@ let diagnostic_for_binding binding =
   else
     let name = Syn.Cst.LetBinding.name binding in
     if contains_prime name then
-      let token =
-        Syn.Cst.LetBinding.binding_name_token binding
-        |> Syn.Cst.Token.syntax_token
-      in
-      Some (make_diagnostic token)
+      match Syn.Cst.LetBinding.binding_name_token binding with
+      | Some token ->
+          Some (make_diagnostic (Syn.Cst.Token.syntax_token token))
+      | None -> None
     else
       None
 

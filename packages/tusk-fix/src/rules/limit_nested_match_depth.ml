@@ -43,7 +43,12 @@ let rec child_expressions = function
   | Syn.Cst.Expression.Unknown _ ->
       []
   | Syn.Cst.Expression.Apply expr ->
-      [ Syn.Cst.ApplyExpression.callee expr; Syn.Cst.ApplyExpression.argument expr ]
+      Syn.Cst.ApplyExpression.callee expr
+      ::
+      (match Syn.Cst.ApplyExpression.argument expr with
+      | Syn.Cst.Positional argument -> [ argument ]
+      | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } ->
+          Option.to_list value)
   | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
       [ receiver ]
   | Syn.Cst.Expression.Infix expr ->

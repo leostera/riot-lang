@@ -31,20 +31,22 @@ let should_flag_binding binding =
 
 let make_diagnostic binding =
   let name = Syn.Cst.LetBinding.name binding in
-  Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
-    ~span:
-      (Syn.Cst.LetBinding.binding_name_token binding
-      |> Syn.Cst.Token.syntax_token
-      |> Syn.Ceibo.Red.SyntaxToken.span)
-    ~suggestion:
-      ("Rename " ^ name
-     ^ " to remove the _exn suffix and prefer a Result/Option API.")
-    ()
+  match Syn.Cst.LetBinding.binding_name_token binding with
+  | Some token ->
+      Some
+        (Diagnostic.make ~severity:Warning
+           ~kind:
+             (Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+           ~span:(Syn.Cst.Token.syntax_token token |> Syn.Ceibo.Red.SyntaxToken.span)
+           ~suggestion:
+             ("Rename " ^ name
+            ^ " to remove the _exn suffix and prefer a Result/Option API.")
+           ())
+  | None -> None
 
 let diagnostic_for_binding binding =
   if should_flag_binding binding then
-    Some (make_diagnostic binding)
+    make_diagnostic binding
   else
     None
 

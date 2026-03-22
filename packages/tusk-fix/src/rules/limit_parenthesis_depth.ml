@@ -50,8 +50,14 @@ let rec diagnostics_for_expression ~inside_parenthesized_chain = function
   | Syn.Cst.Expression.Apply expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
         (Syn.Cst.ApplyExpression.callee expr)
-      @ diagnostics_for_expression ~inside_parenthesized_chain
-          (Syn.Cst.ApplyExpression.argument expr)
+      @
+      (match Syn.Cst.ApplyExpression.argument expr with
+      | Syn.Cst.Positional argument ->
+          diagnostics_for_expression ~inside_parenthesized_chain argument
+      | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } -> (
+          match value with
+          | Some value -> diagnostics_for_expression ~inside_parenthesized_chain value
+          | None -> []))
   | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
       diagnostics_for_expression ~inside_parenthesized_chain receiver
   | Syn.Cst.Expression.Infix expr ->

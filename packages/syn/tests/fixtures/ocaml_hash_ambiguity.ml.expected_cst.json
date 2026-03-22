@@ -1,0 +1,496 @@
+{
+  "status": "ok",
+  "cst": {
+    "kind": "implementation",
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 611
+      }
+    },
+    "items": [
+      {
+        "tag": "class_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "CLASS_DECL",
+            "span": {
+              "start": 140,
+              "end": 170
+            }
+          },
+          "type_params": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_PARAM",
+                "span": {
+                  "start": 147,
+                  "end": 149
+                }
+              },
+              "type_variable": {
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 147,
+                    "end": 149
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 148,
+                    "end": 149
+                  }
+                }
+              }
+            }
+          ],
+          "class_name": {
+            "kind": "IDENT_EXPR",
+            "text": "list",
+            "span": {
+              "start": 151,
+              "end": 155
+            }
+          },
+          "class_type_syntax_node": null,
+          "class_body": {
+            "tag": "object",
+            "syntax_node": {
+              "kind": "OBJECT_EXPR",
+              "span": {
+                "start": 158,
+                "end": 168
+              }
+            },
+            "self_pattern": null,
+            "members": []
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 170,
+              "end": 424
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 178,
+                "end": 180
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "span": {
+                  "start": 178,
+                  "end": 179
+                }
+              }
+            ]
+          },
+          "type_params": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_PARAM",
+                "span": {
+                  "start": 175,
+                  "end": 177
+                }
+              },
+              "type_variable": {
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 175,
+                    "end": 177
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 176,
+                    "end": 177
+                  }
+                }
+              }
+            }
+          ],
+          "type_definition": {
+            "tag": "alias",
+            "syntax_node": {
+              "kind": "TYPE_ALIAS",
+              "span": {
+                "start": 182,
+                "end": 197
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 424,
+              "end": 451
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 432,
+                "end": 434
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "u",
+                "span": {
+                  "start": 432,
+                  "end": 433
+                }
+              }
+            ]
+          },
+          "type_params": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_PARAM",
+                "span": {
+                  "start": 429,
+                  "end": 431
+                }
+              },
+              "type_variable": {
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 429,
+                    "end": 431
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 430,
+                    "end": 431
+                  }
+                }
+              }
+            }
+          ],
+          "type_definition": {
+            "tag": "variant",
+            "constructors": [
+              {
+                "syntax_node": {
+                  "kind": "TYPE_VARIANT_CONSTR",
+                  "span": {
+                    "start": 436,
+                    "end": 451
+                  }
+                },
+                "constructor_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "A",
+                  "span": {
+                    "start": 436,
+                    "end": 437
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 451,
+              "end": 611
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 459,
+                "end": 461
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "v",
+                "span": {
+                  "start": 459,
+                  "end": 460
+                }
+              }
+            ]
+          },
+          "type_params": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_PARAM",
+                "span": {
+                  "start": 456,
+                  "end": 458
+                }
+              },
+              "type_variable": {
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 456,
+                    "end": 458
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 457,
+                    "end": 458
+                  }
+                }
+              }
+            }
+          ],
+          "type_definition": {
+            "tag": "variant",
+            "constructors": [
+              {
+                "syntax_node": {
+                  "kind": "TYPE_VARIANT_CONSTR",
+                  "span": {
+                    "start": 463,
+                    "end": 611
+                  }
+                },
+                "constructor_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "A",
+                  "span": {
+                    "start": 463,
+                    "end": 464
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 151,
+            "end": 155
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 151,
+              "end": 155
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "list",
+              "span": {
+                "start": 151,
+                "end": 155
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "object",
+        "syntax_node": {
+          "kind": "OBJECT_EXPR",
+          "span": {
+            "start": 158,
+            "end": 168
+          }
+        },
+        "self_pattern": null,
+        "members": []
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 178,
+            "end": 180
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 178,
+              "end": 180
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 178,
+                "end": 179
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 432,
+            "end": 434
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 432,
+              "end": 434
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "u",
+              "span": {
+                "start": 432,
+                "end": 433
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 436,
+            "end": 437
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 436,
+              "end": 437
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "A",
+              "span": {
+                "start": 436,
+                "end": 437
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 459,
+            "end": 461
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 459,
+              "end": 461
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "v",
+              "span": {
+                "start": 459,
+                "end": 460
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 463,
+            "end": 464
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 463,
+              "end": 464
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "A",
+              "span": {
+                "start": 463,
+                "end": 464
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

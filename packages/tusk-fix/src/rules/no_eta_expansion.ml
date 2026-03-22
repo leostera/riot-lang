@@ -31,7 +31,12 @@ let rec child_expressions = function
   | Syn.Cst.Expression.Unknown _ ->
       []
   | Syn.Cst.Expression.Apply expr ->
-      [ Syn.Cst.ApplyExpression.callee expr; Syn.Cst.ApplyExpression.argument expr ]
+      Syn.Cst.ApplyExpression.callee expr
+      ::
+      (match Syn.Cst.ApplyExpression.argument expr with
+      | Syn.Cst.Positional argument -> [ argument ]
+      | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } ->
+          Option.to_list value)
   | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
       [ receiver ]
   | Syn.Cst.Expression.Infix expr ->
@@ -87,7 +92,14 @@ let rec flatten_apply expr =
   match expr with
   | Syn.Cst.Expression.Apply { callee; argument; _ } ->
       let flattened_callee, args = flatten_apply callee in
-      flattened_callee, args @ [ argument ]
+      let maybe_argument =
+        match argument with
+        | Syn.Cst.Positional argument -> Some argument
+        | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } -> value
+      in
+      (match maybe_argument with
+      | Some argument -> flattened_callee, args @ [ argument ]
+      | None -> flattened_callee, args)
   | _ -> expr, []
 
 let path_name = function

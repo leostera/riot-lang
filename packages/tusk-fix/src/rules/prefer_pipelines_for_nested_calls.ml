@@ -29,10 +29,16 @@ let rec unwrap_parens = function
       unwrap_parens (Syn.Cst.ParenthesizedExpression.inner expr)
   | expr -> expr
 
+let expression_of_apply_argument = function
+  | Syn.Cst.Positional expr -> Some expr
+  | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } -> value
+
 let rec nested_call_count expr =
   match unwrap_parens expr with
   | Syn.Cst.Expression.Apply apply ->
-      1 + nested_call_count (Syn.Cst.ApplyExpression.argument apply)
+      (match expression_of_apply_argument (Syn.Cst.ApplyExpression.argument apply) with
+      | Some argument -> 1 + nested_call_count argument
+      | None -> 1)
   | _ -> 0
 
 let threshold = 4
