@@ -85,11 +85,12 @@ module BuildLock = struct
   let lock_failure action path =
     Failure ("Failed to " ^ action ^ " build lock file at " ^ Path.to_string path)
 
-  let rec retry t =
+  let rec retry ?(announced = false) t =
+    if not announced then println "build lock is taken, waiting...";
     sleep retry_interval;
     match Fs.File.try_lock_exclusive t.file with
     | Ok true -> Ok t
-    | Ok false -> retry t
+    | Ok false -> retry ~announced:true t
     | Error _ ->
         release t;
         raise (lock_failure "lock" t.path)
