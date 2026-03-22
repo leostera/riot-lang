@@ -1181,6 +1181,8 @@ module Item = struct
     | TypeDeclaration of TypeDeclaration.t
     | LetBinding of LetBinding.t
     | Expression of Expression.t
+    | Attribute of attribute
+    | Extension of extension
     | ClassDeclaration of class_declaration
     | ClassTypeDeclaration of class_type_declaration
     | ModuleDeclaration of ModuleDeclaration.t
@@ -1195,6 +1197,8 @@ module Item = struct
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
     | LetBinding binding -> LetBinding.syntax_node binding
     | Expression expr -> Expression.syntax_node expr
+    | Attribute attribute -> attribute.syntax_node
+    | Extension extension -> extension.syntax_node
     | ClassDeclaration decl -> decl.syntax_node
     | ClassTypeDeclaration decl -> decl.syntax_node
     | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl

@@ -43,96 +43,7 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "attribute",
-          "attribute": {
-            "syntax_node": {
-              "kind": "ATTRIBUTE_EXPR",
-              "span": {
-                "start": 8,
-                "end": 17
-              }
-            },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 8,
-                  "end": 9
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "@@",
-                "span": {
-                  "start": 9,
-                  "end": 11
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "@",
-                "span": {
-                  "start": 11,
-                  "end": 12
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "attr",
-                "span": {
-                  "start": 12,
-                  "end": 16
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 16,
-                  "end": 17
-                }
-              }
-            ]
-          }
-        }
-      }
-    ],
-    "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 0,
-            "end": 4
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 0,
-              "end": 4
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "item",
-              "span": {
-                "start": 0,
-                "end": 4
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "attribute",
+        "tag": "attribute_item",
         "attribute": {
           "syntax_node": {
             "kind": "ATTRIBUTE_EXPR",
@@ -180,6 +91,38 @@
               "span": {
                 "start": 16,
                 "end": 17
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 0,
+            "end": 4
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 0,
+              "end": 4
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "item",
+              "span": {
+                "start": 0,
+                "end": 4
               }
             }
           ]

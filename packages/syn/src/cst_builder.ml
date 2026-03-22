@@ -2464,7 +2464,8 @@ let collect_expressions_from_item = function
   | Cst.Item.ModuleTypeDeclaration _ | Cst.Item.OpenStatement _
   | Cst.Item.ValueDeclaration _ | Cst.Item.ExternalDeclaration _
   | Cst.Item.IncludeStatement _ | Cst.Item.ExceptionDeclaration _
-  | Cst.Item.ClassTypeDeclaration _ ->
+  | Cst.Item.ClassTypeDeclaration _ | Cst.Item.Attribute _
+  | Cst.Item.Extension _ ->
       []
   | Cst.Item.LetBinding binding ->
       collect_expressions_from_let_binding binding
@@ -2531,6 +2532,10 @@ let rec items_from_node node =
       match exception_declaration_from_node node with
       | Some decl -> [ Cst.Item.ExceptionDeclaration decl ]
       | None -> unsupported_item node)
+  | Syntax_kind.ATTRIBUTE_EXPR ->
+      [ Cst.Item.Attribute (attribute_from_node node) ]
+  | Syntax_kind.EXTENSION_EXPR ->
+      [ Cst.Item.Extension (extension_from_node node) ]
   | Syntax_kind.SEQUENCE_EXPR -> (
       match direct_non_trivia_nodes node with
       | only_expr :: [] -> (
@@ -2949,6 +2954,8 @@ let validate_item ~context = function
       validate_expression ~context:("item.class_declaration.body" :: context)
         class_body
   | Cst.Item.ClassTypeDeclaration _ ->
+      ()
+  | Cst.Item.Attribute _ | Cst.Item.Extension _ ->
       ()
   | Cst.Item.ValueDeclaration { type_; _ } ->
       validate_core_type ~context:("item.value_declaration.type" :: context) type_

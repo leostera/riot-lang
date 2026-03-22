@@ -212,68 +212,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 477,
+              "end": 994
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 477,
-                "end": 994
+                "end": 478
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 477,
-                  "end": 478
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 478,
-                  "end": 479
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 479,
-                  "end": 480
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 480,
-                  "end": 486
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\nLine 1, characters 38-68:\n1 | module M : sig type \\#and = int end = struct type \\#and = string end\n                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nError: Signature mismatch:\n       Modules do not match:\n         sig type \\#and = string end\n       is not included in\n         sig type \\#and = int end\n       Type declarations do not match:\n         type \\#and = string\n       is not included in\n         type \\#and = int\n       The type \"string\" is not equal to the type \"int\"\n|}",
-                "span": {
-                  "start": 487,
-                  "end": 993
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 993,
-                  "end": 994
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 478,
+                "end": 479
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 479,
+                "end": 480
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 480,
+                "end": 486
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\nLine 1, characters 38-68:\n1 | module M : sig type \\#and = int end = struct type \\#and = string end\n                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nError: Signature mismatch:\n       Modules do not match:\n         sig type \\#and = string end\n       is not included in\n         sig type \\#and = int end\n       Type declarations do not match:\n         type \\#and = string\n       is not included in\n         type \\#and = int\n       The type \"string\" is not equal to the type \"int\"\n|}",
+              "span": {
+                "start": 487,
+                "end": 993
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 993,
+                "end": 994
+              }
+            }
+          ]
         }
       },
       {
@@ -968,68 +965,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 1386,
+              "end": 1538
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 1386,
-                "end": 1538
+                "end": 1387
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 1386,
-                  "end": 1387
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 1387,
-                  "end": 1388
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 1388,
-                  "end": 1389
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 1389,
-                  "end": 1395
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\nLine 1, characters 9-15:\n1 | type t = '\\#let\n             ^^^^^^\nError: The type variable \"'\\#let\" is unbound in this type declaration.\n|}",
-                "span": {
-                  "start": 1396,
-                  "end": 1537
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 1537,
-                  "end": 1538
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 1387,
+                "end": 1388
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 1388,
+                "end": 1389
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 1389,
+                "end": 1395
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\nLine 1, characters 9-15:\n1 | type t = '\\#let\n             ^^^^^^\nError: The type variable \"'\\#let\" is unbound in this type declaration.\n|}",
+              "span": {
+                "start": 1396,
+                "end": 1537
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 1537,
+                "end": 1538
+              }
+            }
+          ]
         }
       },
       {
@@ -1401,68 +1395,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 1782,
+              "end": 1832
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 1782,
-                "end": 1832
+                "end": 1783
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 1782,
-                  "end": 1783
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 1783,
-                  "end": 1784
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 1784,
-                  "end": 1785
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 1785,
-                  "end": 1791
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\ntype \\#and = ..\ntype \\#and += Foo\n|}",
-                "span": {
-                  "start": 1792,
-                  "end": 1831
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 1831,
-                  "end": 1832
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 1783,
+                "end": 1784
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 1784,
+                "end": 1785
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 1785,
+                "end": 1791
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\ntype \\#and = ..\ntype \\#and += Foo\n|}",
+              "span": {
+                "start": 1792,
+                "end": 1831
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 1831,
+                "end": 1832
+              }
+            }
+          ]
         }
       },
       {
@@ -5058,68 +5049,6 @@
         }
       },
       {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 477,
-              "end": 994
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 477,
-                "end": 478
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 478,
-                "end": 479
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 479,
-                "end": 480
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 480,
-                "end": 486
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 38-68:\n1 | module M : sig type \\#and = int end = struct type \\#and = string end\n                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nError: Signature mismatch:\n       Modules do not match:\n         sig type \\#and = string end\n       is not included in\n         sig type \\#and = int end\n       Type declarations do not match:\n         type \\#and = string\n       is not included in\n         type \\#and = int\n       The type \"string\" is not equal to the type \"int\"\n|}",
-              "span": {
-                "start": 487,
-                "end": 993
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 993,
-                "end": 994
-              }
-            }
-          ]
-        }
-      },
-      {
         "tag": "typed",
         "syntax_node": {
           "kind": "TYPED_EXPR",
@@ -6027,68 +5956,6 @@
         }
       },
       {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 1386,
-              "end": 1538
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 1386,
-                "end": 1387
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1387,
-                "end": 1388
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1388,
-                "end": 1389
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 1389,
-                "end": 1395
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 9-15:\n1 | type t = '\\#let\n             ^^^^^^\nError: The type variable \"'\\#let\" is unbound in this type declaration.\n|}",
-              "span": {
-                "start": 1396,
-                "end": 1537
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 1537,
-                "end": 1538
-              }
-            }
-          ]
-        }
-      },
-      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",
@@ -6389,68 +6256,6 @@
               "span": {
                 "start": 1744,
                 "end": 1745
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 1782,
-              "end": 1832
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 1782,
-                "end": 1783
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1783,
-                "end": 1784
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1784,
-                "end": 1785
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 1785,
-                "end": 1791
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\ntype \\#and = ..\ntype \\#and += Foo\n|}",
-              "span": {
-                "start": 1792,
-                "end": 1831
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 1831,
-                "end": 1832
               }
             }
           ]

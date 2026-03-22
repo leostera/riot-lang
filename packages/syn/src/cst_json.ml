@@ -1120,6 +1120,18 @@ let item_to_json = function
           ("tag", Json.String "class_declaration");
           ("item", class_declaration_to_json decl);
         ]
+  | Cst.Item.Attribute attribute ->
+      Json.Object
+        [
+          ("tag", Json.String "attribute_item");
+          ("attribute", attribute_to_json attribute);
+        ]
+  | Cst.Item.Extension extension ->
+      Json.Object
+        [
+          ("tag", Json.String "extension_item");
+          ("extension", extension_to_json extension);
+        ]
   | Cst.Item.ClassTypeDeclaration decl ->
       Json.Object
         [

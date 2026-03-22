@@ -31,75 +31,7 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
-              "span": {
-                "start": 91,
-                "end": 186
-              }
-            },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 91,
-                  "end": 92
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 92,
-                  "end": 93
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 93,
-                  "end": 94
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 94,
-                  "end": 100
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule type S  = sig type t type t' := t end;;\nmodule type S = sig type t end\n|}",
-                "span": {
-                  "start": 101,
-                  "end": 185
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 185,
-                  "end": 186
-                }
-              }
-            ]
-          }
-        }
-      }
-    ],
-    "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "extension",
+        "tag": "extension_item",
         "extension": {
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
@@ -160,6 +92,8 @@
           ]
         }
       }
-    ]
+    ],
+    "let_bindings": [],
+    "expressions": []
   }
 }

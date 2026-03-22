@@ -31,68 +31,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 5366,
+              "end": 12093
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 5366,
-                "end": 12093
+                "end": 5367
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 5366,
-                  "end": 5367
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 5367,
-                  "end": 5368
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 5368,
-                  "end": 5369
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 5369,
-                  "end": 5375
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule Manual :\n  sig\n    [@@@ocaml.text\n      \" Special comments can be placed between elements and are kept\\n      by the OCamldoc tool, but are not associated to any element.\\n      @-tags in these comments are ignored.\"]\n    [@@@ocaml.text\n      \" Comments like the one above, with more than two asterisks,\\n      are ignored. \"]\n    val f : int -> int -> int[@@ocaml.doc \" The comment for function f. \"]\n    [@@ocaml.doc \" The continuation of the comment for function f. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type weather2 =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather2  \"]\n    [@@ocaml.doc\n      \" I can continue the comment for type weather2 here\\n      because there is already a comment associated to the last constructor.\"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    [@@ocaml.doc \" Continuation of comment for type my_record \"]\n    val foo : string[@@ocaml.doc \" Comment for foo \"][@@ocaml.doc\n                                                       \" This comment is ambiguous and associated to both foo and bar. \"]\n    val bar : string[@@ocaml.doc\n                      \" This comment is ambiguous and associated to both foo and bar. \"]\n    [@@ocaml.doc \" This comment is associated to bar. \"]\n    class my_class :\n      object\n        inherit cl[@@ocaml.doc \" A comment to describe inheritance from cl \"]\n        val  mutable tutu : string[@@ocaml.doc\n                                    \" The comment for attribute tutu \"]\n        val  toto : int[@@ocaml.doc \" The comment for attribute toto. \"]\n        [@@@ocaml.text\n          \" This comment is not attached to titi since\\n        there is a blank line before titi, but is kept\\n        as a comment in the class. \"]\n        val  titi : string\n        method  toto : string[@@ocaml.doc \" Comment for method toto \"]\n        method  m : float -> int[@@ocaml.doc \" Comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 drops.\\n        For some reason, when a class type begins with two docstrings,\\n        it keeps only the second one.\\n        This is fixed by GPR#2151. \"]\n        val  mutable x : int[@@ocaml.doc \" The comment for variable x. \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 misplaces.\\n        For some reason, when a class type ends with two docstrings,\\n        it keeps both of them, but exchanges their order.\\n        This is again fixed by GPR#2151. \"]\n        [@@@ocaml.text \" Another docstring that OCaml <= 4.07.1 misplaces. \"]\n      end[@@ocaml.doc \" The comment for the class type my_class_type \"]\n    module Foo :\n    sig\n      val x : int[@@ocaml.doc \" The comment for x \"]\n      [@@@ocaml.text\n        \" A special comment that is kept but not associated to any element \"]\n    end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  =\n      sig\n        val x : int[@@ocaml.doc \" The comment for value x. \"]\n        module M :\n        sig val y : int[@@ocaml.doc \" The comment for value y. \"] end\n        [@@ocaml.doc \" The comment for module M. \"]\n      end[@@ocaml.doc \" The comment for module type my_module_type. \"]\n  end =\n  struct\n    let f x y = x + y[@@ocaml.doc \" The comment for function f \"]\n    [@@@ocaml.text\n      \" This comment is not attached to any element since there is another\\n      special comment just before the next element. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    class my_class =\n      object\n        inherit  cl[@@ocaml.doc\n                     \" A comment to describe inheritance from cl \"]\n        val mutable tutu = \"tutu\"[@@ocaml.doc\n                                   \" The comment for the instance variable tutu \"]\n        val toto = 1[@@ocaml.doc \" The comment for toto \"]\n        val titi = \"titi\"[@@ocaml.doc\n                           \" Ambiguous comment on both titi and toto \"]\n        method toto = tutu ^ \"!\"[@@ocaml.doc\n                                  \" Ambiguous comment on both titi and toto \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method m (f : float) = 1[@@ocaml.doc \" The comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        val  mutable x : int[@@ocaml.doc\n                              \" The comment for the instance variable x. \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n      end[@@ocaml.doc \" The comment for class type my_class_type \"]\n    module Foo =\n      struct\n        external x : int[@@ocaml.doc \" The comment for x \"][@@ocaml.doc\n                                                             \" Another comment for x \"]\n      end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  = sig val x : int end[@@ocaml.doc\n                                                       \" The comment for module type my_module_type. \"]\n  end ;;\nLine 141, characters 12-14:\n141 |     inherit cl\n                  ^^\nError: Unbound class \"cl\"\n|}",
-                "span": {
-                  "start": 5376,
-                  "end": 12092
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 12092,
-                  "end": 12093
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 5367,
+                "end": 5368
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 5368,
+                "end": 5369
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 5369,
+                "end": 5375
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule Manual :\n  sig\n    [@@@ocaml.text\n      \" Special comments can be placed between elements and are kept\\n      by the OCamldoc tool, but are not associated to any element.\\n      @-tags in these comments are ignored.\"]\n    [@@@ocaml.text\n      \" Comments like the one above, with more than two asterisks,\\n      are ignored. \"]\n    val f : int -> int -> int[@@ocaml.doc \" The comment for function f. \"]\n    [@@ocaml.doc \" The continuation of the comment for function f. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type weather2 =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather2  \"]\n    [@@ocaml.doc\n      \" I can continue the comment for type weather2 here\\n      because there is already a comment associated to the last constructor.\"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    [@@ocaml.doc \" Continuation of comment for type my_record \"]\n    val foo : string[@@ocaml.doc \" Comment for foo \"][@@ocaml.doc\n                                                       \" This comment is ambiguous and associated to both foo and bar. \"]\n    val bar : string[@@ocaml.doc\n                      \" This comment is ambiguous and associated to both foo and bar. \"]\n    [@@ocaml.doc \" This comment is associated to bar. \"]\n    class my_class :\n      object\n        inherit cl[@@ocaml.doc \" A comment to describe inheritance from cl \"]\n        val  mutable tutu : string[@@ocaml.doc\n                                    \" The comment for attribute tutu \"]\n        val  toto : int[@@ocaml.doc \" The comment for attribute toto. \"]\n        [@@@ocaml.text\n          \" This comment is not attached to titi since\\n        there is a blank line before titi, but is kept\\n        as a comment in the class. \"]\n        val  titi : string\n        method  toto : string[@@ocaml.doc \" Comment for method toto \"]\n        method  m : float -> int[@@ocaml.doc \" Comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 drops.\\n        For some reason, when a class type begins with two docstrings,\\n        it keeps only the second one.\\n        This is fixed by GPR#2151. \"]\n        val  mutable x : int[@@ocaml.doc \" The comment for variable x. \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 misplaces.\\n        For some reason, when a class type ends with two docstrings,\\n        it keeps both of them, but exchanges their order.\\n        This is again fixed by GPR#2151. \"]\n        [@@@ocaml.text \" Another docstring that OCaml <= 4.07.1 misplaces. \"]\n      end[@@ocaml.doc \" The comment for the class type my_class_type \"]\n    module Foo :\n    sig\n      val x : int[@@ocaml.doc \" The comment for x \"]\n      [@@@ocaml.text\n        \" A special comment that is kept but not associated to any element \"]\n    end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  =\n      sig\n        val x : int[@@ocaml.doc \" The comment for value x. \"]\n        module M :\n        sig val y : int[@@ocaml.doc \" The comment for value y. \"] end\n        [@@ocaml.doc \" The comment for module M. \"]\n      end[@@ocaml.doc \" The comment for module type my_module_type. \"]\n  end =\n  struct\n    let f x y = x + y[@@ocaml.doc \" The comment for function f \"]\n    [@@@ocaml.text\n      \" This comment is not attached to any element since there is another\\n      special comment just before the next element. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    class my_class =\n      object\n        inherit  cl[@@ocaml.doc\n                     \" A comment to describe inheritance from cl \"]\n        val mutable tutu = \"tutu\"[@@ocaml.doc\n                                   \" The comment for the instance variable tutu \"]\n        val toto = 1[@@ocaml.doc \" The comment for toto \"]\n        val titi = \"titi\"[@@ocaml.doc\n                           \" Ambiguous comment on both titi and toto \"]\n        method toto = tutu ^ \"!\"[@@ocaml.doc\n                                  \" Ambiguous comment on both titi and toto \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method m (f : float) = 1[@@ocaml.doc \" The comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        val  mutable x : int[@@ocaml.doc\n                              \" The comment for the instance variable x. \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n      end[@@ocaml.doc \" The comment for class type my_class_type \"]\n    module Foo =\n      struct\n        external x : int[@@ocaml.doc \" The comment for x \"][@@ocaml.doc\n                                                             \" Another comment for x \"]\n      end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  = sig val x : int end[@@ocaml.doc\n                                                       \" The comment for module type my_module_type. \"]\n  end ;;\nLine 141, characters 12-14:\n141 |     inherit cl\n                  ^^\nError: Unbound class \"cl\"\n|}",
+              "span": {
+                "start": 5376,
+                "end": 12092
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 12092,
+                "end": 12093
+              }
+            }
+          ]
         }
       },
       {
@@ -116,68 +113,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 12363,
+              "end": 12605
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 12363,
-                "end": 12605
+                "end": 12364
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 12363,
-                  "end": 12364
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 12364,
-                  "end": 12365
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 12365,
-                  "end": 12366
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 12366,
-                  "end": 12372
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M =\n  struct\n    type t =\n      | Label [@@ocaml.doc \" attached to t \"]\n    [@@@ocaml.text\n      \" Empty docstring comments should not generate attributes \"]\n    type w\n  end;;\nmodule M : sig type t = Label type w end\n|}",
-                "span": {
-                  "start": 12373,
-                  "end": 12604
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 12604,
-                  "end": 12605
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12364,
+                "end": 12365
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12365,
+                "end": 12366
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 12366,
+                "end": 12372
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct\n    type t =\n      | Label [@@ocaml.doc \" attached to t \"]\n    [@@@ocaml.text\n      \" Empty docstring comments should not generate attributes \"]\n    type w\n  end;;\nmodule M : sig type t = Label type w end\n|}",
+              "span": {
+                "start": 12373,
+                "end": 12604
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 12604,
+                "end": 12605
+              }
+            }
+          ]
         }
       },
       {
@@ -201,68 +195,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 12816,
+              "end": 12964
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 12816,
-                "end": 12964
+                "end": 12817
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 12816,
-                  "end": 12817
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 12817,
-                  "end": 12818
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 12818,
-                  "end": 12819
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 12819,
-                  "end": 12825
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
-                "span": {
-                  "start": 12826,
-                  "end": 12963
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 12963,
-                  "end": 12964
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12817,
+                "end": 12818
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12818,
+                "end": 12819
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 12819,
+                "end": 12825
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 12826,
+                "end": 12963
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 12963,
+                "end": 12964
+              }
+            }
+          ]
         }
       },
       {
@@ -286,68 +277,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 13037,
+              "end": 13185
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 13037,
-                "end": 13185
+                "end": 13038
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 13037,
-                  "end": 13038
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 13038,
-                  "end": 13039
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 13039,
-                  "end": 13040
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 13040,
-                  "end": 13046
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
-                "span": {
-                  "start": 13047,
-                  "end": 13184
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 13184,
-                  "end": 13185
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13038,
+                "end": 13039
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13039,
+                "end": 13040
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 13040,
+                "end": 13046
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 13047,
+                "end": 13184
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 13184,
+                "end": 13185
+              }
+            }
+          ]
         }
       },
       {
@@ -371,68 +359,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 13258,
+              "end": 13423
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 13258,
-                "end": 13423
+                "end": 13259
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 13258,
-                  "end": 13259
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 13259,
-                  "end": 13260
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 13260,
-                  "end": 13261
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 13261,
-                  "end": 13267
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
-                "span": {
-                  "start": 13268,
-                  "end": 13422
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 13422,
-                  "end": 13423
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13259,
+                "end": 13260
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13260,
+                "end": 13261
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 13261,
+                "end": 13267
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 13268,
+                "end": 13422
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 13422,
+                "end": 13423
+              }
+            }
+          ]
         }
       },
       {
@@ -456,68 +441,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 13498,
+              "end": 13663
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 13498,
-                "end": 13663
+                "end": 13499
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 13498,
-                  "end": 13499
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 13499,
-                  "end": 13500
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 13500,
-                  "end": 13501
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 13501,
-                  "end": 13507
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
-                "span": {
-                  "start": 13508,
-                  "end": 13662
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 13662,
-                  "end": 13663
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13499,
+                "end": 13500
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13500,
+                "end": 13501
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 13501,
+                "end": 13507
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 13508,
+                "end": 13662
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 13662,
+                "end": 13663
+              }
+            }
+          ]
         }
       },
       {
@@ -541,68 +523,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 13822,
+              "end": 13965
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 13822,
-                "end": 13965
+                "end": 13823
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 13822,
-                  "end": 13823
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 13823,
-                  "end": 13824
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 13824,
-                  "end": 13825
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 13825,
-                  "end": 13831
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M =\n  struct type t[@@ocaml.doc \" foo2 \"]\n         type s[@@ocaml.doc \" bar1 \"] end;;\nmodule M : sig type t type s end\n|}",
-                "span": {
-                  "start": 13832,
-                  "end": 13964
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 13964,
-                  "end": 13965
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13823,
+                "end": 13824
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13824,
+                "end": 13825
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 13825,
+                "end": 13831
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct type t[@@ocaml.doc \" foo2 \"]\n         type s[@@ocaml.doc \" bar1 \"] end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 13832,
+                "end": 13964
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 13964,
+                "end": 13965
+              }
+            }
+          ]
         }
       },
       {
@@ -626,68 +605,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 14070,
+              "end": 14286
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 14070,
-                "end": 14286
+                "end": 14071
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 14070,
-                  "end": 14071
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 14071,
-                  "end": 14072
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 14072,
-                  "end": 14073
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 14073,
-                  "end": 14079
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
-                "span": {
-                  "start": 14080,
-                  "end": 14285
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 14285,
-                  "end": 14286
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14071,
+                "end": 14072
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14072,
+                "end": 14073
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 14073,
+                "end": 14079
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 14080,
+                "end": 14285
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 14285,
+                "end": 14286
+              }
+            }
+          ]
         }
       },
       {
@@ -711,68 +687,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 14393,
+              "end": 14609
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 14393,
-                "end": 14609
+                "end": 14394
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 14393,
-                  "end": 14394
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 14394,
-                  "end": 14395
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 14395,
-                  "end": 14396
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 14396,
-                  "end": 14402
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
-                "span": {
-                  "start": 14403,
-                  "end": 14608
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 14608,
-                  "end": 14609
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14394,
+                "end": 14395
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14395,
+                "end": 14396
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 14396,
+                "end": 14402
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 14403,
+                "end": 14608
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 14608,
+                "end": 14609
+              }
+            }
+          ]
         }
       },
       {
@@ -796,68 +769,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 14664,
+              "end": 14780
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 14664,
-                "end": 14780
+                "end": 14665
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 14664,
-                  "end": 14665
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 14665,
-                  "end": 14666
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 14666,
-                  "end": 14667
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 14667,
-                  "end": 14673
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"][@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t end\n|}",
-                "span": {
-                  "start": 14674,
-                  "end": 14779
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 14779,
-                  "end": 14780
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14665,
+                "end": 14666
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14666,
+                "end": 14667
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 14667,
+                "end": 14673
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"][@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t end\n|}",
+              "span": {
+                "start": 14674,
+                "end": 14779
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 14779,
+                "end": 14780
+              }
+            }
+          ]
         }
       },
       {
@@ -881,68 +851,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 14837,
+              "end": 14995
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 14837,
-                "end": 14995
+                "end": 14838
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 14837,
-                  "end": 14838
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 14838,
-                  "end": 14839
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 14839,
-                  "end": 14840
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 14840,
-                  "end": 14846
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  type t\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t end\n|}",
-                "span": {
-                  "start": 14847,
-                  "end": 14994
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 14994,
-                  "end": 14995
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14838,
+                "end": 14839
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14839,
+                "end": 14840
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 14840,
+                "end": 14846
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  type t\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t end\n|}",
+              "span": {
+                "start": 14847,
+                "end": 14994
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 14994,
+                "end": 14995
+              }
+            }
+          ]
         }
       },
       {
@@ -966,68 +933,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15032,
+              "end": 15116
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 15032,
-                "end": 15116
+                "end": 15033
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 15032,
-                  "end": 15033
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15033,
-                  "end": 15034
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15034,
-                  "end": 15035
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 15035,
-                  "end": 15041
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-                "span": {
-                  "start": 15042,
-                  "end": 15115
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 15115,
-                  "end": 15116
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15033,
+                "end": 15034
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15034,
+                "end": 15035
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15035,
+                "end": 15041
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15042,
+                "end": 15115
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15115,
+                "end": 15116
+              }
+            }
+          ]
         }
       },
       {
@@ -1051,68 +1015,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15154,
+              "end": 15238
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 15154,
-                "end": 15238
+                "end": 15155
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 15154,
-                  "end": 15155
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15155,
-                  "end": 15156
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15156,
-                  "end": 15157
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 15157,
-                  "end": 15163
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-                "span": {
-                  "start": 15164,
-                  "end": 15237
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 15237,
-                  "end": 15238
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15155,
+                "end": 15156
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15156,
+                "end": 15157
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15157,
+                "end": 15163
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15164,
+                "end": 15237
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15237,
+                "end": 15238
+              }
+            }
+          ]
         }
       },
       {
@@ -1136,68 +1097,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15276,
+              "end": 15360
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 15276,
-                "end": 15360
+                "end": 15277
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 15276,
-                  "end": 15277
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15277,
-                  "end": 15278
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15278,
-                  "end": 15279
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 15279,
-                  "end": 15285
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-                "span": {
-                  "start": 15286,
-                  "end": 15359
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 15359,
-                  "end": 15360
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15277,
+                "end": 15278
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15278,
+                "end": 15279
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15279,
+                "end": 15285
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15286,
+                "end": 15359
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15359,
+                "end": 15360
+              }
+            }
+          ]
         }
       },
       {
@@ -1221,68 +1179,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15397,
+              "end": 15481
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 15397,
-                "end": 15481
+                "end": 15398
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 15397,
-                  "end": 15398
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15398,
-                  "end": 15399
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15399,
-                  "end": 15400
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 15400,
-                  "end": 15406
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-                "span": {
-                  "start": 15407,
-                  "end": 15480
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 15480,
-                  "end": 15481
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15398,
+                "end": 15399
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15399,
+                "end": 15400
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15400,
+                "end": 15406
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15407,
+                "end": 15480
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15480,
+                "end": 15481
+              }
+            }
+          ]
         }
       },
       {
@@ -1306,68 +1261,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15519,
+              "end": 15603
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 15519,
-                "end": 15603
+                "end": 15520
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 15519,
-                  "end": 15520
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15520,
-                  "end": 15521
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15521,
-                  "end": 15522
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 15522,
-                  "end": 15528
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-                "span": {
-                  "start": 15529,
-                  "end": 15602
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 15602,
-                  "end": 15603
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15520,
+                "end": 15521
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15521,
+                "end": 15522
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15522,
+                "end": 15528
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15529,
+                "end": 15602
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15602,
+                "end": 15603
+              }
+            }
+          ]
         }
       },
       {
@@ -1391,68 +1343,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15641,
+              "end": 15725
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 15641,
-                "end": 15725
+                "end": 15642
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 15641,
-                  "end": 15642
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15642,
-                  "end": 15643
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15643,
-                  "end": 15644
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 15644,
-                  "end": 15650
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-                "span": {
-                  "start": 15651,
-                  "end": 15724
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 15724,
-                  "end": 15725
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15642,
+                "end": 15643
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15643,
+                "end": 15644
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15644,
+                "end": 15650
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15651,
+                "end": 15724
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15724,
+                "end": 15725
+              }
+            }
+          ]
         }
       },
       {
@@ -1476,68 +1425,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15764,
+              "end": 15848
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 15764,
-                "end": 15848
+                "end": 15765
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 15764,
-                  "end": 15765
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15765,
-                  "end": 15766
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15766,
-                  "end": 15767
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 15767,
-                  "end": 15773
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-                "span": {
-                  "start": 15774,
-                  "end": 15847
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 15847,
-                  "end": 15848
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15765,
+                "end": 15766
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15766,
+                "end": 15767
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15767,
+                "end": 15773
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15774,
+                "end": 15847
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15847,
+                "end": 15848
+              }
+            }
+          ]
         }
       },
       {
@@ -1561,68 +1507,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15899,
+              "end": 16025
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 15899,
-                "end": 16025
+                "end": 15900
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 15899,
-                  "end": 15900
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15900,
-                  "end": 15901
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 15901,
-                  "end": 15902
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 15902,
-                  "end": 15908
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
-                "span": {
-                  "start": 15909,
-                  "end": 16024
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 16024,
-                  "end": 16025
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15900,
+                "end": 15901
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15901,
+                "end": 15902
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15902,
+                "end": 15908
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15909,
+                "end": 16024
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 16024,
+                "end": 16025
+              }
+            }
+          ]
         }
       },
       {
@@ -1646,68 +1589,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 16074,
+              "end": 16200
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 16074,
-                "end": 16200
+                "end": 16075
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 16074,
-                  "end": 16075
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 16075,
-                  "end": 16076
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 16076,
-                  "end": 16077
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 16077,
-                  "end": 16083
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
-                "span": {
-                  "start": 16084,
-                  "end": 16199
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 16199,
-                  "end": 16200
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16075,
+                "end": 16076
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16076,
+                "end": 16077
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 16077,
+                "end": 16083
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 16084,
+                "end": 16199
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 16199,
+                "end": 16200
+              }
+            }
+          ]
         }
       },
       {
@@ -1878,68 +1818,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 16479,
+              "end": 16688
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 16479,
-                "end": 16688
+                "end": 16480
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 16479,
-                  "end": 16480
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 16480,
-                  "end": 16481
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 16481,
-                  "end": 16482
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 16482,
-                  "end": 16488
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\ntype 'a with_default =\n  ?size:((int)[@ocaml.doc \" default [42] \"]) ->\n    ?resizable:((bool)[@ocaml.doc \" default [true] \"]) -> 'a;;\ntype 'a with_default = ?size:int -> ?resizable:bool -> 'a\n|}",
-                "span": {
-                  "start": 16489,
-                  "end": 16687
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 16687,
-                  "end": 16688
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16480,
+                "end": 16481
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16481,
+                "end": 16482
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 16482,
+                "end": 16488
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\ntype 'a with_default =\n  ?size:((int)[@ocaml.doc \" default [42] \"]) ->\n    ?resizable:((bool)[@ocaml.doc \" default [true] \"]) -> 'a;;\ntype 'a with_default = ?size:int -> ?resizable:bool -> 'a\n|}",
+              "span": {
+                "start": 16489,
+                "end": 16687
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 16687,
+                "end": 16688
+              }
+            }
+          ]
         }
       },
       {
@@ -2161,68 +2098,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 16788,
+              "end": 17033
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 16788,
-                "end": 17033
+                "end": 16789
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 16788,
-                  "end": 16789
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 16789,
-                  "end": 16790
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 16790,
-                  "end": 16791
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 16791,
-                  "end": 16797
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\ntype obj =\n  <\n    meth1: int -> int [@ocaml.doc \" method 1 \"] ;meth2: unit -> float\n                                                   [@ocaml.doc \" method 2 \"]\n    > ;;\ntype obj = < meth1 : int -> int; meth2 : unit -> float >\n|}",
-                "span": {
-                  "start": 16798,
-                  "end": 17032
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 17032,
-                  "end": 17033
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16789,
+                "end": 16790
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16790,
+                "end": 16791
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 16791,
+                "end": 16797
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\ntype obj =\n  <\n    meth1: int -> int [@ocaml.doc \" method 1 \"] ;meth2: unit -> float\n                                                   [@ocaml.doc \" method 2 \"]\n    > ;;\ntype obj = < meth1 : int -> int; meth2 : unit -> float >\n|}",
+              "span": {
+                "start": 16798,
+                "end": 17032
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 17032,
+                "end": 17033
+              }
+            }
+          ]
         }
       },
       {
@@ -2370,68 +2304,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 17109,
+              "end": 17259
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 17109,
-                "end": 17259
+                "end": 17110
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 17109,
-                  "end": 17110
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 17110,
-                  "end": 17111
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 17111,
-                  "end": 17112
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 17112,
-                  "end": 17118
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\ntype var =\n  [ `Foo [@ocaml.doc \" foo \"] | `Bar of (int * string) [@ocaml.doc \" bar \"]];;\ntype var = [ `Bar of int * string | `Foo ]\n|}",
-                "span": {
-                  "start": 17119,
-                  "end": 17258
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 17258,
-                  "end": 17259
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17110,
+                "end": 17111
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17111,
+                "end": 17112
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 17112,
+                "end": 17118
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\ntype var =\n  [ `Foo [@ocaml.doc \" foo \"] | `Bar of (int * string) [@ocaml.doc \" bar \"]];;\ntype var = [ `Bar of int * string | `Foo ]\n|}",
+              "span": {
+                "start": 17119,
+                "end": 17258
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 17258,
+                "end": 17259
+              }
+            }
+          ]
         }
       },
       {
@@ -2455,68 +2386,65 @@
         }
       },
       {
-        "tag": "expression",
-        "item": {
-          "tag": "extension",
-          "extension": {
-            "syntax_node": {
-              "kind": "EXTENSION_EXPR",
+        "tag": "extension_item",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 17418,
+              "end": 17695
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
               "span": {
                 "start": 17418,
-                "end": 17695
+                "end": 17419
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
-                "span": {
-                  "start": 17418,
-                  "end": 17419
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 17419,
-                  "end": 17420
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 17420,
-                  "end": 17421
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "expect",
-                "span": {
-                  "start": 17421,
-                  "end": 17427
-                }
-              },
-              {
-                "kind": "STRING_LITERAL",
-                "text": "{|\n\nmodule type S  =\n  sig\n    val before : unit -> unit[@@ocaml.doc \" docstring before \"]\n    [@@@foo ]\n    [@@@foo ]\n    val after : unit -> unit[@@ocaml.doc \" docstring after \"]\n  end;;\nmodule type S = sig val before : unit -> unit val after : unit -> unit end\n|}",
-                "span": {
-                  "start": 17428,
-                  "end": 17694
-                }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 17694,
-                  "end": 17695
-                }
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17419,
+                "end": 17420
               }
-            ]
-          }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17420,
+                "end": 17421
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 17421,
+                "end": 17427
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule type S  =\n  sig\n    val before : unit -> unit[@@ocaml.doc \" docstring before \"]\n    [@@@foo ]\n    [@@@foo ]\n    val after : unit -> unit[@@ocaml.doc \" docstring after \"]\n  end;;\nmodule type S = sig val before : unit -> unit val after : unit -> unit end\n|}",
+              "span": {
+                "start": 17428,
+                "end": 17694
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 17694,
+                "end": 17695
+              }
+            }
+          ]
         }
       }
     ],
@@ -2673,1495 +2601,6 @@
         "is_recursive": false
       }
     ],
-    "expressions": [
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 5366,
-              "end": 12093
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 5366,
-                "end": 5367
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 5367,
-                "end": 5368
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 5368,
-                "end": 5369
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 5369,
-                "end": 5375
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule Manual :\n  sig\n    [@@@ocaml.text\n      \" Special comments can be placed between elements and are kept\\n      by the OCamldoc tool, but are not associated to any element.\\n      @-tags in these comments are ignored.\"]\n    [@@@ocaml.text\n      \" Comments like the one above, with more than two asterisks,\\n      are ignored. \"]\n    val f : int -> int -> int[@@ocaml.doc \" The comment for function f. \"]\n    [@@ocaml.doc \" The continuation of the comment for function f. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type weather2 =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather2  \"]\n    [@@ocaml.doc\n      \" I can continue the comment for type weather2 here\\n      because there is already a comment associated to the last constructor.\"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    [@@ocaml.doc \" Continuation of comment for type my_record \"]\n    val foo : string[@@ocaml.doc \" Comment for foo \"][@@ocaml.doc\n                                                       \" This comment is ambiguous and associated to both foo and bar. \"]\n    val bar : string[@@ocaml.doc\n                      \" This comment is ambiguous and associated to both foo and bar. \"]\n    [@@ocaml.doc \" This comment is associated to bar. \"]\n    class my_class :\n      object\n        inherit cl[@@ocaml.doc \" A comment to describe inheritance from cl \"]\n        val  mutable tutu : string[@@ocaml.doc\n                                    \" The comment for attribute tutu \"]\n        val  toto : int[@@ocaml.doc \" The comment for attribute toto. \"]\n        [@@@ocaml.text\n          \" This comment is not attached to titi since\\n        there is a blank line before titi, but is kept\\n        as a comment in the class. \"]\n        val  titi : string\n        method  toto : string[@@ocaml.doc \" Comment for method toto \"]\n        method  m : float -> int[@@ocaml.doc \" Comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 drops.\\n        For some reason, when a class type begins with two docstrings,\\n        it keeps only the second one.\\n        This is fixed by GPR#2151. \"]\n        val  mutable x : int[@@ocaml.doc \" The comment for variable x. \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 misplaces.\\n        For some reason, when a class type ends with two docstrings,\\n        it keeps both of them, but exchanges their order.\\n        This is again fixed by GPR#2151. \"]\n        [@@@ocaml.text \" Another docstring that OCaml <= 4.07.1 misplaces. \"]\n      end[@@ocaml.doc \" The comment for the class type my_class_type \"]\n    module Foo :\n    sig\n      val x : int[@@ocaml.doc \" The comment for x \"]\n      [@@@ocaml.text\n        \" A special comment that is kept but not associated to any element \"]\n    end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  =\n      sig\n        val x : int[@@ocaml.doc \" The comment for value x. \"]\n        module M :\n        sig val y : int[@@ocaml.doc \" The comment for value y. \"] end\n        [@@ocaml.doc \" The comment for module M. \"]\n      end[@@ocaml.doc \" The comment for module type my_module_type. \"]\n  end =\n  struct\n    let f x y = x + y[@@ocaml.doc \" The comment for function f \"]\n    [@@@ocaml.text\n      \" This comment is not attached to any element since there is another\\n      special comment just before the next element. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    class my_class =\n      object\n        inherit  cl[@@ocaml.doc\n                     \" A comment to describe inheritance from cl \"]\n        val mutable tutu = \"tutu\"[@@ocaml.doc\n                                   \" The comment for the instance variable tutu \"]\n        val toto = 1[@@ocaml.doc \" The comment for toto \"]\n        val titi = \"titi\"[@@ocaml.doc\n                           \" Ambiguous comment on both titi and toto \"]\n        method toto = tutu ^ \"!\"[@@ocaml.doc\n                                  \" Ambiguous comment on both titi and toto \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method m (f : float) = 1[@@ocaml.doc \" The comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        val  mutable x : int[@@ocaml.doc\n                              \" The comment for the instance variable x. \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n      end[@@ocaml.doc \" The comment for class type my_class_type \"]\n    module Foo =\n      struct\n        external x : int[@@ocaml.doc \" The comment for x \"][@@ocaml.doc\n                                                             \" Another comment for x \"]\n      end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  = sig val x : int end[@@ocaml.doc\n                                                       \" The comment for module type my_module_type. \"]\n  end ;;\nLine 141, characters 12-14:\n141 |     inherit cl\n                  ^^\nError: Unbound class \"cl\"\n|}",
-              "span": {
-                "start": 5376,
-                "end": 12092
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 12092,
-                "end": 12093
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 12363,
-              "end": 12605
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 12363,
-                "end": 12364
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 12364,
-                "end": 12365
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 12365,
-                "end": 12366
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 12366,
-                "end": 12372
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M =\n  struct\n    type t =\n      | Label [@@ocaml.doc \" attached to t \"]\n    [@@@ocaml.text\n      \" Empty docstring comments should not generate attributes \"]\n    type w\n  end;;\nmodule M : sig type t = Label type w end\n|}",
-              "span": {
-                "start": 12373,
-                "end": 12604
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 12604,
-                "end": 12605
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 12816,
-              "end": 12964
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 12816,
-                "end": 12817
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 12817,
-                "end": 12818
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 12818,
-                "end": 12819
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 12819,
-                "end": 12825
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
-              "span": {
-                "start": 12826,
-                "end": 12963
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 12963,
-                "end": 12964
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 13037,
-              "end": 13185
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 13037,
-                "end": 13038
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 13038,
-                "end": 13039
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 13039,
-                "end": 13040
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 13040,
-                "end": 13046
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
-              "span": {
-                "start": 13047,
-                "end": 13184
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 13184,
-                "end": 13185
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 13258,
-              "end": 13423
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 13258,
-                "end": 13259
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 13259,
-                "end": 13260
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 13260,
-                "end": 13261
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 13261,
-                "end": 13267
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
-              "span": {
-                "start": 13268,
-                "end": 13422
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 13422,
-                "end": 13423
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 13498,
-              "end": 13663
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 13498,
-                "end": 13499
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 13499,
-                "end": 13500
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 13500,
-                "end": 13501
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 13501,
-                "end": 13507
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
-              "span": {
-                "start": 13508,
-                "end": 13662
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 13662,
-                "end": 13663
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 13822,
-              "end": 13965
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 13822,
-                "end": 13823
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 13823,
-                "end": 13824
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 13824,
-                "end": 13825
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 13825,
-                "end": 13831
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M =\n  struct type t[@@ocaml.doc \" foo2 \"]\n         type s[@@ocaml.doc \" bar1 \"] end;;\nmodule M : sig type t type s end\n|}",
-              "span": {
-                "start": 13832,
-                "end": 13964
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 13964,
-                "end": 13965
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 14070,
-              "end": 14286
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 14070,
-                "end": 14071
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 14071,
-                "end": 14072
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 14072,
-                "end": 14073
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 14073,
-                "end": 14079
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
-              "span": {
-                "start": 14080,
-                "end": 14285
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 14285,
-                "end": 14286
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 14393,
-              "end": 14609
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 14393,
-                "end": 14394
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 14394,
-                "end": 14395
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 14395,
-                "end": 14396
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 14396,
-                "end": 14402
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
-              "span": {
-                "start": 14403,
-                "end": 14608
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 14608,
-                "end": 14609
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 14664,
-              "end": 14780
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 14664,
-                "end": 14665
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 14665,
-                "end": 14666
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 14666,
-                "end": 14667
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 14667,
-                "end": 14673
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"][@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t end\n|}",
-              "span": {
-                "start": 14674,
-                "end": 14779
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 14779,
-                "end": 14780
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 14837,
-              "end": 14995
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 14837,
-                "end": 14838
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 14838,
-                "end": 14839
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 14839,
-                "end": 14840
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 14840,
-                "end": 14846
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  type t\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t end\n|}",
-              "span": {
-                "start": 14847,
-                "end": 14994
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 14994,
-                "end": 14995
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 15032,
-              "end": 15116
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 15032,
-                "end": 15033
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15033,
-                "end": 15034
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15034,
-                "end": 15035
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 15035,
-                "end": 15041
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-              "span": {
-                "start": 15042,
-                "end": 15115
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 15115,
-                "end": 15116
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 15154,
-              "end": 15238
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 15154,
-                "end": 15155
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15155,
-                "end": 15156
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15156,
-                "end": 15157
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 15157,
-                "end": 15163
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-              "span": {
-                "start": 15164,
-                "end": 15237
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 15237,
-                "end": 15238
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 15276,
-              "end": 15360
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 15276,
-                "end": 15277
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15277,
-                "end": 15278
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15278,
-                "end": 15279
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 15279,
-                "end": 15285
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-              "span": {
-                "start": 15286,
-                "end": 15359
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 15359,
-                "end": 15360
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 15397,
-              "end": 15481
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 15397,
-                "end": 15398
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15398,
-                "end": 15399
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15399,
-                "end": 15400
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 15400,
-                "end": 15406
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-              "span": {
-                "start": 15407,
-                "end": 15480
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 15480,
-                "end": 15481
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 15519,
-              "end": 15603
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 15519,
-                "end": 15520
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15520,
-                "end": 15521
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15521,
-                "end": 15522
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 15522,
-                "end": 15528
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-              "span": {
-                "start": 15529,
-                "end": 15602
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 15602,
-                "end": 15603
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 15641,
-              "end": 15725
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 15641,
-                "end": 15642
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15642,
-                "end": 15643
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15643,
-                "end": 15644
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 15644,
-                "end": 15650
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-              "span": {
-                "start": 15651,
-                "end": 15724
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 15724,
-                "end": 15725
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 15764,
-              "end": 15848
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 15764,
-                "end": 15765
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15765,
-                "end": 15766
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15766,
-                "end": 15767
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 15767,
-                "end": 15773
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
-              "span": {
-                "start": 15774,
-                "end": 15847
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 15847,
-                "end": 15848
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 15899,
-              "end": 16025
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 15899,
-                "end": 15900
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15900,
-                "end": 15901
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 15901,
-                "end": 15902
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 15902,
-                "end": 15908
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
-              "span": {
-                "start": 15909,
-                "end": 16024
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 16024,
-                "end": 16025
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 16074,
-              "end": 16200
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 16074,
-                "end": 16075
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 16075,
-                "end": 16076
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 16076,
-                "end": 16077
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 16077,
-                "end": 16083
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
-              "span": {
-                "start": 16084,
-                "end": 16199
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 16199,
-                "end": 16200
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 16479,
-              "end": 16688
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 16479,
-                "end": 16480
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 16480,
-                "end": 16481
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 16481,
-                "end": 16482
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 16482,
-                "end": 16488
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\ntype 'a with_default =\n  ?size:((int)[@ocaml.doc \" default [42] \"]) ->\n    ?resizable:((bool)[@ocaml.doc \" default [true] \"]) -> 'a;;\ntype 'a with_default = ?size:int -> ?resizable:bool -> 'a\n|}",
-              "span": {
-                "start": 16489,
-                "end": 16687
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 16687,
-                "end": 16688
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 16788,
-              "end": 17033
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 16788,
-                "end": 16789
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 16789,
-                "end": 16790
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 16790,
-                "end": 16791
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 16791,
-                "end": 16797
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\ntype obj =\n  <\n    meth1: int -> int [@ocaml.doc \" method 1 \"] ;meth2: unit -> float\n                                                   [@ocaml.doc \" method 2 \"]\n    > ;;\ntype obj = < meth1 : int -> int; meth2 : unit -> float >\n|}",
-              "span": {
-                "start": 16798,
-                "end": 17032
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 17032,
-                "end": 17033
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 17109,
-              "end": 17259
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 17109,
-                "end": 17110
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 17110,
-                "end": 17111
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 17111,
-                "end": 17112
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 17112,
-                "end": 17118
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\ntype var =\n  [ `Foo [@ocaml.doc \" foo \"] | `Bar of (int * string) [@ocaml.doc \" bar \"]];;\ntype var = [ `Bar of int * string | `Foo ]\n|}",
-              "span": {
-                "start": 17119,
-                "end": 17258
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 17258,
-                "end": 17259
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "extension",
-        "extension": {
-          "syntax_node": {
-            "kind": "EXTENSION_EXPR",
-            "span": {
-              "start": 17418,
-              "end": 17695
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 17418,
-                "end": 17419
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 17419,
-                "end": 17420
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 17420,
-                "end": 17421
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "expect",
-              "span": {
-                "start": 17421,
-                "end": 17427
-              }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\n\nmodule type S  =\n  sig\n    val before : unit -> unit[@@ocaml.doc \" docstring before \"]\n    [@@@foo ]\n    [@@@foo ]\n    val after : unit -> unit[@@ocaml.doc \" docstring after \"]\n  end;;\nmodule type S = sig val before : unit -> unit val after : unit -> unit end\n|}",
-              "span": {
-                "start": 17428,
-                "end": 17694
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 17694,
-                "end": 17695
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

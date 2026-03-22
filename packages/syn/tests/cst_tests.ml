@@ -258,6 +258,47 @@ let tests =
                    (Ceibo.Red.SyntaxNode.kind included_syntax_node));
             Ok ()
         | _ -> Error "expected first item to be an include statement");
+    Test.case "cst source files distinguish standalone attribute items"
+      (fun () ->
+        let result =
+          parse_ml "[@@@attr]\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.Attribute attribute :: _ ->
+            Test.assert_equal ~expected:"ATTRIBUTE_EXPR"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind attribute.syntax_node));
+            Test.assert_equal ~expected:0
+              ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
+            Ok ()
+        | _ ->
+            Error "expected first item to be an attribute item");
+    Test.case "cst source files distinguish standalone extension items" (fun () ->
+        let result =
+          parse_ml "[%%toplevel_eval 42]\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.Extension extension :: _ ->
+            Test.assert_equal ~expected:"EXTENSION_EXPR"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind extension.syntax_node));
+            Test.assert_equal ~expected:0
+              ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
+            Ok ()
+        | _ ->
+            Error "expected first item to be an extension item");
     Test.case "cst exception declarations preserve declared names" (fun () ->
         let result = parse_ml "exception Not_found\n" in
         let cst =

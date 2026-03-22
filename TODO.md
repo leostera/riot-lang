@@ -57,7 +57,7 @@
 - [x] Make successful CST creation rule out public `Unknown` shapes by construction rather than by validation convention
 - [ ] Add a stronger fixture/checklist pass for syntax that the stock parsetree distinguishes sharply
 - [ ] Next parity slices:
-  - [ ] standalone attribute and extension items
+  - [x] standalone attribute and extension items
   - [ ] typed module-type tree
   - [ ] typed module-expression tree
   - [ ] attributed expressions and attributed items as faithful wrappers instead of token shells
@@ -97,8 +97,8 @@
 - [ ] Structure items:
   - [ ] type-extension items
   - [ ] recursive-module items
-  - [ ] standalone attribute items
-  - [ ] standalone extension items
+  - [x] standalone attribute items
+  - [x] standalone extension items
 - [ ] Signature items:
   - [ ] type declarations in interfaces
   - [ ] type substitutions in interfaces
