@@ -17,6 +17,7 @@ let builtin_rule_factories () =
     ("limit-nested-match-depth", Rules.Limit_nested_match_depth.make);
     ("limit-open-statements", Rules.Limit_open_statements.make);
     ("no-redundant-parentheses", Rules.No_redundant_parentheses.make);
+    ("no-eta-expansion", Rules.No_eta_expansion.make);
     ("no-exn-suffix-functions", Rules.No_exn_suffix_functions.make);
     ("no-unnecessary-rec", Rules.No_unnecessary_rec.make);
     ("no-useless-let-return", Rules.No_useless_let_return.make);

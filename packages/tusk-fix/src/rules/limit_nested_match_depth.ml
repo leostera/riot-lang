@@ -46,6 +46,8 @@ let rec child_expressions = function
       [ Syn.Cst.ApplyExpression.callee expr; Syn.Cst.ApplyExpression.argument expr ]
   | Syn.Cst.Expression.Infix expr ->
       [ Syn.Cst.InfixExpression.left expr; Syn.Cst.InfixExpression.right expr ]
+  | Syn.Cst.Expression.Fun expr ->
+      [ Syn.Cst.FunExpression.body expr ]
   | Syn.Cst.Expression.Let expr ->
       [ Syn.Cst.LetExpression.bound_value expr; Syn.Cst.LetExpression.body expr ]
   | Syn.Cst.Expression.Match expr ->

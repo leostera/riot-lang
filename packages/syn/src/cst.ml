@@ -76,6 +76,84 @@ and parenthesized_pattern = {
   inner : pattern;
 }
 
+module PositionalParameter = struct
+  type t = {
+    syntax_node : syntax_node;
+    name_token : Token.t option;
+  }
+
+  let syntax_node param = param.syntax_node
+  let name_token param = param.name_token
+
+  let name param =
+    match param.name_token with
+    | Some token -> Some (Token.text token)
+    | None -> None
+end
+
+module LabeledParameter = struct
+  type t = {
+    syntax_node : syntax_node;
+    label_token : Token.t;
+    binding_name_token : Token.t option;
+  }
+
+  let syntax_node param = param.syntax_node
+  let label_token param = param.label_token
+  let label param = Token.text param.label_token
+  let binding_name_token param = param.binding_name_token
+end
+
+module OptionalParameter = struct
+  type t = {
+    syntax_node : syntax_node;
+    label_token : Token.t;
+    binding_name_token : Token.t option;
+    has_default : bool;
+  }
+
+  let syntax_node param = param.syntax_node
+  let label_token param = param.label_token
+  let label param = Token.text param.label_token
+  let binding_name_token param = param.binding_name_token
+  let has_default param = param.has_default
+end
+
+module Parameter = struct
+  type t =
+    | Positional of PositionalParameter.t
+    | Labeled of LabeledParameter.t
+    | Optional of OptionalParameter.t
+    | LocallyAbstract of syntax_node
+    | Unknown of syntax_node
+
+  let syntax_node = function
+    | Positional param -> PositionalParameter.syntax_node param
+    | Labeled param -> LabeledParameter.syntax_node param
+    | Optional param -> OptionalParameter.syntax_node param
+    | LocallyAbstract node -> node
+    | Unknown node -> node
+
+  let name_token = function
+    | Positional param -> PositionalParameter.name_token param
+    | Labeled param -> Some (LabeledParameter.label_token param)
+    | Optional param -> Some (OptionalParameter.label_token param)
+    | LocallyAbstract _ | Unknown _ -> None
+
+  let name param =
+    match name_token param with
+    | Some token -> Some (Token.text token)
+    | None -> None
+
+  let is_named = function
+    | Labeled _ | Optional _ -> true
+    | Positional _ | LocallyAbstract _ | Unknown _ -> false
+
+  let has_default = function
+    | Optional param -> OptionalParameter.has_default param
+    | Positional _ | Labeled _ | LocallyAbstract _ | Unknown _ -> false
+end
+
 module Literal = struct
   type t =
     | String of {
@@ -100,6 +178,7 @@ type expression =
   | Literal of literal
   | Apply of apply_expression
   | Infix of infix_expression
+  | Fun of fun_expression
   | Let of let_expression
   | Match of match_expression
   | If of if_expression
@@ -122,6 +201,12 @@ and infix_expression = {
   left : expression;
   operator_token : Token.t;
   right : expression;
+}
+
+and fun_expression = {
+  syntax_node : syntax_node;
+  parameters : Parameter.t list;
+  body : expression;
 }
 
 and let_expression = {
@@ -163,6 +248,7 @@ module Expression = struct
     | Literal of literal
     | Apply of apply_expression
     | Infix of infix_expression
+    | Fun of fun_expression
     | Let of let_expression
     | Match of match_expression
     | If of if_expression
@@ -180,6 +266,7 @@ module Expression = struct
             syntax_node)
     | Apply expr -> expr.syntax_node
     | Infix expr -> expr.syntax_node
+    | Fun expr -> expr.syntax_node
     | Let expr -> expr.syntax_node
     | Match expr -> expr.syntax_node
     | If expr -> expr.syntax_node
@@ -272,6 +359,18 @@ module InfixExpression = struct
   let operator_token expr = expr.operator_token
   let operator expr = Token.text expr.operator_token
   let right expr = expr.right
+end
+
+module FunExpression = struct
+  type t = fun_expression = {
+    syntax_node : syntax_node;
+    parameters : Parameter.t list;
+    body : expression;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let parameters expr = expr.parameters
+  let body expr = expr.body
 end
 
 module LetExpression = struct
@@ -435,84 +534,6 @@ module TypeDeclaration = struct
     | None -> panic "TypeDeclaration.name_token: missing type name token"
 end
 
-module PositionalParameter = struct
-  type t = {
-    syntax_node : syntax_node;
-    name_token : Token.t option;
-  }
-
-  let syntax_node param = param.syntax_node
-  let name_token param = param.name_token
-
-  let name param =
-    match param.name_token with
-    | Some token -> Some (Token.text token)
-    | None -> None
-end
-
-module LabeledParameter = struct
-  type t = {
-    syntax_node : syntax_node;
-    label_token : Token.t;
-    binding_name_token : Token.t option;
-  }
-
-  let syntax_node param = param.syntax_node
-  let label_token param = param.label_token
-  let label param = Token.text param.label_token
-  let binding_name_token param = param.binding_name_token
-end
-
-module OptionalParameter = struct
-  type t = {
-    syntax_node : syntax_node;
-    label_token : Token.t;
-    binding_name_token : Token.t option;
-    has_default : bool;
-  }
-
-  let syntax_node param = param.syntax_node
-  let label_token param = param.label_token
-  let label param = Token.text param.label_token
-  let binding_name_token param = param.binding_name_token
-  let has_default param = param.has_default
-end
-
-module Parameter = struct
-  type t =
-    | Positional of PositionalParameter.t
-    | Labeled of LabeledParameter.t
-    | Optional of OptionalParameter.t
-    | LocallyAbstract of syntax_node
-    | Unknown of syntax_node
-
-  let syntax_node = function
-    | Positional param -> PositionalParameter.syntax_node param
-    | Labeled param -> LabeledParameter.syntax_node param
-    | Optional param -> OptionalParameter.syntax_node param
-    | LocallyAbstract node -> node
-    | Unknown node -> node
-
-  let name_token = function
-    | Positional param -> PositionalParameter.name_token param
-    | Labeled param -> Some (LabeledParameter.label_token param)
-    | Optional param -> Some (OptionalParameter.label_token param)
-    | LocallyAbstract _ | Unknown _ -> None
-
-  let name param =
-    match name_token param with
-    | Some token -> Some (Token.text token)
-    | None -> None
-
-  let is_named = function
-    | Labeled _ | Optional _ -> true
-    | Positional _ | LocallyAbstract _ | Unknown _ -> false
-
-  let has_default = function
-    | Optional param -> OptionalParameter.has_default param
-    | Positional _ | Labeled _ | LocallyAbstract _ | Unknown _ -> false
-end
-
 module LetBinding = struct
   type t = {
     syntax_node : syntax_node;
@@ -668,6 +689,99 @@ let is_parameter_like_kind = function
       true
   | _ -> false
 
+let name_token_from_ident_pattern node =
+  match direct_non_trivia_tokens node with
+  | first :: _ -> Some (token first)
+  | [] -> None
+
+let is_identifier_like_text text =
+  String.length text > 0
+  &&
+  let ch = String.get text 0 in
+  (ch >= 'a' && ch <= 'z')
+  || (ch >= 'A' && ch <= 'Z')
+  || ch = '_'
+
+let rec simple_pattern_name_token node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.IDENT_PATTERN ->
+      name_token_from_ident_pattern node
+  | Syntax_kind.TYPED_PATTERN
+  | Syntax_kind.PAREN_PATTERN
+  | Syntax_kind.LAZY_PATTERN ->
+      (match direct_non_trivia_nodes node |> List.find_opt (fun _ -> true) with
+      | Some child -> simple_pattern_name_token child
+      | None -> None)
+  | Syntax_kind.AS_PATTERN ->
+      (match
+         direct_non_trivia_nodes node
+         |> List.rev
+         |> List.find_opt (fun child ->
+                Ceibo.Red.SyntaxNode.kind child = Syntax_kind.IDENT_PATTERN)
+       with
+      | Some child -> name_token_from_ident_pattern child
+      | None -> None)
+  | _ -> None
+
+let first_ident_token_in_subtree node =
+  let rec go_node node =
+    match
+      direct_non_trivia_tokens node
+      |> List.find_opt (fun tok ->
+             is_identifier_like_text (Ceibo.Red.SyntaxToken.text tok))
+    with
+    | Some tok -> Some (token tok)
+    | None -> direct_non_trivia_nodes node |> List.find_map go_node
+  in
+  go_node node
+
+let parameter_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.LABELED_PARAM -> (
+      match first_ident_token_in_subtree node with
+      | Some label_name_token ->
+          Parameter.Labeled
+            LabeledParameter.
+              {
+                syntax_node = node;
+                label_token = label_name_token;
+                binding_name_token = None;
+              }
+      | None -> Parameter.Unknown node)
+  | Syntax_kind.OPTIONAL_PARAM -> (
+      match first_ident_token_in_subtree node with
+      | Some label_name_token ->
+          Parameter.Optional
+            OptionalParameter.
+              {
+                syntax_node = node;
+                label_token = label_name_token;
+                binding_name_token = None;
+                has_default = false;
+              }
+      | None -> Parameter.Unknown node)
+  | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> (
+      match direct_non_trivia_nodes node |> List.find_map first_ident_token_in_subtree with
+      | Some label_name_token ->
+          Parameter.Optional
+            OptionalParameter.
+              {
+                syntax_node = node;
+                label_token = label_name_token;
+                binding_name_token = None;
+                has_default = true;
+              }
+      | None -> Parameter.Unknown node)
+  | Syntax_kind.TYPE_CONSTRAINT ->
+      Parameter.LocallyAbstract node
+  | _ ->
+      Parameter.Positional
+        PositionalParameter.
+          {
+            syntax_node = node;
+            name_token = simple_pattern_name_token node;
+          }
+
 let rec pattern_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.IDENT_PATTERN -> (
@@ -788,6 +902,10 @@ let rec expression_from_node node =
                 right = expression_from_node right_node;
               }
       | _ -> Expression.Unknown node)
+  | Syntax_kind.FUN_EXPR -> (
+      match fun_expression_from_node node with
+      | Some expr -> Expression.Fun expr
+      | None -> Expression.Unknown node)
   | Syntax_kind.LET_EXPR -> (
       match let_expression_from_node ~is_recursive_binding:false node with
       | Some expr -> Expression.Let expr
@@ -852,6 +970,24 @@ and path_expression_from_field_access node =
                  })
       | _ -> None)
   | _ -> None
+
+and fun_expression_from_node node =
+  let rec split_parameters params = function
+    | child :: rest when is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child) ->
+        split_parameters (child :: params) rest
+    | body_node :: _ -> Some (List.rev params, body_node)
+    | [] -> None
+  in
+  match split_parameters [] (direct_non_trivia_nodes node) with
+  | Some (param_nodes, body_node) ->
+      Some
+        FunExpression.
+          {
+            syntax_node = node;
+            parameters = List.map parameter_from_node param_nodes;
+            body = expression_from_node body_node;
+          }
+  | None -> None
 
 and let_expression_from_node ~is_recursive_binding node =
   let is_recursive_binding =
@@ -1009,99 +1145,6 @@ let poly_variant_tag_from_node node =
   | tag_name :: _ ->
       Some PolyVariantTag.{ syntax_node = node; tag_name = token tag_name }
   | [] -> None
-
-let name_token_from_ident_pattern node =
-  match direct_non_trivia_tokens node with
-  | first :: _ -> Some (token first)
-  | [] -> None
-
-let is_identifier_like_text text =
-  String.length text > 0
-  &&
-  let ch = String.get text 0 in
-  (ch >= 'a' && ch <= 'z')
-  || (ch >= 'A' && ch <= 'Z')
-  || ch = '_'
-
-let rec simple_pattern_name_token node =
-  match Ceibo.Red.SyntaxNode.kind node with
-  | Syntax_kind.IDENT_PATTERN ->
-      name_token_from_ident_pattern node
-  | Syntax_kind.TYPED_PATTERN
-  | Syntax_kind.PAREN_PATTERN
-  | Syntax_kind.LAZY_PATTERN ->
-      (match direct_non_trivia_nodes node |> List.find_opt (fun _ -> true) with
-      | Some child -> simple_pattern_name_token child
-      | None -> None)
-  | Syntax_kind.AS_PATTERN ->
-      (match
-         direct_non_trivia_nodes node
-         |> List.rev
-         |> List.find_opt (fun child ->
-                Ceibo.Red.SyntaxNode.kind child = Syntax_kind.IDENT_PATTERN)
-       with
-      | Some child -> name_token_from_ident_pattern child
-      | None -> None)
-  | _ -> None
-
-let first_ident_token_in_subtree node =
-  let rec go_node node =
-    match
-      direct_non_trivia_tokens node
-      |> List.find_opt (fun tok ->
-             is_identifier_like_text (Ceibo.Red.SyntaxToken.text tok))
-    with
-    | Some tok -> Some (token tok)
-    | None -> direct_non_trivia_nodes node |> List.find_map go_node
-  in
-  go_node node
-
-let parameter_from_node node =
-  match Ceibo.Red.SyntaxNode.kind node with
-  | Syntax_kind.LABELED_PARAM -> (
-      match first_ident_token_in_subtree node with
-      | Some label_name_token ->
-          Parameter.Labeled
-            LabeledParameter.
-              {
-                syntax_node = node;
-                label_token = label_name_token;
-                binding_name_token = None;
-              }
-      | None -> Parameter.Unknown node)
-  | Syntax_kind.OPTIONAL_PARAM -> (
-      match first_ident_token_in_subtree node with
-      | Some label_name_token ->
-          Parameter.Optional
-            OptionalParameter.
-              {
-                syntax_node = node;
-                label_token = label_name_token;
-                binding_name_token = None;
-                has_default = false;
-              }
-      | None -> Parameter.Unknown node)
-  | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> (
-      match direct_non_trivia_nodes node |> List.find_map first_ident_token_in_subtree with
-      | Some label_name_token ->
-          Parameter.Optional
-            OptionalParameter.
-              {
-                syntax_node = node;
-                label_token = label_name_token;
-                binding_name_token = None;
-                has_default = true;
-              }
-      | None -> Parameter.Unknown node)
-  | Syntax_kind.TYPE_CONSTRAINT ->
-      Parameter.LocallyAbstract node
-  | _ ->
-      Parameter.Positional
-        PositionalParameter.
-          {
-            syntax_node = node;
-            name_token = simple_pattern_name_token node;
-          }
 
 let type_declaration_name_path node =
   let is_name_node child =

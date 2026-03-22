@@ -363,6 +363,33 @@ let tests =
           :: _ ->
             Ok ()
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst let bindings expose fun expressions structurally" (fun () ->
+        let source = "let render = fun value -> value\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Fun
+                  {
+                    parameters = [ param ];
+                    body = Syn.Cst.Expression.Path { path; _ };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "value")
+              ~actual:(Syn.Cst.Parameter.name param);
+            Test.assert_equal ~expected:(Some "value")
+              ~actual:(Syn.Cst.ModulePath.name path);
+            Ok ()
+        | _ -> Error "expected first item to be a let binding with a fun expression");
     Test.case "cst match expressions expose boolean cases structurally" (fun () ->
         let source = "let render flag = match flag with true -> 1 | false -> 0\n" in
         let result = Syn.parse ~filename:"sample.ml" source in

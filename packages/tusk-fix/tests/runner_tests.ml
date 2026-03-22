@@ -1095,6 +1095,41 @@ let render x y z =
         Ok ());
     Test.case "diagnostic code registry explains redundant parentheses" (fun () ->
         assert_explanation_contains ~code:"F0136" ~snippet:"obvious grouping");
+    Test.case "no-eta-expansion flags unary eta expansion" (fun () ->
+        let source = "let wrap foo = fun value -> foo value\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_eta_expansion.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0137" ] ~actual:codes;
+        Ok ());
+    Test.case "no-eta-expansion flags multi-parameter eta expansion" (fun () ->
+        let source = "let wrap foo = fun left right -> foo left right\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_eta_expansion.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0137" ] ~actual:codes;
+        Ok ());
+    Test.case "no-eta-expansion keeps transformed calls clean" (fun () ->
+        let source = "let wrap foo = fun value -> foo (normalize value)\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_eta_expansion.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains eta expansion" (fun () ->
+        assert_explanation_contains ~code:"F0137" ~snippet:"eta-expanded");
     Test.case "cli list-rules text output prints one rule per line" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true

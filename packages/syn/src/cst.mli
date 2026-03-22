@@ -64,6 +64,60 @@ and parenthesized_pattern = {
   inner : pattern;
 }
 
+module PositionalParameter : sig
+  type t = {
+    syntax_node : syntax_node;
+    name_token : Token.t option;
+  }
+
+  val syntax_node : t -> syntax_node
+  val name_token : t -> Token.t option
+  val name : t -> string option
+end
+
+module LabeledParameter : sig
+  type t = {
+    syntax_node : syntax_node;
+    label_token : Token.t;
+    binding_name_token : Token.t option;
+  }
+
+  val syntax_node : t -> syntax_node
+  val label_token : t -> Token.t
+  val label : t -> string
+  val binding_name_token : t -> Token.t option
+end
+
+module OptionalParameter : sig
+  type t = {
+    syntax_node : syntax_node;
+    label_token : Token.t;
+    binding_name_token : Token.t option;
+    has_default : bool;
+  }
+
+  val syntax_node : t -> syntax_node
+  val label_token : t -> Token.t
+  val label : t -> string
+  val binding_name_token : t -> Token.t option
+  val has_default : t -> bool
+end
+
+module Parameter : sig
+  type t =
+    | Positional of PositionalParameter.t
+    | Labeled of LabeledParameter.t
+    | Optional of OptionalParameter.t
+    | LocallyAbstract of syntax_node
+    | Unknown of syntax_node
+
+  val syntax_node : t -> syntax_node
+  val name_token : t -> Token.t option
+  val name : t -> string option
+  val is_named : t -> bool
+  val has_default : t -> bool
+end
+
 module Literal : sig
   type t =
     | String of {
@@ -88,6 +142,7 @@ type expression =
   | Literal of literal
   | Apply of apply_expression
   | Infix of infix_expression
+  | Fun of fun_expression
   | Let of let_expression
   | Match of match_expression
   | If of if_expression
@@ -110,6 +165,12 @@ and infix_expression = {
   left : expression;
   operator_token : Token.t;
   right : expression;
+}
+
+and fun_expression = {
+  syntax_node : syntax_node;
+  parameters : Parameter.t list;
+  body : expression;
 }
 
 and let_expression = {
@@ -151,6 +212,7 @@ module Expression : sig
     | Literal of literal
     | Apply of apply_expression
     | Infix of infix_expression
+    | Fun of fun_expression
     | Let of let_expression
     | Match of match_expression
     | If of if_expression
@@ -216,6 +278,18 @@ module InfixExpression : sig
   val operator_token : t -> Token.t
   val operator : t -> string
   val right : t -> Expression.t
+end
+
+module FunExpression : sig
+  type t = fun_expression = {
+    syntax_node : syntax_node;
+    parameters : Parameter.t list;
+    body : expression;
+  }
+
+  val syntax_node : t -> syntax_node
+  val parameters : t -> Parameter.t list
+  val body : t -> Expression.t
 end
 
 module LetExpression : sig
@@ -363,60 +437,6 @@ module TypeDeclaration : sig
   val type_params : t -> TypeParameter.t list
   val type_definition : t -> TypeDefinition.t
   val name_token : t -> Token.t
-end
-
-module PositionalParameter : sig
-  type t = {
-    syntax_node : syntax_node;
-    name_token : Token.t option;
-  }
-
-  val syntax_node : t -> syntax_node
-  val name_token : t -> Token.t option
-  val name : t -> string option
-end
-
-module LabeledParameter : sig
-  type t = {
-    syntax_node : syntax_node;
-    label_token : Token.t;
-    binding_name_token : Token.t option;
-  }
-
-  val syntax_node : t -> syntax_node
-  val label_token : t -> Token.t
-  val label : t -> string
-  val binding_name_token : t -> Token.t option
-end
-
-module OptionalParameter : sig
-  type t = {
-    syntax_node : syntax_node;
-    label_token : Token.t;
-    binding_name_token : Token.t option;
-    has_default : bool;
-  }
-
-  val syntax_node : t -> syntax_node
-  val label_token : t -> Token.t
-  val label : t -> string
-  val binding_name_token : t -> Token.t option
-  val has_default : t -> bool
-end
-
-module Parameter : sig
-  type t =
-    | Positional of PositionalParameter.t
-    | Labeled of LabeledParameter.t
-    | Optional of OptionalParameter.t
-    | LocallyAbstract of syntax_node
-    | Unknown of syntax_node
-
-  val syntax_node : t -> syntax_node
-  val name_token : t -> Token.t option
-  val name : t -> string option
-  val is_named : t -> bool
-  val has_default : t -> bool
 end
 
 module LetBinding : sig

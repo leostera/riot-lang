@@ -75,6 +75,8 @@ let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.Apply expr ->
       diagnostics_for_expression (Syn.Cst.ApplyExpression.callee expr)
       @ diagnostics_for_expression (Syn.Cst.ApplyExpression.argument expr)
+  | Syn.Cst.Expression.Fun expr ->
+      diagnostics_for_expression (Syn.Cst.FunExpression.body expr)
   | Syn.Cst.Expression.Parenthesized expr ->
       diagnostics_for_expression (Syn.Cst.ParenthesizedExpression.inner expr)
   | Syn.Cst.Expression.Let expr ->

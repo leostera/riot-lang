@@ -93,7 +93,7 @@
 
 - [x] `let () = foo () in ..` this shoudl just be `foo ();` (`prefer-sequences-over-let-unit`)
 
-- [ ] Needles `(fun x -> foo x)` due to eta-expansion, they can just put `foo` in there
+- [x] Needles `(fun x -> foo x)` due to eta-expansion, they can just put `foo` in there (`no-eta-expansion`)
 - [x] Needless or redundant parenthesis (`no-redundant-parentheses`)
 - [ ] Needless or redundant begin/end blocks
 - [ ] Prefer `fun x  -> match x  with | ....` over `function | A -> ... | B ...`

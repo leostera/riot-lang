@@ -57,6 +57,9 @@ let rec diagnostics_for_expression ~inside_parenthesized_chain = function
         (Syn.Cst.InfixExpression.left expr)
       @ diagnostics_for_expression ~inside_parenthesized_chain
           (Syn.Cst.InfixExpression.right expr)
+  | Syn.Cst.Expression.Fun expr ->
+      Syn.Cst.FunExpression.body expr
+      |> diagnostics_for_expression ~inside_parenthesized_chain
   | Syn.Cst.Expression.Let expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
         (Syn.Cst.LetExpression.bound_value expr)

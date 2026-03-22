@@ -45,6 +45,7 @@ let body_name = function
   | Syn.Cst.Expression.Literal _
   | Syn.Cst.Expression.Apply _
   | Syn.Cst.Expression.Infix _
+  | Syn.Cst.Expression.Fun _
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Match _
   | Syn.Cst.Expression.If _

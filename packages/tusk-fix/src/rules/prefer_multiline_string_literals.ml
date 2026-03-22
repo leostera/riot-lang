@@ -31,6 +31,8 @@ let rec string_literal_chain_size = function
   | Syn.Cst.Expression.Literal _
   | Syn.Cst.Expression.Apply _ ->
       None
+  | Syn.Cst.Expression.Fun expr ->
+      string_literal_chain_size (Syn.Cst.FunExpression.body expr)
   | Syn.Cst.Expression.Parenthesized expr ->
       string_literal_chain_size (Syn.Cst.ParenthesizedExpression.inner expr)
   | Syn.Cst.Expression.Infix expr
