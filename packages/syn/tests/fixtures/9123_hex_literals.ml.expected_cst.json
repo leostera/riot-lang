@@ -20,6 +20,7 @@
               "end": 49
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -81,6 +82,7 @@
               "end": 62
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -142,6 +144,7 @@
               "end": 81
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -203,6 +206,7 @@
               "end": 99
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -264,6 +268,7 @@
               "end": 232
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -561,6 +566,7 @@
             "end": 49
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -619,6 +625,7 @@
             "end": 62
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -677,6 +684,7 @@
             "end": 81
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -735,6 +743,7 @@
             "end": 99
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -793,6 +802,7 @@
             "end": 232
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {

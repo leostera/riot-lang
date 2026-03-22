@@ -20,6 +20,7 @@
               "end": 46
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -81,6 +82,7 @@
               "end": 63
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -142,6 +144,7 @@
               "end": 80
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -203,6 +206,7 @@
               "end": 211
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -448,6 +452,7 @@
             "end": 46
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -506,6 +511,7 @@
             "end": 63
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -564,6 +570,7 @@
             "end": 80
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -622,6 +629,7 @@
             "end": 211
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {

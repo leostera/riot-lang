@@ -116,6 +116,7 @@
               ]
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "parenthesized",
             "syntax_node": {
@@ -306,6 +307,7 @@
             ]
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "parenthesized",
           "syntax_node": {

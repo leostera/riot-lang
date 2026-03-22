@@ -20,6 +20,7 @@
               "end": 13
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -123,6 +124,7 @@
               "end": 29
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "literal",
             "literal": {
@@ -219,6 +221,7 @@
             "end": 13
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {

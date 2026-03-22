@@ -20,6 +20,7 @@
               "end": 32
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -95,6 +96,7 @@
                 }
               }
             },
+            "and_bindings": [],
             "body": {
               "tag": "sequence",
               "syntax_node": {
@@ -170,6 +172,7 @@
             "end": 32
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -245,6 +248,7 @@
               }
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "sequence",
             "syntax_node": {
@@ -317,6 +321,7 @@
             "end": 32
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -417,6 +422,7 @@
             }
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "sequence",
           "syntax_node": {

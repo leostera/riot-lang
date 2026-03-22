@@ -120,6 +120,7 @@
               ]
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "infix",
             "syntax_node": {
@@ -310,6 +311,7 @@
             ]
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "infix",
           "syntax_node": {

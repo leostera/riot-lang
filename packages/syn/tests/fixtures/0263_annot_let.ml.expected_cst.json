@@ -20,6 +20,7 @@
               "end": 17
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "typed",
             "syntax_node": {
@@ -98,6 +99,7 @@
             "end": 17
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "typed",
           "syntax_node": {

@@ -20,6 +20,7 @@
               "end": 42
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -172,6 +173,7 @@
                 }
               }
             },
+            "and_bindings": [],
             "body": {
               "tag": "apply",
               "syntax_node": {
@@ -250,6 +252,7 @@
             "end": 42
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -402,6 +405,7 @@
               }
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "apply",
             "syntax_node": {
@@ -477,6 +481,7 @@
             "end": 42
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -731,6 +736,7 @@
             }
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "apply",
           "syntax_node": {

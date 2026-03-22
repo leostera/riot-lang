@@ -94,6 +94,7 @@
               }
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "typed",
             "syntax_node": {
@@ -153,6 +154,7 @@
             "end": 38
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "typed",
           "syntax_node": {
@@ -321,6 +323,7 @@
             }
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "typed",
           "syntax_node": {

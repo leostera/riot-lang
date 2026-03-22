@@ -132,6 +132,7 @@
               ]
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "literal",
             "literal": {
@@ -279,6 +280,7 @@
             ]
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "literal",
           "literal": {

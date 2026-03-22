@@ -20,6 +20,7 @@
               "end": 30
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "literal",
             "literal": {

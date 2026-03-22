@@ -39,7 +39,7 @@
 - [ ] Prefer adding real CST node shapes over convenience projections when a fixture fails
 - [ ] Keep `packages/syn/src/cst.ml` focused on types and `packages/syn/src/cst_builder.ml` focused on lifting
 - [ ] Use `python3 packages/syn/tests/test_runner.py cst --refresh-clean` after each syntax slice to refresh all newly supported `.expected_cst.json` fixtures
-- [ ] Current fixture frontier: `56` failures after the latest full `cst --refresh-clean` pass
+- [ ] Current fixture frontier: `50` failures after the latest full `cst --refresh-clean` pass
 - [ ] Keep the current unsupported frontier explicit by fixing one syntax family at a time:
   - [x] destructuring `let` bindings and mutual `let`
   - [x] record/update/index/assignment expressions

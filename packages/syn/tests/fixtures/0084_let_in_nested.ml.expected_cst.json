@@ -20,6 +20,7 @@
               "end": 57
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -122,6 +123,7 @@
                   }
                 }
               },
+              "and_bindings": [],
               "body": {
                 "tag": "infix",
                 "syntax_node": {
@@ -192,6 +194,7 @@
               },
               "is_recursive": false
             },
+            "and_bindings": [],
             "body": {
               "tag": "infix",
               "syntax_node": {
@@ -275,6 +278,7 @@
             "end": 57
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -377,6 +381,7 @@
                 }
               }
             },
+            "and_bindings": [],
             "body": {
               "tag": "infix",
               "syntax_node": {
@@ -447,6 +452,7 @@
             },
             "is_recursive": false
           },
+          "and_bindings": [],
           "body": {
             "tag": "infix",
             "syntax_node": {
@@ -527,6 +533,7 @@
             "end": 57
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -602,6 +609,7 @@
               }
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "infix",
             "syntax_node": {
@@ -682,6 +690,7 @@
             "end": 44
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -809,6 +818,7 @@
               }
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "infix",
             "syntax_node": {
@@ -879,6 +889,7 @@
           },
           "is_recursive": false
         },
+        "and_bindings": [],
         "body": {
           "tag": "infix",
           "syntax_node": {
@@ -997,6 +1008,7 @@
             }
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "infix",
           "syntax_node": {

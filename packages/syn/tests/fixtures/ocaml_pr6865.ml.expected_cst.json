@@ -20,6 +20,7 @@
               "end": 167
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -81,6 +82,7 @@
               "end": 183
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "wildcard",
             "syntax_node": {
@@ -119,6 +121,7 @@
               "end": 194
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "wildcard",
             "syntax_node": {
@@ -157,6 +160,7 @@
               "end": 210
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "wildcard",
             "syntax_node": {
@@ -195,6 +199,7 @@
             "end": 167
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {

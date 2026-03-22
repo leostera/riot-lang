@@ -20,6 +20,7 @@
               "end": 53
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -134,6 +135,7 @@
                 }
               }
             },
+            "and_bindings": [],
             "body": {
               "tag": "let",
               "syntax_node": {
@@ -229,6 +231,7 @@
                   }
                 }
               },
+              "and_bindings": [],
               "body": {
                 "tag": "infix",
                 "syntax_node": {
@@ -314,6 +317,7 @@
             "end": 53
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -428,6 +432,7 @@
               }
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "let",
             "syntax_node": {
@@ -523,6 +528,7 @@
                 }
               }
             },
+            "and_bindings": [],
             "body": {
               "tag": "infix",
               "syntax_node": {
@@ -605,6 +611,7 @@
             "end": 53
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -702,6 +709,7 @@
             "end": 53
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -888,6 +896,7 @@
             }
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "let",
           "syntax_node": {
@@ -983,6 +992,7 @@
               }
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "infix",
             "syntax_node": {
@@ -1252,6 +1262,7 @@
             }
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "infix",
           "syntax_node": {

@@ -69,6 +69,7 @@
               ]
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "apply",
             "syntax_node": {
@@ -221,6 +222,7 @@
             ]
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "apply",
           "syntax_node": {

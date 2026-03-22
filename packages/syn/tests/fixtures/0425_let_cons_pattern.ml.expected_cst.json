@@ -106,6 +106,7 @@
               ]
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "path",
             "syntax_node": {
@@ -235,6 +236,7 @@
             ]
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "path",
           "syntax_node": {

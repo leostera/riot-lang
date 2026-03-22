@@ -20,6 +20,7 @@
               "end": 57
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -200,6 +201,7 @@
                 }
               ]
             },
+            "and_bindings": [],
             "body": {
               "tag": "infix",
               "syntax_node": {
@@ -283,6 +285,7 @@
             "end": 57
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -463,6 +466,7 @@
               }
             ]
           },
+          "and_bindings": [],
           "body": {
             "tag": "infix",
             "syntax_node": {
@@ -543,6 +547,7 @@
             "end": 57
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -853,6 +858,7 @@
             }
           ]
         },
+        "and_bindings": [],
         "body": {
           "tag": "infix",
           "syntax_node": {

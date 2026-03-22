@@ -20,6 +20,7 @@
               "end": 323
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -299,6 +300,7 @@
               "end": 597
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -606,6 +608,7 @@
               "end": 1019
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -788,6 +791,7 @@
                     }
                   }
                 },
+                "and_bindings": [],
                 "body": {
                   "tag": "sequence",
                   "syntax_node": {
@@ -1036,6 +1040,7 @@
                 },
                 "is_recursive": false
               },
+              "and_bindings": [],
               "body": {
                 "tag": "literal",
                 "literal": {
@@ -1244,6 +1249,7 @@
               "end": 1192
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "wildcard",
             "syntax_node": {
@@ -1413,6 +1419,7 @@
             "end": 323
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -1689,6 +1696,7 @@
             "end": 597
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -1993,6 +2001,7 @@
             "end": 1019
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -2175,6 +2184,7 @@
                   }
                 }
               },
+              "and_bindings": [],
               "body": {
                 "tag": "sequence",
                 "syntax_node": {
@@ -2423,6 +2433,7 @@
               },
               "is_recursive": false
             },
+            "and_bindings": [],
             "body": {
               "tag": "literal",
               "literal": {
@@ -2628,6 +2639,7 @@
             "end": 947
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -4219,6 +4231,7 @@
                 }
               }
             },
+            "and_bindings": [],
             "body": {
               "tag": "sequence",
               "syntax_node": {
@@ -4467,6 +4480,7 @@
             },
             "is_recursive": false
           },
+          "and_bindings": [],
           "body": {
             "tag": "literal",
             "literal": {
@@ -4789,6 +4803,7 @@
               }
             }
           },
+          "and_bindings": [],
           "body": {
             "tag": "sequence",
             "syntax_node": {
@@ -5037,6 +5052,7 @@
           },
           "is_recursive": false
         },
+        "and_bindings": [],
         "body": {
           "tag": "literal",
           "literal": {
@@ -5160,6 +5176,7 @@
             }
           }
         },
+        "and_bindings": [],
         "body": {
           "tag": "sequence",
           "syntax_node": {

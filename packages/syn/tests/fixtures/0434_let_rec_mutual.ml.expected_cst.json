@@ -110,6 +110,136 @@
               }
             }
           },
+          "and_bindings": [
+            {
+              "syntax_node": {
+                "kind": "LET_BINDING",
+                "span": {
+                  "start": 22,
+                  "end": 31
+                }
+              },
+              "attributes": [],
+              "binding_pattern": {
+                "tag": "identifier",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 22,
+                    "end": 23
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "g",
+                  "span": {
+                    "start": 22,
+                    "end": 23
+                  }
+                }
+              },
+              "binding_name": {
+                "kind": "IDENT_EXPR",
+                "text": "g",
+                "span": {
+                  "start": 22,
+                  "end": 23
+                }
+              },
+              "parameters": [
+                {
+                  "tag": "positional",
+                  "syntax_node": {
+                    "kind": "IDENT_PATTERN",
+                    "span": {
+                      "start": 25,
+                      "end": 26
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "y",
+                    "span": {
+                      "start": 25,
+                      "end": 26
+                    }
+                  }
+                }
+              ],
+              "value": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 28,
+                    "end": 31
+                  }
+                },
+                "callee": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 28,
+                      "end": 29
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 28,
+                        "end": 29
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "f",
+                        "span": {
+                          "start": 28,
+                          "end": 29
+                        }
+                      }
+                    ]
+                  }
+                },
+                "argument": {
+                  "tag": "positional",
+                  "value": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 30,
+                        "end": 31
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 30,
+                          "end": 31
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "y",
+                          "span": {
+                            "start": 30,
+                            "end": 31
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "is_recursive": true
+            }
+          ],
           "body": {
             "tag": "apply",
             "syntax_node": {
@@ -186,6 +316,7 @@
             "end": 38
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -313,6 +444,7 @@
             "end": 31
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -532,6 +664,136 @@
             }
           }
         },
+        "and_bindings": [
+          {
+            "syntax_node": {
+              "kind": "LET_BINDING",
+              "span": {
+                "start": 22,
+                "end": 31
+              }
+            },
+            "attributes": [],
+            "binding_pattern": {
+              "tag": "identifier",
+              "syntax_node": {
+                "kind": "IDENT_PATTERN",
+                "span": {
+                  "start": 22,
+                  "end": 23
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "g",
+                "span": {
+                  "start": 22,
+                  "end": 23
+                }
+              }
+            },
+            "binding_name": {
+              "kind": "IDENT_EXPR",
+              "text": "g",
+              "span": {
+                "start": 22,
+                "end": 23
+              }
+            },
+            "parameters": [
+              {
+                "tag": "positional",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 25,
+                    "end": 26
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 25,
+                    "end": 26
+                  }
+                }
+              }
+            ],
+            "value": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 28,
+                  "end": 31
+                }
+              },
+              "callee": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 28,
+                    "end": 29
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 28,
+                      "end": 29
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "f",
+                      "span": {
+                        "start": 28,
+                        "end": 29
+                      }
+                    }
+                  ]
+                }
+              },
+              "argument": {
+                "tag": "positional",
+                "value": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 30,
+                      "end": 31
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 30,
+                        "end": 31
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "y",
+                        "span": {
+                          "start": 30,
+                          "end": 31
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "is_recursive": true
+          }
+        ],
         "body": {
           "tag": "apply",
           "syntax_node": {

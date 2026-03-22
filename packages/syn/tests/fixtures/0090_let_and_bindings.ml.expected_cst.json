@@ -20,6 +20,7 @@
               "end": 40
             }
           },
+          "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
             "syntax_node": {
@@ -95,6 +96,67 @@
                 }
               }
             },
+            "and_bindings": [
+              {
+                "syntax_node": {
+                  "kind": "LET_BINDING",
+                  "span": {
+                    "start": 24,
+                    "end": 29
+                  }
+                },
+                "attributes": [],
+                "binding_pattern": {
+                  "tag": "identifier",
+                  "syntax_node": {
+                    "kind": "IDENT_PATTERN",
+                    "span": {
+                      "start": 24,
+                      "end": 25
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "span": {
+                      "start": 24,
+                      "end": 25
+                    }
+                  }
+                },
+                "binding_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "b",
+                  "span": {
+                    "start": 24,
+                    "end": 25
+                  }
+                },
+                "parameters": [],
+                "value": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 28,
+                        "end": 29
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "2",
+                      "span": {
+                        "start": 28,
+                        "end": 29
+                      }
+                    }
+                  }
+                },
+                "is_recursive": false
+              }
+            ],
             "body": {
               "tag": "infix",
               "syntax_node": {
@@ -186,6 +248,7 @@
             "end": 40
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -261,6 +324,67 @@
               }
             }
           },
+          "and_bindings": [
+            {
+              "syntax_node": {
+                "kind": "LET_BINDING",
+                "span": {
+                  "start": 24,
+                  "end": 29
+                }
+              },
+              "attributes": [],
+              "binding_pattern": {
+                "tag": "identifier",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 24,
+                    "end": 25
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "b",
+                  "span": {
+                    "start": 24,
+                    "end": 25
+                  }
+                }
+              },
+              "binding_name": {
+                "kind": "IDENT_EXPR",
+                "text": "b",
+                "span": {
+                  "start": 24,
+                  "end": 25
+                }
+              },
+              "parameters": [],
+              "value": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 28,
+                      "end": 29
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "2",
+                    "span": {
+                      "start": 28,
+                      "end": 29
+                    }
+                  }
+                }
+              },
+              "is_recursive": false
+            }
+          ],
           "body": {
             "tag": "infix",
             "syntax_node": {
@@ -349,6 +473,7 @@
             "end": 40
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -407,6 +532,7 @@
             "end": 29
           }
         },
+        "attributes": [],
         "binding_pattern": {
           "tag": "identifier",
           "syntax_node": {
@@ -507,6 +633,67 @@
             }
           }
         },
+        "and_bindings": [
+          {
+            "syntax_node": {
+              "kind": "LET_BINDING",
+              "span": {
+                "start": 24,
+                "end": 29
+              }
+            },
+            "attributes": [],
+            "binding_pattern": {
+              "tag": "identifier",
+              "syntax_node": {
+                "kind": "IDENT_PATTERN",
+                "span": {
+                  "start": 24,
+                  "end": 25
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "b",
+                "span": {
+                  "start": 24,
+                  "end": 25
+                }
+              }
+            },
+            "binding_name": {
+              "kind": "IDENT_EXPR",
+              "text": "b",
+              "span": {
+                "start": 24,
+                "end": 25
+              }
+            },
+            "parameters": [],
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 28,
+                    "end": 29
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "2",
+                  "span": {
+                    "start": 28,
+                    "end": 29
+                  }
+                }
+              }
+            },
+            "is_recursive": false
+          }
+        ],
         "body": {
           "tag": "infix",
           "syntax_node": {
