@@ -117,7 +117,14 @@ module BuildLock = struct
   let acquire workspace_root fn =
     match wait workspace_root with
     | Error err -> Error err
-    | Ok t -> Fun.protect ~finally:(fun () -> release t) fn
+    | Ok t ->
+        try
+          let result = fn () in
+          release t;
+          result
+        with exn ->
+          release t;
+          raise exn
 end
 
 let convert_build_stats (stats : Protocol.BuildStats.t) : build_stats =
