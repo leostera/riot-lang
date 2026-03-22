@@ -66,35 +66,54 @@ let send_request t request =
 
 let receive_response ~selector = receive ~selector ()
 
-let build_lock_path workspace_root =
-  Path.(Tusk_model.Tusk_dirs.build_dir_root ~workspace_root / Path.v "tusk.lock")
+module BuildLock = struct
+  type nonrec t = {
+    path : Path.t;
+    file : Fs.File.t;
+  }
 
-let release_build_lock lock_file =
-  let _ = Fs.File.unlock lock_file in
-  let _ = Fs.File.close lock_file in
-  ()
+  let retry_interval = Time.Duration.from_millis 500
 
-let acquire_build_lock workspace_root =
-  let build_dir = Tusk_model.Tusk_dirs.build_dir_root ~workspace_root in
-  let _ =
-    Fs.create_dir_all build_dir
-    |> Result.expect ~msg:"Failed to create build directory"
-  in
-  let lock_path = build_lock_path workspace_root in
-  let lock_file =
-    match Fs.File.open_write lock_path with
-    | Ok file -> file
+  let path workspace_root =
+    Path.(Tusk_model.Tusk_dirs.build_dir_root ~workspace_root / Path.v "tusk.lock")
+
+  let release t =
+    let _ = Fs.File.unlock t.file in
+    let _ = Fs.File.close t.file in
+    ()
+
+  let lock_failure action path =
+    Failure ("Failed to " ^ action ^ " build lock file at " ^ Path.to_string path)
+
+  let rec wait t =
+    sleep retry_interval;
+    match Fs.File.try_lock_exclusive t.file with
+    | Ok true -> Ok t
+    | Ok false -> wait t
     | Error _ ->
-        raise (Failure ("Failed to open build lock file at " ^ Path.to_string lock_path))
-  in
-  match Fs.File.try_lock_exclusive lock_file with
-  | Ok true -> Ok lock_file
-  | Ok false ->
-      release_build_lock lock_file;
-      Error (BuildAlreadyRunning { lock_path })
-  | Error _ ->
-      release_build_lock lock_file;
-      raise (Failure ("Failed to lock build file at " ^ Path.to_string lock_path))
+        release t;
+        raise (lock_failure "lock" t.path)
+
+  let acquire workspace_root =
+    let build_dir = Tusk_model.Tusk_dirs.build_dir_root ~workspace_root in
+    let _ =
+      Fs.create_dir_all build_dir
+      |> Result.expect ~msg:"Failed to create build directory"
+    in
+    let path = path workspace_root in
+    let file =
+      match Fs.File.open_write path with
+      | Ok file -> file
+      | Error _ -> raise (lock_failure "open" path)
+    in
+    let t = { path; file } in
+    match Fs.File.try_lock_exclusive file with
+    | Ok true -> Ok t
+    | Ok false -> wait t
+    | Error _ ->
+        release t;
+        raise (lock_failure "lock" path)
+end
 
 let convert_build_stats (stats : Protocol.BuildStats.t) : build_stats =
   {
@@ -195,9 +214,9 @@ let rec handle_streaming_events t session_id callback =
       else handle_streaming_events t session_id callback
 
 let build_streaming t target ?(scope = Runtime) ?target_arch callback =
-  match acquire_build_lock t.workspace_root with
+  match BuildLock.acquire t.workspace_root with
   | Error err -> Error err
-  | Ok lock_file ->
+  | Ok build_lock ->
       try
         let result =
           let target =
@@ -238,10 +257,10 @@ let build_streaming t target ?(scope = Runtime) ?target_arch callback =
               handle_streaming_events t started_session_id callback
           | Error err -> Error err
         in
-        release_build_lock lock_file;
+        BuildLock.release build_lock;
         result
       with exn ->
-        release_build_lock lock_file;
+        BuildLock.release build_lock;
         raise exn
 
 let find_executable t name =
