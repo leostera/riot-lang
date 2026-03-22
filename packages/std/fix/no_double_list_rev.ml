@@ -58,11 +58,19 @@ let is_list_rev = function
       ends_with_list_rev (Syn.Cst.PathExpression.path expr)
   | _ -> false
 
+let expression_of_apply_argument = function
+  | Syn.Cst.Positional expr -> Some expr
+  | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } ->
+      value
+
 let diagnostic_for_expression = function
   | Syn.Cst.Expression.Apply outer
     when is_list_rev (unwrap_parens (Syn.Cst.ApplyExpression.callee outer)) -> (
-        match unwrap_parens (Syn.Cst.ApplyExpression.argument outer) with
-        | Syn.Cst.Expression.Apply inner
+        match
+          Syn.Cst.ApplyExpression.argument outer |> expression_of_apply_argument
+          |> Option.map unwrap_parens
+        with
+        | Some (Syn.Cst.Expression.Apply inner)
           when is_list_rev (unwrap_parens (Syn.Cst.ApplyExpression.callee inner))
             ->
               Some

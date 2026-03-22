@@ -32,65 +32,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 76,
-            "end": 80
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 76,
-              "end": 80
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "elt",
-              "span": {
-                "start": 76,
-                "end": 79
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 95,
-            "end": 97
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 95,
-              "end": 97
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "t",
-              "span": {
-                "start": 95,
-                "end": 96
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

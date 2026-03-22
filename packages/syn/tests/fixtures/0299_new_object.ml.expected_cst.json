@@ -179,35 +179,6 @@
             }
           ]
         }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 12,
-            "end": 21
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 12,
-              "end": 21
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "my_class",
-              "span": {
-                "start": 12,
-                "end": 20
-              }
-            }
-          ]
-        }
       }
     ]
   }

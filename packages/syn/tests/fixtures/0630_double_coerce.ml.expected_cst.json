@@ -86,19 +86,65 @@
                 ]
               }
             },
-            "from_type_syntax_node": {
-              "kind": "TYPE_CONSTR",
-              "span": {
-                "start": 15,
-                "end": 29
-              }
+            "from_type": {
+              "tag": "constr",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 15,
+                  "end": 29
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 15,
+                    "end": 29
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "specific_type",
+                    "span": {
+                      "start": 15,
+                      "end": 28
+                    }
+                  }
+                ]
+              },
+              "arguments": []
             },
-            "to_type_syntax_node": {
-              "kind": "TYPE_CONSTR",
-              "span": {
-                "start": 32,
-                "end": 41
-              }
+            "to_type": {
+              "tag": "constr",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 32,
+                  "end": 41
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 32,
+                    "end": 41
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "base_type",
+                    "span": {
+                      "start": 32,
+                      "end": 41
+                    }
+                  }
+                ]
+              },
+              "arguments": []
             }
           },
           "is_recursive": false
@@ -180,19 +226,65 @@
               ]
             }
           },
-          "from_type_syntax_node": {
-            "kind": "TYPE_CONSTR",
-            "span": {
-              "start": 15,
-              "end": 29
-            }
+          "from_type": {
+            "tag": "constr",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 15,
+                "end": 29
+              }
+            },
+            "constructor_path": {
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 15,
+                  "end": 29
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "specific_type",
+                  "span": {
+                    "start": 15,
+                    "end": 28
+                  }
+                }
+              ]
+            },
+            "arguments": []
           },
-          "to_type_syntax_node": {
-            "kind": "TYPE_CONSTR",
-            "span": {
-              "start": 32,
-              "end": 41
-            }
+          "to_type": {
+            "tag": "constr",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 32,
+                "end": 41
+              }
+            },
+            "constructor_path": {
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 32,
+                  "end": 41
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "base_type",
+                  "span": {
+                    "start": 32,
+                    "end": 41
+                  }
+                }
+              ]
+            },
+            "arguments": []
           }
         },
         "is_recursive": false
@@ -237,19 +329,65 @@
             ]
           }
         },
-        "from_type_syntax_node": {
-          "kind": "TYPE_CONSTR",
-          "span": {
-            "start": 15,
-            "end": 29
-          }
+        "from_type": {
+          "tag": "constr",
+          "syntax_node": {
+            "kind": "TYPE_CONSTR",
+            "span": {
+              "start": 15,
+              "end": 29
+            }
+          },
+          "constructor_path": {
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 15,
+                "end": 29
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "specific_type",
+                "span": {
+                  "start": 15,
+                  "end": 28
+                }
+              }
+            ]
+          },
+          "arguments": []
         },
-        "to_type_syntax_node": {
-          "kind": "TYPE_CONSTR",
-          "span": {
-            "start": 32,
-            "end": 41
-          }
+        "to_type": {
+          "tag": "constr",
+          "syntax_node": {
+            "kind": "TYPE_CONSTR",
+            "span": {
+              "start": 32,
+              "end": 41
+            }
+          },
+          "constructor_path": {
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 32,
+                "end": 41
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "base_type",
+                "span": {
+                  "start": 32,
+                  "end": 41
+                }
+              }
+            ]
+          },
+          "arguments": []
         }
       },
       {

@@ -1445,27 +1445,6 @@
       {
         "tag": "literal",
         "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 159,
-              "end": 165
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "0x000A",
-            "span": {
-              "start": 159,
-              "end": 165
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
           "tag": "string",
           "syntax_node": {
             "kind": "STRING_LITERAL",
@@ -1487,27 +1466,6 @@
       {
         "tag": "literal",
         "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 178,
-              "end": 184
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "0x000D",
-            "span": {
-              "start": 178,
-              "end": 184
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
           "tag": "string",
           "syntax_node": {
             "kind": "STRING_LITERAL",
@@ -1522,27 +1480,6 @@
             "span": {
               "start": 188,
               "end": 192
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 197,
-              "end": 203
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "0x0020",
-            "span": {
-              "start": 197,
-              "end": 203
             }
           }
         }

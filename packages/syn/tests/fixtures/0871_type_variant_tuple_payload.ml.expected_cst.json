@@ -58,6 +58,78 @@
                     "start": 13,
                     "end": 20
                   }
+                },
+                "payload_type": {
+                  "tag": "tuple",
+                  "syntax_node": {
+                    "kind": "TYPE_TUPLE",
+                    "span": {
+                      "start": 24,
+                      "end": 34
+                    }
+                  },
+                  "elements": [
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 24,
+                          "end": 28
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 24,
+                            "end": 28
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 24,
+                              "end": 27
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    },
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 30,
+                          "end": 34
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 30,
+                            "end": 34
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 30,
+                              "end": 33
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    }
+                  ]
                 }
               },
               {
@@ -75,6 +147,108 @@
                     "start": 36,
                     "end": 43
                   }
+                },
+                "payload_type": {
+                  "tag": "tuple",
+                  "syntax_node": {
+                    "kind": "TYPE_TUPLE",
+                    "span": {
+                      "start": 47,
+                      "end": 63
+                    }
+                  },
+                  "elements": [
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 47,
+                          "end": 51
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 47,
+                            "end": 51
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 47,
+                              "end": 50
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    },
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 53,
+                          "end": 57
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 53,
+                            "end": 57
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 53,
+                              "end": 56
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    },
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 59,
+                          "end": 63
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 59,
+                            "end": 63
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 59,
+                              "end": 62
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    }
+                  ]
                 }
               }
             ]
@@ -83,94 +257,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 5,
-            "end": 11
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 5,
-              "end": 11
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "coord",
-              "span": {
-                "start": 5,
-                "end": 10
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 13,
-            "end": 20
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 13,
-              "end": 20
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Point2D",
-              "span": {
-                "start": 13,
-                "end": 20
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 36,
-            "end": 43
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 36,
-              "end": 43
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Point3D",
-              "span": {
-                "start": 36,
-                "end": 43
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

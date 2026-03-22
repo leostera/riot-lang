@@ -75,42 +75,70 @@
                 "start": 25,
                 "end": 36
               }
+            },
+            "manifest": {
+              "tag": "arrow",
+              "syntax_node": {
+                "kind": "TYPE_ARROW",
+                "span": {
+                  "start": 25,
+                  "end": 36
+                }
+              },
+              "parameter_type": {
+                "tag": "var",
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 25,
+                    "end": 27
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 26,
+                    "end": 27
+                  }
+                }
+              },
+              "result_type": {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 31,
+                    "end": 36
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 31,
+                      "end": 36
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "unit",
+                      "span": {
+                        "start": 31,
+                        "end": 35
+                      }
+                    }
+                  ]
+                },
+                "arguments": []
+              }
             }
           }
         }
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 9,
-            "end": 23
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 9,
-              "end": 23
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "contravariant",
-              "span": {
-                "start": 9,
-                "end": 22
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

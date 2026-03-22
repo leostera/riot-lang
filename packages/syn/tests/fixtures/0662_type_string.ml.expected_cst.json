@@ -48,42 +48,42 @@
                 "start": 9,
                 "end": 16
               }
+            },
+            "manifest": {
+              "tag": "constr",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 9,
+                  "end": 16
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 9,
+                    "end": 16
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "string",
+                    "span": {
+                      "start": 9,
+                      "end": 15
+                    }
+                  }
+                ]
+              },
+              "arguments": []
             }
           }
         }
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 5,
-            "end": 7
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 5,
-              "end": 7
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "t",
-              "span": {
-                "start": 5,
-                "end": 6
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

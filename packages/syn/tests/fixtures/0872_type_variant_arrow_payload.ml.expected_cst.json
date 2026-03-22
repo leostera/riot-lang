@@ -58,6 +58,86 @@
                     "start": 14,
                     "end": 22
                   }
+                },
+                "payload_type": {
+                  "tag": "parenthesized",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 26,
+                      "end": 39
+                    }
+                  },
+                  "inner": {
+                    "tag": "arrow",
+                    "syntax_node": {
+                      "kind": "TYPE_ARROW",
+                      "span": {
+                        "start": 27,
+                        "end": 38
+                      }
+                    },
+                    "parameter_type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 27,
+                          "end": 31
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 27,
+                            "end": 31
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 27,
+                              "end": 30
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    },
+                    "result_type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 34,
+                          "end": 38
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 34,
+                            "end": 38
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "unit",
+                            "span": {
+                              "start": 34,
+                              "end": 38
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    }
+                  }
                 }
               },
               {
@@ -75,6 +155,36 @@
                     "start": 42,
                     "end": 47
                   }
+                },
+                "payload_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 51,
+                      "end": 55
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 51,
+                        "end": 55
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 51,
+                          "end": 54
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
                 }
               }
             ]
@@ -83,94 +193,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 5,
-            "end": 12
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 5,
-              "end": 12
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "action",
-              "span": {
-                "start": 5,
-                "end": 11
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 14,
-            "end": 22
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 14,
-              "end": 22
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Callback",
-              "span": {
-                "start": 14,
-                "end": 22
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 42,
-            "end": 47
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 42,
-              "end": 47
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Value",
-              "span": {
-                "start": 42,
-                "end": 47
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

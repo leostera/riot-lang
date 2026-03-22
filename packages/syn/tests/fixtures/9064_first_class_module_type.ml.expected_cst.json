@@ -110,65 +110,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 5,
-            "end": 15
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 5,
-              "end": 15
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "transport",
-              "span": {
-                "start": 5,
-                "end": 14
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 41,
-            "end": 48
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 41,
-              "end": 48
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "driver",
-              "span": {
-                "start": 41,
-                "end": 47
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

@@ -121,12 +121,77 @@
                 ]
               }
             },
-            "type_syntax_node": {
-              "kind": "TYPE_TUPLE",
-              "span": {
-                "start": 18,
-                "end": 27
-              }
+            "type": {
+              "tag": "tuple",
+              "syntax_node": {
+                "kind": "TYPE_TUPLE",
+                "span": {
+                  "start": 18,
+                  "end": 27
+                }
+              },
+              "elements": [
+                {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 18,
+                      "end": 22
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 18,
+                        "end": 22
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 18,
+                          "end": 21
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
+                },
+                {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 24,
+                      "end": 27
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 24,
+                        "end": 27
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 24,
+                          "end": 27
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
+                }
+              ]
             }
           },
           "is_recursive": false
@@ -243,12 +308,77 @@
               ]
             }
           },
-          "type_syntax_node": {
-            "kind": "TYPE_TUPLE",
-            "span": {
-              "start": 18,
-              "end": 27
-            }
+          "type": {
+            "tag": "tuple",
+            "syntax_node": {
+              "kind": "TYPE_TUPLE",
+              "span": {
+                "start": 18,
+                "end": 27
+              }
+            },
+            "elements": [
+              {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 18,
+                    "end": 22
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 18,
+                      "end": 22
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "int",
+                      "span": {
+                        "start": 18,
+                        "end": 21
+                      }
+                    }
+                  ]
+                },
+                "arguments": []
+              },
+              {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 24,
+                    "end": 27
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 24,
+                      "end": 27
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "int",
+                      "span": {
+                        "start": 24,
+                        "end": 27
+                      }
+                    }
+                  ]
+                },
+                "arguments": []
+              }
+            ]
           }
         },
         "is_recursive": false
@@ -328,12 +458,77 @@
             ]
           }
         },
-        "type_syntax_node": {
-          "kind": "TYPE_TUPLE",
-          "span": {
-            "start": 18,
-            "end": 27
-          }
+        "type": {
+          "tag": "tuple",
+          "syntax_node": {
+            "kind": "TYPE_TUPLE",
+            "span": {
+              "start": 18,
+              "end": 27
+            }
+          },
+          "elements": [
+            {
+              "tag": "constr",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 18,
+                  "end": 22
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 18,
+                    "end": 22
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "int",
+                    "span": {
+                      "start": 18,
+                      "end": 21
+                    }
+                  }
+                ]
+              },
+              "arguments": []
+            },
+            {
+              "tag": "constr",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 24,
+                  "end": 27
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 24,
+                    "end": 27
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "int",
+                    "span": {
+                      "start": 24,
+                      "end": 27
+                    }
+                  }
+                ]
+              },
+              "arguments": []
+            }
+          ]
         }
       },
       {

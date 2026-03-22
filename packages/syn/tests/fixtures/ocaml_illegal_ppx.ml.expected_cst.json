@@ -13860,64 +13860,6 @@
     ],
     "expressions": [
       {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 11,
-            "end": 22
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 11,
-              "end": 22
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Ast_helper",
-              "span": {
-                "start": 11,
-                "end": 21
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 33,
-            "end": 44
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 33,
-              "end": 44
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Ast_mapper",
-              "span": {
-                "start": 33,
-                "end": 43
-              }
-            }
-          ]
-        }
-      },
-      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",
@@ -24735,27 +24677,6 @@
         }
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 806,
-              "end": 813
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"tuple\"",
-            "span": {
-              "start": 806,
-              "end": 813
-            }
-          }
-        }
-      },
-      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",
@@ -24885,27 +24806,6 @@
         }
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 872,
-              "end": 880
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"record\"",
-            "span": {
-              "start": 872,
-              "end": 880
-            }
-          }
-        }
-      },
-      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",
@@ -25032,27 +24932,6 @@
               }
             }
           ]
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 946,
-              "end": 955
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"no_args\"",
-            "span": {
-              "start": 946,
-              "end": 955
-            }
-          }
         }
       },
       {
@@ -26320,27 +26199,6 @@
         }
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 1145,
-              "end": 1173
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"record_with_functor_fields\"",
-            "span": {
-              "start": 1145,
-              "end": 1173
-            }
-          }
-        }
-      },
-      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",
@@ -27460,27 +27318,6 @@
               }
             }
           ]
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 1318,
-              "end": 1337
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"empty_poly_binder\"",
-            "span": {
-              "start": 1318,
-              "end": 1337
-            }
-          }
         }
       },
       {
@@ -28918,27 +28755,6 @@
         }
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 1511,
-              "end": 1522
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"empty_let\"",
-            "span": {
-              "start": 1511,
-              "end": 1522
-            }
-          }
-        }
-      },
-      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",
@@ -29065,27 +28881,6 @@
               }
             }
           ]
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 1599,
-              "end": 1611
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"empty_type\"",
-            "span": {
-              "start": 1599,
-              "end": 1611
-            }
-          }
         }
       },
       {
@@ -30140,27 +29935,6 @@
         }
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 1793,
-              "end": 1806
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"missing_rhs\"",
-            "span": {
-              "start": 1793,
-              "end": 1806
-            }
-          }
-        }
-      },
-      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",
@@ -30641,19 +30415,6 @@
               }
             }
           ]
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 1894,
-              "end": 1896
-            }
-          }
         }
       },
       {
@@ -31764,6 +31525,35 @@
             "value": null
           }
         ]
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "RECORD_FIELD",
+          "span": {
+            "start": 1944,
+            "end": 1950
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "RECORD_FIELD",
+            "span": {
+              "start": 1944,
+              "end": 1950
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "super",
+              "span": {
+                "start": 1944,
+                "end": 1949
+              }
+            }
+          ]
+        }
       }
     ]
   }

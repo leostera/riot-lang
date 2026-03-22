@@ -90,7 +90,9 @@ let rec string_literal_chain_size = function
           | Some else_branch -> string_literal_chain_size else_branch
           | None -> None))
   | Syn.Cst.Expression.Infix _
-  | Syn.Cst.Expression.Unknown _ ->
+  ->
+      None
+  | _ ->
       None
 
 let make_diagnostic expr =

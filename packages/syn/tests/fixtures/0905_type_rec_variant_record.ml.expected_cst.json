@@ -58,7 +58,8 @@
                     "start": 12,
                     "end": 16
                   }
-                }
+                },
+                "payload_type": null
               },
               {
                 "syntax_node": {
@@ -75,6 +76,162 @@
                     "start": 19,
                     "end": 23
                   }
+                },
+                "payload_type": {
+                  "tag": "record",
+                  "syntax_node": {
+                    "kind": "TYPE_RECORD",
+                    "span": {
+                      "start": 27,
+                      "end": 69
+                    }
+                  },
+                  "fields": [
+                    {
+                      "syntax_node": {
+                        "kind": "TYPE_RECORD_FIELD",
+                        "span": {
+                          "start": 29,
+                          "end": 40
+                        }
+                      },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "value",
+                        "span": {
+                          "start": 29,
+                          "end": 34
+                        }
+                      },
+                      "field_type": {
+                        "tag": "constr",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 37,
+                            "end": 40
+                          }
+                        },
+                        "constructor_path": {
+                          "syntax_node": {
+                            "kind": "TYPE_CONSTR",
+                            "span": {
+                              "start": 37,
+                              "end": 40
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "int",
+                              "span": {
+                                "start": 37,
+                                "end": 40
+                              }
+                            }
+                          ]
+                        },
+                        "arguments": []
+                      },
+                      "is_mutable": false
+                    },
+                    {
+                      "syntax_node": {
+                        "kind": "TYPE_RECORD_FIELD",
+                        "span": {
+                          "start": 42,
+                          "end": 53
+                        }
+                      },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "left",
+                        "span": {
+                          "start": 42,
+                          "end": 46
+                        }
+                      },
+                      "field_type": {
+                        "tag": "constr",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 49,
+                            "end": 53
+                          }
+                        },
+                        "constructor_path": {
+                          "syntax_node": {
+                            "kind": "TYPE_CONSTR",
+                            "span": {
+                              "start": 49,
+                              "end": 53
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "tree",
+                              "span": {
+                                "start": 49,
+                                "end": 53
+                              }
+                            }
+                          ]
+                        },
+                        "arguments": []
+                      },
+                      "is_mutable": false
+                    },
+                    {
+                      "syntax_node": {
+                        "kind": "TYPE_RECORD_FIELD",
+                        "span": {
+                          "start": 55,
+                          "end": 68
+                        }
+                      },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "right",
+                        "span": {
+                          "start": 55,
+                          "end": 60
+                        }
+                      },
+                      "field_type": {
+                        "tag": "constr",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 63,
+                            "end": 68
+                          }
+                        },
+                        "constructor_path": {
+                          "syntax_node": {
+                            "kind": "TYPE_CONSTR",
+                            "span": {
+                              "start": 63,
+                              "end": 68
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "tree",
+                              "span": {
+                                "start": 63,
+                                "end": 67
+                              }
+                            }
+                          ]
+                        },
+                        "arguments": []
+                      },
+                      "is_mutable": false
+                    }
+                  ]
                 }
               }
             ]
@@ -83,94 +240,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 5,
-            "end": 10
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 5,
-              "end": 10
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "tree",
-              "span": {
-                "start": 5,
-                "end": 9
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 12,
-            "end": 16
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 12,
-              "end": 16
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Leaf",
-              "span": {
-                "start": 12,
-                "end": 16
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 19,
-            "end": 23
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 19,
-              "end": 23
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Node",
-              "span": {
-                "start": 19,
-                "end": 23
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

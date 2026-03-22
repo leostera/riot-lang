@@ -59,6 +59,36 @@
                     "end": 20
                   }
                 },
+                "field_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 23,
+                      "end": 27
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 23,
+                        "end": 27
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 23,
+                          "end": 26
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
+                },
                 "is_mutable": true
               }
             ]
@@ -67,36 +97,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 5,
-            "end": 7
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 5,
-              "end": 7
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "t",
-              "span": {
-                "start": 5,
-                "end": 6
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

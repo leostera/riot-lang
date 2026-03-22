@@ -2162,48 +2162,6 @@
       {
         "tag": "literal",
         "literal": {
-          "tag": "char",
-          "syntax_node": {
-            "kind": "CHAR_LITERAL",
-            "span": {
-              "start": 244,
-              "end": 247
-            }
-          },
-          "literal_token": {
-            "kind": "CHAR_LITERAL",
-            "text": "'-'",
-            "span": {
-              "start": 244,
-              "end": 247
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "char",
-          "syntax_node": {
-            "kind": "CHAR_LITERAL",
-            "span": {
-              "start": 250,
-              "end": 253
-            }
-          },
-          "literal_token": {
-            "kind": "CHAR_LITERAL",
-            "text": "'+'",
-            "span": {
-              "start": 250,
-              "end": 253
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
           "tag": "bool",
           "syntax_node": {
             "kind": "BOOL_LITERAL",
@@ -2576,27 +2534,6 @@
       {
         "tag": "literal",
         "literal": {
-          "tag": "char",
-          "syntax_node": {
-            "kind": "CHAR_LITERAL",
-            "span": {
-              "start": 360,
-              "end": 363
-            }
-          },
-          "literal_token": {
-            "kind": "CHAR_LITERAL",
-            "text": "'-'",
-            "span": {
-              "start": 360,
-              "end": 363
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
           "tag": "string",
           "syntax_node": {
             "kind": "STRING_LITERAL",
@@ -2611,48 +2548,6 @@
             "span": {
               "start": 381,
               "end": 389
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "char",
-          "syntax_node": {
-            "kind": "CHAR_LITERAL",
-            "span": {
-              "start": 400,
-              "end": 403
-            }
-          },
-          "literal_token": {
-            "kind": "CHAR_LITERAL",
-            "text": "'\"'",
-            "span": {
-              "start": 400,
-              "end": 403
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "char",
-          "syntax_node": {
-            "kind": "CHAR_LITERAL",
-            "span": {
-              "start": 406,
-              "end": 410
-            }
-          },
-          "literal_token": {
-            "kind": "CHAR_LITERAL",
-            "text": "'\\''",
-            "span": {
-              "start": 406,
-              "end": 410
             }
           }
         }

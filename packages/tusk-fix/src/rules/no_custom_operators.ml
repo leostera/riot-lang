@@ -69,8 +69,7 @@ let make_diagnostic expr =
 
 let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.Path _
-  | Syn.Cst.Expression.Literal _
-  | Syn.Cst.Expression.Unknown _ ->
+  | Syn.Cst.Expression.Literal _ ->
       []
   | Syn.Cst.Expression.Apply expr ->
       diagnostics_for_expression (Syn.Cst.ApplyExpression.callee expr)
@@ -131,6 +130,8 @@ let rec diagnostics_for_expression = function
         make_diagnostic expr :: nested
       else
         nested
+  | _ ->
+      []
 
 let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with

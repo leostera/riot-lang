@@ -119,12 +119,35 @@
                 }
               ]
             },
-            "type_syntax_node": {
-              "kind": "TYPE_CONSTR",
-              "span": {
-                "start": 21,
-                "end": 26
-              }
+            "type": {
+              "tag": "constr",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 21,
+                  "end": 26
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 21,
+                    "end": 26
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "point",
+                    "span": {
+                      "start": 21,
+                      "end": 26
+                    }
+                  }
+                ]
+              },
+              "arguments": []
             }
           },
           "is_recursive": false
@@ -239,12 +262,35 @@
               }
             ]
           },
-          "type_syntax_node": {
-            "kind": "TYPE_CONSTR",
-            "span": {
-              "start": 21,
-              "end": 26
-            }
+          "type": {
+            "tag": "constr",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 21,
+                "end": 26
+              }
+            },
+            "constructor_path": {
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 21,
+                  "end": 26
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "point",
+                  "span": {
+                    "start": 21,
+                    "end": 26
+                  }
+                }
+              ]
+            },
+            "arguments": []
           }
         },
         "is_recursive": false
@@ -322,12 +368,35 @@
             }
           ]
         },
-        "type_syntax_node": {
-          "kind": "TYPE_CONSTR",
-          "span": {
-            "start": 21,
-            "end": 26
-          }
+        "type": {
+          "tag": "constr",
+          "syntax_node": {
+            "kind": "TYPE_CONSTR",
+            "span": {
+              "start": 21,
+              "end": 26
+            }
+          },
+          "constructor_path": {
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 21,
+                "end": 26
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "point",
+                "span": {
+                  "start": 21,
+                  "end": 26
+                }
+              }
+            ]
+          },
+          "arguments": []
         }
       },
       {

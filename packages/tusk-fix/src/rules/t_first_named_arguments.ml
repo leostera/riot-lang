@@ -47,8 +47,7 @@ let diagnostic_for_binding binding =
              | Syn.Cst.Parameter.Positional _ -> true
              | Syn.Cst.Parameter.Labeled _
              | Syn.Cst.Parameter.Optional _
-             | Syn.Cst.Parameter.LocallyAbstract _
-             | Syn.Cst.Parameter.Unknown _ ->
+             | Syn.Cst.Parameter.LocallyAbstract _ ->
                  false)
     in
     match positional_params with

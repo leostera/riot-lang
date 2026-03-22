@@ -38,7 +38,7 @@ let count_parameter counts parameter =
       { counts with positional_count = counts.positional_count + 1 }
   | Syn.Cst.Parameter.Labeled _ | Syn.Cst.Parameter.Optional _ ->
       { counts with named_count = counts.named_count + 1 }
-  | Syn.Cst.Parameter.LocallyAbstract _ | Syn.Cst.Parameter.Unknown _ ->
+  | Syn.Cst.Parameter.LocallyAbstract _ ->
       counts
 
 let parameter_counts binding =

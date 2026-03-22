@@ -28,7 +28,9 @@ let rec is_unit_pattern = function
   | Syn.Cst.Pattern.Literal (Syn.Cst.PatternLiteral.Unit _) -> true
   | Syn.Cst.Pattern.Parenthesized { inner; _ } -> is_unit_pattern inner
   | Syn.Cst.Pattern.Identifier _ | Syn.Cst.Pattern.Wildcard _
-  | Syn.Cst.Pattern.Literal _ | Syn.Cst.Pattern.Unknown _ ->
+  | Syn.Cst.Pattern.Literal _ ->
+      false
+  | _ ->
       false
 
 let make_diagnostic expr =

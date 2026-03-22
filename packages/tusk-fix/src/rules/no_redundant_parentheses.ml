@@ -26,8 +26,7 @@ Examples:
 
 let rec child_expressions = function
   | Syn.Cst.Expression.Path _
-  | Syn.Cst.Expression.Literal _
-  | Syn.Cst.Expression.Unknown _ ->
+  | Syn.Cst.Expression.Literal _ ->
       []
   | Syn.Cst.Expression.Apply expr ->
       Syn.Cst.ApplyExpression.callee expr
@@ -76,6 +75,8 @@ let rec child_expressions = function
       | None -> base)
   | Syn.Cst.Expression.Parenthesized expr ->
       [ Syn.Cst.ParenthesizedExpression.inner expr ]
+  | _ ->
+      []
 
 let opens_with_begin ({ syntax_node; _ } : Syn.Cst.parenthesized_expression) =
   Syn.Ceibo.Red.SyntaxNode.children syntax_node
@@ -103,8 +104,9 @@ let is_obviously_redundant = function
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Match _
   | Syn.Cst.Expression.Try _
-  | Syn.Cst.Expression.If _
-  | Syn.Cst.Expression.Unknown _ ->
+  | Syn.Cst.Expression.If _ ->
+      false
+  | _ ->
       false
 
 let make_diagnostic expr =

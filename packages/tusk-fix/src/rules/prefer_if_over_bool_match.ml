@@ -47,8 +47,7 @@ let rec case_pattern_kind = function
         FalsePattern
   | Syn.Cst.Pattern.Wildcard _ -> WildcardPattern
   | Syn.Cst.Pattern.Parenthesized { inner; _ } -> case_pattern_kind inner
-  | Syn.Cst.Pattern.Identifier _ | Syn.Cst.Pattern.Literal _
-  | Syn.Cst.Pattern.Unknown _ ->
+  | Syn.Cst.Pattern.Identifier _ | Syn.Cst.Pattern.Literal _ ->
       OtherPattern
 
 let suggestion_for_match expr =

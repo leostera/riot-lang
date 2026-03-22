@@ -367,6 +367,35 @@
         ]
       },
       {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "RECORD_FIELD",
+          "span": {
+            "start": 10,
+            "end": 16
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "RECORD_FIELD",
+            "span": {
+              "start": 10,
+              "end": 16
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "point",
+              "span": {
+                "start": 10,
+                "end": 15
+              }
+            }
+          ]
+        }
+      },
+      {
         "tag": "literal",
         "literal": {
           "tag": "int",

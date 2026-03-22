@@ -32,36 +32,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 16,
-            "end": 23
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 16,
-              "end": 23
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "sig",
-              "span": {
-                "start": 16,
-                "end": 19
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

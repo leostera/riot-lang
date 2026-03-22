@@ -59,6 +59,36 @@
                     "end": 16
                   }
                 },
+                "field_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 19,
+                      "end": 22
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 19,
+                        "end": 22
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 19,
+                          "end": 22
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
+                },
                 "is_mutable": false
               },
               {
@@ -76,6 +106,36 @@
                     "start": 24,
                     "end": 25
                   }
+                },
+                "field_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 28,
+                      "end": 32
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 28,
+                        "end": 32
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 28,
+                          "end": 31
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
                 },
                 "is_mutable": false
               }
@@ -132,6 +192,36 @@
                     "end": 50
                   }
                 },
+                "field_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 53,
+                      "end": 59
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 53,
+                        "end": 59
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "point",
+                        "span": {
+                          "start": 53,
+                          "end": 58
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
+                },
                 "is_mutable": false
               }
             ]
@@ -140,65 +230,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 5,
-            "end": 11
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 5,
-              "end": 11
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "point",
-              "span": {
-                "start": 5,
-                "end": 10
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 39,
-            "end": 41
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 39,
-              "end": 41
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "t",
-              "span": {
-                "start": 39,
-                "end": 40
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

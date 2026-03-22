@@ -597,6 +597,126 @@
                 "start": 317,
                 "end": 340
               }
+            },
+            "manifest": {
+              "tag": "arrow",
+              "syntax_node": {
+                "kind": "TYPE_ARROW",
+                "span": {
+                  "start": 317,
+                  "end": 340
+                }
+              },
+              "parameter_type": {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 319,
+                    "end": 331
+                  }
+                },
+                "inner": {
+                  "tag": "arrow",
+                  "syntax_node": {
+                    "kind": "TYPE_ARROW",
+                    "span": {
+                      "start": 320,
+                      "end": 330
+                    }
+                  },
+                  "parameter_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 320,
+                        "end": 324
+                      }
+                    },
+                    "constructor_path": {
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 320,
+                          "end": 324
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 320,
+                            "end": 323
+                          }
+                        }
+                      ]
+                    },
+                    "arguments": []
+                  },
+                  "result_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 327,
+                        "end": 330
+                      }
+                    },
+                    "constructor_path": {
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 327,
+                          "end": 330
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 327,
+                            "end": 330
+                          }
+                        }
+                      ]
+                    },
+                    "arguments": []
+                  }
+                }
+              },
+              "result_type": {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 335,
+                    "end": 340
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 335,
+                      "end": 340
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "unit",
+                      "span": {
+                        "start": 335,
+                        "end": 339
+                      }
+                    }
+                  ]
+                },
+                "arguments": []
+              }
             }
           }
         }
@@ -1675,27 +1795,6 @@
         }
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 277,
-              "end": 278
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "0",
-            "span": {
-              "start": 277,
-              "end": 278
-            }
-          }
-        }
-      },
-      {
         "tag": "path",
         "syntax_node": {
           "kind": "IDENT_EXPR",
@@ -1719,35 +1818,6 @@
               "span": {
                 "start": 281,
                 "end": 282
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 313,
-            "end": 315
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 313,
-              "end": 315
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "t",
-              "span": {
-                "start": 313,
-                "end": 314
               }
             }
           ]

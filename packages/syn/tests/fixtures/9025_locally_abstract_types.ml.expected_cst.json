@@ -980,52 +980,6 @@
         }
       },
       {
-        "tag": "attribute",
-        "attribute": {
-          "syntax_node": {
-            "kind": "ATTRIBUTE_EXPR",
-            "span": {
-              "start": 173,
-              "end": 182
-            }
-          },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
-              "span": {
-                "start": 173,
-                "end": 174
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "@",
-              "span": {
-                "start": 174,
-                "end": 175
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "inline",
-              "span": {
-                "start": 175,
-                "end": 181
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 181,
-                "end": 182
-              }
-            }
-          ]
-        }
-      },
-      {
         "tag": "fun",
         "syntax_node": {
           "kind": "FUN_EXPR",

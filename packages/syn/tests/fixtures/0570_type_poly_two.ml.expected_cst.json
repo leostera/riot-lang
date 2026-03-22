@@ -101,42 +101,60 @@
                 "start": 21,
                 "end": 29
               }
+            },
+            "manifest": {
+              "tag": "tuple",
+              "syntax_node": {
+                "kind": "TYPE_TUPLE",
+                "span": {
+                  "start": 21,
+                  "end": 29
+                }
+              },
+              "elements": [
+                {
+                  "tag": "var",
+                  "syntax_node": {
+                    "kind": "TYPE_VAR",
+                    "span": {
+                      "start": 21,
+                      "end": 23
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 22,
+                      "end": 23
+                    }
+                  }
+                },
+                {
+                  "tag": "var",
+                  "syntax_node": {
+                    "kind": "TYPE_VAR",
+                    "span": {
+                      "start": 27,
+                      "end": 29
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "span": {
+                      "start": 28,
+                      "end": 29
+                    }
+                  }
+                }
+              ]
             }
           }
         }
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 14,
-            "end": 19
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 14,
-              "end": 19
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "pair",
-              "span": {
-                "start": 14,
-                "end": 18
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

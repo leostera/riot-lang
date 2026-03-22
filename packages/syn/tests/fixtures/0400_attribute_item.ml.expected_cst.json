@@ -132,35 +132,6 @@
         }
       },
       {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 0,
-            "end": 4
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 0,
-              "end": 4
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "item",
-              "span": {
-                "start": 0,
-                "end": 4
-              }
-            }
-          ]
-        }
-      },
-      {
         "tag": "attribute",
         "attribute": {
           "syntax_node": {

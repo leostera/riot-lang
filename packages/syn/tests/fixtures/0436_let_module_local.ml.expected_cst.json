@@ -221,27 +221,6 @@
         }
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 32,
-              "end": 33
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "1",
-            "span": {
-              "start": 32,
-              "end": 33
-            }
-          }
-        }
-      },
-      {
         "tag": "field_access",
         "syntax_node": {
           "kind": "FIELD_ACCESS_EXPR",

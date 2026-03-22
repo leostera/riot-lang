@@ -101,6 +101,216 @@
                     "start": 23,
                     "end": 30
                   }
+                },
+                "payload_type": {
+                  "tag": "arrow",
+                  "syntax_node": {
+                    "kind": "TYPE_ARROW",
+                    "span": {
+                      "start": 33,
+                      "end": 125
+                    }
+                  },
+                  "parameter_type": {
+                    "tag": "record",
+                    "syntax_node": {
+                      "kind": "TYPE_RECORD",
+                      "span": {
+                        "start": 33,
+                        "end": 100
+                      }
+                    },
+                    "fields": [
+                      {
+                        "syntax_node": {
+                          "kind": "TYPE_RECORD_FIELD",
+                          "span": {
+                            "start": 41,
+                            "end": 93
+                          }
+                        },
+                        "field_name": {
+                          "kind": "IDENT_EXPR",
+                          "text": "selector",
+                          "span": {
+                            "start": 41,
+                            "end": 49
+                          }
+                        },
+                        "field_type": {
+                          "tag": "arrow",
+                          "syntax_node": {
+                            "kind": "TYPE_ARROW",
+                            "span": {
+                              "start": 52,
+                              "end": 93
+                            }
+                          },
+                          "parameter_type": {
+                            "tag": "constr",
+                            "syntax_node": {
+                              "kind": "TYPE_CONSTR",
+                              "span": {
+                                "start": 52,
+                                "end": 62
+                              }
+                            },
+                            "constructor_path": {
+                              "syntax_node": {
+                                "kind": "TYPE_CONSTR",
+                                "span": {
+                                  "start": 52,
+                                  "end": 62
+                                }
+                              },
+                              "segments": [
+                                {
+                                  "kind": "IDENT_EXPR",
+                                  "text": "Message",
+                                  "span": {
+                                    "start": 52,
+                                    "end": 59
+                                  }
+                                },
+                                {
+                                  "kind": "IDENT_EXPR",
+                                  "text": "t",
+                                  "span": {
+                                    "start": 60,
+                                    "end": 61
+                                  }
+                                }
+                              ]
+                            },
+                            "arguments": []
+                          },
+                          "result_type": {
+                            "tag": "poly_variant",
+                            "syntax_node": {
+                              "kind": "TYPE_POLY_VARIANT",
+                              "span": {
+                                "start": 65,
+                                "end": 93
+                              }
+                            },
+                            "tags": [
+                              {
+                                "syntax_node": {
+                                  "kind": "POLY_VARIANT_TAG",
+                                  "span": {
+                                    "start": 71,
+                                    "end": 86
+                                  }
+                                },
+                                "tag_name": {
+                                  "kind": "IDENT_EXPR",
+                                  "text": "select",
+                                  "span": {
+                                    "start": 72,
+                                    "end": 78
+                                  }
+                                },
+                                "payload_type": {
+                                  "tag": "var",
+                                  "syntax_node": {
+                                    "kind": "TYPE_VAR",
+                                    "span": {
+                                      "start": 82,
+                                      "end": 86
+                                    }
+                                  },
+                                  "name_token": {
+                                    "kind": "IDENT_EXPR",
+                                    "text": "msg",
+                                    "span": {
+                                      "start": 83,
+                                      "end": 86
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "syntax_node": {
+                                  "kind": "POLY_VARIANT_TAG",
+                                  "span": {
+                                    "start": 86,
+                                    "end": 92
+                                  }
+                                },
+                                "tag_name": {
+                                  "kind": "IDENT_EXPR",
+                                  "text": "skip",
+                                  "span": {
+                                    "start": 87,
+                                    "end": 91
+                                  }
+                                },
+                                "payload_type": null
+                              }
+                            ]
+                          }
+                        },
+                        "is_mutable": false
+                      }
+                    ]
+                  },
+                  "result_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 110,
+                        "end": 125
+                      }
+                    },
+                    "constructor_path": {
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 110,
+                          "end": 125
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "Effect",
+                          "span": {
+                            "start": 115,
+                            "end": 121
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "t",
+                          "span": {
+                            "start": 122,
+                            "end": 123
+                          }
+                        }
+                      ]
+                    },
+                    "arguments": [
+                      {
+                        "tag": "var",
+                        "syntax_node": {
+                          "kind": "TYPE_VAR",
+                          "span": {
+                            "start": 110,
+                            "end": 114
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "msg",
+                          "span": {
+                            "start": 111,
+                            "end": 114
+                          }
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             ]
@@ -198,6 +408,75 @@
                     "start": 144,
                     "end": 149
                   }
+                },
+                "payload_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 152,
+                      "end": 166
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 152,
+                        "end": 166
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Effect",
+                        "span": {
+                          "start": 157,
+                          "end": 163
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "t",
+                        "span": {
+                          "start": 164,
+                          "end": 165
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": [
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 152,
+                          "end": 157
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 152,
+                            "end": 157
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "unit",
+                            "span": {
+                              "start": 152,
+                              "end": 156
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    }
+                  ]
                 }
               }
             ]
@@ -206,155 +485,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 7,
-            "end": 16
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 7,
-              "end": 16
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Effect",
-              "span": {
-                "start": 7,
-                "end": 13
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": ".",
-              "span": {
-                "start": 13,
-                "end": 14
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "t",
-              "span": {
-                "start": 14,
-                "end": 15
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 23,
-            "end": 30
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 23,
-              "end": 30
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Receive",
-              "span": {
-                "start": 23,
-                "end": 30
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 132,
-            "end": 141
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 132,
-              "end": 141
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Effect",
-              "span": {
-                "start": 132,
-                "end": 138
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": ".",
-              "span": {
-                "start": 138,
-                "end": 139
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "t",
-              "span": {
-                "start": 139,
-                "end": 140
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 144,
-            "end": 149
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 144,
-              "end": 149
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Yield",
-              "span": {
-                "start": 144,
-                "end": 149
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

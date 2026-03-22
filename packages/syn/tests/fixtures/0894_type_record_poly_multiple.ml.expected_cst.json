@@ -112,6 +112,24 @@
                     "end": 29
                   }
                 },
+                "field_type": {
+                  "tag": "var",
+                  "syntax_node": {
+                    "kind": "TYPE_VAR",
+                    "span": {
+                      "start": 32,
+                      "end": 34
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 33,
+                      "end": 34
+                    }
+                  }
+                },
                 "is_mutable": false
               },
               {
@@ -128,6 +146,24 @@
                   "span": {
                     "start": 36,
                     "end": 41
+                  }
+                },
+                "field_type": {
+                  "tag": "var",
+                  "syntax_node": {
+                    "kind": "TYPE_VAR",
+                    "span": {
+                      "start": 44,
+                      "end": 46
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "span": {
+                      "start": 45,
+                      "end": 46
+                    }
                   }
                 },
                 "is_mutable": false
@@ -148,6 +184,52 @@
                     "end": 57
                   }
                 },
+                "field_type": {
+                  "tag": "arrow",
+                  "syntax_node": {
+                    "kind": "TYPE_ARROW",
+                    "span": {
+                      "start": 60,
+                      "end": 68
+                    }
+                  },
+                  "parameter_type": {
+                    "tag": "var",
+                    "syntax_node": {
+                      "kind": "TYPE_VAR",
+                      "span": {
+                        "start": 60,
+                        "end": 62
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "a",
+                      "span": {
+                        "start": 61,
+                        "end": 62
+                      }
+                    }
+                  },
+                  "result_type": {
+                    "tag": "var",
+                    "syntax_node": {
+                      "kind": "TYPE_VAR",
+                      "span": {
+                        "start": 66,
+                        "end": 68
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "b",
+                      "span": {
+                        "start": 67,
+                        "end": 68
+                      }
+                    }
+                  }
+                },
                 "is_mutable": false
               }
             ]
@@ -156,36 +238,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 14,
-            "end": 22
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 14,
-              "end": 22
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "mapping",
-              "span": {
-                "start": 14,
-                "end": 21
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

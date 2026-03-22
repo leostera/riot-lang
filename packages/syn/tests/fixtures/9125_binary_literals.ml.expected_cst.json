@@ -1459,27 +1459,6 @@
       {
         "tag": "literal",
         "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 154,
-              "end": 160
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "0b0000",
-            "span": {
-              "start": 154,
-              "end": 160
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
           "tag": "string",
           "syntax_node": {
             "kind": "STRING_LITERAL",
@@ -1494,27 +1473,6 @@
             "span": {
               "start": 164,
               "end": 170
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 175,
-              "end": 181
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "0b0001",
-            "span": {
-              "start": 175,
-              "end": 181
             }
           }
         }
@@ -1543,27 +1501,6 @@
       {
         "tag": "literal",
         "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 196,
-              "end": 202
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "0b0010",
-            "span": {
-              "start": 196,
-              "end": 202
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
           "tag": "string",
           "syntax_node": {
             "kind": "STRING_LITERAL",
@@ -1578,27 +1515,6 @@
             "span": {
               "start": 206,
               "end": 213
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 218,
-              "end": 224
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "0b0100",
-            "span": {
-              "start": 218,
-              "end": 224
             }
           }
         }

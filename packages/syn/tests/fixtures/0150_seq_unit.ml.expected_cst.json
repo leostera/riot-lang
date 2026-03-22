@@ -226,19 +226,6 @@
             }
           }
         }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 22,
-              "end": 24
-            }
-          }
-        }
       }
     ]
   }

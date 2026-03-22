@@ -197,19 +197,6 @@
     "let_bindings": [],
     "expressions": [
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 4,
-              "end": 6
-            }
-          }
-        }
-      },
-      {
         "tag": "assign",
         "syntax_node": {
           "kind": "ASSIGN_EXPR",

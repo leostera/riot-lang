@@ -212,13 +212,15 @@ let tests =
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
         match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ValueDeclaration { name_token; type_syntax_node; _ } :: _ ->
+        | Syn.Cst.Item.ValueDeclaration
+            {
+              name_token;
+              type_ = Syn.Cst.CoreType.Arrow _;
+              _;
+            }
+          :: _ ->
             Test.assert_equal ~expected:"create"
               ~actual:(Syn.Cst.Token.text name_token);
-            Test.assert_equal ~expected:"TYPE_ARROW"
-              ~actual:
-                (SyntaxKind.to_string
-                   (Ceibo.Red.SyntaxNode.kind type_syntax_node));
             Ok ()
         | _ -> Error "expected first item to be a value declaration");
     Test.case "cst external declarations preserve primitive names" (fun () ->
@@ -470,7 +472,7 @@ let tests =
                 Syn.Cst.Expression.Typed
                   {
                     expression = Syn.Cst.Expression.Path { path; _ };
-                    type_syntax_node;
+                    type_ = Syn.Cst.CoreType.Constr _;
                     _;
                   };
               _;
@@ -478,10 +480,6 @@ let tests =
           :: _ ->
             Test.assert_equal ~expected:(Some "value")
               ~actual:(Syn.Cst.ModulePath.name path);
-            Test.assert_equal ~expected:"TYPE_CONSTR"
-              ~actual:
-                (type_syntax_node
-                |> Ceibo.Red.SyntaxNode.kind |> SyntaxKind.to_string);
             Ok ()
         | _ -> Error "expected typed expression value");
     Test.case "cst coerce expressions preserve optional source types" (fun () ->
@@ -499,8 +497,8 @@ let tests =
                 Syn.Cst.Expression.Coerce
                   {
                     expression = Syn.Cst.Expression.Path { path; _ };
-                    from_type_syntax_node = Some from_type_syntax_node;
-                    to_type_syntax_node;
+                    from_type = Some (Syn.Cst.CoreType.Constr _);
+                    to_type = Syn.Cst.CoreType.Constr _;
                     _;
                   };
               _;
@@ -508,14 +506,6 @@ let tests =
           :: _ ->
             Test.assert_equal ~expected:(Some "value")
               ~actual:(Syn.Cst.ModulePath.name path);
-            Test.assert_equal ~expected:"TYPE_CONSTR"
-              ~actual:
-                (from_type_syntax_node
-                |> Ceibo.Red.SyntaxNode.kind |> SyntaxKind.to_string);
-            Test.assert_equal ~expected:"TYPE_CONSTR"
-              ~actual:
-                (to_type_syntax_node
-                |> Ceibo.Red.SyntaxNode.kind |> SyntaxKind.to_string);
             Ok ()
         | _ -> Error "expected coerce expression value");
     Test.case "cst source files keep top-level let-in expressions as items" (fun () ->
@@ -1077,7 +1067,7 @@ let tests =
                                     pattern =
                                       Syn.Cst.Pattern.Identifier
                                         { name_token = user_name; _ };
-                                    type_syntax_node;
+                                    type_ = Syn.Cst.CoreType.Constr _;
                                     _;
                                   };
                               name_token = alias_name;
@@ -1095,10 +1085,6 @@ let tests =
               ~actual:(Syn.Cst.Token.text user_name);
             Test.assert_equal ~expected:"current_user"
               ~actual:(Syn.Cst.Token.text alias_name);
-            Test.assert_equal ~expected:"TYPE_CONSTR"
-              ~actual:
-                (type_syntax_node
-                |> Ceibo.Red.SyntaxNode.kind |> SyntaxKind.to_string);
             Ok ()
         | _ -> Error "expected faithful alias typed pattern structure");
     Test.case "cst lazy patterns preserve the wrapped pattern" (fun () ->

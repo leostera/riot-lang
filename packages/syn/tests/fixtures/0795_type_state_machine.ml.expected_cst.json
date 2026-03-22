@@ -58,7 +58,8 @@
                     "start": 13,
                     "end": 17
                   }
-                }
+                },
+                "payload_type": null
               },
               {
                 "syntax_node": {
@@ -75,7 +76,8 @@
                     "start": 20,
                     "end": 27
                   }
-                }
+                },
+                "payload_type": null
               },
               {
                 "syntax_node": {
@@ -92,7 +94,8 @@
                     "start": 30,
                     "end": 36
                   }
-                }
+                },
+                "payload_type": null
               },
               {
                 "syntax_node": {
@@ -109,7 +112,8 @@
                     "start": 39,
                     "end": 46
                   }
-                }
+                },
+                "payload_type": null
               }
             ]
           }
@@ -117,152 +121,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 5,
-            "end": 11
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 5,
-              "end": 11
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "state",
-              "span": {
-                "start": 5,
-                "end": 10
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 13,
-            "end": 17
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 13,
-              "end": 17
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Init",
-              "span": {
-                "start": 13,
-                "end": 17
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 20,
-            "end": 27
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 20,
-              "end": 27
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Running",
-              "span": {
-                "start": 20,
-                "end": 27
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 30,
-            "end": 36
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 30,
-              "end": 36
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Paused",
-              "span": {
-                "start": 30,
-                "end": 36
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 39,
-            "end": 46
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 39,
-              "end": 46
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Stopped",
-              "span": {
-                "start": 39,
-                "end": 46
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

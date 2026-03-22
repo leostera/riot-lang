@@ -26,8 +26,7 @@ let kind_rank = function
   | Syn.Cst.Parameter.Labeled _ -> Some 0
   | Syn.Cst.Parameter.Optional _ -> Some 1
   | Syn.Cst.Parameter.Positional _ -> Some 2
-  | Syn.Cst.Parameter.LocallyAbstract _
-  | Syn.Cst.Parameter.Unknown _ ->
+  | Syn.Cst.Parameter.LocallyAbstract _ ->
       None
 
 let kind_name = function
@@ -35,7 +34,6 @@ let kind_name = function
   | Syn.Cst.Parameter.Optional _ -> "optional"
   | Syn.Cst.Parameter.Positional _ -> "positional"
   | Syn.Cst.Parameter.LocallyAbstract _ -> "locally abstract"
-  | Syn.Cst.Parameter.Unknown _ -> "unknown"
 
 let parameter_span parameter =
   Syn.Cst.Parameter.syntax_node parameter

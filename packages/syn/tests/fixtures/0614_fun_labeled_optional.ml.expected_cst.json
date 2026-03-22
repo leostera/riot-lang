@@ -367,19 +367,6 @@
         }
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 18,
-              "end": 20
-            }
-          }
-        }
-      },
-      {
         "tag": "path",
         "syntax_node": {
           "kind": "IDENT_EXPR",

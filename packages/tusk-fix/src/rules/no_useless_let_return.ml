@@ -36,8 +36,9 @@ let binding_name = function
   | Syn.Cst.Pattern.Identifier { name_token; _ } -> Some (Syn.Cst.Token.text name_token)
   | Syn.Cst.Pattern.Wildcard _
   | Syn.Cst.Pattern.Literal _
-  | Syn.Cst.Pattern.Parenthesized _
-  | Syn.Cst.Pattern.Unknown _ ->
+  | Syn.Cst.Pattern.Parenthesized _ ->
+      None
+  | _ ->
       None
 
 let body_name = function
@@ -51,8 +52,9 @@ let body_name = function
   | Syn.Cst.Expression.Match _
   | Syn.Cst.Expression.Try _
   | Syn.Cst.Expression.If _
-  | Syn.Cst.Expression.Parenthesized _
-  | Syn.Cst.Expression.Unknown _ ->
+  | Syn.Cst.Expression.Parenthesized _ ->
+      None
+  | _ ->
       None
 
 let make_diagnostic expr =

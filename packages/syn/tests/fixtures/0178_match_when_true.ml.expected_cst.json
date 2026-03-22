@@ -494,27 +494,6 @@
       {
         "tag": "literal",
         "literal": {
-          "tag": "bool",
-          "syntax_node": {
-            "kind": "BOOL_LITERAL",
-            "span": {
-              "start": 28,
-              "end": 32
-            }
-          },
-          "literal_token": {
-            "kind": "BOOL_LITERAL",
-            "text": "true",
-            "span": {
-              "start": 28,
-              "end": 32
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
           "tag": "int",
           "syntax_node": {
             "kind": "INT_LITERAL",

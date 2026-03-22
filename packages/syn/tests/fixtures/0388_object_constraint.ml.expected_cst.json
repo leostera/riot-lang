@@ -107,19 +107,71 @@
                       }
                     }
                   },
-                  "type_syntax_node": null,
+                  "type": null,
                   "is_private": false,
                   "is_virtual": false,
                   "is_override": false
                 }
               ]
             },
-            "type_syntax_node": {
-              "kind": "OBJECT_TYPE",
-              "span": {
-                "start": 49,
-                "end": 60
-              }
+            "type": {
+              "tag": "object",
+              "syntax_node": {
+                "kind": "OBJECT_TYPE",
+                "span": {
+                  "start": 49,
+                  "end": 60
+                }
+              },
+              "fields": [
+                {
+                  "syntax_node": {
+                    "kind": "OBJECT_TYPE_FIELD",
+                    "span": {
+                      "start": 51,
+                      "end": 59
+                    }
+                  },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "m",
+                    "span": {
+                      "start": 51,
+                      "end": 52
+                    }
+                  },
+                  "field_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 55,
+                        "end": 59
+                      }
+                    },
+                    "constructor_path": {
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 55,
+                          "end": 59
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 55,
+                            "end": 58
+                          }
+                        }
+                      ]
+                    },
+                    "arguments": []
+                  }
+                }
+              ]
             }
           },
           "is_recursive": false
@@ -222,19 +274,71 @@
                     }
                   }
                 },
-                "type_syntax_node": null,
+                "type": null,
                 "is_private": false,
                 "is_virtual": false,
                 "is_override": false
               }
             ]
           },
-          "type_syntax_node": {
-            "kind": "OBJECT_TYPE",
-            "span": {
-              "start": 49,
-              "end": 60
-            }
+          "type": {
+            "tag": "object",
+            "syntax_node": {
+              "kind": "OBJECT_TYPE",
+              "span": {
+                "start": 49,
+                "end": 60
+              }
+            },
+            "fields": [
+              {
+                "syntax_node": {
+                  "kind": "OBJECT_TYPE_FIELD",
+                  "span": {
+                    "start": 51,
+                    "end": 59
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "m",
+                  "span": {
+                    "start": 51,
+                    "end": 52
+                  }
+                },
+                "field_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 55,
+                      "end": 59
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 55,
+                        "end": 59
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 55,
+                          "end": 58
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
+                }
+              }
+            ]
           }
         },
         "is_recursive": false
@@ -300,19 +404,71 @@
                   }
                 }
               },
-              "type_syntax_node": null,
+              "type": null,
               "is_private": false,
               "is_virtual": false,
               "is_override": false
             }
           ]
         },
-        "type_syntax_node": {
-          "kind": "OBJECT_TYPE",
-          "span": {
-            "start": 49,
-            "end": 60
-          }
+        "type": {
+          "tag": "object",
+          "syntax_node": {
+            "kind": "OBJECT_TYPE",
+            "span": {
+              "start": 49,
+              "end": 60
+            }
+          },
+          "fields": [
+            {
+              "syntax_node": {
+                "kind": "OBJECT_TYPE_FIELD",
+                "span": {
+                  "start": 51,
+                  "end": 59
+                }
+              },
+              "field_name": {
+                "kind": "IDENT_EXPR",
+                "text": "m",
+                "span": {
+                  "start": 51,
+                  "end": 52
+                }
+              },
+              "field_type": {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 55,
+                    "end": 59
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 55,
+                      "end": 59
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "int",
+                      "span": {
+                        "start": 55,
+                        "end": 58
+                      }
+                    }
+                  ]
+                },
+                "arguments": []
+              }
+            }
+          ]
         }
       },
       {
@@ -365,41 +521,12 @@
                 }
               }
             },
-            "type_syntax_node": null,
+            "type": null,
             "is_private": false,
             "is_virtual": false,
             "is_override": false
           }
         ]
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 30,
-            "end": 31
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 30,
-              "end": 31
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "m",
-              "span": {
-                "start": 30,
-                "end": 31
-              }
-            }
-          ]
-        }
       },
       {
         "tag": "literal",

@@ -2236,48 +2236,6 @@
         }
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "bool",
-          "syntax_node": {
-            "kind": "BOOL_LITERAL",
-            "span": {
-              "start": 84,
-              "end": 88
-            }
-          },
-          "literal_token": {
-            "kind": "BOOL_LITERAL",
-            "text": "true",
-            "span": {
-              "start": 84,
-              "end": 88
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "bool",
-          "syntax_node": {
-            "kind": "BOOL_LITERAL",
-            "span": {
-              "start": 93,
-              "end": 97
-            }
-          },
-          "literal_token": {
-            "kind": "BOOL_LITERAL",
-            "text": "true",
-            "span": {
-              "start": 93,
-              "end": 97
-            }
-          }
-        }
-      },
-      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",

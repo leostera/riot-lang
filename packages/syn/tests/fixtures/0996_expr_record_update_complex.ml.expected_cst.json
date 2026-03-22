@@ -709,6 +709,35 @@
         ]
       },
       {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "RECORD_FIELD",
+          "span": {
+            "start": 15,
+            "end": 21
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "RECORD_FIELD",
+            "span": {
+              "start": 15,
+              "end": 21
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "state",
+              "span": {
+                "start": 15,
+                "end": 20
+              }
+            }
+          ]
+        }
+      },
+      {
         "tag": "infix",
         "syntax_node": {
           "kind": "INFIX_EXPR",

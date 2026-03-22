@@ -34,6 +34,139 @@ module ModulePath : sig
   val name : t -> string option
 end
 
+type object_type_field = {
+  syntax_node : syntax_node;
+  field_name : Token.t;
+  field_type : core_type;
+}
+
+and record_type_field = {
+  syntax_node : syntax_node;
+  field_name : Token.t;
+  field_type : core_type;
+  is_mutable : bool;
+}
+
+and poly_variant_tag = {
+  syntax_node : syntax_node;
+  tag_name : Token.t;
+  payload_type : core_type option;
+}
+
+and core_type =
+  | Wildcard of {
+      syntax_node : syntax_node;
+      wildcard_token : Token.t;
+    }
+  | Var of {
+      syntax_node : syntax_node;
+      name_token : Token.t;
+    }
+  | Constr of {
+      syntax_node : syntax_node;
+      constructor_path : ModulePath.t;
+      arguments : core_type list;
+    }
+  | Alias of {
+      syntax_node : syntax_node;
+      type_ : core_type;
+      name_token : Token.t;
+    }
+  | Attribute of {
+      syntax_node : syntax_node;
+      type_ : core_type;
+      attribute : attribute;
+    }
+  | Extension of extension
+  | Arrow of {
+      syntax_node : syntax_node;
+      parameter_type : core_type;
+      result_type : core_type;
+    }
+  | Tuple of {
+      syntax_node : syntax_node;
+      elements : core_type list;
+    }
+  | Parenthesized of {
+      syntax_node : syntax_node;
+      inner : core_type;
+    }
+  | PolyVariant of {
+      syntax_node : syntax_node;
+      tags : poly_variant_tag list;
+    }
+  | Record of {
+      syntax_node : syntax_node;
+      fields : record_type_field list;
+    }
+  | FirstClassModule of {
+      syntax_node : syntax_node;
+      module_type_syntax_node : syntax_node;
+    }
+  | Object of {
+      syntax_node : syntax_node;
+      fields : object_type_field list;
+    }
+
+module CoreType : sig
+  type t = core_type =
+    | Wildcard of {
+        syntax_node : syntax_node;
+        wildcard_token : Token.t;
+      }
+    | Var of {
+        syntax_node : syntax_node;
+        name_token : Token.t;
+      }
+    | Constr of {
+        syntax_node : syntax_node;
+        constructor_path : ModulePath.t;
+        arguments : core_type list;
+      }
+    | Alias of {
+        syntax_node : syntax_node;
+        type_ : core_type;
+        name_token : Token.t;
+      }
+    | Attribute of {
+        syntax_node : syntax_node;
+        type_ : core_type;
+        attribute : attribute;
+      }
+    | Extension of extension
+    | Arrow of {
+        syntax_node : syntax_node;
+        parameter_type : core_type;
+        result_type : core_type;
+      }
+    | Tuple of {
+        syntax_node : syntax_node;
+        elements : core_type list;
+      }
+    | Parenthesized of {
+        syntax_node : syntax_node;
+        inner : core_type;
+      }
+    | PolyVariant of {
+        syntax_node : syntax_node;
+        tags : poly_variant_tag list;
+      }
+    | Record of {
+        syntax_node : syntax_node;
+        fields : record_type_field list;
+      }
+    | FirstClassModule of {
+        syntax_node : syntax_node;
+        module_type_syntax_node : syntax_node;
+      }
+    | Object of {
+        syntax_node : syntax_node;
+        fields : object_type_field list;
+      }
+
+  val syntax_node : t -> syntax_node
+end
+
 module PatternLiteral : sig
   type t =
     | String of {
@@ -84,7 +217,6 @@ type pattern =
   | Alias of alias_pattern
   | Typed of typed_pattern
   | Parenthesized of parenthesized_pattern
-  | Unknown of syntax_node
 
 and identifier_pattern = {
   syntax_node : syntax_node;
@@ -191,7 +323,7 @@ and alias_pattern = {
 and typed_pattern = {
   syntax_node : syntax_node;
   pattern : pattern;
-  type_syntax_node : syntax_node;
+  type_ : core_type;
 }
 
 and parenthesized_pattern = {
@@ -244,7 +376,6 @@ module Parameter : sig
     | Labeled of LabeledParameter.t
     | Optional of OptionalParameter.t
     | LocallyAbstract of syntax_node
-    | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node
   val name_token : t -> Token.t option
@@ -324,7 +455,6 @@ type expression =
   | Try of try_expression
   | If of if_expression
   | Parenthesized of parenthesized_expression
-  | Unknown of syntax_node
 
 and path_expression = {
   syntax_node : syntax_node;
@@ -353,7 +483,7 @@ and object_method = {
   attributes : attribute list;
   name_token : Token.t;
   body : expression option;
-  type_syntax_node : syntax_node option;
+  type_ : core_type option;
   is_private : bool;
   is_virtual : bool;
   is_override : bool;
@@ -364,7 +494,7 @@ and object_value = {
   attributes : attribute list;
   name_token : Token.t;
   value : expression option;
-  type_syntax_node : syntax_node option;
+  type_ : core_type option;
   is_mutable : bool;
   is_virtual : bool;
   is_override : bool;
@@ -505,14 +635,14 @@ and infix_expression = {
 and typed_expression = {
   syntax_node : syntax_node;
   expression : expression;
-  type_syntax_node : syntax_node;
+  type_ : core_type;
 }
 
 and coerce_expression = {
   syntax_node : syntax_node;
   expression : expression;
-  from_type_syntax_node : syntax_node option;
-  to_type_syntax_node : syntax_node;
+  from_type : core_type option;
+  to_type : core_type;
 }
 
 and sequence_expression = {
@@ -665,7 +795,6 @@ module Expression : sig
     | Try of try_expression
     | If of if_expression
     | Parenthesized of parenthesized_expression
-    | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node
 end
@@ -694,7 +823,6 @@ module Pattern : sig
     | Alias of alias_pattern
     | Typed of typed_pattern
     | Parenthesized of parenthesized_pattern
-    | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node
 end
@@ -1031,11 +1159,13 @@ module RecordField : sig
   type t = {
     syntax_node : syntax_node;
     field_name : Token.t;
+    field_type : core_type;
     is_mutable : bool;
   }
 
   val syntax_node : t -> syntax_node
   val field_name_token : t -> Token.t
+  val field_type : t -> core_type
   val name : t -> string
   val is_mutable : t -> bool
 end
@@ -1044,21 +1174,25 @@ module VariantConstructor : sig
   type t = {
     syntax_node : syntax_node;
     constructor_name : Token.t;
+    payload_type : core_type option;
   }
 
   val syntax_node : t -> syntax_node
   val constructor_name_token : t -> Token.t
+  val payload_type : t -> core_type option
   val name : t -> string
 end
 
 module PolyVariantTag : sig
-  type t = {
+  type t = poly_variant_tag = {
     syntax_node : syntax_node;
     tag_name : Token.t;
+    payload_type : core_type option;
   }
 
   val syntax_node : t -> syntax_node
   val tag_name_token : t -> Token.t
+  val payload_type : t -> core_type option
   val name : t -> string
 end
 
@@ -1067,6 +1201,7 @@ module TypeDefinition : sig
     | Abstract
     | Alias of {
         syntax_node : syntax_node;
+        manifest : core_type;
       }
     | Extensible of {
         syntax_node : syntax_node;
@@ -1077,6 +1212,7 @@ module TypeDefinition : sig
       }
     | Object of {
         syntax_node : syntax_node;
+        fields : object_type_field list;
       }
     | Record of RecordField.t list
     | Variant of VariantConstructor.t list
@@ -1160,13 +1296,13 @@ end
 type value_declaration = {
   syntax_node : syntax_node;
   name_token : Token.t;
-  type_syntax_node : syntax_node;
+  type_ : core_type;
 }
 
 type external_declaration = {
   syntax_node : syntax_node;
   name_token : Token.t;
-  type_syntax_node : syntax_node;
+  type_ : core_type;
   primitive_name_tokens : Token.t list;
 }
 
@@ -1204,7 +1340,6 @@ module Item : sig
     | ExternalDeclaration of external_declaration
     | IncludeStatement of include_statement
     | ExceptionDeclaration of exception_declaration
-    | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node
 end

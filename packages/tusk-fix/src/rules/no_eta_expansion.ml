@@ -27,8 +27,7 @@ Examples:
 
 let rec child_expressions = function
   | Syn.Cst.Expression.Path _
-  | Syn.Cst.Expression.Literal _
-  | Syn.Cst.Expression.Unknown _ ->
+  | Syn.Cst.Expression.Literal _ ->
       []
   | Syn.Cst.Expression.Apply expr ->
       Syn.Cst.ApplyExpression.callee expr
@@ -77,6 +76,8 @@ let rec child_expressions = function
       | None -> base)
   | Syn.Cst.Expression.Parenthesized expr ->
       [ Syn.Cst.ParenthesizedExpression.inner expr ]
+  | _ ->
+      []
 
 let rec expression_mentions_any_name names expr =
   match expr with
@@ -117,8 +118,7 @@ let positional_parameter_names parameters =
             | None -> None)
         | Syn.Cst.Parameter.Labeled _
         | Syn.Cst.Parameter.Optional _
-        | Syn.Cst.Parameter.LocallyAbstract _
-        | Syn.Cst.Parameter.Unknown _ ->
+        | Syn.Cst.Parameter.LocallyAbstract _ ->
             None)
   in
   gather [] parameters

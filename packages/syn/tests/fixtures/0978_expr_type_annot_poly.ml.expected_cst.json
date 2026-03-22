@@ -116,11 +116,50 @@
                 }
               }
             },
-            "type_syntax_node": {
-              "kind": "TYPE_ARROW",
-              "span": {
-                "start": 23,
-                "end": 31
+            "type": {
+              "tag": "arrow",
+              "syntax_node": {
+                "kind": "TYPE_ARROW",
+                "span": {
+                  "start": 23,
+                  "end": 31
+                }
+              },
+              "parameter_type": {
+                "tag": "var",
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 23,
+                    "end": 25
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 24,
+                    "end": 25
+                  }
+                }
+              },
+              "result_type": {
+                "tag": "var",
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 29,
+                    "end": 31
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 30,
+                    "end": 31
+                  }
+                }
               }
             }
           },
@@ -233,11 +272,50 @@
               }
             }
           },
-          "type_syntax_node": {
-            "kind": "TYPE_ARROW",
-            "span": {
-              "start": 23,
-              "end": 31
+          "type": {
+            "tag": "arrow",
+            "syntax_node": {
+              "kind": "TYPE_ARROW",
+              "span": {
+                "start": 23,
+                "end": 31
+              }
+            },
+            "parameter_type": {
+              "tag": "var",
+              "syntax_node": {
+                "kind": "TYPE_VAR",
+                "span": {
+                  "start": 23,
+                  "end": 25
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "span": {
+                  "start": 24,
+                  "end": 25
+                }
+              }
+            },
+            "result_type": {
+              "tag": "var",
+              "syntax_node": {
+                "kind": "TYPE_VAR",
+                "span": {
+                  "start": 29,
+                  "end": 31
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "span": {
+                  "start": 30,
+                  "end": 31
+                }
+              }
             }
           }
         },
@@ -313,11 +391,50 @@
             }
           }
         },
-        "type_syntax_node": {
-          "kind": "TYPE_ARROW",
-          "span": {
-            "start": 23,
-            "end": 31
+        "type": {
+          "tag": "arrow",
+          "syntax_node": {
+            "kind": "TYPE_ARROW",
+            "span": {
+              "start": 23,
+              "end": 31
+            }
+          },
+          "parameter_type": {
+            "tag": "var",
+            "syntax_node": {
+              "kind": "TYPE_VAR",
+              "span": {
+                "start": 23,
+                "end": 25
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "a",
+              "span": {
+                "start": 24,
+                "end": 25
+              }
+            }
+          },
+          "result_type": {
+            "tag": "var",
+            "syntax_node": {
+              "kind": "TYPE_VAR",
+              "span": {
+                "start": 29,
+                "end": 31
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "a",
+              "span": {
+                "start": 30,
+                "end": 31
+              }
+            }
           }
         }
       },

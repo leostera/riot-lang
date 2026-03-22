@@ -58,6 +58,66 @@
                     "start": 17,
                     "end": 23
                   }
+                },
+                "payload_type": {
+                  "tag": "record",
+                  "syntax_node": {
+                    "kind": "TYPE_RECORD",
+                    "span": {
+                      "start": 27,
+                      "end": 45
+                    }
+                  },
+                  "fields": [
+                    {
+                      "syntax_node": {
+                        "kind": "TYPE_RECORD_FIELD",
+                        "span": {
+                          "start": 29,
+                          "end": 44
+                        }
+                      },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "radius",
+                        "span": {
+                          "start": 29,
+                          "end": 35
+                        }
+                      },
+                      "field_type": {
+                        "tag": "constr",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 38,
+                            "end": 44
+                          }
+                        },
+                        "constructor_path": {
+                          "syntax_node": {
+                            "kind": "TYPE_CONSTR",
+                            "span": {
+                              "start": 38,
+                              "end": 44
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "float",
+                              "span": {
+                                "start": 38,
+                                "end": 43
+                              }
+                            }
+                          ]
+                        },
+                        "arguments": []
+                      },
+                      "is_mutable": false
+                    }
+                  ]
                 }
               },
               {
@@ -75,6 +135,114 @@
                     "start": 50,
                     "end": 59
                   }
+                },
+                "payload_type": {
+                  "tag": "record",
+                  "syntax_node": {
+                    "kind": "TYPE_RECORD",
+                    "span": {
+                      "start": 63,
+                      "end": 96
+                    }
+                  },
+                  "fields": [
+                    {
+                      "syntax_node": {
+                        "kind": "TYPE_RECORD_FIELD",
+                        "span": {
+                          "start": 65,
+                          "end": 78
+                        }
+                      },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "width",
+                        "span": {
+                          "start": 65,
+                          "end": 70
+                        }
+                      },
+                      "field_type": {
+                        "tag": "constr",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 73,
+                            "end": 78
+                          }
+                        },
+                        "constructor_path": {
+                          "syntax_node": {
+                            "kind": "TYPE_CONSTR",
+                            "span": {
+                              "start": 73,
+                              "end": 78
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "float",
+                              "span": {
+                                "start": 73,
+                                "end": 78
+                              }
+                            }
+                          ]
+                        },
+                        "arguments": []
+                      },
+                      "is_mutable": false
+                    },
+                    {
+                      "syntax_node": {
+                        "kind": "TYPE_RECORD_FIELD",
+                        "span": {
+                          "start": 80,
+                          "end": 95
+                        }
+                      },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "height",
+                        "span": {
+                          "start": 80,
+                          "end": 86
+                        }
+                      },
+                      "field_type": {
+                        "tag": "constr",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 89,
+                            "end": 95
+                          }
+                        },
+                        "constructor_path": {
+                          "syntax_node": {
+                            "kind": "TYPE_CONSTR",
+                            "span": {
+                              "start": 89,
+                              "end": 95
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "float",
+                              "span": {
+                                "start": 89,
+                                "end": 94
+                              }
+                            }
+                          ]
+                        },
+                        "arguments": []
+                      },
+                      "is_mutable": false
+                    }
+                  ]
                 }
               }
             ]
@@ -83,94 +251,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 5,
-            "end": 11
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 5,
-              "end": 11
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "shape",
-              "span": {
-                "start": 5,
-                "end": 10
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 17,
-            "end": 23
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 17,
-              "end": 23
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Circle",
-              "span": {
-                "start": 17,
-                "end": 23
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 50,
-            "end": 59
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 50,
-              "end": 59
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Rectangle",
-              "span": {
-                "start": 50,
-                "end": 59
-              }
-            }
-          ]
-        }
-      }
-    ]
+    "expressions": []
   }
 }

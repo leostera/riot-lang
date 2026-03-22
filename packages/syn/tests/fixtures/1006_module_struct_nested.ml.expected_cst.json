@@ -92,28 +92,6 @@
         "is_recursive": false
       }
     ],
-    "expressions": [
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 50,
-              "end": 51
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "1",
-            "span": {
-              "start": 50,
-              "end": 51
-            }
-          }
-        }
-      }
-    ]
+    "expressions": []
   }
 }

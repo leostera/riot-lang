@@ -92,57 +92,6 @@
         "is_recursive": false
       }
     ],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 25,
-            "end": 27
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 25,
-              "end": 27
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "t",
-              "span": {
-                "start": 25,
-                "end": 26
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 48,
-              "end": 50
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "42",
-            "span": {
-              "start": 48,
-              "end": 50
-            }
-          }
-        }
-      }
-    ]
+    "expressions": []
   }
 }

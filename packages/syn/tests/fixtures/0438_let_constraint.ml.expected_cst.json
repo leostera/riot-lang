@@ -212,35 +212,6 @@
     ],
     "expressions": [
       {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 9,
-            "end": 10
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 9,
-              "end": 10
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "a",
-              "span": {
-                "start": 9,
-                "end": 10
-              }
-            }
-          ]
-        }
-      },
-      {
         "tag": "fun",
         "syntax_node": {
           "kind": "FUN_EXPR",

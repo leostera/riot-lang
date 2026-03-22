@@ -334,19 +334,6 @@
     "let_bindings": [],
     "expressions": [
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 53,
-              "end": 55
-            }
-          }
-        }
-      },
-      {
         "tag": "for",
         "syntax_node": {
           "kind": "FOR_EXPR",
@@ -628,19 +615,6 @@
             "span": {
               "start": 97,
               "end": 104
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 138,
-              "end": 140
             }
           }
         }

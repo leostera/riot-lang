@@ -1497,48 +1497,6 @@
         "elements": []
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 44,
-              "end": 46
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"\"",
-            "span": {
-              "start": 44,
-              "end": 46
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 50,
-              "end": 52
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"\"",
-            "span": {
-              "start": 50,
-              "end": 52
-            }
-          }
-        }
-      },
-      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",

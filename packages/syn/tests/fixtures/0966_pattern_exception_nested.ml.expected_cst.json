@@ -770,19 +770,6 @@
     ],
     "expressions": [
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 7,
-              "end": 9
-            }
-          }
-        }
-      },
-      {
         "tag": "match",
         "syntax_node": {
           "kind": "MATCH_EXPR",

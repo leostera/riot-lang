@@ -430,19 +430,6 @@
         }
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 18,
-              "end": 20
-            }
-          }
-        }
-      },
-      {
         "tag": "assign",
         "syntax_node": {
           "kind": "ASSIGN_EXPR",

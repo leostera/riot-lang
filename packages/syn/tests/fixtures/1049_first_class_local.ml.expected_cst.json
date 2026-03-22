@@ -217,19 +217,6 @@
     ],
     "expressions": [
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 4,
-              "end": 6
-            }
-          }
-        }
-      },
-      {
         "tag": "let_module",
         "syntax_node": {
           "kind": "LET_MODULE_EXPR",
@@ -339,27 +326,6 @@
                   "end": 72
                 }
               }
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 45,
-              "end": 47
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "42",
-            "span": {
-              "start": 45,
-              "end": 47
             }
           }
         }

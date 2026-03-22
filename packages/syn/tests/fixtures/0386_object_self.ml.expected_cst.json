@@ -141,7 +141,7 @@
                     }
                   }
                 },
-                "type_syntax_node": null,
+                "type": null,
                 "is_private": false,
                 "is_virtual": false,
                 "is_override": false
@@ -282,7 +282,7 @@
                   }
                 }
               },
-              "type_syntax_node": null,
+              "type": null,
               "is_private": false,
               "is_virtual": false,
               "is_override": false
@@ -386,41 +386,12 @@
                 }
               }
             },
-            "type_syntax_node": null,
+            "type": null,
             "is_private": false,
             "is_virtual": false,
             "is_override": false
           }
         ]
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 35,
-            "end": 36
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 35,
-              "end": 36
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "m",
-              "span": {
-                "start": 35,
-                "end": 36
-              }
-            }
-          ]
-        }
       },
       {
         "tag": "method_call",

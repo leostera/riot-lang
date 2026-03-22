@@ -310,35 +310,6 @@
         }
       },
       {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 25,
-            "end": 27
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 25,
-              "end": 27
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "N",
-              "span": {
-                "start": 25,
-                "end": 26
-              }
-            }
-          ]
-        }
-      },
-      {
         "tag": "field_access",
         "syntax_node": {
           "kind": "FIELD_ACCESS_EXPR",

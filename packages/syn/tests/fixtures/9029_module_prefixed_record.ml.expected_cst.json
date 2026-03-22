@@ -964,35 +964,6 @@
         "via_let_open": false
       },
       {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 55,
-            "end": 56
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 55,
-              "end": 56
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "M",
-              "span": {
-                "start": 55,
-                "end": 56
-              }
-            }
-          ]
-        }
-      },
-      {
         "tag": "record",
         "syntax_node": {
           "kind": "RECORD_EXPR",
@@ -1328,35 +1299,6 @@
           ]
         },
         "via_let_open": false
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 86,
-            "end": 95
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 86,
-              "end": 95
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "OsProcess",
-              "span": {
-                "start": 86,
-                "end": 95
-              }
-            }
-          ]
-        }
       },
       {
         "tag": "record",

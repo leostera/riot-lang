@@ -1201,19 +1201,6 @@
         }
       },
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 185,
-              "end": 187
-            }
-          }
-        }
-      },
-      {
         "tag": "let",
         "syntax_node": {
           "kind": "LET_EXPR",

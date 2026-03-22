@@ -53,8 +53,13 @@
   - [ ] class type bodies
   - [ ] signature-item internals
 - [ ] Replace flattened `ModulePath.segments` with a recursive path CST
-- [ ] Make successful CST creation rule out public `Unknown` shapes by construction rather than by validation convention
+- [x] Make successful CST creation rule out public `Unknown` shapes by construction rather than by validation convention
 - [ ] Add a stronger fixture/checklist pass for syntax that the stock parsetree distinguishes sharply
+- [ ] Next parity slices:
+  - [ ] standalone attribute and extension items
+  - [ ] typed module-type tree
+  - [ ] typed module-expression tree
+  - [ ] attributed expressions and attributed items as faithful wrappers instead of token shells
 
 ### OCaml Structure Parity Checklist
 
@@ -72,22 +77,22 @@
   - [ ] let-operator expressions
   - [ ] unreachable expressions
 - [ ] Core types:
-  - [ ] wildcard types
-  - [ ] type variable references
-  - [ ] arrow types
-  - [ ] tuple types
-  - [ ] constructor-applied types
-  - [ ] object types
+  - [x] wildcard types
+  - [x] type variable references
+  - [x] arrow types
+  - [x] tuple types
+  - [x] constructor-applied types
+  - [x] object types
   - [ ] class types in type positions
-  - [ ] aliased types
-  - [ ] polyvariant types
+  - [x] aliased types
+  - [x] polyvariant types
   - [ ] universally quantified types
   - [ ] package types
   - [ ] locally opened types
-  - [ ] extension types
+  - [x] extension types
   - [ ] package-type payloads
   - [ ] row fields
-  - [ ] object fields
+  - [x] object fields
 - [ ] Structure items:
   - [ ] type-extension items
   - [ ] recursive-module items
@@ -155,7 +160,7 @@
 
 #### Present But Opaque
 
-- [ ] Core types are still mostly opaque `type_syntax_node` placeholders instead of a typed `core_type` tree
+- [ ] Core types still have opaque branches and missing families even though the first typed `core_type` tree is in place
 - [ ] Module expressions are still raw syntax in places like:
   - [ ] `let_module_expression.module_expression_syntax_node`
   - [ ] `first_class_module_expression.module_syntax_node`

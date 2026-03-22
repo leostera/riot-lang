@@ -48,12 +48,35 @@
                 }
               }
             },
-            "type_syntax_node": {
-              "kind": "TYPE_CONSTR",
-              "span": {
-                "start": 9,
-                "end": 12
-              }
+            "type": {
+              "tag": "constr",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 9,
+                  "end": 12
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 9,
+                    "end": 12
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "int",
+                    "span": {
+                      "start": 9,
+                      "end": 12
+                    }
+                  }
+                ]
+              },
+              "arguments": []
             }
           },
           "binding_name": {
@@ -127,12 +150,35 @@
               }
             }
           },
-          "type_syntax_node": {
-            "kind": "TYPE_CONSTR",
-            "span": {
-              "start": 9,
-              "end": 12
-            }
+          "type": {
+            "tag": "constr",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 9,
+                "end": 12
+              }
+            },
+            "constructor_path": {
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 9,
+                  "end": 12
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "int",
+                  "span": {
+                    "start": 9,
+                    "end": 12
+                  }
+                }
+              ]
+            },
+            "arguments": []
           }
         },
         "binding_name": {

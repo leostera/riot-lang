@@ -86,12 +86,64 @@
                 ]
               }
             },
-            "type_syntax_node": {
-              "kind": "OBJECT_TYPE",
-              "span": {
-                "start": 13,
-                "end": 24
-              }
+            "type": {
+              "tag": "object",
+              "syntax_node": {
+                "kind": "OBJECT_TYPE",
+                "span": {
+                  "start": 13,
+                  "end": 24
+                }
+              },
+              "fields": [
+                {
+                  "syntax_node": {
+                    "kind": "OBJECT_TYPE_FIELD",
+                    "span": {
+                      "start": 15,
+                      "end": 23
+                    }
+                  },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "m",
+                    "span": {
+                      "start": 15,
+                      "end": 16
+                    }
+                  },
+                  "field_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 19,
+                        "end": 23
+                      }
+                    },
+                    "constructor_path": {
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 19,
+                          "end": 23
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 19,
+                            "end": 22
+                          }
+                        }
+                      ]
+                    },
+                    "arguments": []
+                  }
+                }
+              ]
             }
           },
           "is_recursive": false
@@ -173,12 +225,64 @@
               ]
             }
           },
-          "type_syntax_node": {
-            "kind": "OBJECT_TYPE",
-            "span": {
-              "start": 13,
-              "end": 24
-            }
+          "type": {
+            "tag": "object",
+            "syntax_node": {
+              "kind": "OBJECT_TYPE",
+              "span": {
+                "start": 13,
+                "end": 24
+              }
+            },
+            "fields": [
+              {
+                "syntax_node": {
+                  "kind": "OBJECT_TYPE_FIELD",
+                  "span": {
+                    "start": 15,
+                    "end": 23
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "m",
+                  "span": {
+                    "start": 15,
+                    "end": 16
+                  }
+                },
+                "field_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 19,
+                      "end": 23
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 19,
+                        "end": 23
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 19,
+                          "end": 22
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
+                }
+              }
+            ]
           }
         },
         "is_recursive": false
@@ -223,12 +327,64 @@
             ]
           }
         },
-        "type_syntax_node": {
-          "kind": "OBJECT_TYPE",
-          "span": {
-            "start": 13,
-            "end": 24
-          }
+        "type": {
+          "tag": "object",
+          "syntax_node": {
+            "kind": "OBJECT_TYPE",
+            "span": {
+              "start": 13,
+              "end": 24
+            }
+          },
+          "fields": [
+            {
+              "syntax_node": {
+                "kind": "OBJECT_TYPE_FIELD",
+                "span": {
+                  "start": 15,
+                  "end": 23
+                }
+              },
+              "field_name": {
+                "kind": "IDENT_EXPR",
+                "text": "m",
+                "span": {
+                  "start": 15,
+                  "end": 16
+                }
+              },
+              "field_type": {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 19,
+                    "end": 23
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 19,
+                      "end": 23
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "int",
+                      "span": {
+                        "start": 19,
+                        "end": 22
+                      }
+                    }
+                  ]
+                },
+                "arguments": []
+              }
+            }
+          ]
         }
       },
       {

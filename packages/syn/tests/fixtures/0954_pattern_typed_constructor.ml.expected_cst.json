@@ -172,12 +172,66 @@
                       }
                     ]
                   },
-                  "type_syntax_node": {
-                    "kind": "TYPE_CONSTR",
-                    "span": {
-                      "start": 33,
-                      "end": 43
-                    }
+                  "type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 33,
+                        "end": 43
+                      }
+                    },
+                    "constructor_path": {
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 33,
+                          "end": 43
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "option",
+                          "span": {
+                            "start": 37,
+                            "end": 43
+                          }
+                        }
+                      ]
+                    },
+                    "arguments": [
+                      {
+                        "tag": "constr",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 33,
+                            "end": 37
+                          }
+                        },
+                        "constructor_path": {
+                          "syntax_node": {
+                            "kind": "TYPE_CONSTR",
+                            "span": {
+                              "start": 33,
+                              "end": 37
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "int",
+                              "span": {
+                                "start": 33,
+                                "end": 36
+                              }
+                            }
+                          ]
+                        },
+                        "arguments": []
+                      }
+                    ]
                   }
                 },
                 "guard": null,
@@ -439,12 +493,66 @@
                     }
                   ]
                 },
-                "type_syntax_node": {
-                  "kind": "TYPE_CONSTR",
-                  "span": {
-                    "start": 33,
-                    "end": 43
-                  }
+                "type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 33,
+                      "end": 43
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 33,
+                        "end": 43
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "option",
+                        "span": {
+                          "start": 37,
+                          "end": 43
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": [
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 33,
+                          "end": 37
+                        }
+                      },
+                      "constructor_path": {
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 33,
+                            "end": 37
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 33,
+                              "end": 36
+                            }
+                          }
+                        ]
+                      },
+                      "arguments": []
+                    }
+                  ]
                 }
               },
               "guard": null,
@@ -650,12 +758,66 @@
                   }
                 ]
               },
-              "type_syntax_node": {
-                "kind": "TYPE_CONSTR",
-                "span": {
-                  "start": 33,
-                  "end": 43
-                }
+              "type": {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 33,
+                    "end": 43
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 33,
+                      "end": 43
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "option",
+                      "span": {
+                        "start": 37,
+                        "end": 43
+                      }
+                    }
+                  ]
+                },
+                "arguments": [
+                  {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 33,
+                        "end": 37
+                      }
+                    },
+                    "constructor_path": {
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 33,
+                          "end": 37
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 33,
+                            "end": 36
+                          }
+                        }
+                      ]
+                    },
+                    "arguments": []
+                  }
+                ]
               }
             },
             "guard": null,

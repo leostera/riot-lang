@@ -1083,27 +1083,6 @@
           "syntax_node": {
             "kind": "INT_LITERAL",
             "span": {
-              "start": 31,
-              "end": 32
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "1",
-            "span": {
-              "start": 31,
-              "end": 32
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
               "start": 36,
               "end": 37
             }

@@ -540,27 +540,6 @@
       {
         "tag": "literal",
         "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 27,
-              "end": 28
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "1",
-            "span": {
-              "start": 27,
-              "end": 28
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
           "tag": "unit",
           "syntax_node": {
             "kind": "UNIT_LITERAL",

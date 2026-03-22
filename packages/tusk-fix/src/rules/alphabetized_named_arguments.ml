@@ -42,8 +42,7 @@ let classify_parameter = function
   | Syn.Cst.Parameter.Labeled _ as parameter -> Some (`Labeled, parameter)
   | Syn.Cst.Parameter.Optional _ as parameter -> Some (`Optional, parameter)
   | Syn.Cst.Parameter.Positional _
-  | Syn.Cst.Parameter.LocallyAbstract _
-  | Syn.Cst.Parameter.Unknown _ ->
+  | Syn.Cst.Parameter.LocallyAbstract _ ->
       None
 
 let first_out_of_order parameters =

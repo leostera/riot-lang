@@ -625,6 +625,35 @@
         ]
       },
       {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "RECORD_FIELD",
+          "span": {
+            "start": 10,
+            "end": 12
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "RECORD_FIELD",
+            "span": {
+              "start": 10,
+              "end": 12
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "r",
+              "span": {
+                "start": 10,
+                "end": 11
+              }
+            }
+          ]
+        }
+      },
+      {
         "tag": "record",
         "syntax_node": {
           "kind": "RECORD_UPDATE_EXPR",
@@ -730,6 +759,51 @@
             }
           }
         ]
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "RECORD_FIELD",
+          "span": {
+            "start": 23,
+            "end": 27
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "RECORD_FIELD",
+            "span": {
+              "start": 23,
+              "end": 27
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "r",
+              "span": {
+                "start": 23,
+                "end": 24
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": ".",
+              "span": {
+                "start": 24,
+                "end": 25
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "a",
+              "span": {
+                "start": 25,
+                "end": 26
+              }
+            }
+          ]
+        }
       },
       {
         "tag": "literal",

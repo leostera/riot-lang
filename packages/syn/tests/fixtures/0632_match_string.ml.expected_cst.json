@@ -683,27 +683,6 @@
       {
         "tag": "literal",
         "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 21,
-              "end": 26
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"yes\"",
-            "span": {
-              "start": 21,
-              "end": 26
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
           "tag": "bool",
           "syntax_node": {
             "kind": "BOOL_LITERAL",
@@ -718,27 +697,6 @@
             "span": {
               "start": 30,
               "end": 34
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "string",
-          "syntax_node": {
-            "kind": "STRING_LITERAL",
-            "span": {
-              "start": 37,
-              "end": 41
-            }
-          },
-          "literal_token": {
-            "kind": "STRING_LITERAL",
-            "text": "\"no\"",
-            "span": {
-              "start": 37,
-              "end": 41
             }
           }
         }

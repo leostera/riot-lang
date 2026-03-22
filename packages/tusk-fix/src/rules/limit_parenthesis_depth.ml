@@ -44,8 +44,7 @@ let rec parenthesis_chain_depth = function
 
 let rec diagnostics_for_expression ~inside_parenthesized_chain = function
   | Syn.Cst.Expression.Path _
-  | Syn.Cst.Expression.Literal _
-  | Syn.Cst.Expression.Unknown _ ->
+  | Syn.Cst.Expression.Literal _ ->
       []
   | Syn.Cst.Expression.Apply expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
@@ -127,6 +126,8 @@ let rec diagnostics_for_expression ~inside_parenthesized_chain = function
           make_diagnostic expr depth :: nested
         else
           nested
+  | _ ->
+      []
 
 let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with

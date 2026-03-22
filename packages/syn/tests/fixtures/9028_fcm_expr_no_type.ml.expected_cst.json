@@ -594,35 +594,6 @@
         "module_type_syntax_node": null
       },
       {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 83,
-            "end": 84
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 83,
-              "end": 84
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "M",
-              "span": {
-                "start": 83,
-                "end": 84
-              }
-            }
-          ]
-        }
-      },
-      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",
@@ -919,35 +890,6 @@
         "syntax_node": {
           "kind": "IDENT_EXPR",
           "span": {
-            "start": 114,
-            "end": 117
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 114,
-              "end": 117
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Src",
-              "span": {
-                "start": 114,
-                "end": 117
-              }
-            }
-          ]
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
             "start": 119,
             "end": 123
           }
@@ -994,35 +936,6 @@
             "start": 144,
             "end": 145
           }
-        }
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "MODULE_PATH",
-          "span": {
-            "start": 140,
-            "end": 142
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 140,
-              "end": 142
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "M",
-              "span": {
-                "start": 140,
-                "end": 141
-              }
-            }
-          ]
         }
       }
     ]

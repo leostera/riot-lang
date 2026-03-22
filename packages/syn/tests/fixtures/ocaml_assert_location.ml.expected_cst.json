@@ -74,19 +74,6 @@
     "let_bindings": [],
     "expressions": [
       {
-        "tag": "literal",
-        "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 74,
-              "end": 76
-            }
-          }
-        }
-      },
-      {
         "tag": "assert",
         "syntax_node": {
           "kind": "ASSERT_EXPR",

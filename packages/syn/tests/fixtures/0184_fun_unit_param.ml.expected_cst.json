@@ -228,19 +228,6 @@
       {
         "tag": "literal",
         "literal": {
-          "tag": "unit",
-          "syntax_node": {
-            "kind": "UNIT_LITERAL",
-            "span": {
-              "start": 12,
-              "end": 14
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
           "tag": "int",
           "syntax_node": {
             "kind": "INT_LITERAL",

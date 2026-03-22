@@ -76,12 +76,35 @@
               },
               "payload": null
             },
-            "type_syntax_node": {
-              "kind": "TYPE_POLY_VARIANT",
-              "span": {
-                "start": 16,
-                "end": 25
-              }
+            "type": {
+              "tag": "poly_variant",
+              "syntax_node": {
+                "kind": "TYPE_POLY_VARIANT",
+                "span": {
+                  "start": 16,
+                  "end": 25
+                }
+              },
+              "tags": [
+                {
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_TAG",
+                    "span": {
+                      "start": 19,
+                      "end": 24
+                    }
+                  },
+                  "tag_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Red",
+                    "span": {
+                      "start": 20,
+                      "end": 23
+                    }
+                  },
+                  "payload_type": null
+                }
+              ]
             }
           },
           "is_recursive": false
@@ -153,12 +176,35 @@
             },
             "payload": null
           },
-          "type_syntax_node": {
-            "kind": "TYPE_POLY_VARIANT",
-            "span": {
-              "start": 16,
-              "end": 25
-            }
+          "type": {
+            "tag": "poly_variant",
+            "syntax_node": {
+              "kind": "TYPE_POLY_VARIANT",
+              "span": {
+                "start": 16,
+                "end": 25
+              }
+            },
+            "tags": [
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 19,
+                    "end": 24
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Red",
+                  "span": {
+                    "start": 20,
+                    "end": 23
+                  }
+                },
+                "payload_type": null
+              }
+            ]
           }
         },
         "is_recursive": false
@@ -193,12 +239,35 @@
           },
           "payload": null
         },
-        "type_syntax_node": {
-          "kind": "TYPE_POLY_VARIANT",
-          "span": {
-            "start": 16,
-            "end": 25
-          }
+        "type": {
+          "tag": "poly_variant",
+          "syntax_node": {
+            "kind": "TYPE_POLY_VARIANT",
+            "span": {
+              "start": 16,
+              "end": 25
+            }
+          },
+          "tags": [
+            {
+              "syntax_node": {
+                "kind": "POLY_VARIANT_TAG",
+                "span": {
+                  "start": 19,
+                  "end": 24
+                }
+              },
+              "tag_name": {
+                "kind": "IDENT_EXPR",
+                "text": "Red",
+                "span": {
+                  "start": 20,
+                  "end": 23
+                }
+              },
+              "payload_type": null
+            }
+          ]
         }
       },
       {

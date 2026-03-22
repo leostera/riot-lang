@@ -41,8 +41,7 @@ let receiver_looks_like_record = function
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Match _
   | Syn.Cst.Expression.Try _
-  | Syn.Cst.Expression.If _
-  | Syn.Cst.Expression.Unknown _ ->
+  | Syn.Cst.Expression.If _ ->
       true
   | Syn.Cst.Expression.Literal _
   | Syn.Cst.Expression.Infix _

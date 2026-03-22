@@ -751,27 +751,6 @@
       {
         "tag": "literal",
         "literal": {
-          "tag": "int",
-          "syntax_node": {
-            "kind": "INT_LITERAL",
-            "span": {
-              "start": 30,
-              "end": 31
-            }
-          },
-          "literal_token": {
-            "kind": "INT_LITERAL",
-            "text": "0",
-            "span": {
-              "start": 30,
-              "end": 31
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
           "tag": "string",
           "syntax_node": {
             "kind": "STRING_LITERAL",

@@ -731,35 +731,6 @@
         "via_let_open": false
       },
       {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 8,
-            "end": 12
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 8,
-              "end": 12
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Libc",
-              "span": {
-                "start": 8,
-                "end": 12
-              }
-            }
-          ]
-        }
-      },
-      {
         "tag": "array",
         "syntax_node": {
           "kind": "ARRAY_EXPR",
@@ -1015,35 +986,6 @@
           ]
         },
         "via_let_open": false
-      },
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 41,
-            "end": 47
-          }
-        },
-        "path": {
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 41,
-              "end": 47
-            }
-          },
-          "segments": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "Module",
-              "span": {
-                "start": 41,
-                "end": 47
-              }
-            }
-          ]
-        }
       },
       {
         "tag": "array",

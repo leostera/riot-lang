@@ -39,8 +39,7 @@ let max_nested_match_depth = 3
 
 let rec child_expressions = function
   | Syn.Cst.Expression.Path _
-  | Syn.Cst.Expression.Literal _
-  | Syn.Cst.Expression.Unknown _ ->
+  | Syn.Cst.Expression.Literal _ ->
       []
   | Syn.Cst.Expression.Apply expr ->
       Syn.Cst.ApplyExpression.callee expr
@@ -89,6 +88,8 @@ let rec child_expressions = function
       | None -> base)
   | Syn.Cst.Expression.Parenthesized expr ->
       [ Syn.Cst.ParenthesizedExpression.inner expr ]
+  | _ ->
+      []
 
 let max_list = function
   | [] -> 0
