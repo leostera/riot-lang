@@ -6,28 +6,28 @@ module Cell = Kernel.Sync.Cell
 
 (* Benchmark configuration for very large datasets *)
 let large_config = { iterations = 10; warmup = 2 }
-let xlarge_config = { iterations = 3; warmup = 1 }  (* Reduced for 1M items *)
+let xlarge_config = { iterations = 3; warmup = 1 }  (* Reduced for 1m items *)
 
 (* ========================================================================
- * 1M Item Benchmarks
+ * 1m Item Benchmarks
  * ======================================================================== *)
 
-(* HashMap: Insert 1M items *)
-let bench_hashmap_insert_1M () =
+(* HashMap: Insert 1m items *)
+let bench_hashmap_insert_1m () =
   let map = HashMap.create () in
   for i = 0 to 999999 do
     HashMap.insert map i (i * 2)
   done
 
-(* Swisstable: Insert 1M items *)
-let bench_swisstable_insert_1M () =
+(* Swisstable: Insert 1m items *)
+let bench_swisstable_insert_1m () =
   let map = Swisstable.with_capacity 1000000 in
   for i = 0 to 999999 do
     ignore (Swisstable.insert map i (i * 2))
   done
 
-(* HashMap: Get from 1M items (10k lookups) *)
-let bench_hashmap_get_from_1M () =
+(* HashMap: Get from 1m items (10k lookups) *)
+let bench_hashmap_get_from_1m () =
   let map = HashMap.create () in
   for i = 0 to 999999 do
     HashMap.insert map i (i * 2)
@@ -36,8 +36,8 @@ let bench_hashmap_get_from_1M () =
     ignore (HashMap.get map (i * 100))
   done
 
-(* Swisstable: Get from 1M items (10k lookups) *)
-let bench_swisstable_get_from_1M () =
+(* Swisstable: Get from 1m items (10k lookups) *)
+let bench_swisstable_get_from_1m () =
   let map = Swisstable.with_capacity 1000000 in
   for i = 0 to 999999 do
     ignore (Swisstable.insert map i (i * 2))
@@ -46,8 +46,8 @@ let bench_swisstable_get_from_1M () =
     ignore (Swisstable.get map (i * 100))
   done
 
-(* HashMap: Get missing keys from 1M items *)
-let bench_hashmap_get_missing_from_1M () =
+(* HashMap: Get missing keys from 1m items *)
+let bench_hashmap_get_missing_from_1m () =
   let map = HashMap.create () in
   for i = 0 to 999999 do
     HashMap.insert map i (i * 2)
@@ -56,8 +56,8 @@ let bench_hashmap_get_missing_from_1M () =
     ignore (HashMap.get map i)
   done
 
-(* Swisstable: Get missing keys from 1M items *)
-let bench_swisstable_get_missing_from_1M () =
+(* Swisstable: Get missing keys from 1m items *)
+let bench_swisstable_get_missing_from_1m () =
   let map = Swisstable.with_capacity 1000000 in
   for i = 0 to 999999 do
     ignore (Swisstable.insert map i (i * 2))
@@ -66,8 +66,8 @@ let bench_swisstable_get_missing_from_1M () =
     ignore (Swisstable.get map i)
   done
 
-(* HashMap: Iterate over 1M items *)
-let bench_hashmap_iterate_1M () =
+(* HashMap: Iterate over 1m items *)
+let bench_hashmap_iterate_1m () =
   let map = HashMap.create () in
   for i = 0 to 999999 do
     HashMap.insert map i (i * 2)
@@ -75,8 +75,8 @@ let bench_hashmap_iterate_1M () =
   let sum = Cell.create 0 in
   HashMap.iter (fun _k v -> Cell.set sum (Cell.get sum + v)) map
 
-(* Swisstable: Iterate over 1M items *)
-let bench_swisstable_iterate_1M () =
+(* Swisstable: Iterate over 1m items *)
+let bench_swisstable_iterate_1m () =
   let map = Swisstable.with_capacity 1000000 in
   for i = 0 to 999999 do
     ignore (Swisstable.insert map i (i * 2))
@@ -84,8 +84,8 @@ let bench_swisstable_iterate_1M () =
   let sum = Cell.create 0 in
   Swisstable.iter (fun _k v -> Cell.set sum (Cell.get sum + v)) map
 
-(* HashMap: Remove from 1M items (10k removals) *)
-let bench_hashmap_remove_from_1M () =
+(* HashMap: Remove from 1m items (10k removals) *)
+let bench_hashmap_remove_from_1m () =
   let map = HashMap.create () in
   for i = 0 to 999999 do
     HashMap.insert map i (i * 2)
@@ -94,8 +94,8 @@ let bench_hashmap_remove_from_1M () =
     HashMap.remove map (i * 100)
   done
 
-(* Swisstable: Remove from 1M items (10k removals) *)
-let bench_swisstable_remove_from_1M () =
+(* Swisstable: Remove from 1m items (10k removals) *)
+let bench_swisstable_remove_from_1m () =
   let map = Swisstable.with_capacity 1000000 in
   for i = 0 to 999999 do
     ignore (Swisstable.insert map i (i * 2))
@@ -162,36 +162,36 @@ let benchmarks =
         make_case "Swisstable" bench_swisstable_get_from_500k;
       ];
     
-    (* 1M benchmarks *)
+    (* 1m benchmarks *)
     compare_with_config ~config:xlarge_config
-      "insert 1M items"
+      "insert 1m items"
       [
-        make_case "HashMap" bench_hashmap_insert_1M;
-        make_case "Swisstable" bench_swisstable_insert_1M;
+        make_case "HashMap" bench_hashmap_insert_1m;
+        make_case "Swisstable" bench_swisstable_insert_1m;
       ];
     compare_with_config ~config:xlarge_config
-      "get from 1M items (10k lookups)"
+      "get from 1m items (10k lookups)"
       [
-        make_case "HashMap" bench_hashmap_get_from_1M;
-        make_case "Swisstable" bench_swisstable_get_from_1M;
+        make_case "HashMap" bench_hashmap_get_from_1m;
+        make_case "Swisstable" bench_swisstable_get_from_1m;
       ];
     compare_with_config ~config:xlarge_config
-      "get missing keys from 1M items"
+      "get missing keys from 1m items"
       [
-        make_case "HashMap" bench_hashmap_get_missing_from_1M;
-        make_case "Swisstable" bench_swisstable_get_missing_from_1M;
+        make_case "HashMap" bench_hashmap_get_missing_from_1m;
+        make_case "Swisstable" bench_swisstable_get_missing_from_1m;
       ];
     compare_with_config ~config:xlarge_config
-      "iterate over 1M items"
+      "iterate over 1m items"
       [
-        make_case "HashMap" bench_hashmap_iterate_1M;
-        make_case "Swisstable" bench_swisstable_iterate_1M;
+        make_case "HashMap" bench_hashmap_iterate_1m;
+        make_case "Swisstable" bench_swisstable_iterate_1m;
       ];
     compare_with_config ~config:xlarge_config
-      "remove from 1M items (10k removals)"
+      "remove from 1m items (10k removals)"
       [
-        make_case "HashMap" bench_hashmap_remove_from_1M;
-        make_case "Swisstable" bench_swisstable_remove_from_1M;
+        make_case "HashMap" bench_hashmap_remove_from_1m;
+        make_case "Swisstable" bench_swisstable_remove_from_1m;
       ];
   ]
 

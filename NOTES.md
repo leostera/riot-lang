@@ -1,3 +1,4 @@
+# Macro ideas
 some use cases for the macro rfd:
 * include!(file)  -- basically drops the contents into the current file
 * include_string!(file) -- puts the contents as a string
@@ -24,9 +25,10 @@ some use cases for the macro rfd:
 
 * [@lint_rule] -- to declare a linting rule in a single function like
 
-  [@lint_rule(id="e0001", hint="do not use stdlib!", help=".....")]
-  let no_stdlib tokens = ....
+  [@lint_rule(id="e0001", hint="do not use stdlib!", explain=".....")]
+  let no_stdlib tree = ....
 
   and voila that does all the plumbing for you
 
 * package_name! module_name! function_name! loc! file! - and other context-level things that can be injected
+

@@ -2,219 +2,168 @@
 
 ## Working Loop
 
-1. Build the latest `tusk` from the stable global binary when build-system / parser / lint runtime changes are involved:
+1. Rebuild `tusk` when build-system, parser, or lint-runtime changes affect the binary:
    - `rm -f _build/tusk.lock`
    - `timeout 240 tusk build tusk-cli`
-2. Use `./tusk` for follow-up verification after rebuilding `tusk-cli`:
-   - `rm -f _build/tusk.lock`
-   - `timeout 180 ./tusk test syn:cst_tests`
-   - `rm -f _build/tusk.lock`
-   - `timeout 180 ./tusk test tusk-fix:runner_tests`
-3. When touching only a single package, use the narrower build when possible:
+2. Use the narrowest verification command that matches the change:
    - `rm -f _build/tusk.lock`
    - `timeout 60 tusk build syn`
    - `rm -f _build/tusk.lock`
    - `timeout 60 tusk build tusk-fix`
-4. Read this file from top to bottom and pick the next unchecked item that is unblocked by the current `Syn.Cst` surface.
-5. After implementing a task:
-   - run the narrowest relevant verification first
-   - then rerun the full `syn` and `tusk-fix` test slices
-   - when smoke-checking lint output, prefer `rm -f _build/tusk.lock && timeout 180 tusk run tusk -- fix --check --limit 10 <file>`
-   - if the change affects the `tusk` binary surface, rebuild `tusk-cli`
-6. Mark a task complete only after the relevant tests have passed.
-7. Commit often, with one logical slice per commit.
+3. After a parser or CST slice lands, rerun the focused test suites:
+   - `rm -f _build/tusk.lock`
+   - `timeout 180 tusk test syn:cst_tests`
+   - `rm -f _build/tusk.lock`
+   - `timeout 180 tusk test tusk-fix:runner_tests`
+4. After a CST syntax-family slice lands, refresh the fixture corpus:
+   - `timeout 900 python3 packages/syn/tests/test_runner.py cst --refresh-clean`
+5. When smoke-checking lint output, prefer the auto-rebuilding path:
+   - `rm -f _build/tusk.lock`
+   - `timeout 180 tusk run tusk -- fix --check --limit 10 <file>`
+6. Read this file from top to bottom and pick the next unchecked item that is unblocked.
+7. Mark a task complete only after the relevant verification has passed.
+8. Commit often, with one logical slice per commit.
 
 ## Verification Commands
 
 - `rm -f _build/tusk.lock && timeout 240 tusk build tusk-cli`
-- `rm -f _build/tusk.lock && timeout 180 ./tusk test syn:cst_tests`
-- `rm -f _build/tusk.lock && timeout 180 ./tusk test tusk-fix:runner_tests`
+- `rm -f _build/tusk.lock && timeout 60 tusk build syn`
+- `rm -f _build/tusk.lock && timeout 60 tusk build tusk-fix`
+- `rm -f _build/tusk.lock && timeout 180 tusk test syn:cst_tests`
+- `rm -f _build/tusk.lock && timeout 180 tusk test tusk-fix:runner_tests`
+- `timeout 900 python3 packages/syn/tests/test_runner.py cst --refresh-clean`
 - `rm -f _build/tusk.lock && timeout 120 ./tusk fix --list-rules`
 - `rm -f _build/tusk.lock && timeout 120 ./tusk fix --list-diagnostics`
 - `rm -f _build/tusk.lock && timeout 180 tusk run tusk -- fix --check --limit 10 <file>`
 
-## Current CST plan
+## Current State
+
+- [x] The `Syn.Cst` fixture corpus is green: `1180 passed, 0 failed`
+- [x] The current CST fixture frontier has been driven to `0`
+- [ ] Strengthen the CST corpus so we can compare `Syn.Cst` structure against the stock OCaml parsetree more confidently
+
+## Syn.Cst Fidelity
 
 - [ ] Keep moving `Syn.Cst` toward a faithful `Ceibo -> Cst` lift driven by the fixture corpus
 - [ ] Prefer adding real CST node shapes over convenience projections when a fixture fails
-- [ ] Keep `packages/syn/src/cst.ml` focused on types and `packages/syn/src/cst_builder.ml` focused on lifting
-- [ ] Use `python3 packages/syn/tests/test_runner.py cst --refresh-clean` after each syntax slice to refresh all newly supported `.expected_cst.json` fixtures
-- [x] Current fixture frontier: `0` failures after the latest full `cst --refresh-clean` pass
-- [ ] Keep the current unsupported frontier explicit by fixing one syntax family at a time:
-  - [x] destructuring `let` bindings and mutual `let`
-  - [x] record/update/index/assignment expressions
-  - [x] type annotations and coercions
-  - [x] loops / begin / assert / lazy expressions
-  - [x] lazy / exception / range patterns
-  - [x] object syntax / class declarations / method calls
-  - [x] module/signature / first-class module coverage
-  - [x] operator patterns / binding operators
-  - [x] attributes / extensions / docstrings
-  - [x] rawidents / multi-indices / remaining parser edge cases
-  - [x] include / val / external / signature items
+- [ ] Keep [packages/syn/src/cst.ml](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/src/cst.ml) focused on types, [packages/syn/src/cst_builder.ml](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/src/cst_builder.ml) focused on lifting, and [packages/syn/src/cst_json.ml](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/src/cst_json.ml) focused on snapshot serialization
+- [ ] Replace coarse `*_syntax_node` placeholders with typed CST where possible:
+  - [ ] core types
+  - [ ] module types
+  - [ ] class type bodies
+  - [ ] signature-item internals
+- [ ] Replace flattened `ModulePath.segments` with a recursive path CST
+- [ ] Make successful CST creation rule out public `Unknown` shapes by construction rather than by validation convention
+- [ ] Add a stronger fixture/checklist pass for syntax that the stock parsetree distinguishes sharply
 
-## Main goals
+### Completed CST Syntax Families
 
-- [ ] Implement all the lints in the sections below (and i mean ALL of them!)
-- [ ] Simplify rules to not have duplicated text/hints fields -- (right now they have id, message, description, title, and explain strings, they should really just need id + short description + long explanation)
-      - [ ] Explanations should be written out with examples and not with a structured "why this rule exists" -- it exists because something in the language is harder without them, so we should explain how things would look without the rule, the issues that arise from it, and how this rule helps prevent that.
-- [ ] Make sure the Syn.Cst tree represents the entirety of the OCaml grammar (see ./packages/syn/docs/ocaml_grammar.ebnf)
-- [ ] Then lets do a learning pass by exploring how Rust's clippy does a few things:
-      - [ ] we should group built-in lints by category like rust's clippy does (https://doc.rust-lang.org/stable/clippy/lints.html)
-      - [ ] we should also learn from how clippy lets your build new lints (https://doc.rust-lang.org/stable/clippy/development/adding_lints.html)
+- [x] destructuring `let` bindings and mutual `let`
+- [x] record/update/index/assignment expressions
+- [x] type annotations and coercions
+- [x] loops / begin / assert / lazy expressions
+- [x] lazy / exception / range patterns
+- [x] object syntax / class declarations / method calls
+- [x] module/signature / first-class module coverage
+- [x] operator patterns / binding operators
+- [x] attributes / extensions / docstrings
+- [x] rawidents / multi-indices / remaining parser edge cases
+- [x] include / val / external / signature items
 
+## tusk-fix Cleanup
 
-## CST-Driven Lint Rules
+- [ ] Simplify rule metadata so a rule really only needs:
+  - [ ] `id`
+  - [ ] short description
+  - [ ] long explanation
+- [ ] Keep explanations example-driven rather than structured as "why this rule exists"
+- [ ] Group built-in lints by category, similar to Clippy
+- [ ] Do a learning pass on how Clippy organizes and authors lints
 
-- [x] Type names should use `snake_case` instead of `camelCase` (`snake-case-type-names`)
-- [x] Warn on type variable names like `'a` or `'b` in type definitions; suggest descriptive names like `'value` and `'error` (`descriptive-type-variables`)
-- [x] Function names should use `snake_case` instead of `camelCase` (`snake-case-function-names`)
-- [x] Module names should be ClassCased and not Jiraffe_cased (`class-case-module-names`)
-- [x] Variable names should use `snake_case` instead of `camelCase` (`snake-case-variable-names`)
-- [x] Variable names should not contain `'`; prefer `x2` over `x'` (`no-prime-variables`)
-- [x] Argument names should use `snake_case` instead of `camelCase` (`snake-case-argument-names`)
-- [x] Prefer multiline strings like `{| ... |}` over concatenated string literals (`prefer-multiline-string-literals`)
-- [x] Warn against custom operators (`no-custom-operators`)
-- [x] Named arguments should come first, then arguments with defaults, then positional arguments (`ordered-argument-kinds`)
-- [x] Prefer `t`-first functions when named arguments are present (`t-first-named-arguments`)
-- [x] Keep named arguments alphabetically sorted (`alphabetized-named-arguments`)
-- [x] Record field names should use `snake_case` (`snake-case-record-fields`)
-- [x] Constructor names should be `ClassCased` (`class-case-constructors`)
-- [x] Polyvariant constructors should be `snake_case` (`snake-case-polyvariant-tags`)
-- [x] Avoid single-letter function names like `f` or `g` (`avoid-single-letter-function-names`)
-- [x] Avoid single-letter type names except for `t` (`avoid-single-letter-type-names`)
-- [x] Prefer function sigantures in the form of `let foo : <sign> = fn x y z -> ...` rather than inlineed in params like `let foo (x : int) (y : bool) ...` (`no-inline-parameter-type-annotations`)
-- [x] Prefer function definitions with explicit params like `let foo x y = x + y` and `let foo = fn x y -> x + y` instead of `let foo = function | x -> x +1` -- we want to discourage those inlined functions and ideally nudge towards `let foo = fn ... -> ...` since it makes adding a signature easier later (`no-function-shorthand`)
-- [x] Warn about depth of parenthesized expressions! ~5 parens is too much (`limit-parenthesis-depth`)
+## Implemented Built-in Lints
 
-- [x] Warn about functions with many params (complex check) in a few ways: (`limit-function-parameters`)
-      1. if there are only unnamed params, 5 is too much
-      2. if there are only named params, 8 is too much
-      3. if there are mixed params, 10 is too much
+- [x] `snake-case-type-names`
+- [x] `descriptive-type-variables`
+- [x] `snake-case-function-names`
+- [x] `class-case-module-names`
+- [x] `snake-case-variable-names`
+- [x] `no-prime-variables`
+- [x] `snake-case-argument-names`
+- [x] `prefer-multiline-string-literals`
+- [x] `no-custom-operators`
+- [x] `ordered-argument-kinds`
+- [x] `t-first-named-arguments`
+- [x] `alphabetized-named-arguments`
+- [x] `snake-case-record-fields`
+- [x] `class-case-constructors`
+- [x] `snake-case-polyvariant-tags`
+- [x] `avoid-single-letter-function-names`
+- [x] `avoid-single-letter-type-names`
+- [x] `no-inline-parameter-type-annotations`
+- [x] `no-function-shorthand`
+- [x] `limit-parenthesis-depth`
+- [x] `limit-function-parameters`
+- [x] `prefer-pipelines-for-nested-calls`
+- [x] `no-redundant-else-unit`
+- [x] `no-open-bang`
+- [x] `prefer-if-over-bool-match`
+- [x] `no-redundant-reraise`
+- [x] `no-useless-let-return`
+- [x] `no-unnecessary-rec`
+- [x] `limit-open-statements`
+- [x] `prefer-sequences-over-let-unit`
+- [x] `no-eta-expansion`
+- [x] `no-redundant-parentheses`
+- [x] `no-redundant-begin-end`
+- [x] `no-public-mutable-fields`
+- [x] `prefer-scoped-field-access`
+- [x] `limit-nested-match-depth`
+- [x] `no-exn-suffix-functions`
+- [x] `no-boolean-comparisons-in-conditionals`
 
-      The main idea for the full explanation is that if you see many params there's likely a hidden record of sorts that probbaly has a name and wants to be named. Think like instead of getting a ~purchased_at + ~quantity + ~item, you want a PurchaseOrder.t type which becomes a single param in your function collapsing 3 params!
+## Remaining Built-in Lints
 
-- [ ] when using inline closed polymorphic variants like ``[ `a | `b ] list``, prefer giving them a _name_ like ``type x = [ `a  `b ]`` -- this allows you to reuse them and also easier on the eyes when types get compllicated
-
-- [x] Prefer pipeline over very nested function calls so `(foo (bar (baz (hex 1))))` into `hex 1 |> baz |> bar |> foo` (`prefer-pipelines-for-nested-calls`)
-
-- [x] Redundant `else ()` can be removed (`no-redundant-else-unit`)
-
-- [x] Warn about using `open!` (`no-open-bang`)
-
-- [x] Match on bool being redundant like `match foo () with | true -> ... | ....` shoul be `if foo () then ... else ...` -- ths check can inspect both branches and suggest accordingly, if the branches are `true -> ...` and `_ -> ()` then we just suggest `if foo() then ...` without an else. If the branch matches on `false` we can suggest `if not foo () then ...`, if both branches have code (and not just return a `()`) then we can suggest the full `if cond then .. else ..` (`prefer-if-over-bool-match`)
-
-- [x] `try f x with | e -> raise e` is just `f x` (`no-redundant-reraise`)
-
-- [x] Useless binding `let y = f x in y` is just `f x` (`no-useless-let-return`)
-
-- [x] Unnecessary `rec` in `let rec f x = x + 1` (`no-unnecessary-rec`)
-
-- [x] Many `open` statmenets get confusing and can shadow symbols, warn about this if we have more than 2 opens (`limit-open-statements`)
-
-- [x] `let () = foo () in ..` this shoudl just be `foo ();` (`prefer-sequences-over-let-unit`)
-
-- [x] Needles `(fun x -> foo x)` due to eta-expansion, they can just put `foo` in there (`no-eta-expansion`)
-- [x] Needless or redundant parenthesis (`no-redundant-parentheses`)
-- [x] Needless or redundant begin/end blocks (`no-redundant-begin-end`)
-- [x] Prefer `fun x  -> match x  with | ....` over `function | A -> ... | B ...` (`no-function-shorthand`)
-
-- [ ] bool positional parameters in functions: suggest a named param or an enum
-
-- [ ] tuples are a _bad idea_, just use records, but specially two rules:
-      1. if a tuple has more than 3 elements of the same type = prefer a record 
-      2. if a tuple has more than 4 elements of any type, prefer a record
-
-- [x] warn about public types with mutable fields -- its okay ot have private mutable fields, but once they're public you risk anyone mutating them under your feet! (`no-public-mutable-fields`)
-
-- [  ] `let open Foo in [...]` : prefer `Foo.[...]` unless its multiple let opens, like
-        ```
-        let open A in
-        let open B in
-        let open C in
-        [ .... ]
-        ````
-
-        this applies also to record construction, list construction, and parenthesized expressions like 
-        `Module.{ field = value }` over `{ Module.field = value }`
-
-        basically prefer scoped module qualification syntax over inline qualified field syntax
-- [x] Prefer `Module.(var.field)` for access to record fields instead of `var.Module.field` (`prefer-scoped-field-access`)
-
-- [x]  warn about nested matches (3 matches trigger a warning) (`limit-nested-match-depth`)
-- [x]  warn about _exn functions (`no-exn-suffix-functions`)
-
-
-
-- [x] Avoid function names like `f` or `g` (`avoid-single-letter-function-names`)
-- [x] Avoid type single-letter type names except its `t` (`avoid-single-letter-type-names`)
+- [ ] Prefer named closed polymorphic variants over inline closed polymorphic variants like ``[ `a | `b ] list``
+- [ ] Warn on bool positional parameters in functions; suggest a named parameter or an enum
+- [ ] Warn on tuples that should be records:
+  - [ ] more than 3 elements of the same type
+  - [ ] more than 4 elements of any type
+- [ ] Prefer scoped module qualification syntax over inline qualified field syntax:
+  - [ ] `let open Foo in [...]` -> prefer `Foo.[...]` unless there are multiple stacked local opens
+  - [ ] `Module.{ field = value }` over `{ Module.field = value }`
 - [ ] If a module has a single type definition, prefer it be called `t`
+- [ ] If a module has a public record type and accessor functions like
+  - [ ] `.mli`: `type t = { field : string }`
+  - [ ] `.mli`: `val field : t -> string`
+  - [ ] then suggest making the type opaque
+- [ ] Add a style rule encouraging record destructuring in function parameters for internal helpers like JSON serializers, so new fields are harder to ignore accidentally
 
-- [x] useless booleans comparisons in conditionals like `if is_ready = true then ...` that should be flagged and recommended to rewrite as `if is_ready then ...` -- same for `if flag <> false then ...` and prefer `if flag then  ...` -- same for `if b = false then ...` prefer `if not b then ...` (`no-boolean-comparisons-in-conditionals`)
+## Package Rules
 
-- [ ] If a module has a public record type _and_ accessor functions like 
-      ```
-      // .mli
-      type t = { field: string }
-      val field : t -> string
-      ```
+### Built-in Package Rules
 
-      suggest to make the type opaque 
+- [ ] Package names should be `kebab-case`
+- [ ] Package names should start with a letter
+- [ ] Package names should not have trailing dashes or underscores
+- [ ] Subdirectories and file names should be in `snake_case`
+- [ ] Warn about modules without `.mli` files
 
-- [ ] as a rule of thumb when you're writing functions like
+### Miniriot
 
-      330 +and extension_to_json (ext : Cst.extension) =
-      331 +  Json.Object
-      332 +    [
-      333 +      ("syntax_node", syntax_node_to_json ext.syntax_node);
-      334 +      ("tokens", Json.Array (List.map token_to_json ext.tokens));
-      335 +    ]
+- [ ] Warn if a `while` or `for` loop does not immediately `yield ()`
 
-      prefer to pattern match like
+### Std
 
-      330 +and extension_to_json ({syntax_node; tokens} : Cst.extension) =
-      331 +  Json.Object
-      332 +    [
-      333 +      ("syntax_node", syntax_node_to_json syntax_node);
-      334 +      ("tokens", Json.Array (List.map token_to_json tokens));
-      335 +    ]
-
-
-      why? this makes it possibel for the compiler to warn you about fields you
-      aren't destructuring, forcing you to either ignore them with { ... ;_ }
-      or to pattern match and handle new fields!
-
-## Built-in rules about packages 
-
-- [ ] package names should be in `kebab-case`: use `my-pkg` and not `my_pkg` or `MyPkg`
-- [ ] package names should start with a letter
-- [ ] package names should not have trailing dashes or underscores
-- [ ] subdirs and file names should be in snake_case (as Tusk will translate their names to ClassCase): hello_world.ml and not Hello_world.ml or HelloWorld.ml
-- [ ] warn about modules without .mli files!
-
-## Package-provided lint rules
-
-Miniriot:
-- [ ] If a while or for loop doesn't immediately have a `yield ()` at the beginning of it, we should warn about it
-
-Std:
-- [ ] `ignore (List.map f xs)` or `ignore (Iter.map f iter)` is likely a bug and should be `List.iter f xs` or `Iter.iter f iter` -- i fogret the xact iterators api but you'll figure it out -- the same applies with `let _ = Mod.map f xs` 
-
-- [x] if someone uses `<>` we should tell them its `!=` now (`std:prefer-bang-equal-inequality`)
-- [x] Double List.rev (`std:no-double-list-rev`)
-
-- [ ] `List.length x == 0` or `List.length > 0` prefer `List.is_empty` (if we don't have it then lets add it)
-
-- [ ] Constants like 3.14 should use Std.Math.PI instead
-
-- [ ] Common functions like .map for option or result should be highly preferred over custom matching, so we can have a set of rules like:
-     - [ ] `match x with | Some y -> Some (f y) | None -> None`  -- Prefer Option.map x f
-     - [ ] `match x with | Ok y -> Ok (f y) | err -> err`  -- Prefer Result.map x f
-
-- [ ] Exceptions for flow control: if we have a `try` that returns a None or an explicit `(Error _)` we should suggest using Result.protect` instead (or something like that)
-
-- [ ] `x_of_y` functions (int of string, string of bool, etc) should be replaced by X.from_y or for string, Y.to_string: 
-    * string_of_int -> Int.to_string
-    * int_of_string -> Int.parse
-    * float_of_int  -> Float.from_int int
-    * 
+- [x] `std:prefer-bang-equal-inequality`
+- [x] `std:no-double-list-rev`
+- [ ] `ignore (List.map f xs)` / `ignore (Iter.map f iter)` should prefer the corresponding iterator form
+- [ ] `List.length x == 0` / `List.length x > 0` should prefer `List.is_empty`
+- [ ] Constants like `3.14` should prefer `Std.Math.PI`
+- [ ] Prefer combinators over manual matches:
+  - [ ] `Option.map`
+  - [ ] `Result.map`
+- [ ] Suggest `Result.protect`-style helpers instead of exceptions for flow control where appropriate
+- [ ] Replace `x_of_y` / `string_of_int`-style names with the newer module APIs:
+  - [ ] `string_of_int -> Int.to_string`
+  - [ ] `int_of_string -> Int.parse`
+  - [ ] `float_of_int -> Float.from_int`

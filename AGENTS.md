@@ -1,6 +1,6 @@
 # AGENTS Router
 
-This file is the entrypoint for project-specific agent guidance.
+This file is the entrypoint for project-specific agent guidance. If you're looking for your scratch pad and todo list, look at ./TODO.md
 
 The `AGENTS.md` files in this repo are maintained alongside the code and should be updated when behavior or contracts change.
 
