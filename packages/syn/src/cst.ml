@@ -36,18 +36,38 @@ module ModulePath = struct
     | None -> None
 end
 
+module PatternLiteral = struct
+  type t =
+    | String of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Int of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Bool of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Unit of { syntax_node : syntax_node }
+end
+
+type pattern_literal = PatternLiteral.t
+
 type pattern =
-  | IdentifierPattern of identifier_pattern
-  | UnitPattern of unit_pattern
-  | ParenthesizedPattern of parenthesized_pattern
-  | UnknownPattern of syntax_node
+  | Identifier of identifier_pattern
+  | Wildcard of wildcard_pattern
+  | Literal of pattern_literal
+  | Parenthesized of parenthesized_pattern
+  | Unknown of syntax_node
 
 and identifier_pattern = {
   syntax_node : syntax_node;
   name_token : Token.t;
 }
 
-and unit_pattern = {
+and wildcard_pattern = {
   syntax_node : syntax_node;
 }
 
@@ -56,35 +76,39 @@ and parenthesized_pattern = {
   inner : pattern;
 }
 
+module Literal = struct
+  type t =
+    | String of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Int of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Bool of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Unit of { syntax_node : syntax_node }
+end
+
+type literal = Literal.t
+
 type expression =
-  | PathExpression of path_expression
-  | StringLiteral of string_literal
-  | BoolLiteral of bool_literal
-  | UnitLiteral of unit_literal
-  | ApplyExpression of apply_expression
-  | InfixExpression of infix_expression
-  | LetExpression of let_expression
-  | IfExpression of if_expression
-  | ParenthesizedExpression of parenthesized_expression
+  | Path of path_expression
+  | Literal of literal
+  | Apply of apply_expression
+  | Infix of infix_expression
+  | Let of let_expression
+  | Match of match_expression
+  | If of if_expression
+  | Parenthesized of parenthesized_expression
   | Unknown of syntax_node
 
 and path_expression = {
   syntax_node : syntax_node;
   path : ModulePath.t;
-}
-
-and string_literal = {
-  syntax_node : syntax_node;
-  literal_token : Token.t;
-}
-
-and bool_literal = {
-  syntax_node : syntax_node;
-  literal_token : Token.t;
-}
-
-and unit_literal = {
-  syntax_node : syntax_node;
 }
 
 and apply_expression = {
@@ -108,6 +132,19 @@ and let_expression = {
   is_recursive : bool;
 }
 
+and match_expression = {
+  syntax_node : syntax_node;
+  scrutinee : expression;
+  cases : match_case list;
+}
+
+and match_case = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+  guard : expression option;
+  body : expression;
+}
+
 and if_expression = {
   syntax_node : syntax_node;
   condition : expression;
@@ -122,42 +159,52 @@ and parenthesized_expression = {
 
 module Expression = struct
   type t = expression =
-    | PathExpression of path_expression
-    | StringLiteral of string_literal
-    | BoolLiteral of bool_literal
-    | UnitLiteral of unit_literal
-    | ApplyExpression of apply_expression
-    | InfixExpression of infix_expression
-    | LetExpression of let_expression
-    | IfExpression of if_expression
-    | ParenthesizedExpression of parenthesized_expression
+    | Path of path_expression
+    | Literal of literal
+    | Apply of apply_expression
+    | Infix of infix_expression
+    | Let of let_expression
+    | Match of match_expression
+    | If of if_expression
+    | Parenthesized of parenthesized_expression
     | Unknown of syntax_node
 
   let syntax_node = function
-    | PathExpression expr -> expr.syntax_node
-    | StringLiteral expr -> expr.syntax_node
-    | BoolLiteral expr -> expr.syntax_node
-    | UnitLiteral expr -> expr.syntax_node
-    | ApplyExpression expr -> expr.syntax_node
-    | InfixExpression expr -> expr.syntax_node
-    | LetExpression expr -> expr.syntax_node
-    | IfExpression expr -> expr.syntax_node
-    | ParenthesizedExpression expr -> expr.syntax_node
+    | Path expr -> expr.syntax_node
+    | Literal literal -> (
+        match literal with
+        | Literal.String { syntax_node; _ }
+        | Literal.Int { syntax_node; _ }
+        | Literal.Bool { syntax_node; _ }
+        | Literal.Unit { syntax_node } ->
+            syntax_node)
+    | Apply expr -> expr.syntax_node
+    | Infix expr -> expr.syntax_node
+    | Let expr -> expr.syntax_node
+    | Match expr -> expr.syntax_node
+    | If expr -> expr.syntax_node
+    | Parenthesized expr -> expr.syntax_node
     | Unknown node -> node
 end
 
 module Pattern = struct
   type t = pattern =
-    | IdentifierPattern of identifier_pattern
-    | UnitPattern of unit_pattern
-    | ParenthesizedPattern of parenthesized_pattern
-    | UnknownPattern of syntax_node
+    | Identifier of identifier_pattern
+    | Wildcard of wildcard_pattern
+    | Literal of pattern_literal
+    | Parenthesized of parenthesized_pattern
+    | Unknown of syntax_node
 
   let syntax_node = function
-    | IdentifierPattern pattern -> pattern.syntax_node
-    | UnitPattern pattern -> pattern.syntax_node
-    | ParenthesizedPattern pattern -> pattern.syntax_node
-    | UnknownPattern node -> node
+    | Identifier pattern -> pattern.syntax_node
+    | Wildcard pattern -> pattern.syntax_node
+    | Literal (PatternLiteral.String { syntax_node; _ })
+    | Literal (PatternLiteral.Int { syntax_node; _ })
+    | Literal (PatternLiteral.Bool { syntax_node; _ })
+    | Literal (PatternLiteral.Unit { syntax_node }) ->
+        syntax_node
+    | Parenthesized pattern -> pattern.syntax_node
+    | Unknown node -> node
 end
 
 module IdentifierPattern = struct
@@ -171,8 +218,8 @@ module IdentifierPattern = struct
   let name pattern = Token.text pattern.name_token
 end
 
-module UnitPattern = struct
-  type t = unit_pattern = {
+module WildcardPattern = struct
+  type t = wildcard_pattern = {
     syntax_node : syntax_node;
   }
 
@@ -199,35 +246,6 @@ module PathExpression = struct
   let path expr = expr.path
 end
 
-module StringLiteral = struct
-  type t = string_literal = {
-    syntax_node : syntax_node;
-    literal_token : Token.t;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let literal_token expr = expr.literal_token
-  let text expr = Token.text expr.literal_token
-end
-
-module BoolLiteral = struct
-  type t = bool_literal = {
-    syntax_node : syntax_node;
-    literal_token : Token.t;
-  }
-
-  let syntax_node expr = expr.syntax_node
-  let literal_token expr = expr.literal_token
-  let value expr = String.equal (Token.text expr.literal_token) "true"
-end
-
-module UnitLiteral = struct
-  type t = unit_literal = {
-    syntax_node : syntax_node;
-  }
-
-  let syntax_node expr = expr.syntax_node
-end
 
 module ApplyExpression = struct
   type t = apply_expression = {
@@ -270,6 +288,32 @@ module LetExpression = struct
   let bound_value expr = expr.bound_value
   let body expr = expr.body
   let is_recursive expr = expr.is_recursive
+end
+
+module MatchCase = struct
+  type t = match_case = {
+    syntax_node : syntax_node;
+    pattern : pattern;
+    guard : expression option;
+    body : expression;
+  }
+
+  let syntax_node case = case.syntax_node
+  let pattern case = case.pattern
+  let guard case = case.guard
+  let body case = case.body
+end
+
+module MatchExpression = struct
+  type t = match_expression = {
+    syntax_node : syntax_node;
+    scrutinee : expression;
+    cases : match_case list;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let scrutinee expr = expr.scrutinee
+  let cases expr = expr.cases
 end
 
 module IfExpression = struct
@@ -629,32 +673,64 @@ let rec pattern_from_node node =
   | Syntax_kind.IDENT_PATTERN -> (
       match direct_non_trivia_tokens node with
       | first :: _ ->
-          Pattern.IdentifierPattern
+          Pattern.Identifier
             IdentifierPattern.{ syntax_node = node; name_token = token first }
-      | [] -> Pattern.UnknownPattern node)
+      | [] -> Pattern.Unknown node)
+  | Syntax_kind.WILDCARD_PATTERN ->
+      Pattern.Wildcard WildcardPattern.{ syntax_node = node }
+  | Syntax_kind.STRING_LITERAL -> (
+      match direct_non_trivia_tokens node with
+      | literal_syntax_token :: _ ->
+          Pattern.Literal
+            (PatternLiteral.String
+               {
+                 syntax_node = node;
+                 literal_token = token literal_syntax_token;
+               })
+      | [] -> Pattern.Unknown node)
+  | Syntax_kind.INT_LITERAL -> (
+      match direct_non_trivia_tokens node with
+      | literal_syntax_token :: _ ->
+          Pattern.Literal
+            (PatternLiteral.Int
+               {
+                 syntax_node = node;
+                 literal_token = token literal_syntax_token;
+               })
+      | [] -> Pattern.Unknown node)
+  | Syntax_kind.BOOL_LITERAL -> (
+      match direct_non_trivia_tokens node with
+      | literal_syntax_token :: _ ->
+          Pattern.Literal
+            (PatternLiteral.Bool
+              {
+                syntax_node = node;
+                literal_token = token literal_syntax_token;
+              })
+      | [] -> Pattern.Unknown node)
   | Syntax_kind.UNIT_LITERAL ->
-      Pattern.UnitPattern UnitPattern.{ syntax_node = node }
+      Pattern.Literal (PatternLiteral.Unit { syntax_node = node })
   | Syntax_kind.PAREN_PATTERN -> (
       match direct_non_trivia_nodes node with
       | inner_node :: _ ->
-          Pattern.ParenthesizedPattern
+          Pattern.Parenthesized
             ParenthesizedPattern.
               { syntax_node = node; inner = pattern_from_node inner_node }
-      | [] -> Pattern.UnknownPattern node)
-  | _ -> Pattern.UnknownPattern node
+      | [] -> Pattern.Unknown node)
+  | _ -> Pattern.Unknown node
 
 let rec expression_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.IDENT_EXPR ->
-      Expression.PathExpression
+      Expression.Path
         PathExpression.
           { syntax_node = node; path = ident_path_from_node node }
   | Syntax_kind.MODULE_PATH ->
-      Expression.PathExpression
+      Expression.Path
         PathExpression.
           { syntax_node = node; path = module_path_from_node node }
   | Syntax_kind.UNIT_LITERAL ->
-      Expression.UnitLiteral UnitLiteral.{ syntax_node = node }
+      Expression.Literal (Literal.Unit { syntax_node = node })
   | Syntax_kind.FIELD_ACCESS_EXPR -> (
       match path_expression_from_field_access node with
       | Some expr -> expr
@@ -662,27 +738,37 @@ let rec expression_from_node node =
   | Syntax_kind.STRING_LITERAL -> (
       match direct_non_trivia_tokens node with
       | literal_syntax_token :: _ ->
-          Expression.StringLiteral
-            StringLiteral.
-              {
-                syntax_node = node;
-                literal_token = token literal_syntax_token;
-              }
+          Expression.Literal
+            (Literal.String
+               {
+                 syntax_node = node;
+                 literal_token = token literal_syntax_token;
+               })
+      | [] -> Expression.Unknown node)
+  | Syntax_kind.INT_LITERAL -> (
+      match direct_non_trivia_tokens node with
+      | literal_syntax_token :: _ ->
+          Expression.Literal
+            (Literal.Int
+               {
+                 syntax_node = node;
+                 literal_token = token literal_syntax_token;
+               })
       | [] -> Expression.Unknown node)
   | Syntax_kind.BOOL_LITERAL -> (
       match direct_non_trivia_tokens node with
       | literal_syntax_token :: _ ->
-          Expression.BoolLiteral
-            BoolLiteral.
-              {
-                syntax_node = node;
-                literal_token = token literal_syntax_token;
-              }
+          Expression.Literal
+            (Literal.Bool
+               {
+                 syntax_node = node;
+                 literal_token = token literal_syntax_token;
+               })
       | [] -> Expression.Unknown node)
   | Syntax_kind.APPLY_EXPR -> (
       match direct_non_trivia_nodes node with
       | callee_node :: argument_node :: _ ->
-          Expression.ApplyExpression
+          Expression.Apply
             ApplyExpression.
               {
                 syntax_node = node;
@@ -693,7 +779,7 @@ let rec expression_from_node node =
   | Syntax_kind.INFIX_EXPR -> (
       match direct_non_trivia_nodes node, direct_non_trivia_tokens node with
       | left_node :: right_node :: _, operator_syntax_token :: _ ->
-          Expression.InfixExpression
+          Expression.Infix
             InfixExpression.
               {
                 syntax_node = node;
@@ -704,11 +790,15 @@ let rec expression_from_node node =
       | _ -> Expression.Unknown node)
   | Syntax_kind.LET_EXPR -> (
       match let_expression_from_node ~is_recursive_binding:false node with
-      | Some expr -> Expression.LetExpression expr
+      | Some expr -> Expression.Let expr
       | None -> Expression.Unknown node)
   | Syntax_kind.LET_REC_EXPR -> (
       match let_expression_from_node ~is_recursive_binding:true node with
-      | Some expr -> Expression.LetExpression expr
+      | Some expr -> Expression.Let expr
+      | None -> Expression.Unknown node)
+  | Syntax_kind.MATCH_EXPR -> (
+      match match_expression_from_node node with
+      | Some expr -> Expression.Match expr
       | None -> Expression.Unknown node)
   | Syntax_kind.IF_EXPR -> (
       let expression_children =
@@ -720,7 +810,7 @@ let rec expression_from_node node =
       in
       match expression_children with
       | condition_node :: then_node :: else_nodes ->
-          Expression.IfExpression
+          Expression.If
             IfExpression.
               {
                 syntax_node = node;
@@ -735,7 +825,7 @@ let rec expression_from_node node =
   | Syntax_kind.PAREN_EXPR -> (
       match direct_non_trivia_nodes node with
       | inner_node :: _ ->
-          Expression.ParenthesizedExpression
+          Expression.Parenthesized
             ParenthesizedExpression.
               {
                 syntax_node = node;
@@ -748,13 +838,13 @@ and path_expression_from_field_access node =
   match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
   | receiver_node :: _, field_token :: _ -> (
       match expression_from_node receiver_node with
-      | Expression.PathExpression receiver ->
+      | Expression.Path receiver ->
           let path_segments =
             ModulePath.segments (PathExpression.path receiver)
             @ [ token field_token ]
           in
           Some
-            (Expression.PathExpression
+            (Expression.Path
                PathExpression.
                  {
                    syntax_node = node;
@@ -793,6 +883,76 @@ and let_expression_from_node ~is_recursive_binding node =
                 is_recursive = is_recursive_binding;
               }
       | None -> None)
+  | [] -> None
+
+and match_case_from_node node =
+  let non_trivia_children = direct_non_trivia_nodes node in
+  let expression_children =
+    non_trivia_children
+    |> List.filter_map (fun child ->
+           match expression_from_node child with
+           | Expression.Unknown _ -> None
+           | expr -> Some expr)
+  in
+  let has_guard =
+    List.exists
+      (fun child ->
+        Ceibo.Red.SyntaxNode.kind child = Syntax_kind.PATTERN_GUARD)
+      non_trivia_children
+  in
+  match non_trivia_children with
+  | pattern_node :: _ -> (
+      match expression_children, has_guard with
+      | [], _ -> None
+      | body_exprs, false -> (
+          match List.rev body_exprs with
+          | body_expr :: _ ->
+              Some
+                MatchCase.
+                  {
+                    syntax_node = node;
+                    pattern = pattern_from_node pattern_node;
+                    guard = None;
+                    body = body_expr;
+                  }
+          | [] -> None)
+      | guard_expr :: body_expr :: _, true ->
+          Some
+            MatchCase.
+              {
+                syntax_node = node;
+                pattern = pattern_from_node pattern_node;
+                guard = Some guard_expr;
+                body = body_expr;
+              }
+      | body_expr :: _, true ->
+          Some
+            MatchCase.
+              {
+                syntax_node = node;
+                pattern = pattern_from_node pattern_node;
+                guard = None;
+                body = body_expr;
+              }
+      )
+  | [] -> None
+
+and match_expression_from_node node =
+  match direct_non_trivia_nodes node with
+  | scrutinee_node :: rest ->
+      let match_cases =
+        rest
+        |> List.filter (fun child ->
+               Ceibo.Red.SyntaxNode.kind child = Syntax_kind.MATCH_CASE)
+        |> List.filter_map match_case_from_node
+      in
+      Some
+        MatchExpression.
+          {
+            syntax_node = node;
+            scrutinee = expression_from_node scrutinee_node;
+            cases = match_cases;
+          }
   | [] -> None
 
 let type_variable_from_node node =

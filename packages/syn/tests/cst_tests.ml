@@ -267,7 +267,7 @@ let tests =
         match Syn.Cst.SourceFile.items cst with
         | Syn.Cst.Item.LetBinding binding :: _ -> (
             match Syn.Cst.LetBinding.value binding with
-            | Syn.Cst.Expression.InfixExpression expr ->
+            | Syn.Cst.Expression.Infix expr ->
                 Test.assert_equal ~expected:"^"
                   ~actual:(Syn.Cst.InfixExpression.operator expr);
                 Ok ()
@@ -284,7 +284,7 @@ let tests =
         match Syn.Cst.SourceFile.items cst with
         | Syn.Cst.Item.LetBinding binding :: _ -> (
             match Syn.Cst.LetBinding.value binding with
-            | Syn.Cst.Expression.InfixExpression expr ->
+            | Syn.Cst.Expression.Infix expr ->
                 Test.assert_equal ~expected:"%>"
                   ~actual:(Syn.Cst.InfixExpression.operator expr);
                 Ok ()
@@ -301,9 +301,9 @@ let tests =
         match Syn.Cst.SourceFile.items cst with
         | Syn.Cst.Item.LetBinding binding :: _ -> (
             match Syn.Cst.LetBinding.value binding with
-            | Syn.Cst.Expression.IfExpression expr -> (
+            | Syn.Cst.Expression.If expr -> (
                 match Syn.Cst.IfExpression.else_branch expr with
-                | Some (Syn.Cst.Expression.UnitLiteral _) -> Ok ()
+                | Some (Syn.Cst.Expression.Literal (Syn.Cst.Literal.Unit _)) -> Ok ()
                 | _ -> Error "expected unit else branch")
             | _ -> Error "expected if expression value")
         | _ -> Error "expected first item to be a let binding");
@@ -319,14 +319,15 @@ let tests =
         | Syn.Cst.Item.LetBinding
             {
               value =
-                Syn.Cst.Expression.IfExpression
+                Syn.Cst.Expression.If
                   {
                     condition =
-                      Syn.Cst.Expression.InfixExpression
+                      Syn.Cst.Expression.Infix
                         {
                           right =
-                            Syn.Cst.Expression.BoolLiteral
-                              { literal_token = { syntax_token }; _ };
+                            Syn.Cst.Expression.Literal
+                              (Syn.Cst.Literal.Bool
+                                 { literal_token = { syntax_token }; _ });
                           _;
                         };
                     _;
@@ -350,15 +351,58 @@ let tests =
         | Syn.Cst.Item.LetBinding
             {
               value =
-                Syn.Cst.Expression.LetExpression
+                Syn.Cst.Expression.Let
                   {
-                    binding_pattern = Syn.Cst.Pattern.UnitPattern _;
-                    body = Syn.Cst.Expression.ApplyExpression _;
+                    binding_pattern =
+                      Syn.Cst.Pattern.Literal (Syn.Cst.PatternLiteral.Unit _);
+                    body = Syn.Cst.Expression.Apply _;
                     _;
                   };
               _;
             }
           :: _ ->
+            Ok ()
+        | _ -> Error "expected first item to be a let binding");
+    Test.case "cst match expressions expose boolean cases structurally" (fun () ->
+        let source = "let render flag = match flag with true -> 1 | false -> 0\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      [
+                        {
+                          pattern =
+                            Syn.Cst.Pattern.Literal
+                              (Syn.Cst.PatternLiteral.Bool
+                                 { literal_token = first; _ });
+                          body = _;
+                          _;
+                        };
+                        {
+                          pattern =
+                            Syn.Cst.Pattern.Literal
+                              (Syn.Cst.PatternLiteral.Bool
+                                 { literal_token = second; _ });
+                          body = _;
+                          _;
+                        };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"true" ~actual:(Syn.Cst.Token.text first);
+            Test.assert_equal ~expected:"false" ~actual:(Syn.Cst.Token.text second);
             Ok ()
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst source files collect recognized expressions recursively" (fun () ->
@@ -372,7 +416,7 @@ let tests =
         let operators =
           Syn.Cst.SourceFile.expressions cst
           |> List.filter_map (function
-               | Syn.Cst.Expression.InfixExpression expr ->
+               | Syn.Cst.Expression.Infix expr ->
                    Some (Syn.Cst.InfixExpression.operator expr)
                | _ -> None)
         in
@@ -389,9 +433,9 @@ let tests =
         match Syn.Cst.SourceFile.items cst with
         | Syn.Cst.Item.LetBinding binding :: _ -> (
             match Syn.Cst.LetBinding.value binding with
-            | Syn.Cst.Expression.ApplyExpression outer -> (
+            | Syn.Cst.Expression.Apply outer -> (
                 match Syn.Cst.ApplyExpression.callee outer with
-                | Syn.Cst.Expression.PathExpression path ->
+                | Syn.Cst.Expression.Path path ->
                     Test.assert_equal ~expected:(Some "rev")
                       ~actual:
                         (Syn.Cst.PathExpression.path path |> Syn.Cst.ModulePath.name);
@@ -410,7 +454,7 @@ let tests =
         match Syn.Cst.SourceFile.items cst with
         | Syn.Cst.Item.LetBinding binding :: _ ->
             let rec depth = function
-              | Syn.Cst.Expression.ParenthesizedExpression expr ->
+              | Syn.Cst.Expression.Parenthesized expr ->
                   1 + depth (Syn.Cst.ParenthesizedExpression.inner expr)
               | _ -> 0
             in

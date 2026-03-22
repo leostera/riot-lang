@@ -38,33 +38,43 @@ let make_diagnostic expr depth =
     ()
 
 let rec parenthesis_chain_depth = function
-  | Syn.Cst.Expression.ParenthesizedExpression expr ->
+  | Syn.Cst.Expression.Parenthesized expr ->
       1 + parenthesis_chain_depth (Syn.Cst.ParenthesizedExpression.inner expr)
   | _ -> 0
 
 let rec diagnostics_for_expression ~inside_parenthesized_chain = function
-  | Syn.Cst.Expression.PathExpression _
-  | Syn.Cst.Expression.StringLiteral _
-  | Syn.Cst.Expression.BoolLiteral _
-  | Syn.Cst.Expression.UnitLiteral _
+  | Syn.Cst.Expression.Path _
+  | Syn.Cst.Expression.Literal _
   | Syn.Cst.Expression.Unknown _ ->
       []
-  | Syn.Cst.Expression.ApplyExpression expr ->
+  | Syn.Cst.Expression.Apply expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
         (Syn.Cst.ApplyExpression.callee expr)
       @ diagnostics_for_expression ~inside_parenthesized_chain
           (Syn.Cst.ApplyExpression.argument expr)
-  | Syn.Cst.Expression.InfixExpression expr ->
+  | Syn.Cst.Expression.Infix expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
         (Syn.Cst.InfixExpression.left expr)
       @ diagnostics_for_expression ~inside_parenthesized_chain
           (Syn.Cst.InfixExpression.right expr)
-  | Syn.Cst.Expression.LetExpression expr ->
+  | Syn.Cst.Expression.Let expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
         (Syn.Cst.LetExpression.bound_value expr)
       @ diagnostics_for_expression ~inside_parenthesized_chain
           (Syn.Cst.LetExpression.body expr)
-  | Syn.Cst.Expression.IfExpression expr ->
+  | Syn.Cst.Expression.Match expr ->
+      diagnostics_for_expression ~inside_parenthesized_chain
+        (Syn.Cst.MatchExpression.scrutinee expr)
+      @
+      (Syn.Cst.MatchExpression.cases expr
+      |> List.concat_map (fun case ->
+             (match Syn.Cst.MatchCase.guard case with
+             | Some guard ->
+                 diagnostics_for_expression ~inside_parenthesized_chain guard
+             | None -> [])
+             @ diagnostics_for_expression ~inside_parenthesized_chain
+                 (Syn.Cst.MatchCase.body case)))
+  | Syn.Cst.Expression.If expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
         (Syn.Cst.IfExpression.condition expr)
       @ diagnostics_for_expression ~inside_parenthesized_chain
@@ -74,13 +84,13 @@ let rec diagnostics_for_expression ~inside_parenthesized_chain = function
       | Some else_branch ->
           diagnostics_for_expression ~inside_parenthesized_chain else_branch
       | None -> [])
-  | Syn.Cst.Expression.ParenthesizedExpression expr ->
+  | Syn.Cst.Expression.Parenthesized expr ->
       let inner = Syn.Cst.ParenthesizedExpression.inner expr in
       let nested = diagnostics_for_expression ~inside_parenthesized_chain:true inner in
       if inside_parenthesized_chain then
         nested
       else
-        let depth = parenthesis_chain_depth (Syn.Cst.Expression.ParenthesizedExpression expr) in
+        let depth = parenthesis_chain_depth (Syn.Cst.Expression.Parenthesized expr) in
         if depth >= max_parenthesis_depth then
           make_diagnostic expr depth :: nested
         else

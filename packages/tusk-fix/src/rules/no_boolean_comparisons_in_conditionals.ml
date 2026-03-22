@@ -28,17 +28,18 @@ Examples:
 |}
 
 let rec unwrap_parens = function
-  | Syn.Cst.Expression.ParenthesizedExpression expr ->
+  | Syn.Cst.Expression.Parenthesized expr ->
       unwrap_parens (Syn.Cst.ParenthesizedExpression.inner expr)
   | expr -> expr
 
 let bool_literal_value = function
-  | Syn.Cst.Expression.BoolLiteral literal -> Some (Syn.Cst.BoolLiteral.value literal)
+  | Syn.Cst.Expression.Literal (Syn.Cst.Literal.Bool { literal_token; _ }) ->
+      Some (String.equal (Syn.Cst.Token.text literal_token) "true")
   | _ -> None
 
 let comparison_operands expr =
   match unwrap_parens expr with
-  | Syn.Cst.Expression.InfixExpression cmp ->
+  | Syn.Cst.Expression.Infix cmp ->
       let op = Syn.Cst.InfixExpression.operator cmp in
       if String.equal op "=" || String.equal op "!=" || String.equal op "<>" then
         Some (op, Syn.Cst.InfixExpression.left cmp, Syn.Cst.InfixExpression.right cmp)
@@ -81,7 +82,7 @@ let make_diagnostic if_expr =
     ()
 
 let diagnostic_for_expression = function
-  | Syn.Cst.Expression.IfExpression if_expr
+  | Syn.Cst.Expression.If if_expr
     when should_flag_condition (Syn.Cst.IfExpression.condition if_expr) ->
       Some (make_diagnostic if_expr)
   | _ -> None

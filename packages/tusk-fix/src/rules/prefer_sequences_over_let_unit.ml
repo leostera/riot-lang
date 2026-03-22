@@ -25,9 +25,11 @@ Examples:
 |}
 
 let rec is_unit_pattern = function
-  | Syn.Cst.Pattern.UnitPattern _ -> true
-  | Syn.Cst.Pattern.ParenthesizedPattern { inner; _ } -> is_unit_pattern inner
-  | Syn.Cst.Pattern.IdentifierPattern _ | Syn.Cst.Pattern.UnknownPattern _ -> false
+  | Syn.Cst.Pattern.Literal (Syn.Cst.PatternLiteral.Unit _) -> true
+  | Syn.Cst.Pattern.Parenthesized { inner; _ } -> is_unit_pattern inner
+  | Syn.Cst.Pattern.Identifier _ | Syn.Cst.Pattern.Wildcard _
+  | Syn.Cst.Pattern.Literal _ | Syn.Cst.Pattern.Unknown _ ->
+      false
 
 let make_diagnostic expr =
   Diagnostic.make ~severity:Warning
@@ -37,7 +39,7 @@ let make_diagnostic expr =
     ()
 
 let diagnostic_for_expression = function
-  | Syn.Cst.Expression.LetExpression expr
+  | Syn.Cst.Expression.Let expr
     when is_unit_pattern (Syn.Cst.LetExpression.binding_pattern expr) ->
       Some (make_diagnostic expr)
   | _ -> None

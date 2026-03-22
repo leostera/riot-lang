@@ -25,8 +25,8 @@ Examples:
 |}
 
 let rec is_unit_expression = function
-  | Syn.Cst.Expression.UnitLiteral _ -> true
-  | Syn.Cst.Expression.ParenthesizedExpression expr ->
+  | Syn.Cst.Expression.Literal (Syn.Cst.Literal.Unit _) -> true
+  | Syn.Cst.Expression.Parenthesized expr ->
       is_unit_expression (Syn.Cst.ParenthesizedExpression.inner expr)
   | _ -> false
 
@@ -38,7 +38,7 @@ let make_diagnostic expr =
     ()
 
 let diagnostic_for_expression = function
-  | Syn.Cst.Expression.IfExpression expr -> (
+  | Syn.Cst.Expression.If expr -> (
       match Syn.Cst.IfExpression.else_branch expr with
       | Some else_branch when is_unit_expression else_branch ->
           Some (make_diagnostic expr)

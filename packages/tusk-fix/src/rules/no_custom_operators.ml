@@ -68,28 +68,35 @@ let make_diagnostic expr =
     ()
 
 let rec diagnostics_for_expression = function
-  | Syn.Cst.Expression.PathExpression _
-  | Syn.Cst.Expression.StringLiteral _
-  | Syn.Cst.Expression.BoolLiteral _
-  | Syn.Cst.Expression.UnitLiteral _
+  | Syn.Cst.Expression.Path _
+  | Syn.Cst.Expression.Literal _
   | Syn.Cst.Expression.Unknown _ ->
       []
-  | Syn.Cst.Expression.ApplyExpression expr ->
+  | Syn.Cst.Expression.Apply expr ->
       diagnostics_for_expression (Syn.Cst.ApplyExpression.callee expr)
       @ diagnostics_for_expression (Syn.Cst.ApplyExpression.argument expr)
-  | Syn.Cst.Expression.ParenthesizedExpression expr ->
+  | Syn.Cst.Expression.Parenthesized expr ->
       diagnostics_for_expression (Syn.Cst.ParenthesizedExpression.inner expr)
-  | Syn.Cst.Expression.LetExpression expr ->
+  | Syn.Cst.Expression.Let expr ->
       diagnostics_for_expression (Syn.Cst.LetExpression.bound_value expr)
       @ diagnostics_for_expression (Syn.Cst.LetExpression.body expr)
-  | Syn.Cst.Expression.IfExpression expr ->
+  | Syn.Cst.Expression.Match expr ->
+      diagnostics_for_expression (Syn.Cst.MatchExpression.scrutinee expr)
+      @
+      (Syn.Cst.MatchExpression.cases expr
+      |> List.concat_map (fun case ->
+             (match Syn.Cst.MatchCase.guard case with
+             | Some guard -> diagnostics_for_expression guard
+             | None -> [])
+             @ diagnostics_for_expression (Syn.Cst.MatchCase.body case)))
+  | Syn.Cst.Expression.If expr ->
       diagnostics_for_expression (Syn.Cst.IfExpression.condition expr)
       @ diagnostics_for_expression (Syn.Cst.IfExpression.then_branch expr)
       @
       (match Syn.Cst.IfExpression.else_branch expr with
       | Some else_branch -> diagnostics_for_expression else_branch
       | None -> [])
-  | Syn.Cst.Expression.InfixExpression expr ->
+  | Syn.Cst.Expression.Infix expr ->
       let nested =
         diagnostics_for_expression (Syn.Cst.InfixExpression.left expr)
         @ diagnostics_for_expression (Syn.Cst.InfixExpression.right expr)

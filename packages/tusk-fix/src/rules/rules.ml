@@ -6,6 +6,7 @@ module No_unnecessary_rec = No_unnecessary_rec
 module No_redundant_else_unit = No_redundant_else_unit
 module No_boolean_comparisons_in_conditionals = No_boolean_comparisons_in_conditionals
 module Prefer_sequences_over_let_unit = Prefer_sequences_over_let_unit
+module Prefer_if_over_bool_match = Prefer_if_over_bool_match
 module No_open_bang = No_open_bang
 module No_inline_parameter_type_annotations = No_inline_parameter_type_annotations
 module No_function_shorthand = No_function_shorthand

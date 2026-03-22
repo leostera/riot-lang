@@ -24,18 +24,38 @@ module ModulePath : sig
   val name : t -> string option
 end
 
+module PatternLiteral : sig
+  type t =
+    | String of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Int of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Bool of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Unit of { syntax_node : syntax_node }
+end
+
+type pattern_literal = PatternLiteral.t
+
 type pattern =
-  | IdentifierPattern of identifier_pattern
-  | UnitPattern of unit_pattern
-  | ParenthesizedPattern of parenthesized_pattern
-  | UnknownPattern of syntax_node
+  | Identifier of identifier_pattern
+  | Wildcard of wildcard_pattern
+  | Literal of pattern_literal
+  | Parenthesized of parenthesized_pattern
+  | Unknown of syntax_node
 
 and identifier_pattern = {
   syntax_node : syntax_node;
   name_token : Token.t;
 }
 
-and unit_pattern = {
+and wildcard_pattern = {
   syntax_node : syntax_node;
 }
 
@@ -44,35 +64,39 @@ and parenthesized_pattern = {
   inner : pattern;
 }
 
+module Literal : sig
+  type t =
+    | String of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Int of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Bool of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Unit of { syntax_node : syntax_node }
+end
+
+type literal = Literal.t
+
 type expression =
-  | PathExpression of path_expression
-  | StringLiteral of string_literal
-  | BoolLiteral of bool_literal
-  | UnitLiteral of unit_literal
-  | ApplyExpression of apply_expression
-  | InfixExpression of infix_expression
-  | LetExpression of let_expression
-  | IfExpression of if_expression
-  | ParenthesizedExpression of parenthesized_expression
+  | Path of path_expression
+  | Literal of literal
+  | Apply of apply_expression
+  | Infix of infix_expression
+  | Let of let_expression
+  | Match of match_expression
+  | If of if_expression
+  | Parenthesized of parenthesized_expression
   | Unknown of syntax_node
 
 and path_expression = {
   syntax_node : syntax_node;
   path : ModulePath.t;
-}
-
-and string_literal = {
-  syntax_node : syntax_node;
-  literal_token : Token.t;
-}
-
-and bool_literal = {
-  syntax_node : syntax_node;
-  literal_token : Token.t;
-}
-
-and unit_literal = {
-  syntax_node : syntax_node;
 }
 
 and apply_expression = {
@@ -96,6 +120,19 @@ and let_expression = {
   is_recursive : bool;
 }
 
+and match_expression = {
+  syntax_node : syntax_node;
+  scrutinee : expression;
+  cases : match_case list;
+}
+
+and match_case = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+  guard : expression option;
+  body : expression;
+}
+
 and if_expression = {
   syntax_node : syntax_node;
   condition : expression;
@@ -110,15 +147,14 @@ and parenthesized_expression = {
 
 module Expression : sig
   type t = expression =
-    | PathExpression of path_expression
-    | StringLiteral of string_literal
-    | BoolLiteral of bool_literal
-    | UnitLiteral of unit_literal
-    | ApplyExpression of apply_expression
-    | InfixExpression of infix_expression
-    | LetExpression of let_expression
-    | IfExpression of if_expression
-    | ParenthesizedExpression of parenthesized_expression
+    | Path of path_expression
+    | Literal of literal
+    | Apply of apply_expression
+    | Infix of infix_expression
+    | Let of let_expression
+    | Match of match_expression
+    | If of if_expression
+    | Parenthesized of parenthesized_expression
     | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node
@@ -126,29 +162,11 @@ end
 
 module Pattern : sig
   type t = pattern =
-    | IdentifierPattern of identifier_pattern
-    | UnitPattern of unit_pattern
-    | ParenthesizedPattern of parenthesized_pattern
-    | UnknownPattern of syntax_node
-
-  val syntax_node : t -> syntax_node
-end
-
-module IdentifierPattern : sig
-  type t = identifier_pattern = {
-    syntax_node : syntax_node;
-    name_token : Token.t;
-  }
-
-  val syntax_node : t -> syntax_node
-  val name_token : t -> Token.t
-  val name : t -> string
-end
-
-module UnitPattern : sig
-  type t = unit_pattern = {
-    syntax_node : syntax_node;
-  }
+    | Identifier of identifier_pattern
+    | Wildcard of wildcard_pattern
+    | Literal of pattern_literal
+    | Parenthesized of parenthesized_pattern
+    | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node
 end
@@ -171,36 +189,6 @@ module PathExpression : sig
 
   val syntax_node : t -> syntax_node
   val path : t -> ModulePath.t
-end
-
-module StringLiteral : sig
-  type t = string_literal = {
-    syntax_node : syntax_node;
-    literal_token : Token.t;
-  }
-
-  val syntax_node : t -> syntax_node
-  val literal_token : t -> Token.t
-  val text : t -> string
-end
-
-module BoolLiteral : sig
-  type t = bool_literal = {
-    syntax_node : syntax_node;
-    literal_token : Token.t;
-  }
-
-  val syntax_node : t -> syntax_node
-  val literal_token : t -> Token.t
-  val value : t -> bool
-end
-
-module UnitLiteral : sig
-  type t = unit_literal = {
-    syntax_node : syntax_node;
-  }
-
-  val syntax_node : t -> syntax_node
 end
 
 module ApplyExpression : sig
@@ -244,6 +232,32 @@ module LetExpression : sig
   val bound_value : t -> Expression.t
   val body : t -> Expression.t
   val is_recursive : t -> bool
+end
+
+module MatchCase : sig
+  type t = match_case = {
+    syntax_node : syntax_node;
+    pattern : pattern;
+    guard : expression option;
+    body : expression;
+  }
+
+  val syntax_node : t -> syntax_node
+  val pattern : t -> Pattern.t
+  val guard : t -> Expression.t option
+  val body : t -> Expression.t
+end
+
+module MatchExpression : sig
+  type t = match_expression = {
+    syntax_node : syntax_node;
+    scrutinee : expression;
+    cases : match_case list;
+  }
+
+  val syntax_node : t -> syntax_node
+  val scrutinee : t -> Expression.t
+  val cases : t -> MatchCase.t list
 end
 
 module IfExpression : sig

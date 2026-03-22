@@ -1,7 +1,42 @@
 # TODO
 
-Main goals:
+## Working Loop
+
+1. Build the latest `tusk` from the stable global binary when build-system / parser / lint runtime changes are involved:
+   - `rm -f _build/tusk.lock`
+   - `timeout 240 tusk build tusk-cli`
+2. Use `./tusk` for follow-up verification after rebuilding `tusk-cli`:
+   - `rm -f _build/tusk.lock`
+   - `timeout 180 ./tusk test syn:cst_tests`
+   - `rm -f _build/tusk.lock`
+   - `timeout 180 ./tusk test tusk-fix:runner_tests`
+3. When touching only a single package, use the narrower build when possible:
+   - `rm -f _build/tusk.lock`
+   - `timeout 60 tusk build syn`
+   - `rm -f _build/tusk.lock`
+   - `timeout 60 tusk build tusk-fix`
+4. Read this file from top to bottom and pick the next unchecked item that is unblocked by the current `Syn.Cst` surface.
+5. After implementing a task:
+   - run the narrowest relevant verification first
+   - then rerun the full `syn` and `tusk-fix` test slices
+   - if the change affects the `tusk` binary surface, rebuild `tusk-cli`
+6. Mark a task complete only after the relevant tests have passed.
+7. Commit often, with one logical slice per commit.
+
+## Verification Commands
+
+- `rm -f _build/tusk.lock && timeout 240 tusk build tusk-cli`
+- `rm -f _build/tusk.lock && timeout 180 ./tusk test syn:cst_tests`
+- `rm -f _build/tusk.lock && timeout 180 ./tusk test tusk-fix:runner_tests`
+- `rm -f _build/tusk.lock && timeout 120 ./tusk fix --list-rules`
+- `rm -f _build/tusk.lock && timeout 120 ./tusk fix --list-diagnostics`
+- `rm -f _build/tusk.lock && timeout 120 ./tusk fix --check --limit 20 <file>`
+
+## Main goals
+
 - [ ] Implement all the lints in the sections below (and i mean ALL of them!)
+- [ ] Simplify rules to not have duplicated text/hints fields -- (right now they have id, message, description, title, and explain strings, they should really just need id + short description + long explanation)
+      - [ ] Explanations should be written out with examples and not with a structured "why this rule exists" -- it exists because something in the language is harder without them, so we should explain how things would look without the rule, the issues that arise from it, and how this rule helps prevent that.
 - [ ] Make sure the Syn.Cst tree represents the entirety of the OCaml grammar (see ./packages/syn/docs/ocaml_grammar.ebnf)
 - [ ] Then lets do a learning pass by exploring how Rust's clippy does a few things:
       - [ ] we should group built-in lints by category like rust's clippy does (https://doc.rust-lang.org/stable/clippy/lints.html)
@@ -46,7 +81,7 @@ Main goals:
 
 - [x] Warn about using `open!` (`no-open-bang`)
 
-- [ ] Match on bool being redundant like `match foo () with | true -> ... | ....` shoul be `if foo () then ... else ...` -- ths check can inspect both branches and suggest accordingly, if the branches are `true -> ...` and `_ -> ()` then we just suggest `if foo() then ...` without an else. If the branch matches on `false` we can suggest `if not foo () then ...`, if both branches have code (and not just return a `()`) then we can suggest the full `if cond then .. else ..`
+- [x] Match on bool being redundant like `match foo () with | true -> ... | ....` shoul be `if foo () then ... else ...` -- ths check can inspect both branches and suggest accordingly, if the branches are `true -> ...` and `_ -> ()` then we just suggest `if foo() then ...` without an else. If the branch matches on `false` we can suggest `if not foo () then ...`, if both branches have code (and not just return a `()`) then we can suggest the full `if cond then .. else ..` (`prefer-if-over-bool-match`)
 
 - [ ] `try f x with | e -> raise e` is just `f x`
 

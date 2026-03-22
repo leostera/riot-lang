@@ -60,7 +60,7 @@ let check_tree (ctx : Api.Rule.context) _red_root =
   | Some source_file ->
       Syn.Cst.SourceFile.expressions source_file
       |> List.filter_map (function
-           | Syn.Cst.Expression.InfixExpression expr
+           | Syn.Cst.Expression.Infix expr
              when String.equal (Syn.Cst.InfixExpression.operator expr) "<>" ->
                  let token =
                    Syn.Cst.InfixExpression.operator_token expr

@@ -472,6 +472,46 @@ let tests =
         Ok ());
     Test.case "diagnostic code registry explains let-unit sequencing" (fun () ->
         assert_explanation_contains ~code:"F0131" ~snippet:"log (); flush ()");
+    Test.case "prefer-if-over-bool-match flags full boolean matches" (fun () ->
+        let source =
+          "let render ready = match ready with true -> render () | false -> fallback ()\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_if_over_bool_match.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0132" ] ~actual:codes;
+        Ok ());
+    Test.case "prefer-if-over-bool-match flags false-with-unit fallback matches" (fun () ->
+        let source =
+          "let render ready = match ready with false -> render () | _ -> ()\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_if_over_bool_match.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0132" ] ~actual:codes;
+        Ok ());
+    Test.case "prefer-if-over-bool-match keeps non-boolean matches clean" (fun () ->
+        let source = "let render opt = match opt with Some x -> x | None -> 0\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_if_over_bool_match.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains boolean match rewrites" (fun () ->
+        assert_explanation_contains ~code:"F0132"
+          ~snippet:"if is_ready then render () else fallback ()");
     Test.case "alphabetized-named-arguments flags unsorted labeled arguments" (fun () ->
         let source = "let render ~zebra ~alpha current_user = current_user\n" in
         let pipeline =

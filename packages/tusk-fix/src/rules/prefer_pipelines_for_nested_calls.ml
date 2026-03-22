@@ -25,13 +25,13 @@ Examples:
 |}
 
 let rec unwrap_parens = function
-  | Syn.Cst.Expression.ParenthesizedExpression expr ->
+  | Syn.Cst.Expression.Parenthesized expr ->
       unwrap_parens (Syn.Cst.ParenthesizedExpression.inner expr)
   | expr -> expr
 
 let rec nested_call_count expr =
   match unwrap_parens expr with
-  | Syn.Cst.Expression.ApplyExpression apply ->
+  | Syn.Cst.Expression.Apply apply ->
       1 + nested_call_count (Syn.Cst.ApplyExpression.argument apply)
   | _ -> 0
 
@@ -46,7 +46,7 @@ let make_diagnostic expr =
 
 let diagnostic_for_expression expr =
   match unwrap_parens expr with
-  | Syn.Cst.Expression.ApplyExpression _ when nested_call_count expr >= threshold ->
+  | Syn.Cst.Expression.Apply _ when nested_call_count expr >= threshold ->
       Some (make_diagnostic expr)
   | _ -> None
 

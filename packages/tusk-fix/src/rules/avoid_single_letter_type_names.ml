@@ -45,10 +45,7 @@ let diagnostic_for_decl = function
           in
           Some (make_diagnostic token)
       | Some _ | None -> None)
-  | Syn.Cst.Item.LetBinding _
-  | Syn.Cst.Item.ModuleDeclaration _
-  | Syn.Cst.Item.ModuleTypeDeclaration _
-  | Syn.Cst.Item.Unknown _ ->
+  | _ ->
       None
 
 let check_tree (ctx : Rule.context) _red_root =

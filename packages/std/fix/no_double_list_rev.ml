@@ -36,7 +36,7 @@ Examples:
 let explanations () = [ explanation ]
 
 let rec unwrap_parens = function
-  | Syn.Cst.Expression.ParenthesizedExpression expr ->
+  | Syn.Cst.Expression.Parenthesized expr ->
       unwrap_parens (Syn.Cst.ParenthesizedExpression.inner expr)
   | expr -> expr
 
@@ -54,15 +54,15 @@ let ends_with_list_rev path =
   | _ -> false
 
 let is_list_rev = function
-  | Syn.Cst.Expression.PathExpression expr ->
+  | Syn.Cst.Expression.Path expr ->
       ends_with_list_rev (Syn.Cst.PathExpression.path expr)
   | _ -> false
 
 let diagnostic_for_expression = function
-  | Syn.Cst.Expression.ApplyExpression outer
+  | Syn.Cst.Expression.Apply outer
     when is_list_rev (unwrap_parens (Syn.Cst.ApplyExpression.callee outer)) -> (
         match unwrap_parens (Syn.Cst.ApplyExpression.argument outer) with
-        | Syn.Cst.Expression.ApplyExpression inner
+        | Syn.Cst.Expression.Apply inner
           when is_list_rev (unwrap_parens (Syn.Cst.ApplyExpression.callee inner))
             ->
               Some
@@ -80,12 +80,12 @@ let diagnostic_for_expression = function
                    ~suggestion:
                      ("Replace " ^ path_text
                         (match unwrap_parens (Syn.Cst.ApplyExpression.callee outer) with
-                        | Syn.Cst.Expression.PathExpression expr ->
+                        | Syn.Cst.Expression.Path expr ->
                             Syn.Cst.PathExpression.path expr
                         | _ -> panic "expected path expression")
                     ^ " (" ^ path_text
                         (match unwrap_parens (Syn.Cst.ApplyExpression.callee inner) with
-                        | Syn.Cst.Expression.PathExpression expr ->
+                        | Syn.Cst.Expression.Path expr ->
                             Syn.Cst.PathExpression.path expr
                         | _ -> panic "expected path expression")
                     ^ " xs) with xs or keep only one rev if order matters.")
