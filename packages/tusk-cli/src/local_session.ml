@@ -85,16 +85,16 @@ module BuildLock = struct
   let lock_failure action path =
     Failure ("Failed to " ^ action ^ " build lock file at " ^ Path.to_string path)
 
-  let rec wait t =
+  let rec retry t =
     sleep retry_interval;
     match Fs.File.try_lock_exclusive t.file with
     | Ok true -> Ok t
-    | Ok false -> wait t
+    | Ok false -> retry t
     | Error _ ->
         release t;
         raise (lock_failure "lock" t.path)
 
-  let acquire workspace_root =
+  let wait workspace_root =
     let build_dir = Tusk_model.Tusk_dirs.build_dir_root ~workspace_root in
     let _ =
       Fs.create_dir_all build_dir
@@ -109,10 +109,15 @@ module BuildLock = struct
     let t = { path; file } in
     match Fs.File.try_lock_exclusive file with
     | Ok true -> Ok t
-    | Ok false -> wait t
+    | Ok false -> retry t
     | Error _ ->
         release t;
         raise (lock_failure "lock" path)
+
+  let acquire workspace_root fn =
+    match wait workspace_root with
+    | Error err -> Error err
+    | Ok t -> Fun.protect ~finally:(fun () -> release t) fn
 end
 
 let convert_build_stats (stats : Protocol.BuildStats.t) : build_stats =
@@ -214,54 +219,44 @@ let rec handle_streaming_events t session_id callback =
       else handle_streaming_events t session_id callback
 
 let build_streaming t target ?(scope = Runtime) ?target_arch callback =
-  match BuildLock.acquire t.workspace_root with
-  | Error err -> Error err
-  | Ok build_lock ->
-      try
-        let result =
-          let target =
-            match target with
-            | BuildPackage package -> Protocol.Package package
-            | BuildAll -> Protocol.All
-          in
-          let session_id = Session_id.make () in
-          send_request t
-            (Protocol.Build
-               {
-                 client_pid = self ();
-                 target;
-                 scope =
-                   (match scope with
-                   | Runtime -> Protocol.Runtime
-                   | Dev -> Protocol.Dev);
-                 target_arch;
-                 session_id;
-               });
-          let selector msg =
-            match msg with
-            | Protocol.ServerResponse
-                (Protocol.BuildStarted
-                  { session_id = started_session_id; started_at = _ })
-              when same_session session_id started_session_id ->
-                `select (Ok started_session_id)
-            | Protocol.ServerResponse
-                (Protocol.PackageNotFound
-                  { session_id = event_session_id; package_name; available_packages })
-              when same_session session_id event_session_id ->
-                `select (Error (PackageNotFound { package_name; available_packages }))
-            | _ -> `skip
-          in
-          match receive_response ~selector with
-          | Ok started_session_id ->
-              callback (BuildStarted started_session_id);
-              handle_streaming_events t started_session_id callback
-          | Error err -> Error err
-        in
-        BuildLock.release build_lock;
-        result
-      with exn ->
-        BuildLock.release build_lock;
-        raise exn
+  BuildLock.acquire t.workspace_root (fun () ->
+      let target =
+        match target with
+        | BuildPackage package -> Protocol.Package package
+        | BuildAll -> Protocol.All
+      in
+      let session_id = Session_id.make () in
+      send_request t
+        (Protocol.Build
+           {
+             client_pid = self ();
+             target;
+             scope =
+               (match scope with
+               | Runtime -> Protocol.Runtime
+               | Dev -> Protocol.Dev);
+             target_arch;
+             session_id;
+           });
+      let selector msg =
+        match msg with
+        | Protocol.ServerResponse
+            (Protocol.BuildStarted
+              { session_id = started_session_id; started_at = _ })
+          when same_session session_id started_session_id ->
+            `select (Ok started_session_id)
+        | Protocol.ServerResponse
+            (Protocol.PackageNotFound
+              { session_id = event_session_id; package_name; available_packages })
+          when same_session session_id event_session_id ->
+            `select (Error (PackageNotFound { package_name; available_packages }))
+        | _ -> `skip
+      in
+      match receive_response ~selector with
+      | Ok started_session_id ->
+          callback (BuildStarted started_session_id);
+          handle_streaming_events t started_session_id callback
+      | Error err -> Error err)
 
 let find_executable t name =
   send_request t (Protocol.FindExecutable { client_pid = self (); name });

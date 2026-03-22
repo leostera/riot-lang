@@ -7,59 +7,70 @@ type Message.t +=
   | BuildLockAcquired of Time.Duration.t
   | BuildLockAcquireFailed of string
 
-let test_waits_for_existing_lock () =
-  match
-    Fs.with_tempdir ~prefix:"tusk_build_lock" (fun tmpdir ->
-        match BuildLock.acquire tmpdir with
-        | Error _ -> Error "Failed to acquire initial build lock"
-        | Ok first_lock ->
-            let parent = self () in
-            let _worker =
-              spawn (fun () ->
-                  let start = Time.Instant.now () in
-                  match BuildLock.acquire tmpdir with
-                  | Ok second_lock ->
-                      let waited = Time.Instant.elapsed start in
-                      BuildLock.release second_lock;
-                      send parent (BuildLockAcquired waited);
-                      Ok ()
-                  | Error _ ->
-                      send parent (BuildLockAcquireFailed "Failed to acquire build lock");
-                      Ok ())
-            in
-            let selector msg =
-              match msg with
-              | BuildLockAcquired waited -> `select (Ok waited)
-              | BuildLockAcquireFailed reason -> `select (Error reason)
-              | _ -> `skip
-            in
-            let early_result =
-              try Some (receive ~selector ~timeout:(Time.Duration.from_millis 200) ())
-              with Receive_timeout -> None
-            in
-            match early_result with
-            | Some (Ok _) ->
-                BuildLock.release first_lock;
-                Error "Second lock acquisition finished before the first lock was released"
-            | Some (Error reason) ->
-                BuildLock.release first_lock;
-                Error reason
-            | None ->
-                BuildLock.release first_lock;
-                match receive ~selector ~timeout:(Time.Duration.from_secs 2) () with
-                | Ok waited ->
-                    if Time.Duration.to_millis waited < 200
-                    then Error "Second lock acquisition did not wait for release"
-                    else Ok ()
-                | Error reason -> Error reason)
-  with
+let with_tempdir prefix fn =
+  match Fs.with_tempdir ~prefix fn with
   | Ok result -> result
   | Error _ -> Error "Tempdir creation failed"
+
+let test_waits_for_existing_lock () =
+  with_tempdir "tusk_build_lock" (fun tmpdir ->
+      BuildLock.acquire tmpdir (fun () ->
+          let parent = self () in
+          let _worker =
+            spawn (fun () ->
+                let start = Time.Instant.now () in
+                match
+                  BuildLock.acquire tmpdir (fun () ->
+                      let waited = Time.Instant.elapsed start in
+                      send parent (BuildLockAcquired waited);
+                      Ok ())
+                with
+                | Ok () -> Ok ()
+                | Error _ ->
+                    send parent (BuildLockAcquireFailed "Failed to acquire build lock");
+                    Ok ())
+          in
+          let selector msg =
+            match msg with
+            | BuildLockAcquired waited -> `select (Ok waited)
+            | BuildLockAcquireFailed reason -> `select (Error reason)
+            | _ -> `skip
+          in
+          let early_result =
+            try Some (receive ~selector ~timeout:(Time.Duration.from_millis 200) ())
+            with Receive_timeout -> None
+          in
+          match early_result with
+          | Some (Ok _) ->
+              Error "Second lock acquisition finished before the first lock was released"
+          | Some (Error reason) -> Error reason
+          | None ->
+              match receive ~selector ~timeout:(Time.Duration.from_secs 2) () with
+              | Ok waited ->
+                  if Time.Duration.to_millis waited < 200
+                  then Error "Second lock acquisition did not wait for release"
+                  else Ok ()
+              | Error reason -> Error reason))
+
+let test_releases_lock_on_exception () =
+  with_tempdir "tusk_build_lock" (fun tmpdir ->
+      let exception Synthetic_failure in
+      try
+        let _ =
+          BuildLock.acquire tmpdir (fun () -> raise Synthetic_failure)
+        in
+        Error "Expected build lock callback to raise"
+      with
+      | Synthetic_failure -> (
+          match BuildLock.acquire tmpdir (fun () -> Ok ()) with
+          | Ok () -> Ok ()
+          | Error _ -> Error "Build lock was not released after exception"))
 
 let tests =
   Test.
     [
       case "build lock: waits for existing holder" test_waits_for_existing_lock;
+      case "build lock: releases on exception" test_releases_lock_on_exception;
     ]
 
 let name = "Tusk CLI Build Lock Tests"
