@@ -1,0 +1,265 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 17
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 17
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "field_access",
+            "syntax_node": {
+              "kind": "FIELD_ACCESS_EXPR",
+              "span": {
+                "start": 8,
+                "end": 17
+              }
+            },
+            "receiver": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 12
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 8,
+                    "end": 12
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "List",
+                    "span": {
+                      "start": 8,
+                      "end": 12
+                    }
+                  }
+                ]
+              }
+            },
+            "field_name": {
+              "kind": "IDENT_EXPR",
+              "text": "map",
+              "span": {
+                "start": 13,
+                "end": 16
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 17
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "field_access",
+          "syntax_node": {
+            "kind": "FIELD_ACCESS_EXPR",
+            "span": {
+              "start": 8,
+              "end": 17
+            }
+          },
+          "receiver": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 8,
+                "end": 12
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 12
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "List",
+                  "span": {
+                    "start": 8,
+                    "end": 12
+                  }
+                }
+              ]
+            }
+          },
+          "field_name": {
+            "kind": "IDENT_EXPR",
+            "text": "map",
+            "span": {
+              "start": 13,
+              "end": 16
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "field_access",
+        "syntax_node": {
+          "kind": "FIELD_ACCESS_EXPR",
+          "span": {
+            "start": 8,
+            "end": 17
+          }
+        },
+        "receiver": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 8,
+              "end": 12
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 8,
+                "end": 12
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "List",
+                "span": {
+                  "start": 8,
+                  "end": 12
+                }
+              }
+            ]
+          }
+        },
+        "field_name": {
+          "kind": "IDENT_EXPR",
+          "text": "map",
+          "span": {
+            "start": 13,
+            "end": 16
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 8,
+            "end": 12
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 8,
+              "end": 12
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "List",
+              "span": {
+                "start": 8,
+                "end": 12
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

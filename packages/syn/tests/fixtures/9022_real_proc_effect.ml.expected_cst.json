@@ -1,0 +1,359 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 166
+      }
+    },
+    "items": [
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 0,
+              "end": 125
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 7,
+                "end": 16
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "Effect",
+                "span": {
+                  "start": 7,
+                  "end": 13
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 13,
+                  "end": 14
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "span": {
+                  "start": 14,
+                  "end": 15
+                }
+              }
+            ]
+          },
+          "type_params": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_PARAM",
+                "span": {
+                  "start": 5,
+                  "end": 6
+                }
+              },
+              "type_variable": {
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 5,
+                    "end": 6
+                  }
+                },
+                "name_token": {
+                  "kind": "WILDCARD_PATTERN",
+                  "text": "_",
+                  "span": {
+                    "start": 5,
+                    "end": 6
+                  }
+                }
+              }
+            }
+          ],
+          "type_definition": {
+            "tag": "variant",
+            "constructors": [
+              {
+                "syntax_node": {
+                  "kind": "TYPE_VARIANT_CONSTR",
+                  "span": {
+                    "start": 23,
+                    "end": 125
+                  }
+                },
+                "constructor_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Receive",
+                  "span": {
+                    "start": 23,
+                    "end": 30
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 125,
+              "end": 166
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 132,
+                "end": 141
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "Effect",
+                "span": {
+                  "start": 132,
+                  "end": 138
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 138,
+                  "end": 139
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "span": {
+                  "start": 139,
+                  "end": 140
+                }
+              }
+            ]
+          },
+          "type_params": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_PARAM",
+                "span": {
+                  "start": 130,
+                  "end": 131
+                }
+              },
+              "type_variable": {
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 130,
+                    "end": 131
+                  }
+                },
+                "name_token": {
+                  "kind": "WILDCARD_PATTERN",
+                  "text": "_",
+                  "span": {
+                    "start": 130,
+                    "end": 131
+                  }
+                }
+              }
+            }
+          ],
+          "type_definition": {
+            "tag": "variant",
+            "constructors": [
+              {
+                "syntax_node": {
+                  "kind": "TYPE_VARIANT_CONSTR",
+                  "span": {
+                    "start": 144,
+                    "end": 166
+                  }
+                },
+                "constructor_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Yield",
+                  "span": {
+                    "start": 144,
+                    "end": 149
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 7,
+            "end": 16
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 7,
+              "end": 16
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Effect",
+              "span": {
+                "start": 7,
+                "end": 13
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": ".",
+              "span": {
+                "start": 13,
+                "end": 14
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 14,
+                "end": 15
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 23,
+            "end": 30
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 23,
+              "end": 30
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Receive",
+              "span": {
+                "start": 23,
+                "end": 30
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 132,
+            "end": 141
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 132,
+              "end": 141
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Effect",
+              "span": {
+                "start": 132,
+                "end": 138
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": ".",
+              "span": {
+                "start": 138,
+                "end": 139
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 139,
+                "end": 140
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 144,
+            "end": 149
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 144,
+              "end": 149
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Yield",
+              "span": {
+                "start": 144,
+                "end": 149
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 62
+      }
+    },
+    "items": [
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 0,
+              "end": 61
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 7,
+              "end": 8
+            }
+          }
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 42,
+            "end": 51
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 46,
+              "end": 47
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 46,
+              "end": 47
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 46,
+            "end": 47
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 50,
+                "end": 51
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "1",
+              "span": {
+                "start": 50,
+                "end": 51
+              }
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 50,
+              "end": 51
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "1",
+            "span": {
+              "start": 50,
+              "end": 51
+            }
+          }
+        }
+      }
+    ]
+  }
+}

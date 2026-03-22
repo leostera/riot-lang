@@ -1,0 +1,198 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 48
+      }
+    },
+    "items": [
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 0,
+              "end": 47
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "F",
+            "span": {
+              "start": 7,
+              "end": 8
+            }
+          }
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 28,
+            "end": 44
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 32,
+              "end": 33
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 32,
+              "end": 33
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 32,
+            "end": 33
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "field_access",
+          "syntax_node": {
+            "kind": "FIELD_ACCESS_EXPR",
+            "span": {
+              "start": 36,
+              "end": 44
+            }
+          },
+          "receiver": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 36,
+                "end": 37
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 36,
+                  "end": 37
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "X",
+                  "span": {
+                    "start": 36,
+                    "end": 37
+                  }
+                }
+              ]
+            }
+          },
+          "field_name": {
+            "kind": "IDENT_EXPR",
+            "text": "value",
+            "span": {
+              "start": 38,
+              "end": 43
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "field_access",
+        "syntax_node": {
+          "kind": "FIELD_ACCESS_EXPR",
+          "span": {
+            "start": 36,
+            "end": 44
+          }
+        },
+        "receiver": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 36,
+              "end": 37
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 36,
+                "end": 37
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "X",
+                "span": {
+                  "start": 36,
+                  "end": 37
+                }
+              }
+            ]
+          }
+        },
+        "field_name": {
+          "kind": "IDENT_EXPR",
+          "text": "value",
+          "span": {
+            "start": 38,
+            "end": 43
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 36,
+            "end": 37
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 36,
+              "end": 37
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "X",
+              "span": {
+                "start": 36,
+                "end": 37
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

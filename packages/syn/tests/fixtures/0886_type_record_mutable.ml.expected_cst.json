@@ -1,0 +1,101 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 39
+      }
+    },
+    "items": [
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 0,
+              "end": 39
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 5,
+                "end": 13
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "counter",
+                "span": {
+                  "start": 5,
+                  "end": 12
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "record",
+            "fields": [
+              {
+                "syntax_node": {
+                  "kind": "TYPE_RECORD_FIELD",
+                  "span": {
+                    "start": 17,
+                    "end": 37
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "count",
+                  "span": {
+                    "start": 25,
+                    "end": 30
+                  }
+                },
+                "is_mutable": true
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 5,
+            "end": 13
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 5,
+              "end": 13
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "counter",
+              "span": {
+                "start": 5,
+                "end": 12
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

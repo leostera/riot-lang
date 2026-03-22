@@ -1,0 +1,119 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 52
+      }
+    },
+    "items": [
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 0,
+              "end": 52
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 5,
+                "end": 11
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "state",
+                "span": {
+                  "start": 5,
+                  "end": 10
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "record",
+            "fields": [
+              {
+                "syntax_node": {
+                  "kind": "TYPE_RECORD_FIELD",
+                  "span": {
+                    "start": 15,
+                    "end": 28
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "name",
+                  "span": {
+                    "start": 15,
+                    "end": 19
+                  }
+                },
+                "is_mutable": false
+              },
+              {
+                "syntax_node": {
+                  "kind": "TYPE_RECORD_FIELD",
+                  "span": {
+                    "start": 30,
+                    "end": 50
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "value",
+                  "span": {
+                    "start": 38,
+                    "end": 43
+                  }
+                },
+                "is_mutable": true
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 5,
+            "end": 11
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 5,
+              "end": 11
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "state",
+              "span": {
+                "start": 5,
+                "end": 10
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,174 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 28
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 27
+            }
+          },
+          "binding_pattern": {
+            "tag": "parenthesized",
+            "syntax_node": {
+              "kind": "PAREN_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 20
+              }
+            },
+            "inner": {
+              "tag": "cons",
+              "syntax_node": {
+                "kind": "CONS_PATTERN",
+                "span": {
+                  "start": 5,
+                  "end": 19
+                }
+              },
+              "head": {
+                "tag": "identifier",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 5,
+                    "end": 6
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 5,
+                    "end": 6
+                  }
+                }
+              },
+              "tail": {
+                "tag": "cons",
+                "syntax_node": {
+                  "kind": "CONS_PATTERN",
+                  "span": {
+                    "start": 10,
+                    "end": 19
+                  }
+                },
+                "head": {
+                  "tag": "identifier",
+                  "syntax_node": {
+                    "kind": "IDENT_PATTERN",
+                    "span": {
+                      "start": 10,
+                      "end": 11
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "y",
+                    "span": {
+                      "start": 10,
+                      "end": 11
+                    }
+                  }
+                },
+                "tail": {
+                  "tag": "identifier",
+                  "syntax_node": {
+                    "kind": "IDENT_PATTERN",
+                    "span": {
+                      "start": 15,
+                      "end": 19
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "rest",
+                    "span": {
+                      "start": 15,
+                      "end": 19
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "binding_name": null,
+          "parameters": [],
+          "value": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 23,
+                "end": 27
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 23,
+                  "end": 27
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "list",
+                  "span": {
+                    "start": 23,
+                    "end": 27
+                  }
+                }
+              ]
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 23,
+            "end": 27
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 23,
+              "end": 27
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "list",
+              "span": {
+                "start": 23,
+                "end": 27
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 101
+      }
+    },
+    "items": [
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 0,
+              "end": 50
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 5,
+                "end": 13
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "address",
+                "span": {
+                  "start": 5,
+                  "end": 12
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "record",
+            "fields": [
+              {
+                "syntax_node": {
+                  "kind": "TYPE_RECORD_FIELD",
+                  "span": {
+                    "start": 17,
+                    "end": 32
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "street",
+                  "span": {
+                    "start": 17,
+                    "end": 23
+                  }
+                },
+                "is_mutable": false
+              },
+              {
+                "syntax_node": {
+                  "kind": "TYPE_RECORD_FIELD",
+                  "span": {
+                    "start": 34,
+                    "end": 48
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "city",
+                  "span": {
+                    "start": 34,
+                    "end": 38
+                  }
+                },
+                "is_mutable": false
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 50,
+              "end": 101
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 55,
+                "end": 62
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "person",
+                "span": {
+                  "start": 55,
+                  "end": 61
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "record",
+            "fields": [
+              {
+                "syntax_node": {
+                  "kind": "TYPE_RECORD_FIELD",
+                  "span": {
+                    "start": 66,
+                    "end": 79
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "name",
+                  "span": {
+                    "start": 66,
+                    "end": 70
+                  }
+                },
+                "is_mutable": false
+              },
+              {
+                "syntax_node": {
+                  "kind": "TYPE_RECORD_FIELD",
+                  "span": {
+                    "start": 81,
+                    "end": 99
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "address",
+                  "span": {
+                    "start": 81,
+                    "end": 88
+                  }
+                },
+                "is_mutable": false
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 5,
+            "end": 13
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 5,
+              "end": 13
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "address",
+              "span": {
+                "start": 5,
+                "end": 12
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 55,
+            "end": 62
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 55,
+              "end": 62
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "person",
+              "span": {
+                "start": 55,
+                "end": 61
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

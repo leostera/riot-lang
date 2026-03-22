@@ -1,0 +1,1709 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 80
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 79
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "if",
+            "syntax_node": {
+              "kind": "IF_EXPR",
+              "span": {
+                "start": 10,
+                "end": 79
+              }
+            },
+            "condition": {
+              "tag": "infix",
+              "syntax_node": {
+                "kind": "INFIX_EXPR",
+                "span": {
+                  "start": 13,
+                  "end": 18
+                }
+              },
+              "left": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 13,
+                    "end": 14
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 13,
+                      "end": 14
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "a",
+                      "span": {
+                        "start": 13,
+                        "end": 14
+                      }
+                    }
+                  ]
+                }
+              },
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": ">",
+                "span": {
+                  "start": 15,
+                  "end": 16
+                }
+              },
+              "right": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 17,
+                      "end": 18
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "0",
+                    "span": {
+                      "start": 17,
+                      "end": 18
+                    }
+                  }
+                }
+              }
+            },
+            "then_branch": {
+              "tag": "let",
+              "syntax_node": {
+                "kind": "LET_EXPR",
+                "span": {
+                  "start": 28,
+                  "end": 70
+                }
+              },
+              "binding_pattern": {
+                "tag": "identifier",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 32,
+                    "end": 33
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 32,
+                    "end": 33
+                  }
+                }
+              },
+              "bound_value": {
+                "tag": "if",
+                "syntax_node": {
+                  "kind": "IF_EXPR",
+                  "span": {
+                    "start": 36,
+                    "end": 61
+                  }
+                },
+                "condition": {
+                  "tag": "infix",
+                  "syntax_node": {
+                    "kind": "INFIX_EXPR",
+                    "span": {
+                      "start": 39,
+                      "end": 45
+                    }
+                  },
+                  "left": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 39,
+                        "end": 40
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 39,
+                          "end": 40
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "a",
+                          "span": {
+                            "start": 39,
+                            "end": 40
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "operator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ">",
+                    "span": {
+                      "start": 41,
+                      "end": 42
+                    }
+                  },
+                  "right": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 43,
+                          "end": 45
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "10",
+                        "span": {
+                          "start": 43,
+                          "end": 45
+                        }
+                      }
+                    }
+                  }
+                },
+                "then_branch": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 51,
+                        "end": 53
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "20",
+                      "span": {
+                        "start": 51,
+                        "end": 53
+                      }
+                    }
+                  }
+                },
+                "else_branch": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 59,
+                        "end": 61
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "10",
+                      "span": {
+                        "start": 59,
+                        "end": 61
+                      }
+                    }
+                  }
+                }
+              },
+              "body": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 69,
+                    "end": 70
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 69,
+                      "end": 70
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "y",
+                      "span": {
+                        "start": 69,
+                        "end": 70
+                      }
+                    }
+                  ]
+                }
+              },
+              "is_recursive": false
+            },
+            "else_branch": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 78,
+                    "end": 79
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "0",
+                  "span": {
+                    "start": 78,
+                    "end": 79
+                  }
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 79
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "if",
+          "syntax_node": {
+            "kind": "IF_EXPR",
+            "span": {
+              "start": 10,
+              "end": 79
+            }
+          },
+          "condition": {
+            "tag": "infix",
+            "syntax_node": {
+              "kind": "INFIX_EXPR",
+              "span": {
+                "start": 13,
+                "end": 18
+              }
+            },
+            "left": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 13,
+                  "end": 14
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 13,
+                    "end": 14
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 13,
+                      "end": 14
+                    }
+                  }
+                ]
+              }
+            },
+            "operator_token": {
+              "kind": "IDENT_EXPR",
+              "text": ">",
+              "span": {
+                "start": 15,
+                "end": 16
+              }
+            },
+            "right": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 17,
+                    "end": 18
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "0",
+                  "span": {
+                    "start": 17,
+                    "end": 18
+                  }
+                }
+              }
+            }
+          },
+          "then_branch": {
+            "tag": "let",
+            "syntax_node": {
+              "kind": "LET_EXPR",
+              "span": {
+                "start": 28,
+                "end": 70
+              }
+            },
+            "binding_pattern": {
+              "tag": "identifier",
+              "syntax_node": {
+                "kind": "IDENT_PATTERN",
+                "span": {
+                  "start": 32,
+                  "end": 33
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "span": {
+                  "start": 32,
+                  "end": 33
+                }
+              }
+            },
+            "bound_value": {
+              "tag": "if",
+              "syntax_node": {
+                "kind": "IF_EXPR",
+                "span": {
+                  "start": 36,
+                  "end": 61
+                }
+              },
+              "condition": {
+                "tag": "infix",
+                "syntax_node": {
+                  "kind": "INFIX_EXPR",
+                  "span": {
+                    "start": 39,
+                    "end": 45
+                  }
+                },
+                "left": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 39,
+                      "end": 40
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 39,
+                        "end": 40
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "span": {
+                          "start": 39,
+                          "end": 40
+                        }
+                      }
+                    ]
+                  }
+                },
+                "operator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ">",
+                  "span": {
+                    "start": 41,
+                    "end": 42
+                  }
+                },
+                "right": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 43,
+                        "end": 45
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "10",
+                      "span": {
+                        "start": 43,
+                        "end": 45
+                      }
+                    }
+                  }
+                }
+              },
+              "then_branch": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 51,
+                      "end": 53
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "20",
+                    "span": {
+                      "start": 51,
+                      "end": 53
+                    }
+                  }
+                }
+              },
+              "else_branch": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 59,
+                      "end": 61
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "10",
+                    "span": {
+                      "start": 59,
+                      "end": 61
+                    }
+                  }
+                }
+              }
+            },
+            "body": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 69,
+                  "end": 70
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 69,
+                    "end": 70
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "y",
+                    "span": {
+                      "start": 69,
+                      "end": 70
+                    }
+                  }
+                ]
+              }
+            },
+            "is_recursive": false
+          },
+          "else_branch": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 78,
+                  "end": 79
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "0",
+                "span": {
+                  "start": 78,
+                  "end": 79
+                }
+              }
+            }
+          }
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_EXPR",
+          "span": {
+            "start": 28,
+            "end": 70
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 32,
+              "end": 33
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "y",
+            "span": {
+              "start": 32,
+              "end": 33
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "y",
+          "span": {
+            "start": 32,
+            "end": 33
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "if",
+          "syntax_node": {
+            "kind": "IF_EXPR",
+            "span": {
+              "start": 36,
+              "end": 61
+            }
+          },
+          "condition": {
+            "tag": "infix",
+            "syntax_node": {
+              "kind": "INFIX_EXPR",
+              "span": {
+                "start": 39,
+                "end": 45
+              }
+            },
+            "left": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 39,
+                  "end": 40
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 39,
+                    "end": 40
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 39,
+                      "end": 40
+                    }
+                  }
+                ]
+              }
+            },
+            "operator_token": {
+              "kind": "IDENT_EXPR",
+              "text": ">",
+              "span": {
+                "start": 41,
+                "end": 42
+              }
+            },
+            "right": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 43,
+                    "end": 45
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "10",
+                  "span": {
+                    "start": 43,
+                    "end": 45
+                  }
+                }
+              }
+            }
+          },
+          "then_branch": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 51,
+                  "end": 53
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "20",
+                "span": {
+                  "start": 51,
+                  "end": 53
+                }
+              }
+            }
+          },
+          "else_branch": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 59,
+                  "end": 61
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "10",
+                "span": {
+                  "start": 59,
+                  "end": 61
+                }
+              }
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "if",
+        "syntax_node": {
+          "kind": "IF_EXPR",
+          "span": {
+            "start": 10,
+            "end": 79
+          }
+        },
+        "condition": {
+          "tag": "infix",
+          "syntax_node": {
+            "kind": "INFIX_EXPR",
+            "span": {
+              "start": 13,
+              "end": 18
+            }
+          },
+          "left": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 13,
+                "end": 14
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 13,
+                  "end": 14
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 13,
+                    "end": 14
+                  }
+                }
+              ]
+            }
+          },
+          "operator_token": {
+            "kind": "IDENT_EXPR",
+            "text": ">",
+            "span": {
+              "start": 15,
+              "end": 16
+            }
+          },
+          "right": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 17,
+                  "end": 18
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "0",
+                "span": {
+                  "start": 17,
+                  "end": 18
+                }
+              }
+            }
+          }
+        },
+        "then_branch": {
+          "tag": "let",
+          "syntax_node": {
+            "kind": "LET_EXPR",
+            "span": {
+              "start": 28,
+              "end": 70
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 32,
+                "end": 33
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "y",
+              "span": {
+                "start": 32,
+                "end": 33
+              }
+            }
+          },
+          "bound_value": {
+            "tag": "if",
+            "syntax_node": {
+              "kind": "IF_EXPR",
+              "span": {
+                "start": 36,
+                "end": 61
+              }
+            },
+            "condition": {
+              "tag": "infix",
+              "syntax_node": {
+                "kind": "INFIX_EXPR",
+                "span": {
+                  "start": 39,
+                  "end": 45
+                }
+              },
+              "left": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 39,
+                    "end": 40
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 39,
+                      "end": 40
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "a",
+                      "span": {
+                        "start": 39,
+                        "end": 40
+                      }
+                    }
+                  ]
+                }
+              },
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": ">",
+                "span": {
+                  "start": 41,
+                  "end": 42
+                }
+              },
+              "right": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 43,
+                      "end": 45
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "10",
+                    "span": {
+                      "start": 43,
+                      "end": 45
+                    }
+                  }
+                }
+              }
+            },
+            "then_branch": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 51,
+                    "end": 53
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "20",
+                  "span": {
+                    "start": 51,
+                    "end": 53
+                  }
+                }
+              }
+            },
+            "else_branch": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 59,
+                    "end": 61
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "10",
+                  "span": {
+                    "start": 59,
+                    "end": 61
+                  }
+                }
+              }
+            }
+          },
+          "body": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 69,
+                "end": 70
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 69,
+                  "end": 70
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 69,
+                    "end": 70
+                  }
+                }
+              ]
+            }
+          },
+          "is_recursive": false
+        },
+        "else_branch": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 78,
+                "end": 79
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "0",
+              "span": {
+                "start": 78,
+                "end": 79
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "infix",
+        "syntax_node": {
+          "kind": "INFIX_EXPR",
+          "span": {
+            "start": 13,
+            "end": 18
+          }
+        },
+        "left": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 13,
+              "end": 14
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 13,
+                "end": 14
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "span": {
+                  "start": 13,
+                  "end": 14
+                }
+              }
+            ]
+          }
+        },
+        "operator_token": {
+          "kind": "IDENT_EXPR",
+          "text": ">",
+          "span": {
+            "start": 15,
+            "end": 16
+          }
+        },
+        "right": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 17,
+                "end": 18
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "0",
+              "span": {
+                "start": 17,
+                "end": 18
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 13,
+            "end": 14
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 13,
+              "end": 14
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "a",
+              "span": {
+                "start": 13,
+                "end": 14
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 17,
+              "end": 18
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "0",
+            "span": {
+              "start": 17,
+              "end": 18
+            }
+          }
+        }
+      },
+      {
+        "tag": "let",
+        "syntax_node": {
+          "kind": "LET_EXPR",
+          "span": {
+            "start": 28,
+            "end": 70
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 32,
+              "end": 33
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "y",
+            "span": {
+              "start": 32,
+              "end": 33
+            }
+          }
+        },
+        "bound_value": {
+          "tag": "if",
+          "syntax_node": {
+            "kind": "IF_EXPR",
+            "span": {
+              "start": 36,
+              "end": 61
+            }
+          },
+          "condition": {
+            "tag": "infix",
+            "syntax_node": {
+              "kind": "INFIX_EXPR",
+              "span": {
+                "start": 39,
+                "end": 45
+              }
+            },
+            "left": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 39,
+                  "end": 40
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 39,
+                    "end": 40
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 39,
+                      "end": 40
+                    }
+                  }
+                ]
+              }
+            },
+            "operator_token": {
+              "kind": "IDENT_EXPR",
+              "text": ">",
+              "span": {
+                "start": 41,
+                "end": 42
+              }
+            },
+            "right": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 43,
+                    "end": 45
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "10",
+                  "span": {
+                    "start": 43,
+                    "end": 45
+                  }
+                }
+              }
+            }
+          },
+          "then_branch": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 51,
+                  "end": 53
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "20",
+                "span": {
+                  "start": 51,
+                  "end": 53
+                }
+              }
+            }
+          },
+          "else_branch": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 59,
+                  "end": 61
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "10",
+                "span": {
+                  "start": 59,
+                  "end": 61
+                }
+              }
+            }
+          }
+        },
+        "body": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 69,
+              "end": 70
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 69,
+                "end": 70
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "span": {
+                  "start": 69,
+                  "end": 70
+                }
+              }
+            ]
+          }
+        },
+        "is_recursive": false
+      },
+      {
+        "tag": "if",
+        "syntax_node": {
+          "kind": "IF_EXPR",
+          "span": {
+            "start": 36,
+            "end": 61
+          }
+        },
+        "condition": {
+          "tag": "infix",
+          "syntax_node": {
+            "kind": "INFIX_EXPR",
+            "span": {
+              "start": 39,
+              "end": 45
+            }
+          },
+          "left": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 39,
+                "end": 40
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 39,
+                  "end": 40
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 39,
+                    "end": 40
+                  }
+                }
+              ]
+            }
+          },
+          "operator_token": {
+            "kind": "IDENT_EXPR",
+            "text": ">",
+            "span": {
+              "start": 41,
+              "end": 42
+            }
+          },
+          "right": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 43,
+                  "end": 45
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "10",
+                "span": {
+                  "start": 43,
+                  "end": 45
+                }
+              }
+            }
+          }
+        },
+        "then_branch": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 51,
+                "end": 53
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "20",
+              "span": {
+                "start": 51,
+                "end": 53
+              }
+            }
+          }
+        },
+        "else_branch": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 59,
+                "end": 61
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "10",
+              "span": {
+                "start": 59,
+                "end": 61
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "infix",
+        "syntax_node": {
+          "kind": "INFIX_EXPR",
+          "span": {
+            "start": 39,
+            "end": 45
+          }
+        },
+        "left": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 39,
+              "end": 40
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 39,
+                "end": 40
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "span": {
+                  "start": 39,
+                  "end": 40
+                }
+              }
+            ]
+          }
+        },
+        "operator_token": {
+          "kind": "IDENT_EXPR",
+          "text": ">",
+          "span": {
+            "start": 41,
+            "end": 42
+          }
+        },
+        "right": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 43,
+                "end": 45
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "10",
+              "span": {
+                "start": 43,
+                "end": 45
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 39,
+            "end": 40
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 39,
+              "end": 40
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "a",
+              "span": {
+                "start": 39,
+                "end": 40
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 43,
+              "end": 45
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "10",
+            "span": {
+              "start": 43,
+              "end": 45
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 51,
+              "end": 53
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "20",
+            "span": {
+              "start": 51,
+              "end": 53
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 59,
+              "end": 61
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "10",
+            "span": {
+              "start": 59,
+              "end": 61
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 69,
+            "end": 70
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 69,
+              "end": 70
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "y",
+              "span": {
+                "start": 69,
+                "end": 70
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 78,
+              "end": 79
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "0",
+            "span": {
+              "start": 78,
+              "end": 79
+            }
+          }
+        }
+      }
+    ]
+  }
+}

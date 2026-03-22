@@ -647,10 +647,17 @@ class TestRunner:
         actual = output.strip()
 
         try:
-            json.loads(actual)
+            parsed = json.loads(actual)
         except json.JSONDecodeError:
             if verbose:
                 print(f"{RED}Invalid CST JSON output{NC}")
+            return False
+
+        if parsed.get("status") != "ok":
+            if verbose:
+                print(
+                    f"{RED}CST lift did not succeed (status={parsed.get('status', 'unknown')}){NC}"
+                )
             return False
 
         if not expected_path.exists():

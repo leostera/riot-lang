@@ -1,0 +1,311 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 350
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 153,
+              "end": 167
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 161,
+                "end": 162
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 161,
+                "end": 162
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 161,
+              "end": 162
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 165,
+                  "end": 167
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "42",
+                "span": {
+                  "start": 165,
+                  "end": 167
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 169,
+              "end": 183
+            }
+          },
+          "binding_pattern": {
+            "tag": "wildcard",
+            "syntax_node": {
+              "kind": "WILDCARD_PATTERN",
+              "span": {
+                "start": 177,
+                "end": 178
+              }
+            }
+          },
+          "binding_name": null,
+          "parameters": [],
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "unit",
+              "syntax_node": {
+                "kind": "UNIT_LITERAL",
+                "span": {
+                  "start": 181,
+                  "end": 183
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 188,
+              "end": 194
+            }
+          },
+          "binding_pattern": {
+            "tag": "wildcard",
+            "syntax_node": {
+              "kind": "WILDCARD_PATTERN",
+              "span": {
+                "start": 188,
+                "end": 189
+              }
+            }
+          },
+          "binding_name": null,
+          "parameters": [],
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "unit",
+              "syntax_node": {
+                "kind": "UNIT_LITERAL",
+                "span": {
+                  "start": 192,
+                  "end": 194
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 196,
+              "end": 210
+            }
+          },
+          "binding_pattern": {
+            "tag": "wildcard",
+            "syntax_node": {
+              "kind": "WILDCARD_PATTERN",
+              "span": {
+                "start": 204,
+                "end": 205
+              }
+            }
+          },
+          "binding_name": null,
+          "parameters": [],
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "unit",
+              "syntax_node": {
+                "kind": "UNIT_LITERAL",
+                "span": {
+                  "start": 208,
+                  "end": 210
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 153,
+            "end": 167
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 161,
+              "end": 162
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 161,
+              "end": 162
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 161,
+            "end": 162
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 165,
+                "end": 167
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "42",
+              "span": {
+                "start": 165,
+                "end": 167
+              }
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 165,
+              "end": 167
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "42",
+            "span": {
+              "start": 165,
+              "end": 167
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "unit",
+          "syntax_node": {
+            "kind": "UNIT_LITERAL",
+            "span": {
+              "start": 181,
+              "end": 183
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "unit",
+          "syntax_node": {
+            "kind": "UNIT_LITERAL",
+            "span": {
+              "start": 192,
+              "end": 194
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "unit",
+          "syntax_node": {
+            "kind": "UNIT_LITERAL",
+            "span": {
+              "start": 208,
+              "end": 210
+            }
+          }
+        }
+      }
+    ]
+  }
+}

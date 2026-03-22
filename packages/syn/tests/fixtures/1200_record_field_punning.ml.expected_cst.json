@@ -1,0 +1,386 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 26
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 25
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 8
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "make",
+              "span": {
+                "start": 4,
+                "end": 8
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "make",
+            "span": {
+              "start": 4,
+              "end": 8
+            }
+          },
+          "parameters": [
+            {
+              "tag": "labeled",
+              "syntax_node": {
+                "kind": "LABELED_PARAM",
+                "span": {
+                  "start": 9,
+                  "end": 12
+                }
+              },
+              "label_token": {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 10,
+                  "end": 11
+                }
+              },
+              "binding_name_token": null
+            },
+            {
+              "tag": "labeled",
+              "syntax_node": {
+                "kind": "LABELED_PARAM",
+                "span": {
+                  "start": 12,
+                  "end": 15
+                }
+              },
+              "label_token": {
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "span": {
+                  "start": 13,
+                  "end": 14
+                }
+              },
+              "binding_name_token": null
+            }
+          ],
+          "value": {
+            "tag": "record",
+            "syntax_node": {
+              "kind": "RECORD_EXPR",
+              "span": {
+                "start": 17,
+                "end": 25
+              }
+            },
+            "shape": "literal",
+            "fields": [
+              {
+                "syntax_node": {
+                  "kind": "RECORD_FIELD",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                },
+                "field_path": {
+                  "syntax_node": {
+                    "kind": "RECORD_FIELD",
+                    "span": {
+                      "start": 19,
+                      "end": 20
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 19,
+                        "end": 20
+                      }
+                    }
+                  ]
+                },
+                "value": null
+              },
+              {
+                "syntax_node": {
+                  "kind": "RECORD_FIELD",
+                  "span": {
+                    "start": 22,
+                    "end": 24
+                  }
+                },
+                "field_path": {
+                  "syntax_node": {
+                    "kind": "RECORD_FIELD",
+                    "span": {
+                      "start": 22,
+                      "end": 24
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "y",
+                      "span": {
+                        "start": 22,
+                        "end": 23
+                      }
+                    }
+                  ]
+                },
+                "value": null
+              }
+            ]
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 25
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 8
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "make",
+            "span": {
+              "start": 4,
+              "end": 8
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "make",
+          "span": {
+            "start": 4,
+            "end": 8
+          }
+        },
+        "parameters": [
+          {
+            "tag": "labeled",
+            "syntax_node": {
+              "kind": "LABELED_PARAM",
+              "span": {
+                "start": 9,
+                "end": 12
+              }
+            },
+            "label_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 10,
+                "end": 11
+              }
+            },
+            "binding_name_token": null
+          },
+          {
+            "tag": "labeled",
+            "syntax_node": {
+              "kind": "LABELED_PARAM",
+              "span": {
+                "start": 12,
+                "end": 15
+              }
+            },
+            "label_token": {
+              "kind": "IDENT_EXPR",
+              "text": "y",
+              "span": {
+                "start": 13,
+                "end": 14
+              }
+            },
+            "binding_name_token": null
+          }
+        ],
+        "value": {
+          "tag": "record",
+          "syntax_node": {
+            "kind": "RECORD_EXPR",
+            "span": {
+              "start": 17,
+              "end": 25
+            }
+          },
+          "shape": "literal",
+          "fields": [
+            {
+              "syntax_node": {
+                "kind": "RECORD_FIELD",
+                "span": {
+                  "start": 19,
+                  "end": 20
+                }
+              },
+              "field_path": {
+                "syntax_node": {
+                  "kind": "RECORD_FIELD",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "span": {
+                      "start": 19,
+                      "end": 20
+                    }
+                  }
+                ]
+              },
+              "value": null
+            },
+            {
+              "syntax_node": {
+                "kind": "RECORD_FIELD",
+                "span": {
+                  "start": 22,
+                  "end": 24
+                }
+              },
+              "field_path": {
+                "syntax_node": {
+                  "kind": "RECORD_FIELD",
+                  "span": {
+                    "start": 22,
+                    "end": 24
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "y",
+                    "span": {
+                      "start": 22,
+                      "end": 23
+                    }
+                  }
+                ]
+              },
+              "value": null
+            }
+          ]
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "record",
+        "syntax_node": {
+          "kind": "RECORD_EXPR",
+          "span": {
+            "start": 17,
+            "end": 25
+          }
+        },
+        "shape": "literal",
+        "fields": [
+          {
+            "syntax_node": {
+              "kind": "RECORD_FIELD",
+              "span": {
+                "start": 19,
+                "end": 20
+              }
+            },
+            "field_path": {
+              "syntax_node": {
+                "kind": "RECORD_FIELD",
+                "span": {
+                  "start": 19,
+                  "end": 20
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                }
+              ]
+            },
+            "value": null
+          },
+          {
+            "syntax_node": {
+              "kind": "RECORD_FIELD",
+              "span": {
+                "start": 22,
+                "end": 24
+              }
+            },
+            "field_path": {
+              "syntax_node": {
+                "kind": "RECORD_FIELD",
+                "span": {
+                  "start": 22,
+                  "end": 24
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 22,
+                    "end": 23
+                  }
+                }
+              ]
+            },
+            "value": null
+          }
+        ]
+      }
+    ]
+  }
+}

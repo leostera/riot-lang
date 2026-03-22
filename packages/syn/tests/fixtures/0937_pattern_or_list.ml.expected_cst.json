@@ -1,0 +1,678 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 59
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 59
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "f",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "f",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [
+            {
+              "tag": "positional",
+              "syntax_node": {
+                "kind": "IDENT_PATTERN",
+                "span": {
+                  "start": 7,
+                  "end": 8
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 7,
+                  "end": 8
+                }
+              }
+            }
+          ],
+          "value": {
+            "tag": "match",
+            "syntax_node": {
+              "kind": "MATCH_EXPR",
+              "span": {
+                "start": 10,
+                "end": 59
+              }
+            },
+            "scrutinee": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 16,
+                  "end": 17
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 16,
+                    "end": 17
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "span": {
+                      "start": 16,
+                      "end": 17
+                    }
+                  }
+                ]
+              }
+            },
+            "cases": [
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 23,
+                    "end": 44
+                  }
+                },
+                "pattern": {
+                  "tag": "or",
+                  "syntax_node": {
+                    "kind": "OR_PATTERN",
+                    "span": {
+                      "start": 23,
+                      "end": 34
+                    }
+                  },
+                  "alternatives": [
+                    {
+                      "tag": "list",
+                      "syntax_node": {
+                        "kind": "LIST_PATTERN",
+                        "span": {
+                          "start": 23,
+                          "end": 25
+                        }
+                      },
+                      "elements": []
+                    },
+                    {
+                      "tag": "list",
+                      "syntax_node": {
+                        "kind": "LIST_PATTERN",
+                        "span": {
+                          "start": 28,
+                          "end": 33
+                        }
+                      },
+                      "elements": [
+                        {
+                          "tag": "wildcard",
+                          "syntax_node": {
+                            "kind": "WILDCARD_PATTERN",
+                            "span": {
+                              "start": 30,
+                              "end": 31
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 37,
+                        "end": 44
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"short\"",
+                      "span": {
+                        "start": 37,
+                        "end": 44
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 45,
+                    "end": 58
+                  }
+                },
+                "pattern": {
+                  "tag": "wildcard",
+                  "syntax_node": {
+                    "kind": "WILDCARD_PATTERN",
+                    "span": {
+                      "start": 47,
+                      "end": 48
+                    }
+                  }
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 52,
+                        "end": 58
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"long\"",
+                      "span": {
+                        "start": 52,
+                        "end": 58
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 59
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "f",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "f",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [
+          {
+            "tag": "positional",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 7,
+                "end": 8
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 7,
+                "end": 8
+              }
+            }
+          }
+        ],
+        "value": {
+          "tag": "match",
+          "syntax_node": {
+            "kind": "MATCH_EXPR",
+            "span": {
+              "start": 10,
+              "end": 59
+            }
+          },
+          "scrutinee": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 16,
+                "end": 17
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 16,
+                  "end": 17
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 16,
+                    "end": 17
+                  }
+                }
+              ]
+            }
+          },
+          "cases": [
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 23,
+                  "end": 44
+                }
+              },
+              "pattern": {
+                "tag": "or",
+                "syntax_node": {
+                  "kind": "OR_PATTERN",
+                  "span": {
+                    "start": 23,
+                    "end": 34
+                  }
+                },
+                "alternatives": [
+                  {
+                    "tag": "list",
+                    "syntax_node": {
+                      "kind": "LIST_PATTERN",
+                      "span": {
+                        "start": 23,
+                        "end": 25
+                      }
+                    },
+                    "elements": []
+                  },
+                  {
+                    "tag": "list",
+                    "syntax_node": {
+                      "kind": "LIST_PATTERN",
+                      "span": {
+                        "start": 28,
+                        "end": 33
+                      }
+                    },
+                    "elements": [
+                      {
+                        "tag": "wildcard",
+                        "syntax_node": {
+                          "kind": "WILDCARD_PATTERN",
+                          "span": {
+                            "start": 30,
+                            "end": 31
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 37,
+                      "end": 44
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"short\"",
+                    "span": {
+                      "start": 37,
+                      "end": 44
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 45,
+                  "end": 58
+                }
+              },
+              "pattern": {
+                "tag": "wildcard",
+                "syntax_node": {
+                  "kind": "WILDCARD_PATTERN",
+                  "span": {
+                    "start": 47,
+                    "end": 48
+                  }
+                }
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 52,
+                      "end": 58
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"long\"",
+                    "span": {
+                      "start": 52,
+                      "end": 58
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "match",
+        "syntax_node": {
+          "kind": "MATCH_EXPR",
+          "span": {
+            "start": 10,
+            "end": 59
+          }
+        },
+        "scrutinee": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 16,
+              "end": 17
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 16,
+                "end": 17
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 16,
+                  "end": 17
+                }
+              }
+            ]
+          }
+        },
+        "cases": [
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 23,
+                "end": 44
+              }
+            },
+            "pattern": {
+              "tag": "or",
+              "syntax_node": {
+                "kind": "OR_PATTERN",
+                "span": {
+                  "start": 23,
+                  "end": 34
+                }
+              },
+              "alternatives": [
+                {
+                  "tag": "list",
+                  "syntax_node": {
+                    "kind": "LIST_PATTERN",
+                    "span": {
+                      "start": 23,
+                      "end": 25
+                    }
+                  },
+                  "elements": []
+                },
+                {
+                  "tag": "list",
+                  "syntax_node": {
+                    "kind": "LIST_PATTERN",
+                    "span": {
+                      "start": 28,
+                      "end": 33
+                    }
+                  },
+                  "elements": [
+                    {
+                      "tag": "wildcard",
+                      "syntax_node": {
+                        "kind": "WILDCARD_PATTERN",
+                        "span": {
+                          "start": 30,
+                          "end": 31
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 37,
+                    "end": 44
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"short\"",
+                  "span": {
+                    "start": 37,
+                    "end": 44
+                  }
+                }
+              }
+            }
+          },
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 45,
+                "end": 58
+              }
+            },
+            "pattern": {
+              "tag": "wildcard",
+              "syntax_node": {
+                "kind": "WILDCARD_PATTERN",
+                "span": {
+                  "start": 47,
+                  "end": 48
+                }
+              }
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 52,
+                    "end": 58
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"long\"",
+                  "span": {
+                    "start": 52,
+                    "end": 58
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 16,
+            "end": 17
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 16,
+              "end": 17
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 16,
+                "end": 17
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 37,
+              "end": 44
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"short\"",
+            "span": {
+              "start": 37,
+              "end": 44
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 52,
+              "end": 58
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"long\"",
+            "span": {
+              "start": 52,
+              "end": 58
+            }
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 42
+      }
+    },
+    "items": [
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 0,
+              "end": 42
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 5,
+                "end": 7
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "span": {
+                  "start": 5,
+                  "end": 6
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "poly_variant",
+            "tags": [
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 14,
+                    "end": 34
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Some",
+                  "span": {
+                    "start": 15,
+                    "end": 19
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 34,
+                    "end": 40
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "None",
+                  "span": {
+                    "start": 35,
+                    "end": 39
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 5,
+            "end": 7
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 5,
+              "end": 7
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 5,
+                "end": 6
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

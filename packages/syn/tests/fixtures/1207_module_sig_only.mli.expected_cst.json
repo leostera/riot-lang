@@ -1,0 +1,95 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 66
+      }
+    },
+    "items": [
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 0,
+              "end": 66
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "RGB",
+            "span": {
+              "start": 7,
+              "end": 10
+            }
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 13,
+            "end": 65
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 13,
+              "end": 65
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sig",
+              "span": {
+                "start": 13,
+                "end": 16
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 23,
+            "end": 28
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 23,
+              "end": 28
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "blend",
+              "span": {
+                "start": 23,
+                "end": 28
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

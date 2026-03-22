@@ -1,0 +1,787 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 46
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 45
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "typed",
+            "syntax_node": {
+              "kind": "TYPED_EXPR",
+              "span": {
+                "start": 8,
+                "end": 45
+              }
+            },
+            "expression": {
+              "tag": "fun",
+              "syntax_node": {
+                "kind": "FUN_EXPR",
+                "span": {
+                  "start": 9,
+                  "end": 31
+                }
+              },
+              "parameters": [
+                {
+                  "tag": "positional",
+                  "syntax_node": {
+                    "kind": "IDENT_PATTERN",
+                    "span": {
+                      "start": 13,
+                      "end": 14
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "y",
+                    "span": {
+                      "start": 13,
+                      "end": 14
+                    }
+                  }
+                }
+              ],
+              "body": {
+                "tag": "infix",
+                "syntax_node": {
+                  "kind": "INFIX_EXPR",
+                  "span": {
+                    "start": 18,
+                    "end": 31
+                  }
+                },
+                "left": {
+                  "tag": "typed",
+                  "syntax_node": {
+                    "kind": "TYPED_EXPR",
+                    "span": {
+                      "start": 18,
+                      "end": 27
+                    }
+                  },
+                  "expression": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 19,
+                        "end": 20
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 19,
+                          "end": 20
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "y",
+                          "span": {
+                            "start": 19,
+                            "end": 20
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "type_syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 23,
+                      "end": 26
+                    }
+                  }
+                },
+                "operator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "+",
+                  "span": {
+                    "start": 28,
+                    "end": 29
+                  }
+                },
+                "right": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 30,
+                        "end": 31
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "1",
+                      "span": {
+                        "start": 30,
+                        "end": 31
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "type_syntax_node": {
+              "kind": "TYPE_ARROW",
+              "span": {
+                "start": 34,
+                "end": 44
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 45
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "typed",
+          "syntax_node": {
+            "kind": "TYPED_EXPR",
+            "span": {
+              "start": 8,
+              "end": 45
+            }
+          },
+          "expression": {
+            "tag": "fun",
+            "syntax_node": {
+              "kind": "FUN_EXPR",
+              "span": {
+                "start": 9,
+                "end": 31
+              }
+            },
+            "parameters": [
+              {
+                "tag": "positional",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 13,
+                    "end": 14
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 13,
+                    "end": 14
+                  }
+                }
+              }
+            ],
+            "body": {
+              "tag": "infix",
+              "syntax_node": {
+                "kind": "INFIX_EXPR",
+                "span": {
+                  "start": 18,
+                  "end": 31
+                }
+              },
+              "left": {
+                "tag": "typed",
+                "syntax_node": {
+                  "kind": "TYPED_EXPR",
+                  "span": {
+                    "start": 18,
+                    "end": 27
+                  }
+                },
+                "expression": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 19,
+                      "end": 20
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 19,
+                        "end": 20
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "y",
+                        "span": {
+                          "start": 19,
+                          "end": 20
+                        }
+                      }
+                    ]
+                  }
+                },
+                "type_syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 23,
+                    "end": 26
+                  }
+                }
+              },
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "+",
+                "span": {
+                  "start": 28,
+                  "end": 29
+                }
+              },
+              "right": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 30,
+                      "end": 31
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "1",
+                    "span": {
+                      "start": 30,
+                      "end": 31
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_ARROW",
+            "span": {
+              "start": 34,
+              "end": 44
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "typed",
+        "syntax_node": {
+          "kind": "TYPED_EXPR",
+          "span": {
+            "start": 8,
+            "end": 45
+          }
+        },
+        "expression": {
+          "tag": "fun",
+          "syntax_node": {
+            "kind": "FUN_EXPR",
+            "span": {
+              "start": 9,
+              "end": 31
+            }
+          },
+          "parameters": [
+            {
+              "tag": "positional",
+              "syntax_node": {
+                "kind": "IDENT_PATTERN",
+                "span": {
+                  "start": 13,
+                  "end": 14
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "span": {
+                  "start": 13,
+                  "end": 14
+                }
+              }
+            }
+          ],
+          "body": {
+            "tag": "infix",
+            "syntax_node": {
+              "kind": "INFIX_EXPR",
+              "span": {
+                "start": 18,
+                "end": 31
+              }
+            },
+            "left": {
+              "tag": "typed",
+              "syntax_node": {
+                "kind": "TYPED_EXPR",
+                "span": {
+                  "start": 18,
+                  "end": 27
+                }
+              },
+              "expression": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 19,
+                      "end": 20
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "y",
+                      "span": {
+                        "start": 19,
+                        "end": 20
+                      }
+                    }
+                  ]
+                }
+              },
+              "type_syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 23,
+                  "end": 26
+                }
+              }
+            },
+            "operator_token": {
+              "kind": "IDENT_EXPR",
+              "text": "+",
+              "span": {
+                "start": 28,
+                "end": 29
+              }
+            },
+            "right": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 30,
+                    "end": 31
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "1",
+                  "span": {
+                    "start": 30,
+                    "end": 31
+                  }
+                }
+              }
+            }
+          }
+        },
+        "type_syntax_node": {
+          "kind": "TYPE_ARROW",
+          "span": {
+            "start": 34,
+            "end": 44
+          }
+        }
+      },
+      {
+        "tag": "fun",
+        "syntax_node": {
+          "kind": "FUN_EXPR",
+          "span": {
+            "start": 9,
+            "end": 31
+          }
+        },
+        "parameters": [
+          {
+            "tag": "positional",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 13,
+                "end": 14
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "y",
+              "span": {
+                "start": 13,
+                "end": 14
+              }
+            }
+          }
+        ],
+        "body": {
+          "tag": "infix",
+          "syntax_node": {
+            "kind": "INFIX_EXPR",
+            "span": {
+              "start": 18,
+              "end": 31
+            }
+          },
+          "left": {
+            "tag": "typed",
+            "syntax_node": {
+              "kind": "TYPED_EXPR",
+              "span": {
+                "start": 18,
+                "end": 27
+              }
+            },
+            "expression": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 19,
+                  "end": 20
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "y",
+                    "span": {
+                      "start": 19,
+                      "end": 20
+                    }
+                  }
+                ]
+              }
+            },
+            "type_syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 23,
+                "end": 26
+              }
+            }
+          },
+          "operator_token": {
+            "kind": "IDENT_EXPR",
+            "text": "+",
+            "span": {
+              "start": 28,
+              "end": 29
+            }
+          },
+          "right": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 30,
+                  "end": 31
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "1",
+                "span": {
+                  "start": 30,
+                  "end": 31
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "infix",
+        "syntax_node": {
+          "kind": "INFIX_EXPR",
+          "span": {
+            "start": 18,
+            "end": 31
+          }
+        },
+        "left": {
+          "tag": "typed",
+          "syntax_node": {
+            "kind": "TYPED_EXPR",
+            "span": {
+              "start": 18,
+              "end": 27
+            }
+          },
+          "expression": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 19,
+                "end": 20
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 19,
+                  "end": 20
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                }
+              ]
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_CONSTR",
+            "span": {
+              "start": 23,
+              "end": 26
+            }
+          }
+        },
+        "operator_token": {
+          "kind": "IDENT_EXPR",
+          "text": "+",
+          "span": {
+            "start": 28,
+            "end": 29
+          }
+        },
+        "right": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 30,
+                "end": 31
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "1",
+              "span": {
+                "start": 30,
+                "end": 31
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "typed",
+        "syntax_node": {
+          "kind": "TYPED_EXPR",
+          "span": {
+            "start": 18,
+            "end": 27
+          }
+        },
+        "expression": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 19,
+              "end": 20
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 19,
+                "end": 20
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "span": {
+                  "start": 19,
+                  "end": 20
+                }
+              }
+            ]
+          }
+        },
+        "type_syntax_node": {
+          "kind": "TYPE_CONSTR",
+          "span": {
+            "start": 23,
+            "end": 26
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 19,
+            "end": 20
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 19,
+              "end": 20
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "y",
+              "span": {
+                "start": 19,
+                "end": 20
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 30,
+              "end": 31
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "1",
+            "span": {
+              "start": 30,
+              "end": 31
+            }
+          }
+        }
+      }
+    ]
+  }
+}

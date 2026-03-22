@@ -1,0 +1,3214 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 47
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 46
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 8,
+                "end": 46
+              }
+            },
+            "callee": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 36
+                }
+              },
+              "callee": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 8,
+                    "end": 32
+                  }
+                },
+                "callee": {
+                  "tag": "apply",
+                  "syntax_node": {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 8,
+                      "end": 22
+                    }
+                  },
+                  "callee": {
+                    "tag": "parenthesized",
+                    "syntax_node": {
+                      "kind": "PAREN_EXPR",
+                      "span": {
+                        "start": 8,
+                        "end": 17
+                      }
+                    },
+                    "inner": {
+                      "tag": "apply",
+                      "syntax_node": {
+                        "kind": "APPLY_EXPR",
+                        "span": {
+                          "start": 9,
+                          "end": 16
+                        }
+                      },
+                      "callee": {
+                        "tag": "apply",
+                        "syntax_node": {
+                          "kind": "APPLY_EXPR",
+                          "span": {
+                            "start": 9,
+                            "end": 14
+                          }
+                        },
+                        "callee": {
+                          "tag": "path",
+                          "syntax_node": {
+                            "kind": "IDENT_EXPR",
+                            "span": {
+                              "start": 9,
+                              "end": 10
+                            }
+                          },
+                          "path": {
+                            "syntax_node": {
+                              "kind": "IDENT_EXPR",
+                              "span": {
+                                "start": 9,
+                                "end": 10
+                              }
+                            },
+                            "segments": [
+                              {
+                                "kind": "IDENT_EXPR",
+                                "text": "a",
+                                "span": {
+                                  "start": 9,
+                                  "end": 10
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "argument": {
+                          "tag": "path",
+                          "syntax_node": {
+                            "kind": "IDENT_EXPR",
+                            "span": {
+                              "start": 11,
+                              "end": 14
+                            }
+                          },
+                          "path": {
+                            "syntax_node": {
+                              "kind": "IDENT_EXPR",
+                              "span": {
+                                "start": 11,
+                                "end": 14
+                              }
+                            },
+                            "segments": [
+                              {
+                                "kind": "IDENT_EXPR",
+                                "text": "lsl",
+                                "span": {
+                                  "start": 11,
+                                  "end": 14
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "argument": {
+                        "tag": "literal",
+                        "literal": {
+                          "tag": "int",
+                          "syntax_node": {
+                            "kind": "INT_LITERAL",
+                            "span": {
+                              "start": 15,
+                              "end": 16
+                            }
+                          },
+                          "literal_token": {
+                            "kind": "INT_LITERAL",
+                            "text": "2",
+                            "span": {
+                              "start": 15,
+                              "end": 16
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "argument": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 18,
+                        "end": 22
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 18,
+                          "end": 22
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "land",
+                          "span": {
+                            "start": 18,
+                            "end": 22
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "parenthesized",
+                  "syntax_node": {
+                    "kind": "PAREN_EXPR",
+                    "span": {
+                      "start": 23,
+                      "end": 32
+                    }
+                  },
+                  "inner": {
+                    "tag": "apply",
+                    "syntax_node": {
+                      "kind": "APPLY_EXPR",
+                      "span": {
+                        "start": 24,
+                        "end": 31
+                      }
+                    },
+                    "callee": {
+                      "tag": "apply",
+                      "syntax_node": {
+                        "kind": "APPLY_EXPR",
+                        "span": {
+                          "start": 24,
+                          "end": 29
+                        }
+                      },
+                      "callee": {
+                        "tag": "path",
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 24,
+                            "end": 25
+                          }
+                        },
+                        "path": {
+                          "syntax_node": {
+                            "kind": "IDENT_EXPR",
+                            "span": {
+                              "start": 24,
+                              "end": 25
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "b",
+                              "span": {
+                                "start": 24,
+                                "end": 25
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "argument": {
+                        "tag": "path",
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 26,
+                            "end": 29
+                          }
+                        },
+                        "path": {
+                          "syntax_node": {
+                            "kind": "IDENT_EXPR",
+                            "span": {
+                              "start": 26,
+                              "end": 29
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "lsr",
+                              "span": {
+                                "start": 26,
+                                "end": 29
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "argument": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "int",
+                        "syntax_node": {
+                          "kind": "INT_LITERAL",
+                          "span": {
+                            "start": 30,
+                            "end": 31
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "INT_LITERAL",
+                          "text": "3",
+                          "span": {
+                            "start": 30,
+                            "end": 31
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "argument": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 33,
+                    "end": 36
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 33,
+                      "end": 36
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "lor",
+                      "span": {
+                        "start": 33,
+                        "end": 36
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "argument": {
+              "tag": "parenthesized",
+              "syntax_node": {
+                "kind": "PAREN_EXPR",
+                "span": {
+                  "start": 37,
+                  "end": 46
+                }
+              },
+              "inner": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 38,
+                    "end": 45
+                  }
+                },
+                "callee": {
+                  "tag": "apply",
+                  "syntax_node": {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 38,
+                      "end": 43
+                    }
+                  },
+                  "callee": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 38,
+                        "end": 39
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 38,
+                          "end": 39
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "c",
+                          "span": {
+                            "start": 38,
+                            "end": 39
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "argument": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 40,
+                        "end": 43
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 40,
+                          "end": 43
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "asr",
+                          "span": {
+                            "start": 40,
+                            "end": 43
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 44,
+                        "end": 45
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "1",
+                      "span": {
+                        "start": 44,
+                        "end": 45
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 46
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 8,
+              "end": 46
+            }
+          },
+          "callee": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 8,
+                "end": 36
+              }
+            },
+            "callee": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 32
+                }
+              },
+              "callee": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 8,
+                    "end": 22
+                  }
+                },
+                "callee": {
+                  "tag": "parenthesized",
+                  "syntax_node": {
+                    "kind": "PAREN_EXPR",
+                    "span": {
+                      "start": 8,
+                      "end": 17
+                    }
+                  },
+                  "inner": {
+                    "tag": "apply",
+                    "syntax_node": {
+                      "kind": "APPLY_EXPR",
+                      "span": {
+                        "start": 9,
+                        "end": 16
+                      }
+                    },
+                    "callee": {
+                      "tag": "apply",
+                      "syntax_node": {
+                        "kind": "APPLY_EXPR",
+                        "span": {
+                          "start": 9,
+                          "end": 14
+                        }
+                      },
+                      "callee": {
+                        "tag": "path",
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 9,
+                            "end": 10
+                          }
+                        },
+                        "path": {
+                          "syntax_node": {
+                            "kind": "IDENT_EXPR",
+                            "span": {
+                              "start": 9,
+                              "end": 10
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "a",
+                              "span": {
+                                "start": 9,
+                                "end": 10
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "argument": {
+                        "tag": "path",
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 11,
+                            "end": 14
+                          }
+                        },
+                        "path": {
+                          "syntax_node": {
+                            "kind": "IDENT_EXPR",
+                            "span": {
+                              "start": 11,
+                              "end": 14
+                            }
+                          },
+                          "segments": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "lsl",
+                              "span": {
+                                "start": 11,
+                                "end": 14
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "argument": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "int",
+                        "syntax_node": {
+                          "kind": "INT_LITERAL",
+                          "span": {
+                            "start": 15,
+                            "end": 16
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "INT_LITERAL",
+                          "text": "2",
+                          "span": {
+                            "start": 15,
+                            "end": 16
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 18,
+                      "end": 22
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 18,
+                        "end": 22
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "land",
+                        "span": {
+                          "start": 18,
+                          "end": 22
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "argument": {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "PAREN_EXPR",
+                  "span": {
+                    "start": 23,
+                    "end": 32
+                  }
+                },
+                "inner": {
+                  "tag": "apply",
+                  "syntax_node": {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 24,
+                      "end": 31
+                    }
+                  },
+                  "callee": {
+                    "tag": "apply",
+                    "syntax_node": {
+                      "kind": "APPLY_EXPR",
+                      "span": {
+                        "start": 24,
+                        "end": 29
+                      }
+                    },
+                    "callee": {
+                      "tag": "path",
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 24,
+                          "end": 25
+                        }
+                      },
+                      "path": {
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 24,
+                            "end": 25
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "b",
+                            "span": {
+                              "start": 24,
+                              "end": 25
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "argument": {
+                      "tag": "path",
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 26,
+                          "end": 29
+                        }
+                      },
+                      "path": {
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 26,
+                            "end": 29
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "lsr",
+                            "span": {
+                              "start": 26,
+                              "end": 29
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "argument": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 30,
+                          "end": 31
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "3",
+                        "span": {
+                          "start": 30,
+                          "end": 31
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "argument": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 33,
+                  "end": 36
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 33,
+                    "end": 36
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "lor",
+                    "span": {
+                      "start": 33,
+                      "end": 36
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "argument": {
+            "tag": "parenthesized",
+            "syntax_node": {
+              "kind": "PAREN_EXPR",
+              "span": {
+                "start": 37,
+                "end": 46
+              }
+            },
+            "inner": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 38,
+                  "end": 45
+                }
+              },
+              "callee": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 38,
+                    "end": 43
+                  }
+                },
+                "callee": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 38,
+                      "end": 39
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 38,
+                        "end": 39
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "c",
+                        "span": {
+                          "start": 38,
+                          "end": 39
+                        }
+                      }
+                    ]
+                  }
+                },
+                "argument": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 40,
+                      "end": 43
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 40,
+                        "end": 43
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "asr",
+                        "span": {
+                          "start": 40,
+                          "end": 43
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "argument": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 44,
+                      "end": 45
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "1",
+                    "span": {
+                      "start": 44,
+                      "end": 45
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 8,
+            "end": 46
+          }
+        },
+        "callee": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 8,
+              "end": 36
+            }
+          },
+          "callee": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 8,
+                "end": 32
+              }
+            },
+            "callee": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 22
+                }
+              },
+              "callee": {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "PAREN_EXPR",
+                  "span": {
+                    "start": 8,
+                    "end": 17
+                  }
+                },
+                "inner": {
+                  "tag": "apply",
+                  "syntax_node": {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 9,
+                      "end": 16
+                    }
+                  },
+                  "callee": {
+                    "tag": "apply",
+                    "syntax_node": {
+                      "kind": "APPLY_EXPR",
+                      "span": {
+                        "start": 9,
+                        "end": 14
+                      }
+                    },
+                    "callee": {
+                      "tag": "path",
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 9,
+                          "end": 10
+                        }
+                      },
+                      "path": {
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 9,
+                            "end": 10
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "a",
+                            "span": {
+                              "start": 9,
+                              "end": 10
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "argument": {
+                      "tag": "path",
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 11,
+                          "end": 14
+                        }
+                      },
+                      "path": {
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 11,
+                            "end": 14
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "lsl",
+                            "span": {
+                              "start": 11,
+                              "end": 14
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "argument": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 15,
+                          "end": 16
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "2",
+                        "span": {
+                          "start": 15,
+                          "end": 16
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "argument": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 18,
+                    "end": 22
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 18,
+                      "end": 22
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "land",
+                      "span": {
+                        "start": 18,
+                        "end": 22
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "argument": {
+              "tag": "parenthesized",
+              "syntax_node": {
+                "kind": "PAREN_EXPR",
+                "span": {
+                  "start": 23,
+                  "end": 32
+                }
+              },
+              "inner": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 24,
+                    "end": 31
+                  }
+                },
+                "callee": {
+                  "tag": "apply",
+                  "syntax_node": {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 24,
+                      "end": 29
+                    }
+                  },
+                  "callee": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 24,
+                        "end": 25
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 24,
+                          "end": 25
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "b",
+                          "span": {
+                            "start": 24,
+                            "end": 25
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "argument": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 26,
+                        "end": 29
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 26,
+                          "end": 29
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "lsr",
+                          "span": {
+                            "start": 26,
+                            "end": 29
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 30,
+                        "end": 31
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "3",
+                      "span": {
+                        "start": 30,
+                        "end": 31
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "argument": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 33,
+                "end": 36
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 33,
+                  "end": 36
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "lor",
+                  "span": {
+                    "start": 33,
+                    "end": 36
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "argument": {
+          "tag": "parenthesized",
+          "syntax_node": {
+            "kind": "PAREN_EXPR",
+            "span": {
+              "start": 37,
+              "end": 46
+            }
+          },
+          "inner": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 38,
+                "end": 45
+              }
+            },
+            "callee": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 38,
+                  "end": 43
+                }
+              },
+              "callee": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 38,
+                    "end": 39
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 38,
+                      "end": 39
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "c",
+                      "span": {
+                        "start": 38,
+                        "end": 39
+                      }
+                    }
+                  ]
+                }
+              },
+              "argument": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 40,
+                    "end": 43
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 40,
+                      "end": 43
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "asr",
+                      "span": {
+                        "start": 40,
+                        "end": 43
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "argument": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 44,
+                    "end": 45
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "1",
+                  "span": {
+                    "start": 44,
+                    "end": 45
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 8,
+            "end": 36
+          }
+        },
+        "callee": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 8,
+              "end": 32
+            }
+          },
+          "callee": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 8,
+                "end": 22
+              }
+            },
+            "callee": {
+              "tag": "parenthesized",
+              "syntax_node": {
+                "kind": "PAREN_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 17
+                }
+              },
+              "inner": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 9,
+                    "end": 16
+                  }
+                },
+                "callee": {
+                  "tag": "apply",
+                  "syntax_node": {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 9,
+                      "end": 14
+                    }
+                  },
+                  "callee": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 9,
+                        "end": 10
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 9,
+                          "end": 10
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "a",
+                          "span": {
+                            "start": 9,
+                            "end": 10
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "argument": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 11,
+                        "end": 14
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 11,
+                          "end": 14
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "lsl",
+                          "span": {
+                            "start": 11,
+                            "end": 14
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 15,
+                        "end": 16
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "2",
+                      "span": {
+                        "start": 15,
+                        "end": 16
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "argument": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 18,
+                  "end": 22
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 18,
+                    "end": 22
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "land",
+                    "span": {
+                      "start": 18,
+                      "end": 22
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "argument": {
+            "tag": "parenthesized",
+            "syntax_node": {
+              "kind": "PAREN_EXPR",
+              "span": {
+                "start": 23,
+                "end": 32
+              }
+            },
+            "inner": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 24,
+                  "end": 31
+                }
+              },
+              "callee": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 24,
+                    "end": 29
+                  }
+                },
+                "callee": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 24,
+                      "end": 25
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 24,
+                        "end": 25
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "b",
+                        "span": {
+                          "start": 24,
+                          "end": 25
+                        }
+                      }
+                    ]
+                  }
+                },
+                "argument": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 26,
+                      "end": 29
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 26,
+                        "end": 29
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "lsr",
+                        "span": {
+                          "start": 26,
+                          "end": 29
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "argument": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 30,
+                      "end": 31
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "3",
+                    "span": {
+                      "start": 30,
+                      "end": 31
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "argument": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 33,
+              "end": 36
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 33,
+                "end": 36
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "lor",
+                "span": {
+                  "start": 33,
+                  "end": 36
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 8,
+            "end": 32
+          }
+        },
+        "callee": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 8,
+              "end": 22
+            }
+          },
+          "callee": {
+            "tag": "parenthesized",
+            "syntax_node": {
+              "kind": "PAREN_EXPR",
+              "span": {
+                "start": 8,
+                "end": 17
+              }
+            },
+            "inner": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 9,
+                  "end": 16
+                }
+              },
+              "callee": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 9,
+                    "end": 14
+                  }
+                },
+                "callee": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 9,
+                      "end": 10
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 9,
+                        "end": 10
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "span": {
+                          "start": 9,
+                          "end": 10
+                        }
+                      }
+                    ]
+                  }
+                },
+                "argument": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 11,
+                      "end": 14
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 11,
+                        "end": 14
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "lsl",
+                        "span": {
+                          "start": 11,
+                          "end": 14
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "argument": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 15,
+                      "end": 16
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "2",
+                    "span": {
+                      "start": 15,
+                      "end": 16
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "argument": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 18,
+                "end": 22
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 18,
+                  "end": 22
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "land",
+                  "span": {
+                    "start": 18,
+                    "end": 22
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "argument": {
+          "tag": "parenthesized",
+          "syntax_node": {
+            "kind": "PAREN_EXPR",
+            "span": {
+              "start": 23,
+              "end": 32
+            }
+          },
+          "inner": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 24,
+                "end": 31
+              }
+            },
+            "callee": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 24,
+                  "end": 29
+                }
+              },
+              "callee": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 24,
+                    "end": 25
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 24,
+                      "end": 25
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "b",
+                      "span": {
+                        "start": 24,
+                        "end": 25
+                      }
+                    }
+                  ]
+                }
+              },
+              "argument": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 26,
+                    "end": 29
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 26,
+                      "end": 29
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "lsr",
+                      "span": {
+                        "start": 26,
+                        "end": 29
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "argument": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 30,
+                    "end": 31
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "3",
+                  "span": {
+                    "start": 30,
+                    "end": 31
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 8,
+            "end": 22
+          }
+        },
+        "callee": {
+          "tag": "parenthesized",
+          "syntax_node": {
+            "kind": "PAREN_EXPR",
+            "span": {
+              "start": 8,
+              "end": 17
+            }
+          },
+          "inner": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 9,
+                "end": 16
+              }
+            },
+            "callee": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 9,
+                  "end": 14
+                }
+              },
+              "callee": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 9,
+                    "end": 10
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 9,
+                      "end": 10
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "a",
+                      "span": {
+                        "start": 9,
+                        "end": 10
+                      }
+                    }
+                  ]
+                }
+              },
+              "argument": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 11,
+                    "end": 14
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 11,
+                      "end": 14
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "lsl",
+                      "span": {
+                        "start": 11,
+                        "end": 14
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "argument": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 15,
+                    "end": 16
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "2",
+                  "span": {
+                    "start": 15,
+                    "end": 16
+                  }
+                }
+              }
+            }
+          }
+        },
+        "argument": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 18,
+              "end": 22
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 18,
+                "end": 22
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "land",
+                "span": {
+                  "start": 18,
+                  "end": 22
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "parenthesized",
+        "syntax_node": {
+          "kind": "PAREN_EXPR",
+          "span": {
+            "start": 8,
+            "end": 17
+          }
+        },
+        "inner": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 9,
+              "end": 16
+            }
+          },
+          "callee": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 9,
+                "end": 14
+              }
+            },
+            "callee": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 9,
+                  "end": 10
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 9,
+                    "end": 10
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 9,
+                      "end": 10
+                    }
+                  }
+                ]
+              }
+            },
+            "argument": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 11,
+                  "end": 14
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 11,
+                    "end": 14
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "lsl",
+                    "span": {
+                      "start": 11,
+                      "end": 14
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "argument": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 15,
+                  "end": 16
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "2",
+                "span": {
+                  "start": 15,
+                  "end": 16
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 9,
+            "end": 16
+          }
+        },
+        "callee": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 9,
+              "end": 14
+            }
+          },
+          "callee": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 9,
+                "end": 10
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 9,
+                  "end": 10
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 9,
+                    "end": 10
+                  }
+                }
+              ]
+            }
+          },
+          "argument": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 11,
+                "end": 14
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 11,
+                  "end": 14
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "lsl",
+                  "span": {
+                    "start": 11,
+                    "end": 14
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "argument": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 15,
+                "end": 16
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "2",
+              "span": {
+                "start": 15,
+                "end": 16
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 9,
+            "end": 14
+          }
+        },
+        "callee": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 9,
+              "end": 10
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 9,
+                "end": 10
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "span": {
+                  "start": 9,
+                  "end": 10
+                }
+              }
+            ]
+          }
+        },
+        "argument": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 11,
+              "end": 14
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 11,
+                "end": 14
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "lsl",
+                "span": {
+                  "start": 11,
+                  "end": 14
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 9,
+            "end": 10
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 9,
+              "end": 10
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "a",
+              "span": {
+                "start": 9,
+                "end": 10
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 11,
+            "end": 14
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 11,
+              "end": 14
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "lsl",
+              "span": {
+                "start": 11,
+                "end": 14
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 15,
+              "end": 16
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "2",
+            "span": {
+              "start": 15,
+              "end": 16
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 18,
+            "end": 22
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 18,
+              "end": 22
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "land",
+              "span": {
+                "start": 18,
+                "end": 22
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "parenthesized",
+        "syntax_node": {
+          "kind": "PAREN_EXPR",
+          "span": {
+            "start": 23,
+            "end": 32
+          }
+        },
+        "inner": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 24,
+              "end": 31
+            }
+          },
+          "callee": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 24,
+                "end": 29
+              }
+            },
+            "callee": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 24,
+                  "end": 25
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 24,
+                    "end": 25
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "span": {
+                      "start": 24,
+                      "end": 25
+                    }
+                  }
+                ]
+              }
+            },
+            "argument": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 26,
+                  "end": 29
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 26,
+                    "end": 29
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "lsr",
+                    "span": {
+                      "start": 26,
+                      "end": 29
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "argument": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 30,
+                  "end": 31
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "3",
+                "span": {
+                  "start": 30,
+                  "end": 31
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 24,
+            "end": 31
+          }
+        },
+        "callee": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 24,
+              "end": 29
+            }
+          },
+          "callee": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 24,
+                "end": 25
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 24,
+                  "end": 25
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "b",
+                  "span": {
+                    "start": 24,
+                    "end": 25
+                  }
+                }
+              ]
+            }
+          },
+          "argument": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 26,
+                "end": 29
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 26,
+                  "end": 29
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "lsr",
+                  "span": {
+                    "start": 26,
+                    "end": 29
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "argument": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 30,
+                "end": 31
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "3",
+              "span": {
+                "start": 30,
+                "end": 31
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 24,
+            "end": 29
+          }
+        },
+        "callee": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 24,
+              "end": 25
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 24,
+                "end": 25
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "b",
+                "span": {
+                  "start": 24,
+                  "end": 25
+                }
+              }
+            ]
+          }
+        },
+        "argument": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 26,
+              "end": 29
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 26,
+                "end": 29
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "lsr",
+                "span": {
+                  "start": 26,
+                  "end": 29
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 24,
+            "end": 25
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 24,
+              "end": 25
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "b",
+              "span": {
+                "start": 24,
+                "end": 25
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 26,
+            "end": 29
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 26,
+              "end": 29
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "lsr",
+              "span": {
+                "start": 26,
+                "end": 29
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 30,
+              "end": 31
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "3",
+            "span": {
+              "start": 30,
+              "end": 31
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 33,
+            "end": 36
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 33,
+              "end": 36
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "lor",
+              "span": {
+                "start": 33,
+                "end": 36
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "parenthesized",
+        "syntax_node": {
+          "kind": "PAREN_EXPR",
+          "span": {
+            "start": 37,
+            "end": 46
+          }
+        },
+        "inner": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 38,
+              "end": 45
+            }
+          },
+          "callee": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 38,
+                "end": 43
+              }
+            },
+            "callee": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 38,
+                  "end": 39
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 38,
+                    "end": 39
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "c",
+                    "span": {
+                      "start": 38,
+                      "end": 39
+                    }
+                  }
+                ]
+              }
+            },
+            "argument": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 40,
+                  "end": 43
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 40,
+                    "end": 43
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "asr",
+                    "span": {
+                      "start": 40,
+                      "end": 43
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "argument": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 44,
+                  "end": 45
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "1",
+                "span": {
+                  "start": 44,
+                  "end": 45
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 38,
+            "end": 45
+          }
+        },
+        "callee": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 38,
+              "end": 43
+            }
+          },
+          "callee": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 38,
+                "end": 39
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 38,
+                  "end": 39
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "c",
+                  "span": {
+                    "start": 38,
+                    "end": 39
+                  }
+                }
+              ]
+            }
+          },
+          "argument": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 40,
+                "end": 43
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 40,
+                  "end": 43
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "asr",
+                  "span": {
+                    "start": 40,
+                    "end": 43
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "argument": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 44,
+                "end": 45
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "1",
+              "span": {
+                "start": 44,
+                "end": 45
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 38,
+            "end": 43
+          }
+        },
+        "callee": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 38,
+              "end": 39
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 38,
+                "end": 39
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "c",
+                "span": {
+                  "start": 38,
+                  "end": 39
+                }
+              }
+            ]
+          }
+        },
+        "argument": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 40,
+              "end": 43
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 40,
+                "end": 43
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "asr",
+                "span": {
+                  "start": 40,
+                  "end": 43
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 38,
+            "end": 39
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 38,
+              "end": 39
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "c",
+              "span": {
+                "start": 38,
+                "end": 39
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 40,
+            "end": 43
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 40,
+              "end": 43
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "asr",
+              "span": {
+                "start": 40,
+                "end": 43
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 44,
+              "end": 45
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "1",
+            "span": {
+              "start": 44,
+              "end": 45
+            }
+          }
+        }
+      }
+    ]
+  }
+}

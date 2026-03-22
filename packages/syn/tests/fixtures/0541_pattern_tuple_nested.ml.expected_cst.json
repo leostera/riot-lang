@@ -1,0 +1,218 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 23
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 22
+            }
+          },
+          "binding_pattern": {
+            "tag": "tuple",
+            "syntax_node": {
+              "kind": "TUPLE_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 19
+              }
+            },
+            "elements": [
+              {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "PAREN_PATTERN",
+                  "span": {
+                    "start": 4,
+                    "end": 10
+                  }
+                },
+                "inner": {
+                  "tag": "tuple",
+                  "syntax_node": {
+                    "kind": "TUPLE_PATTERN",
+                    "span": {
+                      "start": 5,
+                      "end": 9
+                    }
+                  },
+                  "elements": [
+                    {
+                      "tag": "identifier",
+                      "syntax_node": {
+                        "kind": "IDENT_PATTERN",
+                        "span": {
+                          "start": 5,
+                          "end": 6
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "span": {
+                          "start": 5,
+                          "end": 6
+                        }
+                      }
+                    },
+                    {
+                      "tag": "identifier",
+                      "syntax_node": {
+                        "kind": "IDENT_PATTERN",
+                        "span": {
+                          "start": 8,
+                          "end": 9
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "b",
+                        "span": {
+                          "start": 8,
+                          "end": 9
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "PAREN_PATTERN",
+                  "span": {
+                    "start": 12,
+                    "end": 18
+                  }
+                },
+                "inner": {
+                  "tag": "tuple",
+                  "syntax_node": {
+                    "kind": "TUPLE_PATTERN",
+                    "span": {
+                      "start": 13,
+                      "end": 17
+                    }
+                  },
+                  "elements": [
+                    {
+                      "tag": "identifier",
+                      "syntax_node": {
+                        "kind": "IDENT_PATTERN",
+                        "span": {
+                          "start": 13,
+                          "end": 14
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "c",
+                        "span": {
+                          "start": 13,
+                          "end": 14
+                        }
+                      }
+                    },
+                    {
+                      "tag": "identifier",
+                      "syntax_node": {
+                        "kind": "IDENT_PATTERN",
+                        "span": {
+                          "start": 16,
+                          "end": 17
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "d",
+                        "span": {
+                          "start": 16,
+                          "end": 17
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "binding_name": null,
+          "parameters": [],
+          "value": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 21,
+                "end": 22
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 21,
+                  "end": 22
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                }
+              ]
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 21,
+            "end": 22
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 21,
+              "end": 22
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 21,
+                "end": 22
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

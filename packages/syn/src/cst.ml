@@ -46,6 +46,14 @@ module PatternLiteral = struct
         syntax_node : syntax_node;
         literal_token : Token.t;
       }
+    | Float of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Char of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
     | Bool of {
         syntax_node : syntax_node;
         literal_token : Token.t;
@@ -59,6 +67,15 @@ type pattern =
   | Identifier of identifier_pattern
   | Wildcard of wildcard_pattern
   | Literal of pattern_literal
+  | Constructor of constructor_pattern
+  | Tuple of tuple_pattern
+  | List of list_pattern
+  | Array of array_pattern
+  | Record of record_pattern
+  | Cons of cons_pattern
+  | Or of or_pattern
+  | Alias of alias_pattern
+  | Typed of typed_pattern
   | Parenthesized of parenthesized_pattern
   | Unknown of syntax_node
 
@@ -69,6 +86,61 @@ and identifier_pattern = {
 
 and wildcard_pattern = {
   syntax_node : syntax_node;
+}
+
+and constructor_pattern = {
+  syntax_node : syntax_node;
+  constructor_path : ModulePath.t;
+  arguments : pattern list;
+}
+
+and tuple_pattern = {
+  syntax_node : syntax_node;
+  elements : pattern list;
+}
+
+and list_pattern = {
+  syntax_node : syntax_node;
+  elements : pattern list;
+}
+
+and array_pattern = {
+  syntax_node : syntax_node;
+  elements : pattern list;
+}
+
+and record_pattern = {
+  syntax_node : syntax_node;
+  fields : record_pattern_field list;
+}
+
+and record_pattern_field = {
+  syntax_node : syntax_node;
+  field_path : ModulePath.t;
+  pattern : pattern option;
+}
+
+and cons_pattern = {
+  syntax_node : syntax_node;
+  head : pattern;
+  tail : pattern;
+}
+
+and or_pattern = {
+  syntax_node : syntax_node;
+  alternatives : pattern list;
+}
+
+and alias_pattern = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+  name_token : Token.t;
+}
+
+and typed_pattern = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+  type_syntax_node : syntax_node;
 }
 
 and parenthesized_pattern = {
@@ -164,6 +236,14 @@ module Literal = struct
         syntax_node : syntax_node;
         literal_token : Token.t;
       }
+    | Float of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Char of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
     | Bool of {
         syntax_node : syntax_node;
         literal_token : Token.t;
@@ -177,8 +257,14 @@ type expression =
   | Path of path_expression
   | Literal of literal
   | Apply of apply_expression
+  | Prefix of prefix_expression
   | FieldAccess of field_access_expression
+  | Index of index_expression
+  | Assign of assign_expression
   | Infix of infix_expression
+  | Typed of typed_expression
+  | Coerce of coerce_expression
+  | Sequence of sequence_expression
   | Tuple of tuple_expression
   | List of list_expression
   | Array of array_expression
@@ -204,16 +290,54 @@ and apply_expression = {
   argument : expression;
 }
 
+and prefix_expression = {
+  syntax_node : syntax_node;
+  operator_token : Token.t;
+  operand : expression;
+}
+
 and field_access_expression = {
   syntax_node : syntax_node;
   receiver : expression;
   field_name : Token.t;
 }
 
+and index_expression = {
+  syntax_node : syntax_node;
+  collection : expression;
+  index : expression;
+}
+
+and assign_expression = {
+  syntax_node : syntax_node;
+  target : expression;
+  operator_token : Token.t;
+  value : expression;
+}
+
 and infix_expression = {
   syntax_node : syntax_node;
   left : expression;
   operator_token : Token.t;
+  right : expression;
+}
+
+and typed_expression = {
+  syntax_node : syntax_node;
+  expression : expression;
+  type_syntax_node : syntax_node;
+}
+
+and coerce_expression = {
+  syntax_node : syntax_node;
+  expression : expression;
+  from_type_syntax_node : syntax_node option;
+  to_type_syntax_node : syntax_node;
+}
+
+and sequence_expression = {
+  syntax_node : syntax_node;
+  left : expression;
   right : expression;
 }
 
@@ -232,8 +356,25 @@ and array_expression = {
   elements : expression list;
 }
 
-and record_expression = {
+and record_expression =
+  | Literal of record_literal_expression
+  | Update of record_update_expression
+
+and record_literal_expression = {
   syntax_node : syntax_node;
+  fields : record_expression_field list;
+}
+
+and record_update_expression = {
+  syntax_node : syntax_node;
+  base : expression;
+  fields : record_expression_field list;
+}
+
+and record_expression_field = {
+  syntax_node : syntax_node;
+  field_path : ModulePath.t;
+  value : expression option;
 }
 
 and local_open_expression = {
@@ -298,8 +439,14 @@ module Expression = struct
     | Path of path_expression
     | Literal of literal
     | Apply of apply_expression
+    | Prefix of prefix_expression
     | FieldAccess of field_access_expression
+    | Index of index_expression
+    | Assign of assign_expression
     | Infix of infix_expression
+    | Typed of typed_expression
+    | Coerce of coerce_expression
+    | Sequence of sequence_expression
     | Tuple of tuple_expression
     | List of list_expression
     | Array of array_expression
@@ -320,16 +467,27 @@ module Expression = struct
         match literal with
         | Literal.String { syntax_node; _ }
         | Literal.Int { syntax_node; _ }
+        | Literal.Float { syntax_node; _ }
+        | Literal.Char { syntax_node; _ }
         | Literal.Bool { syntax_node; _ }
         | Literal.Unit { syntax_node } ->
             syntax_node)
     | Apply expr -> expr.syntax_node
+    | Prefix expr -> expr.syntax_node
     | FieldAccess expr -> expr.syntax_node
+    | Index expr -> expr.syntax_node
+    | Assign expr -> expr.syntax_node
     | Infix expr -> expr.syntax_node
+    | Typed expr -> expr.syntax_node
+    | Coerce expr -> expr.syntax_node
+    | Sequence expr -> expr.syntax_node
     | Tuple expr -> expr.syntax_node
     | List expr -> expr.syntax_node
     | Array expr -> expr.syntax_node
-    | Record expr -> expr.syntax_node
+    | Record expr -> (
+        match expr with
+        | Literal record -> record.syntax_node
+        | Update record -> record.syntax_node)
     | LocalOpen expr -> expr.syntax_node
     | Fun expr -> expr.syntax_node
     | Function expr -> expr.syntax_node
@@ -346,6 +504,15 @@ module Pattern = struct
     | Identifier of identifier_pattern
     | Wildcard of wildcard_pattern
     | Literal of pattern_literal
+    | Constructor of constructor_pattern
+    | Tuple of tuple_pattern
+    | List of list_pattern
+    | Array of array_pattern
+    | Record of record_pattern
+    | Cons of cons_pattern
+    | Or of or_pattern
+    | Alias of alias_pattern
+    | Typed of typed_pattern
     | Parenthesized of parenthesized_pattern
     | Unknown of syntax_node
 
@@ -354,9 +521,20 @@ module Pattern = struct
     | Wildcard pattern -> pattern.syntax_node
     | Literal (PatternLiteral.String { syntax_node; _ })
     | Literal (PatternLiteral.Int { syntax_node; _ })
+    | Literal (PatternLiteral.Float { syntax_node; _ })
+    | Literal (PatternLiteral.Char { syntax_node; _ })
     | Literal (PatternLiteral.Bool { syntax_node; _ })
     | Literal (PatternLiteral.Unit { syntax_node }) ->
         syntax_node
+    | Constructor pattern -> pattern.syntax_node
+    | Tuple pattern -> pattern.syntax_node
+    | List pattern -> pattern.syntax_node
+    | Array pattern -> pattern.syntax_node
+    | Record pattern -> pattern.syntax_node
+    | Cons pattern -> pattern.syntax_node
+    | Or pattern -> pattern.syntax_node
+    | Alias pattern -> pattern.syntax_node
+    | Typed pattern -> pattern.syntax_node
     | Parenthesized pattern -> pattern.syntax_node
     | Unknown node -> node
 end
@@ -390,6 +568,38 @@ module ParenthesizedPattern = struct
   let inner pattern = pattern.inner
 end
 
+module ArrayPattern = struct
+  type t = array_pattern = {
+    syntax_node : syntax_node;
+    elements : pattern list;
+  }
+
+  let syntax_node pattern = pattern.syntax_node
+  let elements pattern = pattern.elements
+end
+
+module RecordPattern = struct
+  type t = record_pattern = {
+    syntax_node : syntax_node;
+    fields : record_pattern_field list;
+  }
+
+  let syntax_node pattern = pattern.syntax_node
+  let fields pattern = pattern.fields
+end
+
+module RecordPatternField = struct
+  type t = record_pattern_field = {
+    syntax_node : syntax_node;
+    field_path : ModulePath.t;
+    pattern : pattern option;
+  }
+
+  let syntax_node field = field.syntax_node
+  let field_path field = field.field_path
+  let pattern field = field.pattern
+end
+
 module PathExpression = struct
   type t = path_expression = {
     syntax_node : syntax_node;
@@ -413,6 +623,33 @@ module ApplyExpression = struct
   let argument expr = expr.argument
 end
 
+module IndexExpression = struct
+  type t = index_expression = {
+    syntax_node : syntax_node;
+    collection : expression;
+    index : expression;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let collection expr = expr.collection
+  let index expr = expr.index
+end
+
+module AssignExpression = struct
+  type t = assign_expression = {
+    syntax_node : syntax_node;
+    target : expression;
+    operator_token : Token.t;
+    value : expression;
+  }
+
+  let syntax_node expr = expr.syntax_node
+  let target expr = expr.target
+  let operator_token expr = expr.operator_token
+  let operator expr = Token.text expr.operator_token
+  let value expr = expr.value
+end
+
 module InfixExpression = struct
   type t = infix_expression = {
     syntax_node : syntax_node;
@@ -426,6 +663,28 @@ module InfixExpression = struct
   let operator_token expr = expr.operator_token
   let operator expr = Token.text expr.operator_token
   let right expr = expr.right
+end
+
+module RecordExpression = struct
+  type t = record_expression =
+    | Literal of record_literal_expression
+    | Update of record_update_expression
+
+  let syntax_node = function
+    | Literal expr -> expr.syntax_node
+    | Update expr -> expr.syntax_node
+end
+
+module RecordExpressionField = struct
+  type t = record_expression_field = {
+    syntax_node : syntax_node;
+    field_path : ModulePath.t;
+    value : expression option;
+  }
+
+  let syntax_node field = field.syntax_node
+  let field_path field = field.field_path
+  let value field = field.value
 end
 
 module FunExpression = struct
@@ -629,15 +888,21 @@ end
 module LetBinding = struct
   type t = {
     syntax_node : syntax_node;
-    binding_name : Token.t;
+    binding_pattern : pattern;
+    binding_name : Token.t option;
     parameters : Parameter.t list;
     value : Expression.t;
     is_recursive : bool;
   }
 
   let syntax_node binding = binding.syntax_node
+  let binding_pattern binding = binding.binding_pattern
   let binding_name_token binding = binding.binding_name
-  let name binding = Token.text binding.binding_name
+  let name binding =
+    match binding.binding_name with
+    | Some token -> Token.text token
+    | None -> panic "LetBinding.name: missing binding name token"
+
   let parameters binding = binding.parameters
   let value binding = binding.value
   let value_syntax_node binding = Expression.syntax_node binding.value
@@ -690,6 +955,7 @@ module Item = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
     | LetBinding of LetBinding.t
+    | Expression of Expression.t
     | ModuleDeclaration of ModuleDeclaration.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t
@@ -698,6 +964,7 @@ module Item = struct
   let syntax_node = function
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
     | LetBinding binding -> LetBinding.syntax_node binding
+    | Expression expr -> Expression.syntax_node expr
     | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
     | OpenStatement stmt -> OpenStatement.syntax_node stmt

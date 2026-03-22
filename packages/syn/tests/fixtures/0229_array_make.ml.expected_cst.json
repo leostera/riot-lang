@@ -1,0 +1,618 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 23
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 22
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 8,
+                "end": 22
+              }
+            },
+            "callee": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 20
+                }
+              },
+              "callee": {
+                "tag": "field_access",
+                "syntax_node": {
+                  "kind": "FIELD_ACCESS_EXPR",
+                  "span": {
+                    "start": 8,
+                    "end": 19
+                  }
+                },
+                "receiver": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 8,
+                      "end": 13
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 8,
+                        "end": 13
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Array",
+                        "span": {
+                          "start": 8,
+                          "end": 13
+                        }
+                      }
+                    ]
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "make",
+                  "span": {
+                    "start": 14,
+                    "end": 18
+                  }
+                }
+              },
+              "argument": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 19,
+                      "end": 20
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "5",
+                    "span": {
+                      "start": 19,
+                      "end": 20
+                    }
+                  }
+                }
+              }
+            },
+            "argument": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "0",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 22
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 8,
+              "end": 22
+            }
+          },
+          "callee": {
+            "tag": "apply",
+            "syntax_node": {
+              "kind": "APPLY_EXPR",
+              "span": {
+                "start": 8,
+                "end": 20
+              }
+            },
+            "callee": {
+              "tag": "field_access",
+              "syntax_node": {
+                "kind": "FIELD_ACCESS_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 19
+                }
+              },
+              "receiver": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 8,
+                    "end": 13
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 8,
+                      "end": 13
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Array",
+                      "span": {
+                        "start": 8,
+                        "end": 13
+                      }
+                    }
+                  ]
+                }
+              },
+              "field_name": {
+                "kind": "IDENT_EXPR",
+                "text": "make",
+                "span": {
+                  "start": 14,
+                  "end": 18
+                }
+              }
+            },
+            "argument": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "5",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                }
+              }
+            }
+          },
+          "argument": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 21,
+                  "end": 22
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "0",
+                "span": {
+                  "start": 21,
+                  "end": 22
+                }
+              }
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 8,
+            "end": 22
+          }
+        },
+        "callee": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 8,
+              "end": 20
+            }
+          },
+          "callee": {
+            "tag": "field_access",
+            "syntax_node": {
+              "kind": "FIELD_ACCESS_EXPR",
+              "span": {
+                "start": 8,
+                "end": 19
+              }
+            },
+            "receiver": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 13
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 8,
+                    "end": 13
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Array",
+                    "span": {
+                      "start": 8,
+                      "end": 13
+                    }
+                  }
+                ]
+              }
+            },
+            "field_name": {
+              "kind": "IDENT_EXPR",
+              "text": "make",
+              "span": {
+                "start": 14,
+                "end": 18
+              }
+            }
+          },
+          "argument": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 19,
+                  "end": 20
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "5",
+                "span": {
+                  "start": 19,
+                  "end": 20
+                }
+              }
+            }
+          }
+        },
+        "argument": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 21,
+                "end": 22
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "0",
+              "span": {
+                "start": 21,
+                "end": 22
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 8,
+            "end": 20
+          }
+        },
+        "callee": {
+          "tag": "field_access",
+          "syntax_node": {
+            "kind": "FIELD_ACCESS_EXPR",
+            "span": {
+              "start": 8,
+              "end": 19
+            }
+          },
+          "receiver": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 8,
+                "end": 13
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 13
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "Array",
+                  "span": {
+                    "start": 8,
+                    "end": 13
+                  }
+                }
+              ]
+            }
+          },
+          "field_name": {
+            "kind": "IDENT_EXPR",
+            "text": "make",
+            "span": {
+              "start": 14,
+              "end": 18
+            }
+          }
+        },
+        "argument": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 19,
+                "end": 20
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "5",
+              "span": {
+                "start": 19,
+                "end": 20
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "field_access",
+        "syntax_node": {
+          "kind": "FIELD_ACCESS_EXPR",
+          "span": {
+            "start": 8,
+            "end": 19
+          }
+        },
+        "receiver": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 8,
+              "end": 13
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 8,
+                "end": 13
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "Array",
+                "span": {
+                  "start": 8,
+                  "end": 13
+                }
+              }
+            ]
+          }
+        },
+        "field_name": {
+          "kind": "IDENT_EXPR",
+          "text": "make",
+          "span": {
+            "start": 14,
+            "end": 18
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 8,
+            "end": 13
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 8,
+              "end": 13
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Array",
+              "span": {
+                "start": 8,
+                "end": 13
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 19,
+              "end": 20
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "5",
+            "span": {
+              "start": 19,
+              "end": 20
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 21,
+              "end": 22
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "0",
+            "span": {
+              "start": 21,
+              "end": 22
+            }
+          }
+        }
+      }
+    ]
+  }
+}

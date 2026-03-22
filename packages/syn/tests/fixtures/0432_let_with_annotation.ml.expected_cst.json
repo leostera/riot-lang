@@ -1,0 +1,507 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 39
+      }
+    },
+    "items": [
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "let",
+          "syntax_node": {
+            "kind": "LET_EXPR",
+            "span": {
+              "start": 0,
+              "end": 38
+            }
+          },
+          "binding_pattern": {
+            "tag": "typed",
+            "syntax_node": {
+              "kind": "TYPED_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 13
+              }
+            },
+            "pattern": {
+              "tag": "identifier",
+              "syntax_node": {
+                "kind": "IDENT_PATTERN",
+                "span": {
+                  "start": 5,
+                  "end": 6
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 5,
+                  "end": 6
+                }
+              }
+            },
+            "type_syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 9,
+                "end": 12
+              }
+            }
+          },
+          "bound_value": {
+            "tag": "typed",
+            "syntax_node": {
+              "kind": "TYPED_EXPR",
+              "span": {
+                "start": 16,
+                "end": 25
+              }
+            },
+            "expression": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 17,
+                    "end": 18
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "5",
+                  "span": {
+                    "start": 17,
+                    "end": 18
+                  }
+                }
+              }
+            },
+            "type_syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 21,
+                "end": 24
+              }
+            }
+          },
+          "body": {
+            "tag": "typed",
+            "syntax_node": {
+              "kind": "TYPED_EXPR",
+              "span": {
+                "start": 29,
+                "end": 38
+              }
+            },
+            "expression": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 30,
+                  "end": 31
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 30,
+                    "end": 31
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "span": {
+                      "start": 30,
+                      "end": 31
+                    }
+                  }
+                ]
+              }
+            },
+            "type_syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 34,
+                "end": 37
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_EXPR",
+          "span": {
+            "start": 0,
+            "end": 38
+          }
+        },
+        "binding_pattern": {
+          "tag": "typed",
+          "syntax_node": {
+            "kind": "TYPED_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 13
+            }
+          },
+          "pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 5,
+                "end": 6
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 5,
+                "end": 6
+              }
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_CONSTR",
+            "span": {
+              "start": 9,
+              "end": 12
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 5,
+            "end": 6
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "typed",
+          "syntax_node": {
+            "kind": "TYPED_EXPR",
+            "span": {
+              "start": 16,
+              "end": 25
+            }
+          },
+          "expression": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 17,
+                  "end": 18
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "5",
+                "span": {
+                  "start": 17,
+                  "end": 18
+                }
+              }
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_CONSTR",
+            "span": {
+              "start": 21,
+              "end": 24
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "let",
+        "syntax_node": {
+          "kind": "LET_EXPR",
+          "span": {
+            "start": 0,
+            "end": 38
+          }
+        },
+        "binding_pattern": {
+          "tag": "typed",
+          "syntax_node": {
+            "kind": "TYPED_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 13
+            }
+          },
+          "pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 5,
+                "end": 6
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 5,
+                "end": 6
+              }
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_CONSTR",
+            "span": {
+              "start": 9,
+              "end": 12
+            }
+          }
+        },
+        "bound_value": {
+          "tag": "typed",
+          "syntax_node": {
+            "kind": "TYPED_EXPR",
+            "span": {
+              "start": 16,
+              "end": 25
+            }
+          },
+          "expression": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 17,
+                  "end": 18
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "5",
+                "span": {
+                  "start": 17,
+                  "end": 18
+                }
+              }
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_CONSTR",
+            "span": {
+              "start": 21,
+              "end": 24
+            }
+          }
+        },
+        "body": {
+          "tag": "typed",
+          "syntax_node": {
+            "kind": "TYPED_EXPR",
+            "span": {
+              "start": 29,
+              "end": 38
+            }
+          },
+          "expression": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 30,
+                "end": 31
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 30,
+                  "end": 31
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 30,
+                    "end": 31
+                  }
+                }
+              ]
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_CONSTR",
+            "span": {
+              "start": 34,
+              "end": 37
+            }
+          }
+        },
+        "is_recursive": false
+      },
+      {
+        "tag": "typed",
+        "syntax_node": {
+          "kind": "TYPED_EXPR",
+          "span": {
+            "start": 16,
+            "end": 25
+          }
+        },
+        "expression": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 17,
+                "end": 18
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "5",
+              "span": {
+                "start": 17,
+                "end": 18
+              }
+            }
+          }
+        },
+        "type_syntax_node": {
+          "kind": "TYPE_CONSTR",
+          "span": {
+            "start": 21,
+            "end": 24
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 17,
+              "end": 18
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "5",
+            "span": {
+              "start": 17,
+              "end": 18
+            }
+          }
+        }
+      },
+      {
+        "tag": "typed",
+        "syntax_node": {
+          "kind": "TYPED_EXPR",
+          "span": {
+            "start": 29,
+            "end": 38
+          }
+        },
+        "expression": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 30,
+              "end": 31
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 30,
+                "end": 31
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 30,
+                  "end": 31
+                }
+              }
+            ]
+          }
+        },
+        "type_syntax_node": {
+          "kind": "TYPE_CONSTR",
+          "span": {
+            "start": 34,
+            "end": 37
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 30,
+            "end": 31
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 30,
+              "end": 31
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 30,
+                "end": 31
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

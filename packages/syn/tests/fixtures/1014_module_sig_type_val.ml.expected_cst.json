@@ -1,0 +1,124 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 56
+      }
+    },
+    "items": [
+      {
+        "tag": "module_type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_TYPE_DECL",
+            "span": {
+              "start": 0,
+              "end": 56
+            }
+          },
+          "module_type_name": {
+            "kind": "IDENT_EXPR",
+            "text": "S",
+            "span": {
+              "start": 12,
+              "end": 13
+            }
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 16,
+            "end": 55
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 16,
+              "end": 55
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sig",
+              "span": {
+                "start": 16,
+                "end": 19
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 27,
+            "end": 32
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 27,
+              "end": 32
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 27,
+                "end": 28
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 36,
+            "end": 40
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 36,
+              "end": 40
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "make",
+              "span": {
+                "start": 36,
+                "end": 40
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

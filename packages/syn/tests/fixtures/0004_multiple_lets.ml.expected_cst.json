@@ -19,6 +19,24 @@
               "end": 9
             }
           },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
           "binding_name": {
             "kind": "IDENT_EXPR",
             "text": "x",
@@ -60,6 +78,24 @@
             "span": {
               "start": 10,
               "end": 19
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 14,
+                "end": 15
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "y",
+              "span": {
+                "start": 14,
+                "end": 15
+              }
             }
           },
           "binding_name": {
@@ -105,6 +141,24 @@
             "end": 9
           }
         },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
         "binding_name": {
           "kind": "IDENT_EXPR",
           "text": "x",
@@ -143,6 +197,24 @@
           "span": {
             "start": 10,
             "end": 19
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 14,
+              "end": 15
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "y",
+            "span": {
+              "start": 14,
+              "end": 15
+            }
           }
         },
         "binding_name": {

@@ -33,6 +33,22 @@
 - `rm -f _build/tusk.lock && timeout 120 ./tusk fix --list-diagnostics`
 - `rm -f _build/tusk.lock && timeout 180 tusk run tusk -- fix --check --limit 10 <file>`
 
+## Current CST plan
+
+- [ ] Keep moving `Syn.Cst` toward a faithful `Ceibo -> Cst` lift driven by the fixture corpus
+- [ ] Prefer adding real CST node shapes over convenience projections when a fixture fails
+- [ ] Keep `packages/syn/src/cst.ml` focused on types and `packages/syn/src/cst_builder.ml` focused on lifting
+- [ ] Use `python3 packages/syn/tests/test_runner.py cst --refresh-clean` after each syntax slice to refresh all newly supported `.expected_cst.json` fixtures
+- [ ] Keep the current unsupported frontier explicit by fixing one syntax family at a time:
+  - [ ] destructuring `let` bindings and mutual `let`
+  - [x] record/update/index/assignment expressions
+  - [x] type annotations and coercions
+  - [ ] loops / begin / assert / lazy
+  - [ ] polymorphic variants / object syntax / attributes / extensions
+  - [ ] module/signature / first-class module coverage
+  - [ ] operator patterns / binding operators / index operators
+  - [ ] include / val / external / signature items
+
 ## Main goals
 
 - [ ] Implement all the lints in the sections below (and i mean ALL of them!)

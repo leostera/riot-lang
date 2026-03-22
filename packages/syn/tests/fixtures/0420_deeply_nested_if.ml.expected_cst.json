@@ -1,0 +1,1522 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 78
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 77
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "if",
+            "syntax_node": {
+              "kind": "IF_EXPR",
+              "span": {
+                "start": 8,
+                "end": 77
+              }
+            },
+            "condition": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 11,
+                  "end": 12
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 11,
+                    "end": 12
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 11,
+                      "end": 12
+                    }
+                  }
+                ]
+              }
+            },
+            "then_branch": {
+              "tag": "if",
+              "syntax_node": {
+                "kind": "IF_EXPR",
+                "span": {
+                  "start": 18,
+                  "end": 70
+                }
+              },
+              "condition": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 21,
+                      "end": 22
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "b",
+                      "span": {
+                        "start": 21,
+                        "end": 22
+                      }
+                    }
+                  ]
+                }
+              },
+              "then_branch": {
+                "tag": "if",
+                "syntax_node": {
+                  "kind": "IF_EXPR",
+                  "span": {
+                    "start": 28,
+                    "end": 63
+                  }
+                },
+                "condition": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 31,
+                      "end": 32
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 31,
+                        "end": 32
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "c",
+                        "span": {
+                          "start": 31,
+                          "end": 32
+                        }
+                      }
+                    ]
+                  }
+                },
+                "then_branch": {
+                  "tag": "if",
+                  "syntax_node": {
+                    "kind": "IF_EXPR",
+                    "span": {
+                      "start": 38,
+                      "end": 56
+                    }
+                  },
+                  "condition": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 41,
+                        "end": 42
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 41,
+                          "end": 42
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "d",
+                          "span": {
+                            "start": 41,
+                            "end": 42
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "then_branch": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 48,
+                          "end": 49
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "1",
+                        "span": {
+                          "start": 48,
+                          "end": 49
+                        }
+                      }
+                    }
+                  },
+                  "else_branch": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 55,
+                          "end": 56
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "2",
+                        "span": {
+                          "start": 55,
+                          "end": 56
+                        }
+                      }
+                    }
+                  }
+                },
+                "else_branch": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 62,
+                        "end": 63
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "3",
+                      "span": {
+                        "start": 62,
+                        "end": 63
+                      }
+                    }
+                  }
+                }
+              },
+              "else_branch": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 69,
+                      "end": 70
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "4",
+                    "span": {
+                      "start": 69,
+                      "end": 70
+                    }
+                  }
+                }
+              }
+            },
+            "else_branch": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 76,
+                    "end": 77
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "5",
+                  "span": {
+                    "start": 76,
+                    "end": 77
+                  }
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 77
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "if",
+          "syntax_node": {
+            "kind": "IF_EXPR",
+            "span": {
+              "start": 8,
+              "end": 77
+            }
+          },
+          "condition": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 11,
+                "end": 12
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 11,
+                  "end": 12
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 11,
+                    "end": 12
+                  }
+                }
+              ]
+            }
+          },
+          "then_branch": {
+            "tag": "if",
+            "syntax_node": {
+              "kind": "IF_EXPR",
+              "span": {
+                "start": 18,
+                "end": 70
+              }
+            },
+            "condition": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 21,
+                  "end": 22
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "span": {
+                      "start": 21,
+                      "end": 22
+                    }
+                  }
+                ]
+              }
+            },
+            "then_branch": {
+              "tag": "if",
+              "syntax_node": {
+                "kind": "IF_EXPR",
+                "span": {
+                  "start": 28,
+                  "end": 63
+                }
+              },
+              "condition": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 31,
+                    "end": 32
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 31,
+                      "end": 32
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "c",
+                      "span": {
+                        "start": 31,
+                        "end": 32
+                      }
+                    }
+                  ]
+                }
+              },
+              "then_branch": {
+                "tag": "if",
+                "syntax_node": {
+                  "kind": "IF_EXPR",
+                  "span": {
+                    "start": 38,
+                    "end": 56
+                  }
+                },
+                "condition": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 41,
+                      "end": 42
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 41,
+                        "end": 42
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "d",
+                        "span": {
+                          "start": 41,
+                          "end": 42
+                        }
+                      }
+                    ]
+                  }
+                },
+                "then_branch": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 48,
+                        "end": 49
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "1",
+                      "span": {
+                        "start": 48,
+                        "end": 49
+                      }
+                    }
+                  }
+                },
+                "else_branch": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 55,
+                        "end": 56
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "2",
+                      "span": {
+                        "start": 55,
+                        "end": 56
+                      }
+                    }
+                  }
+                }
+              },
+              "else_branch": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 62,
+                      "end": 63
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "3",
+                    "span": {
+                      "start": 62,
+                      "end": 63
+                    }
+                  }
+                }
+              }
+            },
+            "else_branch": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 69,
+                    "end": 70
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "4",
+                  "span": {
+                    "start": 69,
+                    "end": 70
+                  }
+                }
+              }
+            }
+          },
+          "else_branch": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 76,
+                  "end": 77
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "5",
+                "span": {
+                  "start": 76,
+                  "end": 77
+                }
+              }
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "if",
+        "syntax_node": {
+          "kind": "IF_EXPR",
+          "span": {
+            "start": 8,
+            "end": 77
+          }
+        },
+        "condition": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 11,
+              "end": 12
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 11,
+                "end": 12
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "span": {
+                  "start": 11,
+                  "end": 12
+                }
+              }
+            ]
+          }
+        },
+        "then_branch": {
+          "tag": "if",
+          "syntax_node": {
+            "kind": "IF_EXPR",
+            "span": {
+              "start": 18,
+              "end": 70
+            }
+          },
+          "condition": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 21,
+                "end": 22
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 21,
+                  "end": 22
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "b",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                }
+              ]
+            }
+          },
+          "then_branch": {
+            "tag": "if",
+            "syntax_node": {
+              "kind": "IF_EXPR",
+              "span": {
+                "start": 28,
+                "end": 63
+              }
+            },
+            "condition": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 31,
+                  "end": 32
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 31,
+                    "end": 32
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "c",
+                    "span": {
+                      "start": 31,
+                      "end": 32
+                    }
+                  }
+                ]
+              }
+            },
+            "then_branch": {
+              "tag": "if",
+              "syntax_node": {
+                "kind": "IF_EXPR",
+                "span": {
+                  "start": 38,
+                  "end": 56
+                }
+              },
+              "condition": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 41,
+                    "end": 42
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 41,
+                      "end": 42
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "d",
+                      "span": {
+                        "start": 41,
+                        "end": 42
+                      }
+                    }
+                  ]
+                }
+              },
+              "then_branch": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 48,
+                      "end": 49
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "1",
+                    "span": {
+                      "start": 48,
+                      "end": 49
+                    }
+                  }
+                }
+              },
+              "else_branch": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 55,
+                      "end": 56
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "2",
+                    "span": {
+                      "start": 55,
+                      "end": 56
+                    }
+                  }
+                }
+              }
+            },
+            "else_branch": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 62,
+                    "end": 63
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "3",
+                  "span": {
+                    "start": 62,
+                    "end": 63
+                  }
+                }
+              }
+            }
+          },
+          "else_branch": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 69,
+                  "end": 70
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "4",
+                "span": {
+                  "start": 69,
+                  "end": 70
+                }
+              }
+            }
+          }
+        },
+        "else_branch": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 76,
+                "end": 77
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "5",
+              "span": {
+                "start": 76,
+                "end": 77
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 11,
+            "end": 12
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 11,
+              "end": 12
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "a",
+              "span": {
+                "start": 11,
+                "end": 12
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "if",
+        "syntax_node": {
+          "kind": "IF_EXPR",
+          "span": {
+            "start": 18,
+            "end": 70
+          }
+        },
+        "condition": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 21,
+              "end": 22
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 21,
+                "end": 22
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "b",
+                "span": {
+                  "start": 21,
+                  "end": 22
+                }
+              }
+            ]
+          }
+        },
+        "then_branch": {
+          "tag": "if",
+          "syntax_node": {
+            "kind": "IF_EXPR",
+            "span": {
+              "start": 28,
+              "end": 63
+            }
+          },
+          "condition": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 31,
+                "end": 32
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 31,
+                  "end": 32
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "c",
+                  "span": {
+                    "start": 31,
+                    "end": 32
+                  }
+                }
+              ]
+            }
+          },
+          "then_branch": {
+            "tag": "if",
+            "syntax_node": {
+              "kind": "IF_EXPR",
+              "span": {
+                "start": 38,
+                "end": 56
+              }
+            },
+            "condition": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 41,
+                  "end": 42
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 41,
+                    "end": 42
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "d",
+                    "span": {
+                      "start": 41,
+                      "end": 42
+                    }
+                  }
+                ]
+              }
+            },
+            "then_branch": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 48,
+                    "end": 49
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "1",
+                  "span": {
+                    "start": 48,
+                    "end": 49
+                  }
+                }
+              }
+            },
+            "else_branch": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 55,
+                    "end": 56
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "2",
+                  "span": {
+                    "start": 55,
+                    "end": 56
+                  }
+                }
+              }
+            }
+          },
+          "else_branch": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 62,
+                  "end": 63
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "3",
+                "span": {
+                  "start": 62,
+                  "end": 63
+                }
+              }
+            }
+          }
+        },
+        "else_branch": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 69,
+                "end": 70
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "4",
+              "span": {
+                "start": 69,
+                "end": 70
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 21,
+            "end": 22
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 21,
+              "end": 22
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "b",
+              "span": {
+                "start": 21,
+                "end": 22
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "if",
+        "syntax_node": {
+          "kind": "IF_EXPR",
+          "span": {
+            "start": 28,
+            "end": 63
+          }
+        },
+        "condition": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 31,
+              "end": 32
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 31,
+                "end": 32
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "c",
+                "span": {
+                  "start": 31,
+                  "end": 32
+                }
+              }
+            ]
+          }
+        },
+        "then_branch": {
+          "tag": "if",
+          "syntax_node": {
+            "kind": "IF_EXPR",
+            "span": {
+              "start": 38,
+              "end": 56
+            }
+          },
+          "condition": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 41,
+                "end": 42
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 41,
+                  "end": 42
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "d",
+                  "span": {
+                    "start": 41,
+                    "end": 42
+                  }
+                }
+              ]
+            }
+          },
+          "then_branch": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 48,
+                  "end": 49
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "1",
+                "span": {
+                  "start": 48,
+                  "end": 49
+                }
+              }
+            }
+          },
+          "else_branch": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 55,
+                  "end": 56
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "2",
+                "span": {
+                  "start": 55,
+                  "end": 56
+                }
+              }
+            }
+          }
+        },
+        "else_branch": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 62,
+                "end": 63
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "3",
+              "span": {
+                "start": 62,
+                "end": 63
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 31,
+            "end": 32
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 31,
+              "end": 32
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "c",
+              "span": {
+                "start": 31,
+                "end": 32
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "if",
+        "syntax_node": {
+          "kind": "IF_EXPR",
+          "span": {
+            "start": 38,
+            "end": 56
+          }
+        },
+        "condition": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 41,
+              "end": 42
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 41,
+                "end": 42
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "d",
+                "span": {
+                  "start": 41,
+                  "end": 42
+                }
+              }
+            ]
+          }
+        },
+        "then_branch": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 48,
+                "end": 49
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "1",
+              "span": {
+                "start": 48,
+                "end": 49
+              }
+            }
+          }
+        },
+        "else_branch": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 55,
+                "end": 56
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "2",
+              "span": {
+                "start": 55,
+                "end": 56
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 41,
+            "end": 42
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 41,
+              "end": 42
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "d",
+              "span": {
+                "start": 41,
+                "end": 42
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 48,
+              "end": 49
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "1",
+            "span": {
+              "start": 48,
+              "end": 49
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 55,
+              "end": 56
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "2",
+            "span": {
+              "start": 55,
+              "end": 56
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 62,
+              "end": 63
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "3",
+            "span": {
+              "start": 62,
+              "end": 63
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 69,
+              "end": 70
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "4",
+            "span": {
+              "start": 69,
+              "end": 70
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 76,
+              "end": 77
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "5",
+            "span": {
+              "start": 76,
+              "end": 77
+            }
+          }
+        }
+      }
+    ]
+  }
+}

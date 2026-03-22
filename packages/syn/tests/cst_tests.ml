@@ -339,6 +339,101 @@ let tests =
               (String.equal (Syn.Ceibo.Red.SyntaxToken.text syntax_token) "true");
             Ok ()
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst typed expressions preserve the wrapped expression and type node"
+      (fun () ->
+        let source = "let render = (value : user_t)\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Typed
+                  {
+                    expression = Syn.Cst.Expression.Path { path; _ };
+                    type_syntax_node;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "value")
+              ~actual:(Syn.Cst.ModulePath.name path);
+            Test.assert_equal ~expected:"TYPE_CONSTR"
+              ~actual:
+                (type_syntax_node
+                |> Ceibo.Red.SyntaxNode.kind |> SyntaxKind.to_string);
+            Ok ()
+        | _ -> Error "expected typed expression value");
+    Test.case "cst coerce expressions preserve optional source types" (fun () ->
+        let source = "let render = (value : user_t :> display_t)\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Coerce
+                  {
+                    expression = Syn.Cst.Expression.Path { path; _ };
+                    from_type_syntax_node = Some from_type_syntax_node;
+                    to_type_syntax_node;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "value")
+              ~actual:(Syn.Cst.ModulePath.name path);
+            Test.assert_equal ~expected:"TYPE_CONSTR"
+              ~actual:
+                (from_type_syntax_node
+                |> Ceibo.Red.SyntaxNode.kind |> SyntaxKind.to_string);
+            Test.assert_equal ~expected:"TYPE_CONSTR"
+              ~actual:
+                (to_type_syntax_node
+                |> Ceibo.Red.SyntaxNode.kind |> SyntaxKind.to_string);
+            Ok ()
+        | _ -> Error "expected coerce expression value");
+    Test.case "cst source files keep top-level let-in expressions as items" (fun () ->
+        let source = "let a, b = pair in a\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.Expression
+            (Syn.Cst.Expression.Let
+              {
+                binding_pattern =
+                  Syn.Cst.Pattern.Tuple
+                    {
+                      elements =
+                        [
+                          Syn.Cst.Pattern.Identifier { name_token = left_name; _ };
+                          Syn.Cst.Pattern.Identifier { name_token = right_name; _ };
+                        ];
+                      _;
+                    };
+                _;
+              })
+          :: _ ->
+            Test.assert_equal ~expected:"a"
+              ~actual:(Syn.Cst.Token.text left_name);
+            Test.assert_equal ~expected:"b"
+              ~actual:(Syn.Cst.Token.text right_name);
+            Ok ()
+        | _ -> Error "expected top-level let expression item");
     Test.case "cst let expressions expose unit-pattern sequencing structurally" (fun () ->
         let source = "let render () = let () = log () in flush ()\n" in
         let result = Syn.parse ~filename:"sample.ml" source in
@@ -579,6 +674,353 @@ let tests =
               ~actual:(depth (Syn.Cst.LetBinding.value binding));
             Ok ()
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst function cases preserve constructor tuple patterns structurally"
+      (fun () ->
+        let source =
+          "let render = function | Some (head, _) -> head | None -> 0\n"
+        in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Function
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Constructor
+                            {
+                              constructor_path = some_path;
+                              arguments =
+                                [
+                                  Syn.Cst.Pattern.Parenthesized
+                                    {
+                                      inner =
+                                        Syn.Cst.Pattern.Tuple
+                                          {
+                                            elements =
+                                              [
+                                                Syn.Cst.Pattern.Identifier
+                                                  { name_token = head_name; _ };
+                                                Syn.Cst.Pattern.Wildcard _;
+                                              ];
+                                            _;
+                                          };
+                                      _;
+                                    };
+                                ];
+                              _;
+                            };
+                        _;
+                      }
+                      :: {
+                           pattern =
+                             Syn.Cst.Pattern.Constructor
+                               { constructor_path = none_path; arguments = []; _ };
+                           _;
+                         }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "Some")
+              ~actual:(Syn.Cst.ModulePath.name some_path);
+            Test.assert_equal ~expected:"head"
+              ~actual:(Syn.Cst.Token.text head_name);
+            Test.assert_equal ~expected:(Some "None")
+              ~actual:(Syn.Cst.ModulePath.name none_path);
+            Ok ()
+        | _ -> Error "expected faithful constructor pattern structure");
+    Test.case "cst match cases preserve alias and typed patterns structurally"
+      (fun () ->
+        let source =
+          "let render value = match value with | (user : user_t) as current_user -> current_user\n"
+        in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Alias
+                            {
+                              pattern =
+                                Syn.Cst.Pattern.Typed
+                                  {
+                                    pattern =
+                                      Syn.Cst.Pattern.Identifier
+                                        { name_token = user_name; _ };
+                                    type_syntax_node;
+                                    _;
+                                  };
+                              name_token = alias_name;
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"user"
+              ~actual:(Syn.Cst.Token.text user_name);
+            Test.assert_equal ~expected:"current_user"
+              ~actual:(Syn.Cst.Token.text alias_name);
+            Test.assert_equal ~expected:"TYPE_CONSTR"
+              ~actual:
+                (type_syntax_node
+                |> Ceibo.Red.SyntaxNode.kind |> SyntaxKind.to_string);
+            Ok ()
+        | _ -> Error "expected faithful alias typed pattern structure");
+    Test.case "cst record expressions preserve literal fields structurally" (fun () ->
+        let source = "let point = { x = 1; y = 2 }\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Record
+                  (Syn.Cst.RecordExpression.Literal
+                    {
+                      fields =
+                        [
+                          { field_path = first; value = Some (Syn.Cst.Expression.Literal _); _ };
+                          { field_path = second; value = Some (Syn.Cst.Expression.Literal _); _ };
+                        ];
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "x")
+              ~actual:(Syn.Cst.ModulePath.name first);
+            Test.assert_equal ~expected:(Some "y")
+              ~actual:(Syn.Cst.ModulePath.name second);
+            Ok ()
+        | _ -> Error "expected literal record expression");
+    Test.case "cst record update expressions preserve base and updated fields"
+      (fun () ->
+        let source = "let point = { point with x = 3 }\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Record
+                  (Syn.Cst.RecordExpression.Update
+                    {
+                      base = Syn.Cst.Expression.Path { path = base_path; _ };
+                      fields = [ { field_path; value = Some (Syn.Cst.Expression.Literal _); _ } ];
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "point")
+              ~actual:(Syn.Cst.ModulePath.name base_path);
+            Test.assert_equal ~expected:(Some "x")
+              ~actual:(Syn.Cst.ModulePath.name field_path);
+            Ok ()
+        | _ -> Error "expected update record expression");
+    Test.case "cst index and assign expressions preserve the written target"
+      (fun () ->
+        let source = "let x = arr.(0) <- 5\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Assign
+                  {
+                    target =
+                      Syn.Cst.Expression.Index
+                        {
+                          collection = Syn.Cst.Expression.Path { path; _ };
+                          index =
+                            Syn.Cst.Expression.Literal
+                              (Syn.Cst.Literal.Int { literal_token; _ });
+                          _;
+                        };
+                    operator_token;
+                    value = Syn.Cst.Expression.Literal (Syn.Cst.Literal.Int _);
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "arr")
+              ~actual:(Syn.Cst.ModulePath.name path);
+            Test.assert_equal ~expected:"0"
+              ~actual:(Syn.Cst.Token.text literal_token);
+            Test.assert_equal ~expected:"<-"
+              ~actual:(Syn.Cst.Token.text operator_token);
+            Ok ()
+        | _ -> Error "expected assign(index(...)) expression");
+    Test.case "cst record patterns preserve field punning and nested patterns"
+      (fun () ->
+        let source = "let x = match r with { user = { id }; name } -> id\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      [
+                        {
+                          pattern =
+                            Syn.Cst.Pattern.Record
+                              {
+                                fields =
+                                  [
+                                    {
+                                      field_path = user_field;
+                                      pattern =
+                                        Some
+                                          (Syn.Cst.Pattern.Record
+                                            {
+                                              fields =
+                                                [
+                                                  {
+                                                    field_path = id_field;
+                                                    pattern = None;
+                                                    _;
+                                                  };
+                                                ];
+                                              _;
+                                            });
+                                      _;
+                                    };
+                                    { field_path = name_field; pattern = None; _ };
+                                  ];
+                                _;
+                              };
+                          _;
+                        };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "user")
+              ~actual:(Syn.Cst.ModulePath.name user_field);
+            Test.assert_equal ~expected:(Some "id")
+              ~actual:(Syn.Cst.ModulePath.name id_field);
+            Test.assert_equal ~expected:(Some "name")
+              ~actual:(Syn.Cst.ModulePath.name name_field);
+            Ok ()
+        | _ -> Error "expected record pattern structure");
+    Test.case "cst array patterns preserve literal element patterns" (fun () ->
+        let source = "let x = match xs with [| 1; value |] -> value\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      [
+                        {
+                          pattern =
+                            Syn.Cst.Pattern.Array
+                              {
+                                elements =
+                                  [
+                                    Syn.Cst.Pattern.Literal
+                                      (Syn.Cst.PatternLiteral.Int _);
+                                    Syn.Cst.Pattern.Identifier { name_token; _ };
+                                  ];
+                                _;
+                              };
+                          _;
+                        };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"value"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Ok ()
+        | _ -> Error "expected array pattern structure");
+    Test.case "cst string indexing reuses the shared index expression shape"
+      (fun () ->
+        let source = "let x = s.[0]\n" in
+        let result = Syn.parse ~filename:"sample.ml" source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Index
+                  {
+                    collection = Syn.Cst.Expression.Path { path; _ };
+                    index =
+                      Syn.Cst.Expression.Literal
+                        (Syn.Cst.Literal.Int { literal_token; _ });
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "s")
+              ~actual:(Syn.Cst.ModulePath.name path);
+            Test.assert_equal ~expected:"0"
+              ~actual:(Syn.Cst.Token.text literal_token);
+            Ok ()
+        | _ -> Error "expected string index expression");
   ]
 
 let () =

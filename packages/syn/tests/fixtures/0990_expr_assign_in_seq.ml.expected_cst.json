@@ -1,0 +1,704 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 38
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 38
+            }
+          },
+          "binding_pattern": {
+            "tag": "literal",
+            "literal": {
+              "tag": "unit",
+              "syntax_node": {
+                "kind": "UNIT_LITERAL",
+                "span": {
+                  "start": 4,
+                  "end": 6
+                }
+              }
+            }
+          },
+          "binding_name": null,
+          "parameters": [],
+          "value": {
+            "tag": "sequence",
+            "syntax_node": {
+              "kind": "SEQUENCE_EXPR",
+              "span": {
+                "start": 11,
+                "end": 38
+              }
+            },
+            "left": {
+              "tag": "assign",
+              "syntax_node": {
+                "kind": "ASSIGN_EXPR",
+                "span": {
+                  "start": 11,
+                  "end": 17
+                }
+              },
+              "target": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 11,
+                    "end": 12
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 11,
+                      "end": 12
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 11,
+                        "end": 12
+                      }
+                    }
+                  ]
+                }
+              },
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":=",
+                "span": {
+                  "start": 13,
+                  "end": 15
+                }
+              },
+              "value": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 16,
+                      "end": 17
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "1",
+                    "span": {
+                      "start": 16,
+                      "end": 17
+                    }
+                  }
+                }
+              }
+            },
+            "right": {
+              "tag": "assign",
+              "syntax_node": {
+                "kind": "ASSIGN_EXPR",
+                "span": {
+                  "start": 21,
+                  "end": 27
+                }
+              },
+              "target": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 21,
+                      "end": 22
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "y",
+                      "span": {
+                        "start": 21,
+                        "end": 22
+                      }
+                    }
+                  ]
+                }
+              },
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":=",
+                "span": {
+                  "start": 23,
+                  "end": 25
+                }
+              },
+              "value": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 26,
+                      "end": 27
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "2",
+                    "span": {
+                      "start": 26,
+                      "end": 27
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "unit",
+          "syntax_node": {
+            "kind": "UNIT_LITERAL",
+            "span": {
+              "start": 4,
+              "end": 6
+            }
+          }
+        }
+      },
+      {
+        "tag": "sequence",
+        "syntax_node": {
+          "kind": "SEQUENCE_EXPR",
+          "span": {
+            "start": 11,
+            "end": 38
+          }
+        },
+        "left": {
+          "tag": "assign",
+          "syntax_node": {
+            "kind": "ASSIGN_EXPR",
+            "span": {
+              "start": 11,
+              "end": 17
+            }
+          },
+          "target": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 11,
+                "end": 12
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 11,
+                  "end": 12
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 11,
+                    "end": 12
+                  }
+                }
+              ]
+            }
+          },
+          "operator_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":=",
+            "span": {
+              "start": 13,
+              "end": 15
+            }
+          },
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 16,
+                  "end": 17
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "1",
+                "span": {
+                  "start": 16,
+                  "end": 17
+                }
+              }
+            }
+          }
+        },
+        "right": {
+          "tag": "assign",
+          "syntax_node": {
+            "kind": "ASSIGN_EXPR",
+            "span": {
+              "start": 21,
+              "end": 27
+            }
+          },
+          "target": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 21,
+                "end": 22
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 21,
+                  "end": 22
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                }
+              ]
+            }
+          },
+          "operator_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":=",
+            "span": {
+              "start": 23,
+              "end": 25
+            }
+          },
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 26,
+                  "end": 27
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "2",
+                "span": {
+                  "start": 26,
+                  "end": 27
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "assign",
+        "syntax_node": {
+          "kind": "ASSIGN_EXPR",
+          "span": {
+            "start": 11,
+            "end": 17
+          }
+        },
+        "target": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 11,
+              "end": 12
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 11,
+                "end": 12
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 11,
+                  "end": 12
+                }
+              }
+            ]
+          }
+        },
+        "operator_token": {
+          "kind": "IDENT_EXPR",
+          "text": ":=",
+          "span": {
+            "start": 13,
+            "end": 15
+          }
+        },
+        "value": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 16,
+                "end": 17
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "1",
+              "span": {
+                "start": 16,
+                "end": 17
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 11,
+            "end": 12
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 11,
+              "end": 12
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 11,
+                "end": 12
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 16,
+              "end": 17
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "1",
+            "span": {
+              "start": 16,
+              "end": 17
+            }
+          }
+        }
+      },
+      {
+        "tag": "assign",
+        "syntax_node": {
+          "kind": "ASSIGN_EXPR",
+          "span": {
+            "start": 21,
+            "end": 27
+          }
+        },
+        "target": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 21,
+              "end": 22
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 21,
+                "end": 22
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "span": {
+                  "start": 21,
+                  "end": 22
+                }
+              }
+            ]
+          }
+        },
+        "operator_token": {
+          "kind": "IDENT_EXPR",
+          "text": ":=",
+          "span": {
+            "start": 23,
+            "end": 25
+          }
+        },
+        "value": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 26,
+                "end": 27
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "2",
+              "span": {
+                "start": 26,
+                "end": 27
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 21,
+            "end": 22
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 21,
+              "end": 22
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "y",
+              "span": {
+                "start": 21,
+                "end": 22
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 26,
+              "end": 27
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "2",
+            "span": {
+              "start": 26,
+              "end": 27
+            }
+          }
+        }
+      },
+      {
+        "tag": "assign",
+        "syntax_node": {
+          "kind": "ASSIGN_EXPR",
+          "span": {
+            "start": 31,
+            "end": 37
+          }
+        },
+        "target": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 31,
+              "end": 32
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 31,
+                "end": 32
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "z",
+                "span": {
+                  "start": 31,
+                  "end": 32
+                }
+              }
+            ]
+          }
+        },
+        "operator_token": {
+          "kind": "IDENT_EXPR",
+          "text": ":=",
+          "span": {
+            "start": 33,
+            "end": 35
+          }
+        },
+        "value": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 36,
+                "end": 37
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "3",
+              "span": {
+                "start": 36,
+                "end": 37
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 31,
+            "end": 32
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 31,
+              "end": 32
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "z",
+              "span": {
+                "start": 31,
+                "end": 32
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 36,
+              "end": 37
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "3",
+            "span": {
+              "start": 36,
+              "end": 37
+            }
+          }
+        }
+      }
+    ]
+  }
+}

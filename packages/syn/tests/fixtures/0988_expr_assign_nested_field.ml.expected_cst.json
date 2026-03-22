@@ -1,0 +1,428 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 31
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 30
+            }
+          },
+          "binding_pattern": {
+            "tag": "literal",
+            "literal": {
+              "tag": "unit",
+              "syntax_node": {
+                "kind": "UNIT_LITERAL",
+                "span": {
+                  "start": 4,
+                  "end": 6
+                }
+              }
+            }
+          },
+          "binding_name": null,
+          "parameters": [],
+          "value": {
+            "tag": "assign",
+            "syntax_node": {
+              "kind": "ASSIGN_EXPR",
+              "span": {
+                "start": 9,
+                "end": 30
+              }
+            },
+            "target": {
+              "tag": "field_access",
+              "syntax_node": {
+                "kind": "FIELD_ACCESS_EXPR",
+                "span": {
+                  "start": 9,
+                  "end": 24
+                }
+              },
+              "receiver": {
+                "tag": "field_access",
+                "syntax_node": {
+                  "kind": "FIELD_ACCESS_EXPR",
+                  "span": {
+                    "start": 9,
+                    "end": 17
+                  }
+                },
+                "receiver": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 9,
+                      "end": 12
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 9,
+                        "end": 12
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "obj",
+                        "span": {
+                          "start": 9,
+                          "end": 12
+                        }
+                      }
+                    ]
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "data",
+                  "span": {
+                    "start": 13,
+                    "end": 17
+                  }
+                }
+              },
+              "field_name": {
+                "kind": "IDENT_EXPR",
+                "text": "value",
+                "span": {
+                  "start": 18,
+                  "end": 23
+                }
+              }
+            },
+            "operator_token": {
+              "kind": "IDENT_EXPR",
+              "text": "<-",
+              "span": {
+                "start": 24,
+                "end": 26
+              }
+            },
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 27,
+                    "end": 30
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "100",
+                  "span": {
+                    "start": 27,
+                    "end": 30
+                  }
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": [
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "unit",
+          "syntax_node": {
+            "kind": "UNIT_LITERAL",
+            "span": {
+              "start": 4,
+              "end": 6
+            }
+          }
+        }
+      },
+      {
+        "tag": "assign",
+        "syntax_node": {
+          "kind": "ASSIGN_EXPR",
+          "span": {
+            "start": 9,
+            "end": 30
+          }
+        },
+        "target": {
+          "tag": "field_access",
+          "syntax_node": {
+            "kind": "FIELD_ACCESS_EXPR",
+            "span": {
+              "start": 9,
+              "end": 24
+            }
+          },
+          "receiver": {
+            "tag": "field_access",
+            "syntax_node": {
+              "kind": "FIELD_ACCESS_EXPR",
+              "span": {
+                "start": 9,
+                "end": 17
+              }
+            },
+            "receiver": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 9,
+                  "end": 12
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 9,
+                    "end": 12
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "obj",
+                    "span": {
+                      "start": 9,
+                      "end": 12
+                    }
+                  }
+                ]
+              }
+            },
+            "field_name": {
+              "kind": "IDENT_EXPR",
+              "text": "data",
+              "span": {
+                "start": 13,
+                "end": 17
+              }
+            }
+          },
+          "field_name": {
+            "kind": "IDENT_EXPR",
+            "text": "value",
+            "span": {
+              "start": 18,
+              "end": 23
+            }
+          }
+        },
+        "operator_token": {
+          "kind": "IDENT_EXPR",
+          "text": "<-",
+          "span": {
+            "start": 24,
+            "end": 26
+          }
+        },
+        "value": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 27,
+                "end": 30
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "100",
+              "span": {
+                "start": 27,
+                "end": 30
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "field_access",
+        "syntax_node": {
+          "kind": "FIELD_ACCESS_EXPR",
+          "span": {
+            "start": 9,
+            "end": 24
+          }
+        },
+        "receiver": {
+          "tag": "field_access",
+          "syntax_node": {
+            "kind": "FIELD_ACCESS_EXPR",
+            "span": {
+              "start": 9,
+              "end": 17
+            }
+          },
+          "receiver": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 9,
+                "end": 12
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 9,
+                  "end": 12
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "obj",
+                  "span": {
+                    "start": 9,
+                    "end": 12
+                  }
+                }
+              ]
+            }
+          },
+          "field_name": {
+            "kind": "IDENT_EXPR",
+            "text": "data",
+            "span": {
+              "start": 13,
+              "end": 17
+            }
+          }
+        },
+        "field_name": {
+          "kind": "IDENT_EXPR",
+          "text": "value",
+          "span": {
+            "start": 18,
+            "end": 23
+          }
+        }
+      },
+      {
+        "tag": "field_access",
+        "syntax_node": {
+          "kind": "FIELD_ACCESS_EXPR",
+          "span": {
+            "start": 9,
+            "end": 17
+          }
+        },
+        "receiver": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 9,
+              "end": 12
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 9,
+                "end": 12
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "obj",
+                "span": {
+                  "start": 9,
+                  "end": 12
+                }
+              }
+            ]
+          }
+        },
+        "field_name": {
+          "kind": "IDENT_EXPR",
+          "text": "data",
+          "span": {
+            "start": 13,
+            "end": 17
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 9,
+            "end": 12
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 9,
+              "end": 12
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "obj",
+              "span": {
+                "start": 9,
+                "end": 12
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 27,
+              "end": 30
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "100",
+            "span": {
+              "start": 27,
+              "end": 30
+            }
+          }
+        }
+      }
+    ]
+  }
+}

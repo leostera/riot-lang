@@ -1,0 +1,498 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 34
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 33
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "p",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "p",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "typed",
+            "syntax_node": {
+              "kind": "TYPED_EXPR",
+              "span": {
+                "start": 8,
+                "end": 33
+              }
+            },
+            "expression": {
+              "tag": "parenthesized",
+              "syntax_node": {
+                "kind": "PAREN_EXPR",
+                "span": {
+                  "start": 9,
+                  "end": 17
+                }
+              },
+              "inner": {
+                "tag": "tuple",
+                "syntax_node": {
+                  "kind": "TUPLE_EXPR",
+                  "span": {
+                    "start": 10,
+                    "end": 16
+                  }
+                },
+                "elements": [
+                  {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 10,
+                          "end": 11
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "1",
+                        "span": {
+                          "start": 10,
+                          "end": 11
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "string",
+                      "syntax_node": {
+                        "kind": "STRING_LITERAL",
+                        "span": {
+                          "start": 13,
+                          "end": 16
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "STRING_LITERAL",
+                        "text": "\"a\"",
+                        "span": {
+                          "start": 13,
+                          "end": 16
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "type_syntax_node": {
+              "kind": "TYPE_TUPLE",
+              "span": {
+                "start": 20,
+                "end": 32
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 33
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "p",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "p",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "typed",
+          "syntax_node": {
+            "kind": "TYPED_EXPR",
+            "span": {
+              "start": 8,
+              "end": 33
+            }
+          },
+          "expression": {
+            "tag": "parenthesized",
+            "syntax_node": {
+              "kind": "PAREN_EXPR",
+              "span": {
+                "start": 9,
+                "end": 17
+              }
+            },
+            "inner": {
+              "tag": "tuple",
+              "syntax_node": {
+                "kind": "TUPLE_EXPR",
+                "span": {
+                  "start": 10,
+                  "end": 16
+                }
+              },
+              "elements": [
+                {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 10,
+                        "end": 11
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "1",
+                      "span": {
+                        "start": 10,
+                        "end": 11
+                      }
+                    }
+                  }
+                },
+                {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 13,
+                        "end": 16
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"a\"",
+                      "span": {
+                        "start": 13,
+                        "end": 16
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "type_syntax_node": {
+            "kind": "TYPE_TUPLE",
+            "span": {
+              "start": 20,
+              "end": 32
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "typed",
+        "syntax_node": {
+          "kind": "TYPED_EXPR",
+          "span": {
+            "start": 8,
+            "end": 33
+          }
+        },
+        "expression": {
+          "tag": "parenthesized",
+          "syntax_node": {
+            "kind": "PAREN_EXPR",
+            "span": {
+              "start": 9,
+              "end": 17
+            }
+          },
+          "inner": {
+            "tag": "tuple",
+            "syntax_node": {
+              "kind": "TUPLE_EXPR",
+              "span": {
+                "start": 10,
+                "end": 16
+              }
+            },
+            "elements": [
+              {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 10,
+                      "end": 11
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "1",
+                    "span": {
+                      "start": 10,
+                      "end": 11
+                    }
+                  }
+                }
+              },
+              {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 13,
+                      "end": 16
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"a\"",
+                    "span": {
+                      "start": 13,
+                      "end": 16
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "type_syntax_node": {
+          "kind": "TYPE_TUPLE",
+          "span": {
+            "start": 20,
+            "end": 32
+          }
+        }
+      },
+      {
+        "tag": "parenthesized",
+        "syntax_node": {
+          "kind": "PAREN_EXPR",
+          "span": {
+            "start": 9,
+            "end": 17
+          }
+        },
+        "inner": {
+          "tag": "tuple",
+          "syntax_node": {
+            "kind": "TUPLE_EXPR",
+            "span": {
+              "start": 10,
+              "end": 16
+            }
+          },
+          "elements": [
+            {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 10,
+                    "end": 11
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "1",
+                  "span": {
+                    "start": 10,
+                    "end": 11
+                  }
+                }
+              }
+            },
+            {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 13,
+                    "end": 16
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"a\"",
+                  "span": {
+                    "start": 13,
+                    "end": 16
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "tuple",
+        "syntax_node": {
+          "kind": "TUPLE_EXPR",
+          "span": {
+            "start": 10,
+            "end": 16
+          }
+        },
+        "elements": [
+          {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 10,
+                  "end": 11
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "1",
+                "span": {
+                  "start": 10,
+                  "end": 11
+                }
+              }
+            }
+          },
+          {
+            "tag": "literal",
+            "literal": {
+              "tag": "string",
+              "syntax_node": {
+                "kind": "STRING_LITERAL",
+                "span": {
+                  "start": 13,
+                  "end": 16
+                }
+              },
+              "literal_token": {
+                "kind": "STRING_LITERAL",
+                "text": "\"a\"",
+                "span": {
+                  "start": 13,
+                  "end": 16
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 10,
+              "end": 11
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "1",
+            "span": {
+              "start": 10,
+              "end": 11
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 13,
+              "end": 16
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"a\"",
+            "span": {
+              "start": 13,
+              "end": 16
+            }
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,1430 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 94
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 94
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "match",
+            "syntax_node": {
+              "kind": "MATCH_EXPR",
+              "span": {
+                "start": 10,
+                "end": 94
+              }
+            },
+            "scrutinee": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 16,
+                  "end": 17
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 16,
+                    "end": 17
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 16,
+                      "end": 17
+                    }
+                  }
+                ]
+              }
+            },
+            "cases": [
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 25,
+                    "end": 75
+                  }
+                },
+                "pattern": {
+                  "tag": "constructor",
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 27,
+                      "end": 33
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "CONSTRUCTOR_PATTERN",
+                      "span": {
+                        "start": 27,
+                        "end": 33
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "Some",
+                        "span": {
+                          "start": 27,
+                          "end": 31
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": [
+                    {
+                      "tag": "identifier",
+                      "syntax_node": {
+                        "kind": "IDENT_PATTERN",
+                        "span": {
+                          "start": 32,
+                          "end": 33
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "x",
+                        "span": {
+                          "start": 32,
+                          "end": 33
+                        }
+                      }
+                    }
+                  ]
+                },
+                "guard": null,
+                "body": {
+                  "tag": "parenthesized",
+                  "syntax_node": {
+                    "kind": "PAREN_EXPR",
+                    "span": {
+                      "start": 37,
+                      "end": 75
+                    }
+                  },
+                  "inner": {
+                    "tag": "match",
+                    "syntax_node": {
+                      "kind": "MATCH_EXPR",
+                      "span": {
+                        "start": 39,
+                        "end": 74
+                      }
+                    },
+                    "scrutinee": {
+                      "tag": "path",
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 45,
+                          "end": 46
+                        }
+                      },
+                      "path": {
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 45,
+                            "end": 46
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "x",
+                            "span": {
+                              "start": 45,
+                              "end": 46
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "cases": [
+                      {
+                        "syntax_node": {
+                          "kind": "MATCH_CASE",
+                          "span": {
+                            "start": 52,
+                            "end": 61
+                          }
+                        },
+                        "pattern": {
+                          "tag": "literal",
+                          "literal": {
+                            "tag": "int",
+                            "syntax_node": {
+                              "kind": "INT_LITERAL",
+                              "span": {
+                                "start": 52,
+                                "end": 53
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "INT_LITERAL",
+                              "text": "1",
+                              "span": {
+                                "start": 52,
+                                "end": 53
+                              }
+                            }
+                          }
+                        },
+                        "guard": null,
+                        "body": {
+                          "tag": "literal",
+                          "literal": {
+                            "tag": "bool",
+                            "syntax_node": {
+                              "kind": "BOOL_LITERAL",
+                              "span": {
+                                "start": 57,
+                                "end": 61
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "BOOL_LITERAL",
+                              "text": "true",
+                              "span": {
+                                "start": 57,
+                                "end": 61
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "syntax_node": {
+                          "kind": "MATCH_CASE",
+                          "span": {
+                            "start": 62,
+                            "end": 74
+                          }
+                        },
+                        "pattern": {
+                          "tag": "wildcard",
+                          "syntax_node": {
+                            "kind": "WILDCARD_PATTERN",
+                            "span": {
+                              "start": 64,
+                              "end": 65
+                            }
+                          }
+                        },
+                        "guard": null,
+                        "body": {
+                          "tag": "literal",
+                          "literal": {
+                            "tag": "bool",
+                            "syntax_node": {
+                              "kind": "BOOL_LITERAL",
+                              "span": {
+                                "start": 69,
+                                "end": 74
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "BOOL_LITERAL",
+                              "text": "false",
+                              "span": {
+                                "start": 69,
+                                "end": 74
+                              }
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 78,
+                    "end": 93
+                  }
+                },
+                "pattern": {
+                  "tag": "constructor",
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 80,
+                      "end": 85
+                    }
+                  },
+                  "constructor_path": {
+                    "syntax_node": {
+                      "kind": "CONSTRUCTOR_PATTERN",
+                      "span": {
+                        "start": 80,
+                        "end": 85
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "None",
+                        "span": {
+                          "start": 80,
+                          "end": 84
+                        }
+                      }
+                    ]
+                  },
+                  "arguments": []
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "bool",
+                    "syntax_node": {
+                      "kind": "BOOL_LITERAL",
+                      "span": {
+                        "start": 88,
+                        "end": 93
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "BOOL_LITERAL",
+                      "text": "false",
+                      "span": {
+                        "start": 88,
+                        "end": 93
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 94
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "match",
+          "syntax_node": {
+            "kind": "MATCH_EXPR",
+            "span": {
+              "start": 10,
+              "end": 94
+            }
+          },
+          "scrutinee": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 16,
+                "end": 17
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 16,
+                  "end": 17
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 16,
+                    "end": 17
+                  }
+                }
+              ]
+            }
+          },
+          "cases": [
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 25,
+                  "end": 75
+                }
+              },
+              "pattern": {
+                "tag": "constructor",
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 27,
+                    "end": 33
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 27,
+                      "end": 33
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "Some",
+                      "span": {
+                        "start": 27,
+                        "end": 31
+                      }
+                    }
+                  ]
+                },
+                "arguments": [
+                  {
+                    "tag": "identifier",
+                    "syntax_node": {
+                      "kind": "IDENT_PATTERN",
+                      "span": {
+                        "start": 32,
+                        "end": 33
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 32,
+                        "end": 33
+                      }
+                    }
+                  }
+                ]
+              },
+              "guard": null,
+              "body": {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "PAREN_EXPR",
+                  "span": {
+                    "start": 37,
+                    "end": 75
+                  }
+                },
+                "inner": {
+                  "tag": "match",
+                  "syntax_node": {
+                    "kind": "MATCH_EXPR",
+                    "span": {
+                      "start": 39,
+                      "end": 74
+                    }
+                  },
+                  "scrutinee": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 45,
+                        "end": 46
+                      }
+                    },
+                    "path": {
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 45,
+                          "end": 46
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "x",
+                          "span": {
+                            "start": 45,
+                            "end": 46
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "cases": [
+                    {
+                      "syntax_node": {
+                        "kind": "MATCH_CASE",
+                        "span": {
+                          "start": 52,
+                          "end": 61
+                        }
+                      },
+                      "pattern": {
+                        "tag": "literal",
+                        "literal": {
+                          "tag": "int",
+                          "syntax_node": {
+                            "kind": "INT_LITERAL",
+                            "span": {
+                              "start": 52,
+                              "end": 53
+                            }
+                          },
+                          "literal_token": {
+                            "kind": "INT_LITERAL",
+                            "text": "1",
+                            "span": {
+                              "start": 52,
+                              "end": 53
+                            }
+                          }
+                        }
+                      },
+                      "guard": null,
+                      "body": {
+                        "tag": "literal",
+                        "literal": {
+                          "tag": "bool",
+                          "syntax_node": {
+                            "kind": "BOOL_LITERAL",
+                            "span": {
+                              "start": 57,
+                              "end": 61
+                            }
+                          },
+                          "literal_token": {
+                            "kind": "BOOL_LITERAL",
+                            "text": "true",
+                            "span": {
+                              "start": 57,
+                              "end": 61
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "syntax_node": {
+                        "kind": "MATCH_CASE",
+                        "span": {
+                          "start": 62,
+                          "end": 74
+                        }
+                      },
+                      "pattern": {
+                        "tag": "wildcard",
+                        "syntax_node": {
+                          "kind": "WILDCARD_PATTERN",
+                          "span": {
+                            "start": 64,
+                            "end": 65
+                          }
+                        }
+                      },
+                      "guard": null,
+                      "body": {
+                        "tag": "literal",
+                        "literal": {
+                          "tag": "bool",
+                          "syntax_node": {
+                            "kind": "BOOL_LITERAL",
+                            "span": {
+                              "start": 69,
+                              "end": 74
+                            }
+                          },
+                          "literal_token": {
+                            "kind": "BOOL_LITERAL",
+                            "text": "false",
+                            "span": {
+                              "start": 69,
+                              "end": 74
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 78,
+                  "end": 93
+                }
+              },
+              "pattern": {
+                "tag": "constructor",
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 80,
+                    "end": 85
+                  }
+                },
+                "constructor_path": {
+                  "syntax_node": {
+                    "kind": "CONSTRUCTOR_PATTERN",
+                    "span": {
+                      "start": 80,
+                      "end": 85
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "None",
+                      "span": {
+                        "start": 80,
+                        "end": 84
+                      }
+                    }
+                  ]
+                },
+                "arguments": []
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "bool",
+                  "syntax_node": {
+                    "kind": "BOOL_LITERAL",
+                    "span": {
+                      "start": 88,
+                      "end": 93
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "BOOL_LITERAL",
+                    "text": "false",
+                    "span": {
+                      "start": 88,
+                      "end": 93
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "match",
+        "syntax_node": {
+          "kind": "MATCH_EXPR",
+          "span": {
+            "start": 10,
+            "end": 94
+          }
+        },
+        "scrutinee": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 16,
+              "end": 17
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 16,
+                "end": 17
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "span": {
+                  "start": 16,
+                  "end": 17
+                }
+              }
+            ]
+          }
+        },
+        "cases": [
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 25,
+                "end": 75
+              }
+            },
+            "pattern": {
+              "tag": "constructor",
+              "syntax_node": {
+                "kind": "CONSTRUCTOR_PATTERN",
+                "span": {
+                  "start": 27,
+                  "end": 33
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 27,
+                    "end": 33
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Some",
+                    "span": {
+                      "start": 27,
+                      "end": 31
+                    }
+                  }
+                ]
+              },
+              "arguments": [
+                {
+                  "tag": "identifier",
+                  "syntax_node": {
+                    "kind": "IDENT_PATTERN",
+                    "span": {
+                      "start": 32,
+                      "end": 33
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "span": {
+                      "start": 32,
+                      "end": 33
+                    }
+                  }
+                }
+              ]
+            },
+            "guard": null,
+            "body": {
+              "tag": "parenthesized",
+              "syntax_node": {
+                "kind": "PAREN_EXPR",
+                "span": {
+                  "start": 37,
+                  "end": 75
+                }
+              },
+              "inner": {
+                "tag": "match",
+                "syntax_node": {
+                  "kind": "MATCH_EXPR",
+                  "span": {
+                    "start": 39,
+                    "end": 74
+                  }
+                },
+                "scrutinee": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 45,
+                      "end": 46
+                    }
+                  },
+                  "path": {
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 45,
+                        "end": 46
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "x",
+                        "span": {
+                          "start": 45,
+                          "end": 46
+                        }
+                      }
+                    ]
+                  }
+                },
+                "cases": [
+                  {
+                    "syntax_node": {
+                      "kind": "MATCH_CASE",
+                      "span": {
+                        "start": 52,
+                        "end": 61
+                      }
+                    },
+                    "pattern": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "int",
+                        "syntax_node": {
+                          "kind": "INT_LITERAL",
+                          "span": {
+                            "start": 52,
+                            "end": 53
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "INT_LITERAL",
+                          "text": "1",
+                          "span": {
+                            "start": 52,
+                            "end": 53
+                          }
+                        }
+                      }
+                    },
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "bool",
+                        "syntax_node": {
+                          "kind": "BOOL_LITERAL",
+                          "span": {
+                            "start": 57,
+                            "end": 61
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "BOOL_LITERAL",
+                          "text": "true",
+                          "span": {
+                            "start": 57,
+                            "end": 61
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "syntax_node": {
+                      "kind": "MATCH_CASE",
+                      "span": {
+                        "start": 62,
+                        "end": 74
+                      }
+                    },
+                    "pattern": {
+                      "tag": "wildcard",
+                      "syntax_node": {
+                        "kind": "WILDCARD_PATTERN",
+                        "span": {
+                          "start": 64,
+                          "end": 65
+                        }
+                      }
+                    },
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "bool",
+                        "syntax_node": {
+                          "kind": "BOOL_LITERAL",
+                          "span": {
+                            "start": 69,
+                            "end": 74
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "BOOL_LITERAL",
+                          "text": "false",
+                          "span": {
+                            "start": 69,
+                            "end": 74
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 78,
+                "end": 93
+              }
+            },
+            "pattern": {
+              "tag": "constructor",
+              "syntax_node": {
+                "kind": "CONSTRUCTOR_PATTERN",
+                "span": {
+                  "start": 80,
+                  "end": 85
+                }
+              },
+              "constructor_path": {
+                "syntax_node": {
+                  "kind": "CONSTRUCTOR_PATTERN",
+                  "span": {
+                    "start": 80,
+                    "end": 85
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "None",
+                    "span": {
+                      "start": 80,
+                      "end": 84
+                    }
+                  }
+                ]
+              },
+              "arguments": []
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "bool",
+                "syntax_node": {
+                  "kind": "BOOL_LITERAL",
+                  "span": {
+                    "start": 88,
+                    "end": 93
+                  }
+                },
+                "literal_token": {
+                  "kind": "BOOL_LITERAL",
+                  "text": "false",
+                  "span": {
+                    "start": 88,
+                    "end": 93
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 16,
+            "end": 17
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 16,
+              "end": 17
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "a",
+              "span": {
+                "start": 16,
+                "end": 17
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "parenthesized",
+        "syntax_node": {
+          "kind": "PAREN_EXPR",
+          "span": {
+            "start": 37,
+            "end": 75
+          }
+        },
+        "inner": {
+          "tag": "match",
+          "syntax_node": {
+            "kind": "MATCH_EXPR",
+            "span": {
+              "start": 39,
+              "end": 74
+            }
+          },
+          "scrutinee": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 45,
+                "end": 46
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 45,
+                  "end": 46
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 45,
+                    "end": 46
+                  }
+                }
+              ]
+            }
+          },
+          "cases": [
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 52,
+                  "end": 61
+                }
+              },
+              "pattern": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 52,
+                      "end": 53
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "1",
+                    "span": {
+                      "start": 52,
+                      "end": 53
+                    }
+                  }
+                }
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "bool",
+                  "syntax_node": {
+                    "kind": "BOOL_LITERAL",
+                    "span": {
+                      "start": 57,
+                      "end": 61
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "BOOL_LITERAL",
+                    "text": "true",
+                    "span": {
+                      "start": 57,
+                      "end": 61
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 62,
+                  "end": 74
+                }
+              },
+              "pattern": {
+                "tag": "wildcard",
+                "syntax_node": {
+                  "kind": "WILDCARD_PATTERN",
+                  "span": {
+                    "start": 64,
+                    "end": 65
+                  }
+                }
+              },
+              "guard": null,
+              "body": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "bool",
+                  "syntax_node": {
+                    "kind": "BOOL_LITERAL",
+                    "span": {
+                      "start": 69,
+                      "end": 74
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "BOOL_LITERAL",
+                    "text": "false",
+                    "span": {
+                      "start": 69,
+                      "end": 74
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "match",
+        "syntax_node": {
+          "kind": "MATCH_EXPR",
+          "span": {
+            "start": 39,
+            "end": 74
+          }
+        },
+        "scrutinee": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 45,
+              "end": 46
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 45,
+                "end": 46
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 45,
+                  "end": 46
+                }
+              }
+            ]
+          }
+        },
+        "cases": [
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 52,
+                "end": 61
+              }
+            },
+            "pattern": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 52,
+                    "end": 53
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "1",
+                  "span": {
+                    "start": 52,
+                    "end": 53
+                  }
+                }
+              }
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "bool",
+                "syntax_node": {
+                  "kind": "BOOL_LITERAL",
+                  "span": {
+                    "start": 57,
+                    "end": 61
+                  }
+                },
+                "literal_token": {
+                  "kind": "BOOL_LITERAL",
+                  "text": "true",
+                  "span": {
+                    "start": 57,
+                    "end": 61
+                  }
+                }
+              }
+            }
+          },
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 62,
+                "end": 74
+              }
+            },
+            "pattern": {
+              "tag": "wildcard",
+              "syntax_node": {
+                "kind": "WILDCARD_PATTERN",
+                "span": {
+                  "start": 64,
+                  "end": 65
+                }
+              }
+            },
+            "guard": null,
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "bool",
+                "syntax_node": {
+                  "kind": "BOOL_LITERAL",
+                  "span": {
+                    "start": 69,
+                    "end": 74
+                  }
+                },
+                "literal_token": {
+                  "kind": "BOOL_LITERAL",
+                  "text": "false",
+                  "span": {
+                    "start": 69,
+                    "end": 74
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 45,
+            "end": 46
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 45,
+              "end": 46
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 45,
+                "end": 46
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 52,
+              "end": 53
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "1",
+            "span": {
+              "start": 52,
+              "end": 53
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "bool",
+          "syntax_node": {
+            "kind": "BOOL_LITERAL",
+            "span": {
+              "start": 57,
+              "end": 61
+            }
+          },
+          "literal_token": {
+            "kind": "BOOL_LITERAL",
+            "text": "true",
+            "span": {
+              "start": 57,
+              "end": 61
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "bool",
+          "syntax_node": {
+            "kind": "BOOL_LITERAL",
+            "span": {
+              "start": 69,
+              "end": 74
+            }
+          },
+          "literal_token": {
+            "kind": "BOOL_LITERAL",
+            "text": "false",
+            "span": {
+              "start": 69,
+              "end": 74
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "bool",
+          "syntax_node": {
+            "kind": "BOOL_LITERAL",
+            "span": {
+              "start": 88,
+              "end": 93
+            }
+          },
+          "literal_token": {
+            "kind": "BOOL_LITERAL",
+            "text": "false",
+            "span": {
+              "start": 88,
+              "end": 93
+            }
+          }
+        }
+      }
+    ]
+  }
+}

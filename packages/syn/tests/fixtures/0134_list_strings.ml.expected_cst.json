@@ -1,0 +1,383 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 26
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 25
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "list",
+            "syntax_node": {
+              "kind": "LIST_EXPR",
+              "span": {
+                "start": 8,
+                "end": 25
+              }
+            },
+            "elements": [
+              {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 10,
+                      "end": 13
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"a\"",
+                    "span": {
+                      "start": 10,
+                      "end": 13
+                    }
+                  }
+                }
+              },
+              {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 15,
+                      "end": 18
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"b\"",
+                    "span": {
+                      "start": 15,
+                      "end": 18
+                    }
+                  }
+                }
+              },
+              {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 20,
+                      "end": 23
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"c\"",
+                    "span": {
+                      "start": 20,
+                      "end": 23
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 25
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "list",
+          "syntax_node": {
+            "kind": "LIST_EXPR",
+            "span": {
+              "start": 8,
+              "end": 25
+            }
+          },
+          "elements": [
+            {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 10,
+                    "end": 13
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"a\"",
+                  "span": {
+                    "start": 10,
+                    "end": 13
+                  }
+                }
+              }
+            },
+            {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 15,
+                    "end": 18
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"b\"",
+                  "span": {
+                    "start": 15,
+                    "end": 18
+                  }
+                }
+              }
+            },
+            {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 20,
+                    "end": 23
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"c\"",
+                  "span": {
+                    "start": 20,
+                    "end": 23
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "list",
+        "syntax_node": {
+          "kind": "LIST_EXPR",
+          "span": {
+            "start": 8,
+            "end": 25
+          }
+        },
+        "elements": [
+          {
+            "tag": "literal",
+            "literal": {
+              "tag": "string",
+              "syntax_node": {
+                "kind": "STRING_LITERAL",
+                "span": {
+                  "start": 10,
+                  "end": 13
+                }
+              },
+              "literal_token": {
+                "kind": "STRING_LITERAL",
+                "text": "\"a\"",
+                "span": {
+                  "start": 10,
+                  "end": 13
+                }
+              }
+            }
+          },
+          {
+            "tag": "literal",
+            "literal": {
+              "tag": "string",
+              "syntax_node": {
+                "kind": "STRING_LITERAL",
+                "span": {
+                  "start": 15,
+                  "end": 18
+                }
+              },
+              "literal_token": {
+                "kind": "STRING_LITERAL",
+                "text": "\"b\"",
+                "span": {
+                  "start": 15,
+                  "end": 18
+                }
+              }
+            }
+          },
+          {
+            "tag": "literal",
+            "literal": {
+              "tag": "string",
+              "syntax_node": {
+                "kind": "STRING_LITERAL",
+                "span": {
+                  "start": 20,
+                  "end": 23
+                }
+              },
+              "literal_token": {
+                "kind": "STRING_LITERAL",
+                "text": "\"c\"",
+                "span": {
+                  "start": 20,
+                  "end": 23
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 10,
+              "end": 13
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"a\"",
+            "span": {
+              "start": 10,
+              "end": 13
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 15,
+              "end": 18
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"b\"",
+            "span": {
+              "start": 15,
+              "end": 18
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 20,
+              "end": 23
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"c\"",
+            "span": {
+              "start": 20,
+              "end": 23
+            }
+          }
+        }
+      }
+    ]
+  }
+}

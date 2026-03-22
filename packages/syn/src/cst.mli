@@ -34,6 +34,14 @@ module PatternLiteral : sig
         syntax_node : syntax_node;
         literal_token : Token.t;
       }
+    | Float of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Char of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
     | Bool of {
         syntax_node : syntax_node;
         literal_token : Token.t;
@@ -47,6 +55,15 @@ type pattern =
   | Identifier of identifier_pattern
   | Wildcard of wildcard_pattern
   | Literal of pattern_literal
+  | Constructor of constructor_pattern
+  | Tuple of tuple_pattern
+  | List of list_pattern
+  | Array of array_pattern
+  | Record of record_pattern
+  | Cons of cons_pattern
+  | Or of or_pattern
+  | Alias of alias_pattern
+  | Typed of typed_pattern
   | Parenthesized of parenthesized_pattern
   | Unknown of syntax_node
 
@@ -57,6 +74,61 @@ and identifier_pattern = {
 
 and wildcard_pattern = {
   syntax_node : syntax_node;
+}
+
+and constructor_pattern = {
+  syntax_node : syntax_node;
+  constructor_path : ModulePath.t;
+  arguments : pattern list;
+}
+
+and tuple_pattern = {
+  syntax_node : syntax_node;
+  elements : pattern list;
+}
+
+and list_pattern = {
+  syntax_node : syntax_node;
+  elements : pattern list;
+}
+
+and array_pattern = {
+  syntax_node : syntax_node;
+  elements : pattern list;
+}
+
+and record_pattern = {
+  syntax_node : syntax_node;
+  fields : record_pattern_field list;
+}
+
+and record_pattern_field = {
+  syntax_node : syntax_node;
+  field_path : ModulePath.t;
+  pattern : pattern option;
+}
+
+and cons_pattern = {
+  syntax_node : syntax_node;
+  head : pattern;
+  tail : pattern;
+}
+
+and or_pattern = {
+  syntax_node : syntax_node;
+  alternatives : pattern list;
+}
+
+and alias_pattern = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+  name_token : Token.t;
+}
+
+and typed_pattern = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+  type_syntax_node : syntax_node;
 }
 
 and parenthesized_pattern = {
@@ -128,6 +200,14 @@ module Literal : sig
         syntax_node : syntax_node;
         literal_token : Token.t;
       }
+    | Float of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
+    | Char of {
+        syntax_node : syntax_node;
+        literal_token : Token.t;
+      }
     | Bool of {
         syntax_node : syntax_node;
         literal_token : Token.t;
@@ -141,8 +221,14 @@ type expression =
   | Path of path_expression
   | Literal of literal
   | Apply of apply_expression
+  | Prefix of prefix_expression
   | FieldAccess of field_access_expression
+  | Index of index_expression
+  | Assign of assign_expression
   | Infix of infix_expression
+  | Typed of typed_expression
+  | Coerce of coerce_expression
+  | Sequence of sequence_expression
   | Tuple of tuple_expression
   | List of list_expression
   | Array of array_expression
@@ -168,16 +254,54 @@ and apply_expression = {
   argument : expression;
 }
 
+and prefix_expression = {
+  syntax_node : syntax_node;
+  operator_token : Token.t;
+  operand : expression;
+}
+
 and field_access_expression = {
   syntax_node : syntax_node;
   receiver : expression;
   field_name : Token.t;
 }
 
+and index_expression = {
+  syntax_node : syntax_node;
+  collection : expression;
+  index : expression;
+}
+
+and assign_expression = {
+  syntax_node : syntax_node;
+  target : expression;
+  operator_token : Token.t;
+  value : expression;
+}
+
 and infix_expression = {
   syntax_node : syntax_node;
   left : expression;
   operator_token : Token.t;
+  right : expression;
+}
+
+and typed_expression = {
+  syntax_node : syntax_node;
+  expression : expression;
+  type_syntax_node : syntax_node;
+}
+
+and coerce_expression = {
+  syntax_node : syntax_node;
+  expression : expression;
+  from_type_syntax_node : syntax_node option;
+  to_type_syntax_node : syntax_node;
+}
+
+and sequence_expression = {
+  syntax_node : syntax_node;
+  left : expression;
   right : expression;
 }
 
@@ -196,8 +320,25 @@ and array_expression = {
   elements : expression list;
 }
 
-and record_expression = {
+and record_expression =
+  | Literal of record_literal_expression
+  | Update of record_update_expression
+
+and record_literal_expression = {
   syntax_node : syntax_node;
+  fields : record_expression_field list;
+}
+
+and record_update_expression = {
+  syntax_node : syntax_node;
+  base : expression;
+  fields : record_expression_field list;
+}
+
+and record_expression_field = {
+  syntax_node : syntax_node;
+  field_path : ModulePath.t;
+  value : expression option;
 }
 
 and local_open_expression = {
@@ -262,8 +403,14 @@ module Expression : sig
     | Path of path_expression
     | Literal of literal
     | Apply of apply_expression
+    | Prefix of prefix_expression
     | FieldAccess of field_access_expression
+    | Index of index_expression
+    | Assign of assign_expression
     | Infix of infix_expression
+    | Typed of typed_expression
+    | Coerce of coerce_expression
+    | Sequence of sequence_expression
     | Tuple of tuple_expression
     | List of list_expression
     | Array of array_expression
@@ -286,10 +433,51 @@ module Pattern : sig
     | Identifier of identifier_pattern
     | Wildcard of wildcard_pattern
     | Literal of pattern_literal
+    | Constructor of constructor_pattern
+    | Tuple of tuple_pattern
+    | List of list_pattern
+    | Array of array_pattern
+    | Record of record_pattern
+    | Cons of cons_pattern
+    | Or of or_pattern
+    | Alias of alias_pattern
+    | Typed of typed_pattern
     | Parenthesized of parenthesized_pattern
     | Unknown of syntax_node
 
   val syntax_node : t -> syntax_node
+end
+
+module ArrayPattern : sig
+  type t = array_pattern = {
+    syntax_node : syntax_node;
+    elements : pattern list;
+  }
+
+  val syntax_node : t -> syntax_node
+  val elements : t -> Pattern.t list
+end
+
+module RecordPattern : sig
+  type t = record_pattern = {
+    syntax_node : syntax_node;
+    fields : record_pattern_field list;
+  }
+
+  val syntax_node : t -> syntax_node
+  val fields : t -> record_pattern_field list
+end
+
+module RecordPatternField : sig
+  type t = record_pattern_field = {
+    syntax_node : syntax_node;
+    field_path : ModulePath.t;
+    pattern : pattern option;
+  }
+
+  val syntax_node : t -> syntax_node
+  val field_path : t -> ModulePath.t
+  val pattern : t -> Pattern.t option
 end
 
 module ParenthesizedPattern : sig
@@ -324,6 +512,33 @@ module ApplyExpression : sig
   val argument : t -> Expression.t
 end
 
+module IndexExpression : sig
+  type t = index_expression = {
+    syntax_node : syntax_node;
+    collection : expression;
+    index : expression;
+  }
+
+  val syntax_node : t -> syntax_node
+  val collection : t -> Expression.t
+  val index : t -> Expression.t
+end
+
+module AssignExpression : sig
+  type t = assign_expression = {
+    syntax_node : syntax_node;
+    target : expression;
+    operator_token : Token.t;
+    value : expression;
+  }
+
+  val syntax_node : t -> syntax_node
+  val target : t -> Expression.t
+  val operator_token : t -> Token.t
+  val operator : t -> string
+  val value : t -> Expression.t
+end
+
 module InfixExpression : sig
   type t = infix_expression = {
     syntax_node : syntax_node;
@@ -337,6 +552,26 @@ module InfixExpression : sig
   val operator_token : t -> Token.t
   val operator : t -> string
   val right : t -> Expression.t
+end
+
+module RecordExpression : sig
+  type t = record_expression =
+    | Literal of record_literal_expression
+    | Update of record_update_expression
+
+  val syntax_node : t -> syntax_node
+end
+
+module RecordExpressionField : sig
+  type t = record_expression_field = {
+    syntax_node : syntax_node;
+    field_path : ModulePath.t;
+    value : expression option;
+  }
+
+  val syntax_node : t -> syntax_node
+  val field_path : t -> ModulePath.t
+  val value : t -> Expression.t option
 end
 
 module FunExpression : sig
@@ -526,14 +761,16 @@ end
 module LetBinding : sig
   type t = {
     syntax_node : syntax_node;
-    binding_name : Token.t;
+    binding_pattern : pattern;
+    binding_name : Token.t option;
     parameters : Parameter.t list;
     value : Expression.t;
     is_recursive : bool;
   }
 
   val syntax_node : t -> syntax_node
-  val binding_name_token : t -> Token.t
+  val binding_pattern : t -> Pattern.t
+  val binding_name_token : t -> Token.t option
   val name : t -> string
   val parameters : t -> Parameter.t list
   val value : t -> Expression.t
@@ -581,6 +818,7 @@ module Item : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
     | LetBinding of LetBinding.t
+    | Expression of Expression.t
     | ModuleDeclaration of ModuleDeclaration.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t

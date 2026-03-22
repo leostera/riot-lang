@@ -1,0 +1,36 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 44
+      }
+    },
+    "items": [
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 0,
+              "end": 44
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "WebSocket",
+            "span": {
+              "start": 7,
+              "end": 16
+            }
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": []
+  }
+}

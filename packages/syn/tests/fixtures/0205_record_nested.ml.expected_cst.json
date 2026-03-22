@@ -1,0 +1,872 @@
+{
+  "status": "ok",
+  "cst": {
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 51
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 50
+            }
+          },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "record",
+            "syntax_node": {
+              "kind": "RECORD_EXPR",
+              "span": {
+                "start": 8,
+                "end": 50
+              }
+            },
+            "shape": "literal",
+            "fields": [
+              {
+                "syntax_node": {
+                  "kind": "RECORD_FIELD",
+                  "span": {
+                    "start": 10,
+                    "end": 32
+                  }
+                },
+                "field_path": {
+                  "syntax_node": {
+                    "kind": "RECORD_FIELD",
+                    "span": {
+                      "start": 10,
+                      "end": 32
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "pos",
+                      "span": {
+                        "start": 10,
+                        "end": 13
+                      }
+                    }
+                  ]
+                },
+                "value": {
+                  "tag": "record",
+                  "syntax_node": {
+                    "kind": "RECORD_EXPR",
+                    "span": {
+                      "start": 16,
+                      "end": 32
+                    }
+                  },
+                  "shape": "literal",
+                  "fields": [
+                    {
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD",
+                        "span": {
+                          "start": 18,
+                          "end": 23
+                        }
+                      },
+                      "field_path": {
+                        "syntax_node": {
+                          "kind": "RECORD_FIELD",
+                          "span": {
+                            "start": 18,
+                            "end": 23
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "x",
+                            "span": {
+                              "start": 18,
+                              "end": 19
+                            }
+                          }
+                        ]
+                      },
+                      "value": {
+                        "tag": "literal",
+                        "literal": {
+                          "tag": "int",
+                          "syntax_node": {
+                            "kind": "INT_LITERAL",
+                            "span": {
+                              "start": 22,
+                              "end": 23
+                            }
+                          },
+                          "literal_token": {
+                            "kind": "INT_LITERAL",
+                            "text": "1",
+                            "span": {
+                              "start": 22,
+                              "end": 23
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD",
+                        "span": {
+                          "start": 25,
+                          "end": 30
+                        }
+                      },
+                      "field_path": {
+                        "syntax_node": {
+                          "kind": "RECORD_FIELD",
+                          "span": {
+                            "start": 25,
+                            "end": 30
+                          }
+                        },
+                        "segments": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "y",
+                            "span": {
+                              "start": 25,
+                              "end": 26
+                            }
+                          }
+                        ]
+                      },
+                      "value": {
+                        "tag": "literal",
+                        "literal": {
+                          "tag": "int",
+                          "syntax_node": {
+                            "kind": "INT_LITERAL",
+                            "span": {
+                              "start": 29,
+                              "end": 30
+                            }
+                          },
+                          "literal_token": {
+                            "kind": "INT_LITERAL",
+                            "text": "2",
+                            "span": {
+                              "start": 29,
+                              "end": 30
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "RECORD_FIELD",
+                  "span": {
+                    "start": 34,
+                    "end": 48
+                  }
+                },
+                "field_path": {
+                  "syntax_node": {
+                    "kind": "RECORD_FIELD",
+                    "span": {
+                      "start": 34,
+                      "end": 48
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "name",
+                      "span": {
+                        "start": 34,
+                        "end": 38
+                      }
+                    }
+                  ]
+                },
+                "value": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 41,
+                        "end": 48
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"point\"",
+                      "span": {
+                        "start": 41,
+                        "end": 48
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 50
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "record",
+          "syntax_node": {
+            "kind": "RECORD_EXPR",
+            "span": {
+              "start": 8,
+              "end": 50
+            }
+          },
+          "shape": "literal",
+          "fields": [
+            {
+              "syntax_node": {
+                "kind": "RECORD_FIELD",
+                "span": {
+                  "start": 10,
+                  "end": 32
+                }
+              },
+              "field_path": {
+                "syntax_node": {
+                  "kind": "RECORD_FIELD",
+                  "span": {
+                    "start": 10,
+                    "end": 32
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "pos",
+                    "span": {
+                      "start": 10,
+                      "end": 13
+                    }
+                  }
+                ]
+              },
+              "value": {
+                "tag": "record",
+                "syntax_node": {
+                  "kind": "RECORD_EXPR",
+                  "span": {
+                    "start": 16,
+                    "end": 32
+                  }
+                },
+                "shape": "literal",
+                "fields": [
+                  {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD",
+                      "span": {
+                        "start": 18,
+                        "end": 23
+                      }
+                    },
+                    "field_path": {
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD",
+                        "span": {
+                          "start": 18,
+                          "end": 23
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "x",
+                          "span": {
+                            "start": 18,
+                            "end": 19
+                          }
+                        }
+                      ]
+                    },
+                    "value": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "int",
+                        "syntax_node": {
+                          "kind": "INT_LITERAL",
+                          "span": {
+                            "start": 22,
+                            "end": 23
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "INT_LITERAL",
+                          "text": "1",
+                          "span": {
+                            "start": 22,
+                            "end": 23
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD",
+                      "span": {
+                        "start": 25,
+                        "end": 30
+                      }
+                    },
+                    "field_path": {
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD",
+                        "span": {
+                          "start": 25,
+                          "end": 30
+                        }
+                      },
+                      "segments": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "y",
+                          "span": {
+                            "start": 25,
+                            "end": 26
+                          }
+                        }
+                      ]
+                    },
+                    "value": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "int",
+                        "syntax_node": {
+                          "kind": "INT_LITERAL",
+                          "span": {
+                            "start": 29,
+                            "end": 30
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "INT_LITERAL",
+                          "text": "2",
+                          "span": {
+                            "start": 29,
+                            "end": 30
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "syntax_node": {
+                "kind": "RECORD_FIELD",
+                "span": {
+                  "start": 34,
+                  "end": 48
+                }
+              },
+              "field_path": {
+                "syntax_node": {
+                  "kind": "RECORD_FIELD",
+                  "span": {
+                    "start": 34,
+                    "end": 48
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "name",
+                    "span": {
+                      "start": 34,
+                      "end": 38
+                    }
+                  }
+                ]
+              },
+              "value": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 41,
+                      "end": 48
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"point\"",
+                    "span": {
+                      "start": 41,
+                      "end": 48
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "record",
+        "syntax_node": {
+          "kind": "RECORD_EXPR",
+          "span": {
+            "start": 8,
+            "end": 50
+          }
+        },
+        "shape": "literal",
+        "fields": [
+          {
+            "syntax_node": {
+              "kind": "RECORD_FIELD",
+              "span": {
+                "start": 10,
+                "end": 32
+              }
+            },
+            "field_path": {
+              "syntax_node": {
+                "kind": "RECORD_FIELD",
+                "span": {
+                  "start": 10,
+                  "end": 32
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "pos",
+                  "span": {
+                    "start": 10,
+                    "end": 13
+                  }
+                }
+              ]
+            },
+            "value": {
+              "tag": "record",
+              "syntax_node": {
+                "kind": "RECORD_EXPR",
+                "span": {
+                  "start": 16,
+                  "end": 32
+                }
+              },
+              "shape": "literal",
+              "fields": [
+                {
+                  "syntax_node": {
+                    "kind": "RECORD_FIELD",
+                    "span": {
+                      "start": 18,
+                      "end": 23
+                    }
+                  },
+                  "field_path": {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD",
+                      "span": {
+                        "start": 18,
+                        "end": 23
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "x",
+                        "span": {
+                          "start": 18,
+                          "end": 19
+                        }
+                      }
+                    ]
+                  },
+                  "value": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 22,
+                          "end": 23
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "1",
+                        "span": {
+                          "start": 22,
+                          "end": 23
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "syntax_node": {
+                    "kind": "RECORD_FIELD",
+                    "span": {
+                      "start": 25,
+                      "end": 30
+                    }
+                  },
+                  "field_path": {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD",
+                      "span": {
+                        "start": 25,
+                        "end": 30
+                      }
+                    },
+                    "segments": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "y",
+                        "span": {
+                          "start": 25,
+                          "end": 26
+                        }
+                      }
+                    ]
+                  },
+                  "value": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 29,
+                          "end": 30
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "2",
+                        "span": {
+                          "start": 29,
+                          "end": 30
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "syntax_node": {
+              "kind": "RECORD_FIELD",
+              "span": {
+                "start": 34,
+                "end": 48
+              }
+            },
+            "field_path": {
+              "syntax_node": {
+                "kind": "RECORD_FIELD",
+                "span": {
+                  "start": 34,
+                  "end": 48
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "name",
+                  "span": {
+                    "start": 34,
+                    "end": 38
+                  }
+                }
+              ]
+            },
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 41,
+                    "end": 48
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"point\"",
+                  "span": {
+                    "start": 41,
+                    "end": 48
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "record",
+        "syntax_node": {
+          "kind": "RECORD_EXPR",
+          "span": {
+            "start": 16,
+            "end": 32
+          }
+        },
+        "shape": "literal",
+        "fields": [
+          {
+            "syntax_node": {
+              "kind": "RECORD_FIELD",
+              "span": {
+                "start": 18,
+                "end": 23
+              }
+            },
+            "field_path": {
+              "syntax_node": {
+                "kind": "RECORD_FIELD",
+                "span": {
+                  "start": 18,
+                  "end": 23
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 18,
+                    "end": 19
+                  }
+                }
+              ]
+            },
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 22,
+                    "end": 23
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "1",
+                  "span": {
+                    "start": 22,
+                    "end": 23
+                  }
+                }
+              }
+            }
+          },
+          {
+            "syntax_node": {
+              "kind": "RECORD_FIELD",
+              "span": {
+                "start": 25,
+                "end": 30
+              }
+            },
+            "field_path": {
+              "syntax_node": {
+                "kind": "RECORD_FIELD",
+                "span": {
+                  "start": 25,
+                  "end": 30
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 25,
+                    "end": 26
+                  }
+                }
+              ]
+            },
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 29,
+                    "end": 30
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "2",
+                  "span": {
+                    "start": 29,
+                    "end": 30
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 22,
+              "end": 23
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "1",
+            "span": {
+              "start": 22,
+              "end": 23
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 29,
+              "end": 30
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "2",
+            "span": {
+              "start": 29,
+              "end": 30
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 41,
+              "end": 48
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"point\"",
+            "span": {
+              "start": 41,
+              "end": 48
+            }
+          }
+        }
+      }
+    ]
+  }
+}

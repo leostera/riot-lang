@@ -56,6 +56,20 @@ let rec pattern_literal_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("literal_token", token_to_json literal_token);
         ]
+  | Cst.PatternLiteral.Float { syntax_node; literal_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "float");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("literal_token", token_to_json literal_token);
+        ]
+  | Cst.PatternLiteral.Char { syntax_node; literal_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "char");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("literal_token", token_to_json literal_token);
+        ]
   | Cst.PatternLiteral.Bool { syntax_node; literal_token } ->
       Json.Object
         [
@@ -90,6 +104,73 @@ and pattern_to_json = function
           ("tag", Json.String "literal");
           ("literal", pattern_literal_to_json literal);
         ]
+  | Cst.Pattern.Constructor { syntax_node; constructor_path; arguments } ->
+      Json.Object
+        [
+          ("tag", Json.String "constructor");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("constructor_path", module_path_to_json constructor_path);
+          ("arguments", Json.Array (List.map pattern_to_json arguments));
+        ]
+  | Cst.Pattern.Tuple { syntax_node; elements } ->
+      Json.Object
+        [
+          ("tag", Json.String "tuple");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("elements", Json.Array (List.map pattern_to_json elements));
+        ]
+  | Cst.Pattern.List { syntax_node; elements } ->
+      Json.Object
+        [
+          ("tag", Json.String "list");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("elements", Json.Array (List.map pattern_to_json elements));
+        ]
+  | Cst.Pattern.Array { syntax_node; elements } ->
+      Json.Object
+        [
+          ("tag", Json.String "array");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("elements", Json.Array (List.map pattern_to_json elements));
+        ]
+  | Cst.Pattern.Record { syntax_node; fields } ->
+      Json.Object
+        [
+          ("tag", Json.String "record");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("fields", Json.Array (List.map record_pattern_field_to_json fields));
+        ]
+  | Cst.Pattern.Cons { syntax_node; head; tail } ->
+      Json.Object
+        [
+          ("tag", Json.String "cons");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("head", pattern_to_json head);
+          ("tail", pattern_to_json tail);
+        ]
+  | Cst.Pattern.Or { syntax_node; alternatives } ->
+      Json.Object
+        [
+          ("tag", Json.String "or");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("alternatives", Json.Array (List.map pattern_to_json alternatives));
+        ]
+  | Cst.Pattern.Alias { syntax_node; pattern; name_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "alias");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("pattern", pattern_to_json pattern);
+          ("name_token", token_to_json name_token);
+        ]
+  | Cst.Pattern.Typed { syntax_node; pattern; type_syntax_node } ->
+      Json.Object
+        [
+          ("tag", Json.String "typed");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("pattern", pattern_to_json pattern);
+          ("type_syntax_node", syntax_node_to_json type_syntax_node);
+        ]
   | Cst.Pattern.Parenthesized { syntax_node; inner } ->
       Json.Object
         [
@@ -103,6 +184,14 @@ and pattern_to_json = function
           ("tag", Json.String "unknown");
           ("syntax_node", syntax_node_to_json syntax_node);
         ]
+
+and record_pattern_field_to_json field =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json field.syntax_node);
+      ("field_path", module_path_to_json field.field_path);
+      ("pattern", option_to_json pattern_to_json field.pattern);
+    ]
 
 and parameter_to_json = function
   | Cst.Parameter.Positional { syntax_node; name_token } ->
@@ -158,6 +247,20 @@ and literal_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("literal_token", token_to_json literal_token);
         ]
+  | Cst.Literal.Float { syntax_node; literal_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "float");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("literal_token", token_to_json literal_token);
+        ]
+  | Cst.Literal.Char { syntax_node; literal_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "char");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("literal_token", token_to_json literal_token);
+        ]
   | Cst.Literal.Bool { syntax_node; literal_token } ->
       Json.Object
         [
@@ -194,6 +297,14 @@ and expression_to_json = function
           ("callee", expression_to_json callee);
           ("argument", expression_to_json argument);
         ]
+  | Cst.Expression.Prefix { syntax_node; operator_token; operand } ->
+      Json.Object
+        [
+          ("tag", Json.String "prefix");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("operator_token", token_to_json operator_token);
+          ("operand", expression_to_json operand);
+        ]
   | Cst.Expression.FieldAccess { syntax_node; receiver; field_name } ->
       Json.Object
         [
@@ -202,6 +313,23 @@ and expression_to_json = function
           ("receiver", expression_to_json receiver);
           ("field_name", token_to_json field_name);
         ]
+  | Cst.Expression.Index { syntax_node; collection; index } ->
+      Json.Object
+        [
+          ("tag", Json.String "index");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("collection", expression_to_json collection);
+          ("index", expression_to_json index);
+        ]
+  | Cst.Expression.Assign { syntax_node; target; operator_token; value } ->
+      Json.Object
+        [
+          ("tag", Json.String "assign");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("target", expression_to_json target);
+          ("operator_token", token_to_json operator_token);
+          ("value", expression_to_json value);
+        ]
   | Cst.Expression.Infix { syntax_node; left; operator_token; right } ->
       Json.Object
         [
@@ -209,6 +337,33 @@ and expression_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("left", expression_to_json left);
           ("operator_token", token_to_json operator_token);
+          ("right", expression_to_json right);
+        ]
+  | Cst.Expression.Typed { syntax_node; expression; type_syntax_node } ->
+      Json.Object
+        [
+          ("tag", Json.String "typed");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("expression", expression_to_json expression);
+          ("type_syntax_node", syntax_node_to_json type_syntax_node);
+        ]
+  | Cst.Expression.Coerce
+      { syntax_node; expression; from_type_syntax_node; to_type_syntax_node } ->
+      Json.Object
+        [
+          ("tag", Json.String "coerce");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("expression", expression_to_json expression);
+          ( "from_type_syntax_node",
+            option_to_json syntax_node_to_json from_type_syntax_node );
+          ("to_type_syntax_node", syntax_node_to_json to_type_syntax_node);
+        ]
+  | Cst.Expression.Sequence { syntax_node; left; right } ->
+      Json.Object
+        [
+          ("tag", Json.String "sequence");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("left", expression_to_json left);
           ("right", expression_to_json right);
         ]
   | Cst.Expression.Tuple { syntax_node; elements } ->
@@ -232,11 +387,23 @@ and expression_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("elements", Json.Array (List.map expression_to_json elements));
         ]
-  | Cst.Expression.Record { syntax_node } ->
+  | Cst.Expression.Record (Cst.RecordExpression.Literal { syntax_node; fields }) ->
       Json.Object
         [
           ("tag", Json.String "record");
           ("syntax_node", syntax_node_to_json syntax_node);
+          ("shape", Json.String "literal");
+          ("fields", Json.Array (List.map record_expression_field_to_json fields));
+        ]
+  | Cst.Expression.Record
+      (Cst.RecordExpression.Update { syntax_node; base; fields }) ->
+      Json.Object
+        [
+          ("tag", Json.String "record");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("shape", Json.String "update");
+          ("base", expression_to_json base);
+          ("fields", Json.Array (List.map record_expression_field_to_json fields));
         ]
   | Cst.Expression.LocalOpen { syntax_node; module_path; body; via_let_open } ->
       Json.Object
@@ -311,6 +478,14 @@ and expression_to_json = function
           ("tag", Json.String "unknown");
           ("syntax_node", syntax_node_to_json syntax_node);
         ]
+
+and record_expression_field_to_json field =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json field.syntax_node);
+      ("field_path", module_path_to_json field.field_path);
+      ("value", option_to_json expression_to_json field.value);
+    ]
 
 and match_case_to_json { syntax_node; pattern; guard; body } =
   Json.Object
@@ -409,13 +584,15 @@ let type_declaration_to_json decl =
     ]
 
 let let_binding_to_json binding =
-  Json.Object
-    [
-      ("syntax_node", syntax_node_to_json (Cst.LetBinding.syntax_node binding));
-      ("binding_name", token_to_json (Cst.LetBinding.binding_name_token binding));
-      ( "parameters",
-        Json.Array (List.map parameter_to_json (Cst.LetBinding.parameters binding))
-      );
+    Json.Object
+      [
+        ("syntax_node", syntax_node_to_json (Cst.LetBinding.syntax_node binding));
+        ("binding_pattern", pattern_to_json (Cst.LetBinding.binding_pattern binding));
+        ( "binding_name",
+          option_to_json token_to_json (Cst.LetBinding.binding_name_token binding) );
+        ( "parameters",
+          Json.Array (List.map parameter_to_json (Cst.LetBinding.parameters binding))
+        );
       ("value", expression_to_json (Cst.LetBinding.value binding));
       ("is_recursive", Json.Bool (Cst.LetBinding.is_recursive binding));
     ]
@@ -455,6 +632,12 @@ let item_to_json = function
         [
           ("tag", Json.String "let_binding");
           ("item", let_binding_to_json binding);
+        ]
+  | Cst.Item.Expression expr ->
+      Json.Object
+        [
+          ("tag", Json.String "expression");
+          ("item", expression_to_json expr);
         ]
   | Cst.Item.ModuleDeclaration decl ->
       Json.Object

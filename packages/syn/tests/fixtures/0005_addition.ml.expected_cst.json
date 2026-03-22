@@ -19,6 +19,24 @@
               "end": 15
             }
           },
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 7
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "sum",
+              "span": {
+                "start": 4,
+                "end": 7
+              }
+            }
+          },
           "binding_name": {
             "kind": "IDENT_EXPR",
             "text": "sum",
@@ -99,6 +117,24 @@
           "span": {
             "start": 0,
             "end": 15
+          }
+        },
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 7
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "sum",
+            "span": {
+              "start": 4,
+              "end": 7
+            }
           }
         },
         "binding_name": {
