@@ -152,56 +152,33 @@
                       "end": 169
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 40,
+                      "end": 41
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 39,
-                        "end": 40
+                        "end": 169
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 40,
-                        "end": 41
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 41,
-                        "end": 42
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 42,
                         "end": 48
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nLine 1, characters 13-15:\n1 | let f o x = o##x;;\n                 ^^\nError: \"##\" is not a valid value identifier.\n|}",
-                      "span": {
-                        "start": 49,
-                        "end": 168
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 168,
-                        "end": 169
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -333,56 +310,33 @@
                       "end": 308
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 187,
+                      "end": 188
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 186,
-                        "end": 187
+                        "end": 308
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 187,
-                        "end": 188
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 188,
-                        "end": 189
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 189,
                         "end": 195
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nLine 1, characters 10-12:\n1 | let f x = !#x\n              ^^\nError: \"!#\" is not a valid value identifier.\n|}",
-                      "span": {
-                        "start": 196,
-                        "end": 307
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 307,
-                        "end": 308
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -514,56 +468,33 @@
                       "end": 447
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 326,
+                      "end": 327
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 325,
-                        "end": 326
+                        "end": 447
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 326,
-                        "end": 327
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 327,
-                        "end": 328
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 328,
                         "end": 334
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ?#x\n              ^^\nError: \"?#\" is not a valid value identifier.\n|}",
-                      "span": {
-                        "start": 335,
-                        "end": 446
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 446,
-                        "end": 447
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -695,56 +626,33 @@
                       "end": 586
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 465,
+                      "end": 466
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 464,
-                        "end": 465
+                        "end": 586
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 465,
-                        "end": 466
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 466,
-                        "end": 467
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 467,
                         "end": 473
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ~#x\n              ^^\nError: \"~#\" is not a valid value identifier.\n|}",
-                      "span": {
-                        "start": 474,
-                        "end": 585
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 585,
-                        "end": 586
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -894,56 +802,33 @@
                       "end": 738
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 608,
+                      "end": 609
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 607,
-                        "end": 608
+                        "end": 738
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 608,
-                        "end": 609
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 609,
-                        "end": 610
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 610,
                         "end": 616
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nLine 1, characters 13-16:\n1 | let f o x = o#-#x\n                 ^^^\nError: \"#-#\" is not a valid value identifier.\n|}",
-                      "span": {
-                        "start": 617,
-                        "end": 737
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 737,
-                        "end": 738
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -1093,56 +978,33 @@
                       "end": 881
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 757,
+                      "end": 758
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 756,
-                        "end": 757
+                        "end": 881
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 757,
-                        "end": 758
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 758,
-                        "end": 759
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 759,
                         "end": 765
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nLine 1, characters 10-13:\n1 | let f x = !-#x\n              ^^^\nError: \"!-#\" is not a valid value identifier.\n|}",
-                      "span": {
-                        "start": 766,
-                        "end": 880
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 880,
-                        "end": 881
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -1292,56 +1154,33 @@
                       "end": 1024
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 900,
+                      "end": 901
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 899,
-                        "end": 900
+                        "end": 1024
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 900,
-                        "end": 901
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 901,
-                        "end": 902
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 902,
                         "end": 908
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ?-#x\n              ^^^\nError: \"?-#\" is not a valid value identifier.\n|}",
-                      "span": {
-                        "start": 909,
-                        "end": 1023
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 1023,
-                        "end": 1024
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -1491,56 +1330,33 @@
                       "end": 1167
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 1043,
+                      "end": 1044
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 1042,
-                        "end": 1043
+                        "end": 1167
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1043,
-                        "end": 1044
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1044,
-                        "end": 1045
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 1045,
                         "end": 1051
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ~-#x\n              ^^^\nError: \"~-#\" is not a valid value identifier.\n|}",
-                      "span": {
-                        "start": 1052,
-                        "end": 1166
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 1166,
-                        "end": 1167
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -1690,56 +1506,33 @@
                     "end": 169
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 40,
+                    "end": 41
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 39,
-                      "end": 40
+                      "end": 169
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 40,
-                      "end": 41
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 41,
-                      "end": 42
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 42,
                       "end": 48
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nLine 1, characters 13-15:\n1 | let f o x = o##x;;\n                 ^^\nError: \"##\" is not a valid value identifier.\n|}",
-                    "span": {
-                      "start": 49,
-                      "end": 168
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 168,
-                      "end": 169
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -1868,56 +1661,33 @@
                     "end": 308
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 187,
+                    "end": 188
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 186,
-                      "end": 187
+                      "end": 308
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 187,
-                      "end": 188
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 188,
-                      "end": 189
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 189,
                       "end": 195
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nLine 1, characters 10-12:\n1 | let f x = !#x\n              ^^\nError: \"!#\" is not a valid value identifier.\n|}",
-                    "span": {
-                      "start": 196,
-                      "end": 307
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 307,
-                      "end": 308
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -2046,56 +1816,33 @@
                     "end": 447
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 326,
+                    "end": 327
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 325,
-                      "end": 326
+                      "end": 447
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 326,
-                      "end": 327
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 327,
-                      "end": 328
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 328,
                       "end": 334
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ?#x\n              ^^\nError: \"?#\" is not a valid value identifier.\n|}",
-                    "span": {
-                      "start": 335,
-                      "end": 446
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 446,
-                      "end": 447
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -2224,56 +1971,33 @@
                     "end": 586
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 465,
+                    "end": 466
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 464,
-                      "end": 465
+                      "end": 586
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 465,
-                      "end": 466
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 466,
-                      "end": 467
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 467,
                       "end": 473
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ~#x\n              ^^\nError: \"~#\" is not a valid value identifier.\n|}",
-                    "span": {
-                      "start": 474,
-                      "end": 585
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 585,
-                      "end": 586
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -2420,56 +2144,33 @@
                     "end": 738
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 608,
+                    "end": 609
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 607,
-                      "end": 608
+                      "end": 738
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 608,
-                      "end": 609
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 609,
-                      "end": 610
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 610,
                       "end": 616
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nLine 1, characters 13-16:\n1 | let f o x = o#-#x\n                 ^^^\nError: \"#-#\" is not a valid value identifier.\n|}",
-                    "span": {
-                      "start": 617,
-                      "end": 737
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 737,
-                      "end": 738
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -2616,56 +2317,33 @@
                     "end": 881
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 757,
+                    "end": 758
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 756,
-                      "end": 757
+                      "end": 881
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 757,
-                      "end": 758
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 758,
-                      "end": 759
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 759,
                       "end": 765
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nLine 1, characters 10-13:\n1 | let f x = !-#x\n              ^^^\nError: \"!-#\" is not a valid value identifier.\n|}",
-                    "span": {
-                      "start": 766,
-                      "end": 880
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 880,
-                      "end": 881
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -2812,56 +2490,33 @@
                     "end": 1024
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 900,
+                    "end": 901
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 899,
-                      "end": 900
+                      "end": 1024
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 900,
-                      "end": 901
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 901,
-                      "end": 902
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 902,
                       "end": 908
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ?-#x\n              ^^^\nError: \"?-#\" is not a valid value identifier.\n|}",
-                    "span": {
-                      "start": 909,
-                      "end": 1023
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 1023,
-                      "end": 1024
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -3008,56 +2663,33 @@
                     "end": 1167
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 1043,
+                    "end": 1044
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 1042,
-                      "end": 1043
+                      "end": 1167
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 1043,
-                      "end": 1044
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 1044,
-                      "end": 1045
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 1045,
                       "end": 1051
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ~-#x\n              ^^^\nError: \"~-#\" is not a valid value identifier.\n|}",
-                    "span": {
-                      "start": 1052,
-                      "end": 1166
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 1166,
-                      "end": 1167
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -3133,56 +2765,33 @@
                   "end": 169
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 40,
+                  "end": 41
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 39,
-                    "end": 40
+                    "end": 169
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 40,
-                    "end": 41
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 41,
-                    "end": 42
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 42,
                     "end": 48
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nLine 1, characters 13-15:\n1 | let f o x = o##x;;\n                 ^^\nError: \"##\" is not a valid value identifier.\n|}",
-                  "span": {
-                    "start": 49,
-                    "end": 168
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 168,
-                    "end": 169
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -3271,56 +2880,33 @@
               "end": 169
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 40,
+              "end": 41
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 39,
-                "end": 40
+                "end": 169
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 40,
-                "end": 41
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 41,
-                "end": 42
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 42,
                 "end": 48
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 13-15:\n1 | let f o x = o##x;;\n                 ^^\nError: \"##\" is not a valid value identifier.\n|}",
-              "span": {
-                "start": 49,
-                "end": 168
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 168,
-                "end": 169
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -3390,56 +2976,33 @@
                   "end": 308
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 187,
+                  "end": 188
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 186,
-                    "end": 187
+                    "end": 308
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 187,
-                    "end": 188
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 188,
-                    "end": 189
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 189,
                     "end": 195
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nLine 1, characters 10-12:\n1 | let f x = !#x\n              ^^\nError: \"!#\" is not a valid value identifier.\n|}",
-                  "span": {
-                    "start": 196,
-                    "end": 307
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 307,
-                    "end": 308
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -3528,56 +3091,33 @@
               "end": 308
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 187,
+              "end": 188
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 186,
-                "end": 187
+                "end": 308
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 187,
-                "end": 188
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 188,
-                "end": 189
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 189,
                 "end": 195
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 10-12:\n1 | let f x = !#x\n              ^^\nError: \"!#\" is not a valid value identifier.\n|}",
-              "span": {
-                "start": 196,
-                "end": 307
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 307,
-                "end": 308
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -3647,56 +3187,33 @@
                   "end": 447
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 326,
+                  "end": 327
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 325,
-                    "end": 326
+                    "end": 447
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 326,
-                    "end": 327
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 327,
-                    "end": 328
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 328,
                     "end": 334
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ?#x\n              ^^\nError: \"?#\" is not a valid value identifier.\n|}",
-                  "span": {
-                    "start": 335,
-                    "end": 446
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 446,
-                    "end": 447
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -3785,56 +3302,33 @@
               "end": 447
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 326,
+              "end": 327
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 325,
-                "end": 326
+                "end": 447
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 326,
-                "end": 327
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 327,
-                "end": 328
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 328,
                 "end": 334
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ?#x\n              ^^\nError: \"?#\" is not a valid value identifier.\n|}",
-              "span": {
-                "start": 335,
-                "end": 446
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 446,
-                "end": 447
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -3904,56 +3398,33 @@
                   "end": 586
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 465,
+                  "end": 466
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 464,
-                    "end": 465
+                    "end": 586
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 465,
-                    "end": 466
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 466,
-                    "end": 467
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 467,
                     "end": 473
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ~#x\n              ^^\nError: \"~#\" is not a valid value identifier.\n|}",
-                  "span": {
-                    "start": 474,
-                    "end": 585
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 585,
-                    "end": 586
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -4042,56 +3513,33 @@
               "end": 586
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 465,
+              "end": 466
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 464,
-                "end": 465
+                "end": 586
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 465,
-                "end": 466
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 466,
-                "end": 467
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 467,
                 "end": 473
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ~#x\n              ^^\nError: \"~#\" is not a valid value identifier.\n|}",
-              "span": {
-                "start": 474,
-                "end": 585
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 585,
-                "end": 586
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -4161,56 +3609,33 @@
                   "end": 738
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 608,
+                  "end": 609
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 607,
-                    "end": 608
+                    "end": 738
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 608,
-                    "end": 609
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 609,
-                    "end": 610
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 610,
                     "end": 616
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nLine 1, characters 13-16:\n1 | let f o x = o#-#x\n                 ^^^\nError: \"#-#\" is not a valid value identifier.\n|}",
-                  "span": {
-                    "start": 617,
-                    "end": 737
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 737,
-                    "end": 738
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -4299,56 +3724,33 @@
               "end": 738
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 608,
+              "end": 609
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 607,
-                "end": 608
+                "end": 738
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 608,
-                "end": 609
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 609,
-                "end": 610
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 610,
                 "end": 616
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 13-16:\n1 | let f o x = o#-#x\n                 ^^^\nError: \"#-#\" is not a valid value identifier.\n|}",
-              "span": {
-                "start": 617,
-                "end": 737
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 737,
-                "end": 738
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -4436,56 +3838,33 @@
                   "end": 881
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 757,
+                  "end": 758
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 756,
-                    "end": 757
+                    "end": 881
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 757,
-                    "end": 758
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 758,
-                    "end": 759
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 759,
                     "end": 765
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nLine 1, characters 10-13:\n1 | let f x = !-#x\n              ^^^\nError: \"!-#\" is not a valid value identifier.\n|}",
-                  "span": {
-                    "start": 766,
-                    "end": 880
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 880,
-                    "end": 881
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -4638,56 +4017,33 @@
               "end": 881
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 757,
+              "end": 758
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 756,
-                "end": 757
+                "end": 881
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 757,
-                "end": 758
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 758,
-                "end": 759
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 759,
                 "end": 765
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 10-13:\n1 | let f x = !-#x\n              ^^^\nError: \"!-#\" is not a valid value identifier.\n|}",
-              "span": {
-                "start": 766,
-                "end": 880
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 880,
-                "end": 881
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -4775,56 +4131,33 @@
                   "end": 1024
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 900,
+                  "end": 901
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 899,
-                    "end": 900
+                    "end": 1024
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 900,
-                    "end": 901
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 901,
-                    "end": 902
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 902,
                     "end": 908
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ?-#x\n              ^^^\nError: \"?-#\" is not a valid value identifier.\n|}",
-                  "span": {
-                    "start": 909,
-                    "end": 1023
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 1023,
-                    "end": 1024
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -4977,56 +4310,33 @@
               "end": 1024
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 900,
+              "end": 901
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 899,
-                "end": 900
+                "end": 1024
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 900,
-                "end": 901
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 901,
-                "end": 902
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 902,
                 "end": 908
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ?-#x\n              ^^^\nError: \"?-#\" is not a valid value identifier.\n|}",
-              "span": {
-                "start": 909,
-                "end": 1023
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 1023,
-                "end": 1024
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -5114,56 +4424,33 @@
                   "end": 1167
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 1043,
+                  "end": 1044
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 1042,
-                    "end": 1043
+                    "end": 1167
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1043,
-                    "end": 1044
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1044,
-                    "end": 1045
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 1045,
                     "end": 1051
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ~-#x\n              ^^^\nError: \"~-#\" is not a valid value identifier.\n|}",
-                  "span": {
-                    "start": 1052,
-                    "end": 1166
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 1166,
-                    "end": 1167
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -5316,56 +4603,33 @@
               "end": 1167
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 1043,
+              "end": 1044
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 1042,
-                "end": 1043
+                "end": 1167
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1043,
-                "end": 1044
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1044,
-                "end": 1045
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 1045,
                 "end": 1051
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ~-#x\n              ^^^\nError: \"~-#\" is not a valid value identifier.\n|}",
-              "span": {
-                "start": 1052,
-                "end": 1166
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 1166,
-                "end": 1167
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       }
     ]

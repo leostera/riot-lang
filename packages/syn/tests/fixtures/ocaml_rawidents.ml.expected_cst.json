@@ -181,56 +181,33 @@
                       "end": 401
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 271,
+                      "end": 272
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 270,
-                        "end": 271
+                        "end": 401
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 271,
-                        "end": 272
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 272,
-                        "end": 273
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 273,
                         "end": 279
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nmodule M :\n  sig class \\#and : object val mutable \\#and : int method \\#and : int end end\nval obj : M.\\#and = <obj>\n|}",
-                      "span": {
-                        "start": 280,
-                        "end": 400
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 400,
-                        "end": 401
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -306,56 +283,33 @@
               "end": 994
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 478,
+              "end": 479
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 477,
-                "end": 478
+                "end": 994
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 478,
-                "end": 479
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 479,
-                "end": 480
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 480,
                 "end": 486
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 38-68:\n1 | module M : sig type \\#and = int end = struct type \\#and = string end\n                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nError: Signature mismatch:\n       Modules do not match:\n         sig type \\#and = string end\n       is not included in\n         sig type \\#and = int end\n       Type declarations do not match:\n         type \\#and = string\n       is not included in\n         type \\#and = int\n       The type \"string\" is not equal to the type \"int\"\n|}",
-              "span": {
-                "start": 487,
-                "end": 993
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 993,
-                "end": 994
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -613,56 +567,33 @@
                       "end": 1168
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 1072,
+                      "end": 1073
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 1071,
-                        "end": 1072
+                        "end": 1168
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1072,
-                        "end": 1073
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1073,
-                        "end": 1074
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 1074,
                         "end": 1080
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nval x : [ `\\#let of [ `\\#and ] ] = `\\#let `\\#and\nval \\#rec : [ `\\#and ] = `\\#and\n|}",
-                      "span": {
-                        "start": 1081,
-                        "end": 1167
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 1167,
-                        "end": 1168
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -930,56 +861,33 @@
                       "end": 1367
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 1235,
+                      "end": 1236
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 1234,
-                        "end": 1235
+                        "end": 1367
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1235,
-                        "end": 1236
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1236,
-                        "end": 1237
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 1237,
                         "end": 1243
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nval f :\n  (\\#let:'a -> ?\\#and:'b -> unit -> 'c) ->\n  \\#let:'a -> ?\\#and:'b -> ?\\#for:'b option -> unit -> 'c = <fun>\n|}",
-                      "span": {
-                        "start": 1244,
-                        "end": 1366
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 1366,
-                        "end": 1367
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -1056,56 +964,33 @@
               "end": 1538
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 1387,
+              "end": 1388
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 1386,
-                "end": 1387
+                "end": 1538
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1387,
-                "end": 1388
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1388,
-                "end": 1389
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 1389,
                 "end": 1395
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 9-15:\n1 | type t = '\\#let\n             ^^^^^^\nError: The type variable \"'\\#let\" is unbound in this type declaration.\n|}",
-              "span": {
-                "start": 1396,
-                "end": 1537
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 1537,
-                "end": 1538
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -1318,56 +1203,33 @@
                       "end": 1745
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 1632,
+                      "end": 1633
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 1631,
-                        "end": 1632
+                        "end": 1745
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1632,
-                        "end": 1633
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1633,
-                        "end": 1634
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 1634,
                         "end": 1640
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\ntype \\#mutable = { mutable \\#mutable : \\#mutable; }\nval \\#rec : \\#mutable = {\\#mutable = <cycle>}\n|}",
-                      "span": {
-                        "start": 1641,
-                        "end": 1744
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 1744,
-                        "end": 1745
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -1480,56 +1342,33 @@
               "end": 1832
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 1783,
+              "end": 1784
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 1782,
-                "end": 1783
+                "end": 1832
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1783,
-                "end": 1784
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1784,
-                "end": 1785
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 1785,
                 "end": 1791
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\ntype \\#and = ..\ntype \\#and += Foo\n|}",
-              "span": {
-                "start": 1792,
-                "end": 1831
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 1831,
-                "end": 1832
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -1619,56 +1458,33 @@
                       "end": 1955
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 1851,
+                      "end": 1852
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 1850,
-                        "end": 1851
+                        "end": 1955
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1851,
-                        "end": 1852
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1852,
-                        "end": 1853
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 1853,
                         "end": 1859
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nLine 1, characters 8-12:\n1 | let x = (++);;\n            ^^^^\nError: Unbound value \"(++)\"\n|}",
-                      "span": {
-                        "start": 1860,
-                        "end": 1954
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 1954,
-                        "end": 1955
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -1763,56 +1579,33 @@
                       "end": 2080
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 1973,
+                      "end": 1974
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 1972,
-                        "end": 1973
+                        "end": 2080
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1973,
-                        "end": 1974
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 1974,
-                        "end": 1975
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 1975,
                         "end": 1981
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nLine 1, characters 8-13:\n1 | let x = \\#let;;\n            ^^^^^\nError: Unbound value \"\\#let\"\n|}",
-                      "span": {
-                        "start": 1982,
-                        "end": 2079
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 2079,
-                        "end": 2080
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -1951,56 +1744,33 @@
                       "end": 2179
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 2111,
+                      "end": 2112
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 2110,
-                        "end": 2111
+                        "end": 2179
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 2111,
-                        "end": 2112
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 2112,
-                        "end": 2113
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 2113,
                         "end": 2119
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nval f : \\#let:'a -> ?\\#and:'b -> unit -> int = <fun>\n|}",
-                      "span": {
-                        "start": 2120,
-                        "end": 2178
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 2178,
-                        "end": 2179
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -2127,56 +1897,33 @@
                       "end": 2383
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 2204,
+                      "end": 2205
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 2203,
-                        "end": 2204
+                        "end": 2383
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 2204,
-                        "end": 2205
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 2205,
-                        "end": 2206
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 2206,
                         "end": 2212
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nLine 1, characters 9-13:\n1 | let x = (true:int)\n             ^^^^\nError: The constructor \"true\" has type \"bool\"\n       but an expression was expected of type \"int\"\n|}",
-                      "span": {
-                        "start": 2213,
-                        "end": 2382
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 2382,
-                        "end": 2383
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -2344,56 +2091,33 @@
                       "end": 2529
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 2448,
+                      "end": 2449
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 2447,
-                        "end": 2448
+                        "end": 2529
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 2448,
-                        "end": 2449
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 2449,
-                        "end": 2450
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 2450,
                         "end": 2456
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nmodule M : sig type \\#true = true end\nval x : M.\\#true = M.(true)\n|}",
-                      "span": {
-                        "start": 2457,
-                        "end": 2528
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 2528,
-                        "end": 2529
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -2706,56 +2430,33 @@
                       "end": 2899
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 2626,
+                      "end": 2627
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 2625,
-                        "end": 2626
+                        "end": 2899
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 2626,
-                        "end": 2627
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 2627,
-                        "end": 2628
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 2628,
                         "end": 2634
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\ntype t = { \\#false : int; x : int; }\ntype u = { \\#true : int; }\nLine 4, characters 17-23:\n4 | let f { \\#false; \\#true } = 0\n                     ^^^^^^\nError: The record field \"\\#true\" belongs to the type \"u\"\n       but is mixed here with fields of type \"t\"\n|}",
-                      "span": {
-                        "start": 2635,
-                        "end": 2898
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 2898,
-                        "end": 2899
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -3065,56 +2766,33 @@
                       "end": 3454
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 3059,
+                      "end": 3060
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 3058,
-                        "end": 3059
+                        "end": 3454
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 3059,
-                        "end": 3060
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 3060,
-                        "end": 3061
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 3061,
                         "end": 3067
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nmodule M :\n  sig\n    type t = { \\#true : int; y : int; }\n    type r = { \\#true : int; y : int; }\n  end\ntype t = { \\#false : int; }\nLine 6, characters 12-20:\n6 | let _ = ( { M.\\#true=0 } : t );;\n                ^^^^^^^^\nError: The field \"M.\\#true\" belongs to one of the following record types:\n         \"M.r\"  \"M.t\"\n       but a field was expected belonging to the record type \"t\"\n|}",
-                      "span": {
-                        "start": 3068,
-                        "end": 3453
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 3453,
-                        "end": 3454
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -3294,56 +2972,33 @@
                     "end": 401
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 271,
+                    "end": 272
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 270,
-                      "end": 271
+                      "end": 401
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 271,
-                      "end": 272
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 272,
-                      "end": 273
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 273,
                       "end": 279
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nmodule M :\n  sig class \\#and : object val mutable \\#and : int method \\#and : int end end\nval obj : M.\\#and = <obj>\n|}",
-                    "span": {
-                      "start": 280,
-                      "end": 400
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 400,
-                      "end": 401
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -3752,56 +3407,33 @@
                     "end": 1367
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 1235,
+                    "end": 1236
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 1234,
-                      "end": 1235
+                      "end": 1367
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 1235,
-                      "end": 1236
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 1236,
-                      "end": 1237
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 1237,
                       "end": 1243
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nval f :\n  (\\#let:'a -> ?\\#and:'b -> unit -> 'c) ->\n  \\#let:'a -> ?\\#and:'b -> ?\\#for:'b option -> unit -> 'c = <fun>\n|}",
-                    "span": {
-                      "start": 1244,
-                      "end": 1366
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 1366,
-                      "end": 1367
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -3933,56 +3565,33 @@
                     "end": 1745
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 1632,
+                    "end": 1633
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 1631,
-                      "end": 1632
+                      "end": 1745
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 1632,
-                      "end": 1633
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 1633,
-                      "end": 1634
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 1634,
                       "end": 1640
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\ntype \\#mutable = { mutable \\#mutable : \\#mutable; }\nval \\#rec : \\#mutable = {\\#mutable = <cycle>}\n|}",
-                    "span": {
-                      "start": 1641,
-                      "end": 1744
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 1744,
-                      "end": 1745
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -4074,56 +3683,33 @@
                     "end": 1955
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 1851,
+                    "end": 1852
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 1850,
-                      "end": 1851
+                      "end": 1955
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 1851,
-                      "end": 1852
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 1852,
-                      "end": 1853
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 1853,
                       "end": 1859
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nLine 1, characters 8-12:\n1 | let x = (++);;\n            ^^^^\nError: Unbound value \"(++)\"\n|}",
-                    "span": {
-                      "start": 1860,
-                      "end": 1954
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 1954,
-                      "end": 1955
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -4215,56 +3801,33 @@
                     "end": 2080
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 1973,
+                    "end": 1974
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 1972,
-                      "end": 1973
+                      "end": 2080
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 1973,
-                      "end": 1974
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 1974,
-                      "end": 1975
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 1975,
                       "end": 1981
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nLine 1, characters 8-13:\n1 | let x = \\#let;;\n            ^^^^^\nError: Unbound value \"\\#let\"\n|}",
-                    "span": {
-                      "start": 1982,
-                      "end": 2079
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 2079,
-                      "end": 2080
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -4400,56 +3963,33 @@
                     "end": 2179
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 2111,
+                    "end": 2112
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 2110,
-                      "end": 2111
+                      "end": 2179
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 2111,
-                      "end": 2112
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 2112,
-                      "end": 2113
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 2113,
                       "end": 2119
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nval f : \\#let:'a -> ?\\#and:'b -> unit -> int = <fun>\n|}",
-                    "span": {
-                      "start": 2120,
-                      "end": 2178
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 2178,
-                      "end": 2179
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -4573,56 +4113,33 @@
                     "end": 2383
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 2204,
+                    "end": 2205
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 2203,
-                      "end": 2204
+                      "end": 2383
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 2204,
-                      "end": 2205
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 2205,
-                      "end": 2206
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 2206,
                       "end": 2212
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nLine 1, characters 9-13:\n1 | let x = (true:int)\n             ^^^^\nError: The constructor \"true\" has type \"bool\"\n       but an expression was expected of type \"int\"\n|}",
-                    "span": {
-                      "start": 2213,
-                      "end": 2382
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 2382,
-                      "end": 2383
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -4745,56 +4262,33 @@
                     "end": 2529
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 2448,
+                    "end": 2449
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 2447,
-                      "end": 2448
+                      "end": 2529
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 2448,
-                      "end": 2449
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 2449,
-                      "end": 2450
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 2450,
                       "end": 2456
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nmodule M : sig type \\#true = true end\nval x : M.\\#true = M.(true)\n|}",
-                    "span": {
-                      "start": 2457,
-                      "end": 2528
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 2528,
-                      "end": 2529
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -4891,56 +4385,33 @@
                     "end": 2899
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 2626,
+                    "end": 2627
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 2625,
-                      "end": 2626
+                      "end": 2899
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 2626,
-                      "end": 2627
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 2627,
-                      "end": 2628
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 2628,
                       "end": 2634
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\ntype t = { \\#false : int; x : int; }\ntype u = { \\#true : int; }\nLine 4, characters 17-23:\n4 | let f { \\#false; \\#true } = 0\n                     ^^^^^^\nError: The record field \"\\#true\" belongs to the type \"u\"\n       but is mixed here with fields of type \"t\"\n|}",
-                    "span": {
-                      "start": 2635,
-                      "end": 2898
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 2898,
-                      "end": 2899
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -5024,56 +4495,33 @@
                   "end": 401
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 271,
+                  "end": 272
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 270,
-                    "end": 271
+                    "end": 401
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 271,
-                    "end": 272
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 272,
-                    "end": 273
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 273,
                     "end": 279
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nmodule M :\n  sig class \\#and : object val mutable \\#and : int method \\#and : int end end\nval obj : M.\\#and = <obj>\n|}",
-                  "span": {
-                    "start": 280,
-                    "end": 400
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 400,
-                    "end": 401
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -5142,56 +4590,33 @@
               "end": 401
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 271,
+              "end": 272
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 270,
-                "end": 271
+                "end": 401
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 271,
-                "end": 272
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 272,
-                "end": 273
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 273,
                 "end": 279
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nmodule M :\n  sig class \\#and : object val mutable \\#and : int method \\#and : int end end\nval obj : M.\\#and = <obj>\n|}",
-              "span": {
-                "start": 280,
-                "end": 400
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 400,
-                "end": 401
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -5405,56 +4830,33 @@
                   "end": 1168
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 1072,
+                  "end": 1073
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 1071,
-                    "end": 1072
+                    "end": 1168
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1072,
-                    "end": 1073
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1073,
-                    "end": 1074
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 1074,
                     "end": 1080
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nval x : [ `\\#let of [ `\\#and ] ] = `\\#let `\\#and\nval \\#rec : [ `\\#and ] = `\\#and\n|}",
-                  "span": {
-                    "start": 1081,
-                    "end": 1167
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 1167,
-                    "end": 1168
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -5497,56 +4899,33 @@
               "end": 1168
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 1072,
+              "end": 1073
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 1071,
-                "end": 1072
+                "end": 1168
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1072,
-                "end": 1073
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1073,
-                "end": 1074
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 1074,
                 "end": 1080
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nval x : [ `\\#let of [ `\\#and ] ] = `\\#let `\\#and\nval \\#rec : [ `\\#and ] = `\\#and\n|}",
-              "span": {
-                "start": 1081,
-                "end": 1167
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 1167,
-                "end": 1168
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -5682,56 +5061,33 @@
                   "end": 1367
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 1235,
+                  "end": 1236
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 1234,
-                    "end": 1235
+                    "end": 1367
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1235,
-                    "end": 1236
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1236,
-                    "end": 1237
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 1237,
                     "end": 1243
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nval f :\n  (\\#let:'a -> ?\\#and:'b -> unit -> 'c) ->\n  \\#let:'a -> ?\\#and:'b -> ?\\#for:'b option -> unit -> 'c = <fun>\n|}",
-                  "span": {
-                    "start": 1244,
-                    "end": 1366
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 1366,
-                    "end": 1367
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -6042,56 +5398,33 @@
               "end": 1367
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 1235,
+              "end": 1236
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 1234,
-                "end": 1235
+                "end": 1367
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1235,
-                "end": 1236
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1236,
-                "end": 1237
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 1237,
                 "end": 1243
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nval f :\n  (\\#let:'a -> ?\\#and:'b -> unit -> 'c) ->\n  \\#let:'a -> ?\\#and:'b -> ?\\#for:'b option -> unit -> 'c = <fun>\n|}",
-              "span": {
-                "start": 1244,
-                "end": 1366
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 1366,
-                "end": 1367
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -6183,56 +5516,33 @@
                   "end": 1745
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 1632,
+                  "end": 1633
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 1631,
-                    "end": 1632
+                    "end": 1745
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1632,
-                    "end": 1633
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1633,
-                    "end": 1634
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 1634,
                     "end": 1640
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\ntype \\#mutable = { mutable \\#mutable : \\#mutable; }\nval \\#rec : \\#mutable = {\\#mutable = <cycle>}\n|}",
-                  "span": {
-                    "start": 1641,
-                    "end": 1744
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 1744,
-                    "end": 1745
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -6343,56 +5653,33 @@
               "end": 1745
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 1632,
+              "end": 1633
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 1631,
-                "end": 1632
+                "end": 1745
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1632,
-                "end": 1633
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1633,
-                "end": 1634
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 1634,
                 "end": 1640
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\ntype \\#mutable = { mutable \\#mutable : \\#mutable; }\nval \\#rec : \\#mutable = {\\#mutable = <cycle>}\n|}",
-              "span": {
-                "start": 1641,
-                "end": 1744
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 1744,
-                "end": 1745
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -6444,56 +5731,33 @@
                   "end": 1955
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 1851,
+                  "end": 1852
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 1850,
-                    "end": 1851
+                    "end": 1955
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1851,
-                    "end": 1852
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1852,
-                    "end": 1853
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 1853,
                     "end": 1859
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nLine 1, characters 8-12:\n1 | let x = (++);;\n            ^^^^\nError: Unbound value \"(++)\"\n|}",
-                  "span": {
-                    "start": 1860,
-                    "end": 1954
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 1954,
-                    "end": 1955
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -6536,56 +5800,33 @@
               "end": 1955
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 1851,
+              "end": 1852
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 1850,
-                "end": 1851
+                "end": 1955
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1851,
-                "end": 1852
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1852,
-                "end": 1853
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 1853,
                 "end": 1859
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 8-12:\n1 | let x = (++);;\n            ^^^^\nError: Unbound value \"(++)\"\n|}",
-              "span": {
-                "start": 1860,
-                "end": 1954
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 1954,
-                "end": 1955
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -6637,56 +5878,33 @@
                   "end": 2080
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 1973,
+                  "end": 1974
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 1972,
-                    "end": 1973
+                    "end": 2080
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1973,
-                    "end": 1974
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 1974,
-                    "end": 1975
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 1975,
                     "end": 1981
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nLine 1, characters 8-13:\n1 | let x = \\#let;;\n            ^^^^^\nError: Unbound value \"\\#let\"\n|}",
-                  "span": {
-                    "start": 1982,
-                    "end": 2079
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 2079,
-                    "end": 2080
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -6729,56 +5947,33 @@
               "end": 2080
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 1973,
+              "end": 1974
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 1972,
-                "end": 1973
+                "end": 2080
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1973,
-                "end": 1974
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 1974,
-                "end": 1975
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 1975,
                 "end": 1981
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 8-13:\n1 | let x = \\#let;;\n            ^^^^^\nError: Unbound value \"\\#let\"\n|}",
-              "span": {
-                "start": 1982,
-                "end": 2079
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 2079,
-                "end": 2080
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -6823,56 +6018,33 @@
                   "end": 2179
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 2111,
+                  "end": 2112
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 2110,
-                    "end": 2111
+                    "end": 2179
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 2111,
-                    "end": 2112
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 2112,
-                    "end": 2113
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 2113,
                     "end": 2119
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nval f : \\#let:'a -> ?\\#and:'b -> unit -> int = <fun>\n|}",
-                  "span": {
-                    "start": 2120,
-                    "end": 2178
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 2178,
-                    "end": 2179
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -6908,56 +6080,33 @@
               "end": 2179
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 2111,
+              "end": 2112
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 2110,
-                "end": 2111
+                "end": 2179
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 2111,
-                "end": 2112
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 2112,
-                "end": 2113
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 2113,
                 "end": 2119
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nval f : \\#let:'a -> ?\\#and:'b -> unit -> int = <fun>\n|}",
-              "span": {
-                "start": 2120,
-                "end": 2178
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 2178,
-                "end": 2179
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -7041,56 +6190,33 @@
                   "end": 2383
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 2204,
+                  "end": 2205
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 2203,
-                    "end": 2204
+                    "end": 2383
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 2204,
-                    "end": 2205
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 2205,
-                    "end": 2206
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 2206,
                     "end": 2212
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nLine 1, characters 9-13:\n1 | let x = (true:int)\n             ^^^^\nError: The constructor \"true\" has type \"bool\"\n       but an expression was expected of type \"int\"\n|}",
-                  "span": {
-                    "start": 2213,
-                    "end": 2382
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 2382,
-                    "end": 2383
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -7186,56 +6312,33 @@
               "end": 2383
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 2204,
+              "end": 2205
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 2203,
-                "end": 2204
+                "end": 2383
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 2204,
-                "end": 2205
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 2205,
-                "end": 2206
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 2206,
                 "end": 2212
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nLine 1, characters 9-13:\n1 | let x = (true:int)\n             ^^^^\nError: The constructor \"true\" has type \"bool\"\n       but an expression was expected of type \"int\"\n|}",
-              "span": {
-                "start": 2213,
-                "end": 2382
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 2382,
-                "end": 2383
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -7318,56 +6421,33 @@
                   "end": 2529
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 2448,
+                  "end": 2449
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 2447,
-                    "end": 2448
+                    "end": 2529
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 2448,
-                    "end": 2449
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 2449,
-                    "end": 2450
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 2450,
                     "end": 2456
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nmodule M : sig type \\#true = true end\nval x : M.\\#true = M.(true)\n|}",
-                  "span": {
-                    "start": 2457,
-                    "end": 2528
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 2528,
-                    "end": 2529
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -7490,56 +6570,33 @@
               "end": 2529
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 2448,
+              "end": 2449
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 2447,
-                "end": 2448
+                "end": 2529
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 2448,
-                "end": 2449
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 2449,
-                "end": 2450
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 2450,
                 "end": 2456
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nmodule M : sig type \\#true = true end\nval x : M.\\#true = M.(true)\n|}",
-              "span": {
-                "start": 2457,
-                "end": 2528
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 2528,
-                "end": 2529
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -7584,56 +6641,33 @@
                   "end": 2899
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 2626,
+                  "end": 2627
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 2625,
-                    "end": 2626
+                    "end": 2899
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 2626,
-                    "end": 2627
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 2627,
-                    "end": 2628
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 2628,
                     "end": 2634
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\ntype t = { \\#false : int; x : int; }\ntype u = { \\#true : int; }\nLine 4, characters 17-23:\n4 | let f { \\#false; \\#true } = 0\n                     ^^^^^^\nError: The record field \"\\#true\" belongs to the type \"u\"\n       but is mixed here with fields of type \"t\"\n|}",
-                  "span": {
-                    "start": 2635,
-                    "end": 2898
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 2898,
-                    "end": 2899
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -7669,56 +6703,33 @@
               "end": 2899
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 2626,
+              "end": 2627
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 2625,
-                "end": 2626
+                "end": 2899
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 2626,
-                "end": 2627
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 2627,
-                "end": 2628
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 2628,
                 "end": 2634
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\ntype t = { \\#false : int; x : int; }\ntype u = { \\#true : int; }\nLine 4, characters 17-23:\n4 | let f { \\#false; \\#true } = 0\n                     ^^^^^^\nError: The record field \"\\#true\" belongs to the type \"u\"\n       but is mixed here with fields of type \"t\"\n|}",
-              "span": {
-                "start": 2635,
-                "end": 2898
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 2898,
-                "end": 2899
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       },
       {
@@ -7868,56 +6879,33 @@
                   "end": 3454
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 3059,
+                  "end": 3060
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 3058,
-                    "end": 3059
+                    "end": 3454
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 3059,
-                    "end": 3060
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 3060,
-                    "end": 3061
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 3061,
                     "end": 3067
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nmodule M :\n  sig\n    type t = { \\#true : int; y : int; }\n    type r = { \\#true : int; y : int; }\n  end\ntype t = { \\#false : int; }\nLine 6, characters 12-20:\n6 | let _ = ( { M.\\#true=0 } : t );;\n                ^^^^^^^^\nError: The field \"M.\\#true\" belongs to one of the following record types:\n         \"M.r\"  \"M.t\"\n       but a field was expected belonging to the record type \"t\"\n|}",
-                  "span": {
-                    "start": 3068,
-                    "end": 3453
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 3453,
-                    "end": 3454
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -8166,56 +7154,33 @@
               "end": 3454
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 3059,
+              "end": 3060
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 3058,
-                "end": 3059
+                "end": 3454
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 3059,
-                "end": 3060
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 3060,
-                "end": 3061
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 3061,
                 "end": 3067
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nmodule M :\n  sig\n    type t = { \\#true : int; y : int; }\n    type r = { \\#true : int; y : int; }\n  end\ntype t = { \\#false : int; }\nLine 6, characters 12-20:\n6 | let _ = ( { M.\\#true=0 } : t );;\n                ^^^^^^^^\nError: The field \"M.\\#true\" belongs to one of the following record types:\n         \"M.r\"  \"M.t\"\n       but a field was expected belonging to the record type \"t\"\n|}",
-              "span": {
-                "start": 3068,
-                "end": 3453
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 3453,
-                "end": 3454
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       }
     ]

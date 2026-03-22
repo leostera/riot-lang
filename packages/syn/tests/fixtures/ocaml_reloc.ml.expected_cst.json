@@ -963,56 +963,33 @@
                             "end": 750
                           }
                         },
-                        "tokens": [
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "[",
+                        "sigil_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "%",
+                          "span": {
+                            "start": 552,
+                            "end": 553
+                          }
+                        },
+                        "name": {
+                          "tag": "ident",
+                          "syntax_node": {
+                            "kind": "EXTENSION_EXPR",
                             "span": {
                               "start": 551,
-                              "end": 552
+                              "end": 750
                             }
                           },
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "%",
-                            "span": {
-                              "start": 552,
-                              "end": 553
-                            }
-                          },
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "%",
-                            "span": {
-                              "start": 553,
-                              "end": 554
-                            }
-                          },
-                          {
+                          "name_token": {
                             "kind": "IDENT_EXPR",
                             "text": "expect",
                             "span": {
                               "start": 554,
                               "end": 560
                             }
-                          },
-                          {
-                            "kind": "STRING_LITERAL",
-                            "text": "{|\nval blocks : string list =\n  [\"( (* comment *) (( \\\"contant\\\" [@attr] )  (* comment *)))\";\n   \"(( \\\"contant\\\" [@attr] )  (* comment *))\"; \"( \\\"contant\\\" [@attr] )\";\n   \"\\\"contant\\\"\"]\n|}",
-                            "span": {
-                              "start": 561,
-                              "end": 749
-                            }
-                          },
-                          {
-                            "kind": "IDENT_EXPR",
-                            "text": "]",
-                            "span": {
-                              "start": 749,
-                              "end": 750
-                            }
                           }
-                        ]
+                        },
+                        "payload_syntax_node": null
                       }
                     }
                   }
@@ -1979,56 +1956,33 @@
                           "end": 750
                         }
                       },
-                      "tokens": [
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "[",
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "%",
+                        "span": {
+                          "start": 552,
+                          "end": 553
+                        }
+                      },
+                      "name": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "EXTENSION_EXPR",
                           "span": {
                             "start": 551,
-                            "end": 552
+                            "end": 750
                           }
                         },
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "%",
-                          "span": {
-                            "start": 552,
-                            "end": 553
-                          }
-                        },
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "%",
-                          "span": {
-                            "start": 553,
-                            "end": 554
-                          }
-                        },
-                        {
+                        "name_token": {
                           "kind": "IDENT_EXPR",
                           "text": "expect",
                           "span": {
                             "start": 554,
                             "end": 560
                           }
-                        },
-                        {
-                          "kind": "STRING_LITERAL",
-                          "text": "{|\nval blocks : string list =\n  [\"( (* comment *) (( \\\"contant\\\" [@attr] )  (* comment *)))\";\n   \"(( \\\"contant\\\" [@attr] )  (* comment *))\"; \"( \\\"contant\\\" [@attr] )\";\n   \"\\\"contant\\\"\"]\n|}",
-                          "span": {
-                            "start": 561,
-                            "end": 749
-                          }
-                        },
-                        {
-                          "kind": "IDENT_EXPR",
-                          "text": "]",
-                          "span": {
-                            "start": 749,
-                            "end": 750
-                          }
                         }
-                      ]
+                      },
+                      "payload_syntax_node": null
                     }
                   }
                 }
@@ -3885,56 +3839,33 @@
                         "end": 750
                       }
                     },
-                    "tokens": [
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "[",
+                    "sigil_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 552,
+                        "end": 553
+                      }
+                    },
+                    "name": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "EXTENSION_EXPR",
                         "span": {
                           "start": 551,
-                          "end": 552
+                          "end": 750
                         }
                       },
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "%",
-                        "span": {
-                          "start": 552,
-                          "end": 553
-                        }
-                      },
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "%",
-                        "span": {
-                          "start": 553,
-                          "end": 554
-                        }
-                      },
-                      {
+                      "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "expect",
                         "span": {
                           "start": 554,
                           "end": 560
                         }
-                      },
-                      {
-                        "kind": "STRING_LITERAL",
-                        "text": "{|\nval blocks : string list =\n  [\"( (* comment *) (( \\\"contant\\\" [@attr] )  (* comment *)))\";\n   \"(( \\\"contant\\\" [@attr] )  (* comment *))\"; \"( \\\"contant\\\" [@attr] )\";\n   \"\\\"contant\\\"\"]\n|}",
-                        "span": {
-                          "start": 561,
-                          "end": 749
-                        }
-                      },
-                      {
-                        "kind": "IDENT_EXPR",
-                        "text": "]",
-                        "span": {
-                          "start": 749,
-                          "end": 750
-                        }
                       }
-                    ]
+                    },
+                    "payload_syntax_node": null
                   }
                 }
               }
@@ -4832,56 +4763,33 @@
                       "end": 750
                     }
                   },
-                  "tokens": [
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "[",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 552,
+                      "end": 553
+                    }
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
                       "span": {
                         "start": 551,
-                        "end": 552
+                        "end": 750
                       }
                     },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 552,
-                        "end": 553
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 553,
-                        "end": 554
-                      }
-                    },
-                    {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "expect",
                       "span": {
                         "start": 554,
                         "end": 560
                       }
-                    },
-                    {
-                      "kind": "STRING_LITERAL",
-                      "text": "{|\nval blocks : string list =\n  [\"( (* comment *) (( \\\"contant\\\" [@attr] )  (* comment *)))\";\n   \"(( \\\"contant\\\" [@attr] )  (* comment *))\"; \"( \\\"contant\\\" [@attr] )\";\n   \"\\\"contant\\\"\"]\n|}",
-                      "span": {
-                        "start": 561,
-                        "end": 749
-                      }
-                    },
-                    {
-                      "kind": "IDENT_EXPR",
-                      "text": "]",
-                      "span": {
-                        "start": 749,
-                        "end": 750
-                      }
                     }
-                  ]
+                  },
+                  "payload_syntax_node": null
                 }
               }
             }
@@ -6088,56 +5996,33 @@
                     "end": 750
                   }
                 },
-                "tokens": [
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "[",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 552,
+                    "end": 553
+                  }
+                },
+                "name": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
                     "span": {
                       "start": 551,
-                      "end": 552
+                      "end": 750
                     }
                   },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 552,
-                      "end": 553
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 553,
-                      "end": 554
-                    }
-                  },
-                  {
+                  "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "expect",
                     "span": {
                       "start": 554,
                       "end": 560
                     }
-                  },
-                  {
-                    "kind": "STRING_LITERAL",
-                    "text": "{|\nval blocks : string list =\n  [\"( (* comment *) (( \\\"contant\\\" [@attr] )  (* comment *)))\";\n   \"(( \\\"contant\\\" [@attr] )  (* comment *))\"; \"( \\\"contant\\\" [@attr] )\";\n   \"\\\"contant\\\"\"]\n|}",
-                    "span": {
-                      "start": 561,
-                      "end": 749
-                    }
-                  },
-                  {
-                    "kind": "IDENT_EXPR",
-                    "text": "]",
-                    "span": {
-                      "start": 749,
-                      "end": 750
-                    }
                   }
-                ]
+                },
+                "payload_syntax_node": null
               }
             }
           }
@@ -8177,56 +8062,33 @@
                   "end": 750
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 552,
+                  "end": 553
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
                     "start": 551,
-                    "end": 552
+                    "end": 750
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 552,
-                    "end": 553
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 553,
-                    "end": 554
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "expect",
                   "span": {
                     "start": 554,
                     "end": 560
                   }
-                },
-                {
-                  "kind": "STRING_LITERAL",
-                  "text": "{|\nval blocks : string list =\n  [\"( (* comment *) (( \\\"contant\\\" [@attr] )  (* comment *)))\";\n   \"(( \\\"contant\\\" [@attr] )  (* comment *))\"; \"( \\\"contant\\\" [@attr] )\";\n   \"\\\"contant\\\"\"]\n|}",
-                  "span": {
-                    "start": 561,
-                    "end": 749
-                  }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 749,
-                    "end": 750
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -9028,56 +8890,33 @@
               "end": 750
             }
           },
-          "tokens": [
-            {
-              "kind": "IDENT_EXPR",
-              "text": "[",
+          "sigil_token": {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 552,
+              "end": 553
+            }
+          },
+          "name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
               "span": {
                 "start": 551,
-                "end": 552
+                "end": 750
               }
             },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 552,
-                "end": 553
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "%",
-              "span": {
-                "start": 553,
-                "end": 554
-              }
-            },
-            {
+            "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
                 "start": 554,
                 "end": 560
               }
-            },
-            {
-              "kind": "STRING_LITERAL",
-              "text": "{|\nval blocks : string list =\n  [\"( (* comment *) (( \\\"contant\\\" [@attr] )  (* comment *)))\";\n   \"(( \\\"contant\\\" [@attr] )  (* comment *))\"; \"( \\\"contant\\\" [@attr] )\";\n   \"\\\"contant\\\"\"]\n|}",
-              "span": {
-                "start": 561,
-                "end": 749
-              }
-            },
-            {
-              "kind": "IDENT_EXPR",
-              "text": "]",
-              "span": {
-                "start": 749,
-                "end": 750
-              }
             }
-          ]
+          },
+          "payload_syntax_node": null
         }
       }
     ]

@@ -60,7 +60,9 @@
   - [x] standalone attribute and extension items
   - [x] typed module-type tree
   - [x] typed module-expression tree
-  - [ ] attributed expressions and attributed items as faithful wrappers instead of token shells
+  - [~] attributed expressions and attributed items as faithful wrappers instead of token shells
+    - [x] attribute and extension nodes now preserve sigil, qualified name, and payload anchors
+    - [ ] expression/item/type wrappers still need typed payload structure instead of bare annotation nodes
 
 ### OCaml Structure Parity Checklist
 
@@ -179,6 +181,7 @@
   - [ ] constructor argument lists
   - [ ] constructor result types / GADT constructors
 - [ ] Attributes and extensions are still token shells rather than structured payloads
+- [~] Attributes and extensions now preserve sigils, names, and payload anchors, but their payloads are not yet fully typed
 - [ ] Includes, opens, and with-constraints are still thin wrappers rather than a typed tree
 
 #### Present But Lossy

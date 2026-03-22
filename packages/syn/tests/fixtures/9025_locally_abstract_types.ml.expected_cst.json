@@ -230,40 +230,33 @@
                   "end": 182
                 }
               },
-              "tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "[",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "@",
+                "span": {
+                  "start": 174,
+                  "end": 175
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "ATTRIBUTE_EXPR",
                   "span": {
                     "start": 173,
-                    "end": 174
+                    "end": 182
                   }
                 },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "@",
-                  "span": {
-                    "start": 174,
-                    "end": 175
-                  }
-                },
-                {
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "inline",
                   "span": {
                     "start": 175,
                     "end": 181
                   }
-                },
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": "]",
-                  "span": {
-                    "start": 181,
-                    "end": 182
-                  }
                 }
-              ]
+              },
+              "payload_syntax_node": null
             }
           ],
           "binding_pattern": {
@@ -627,40 +620,33 @@
                 "end": 182
               }
             },
-            "tokens": [
-              {
-                "kind": "IDENT_EXPR",
-                "text": "[",
+            "sigil_token": {
+              "kind": "IDENT_EXPR",
+              "text": "@",
+              "span": {
+                "start": 174,
+                "end": 175
+              }
+            },
+            "name": {
+              "tag": "ident",
+              "syntax_node": {
+                "kind": "ATTRIBUTE_EXPR",
                 "span": {
                   "start": 173,
-                  "end": 174
+                  "end": 182
                 }
               },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "@",
-                "span": {
-                  "start": 174,
-                  "end": 175
-                }
-              },
-              {
+              "name_token": {
                 "kind": "IDENT_EXPR",
                 "text": "inline",
                 "span": {
                   "start": 175,
                   "end": 181
                 }
-              },
-              {
-                "kind": "IDENT_EXPR",
-                "text": "]",
-                "span": {
-                  "start": 181,
-                  "end": 182
-                }
               }
-            ]
+            },
+            "payload_syntax_node": null
           }
         ],
         "binding_pattern": {

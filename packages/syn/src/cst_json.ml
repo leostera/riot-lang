@@ -118,23 +118,13 @@ and core_type_to_json = function
           ("tag", Json.String "attribute");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("type", core_type_to_json type_);
-          ( "attribute",
-            Json.Object
-              [
-                ("syntax_node", syntax_node_to_json attribute.syntax_node);
-                ("tokens", Json.Array (List.map token_to_json attribute.tokens));
-              ] );
+          ("attribute", attribute_to_json attribute);
         ]
   | Cst.CoreType.Extension extension ->
       Json.Object
         [
           ("tag", Json.String "extension");
-          ( "extension",
-            Json.Object
-              [
-                ("syntax_node", syntax_node_to_json extension.syntax_node);
-                ("tokens", Json.Array (List.map token_to_json extension.tokens));
-              ] );
+          ("extension", extension_to_json extension);
         ]
   | Cst.CoreType.Arrow { syntax_node; parameter_type; result_type } ->
       Json.Object
@@ -258,23 +248,13 @@ and module_type_to_json = function
           ("tag", Json.String "attribute");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("module_type", module_type_to_json module_type);
-          ( "attribute",
-            Json.Object
-              [
-                ("syntax_node", syntax_node_to_json attribute.syntax_node);
-                ("tokens", Json.Array (List.map token_to_json attribute.tokens));
-              ] );
+          ("attribute", attribute_to_json attribute);
         ]
   | Cst.ModuleType.Extension extension ->
       Json.Object
         [
           ("tag", Json.String "extension");
-          ( "extension",
-            Json.Object
-              [
-                ("syntax_node", syntax_node_to_json extension.syntax_node);
-                ("tokens", Json.Array (List.map token_to_json extension.tokens));
-              ] );
+          ("extension", extension_to_json extension);
         ]
 
 and module_expression_to_json = function
@@ -631,14 +611,18 @@ and attribute_to_json (attr : Cst.attribute) =
   Json.Object
     [
       ("syntax_node", syntax_node_to_json attr.syntax_node);
-      ("tokens", Json.Array (List.map token_to_json attr.tokens));
+      ("sigil_token", token_to_json attr.sigil_token);
+      ("name", ident_to_json attr.name);
+      ("payload_syntax_node", option_to_json syntax_node_to_json attr.payload_syntax_node);
     ]
 
 and extension_to_json (ext : Cst.extension) =
   Json.Object
     [
       ("syntax_node", syntax_node_to_json ext.syntax_node);
-      ("tokens", Json.Array (List.map token_to_json ext.tokens));
+      ("sigil_token", token_to_json ext.sigil_token);
+      ("name", ident_to_json ext.name);
+      ("payload_syntax_node", option_to_json syntax_node_to_json ext.payload_syntax_node);
     ]
 
 and object_member_to_json = function

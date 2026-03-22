@@ -124,11 +124,98 @@ let module_path_like_from_node node =
   | _ ->
       module_path_from_tokens ~syntax_node:node (direct_non_trivia_tokens node)
 
+let annotation_shell_and_payload ~annotation_kind ~sigils node =
+  let direct_tokens = direct_non_trivia_tokens node in
+  let has_sigil tokens =
+    tokens
+    |> List.exists (fun syntax_token ->
+           let text = Ceibo.Red.SyntaxToken.text syntax_token in
+           List.exists (String.equal text) sigils)
+  in
+  if has_sigil direct_tokens then
+    (node, None)
+  else
+    let direct_children = direct_non_trivia_nodes node in
+    let shell_node_opt =
+      direct_children
+      |> List.find_opt (fun child ->
+             Ceibo.Red.SyntaxNode.kind child = annotation_kind
+             && has_sigil (direct_non_trivia_tokens child))
+    in
+    let payload_node_opt =
+      direct_children
+      |> List.find_opt (fun child ->
+             Ceibo.Red.SyntaxNode.kind child != annotation_kind)
+    in
+    match shell_node_opt with
+    | Some shell_node -> (shell_node, payload_node_opt)
+    | None ->
+        bail ~message:"expected attribute or extension shell during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "annotation" ]
+
+let annotation_name_from_tokens ~syntax_node ~sigils syntax_tokens =
+  let name_tokens =
+    syntax_tokens
+    |> List.filter (fun syntax_token ->
+           let text = Ceibo.Red.SyntaxToken.text syntax_token in
+           not
+             (String.equal text "["
+             || String.equal text "]"
+             || List.exists (String.equal text) sigils))
+  in
+  module_path_from_tokens ~syntax_node name_tokens
+
 let attribute_from_node node : Cst.attribute =
-  { Cst.syntax_node = node; tokens = List.map token (direct_non_trivia_tokens node) }
+  let shell_node, payload_syntax_node =
+    annotation_shell_and_payload ~annotation_kind:Syntax_kind.ATTRIBUTE_EXPR
+      ~sigils:[ "@"; "@@"; "@@@" ] node
+  in
+  let shell_tokens = direct_non_trivia_tokens shell_node in
+  let sigil_syntax_token =
+    shell_tokens
+    |> List.find_opt (fun syntax_token ->
+           let text = Ceibo.Red.SyntaxToken.text syntax_token in
+           String.equal text "@" || String.equal text "@@" || String.equal text "@@@")
+  in
+  match sigil_syntax_token with
+  | Some sigil_syntax_token ->
+      {
+        Cst.syntax_node = node;
+        sigil_token = token sigil_syntax_token;
+        name =
+          annotation_name_from_tokens ~syntax_node:shell_node
+            ~sigils:[ "@"; "@@"; "@@@" ] shell_tokens;
+        payload_syntax_node;
+      }
+  | None ->
+      bail ~message:"expected attribute sigil during Ceibo -> CST lifting"
+        ~syntax_node:node ~context:[ "attribute" ]
 
 let extension_from_node node : Cst.extension =
-  { Cst.syntax_node = node; tokens = List.map token (direct_non_trivia_tokens node) }
+  let shell_node, payload_syntax_node =
+    annotation_shell_and_payload ~annotation_kind:Syntax_kind.EXTENSION_EXPR
+      ~sigils:[ "%"; "%%"; "%%%" ] node
+  in
+  let shell_tokens = direct_non_trivia_tokens shell_node in
+  let sigil_syntax_token =
+    shell_tokens
+    |> List.find_opt (fun syntax_token ->
+           let text = Ceibo.Red.SyntaxToken.text syntax_token in
+           String.equal text "%" || String.equal text "%%" || String.equal text "%%%")
+  in
+  match sigil_syntax_token with
+  | Some sigil_syntax_token ->
+      {
+        Cst.syntax_node = node;
+        sigil_token = token sigil_syntax_token;
+        name =
+          annotation_name_from_tokens ~syntax_node:shell_node
+            ~sigils:[ "%"; "%%"; "%%%" ] shell_tokens;
+        payload_syntax_node;
+      }
+  | None ->
+      bail ~message:"expected extension sigil during Ceibo -> CST lifting"
+        ~syntax_node:node ~context:[ "extension" ]
 
 let attributes_from_node node =
   direct_non_trivia_nodes node

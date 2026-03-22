@@ -285,6 +285,11 @@ let tests =
               ~actual:
                 (SyntaxKind.to_string
                    (Ceibo.Red.SyntaxNode.kind attribute.syntax_node));
+            Test.assert_equal ~expected:"@@"
+              ~actual:(Syn.Cst.Token.text attribute.sigil_token);
+            Test.assert_equal ~expected:(Some "attr")
+              ~actual:(Syn.Cst.Ident.name attribute.name);
+            Test.assert_equal ~expected:None ~actual:attribute.payload_syntax_node;
             Test.assert_equal ~expected:0
               ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
             Ok ()
@@ -305,11 +310,39 @@ let tests =
               ~actual:
                 (SyntaxKind.to_string
                    (Ceibo.Red.SyntaxNode.kind extension.syntax_node));
+            Test.assert_equal ~expected:"%"
+              ~actual:(Syn.Cst.Token.text extension.sigil_token);
+            Test.assert_equal ~expected:(Some "toplevel_eval")
+              ~actual:(Syn.Cst.Ident.name extension.name);
+            Test.assert_equal ~expected:None ~actual:extension.payload_syntax_node;
             Test.assert_equal ~expected:0
               ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
             Ok ()
         | _ ->
             Error "expected first item to be an extension item");
+    Test.case "cst attributed types keep attribute names and payload nodes" (fun () ->
+        let result = parse_ml "type t = int [@foo]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.TypeDeclaration
+            {
+              type_definition =
+                Syn.Cst.TypeDefinition.Alias
+                  { manifest = Syn.Cst.CoreType.Attribute { attribute; _ }; _ };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"@"
+              ~actual:(Syn.Cst.Token.text attribute.sigil_token);
+            Test.assert_equal ~expected:(Some "foo")
+              ~actual:(Syn.Cst.Ident.name attribute.name);
+            Test.assert_equal ~expected:None ~actual:attribute.payload_syntax_node;
+            Ok ()
+        | _ -> Error "expected attributed type alias");
     Test.case "cst exception declarations preserve declared names" (fun () ->
         let result = parse_ml "exception Not_found\n" in
         let cst =

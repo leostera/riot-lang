@@ -17,16 +17,6 @@ module Token = struct
   let span token = Ceibo.Red.SyntaxToken.span token.syntax_token
 end
 
-type attribute = {
-  syntax_node : syntax_node;
-  tokens : Token.t list;
-}
-
-type extension = {
-  syntax_node : syntax_node;
-  tokens : Token.t list;
-}
-
 module Ident = struct
   type t =
     | Ident of {
@@ -59,6 +49,20 @@ module Ident = struct
 end
 
 module ModulePath = Ident
+
+type attribute = {
+  syntax_node : syntax_node;
+  sigil_token : Token.t;
+  name : Ident.t;
+  payload_syntax_node : syntax_node option;
+}
+
+type extension = {
+  syntax_node : syntax_node;
+  sigil_token : Token.t;
+  name : Ident.t;
+  payload_syntax_node : syntax_node option;
+}
 
 type object_type_field = {
   syntax_node : syntax_node;
