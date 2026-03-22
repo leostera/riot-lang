@@ -2788,12 +2788,26 @@ let external_declaration_from_node node =
   | None -> None
 
 let include_statement_from_node node =
-  match direct_non_trivia_nodes node with
-  | lifted_included_syntax_node :: _ ->
+  match
+    direct_non_trivia_nodes node
+    |> List.find_opt (fun child ->
+           can_lift_module_expression_node child || can_lift_module_type_node child)
+  with
+  | Some included_node ->
       Some
-        ({ syntax_node = node; included_syntax_node = lifted_included_syntax_node }
+        ({
+           syntax_node = node;
+           target =
+             if can_lift_module_expression_node included_node then
+               Cst.ModuleExpression (module_expression_from_node included_node)
+             else if can_lift_module_type_node included_node then
+               Cst.ModuleType (module_type_from_node included_node)
+             else
+               bail ~message:"expected include target during Ceibo -> CST lifting"
+                 ~syntax_node:included_node ~context:[ "include_statement" ];
+         }
           : Cst.include_statement)
-  | [] -> None
+  | None -> None
 
 let exception_declaration_from_node node =
   match direct_non_trivia_tokens node with

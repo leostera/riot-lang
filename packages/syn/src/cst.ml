@@ -1379,9 +1379,13 @@ type class_type_declaration = {
   class_type_body_syntax_node : syntax_node;
 }
 
+type include_target =
+  | ModuleExpression of module_expression
+  | ModuleType of module_type
+
 type include_statement = {
   syntax_node : syntax_node;
-  included_syntax_node : syntax_node;
+  target : include_target;
 }
 
 module Item = struct

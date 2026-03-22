@@ -182,7 +182,10 @@
   - [ ] constructor result types / GADT constructors
 - [ ] Attributes and extensions are still token shells rather than structured payloads
 - [~] Attributes and extensions now preserve sigils, names, and payload anchors, but their payloads are not yet fully typed
-- [ ] Includes, opens, and with-constraints are still thin wrappers rather than a typed tree
+- [~] Includes, opens, and with-constraints are still thinner than they should be
+  - [x] include statements now carry typed module-expression/module-type targets
+  - [ ] open statements still only preserve qualified identifiers
+  - [ ] with-constraints still do not form a richer typed tree
 
 #### Present But Lossy
 

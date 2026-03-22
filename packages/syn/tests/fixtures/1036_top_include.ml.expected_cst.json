@@ -20,11 +20,28 @@
               "end": 13
             }
           },
-          "included_syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 8,
-              "end": 13
+          "target": {
+            "tag": "module_expression",
+            "value": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 8,
+                    "end": 13
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "List",
+                  "span": {
+                    "start": 8,
+                    "end": 12
+                  }
+                }
+              }
             }
           }
         }

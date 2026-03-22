@@ -2556,11 +2556,28 @@
               "end": 1973
             }
           },
-          "included_syntax_node": {
-            "kind": "ATTRIBUTE_EXPR",
-            "span": {
-              "start": 1964,
-              "end": 1970
+          "target": {
+            "tag": "module_expression",
+            "value": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 1971,
+                    "end": 1973
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "M",
+                  "span": {
+                    "start": 1971,
+                    "end": 1972
+                  }
+                }
+              }
             }
           }
         }

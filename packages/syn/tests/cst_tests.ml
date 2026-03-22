@@ -252,7 +252,7 @@ let tests =
               ~actual:(List.map Syn.Cst.Token.text primitive_name_tokens);
             Ok ()
         | _ -> Error "expected first item to be an external declaration");
-    Test.case "cst include statements preserve included syntax nodes" (fun () ->
+    Test.case "cst include statements preserve typed include targets" (fun () ->
         let result =
           parse_mli "include module type of Stdlib.Array\n"
         in
@@ -262,11 +262,37 @@ let tests =
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
         match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.IncludeStatement { included_syntax_node; _ } :: _ ->
-            Test.assert_equal ~expected:"MODULE_TYPE_OF"
-              ~actual:
-                (SyntaxKind.to_string
-                   (Ceibo.Red.SyntaxNode.kind included_syntax_node));
+        | Syn.Cst.Item.IncludeStatement
+            { target = Syn.Cst.ModuleType (Syn.Cst.ModuleType.TypeOf { module_path; _ }); _ }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "Array")
+              ~actual:(Syn.Cst.Ident.name module_path);
+            Ok ()
+        | _ -> Error "expected first item to be an include statement");
+    Test.case "cst implementation includes preserve module-expression targets" (fun () ->
+        let result = parse_ml "include Std.List\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.IncludeStatement
+            {
+              target =
+                Syn.Cst.ModuleExpression
+                  (Syn.Cst.ModuleExpression.Path
+                    (Syn.Cst.Ident.Qualified
+                      {
+                        prefix = Syn.Cst.Ident.Ident { name_token = root; _ };
+                        name_token = leaf;
+                        _;
+                      }));
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Std" ~actual:(Syn.Cst.Token.text root);
+            Test.assert_equal ~expected:"List" ~actual:(Syn.Cst.Token.text leaf);
             Ok ()
         | _ -> Error "expected first item to be an include statement");
     Test.case "cst source files distinguish standalone attribute items"

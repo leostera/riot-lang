@@ -20,11 +20,61 @@
               "end": 36
             }
           },
-          "included_syntax_node": {
-            "kind": "MODULE_TYPE_OF",
-            "span": {
-              "start": 8,
-              "end": 36
+          "target": {
+            "tag": "module_type",
+            "value": {
+              "tag": "type_of",
+              "syntax_node": {
+                "kind": "MODULE_TYPE_OF",
+                "span": {
+                  "start": 8,
+                  "end": 36
+                }
+              },
+              "module_path": {
+                "tag": "qualified",
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 23,
+                    "end": 36
+                  }
+                },
+                "prefix": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 23,
+                      "end": 36
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Stdlib",
+                    "span": {
+                      "start": 23,
+                      "end": 29
+                    }
+                  }
+                },
+                "dot_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 29,
+                    "end": 30
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Array",
+                  "span": {
+                    "start": 30,
+                    "end": 35
+                  }
+                }
+              }
             }
           }
         }

@@ -670,11 +670,59 @@
               "end": 478
             }
           },
-          "included_syntax_node": {
-            "kind": "MODULE_APPLICATION",
-            "span": {
-              "start": 439,
-              "end": 443
+          "target": {
+            "tag": "module_expression",
+            "value": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "MODULE_APPLICATION",
+                "span": {
+                  "start": 439,
+                  "end": 443
+                }
+              },
+              "callee": {
+                "tag": "path",
+                "path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 439,
+                      "end": 440
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "M",
+                    "span": {
+                      "start": 439,
+                      "end": 440
+                    }
+                  }
+                }
+              },
+              "argument": {
+                "tag": "path",
+                "path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 441,
+                      "end": 442
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "X",
+                    "span": {
+                      "start": 441,
+                      "end": 442
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -689,11 +737,28 @@
               "end": 488
             }
           },
-          "included_syntax_node": {
-            "kind": "MODULE_PATH",
-            "span": {
-              "start": 486,
-              "end": 488
+          "target": {
+            "tag": "module_expression",
+            "value": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 486,
+                    "end": 488
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "M",
+                  "span": {
+                    "start": 486,
+                    "end": 487
+                  }
+                }
+              }
             }
           }
         }

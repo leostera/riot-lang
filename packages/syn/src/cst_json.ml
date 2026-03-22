@@ -1240,10 +1240,25 @@ let class_type_declaration_to_json
     ]
 
 let include_statement_to_json (stmt : Cst.include_statement) =
+  let target =
+    match stmt.target with
+    | Cst.ModuleExpression module_expression ->
+        Json.Object
+          [
+            ("tag", Json.String "module_expression");
+            ("value", module_expression_to_json module_expression);
+          ]
+    | Cst.ModuleType module_type ->
+        Json.Object
+          [
+            ("tag", Json.String "module_type");
+            ("value", module_type_to_json module_type);
+          ]
+  in
   Json.Object
     [
       ("syntax_node", syntax_node_to_json stmt.syntax_node);
-      ("included_syntax_node", syntax_node_to_json stmt.included_syntax_node);
+      ("target", target);
     ]
 
 let item_to_json = function
