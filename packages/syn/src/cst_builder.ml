@@ -130,17 +130,37 @@ let name_token_from_ident_pattern node =
   | [] -> None
 
 let is_identifier_like_text text =
-  String.length text > 0
-  &&
-  let ch = String.get text 0 in
-  (ch >= 'a' && ch <= 'z')
-  || (ch >= 'A' && ch <= 'Z')
-  || ch = '_'
+  let is_alpha_or_underscore ch =
+    (ch >= 'a' && ch <= 'z')
+    || (ch >= 'A' && ch <= 'Z')
+    || ch = '_'
+  in
+  let len = String.length text in
+  if len = 0 then
+    false
+  else
+    let ch = String.get text 0 in
+    is_alpha_or_underscore ch
+    || if ch = '#' && len > 1 then
+      let next = String.get text 1 in
+      is_alpha_or_underscore next
+    else if ch = '\\' then
+      if len > 2 && String.get text 1 = '#' then
+        let next = String.get text 2 in
+        is_alpha_or_underscore next
+      else
+        false
+    else
+      false
 
 let rec simple_pattern_name_token node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.IDENT_PATTERN ->
       name_token_from_ident_pattern node
+  | Syntax_kind.ATTRIBUTE_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | first_child :: _ -> simple_pattern_name_token first_child
+      | [] -> None)
   | Syntax_kind.TYPED_PATTERN
   | Syntax_kind.PAREN_PATTERN
   | Syntax_kind.LAZY_PATTERN ->
@@ -282,6 +302,16 @@ let rec take_tokens_until_equals acc = function
       else
         take_tokens_until_equals (syntax_token :: acc) rest
 
+let operator_tokens_from_node node =
+  direct_non_trivia_tokens node
+  |> List.filter (fun syntax_token ->
+         let text = Ceibo.Red.SyntaxToken.text syntax_token in
+         not
+           (String.equal text "("
+           || String.equal text ")"
+           || String.equal text " "))
+  |> List.map token
+
 let rec pattern_from_node node =
   let pattern_children node = direct_non_trivia_nodes node |> List.map pattern_from_node in
   let poly_variant_tag_token node =
@@ -298,6 +328,21 @@ let rec pattern_from_node node =
       | [] -> Cst.Pattern.Unknown node)
   | Syntax_kind.WILDCARD_PATTERN ->
       Cst.Pattern.Wildcard { syntax_node = node }
+  | Syntax_kind.ATTRIBUTE_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | pattern_node :: rest -> (
+          match List.find_opt is_attribute_node rest with
+          | Some attribute_node ->
+              Cst.Pattern.Attribute
+                {
+                  syntax_node = node;
+                  pattern = pattern_from_node pattern_node;
+                  attribute = attribute_from_node attribute_node;
+                }
+          | None -> Cst.Pattern.Unknown node)
+      | [] -> Cst.Pattern.Unknown node)
+  | Syntax_kind.EXTENSION_EXPR ->
+      Cst.Pattern.Extension (extension_from_node node)
   | Syntax_kind.LAZY_PATTERN -> (
       match direct_non_trivia_nodes node with
       | inner_node :: _ ->
@@ -328,18 +373,7 @@ let rec pattern_from_node node =
       | _ -> Cst.Pattern.Unknown node)
   | Syntax_kind.OPERATOR_PATTERN ->
       Cst.Pattern.Operator
-        {
-          syntax_node = node;
-          operator_tokens =
-            direct_non_trivia_tokens node
-            |> List.filter (fun syntax_token ->
-                   let text = Ceibo.Red.SyntaxToken.text syntax_token in
-                   not
-                     (String.equal text "("
-                     || String.equal text ")"
-                     || String.equal text " "))
-            |> List.map token;
-        }
+        { syntax_node = node; operator_tokens = operator_tokens_from_node node }
   | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> (
       match direct_non_trivia_tokens node with
       | _lparen :: _module_kw :: name_syntax_token :: _ ->
@@ -564,6 +598,9 @@ and expression_from_node node =
   | Syntax_kind.MODULE_PATH ->
       Cst.Expression.Path
         { syntax_node = node; path = module_path_from_node node }
+  | Syntax_kind.OPERATOR_PATTERN ->
+      Cst.Expression.Operator
+        { syntax_node = node; operator_tokens = operator_tokens_from_node node }
   | Syntax_kind.ATTRIBUTE_EXPR ->
       Cst.Expression.Attribute (attribute_from_node node)
   | Syntax_kind.EXTENSION_EXPR ->
@@ -812,9 +849,12 @@ and expression_from_node node =
             }
       | _ -> Cst.Expression.Unknown node)
   | Syntax_kind.SEQUENCE_EXPR -> (
-      match sequence_expression_from_node node with
-      | Some expr -> Cst.Expression.Sequence expr
-      | None -> Cst.Expression.Unknown node)
+      match known_expression_children node with
+      | expr :: [] -> expr
+      | _ -> (
+          match sequence_expression_from_node node with
+          | Some expr -> Cst.Expression.Sequence expr
+          | None -> Cst.Expression.Unknown node))
   | Syntax_kind.TUPLE_EXPR ->
       Cst.Expression.Tuple { syntax_node = node; elements = known_expression_children node }
   | Syntax_kind.LIST_EXPR ->
@@ -876,9 +916,11 @@ and expression_from_node node =
       | _ -> Cst.Expression.Unknown node)
   | Syntax_kind.PAREN_EXPR -> (
       match direct_non_trivia_nodes node with
-      | inner_node :: _ ->
-          Cst.Expression.Parenthesized
-            { syntax_node = node; inner = expression_from_node inner_node }
+      | inner_node :: _ -> (
+          match expression_from_node inner_node with
+          | Cst.Expression.Unknown _ -> Cst.Expression.Unknown node
+          | inner ->
+              Cst.Expression.Parenthesized { syntax_node = node; inner })
       | [] -> Cst.Expression.Unknown node)
   | _ -> Cst.Expression.Unknown node
 
@@ -987,6 +1029,21 @@ and object_inherit_from_node node =
         }
   | None -> None
 
+and object_initializer_from_node node =
+  match direct_non_trivia_tokens node, direct_non_trivia_nodes node with
+  | initializer_kw :: _, children
+    when String.equal (Ceibo.Red.SyntaxToken.text initializer_kw) "initializer" ->
+      let body =
+        children
+        |> List.filter (fun child -> not (is_attribute_node child))
+        |> List.find_map (fun child ->
+               match expression_from_node child with
+               | Cst.Expression.Unknown _ -> None
+               | expr -> Some expr)
+      in
+      Some ({ syntax_node = node; body } : Cst.object_initializer)
+  | _ -> None
+
 and object_expression_from_node node =
   let non_trivia_children = direct_non_trivia_nodes node in
   let self_pattern, member_children =
@@ -1014,11 +1071,17 @@ and object_expression_from_node node =
             match object_inherit_from_node child with
             | Some member -> lift_members (Cst.Inherit member :: acc) rest
             | None -> None)
+        | Syntax_kind.IDENT_EXPR -> (
+            match object_initializer_from_node child with
+            | Some member -> lift_members (Cst.Initializer member :: acc) rest
+            | None -> None)
+        | Syntax_kind.ATTRIBUTE_EXPR ->
+            lift_members acc rest
         | _ -> None)
   in
   match lift_members [] member_children with
   | Some members ->
-      Some { Cst.syntax_node = node; self_pattern; members }
+      Some ({ syntax_node = node; self_pattern; members } : Cst.object_expression)
   | None -> None
 
 and method_call_expression_from_node node =
@@ -1568,8 +1631,12 @@ let type_definition_from_node node =
         else if kind = Syntax_kind.TYPE_CONSTR || kind = Syntax_kind.TYPE_ARROW
            || kind = Syntax_kind.TYPE_TUPLE || kind = Syntax_kind.TYPE_VAR
            || kind = Syntax_kind.TYPE_ALIAS
+           || kind = Syntax_kind.ATTRIBUTE_EXPR
+           || kind = Syntax_kind.EXTENSION_EXPR
         then
           Cst.TypeDefinition.Alias { syntax_node = first }
+        else if kind = Syntax_kind.OBJECT_TYPE then
+          Cst.TypeDefinition.Object { syntax_node = first }
         else if kind = Syntax_kind.FIRST_CLASS_MODULE_TYPE then
           match direct_non_trivia_nodes first with
           | module_type_syntax_node :: _ ->
@@ -1684,15 +1751,20 @@ let module_type_declaration_from_node node =
   | _ -> None
 
 let class_declaration_from_node node =
-  let children_without_attributes =
+  let children =
     direct_non_trivia_nodes node
     |> List.filter (fun child ->
-           Ceibo.Red.SyntaxNode.kind child != Syntax_kind.ATTRIBUTE_EXPR
-           && Ceibo.Red.SyntaxNode.kind child != Syntax_kind.TYPE_PARAM)
+           Ceibo.Red.SyntaxNode.kind child != Syntax_kind.TYPE_PARAM)
   in
-  match children_without_attributes with
-  | name_node :: remainder
-    when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
+  let rec split_at_name acc = function
+    | child :: rest when Ceibo.Red.SyntaxNode.kind child = Syntax_kind.IDENT_EXPR ->
+        Some (child, List.rev acc, rest)
+    | child :: rest ->
+        split_at_name (child :: acc) rest
+    | [] -> None
+  in
+  match split_at_name [] children with
+  | Some (name_node, _prefix, remainder) -> (
       match first_ident_token_in_subtree name_node, List.rev remainder with
       | Some class_name, class_body_node :: rev_prefix -> (
           match expression_from_node class_body_node with
@@ -1710,18 +1782,23 @@ let class_declaration_from_node node =
                   class_body;
                 })
       | _ -> None)
-  | _ -> None
+  | None -> None
 
 let class_type_declaration_from_node node =
-  let children_without_attributes =
+  let children =
     direct_non_trivia_nodes node
     |> List.filter (fun child ->
-           Ceibo.Red.SyntaxNode.kind child != Syntax_kind.ATTRIBUTE_EXPR
-           && Ceibo.Red.SyntaxNode.kind child != Syntax_kind.TYPE_PARAM)
+           Ceibo.Red.SyntaxNode.kind child != Syntax_kind.TYPE_PARAM)
   in
-  match children_without_attributes with
-  | name_node :: body_node :: _
-    when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
+  let rec split_at_name acc = function
+    | child :: rest when Ceibo.Red.SyntaxNode.kind child = Syntax_kind.IDENT_EXPR ->
+        Some (child, List.rev acc, rest)
+    | child :: rest ->
+        split_at_name (child :: acc) rest
+    | [] -> None
+  in
+  match split_at_name [] children with
+  | Some (name_node, _prefix, body_node :: _) -> (
       match first_ident_token_in_subtree name_node with
       | Some class_type_name ->
           Some
@@ -1958,7 +2035,11 @@ let build_source_file_body tree =
   (root, file_items, file_let_bindings, file_expressions)
 
 let rec validate_pattern ~context = function
-  | Cst.Pattern.Identifier _ | Cst.Pattern.Wildcard _ | Cst.Pattern.Literal _ -> ()
+  | Cst.Pattern.Identifier _ | Cst.Pattern.Wildcard _ | Cst.Pattern.Literal _
+  | Cst.Pattern.Extension _ ->
+      ()
+  | Cst.Pattern.Attribute { pattern; _ } ->
+      validate_pattern ~context:("pattern.attribute.pattern" :: context) pattern
   | Cst.Pattern.Lazy { pattern; _ } ->
       validate_pattern ~context:("pattern.lazy" :: context) pattern
   | Cst.Pattern.Exception { pattern; _ } ->
@@ -2046,9 +2127,13 @@ and validate_object_member ~context = function
   | Cst.Inherit { expression; _ } ->
       validate_expression ~context:("object_member.inherit.expression" :: context)
         expression
+  | Cst.Initializer { body; _ } ->
+      Option.iter
+        (validate_expression ~context:("object_member.initializer.body" :: context))
+        body
 
 and validate_expression ~context = function
-  | Cst.Expression.Path _ | Cst.Expression.Literal _
+  | Cst.Expression.Path _ | Cst.Expression.Operator _ | Cst.Expression.Literal _
   | Cst.Expression.Attribute _ | Cst.Expression.Extension _
   | Cst.Expression.FirstClassModule _ ->
       ()
@@ -2230,6 +2315,7 @@ let validate_type_definition ~context = function
   | Cst.TypeDefinition.Alias _ -> ()
   | Cst.TypeDefinition.Extensible _ -> ()
   | Cst.TypeDefinition.FirstClassModule _ -> ()
+  | Cst.TypeDefinition.Object _ -> ()
   | Cst.TypeDefinition.Record _ -> ()
   | Cst.TypeDefinition.Variant _ -> ()
   | Cst.TypeDefinition.PolyVariant _ -> ()

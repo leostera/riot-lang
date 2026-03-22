@@ -2738,6 +2738,50 @@
     ],
     "expressions": [
       {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 46,
+            "end": 54
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": ".",
+            "span": {
+              "start": 48,
+              "end": 49
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "?",
+            "span": {
+              "start": 49,
+              "end": 50
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "[",
+            "span": {
+              "start": 50,
+              "end": 51
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "]",
+            "span": {
+              "start": 51,
+              "end": 52
+            }
+          }
+        ]
+      },
+      {
         "tag": "field_access",
         "syntax_node": {
           "kind": "FIELD_ACCESS_EXPR",
@@ -2812,6 +2856,50 @@
             }
           ]
         }
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 78,
+            "end": 86
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": ".",
+            "span": {
+              "start": 80,
+              "end": 81
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "@",
+            "span": {
+              "start": 81,
+              "end": 82
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "[",
+            "span": {
+              "start": 82,
+              "end": 83
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "]",
+            "span": {
+              "start": 83,
+              "end": 84
+            }
+          }
+        ]
       },
       {
         "tag": "field_access",
@@ -2890,6 +2978,58 @@
         }
       },
       {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 106,
+            "end": 116
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": ".",
+            "span": {
+              "start": 108,
+              "end": 109
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "@",
+            "span": {
+              "start": 109,
+              "end": 110
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "[",
+            "span": {
+              "start": 110,
+              "end": 111
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "]",
+            "span": {
+              "start": 111,
+              "end": 112
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "<-",
+            "span": {
+              "start": 112,
+              "end": 114
+            }
+          }
+        ]
+      },
+      {
         "tag": "field_access",
         "syntax_node": {
           "kind": "FIELD_ACCESS_EXPR",
@@ -2964,6 +3104,50 @@
             }
           ]
         }
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 135,
+            "end": 143
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": ".",
+            "span": {
+              "start": 137,
+              "end": 138
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "@",
+            "span": {
+              "start": 138,
+              "end": 139
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "{",
+            "span": {
+              "start": 139,
+              "end": 140
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "}",
+            "span": {
+              "start": 140,
+              "end": 141
+            }
+          }
+        ]
       },
       {
         "tag": "field_access",
@@ -3042,6 +3226,58 @@
         }
       },
       {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 163,
+            "end": 173
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": ".",
+            "span": {
+              "start": 165,
+              "end": 166
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "@",
+            "span": {
+              "start": 166,
+              "end": 167
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "{",
+            "span": {
+              "start": 167,
+              "end": 168
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "}",
+            "span": {
+              "start": 168,
+              "end": 169
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "<-",
+            "span": {
+              "start": 169,
+              "end": 171
+            }
+          }
+        ]
+      },
+      {
         "tag": "field_access",
         "syntax_node": {
           "kind": "FIELD_ACCESS_EXPR",
@@ -3118,6 +3354,34 @@
         }
       },
       {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 192,
+            "end": 200
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": ".",
+            "span": {
+              "start": 194,
+              "end": 195
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "@",
+            "span": {
+              "start": 195,
+              "end": 196
+            }
+          }
+        ]
+      },
+      {
         "tag": "field_access",
         "syntax_node": {
           "kind": "FIELD_ACCESS_EXPR",
@@ -3192,6 +3456,42 @@
             }
           ]
         }
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 220,
+            "end": 230
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": ".",
+            "span": {
+              "start": 222,
+              "end": 223
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "@",
+            "span": {
+              "start": 223,
+              "end": 224
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "<-",
+            "span": {
+              "start": 226,
+              "end": 228
+            }
+          }
+        ]
       },
       {
         "tag": "apply",
@@ -6641,6 +6941,34 @@
         }
       },
       {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 1343,
+            "end": 1349
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "#",
+            "span": {
+              "start": 1345,
+              "end": 1346
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "?",
+            "span": {
+              "start": 1346,
+              "end": 1347
+            }
+          }
+        ]
+      },
+      {
         "tag": "parenthesized",
         "syntax_node": {
           "kind": "PAREN_EXPR",
@@ -6847,6 +7175,34 @@
             }
           ]
         }
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 1367,
+            "end": 1375
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": ".",
+            "span": {
+              "start": 1369,
+              "end": 1370
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "span": {
+              "start": 1370,
+              "end": 1371
+            }
+          }
+        ]
       },
       {
         "tag": "index",

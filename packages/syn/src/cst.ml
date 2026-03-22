@@ -76,6 +76,8 @@ type pattern_literal = PatternLiteral.t
 type pattern =
   | Identifier of identifier_pattern
   | Wildcard of wildcard_pattern
+  | Attribute of attributed_pattern
+  | Extension of extension
   | Literal of pattern_literal
   | Lazy of lazy_pattern
   | Exception of exception_pattern
@@ -99,6 +101,12 @@ type pattern =
 and identifier_pattern = {
   syntax_node : syntax_node;
   name_token : Token.t;
+}
+
+and attributed_pattern = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+  attribute : attribute;
 }
 
 and wildcard_pattern = {
@@ -315,6 +323,7 @@ type exception_declaration = {
 
 type expression =
   | Path of path_expression
+  | Operator of operator_expression
   | Literal of literal
   | Attribute of attribute
   | Extension of extension
@@ -358,6 +367,11 @@ and path_expression = {
   path : ModulePath.t;
 }
 
+and operator_expression = {
+  syntax_node : syntax_node;
+  operator_tokens : Token.t list;
+}
+
 and object_expression = {
   syntax_node : syntax_node;
   self_pattern : pattern option;
@@ -368,6 +382,7 @@ and object_member =
   | Method of object_method
   | Value of object_value
   | Inherit of object_inherit
+  | Initializer of object_initializer
 
 and object_method = {
   syntax_node : syntax_node;
@@ -395,6 +410,11 @@ and object_inherit = {
   syntax_node : syntax_node;
   attributes : attribute list;
   expression : expression;
+}
+
+and object_initializer = {
+  syntax_node : syntax_node;
+  body : expression option;
 }
 
 and poly_variant_expression = {
@@ -644,6 +664,7 @@ and parenthesized_expression = {
 module Expression = struct
   type t = expression =
     | Path of path_expression
+    | Operator of operator_expression
     | Literal of literal
     | Attribute of attribute
     | Extension of extension
@@ -684,6 +705,7 @@ module Expression = struct
 
   let syntax_node = function
     | Path expr -> expr.syntax_node
+    | Operator expr -> expr.syntax_node
     | Literal literal -> (
         match literal with
         | Literal.String { syntax_node; _ }
@@ -738,6 +760,8 @@ module Pattern = struct
   type t = pattern =
     | Identifier of identifier_pattern
     | Wildcard of wildcard_pattern
+    | Attribute of attributed_pattern
+    | Extension of extension
     | Literal of pattern_literal
     | Lazy of lazy_pattern
     | Exception of exception_pattern
@@ -761,6 +785,8 @@ module Pattern = struct
   let syntax_node = function
     | Identifier pattern -> pattern.syntax_node
     | Wildcard pattern -> pattern.syntax_node
+    | Attribute pattern -> pattern.syntax_node
+    | Extension extension -> extension.syntax_node
     | Literal (PatternLiteral.String { syntax_node; _ })
     | Literal (PatternLiteral.Int { syntax_node; _ })
     | Literal (PatternLiteral.Float { syntax_node; _ })
@@ -1195,6 +1221,9 @@ module TypeDefinition = struct
     | FirstClassModule of {
         syntax_node : syntax_node;
         module_type_syntax_node : syntax_node;
+      }
+    | Object of {
+        syntax_node : syntax_node;
       }
     | Record of RecordField.t list
     | Variant of VariantConstructor.t list

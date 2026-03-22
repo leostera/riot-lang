@@ -1,0 +1,3044 @@
+{
+  "status": "ok",
+  "cst": {
+    "kind": "implementation",
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 745
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 77,
+              "end": 103
+            }
+          },
+          "attributes": [],
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 81,
+                "end": 92
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "empty_tuple",
+              "span": {
+                "start": 81,
+                "end": 92
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "empty_tuple",
+            "span": {
+              "start": 81,
+              "end": 92
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "extension",
+            "extension": {
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 95,
+                  "end": 103
+                }
+              },
+              "tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "[",
+                  "span": {
+                    "start": 95,
+                    "end": 96
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 96,
+                    "end": 97
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "tuple",
+                  "span": {
+                    "start": 97,
+                    "end": 102
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "]",
+                  "span": {
+                    "start": 102,
+                    "end": 103
+                  }
+                }
+              ]
+            }
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 104,
+              "end": 132
+            }
+          },
+          "attributes": [],
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 108,
+                "end": 120
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "empty_record",
+              "span": {
+                "start": 108,
+                "end": 120
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "empty_record",
+            "span": {
+              "start": 108,
+              "end": 120
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "extension",
+            "extension": {
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 123,
+                  "end": 132
+                }
+              },
+              "tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "[",
+                  "span": {
+                    "start": 123,
+                    "end": 124
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 124,
+                    "end": 125
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "record",
+                  "span": {
+                    "start": 125,
+                    "end": 131
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "]",
+                  "span": {
+                    "start": 131,
+                    "end": 132
+                  }
+                }
+              ]
+            }
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 133,
+              "end": 163
+            }
+          },
+          "attributes": [],
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 137,
+                "end": 148
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "empty_apply",
+              "span": {
+                "start": 137,
+                "end": 148
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "empty_apply",
+            "span": {
+              "start": 137,
+              "end": 148
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "extension",
+            "extension": {
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 151,
+                  "end": 163
+                }
+              },
+              "tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "[",
+                  "span": {
+                    "start": 151,
+                    "end": 152
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 152,
+                    "end": 153
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "no_args",
+                  "span": {
+                    "start": 153,
+                    "end": 160
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "f",
+                  "span": {
+                    "start": 161,
+                    "end": 162
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "]",
+                  "span": {
+                    "start": 162,
+                    "end": 163
+                  }
+                }
+              ]
+            }
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 164,
+              "end": 248
+            }
+          },
+          "attributes": [],
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 168,
+                "end": 169
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "f",
+              "span": {
+                "start": 168,
+                "end": 169
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "f",
+            "span": {
+              "start": 168,
+              "end": 169
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "function",
+            "syntax_node": {
+              "kind": "FUNCTION_EXPR",
+              "span": {
+                "start": 172,
+                "end": 248
+              }
+            },
+            "cases": [
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 181,
+                    "end": 246
+                  }
+                },
+                "pattern": {
+                  "tag": "extension",
+                  "extension": {
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
+                      "span": {
+                        "start": 181,
+                        "end": 210
+                      }
+                    },
+                    "tokens": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "[",
+                        "span": {
+                          "start": 181,
+                          "end": 182
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "%",
+                        "span": {
+                          "start": 182,
+                          "end": 183
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "record_with_functor_fields",
+                        "span": {
+                          "start": 183,
+                          "end": 209
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "]",
+                        "span": {
+                          "start": 209,
+                          "end": 210
+                        }
+                      }
+                    ]
+                  }
+                },
+                "guard": null,
+                "body": {
+                  "tag": "apply",
+                  "syntax_node": {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 214,
+                      "end": 246
+                    }
+                  },
+                  "callee": {
+                    "tag": "apply",
+                    "syntax_node": {
+                      "kind": "APPLY_EXPR",
+                      "span": {
+                        "start": 214,
+                        "end": 231
+                      }
+                    },
+                    "callee": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "unit",
+                        "syntax_node": {
+                          "kind": "UNIT_LITERAL",
+                          "span": {
+                            "start": 214,
+                            "end": 216
+                          }
+                        }
+                      }
+                    },
+                    "argument": {
+                      "tag": "positional",
+                      "value": {
+                        "tag": "extension",
+                        "extension": {
+                          "syntax_node": {
+                            "kind": "EXTENSION_EXPR",
+                            "span": {
+                              "start": 218,
+                              "end": 231
+                            }
+                          },
+                          "tokens": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "[",
+                              "span": {
+                                "start": 218,
+                                "end": 219
+                              }
+                            },
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "%",
+                              "span": {
+                                "start": 219,
+                                "end": 220
+                              }
+                            },
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "%",
+                              "span": {
+                                "start": 220,
+                                "end": 221
+                              }
+                            },
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "empty_let",
+                              "span": {
+                                "start": 221,
+                                "end": 230
+                              }
+                            },
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "]",
+                              "span": {
+                                "start": 230,
+                                "end": 231
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "argument": {
+                    "tag": "positional",
+                    "value": {
+                      "tag": "extension",
+                      "extension": {
+                        "syntax_node": {
+                          "kind": "EXTENSION_EXPR",
+                          "span": {
+                            "start": 232,
+                            "end": 246
+                          }
+                        },
+                        "tokens": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "[",
+                            "span": {
+                              "start": 232,
+                              "end": 233
+                            }
+                          },
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "%",
+                            "span": {
+                              "start": 233,
+                              "end": 234
+                            }
+                          },
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "%",
+                            "span": {
+                              "start": 234,
+                              "end": 235
+                            }
+                          },
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "empty_type",
+                            "span": {
+                              "start": 235,
+                              "end": 245
+                            }
+                          },
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "]",
+                            "span": {
+                              "start": 245,
+                              "end": 246
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "module_type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_TYPE_DECL",
+            "span": {
+              "start": 248,
+              "end": 291
+            }
+          },
+          "module_type_name": {
+            "kind": "IDENT_EXPR",
+            "text": "s",
+            "span": {
+              "start": 260,
+              "end": 261
+            }
+          }
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 291,
+              "end": 323
+            }
+          },
+          "attributes": [],
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 295,
+                "end": 296
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 295,
+                "end": 296
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 295,
+              "end": 296
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 322,
+                  "end": 323
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "0",
+                "span": {
+                  "start": 322,
+                  "end": 323
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 324,
+              "end": 360
+            }
+          },
+          "attributes": [],
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 328,
+                "end": 329
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "f",
+              "span": {
+                "start": 328,
+                "end": 329
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "f",
+            "span": {
+              "start": 328,
+              "end": 329
+            }
+          },
+          "parameters": [
+            {
+              "tag": "positional",
+              "syntax_node": {
+                "kind": "TYPED_PATTERN",
+                "span": {
+                  "start": 331,
+                  "end": 357
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 332,
+                  "end": 333
+                }
+              }
+            }
+          ],
+          "value": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 359,
+                  "end": 360
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "0",
+                "span": {
+                  "start": 359,
+                  "end": 360
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 361,
+              "end": 397
+            }
+          },
+          "attributes": [],
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 365,
+                "end": 366
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "f",
+              "span": {
+                "start": 365,
+                "end": 366
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "f",
+            "span": {
+              "start": 365,
+              "end": 366
+            }
+          },
+          "parameters": [
+            {
+              "tag": "positional",
+              "syntax_node": {
+                "kind": "IDENT_PATTERN",
+                "span": {
+                  "start": 368,
+                  "end": 369
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 368,
+                  "end": 369
+                }
+              }
+            }
+          ],
+          "value": {
+            "tag": "typed",
+            "syntax_node": {
+              "kind": "TYPED_EXPR",
+              "span": {
+                "start": 371,
+                "end": 397
+              }
+            },
+            "expression": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 372,
+                  "end": 373
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 372,
+                    "end": 373
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "span": {
+                      "start": 372,
+                      "end": 373
+                    }
+                  }
+                ]
+              }
+            },
+            "type_syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 376,
+                "end": 396
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 398,
+              "end": 448
+            }
+          },
+          "attributes": [],
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 402,
+                "end": 403
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "g",
+              "span": {
+                "start": 402,
+                "end": 403
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "g",
+            "span": {
+              "start": 402,
+              "end": 403
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "fun",
+            "syntax_node": {
+              "kind": "FUN_EXPR",
+              "span": {
+                "start": 436,
+                "end": 448
+              }
+            },
+            "parameters": [
+              {
+                "tag": "positional",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 440,
+                    "end": 441
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "n",
+                  "span": {
+                    "start": 440,
+                    "end": 441
+                  }
+                }
+              },
+              {
+                "tag": "positional",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 442,
+                    "end": 443
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 442,
+                    "end": 443
+                  }
+                }
+              }
+            ],
+            "body": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 447,
+                  "end": 448
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 447,
+                    "end": 448
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "span": {
+                      "start": 447,
+                      "end": 448
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 77,
+            "end": 103
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 81,
+              "end": 92
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "empty_tuple",
+            "span": {
+              "start": 81,
+              "end": 92
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "empty_tuple",
+          "span": {
+            "start": 81,
+            "end": 92
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 95,
+                "end": 103
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 95,
+                  "end": 96
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 96,
+                  "end": 97
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "tuple",
+                "span": {
+                  "start": 97,
+                  "end": 102
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 102,
+                  "end": 103
+                }
+              }
+            ]
+          }
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 104,
+            "end": 132
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 108,
+              "end": 120
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "empty_record",
+            "span": {
+              "start": 108,
+              "end": 120
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "empty_record",
+          "span": {
+            "start": 108,
+            "end": 120
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 123,
+                "end": 132
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 123,
+                  "end": 124
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 124,
+                  "end": 125
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "record",
+                "span": {
+                  "start": 125,
+                  "end": 131
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 131,
+                  "end": 132
+                }
+              }
+            ]
+          }
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 133,
+            "end": 163
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 137,
+              "end": 148
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "empty_apply",
+            "span": {
+              "start": 137,
+              "end": 148
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "empty_apply",
+          "span": {
+            "start": 137,
+            "end": 148
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 151,
+                "end": 163
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 151,
+                  "end": 152
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 152,
+                  "end": 153
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "no_args",
+                "span": {
+                  "start": 153,
+                  "end": 160
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "f",
+                "span": {
+                  "start": 161,
+                  "end": 162
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 162,
+                  "end": 163
+                }
+              }
+            ]
+          }
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 164,
+            "end": 248
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 168,
+              "end": 169
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "f",
+            "span": {
+              "start": 168,
+              "end": 169
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "f",
+          "span": {
+            "start": 168,
+            "end": 169
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "function",
+          "syntax_node": {
+            "kind": "FUNCTION_EXPR",
+            "span": {
+              "start": 172,
+              "end": 248
+            }
+          },
+          "cases": [
+            {
+              "syntax_node": {
+                "kind": "MATCH_CASE",
+                "span": {
+                  "start": 181,
+                  "end": 246
+                }
+              },
+              "pattern": {
+                "tag": "extension",
+                "extension": {
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
+                    "span": {
+                      "start": 181,
+                      "end": 210
+                    }
+                  },
+                  "tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "[",
+                      "span": {
+                        "start": 181,
+                        "end": 182
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 182,
+                        "end": 183
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "record_with_functor_fields",
+                      "span": {
+                        "start": 183,
+                        "end": 209
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "]",
+                      "span": {
+                        "start": 209,
+                        "end": 210
+                      }
+                    }
+                  ]
+                }
+              },
+              "guard": null,
+              "body": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 214,
+                    "end": 246
+                  }
+                },
+                "callee": {
+                  "tag": "apply",
+                  "syntax_node": {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 214,
+                      "end": 231
+                    }
+                  },
+                  "callee": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "unit",
+                      "syntax_node": {
+                        "kind": "UNIT_LITERAL",
+                        "span": {
+                          "start": 214,
+                          "end": 216
+                        }
+                      }
+                    }
+                  },
+                  "argument": {
+                    "tag": "positional",
+                    "value": {
+                      "tag": "extension",
+                      "extension": {
+                        "syntax_node": {
+                          "kind": "EXTENSION_EXPR",
+                          "span": {
+                            "start": 218,
+                            "end": 231
+                          }
+                        },
+                        "tokens": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "[",
+                            "span": {
+                              "start": 218,
+                              "end": 219
+                            }
+                          },
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "%",
+                            "span": {
+                              "start": 219,
+                              "end": 220
+                            }
+                          },
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "%",
+                            "span": {
+                              "start": 220,
+                              "end": 221
+                            }
+                          },
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "empty_let",
+                            "span": {
+                              "start": 221,
+                              "end": 230
+                            }
+                          },
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "]",
+                            "span": {
+                              "start": 230,
+                              "end": 231
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "positional",
+                  "value": {
+                    "tag": "extension",
+                    "extension": {
+                      "syntax_node": {
+                        "kind": "EXTENSION_EXPR",
+                        "span": {
+                          "start": 232,
+                          "end": 246
+                        }
+                      },
+                      "tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "[",
+                          "span": {
+                            "start": 232,
+                            "end": 233
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "%",
+                          "span": {
+                            "start": 233,
+                            "end": 234
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "%",
+                          "span": {
+                            "start": 234,
+                            "end": 235
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "empty_type",
+                          "span": {
+                            "start": 235,
+                            "end": 245
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "]",
+                          "span": {
+                            "start": 245,
+                            "end": 246
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 291,
+            "end": 323
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 295,
+              "end": 296
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 295,
+              "end": 296
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 295,
+            "end": 296
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 322,
+                "end": 323
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "0",
+              "span": {
+                "start": 322,
+                "end": 323
+              }
+            }
+          }
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 324,
+            "end": 360
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 328,
+              "end": 329
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "f",
+            "span": {
+              "start": 328,
+              "end": 329
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "f",
+          "span": {
+            "start": 328,
+            "end": 329
+          }
+        },
+        "parameters": [
+          {
+            "tag": "positional",
+            "syntax_node": {
+              "kind": "TYPED_PATTERN",
+              "span": {
+                "start": 331,
+                "end": 357
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 332,
+                "end": 333
+              }
+            }
+          }
+        ],
+        "value": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 359,
+                "end": 360
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "0",
+              "span": {
+                "start": 359,
+                "end": 360
+              }
+            }
+          }
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 361,
+            "end": 397
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 365,
+              "end": 366
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "f",
+            "span": {
+              "start": 365,
+              "end": 366
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "f",
+          "span": {
+            "start": 365,
+            "end": 366
+          }
+        },
+        "parameters": [
+          {
+            "tag": "positional",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 368,
+                "end": 369
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 368,
+                "end": 369
+              }
+            }
+          }
+        ],
+        "value": {
+          "tag": "typed",
+          "syntax_node": {
+            "kind": "TYPED_EXPR",
+            "span": {
+              "start": 371,
+              "end": 397
+            }
+          },
+          "expression": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 372,
+                "end": 373
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 372,
+                  "end": 373
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 372,
+                    "end": 373
+                  }
+                }
+              ]
+            }
+          },
+          "type_syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 376,
+              "end": 396
+            }
+          }
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 398,
+            "end": 448
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 402,
+              "end": 403
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "g",
+            "span": {
+              "start": 402,
+              "end": 403
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "g",
+          "span": {
+            "start": 402,
+            "end": 403
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "fun",
+          "syntax_node": {
+            "kind": "FUN_EXPR",
+            "span": {
+              "start": 436,
+              "end": 448
+            }
+          },
+          "parameters": [
+            {
+              "tag": "positional",
+              "syntax_node": {
+                "kind": "IDENT_PATTERN",
+                "span": {
+                  "start": 440,
+                  "end": 441
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "n",
+                "span": {
+                  "start": 440,
+                  "end": 441
+                }
+              }
+            },
+            {
+              "tag": "positional",
+              "syntax_node": {
+                "kind": "IDENT_PATTERN",
+                "span": {
+                  "start": 442,
+                  "end": 443
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 442,
+                  "end": 443
+                }
+              }
+            }
+          ],
+          "body": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 447,
+                "end": 448
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 447,
+                  "end": 448
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 447,
+                    "end": 448
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 95,
+              "end": 103
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 95,
+                "end": 96
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 96,
+                "end": 97
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "tuple",
+              "span": {
+                "start": 97,
+                "end": 102
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 102,
+                "end": 103
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 123,
+              "end": 132
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 123,
+                "end": 124
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 124,
+                "end": 125
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "record",
+              "span": {
+                "start": 125,
+                "end": 131
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 131,
+                "end": 132
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 151,
+              "end": 163
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 151,
+                "end": 152
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 152,
+                "end": 153
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "no_args",
+              "span": {
+                "start": 153,
+                "end": 160
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "f",
+              "span": {
+                "start": 161,
+                "end": 162
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 162,
+                "end": 163
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "function",
+        "syntax_node": {
+          "kind": "FUNCTION_EXPR",
+          "span": {
+            "start": 172,
+            "end": 248
+          }
+        },
+        "cases": [
+          {
+            "syntax_node": {
+              "kind": "MATCH_CASE",
+              "span": {
+                "start": 181,
+                "end": 246
+              }
+            },
+            "pattern": {
+              "tag": "extension",
+              "extension": {
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
+                  "span": {
+                    "start": 181,
+                    "end": 210
+                  }
+                },
+                "tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "[",
+                    "span": {
+                      "start": 181,
+                      "end": 182
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 182,
+                      "end": 183
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "record_with_functor_fields",
+                    "span": {
+                      "start": 183,
+                      "end": 209
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "]",
+                    "span": {
+                      "start": 209,
+                      "end": 210
+                    }
+                  }
+                ]
+              }
+            },
+            "guard": null,
+            "body": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 214,
+                  "end": 246
+                }
+              },
+              "callee": {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 214,
+                    "end": 231
+                  }
+                },
+                "callee": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "unit",
+                    "syntax_node": {
+                      "kind": "UNIT_LITERAL",
+                      "span": {
+                        "start": 214,
+                        "end": 216
+                      }
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "positional",
+                  "value": {
+                    "tag": "extension",
+                    "extension": {
+                      "syntax_node": {
+                        "kind": "EXTENSION_EXPR",
+                        "span": {
+                          "start": 218,
+                          "end": 231
+                        }
+                      },
+                      "tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "[",
+                          "span": {
+                            "start": 218,
+                            "end": 219
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "%",
+                          "span": {
+                            "start": 219,
+                            "end": 220
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "%",
+                          "span": {
+                            "start": 220,
+                            "end": 221
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "empty_let",
+                          "span": {
+                            "start": 221,
+                            "end": 230
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "]",
+                          "span": {
+                            "start": 230,
+                            "end": 231
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "argument": {
+                "tag": "positional",
+                "value": {
+                  "tag": "extension",
+                  "extension": {
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
+                      "span": {
+                        "start": 232,
+                        "end": 246
+                      }
+                    },
+                    "tokens": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "[",
+                        "span": {
+                          "start": 232,
+                          "end": 233
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "%",
+                        "span": {
+                          "start": 233,
+                          "end": 234
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "%",
+                        "span": {
+                          "start": 234,
+                          "end": 235
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "empty_type",
+                        "span": {
+                          "start": 235,
+                          "end": 245
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "]",
+                        "span": {
+                          "start": 245,
+                          "end": 246
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 181,
+              "end": 210
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 181,
+                "end": 182
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 182,
+                "end": 183
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "record_with_functor_fields",
+              "span": {
+                "start": 183,
+                "end": 209
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 209,
+                "end": 210
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 214,
+            "end": 246
+          }
+        },
+        "callee": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 214,
+              "end": 231
+            }
+          },
+          "callee": {
+            "tag": "literal",
+            "literal": {
+              "tag": "unit",
+              "syntax_node": {
+                "kind": "UNIT_LITERAL",
+                "span": {
+                  "start": 214,
+                  "end": 216
+                }
+              }
+            }
+          },
+          "argument": {
+            "tag": "positional",
+            "value": {
+              "tag": "extension",
+              "extension": {
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
+                  "span": {
+                    "start": 218,
+                    "end": 231
+                  }
+                },
+                "tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "[",
+                    "span": {
+                      "start": 218,
+                      "end": 219
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 219,
+                      "end": 220
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 220,
+                      "end": 221
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "empty_let",
+                    "span": {
+                      "start": 221,
+                      "end": 230
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "]",
+                    "span": {
+                      "start": 230,
+                      "end": 231
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "argument": {
+          "tag": "positional",
+          "value": {
+            "tag": "extension",
+            "extension": {
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 232,
+                  "end": 246
+                }
+              },
+              "tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "[",
+                  "span": {
+                    "start": 232,
+                    "end": 233
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 233,
+                    "end": 234
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 234,
+                    "end": 235
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "empty_type",
+                  "span": {
+                    "start": 235,
+                    "end": 245
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "]",
+                  "span": {
+                    "start": 245,
+                    "end": 246
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "tag": "apply",
+        "syntax_node": {
+          "kind": "APPLY_EXPR",
+          "span": {
+            "start": 214,
+            "end": 231
+          }
+        },
+        "callee": {
+          "tag": "literal",
+          "literal": {
+            "tag": "unit",
+            "syntax_node": {
+              "kind": "UNIT_LITERAL",
+              "span": {
+                "start": 214,
+                "end": 216
+              }
+            }
+          }
+        },
+        "argument": {
+          "tag": "positional",
+          "value": {
+            "tag": "extension",
+            "extension": {
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 218,
+                  "end": 231
+                }
+              },
+              "tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "[",
+                  "span": {
+                    "start": 218,
+                    "end": 219
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 219,
+                    "end": 220
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 220,
+                    "end": 221
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "empty_let",
+                  "span": {
+                    "start": 221,
+                    "end": 230
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "]",
+                  "span": {
+                    "start": 230,
+                    "end": 231
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "unit",
+          "syntax_node": {
+            "kind": "UNIT_LITERAL",
+            "span": {
+              "start": 214,
+              "end": 216
+            }
+          }
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 218,
+              "end": 231
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 218,
+                "end": 219
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 219,
+                "end": 220
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 220,
+                "end": 221
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "empty_let",
+              "span": {
+                "start": 221,
+                "end": 230
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 230,
+                "end": 231
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 232,
+              "end": 246
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 232,
+                "end": 233
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 233,
+                "end": 234
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 234,
+                "end": 235
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "empty_type",
+              "span": {
+                "start": 235,
+                "end": 245
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 245,
+                "end": 246
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 264,
+            "end": 289
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 264,
+              "end": 289
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sig",
+              "span": {
+                "start": 264,
+                "end": 267
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 270,
+              "end": 285
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 270,
+                "end": 271
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 271,
+                "end": 272
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 272,
+                "end": 273
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "missing_rhs",
+              "span": {
+                "start": 273,
+                "end": 284
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 284,
+                "end": 285
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 299,
+              "end": 319
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 299,
+                "end": 300
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 300,
+                "end": 301
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "empty_poly_binder",
+              "span": {
+                "start": 301,
+                "end": 318
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 318,
+                "end": 319
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 322,
+              "end": 323
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "0",
+            "span": {
+              "start": 322,
+              "end": 323
+            }
+          }
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 336,
+              "end": 356
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 336,
+                "end": 337
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 337,
+                "end": 338
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "empty_poly_binder",
+              "span": {
+                "start": 338,
+                "end": 355
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 355,
+                "end": 356
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 359,
+              "end": 360
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "0",
+            "span": {
+              "start": 359,
+              "end": 360
+            }
+          }
+        }
+      },
+      {
+        "tag": "typed",
+        "syntax_node": {
+          "kind": "TYPED_EXPR",
+          "span": {
+            "start": 371,
+            "end": 397
+          }
+        },
+        "expression": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 372,
+              "end": 373
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 372,
+                "end": 373
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 372,
+                  "end": 373
+                }
+              }
+            ]
+          }
+        },
+        "type_syntax_node": {
+          "kind": "EXTENSION_EXPR",
+          "span": {
+            "start": 376,
+            "end": 396
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 372,
+            "end": 373
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 372,
+              "end": 373
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 372,
+                "end": 373
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 376,
+              "end": 396
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 376,
+                "end": 377
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 377,
+                "end": 378
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "empty_poly_binder",
+              "span": {
+                "start": 378,
+                "end": 395
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 395,
+                "end": 396
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 413,
+              "end": 433
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 413,
+                "end": 414
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 414,
+                "end": 415
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "empty_poly_binder",
+              "span": {
+                "start": 415,
+                "end": 432
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 432,
+                "end": 433
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "fun",
+        "syntax_node": {
+          "kind": "FUN_EXPR",
+          "span": {
+            "start": 436,
+            "end": 448
+          }
+        },
+        "parameters": [
+          {
+            "tag": "positional",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 440,
+                "end": 441
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "n",
+              "span": {
+                "start": 440,
+                "end": 441
+              }
+            }
+          },
+          {
+            "tag": "positional",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 442,
+                "end": 443
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 442,
+                "end": 443
+              }
+            }
+          }
+        ],
+        "body": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 447,
+              "end": 448
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 447,
+                "end": 448
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 447,
+                  "end": 448
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 447,
+            "end": 448
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 447,
+              "end": 448
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 447,
+                "end": 448
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

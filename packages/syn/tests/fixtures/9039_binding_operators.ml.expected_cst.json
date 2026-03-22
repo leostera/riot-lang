@@ -3308,6 +3308,34 @@
     ],
     "expressions": [
       {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 35,
+            "end": 43
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 37,
+              "end": 40
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "*",
+            "span": {
+              "start": 40,
+              "end": 41
+            }
+          }
+        ]
+      },
+      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",
@@ -3660,6 +3688,34 @@
             }
           ]
         }
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 74,
+            "end": 82
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "and",
+            "span": {
+              "start": 76,
+              "end": 79
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "*",
+            "span": {
+              "start": 79,
+              "end": 80
+            }
+          }
+        ]
       },
       {
         "tag": "apply",
@@ -4016,6 +4072,34 @@
         }
       },
       {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 109,
+            "end": 117
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 111,
+              "end": 114
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "+",
+            "span": {
+              "start": 114,
+              "end": 115
+            }
+          }
+        ]
+      },
+      {
         "tag": "apply",
         "syntax_node": {
           "kind": "APPLY_EXPR",
@@ -4368,6 +4452,34 @@
             }
           ]
         }
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 143,
+            "end": 151
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "and",
+            "span": {
+              "start": 145,
+              "end": 148
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "+",
+            "span": {
+              "start": 148,
+              "end": 149
+            }
+          }
+        ]
       },
       {
         "tag": "apply",

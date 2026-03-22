@@ -775,6 +775,26 @@
     "let_bindings": [],
     "expressions": [
       {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 4,
+            "end": 9
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "!",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          }
+        ]
+      },
+      {
         "tag": "fun",
         "syntax_node": {
           "kind": "FUN_EXPR",
@@ -863,6 +883,26 @@
         }
       },
       {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 27,
+            "end": 33
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": ":=",
+            "span": {
+              "start": 29,
+              "end": 31
+            }
+          }
+        ]
+      },
+      {
         "tag": "fun",
         "syntax_node": {
           "kind": "FUN_EXPR",
@@ -935,6 +975,26 @@
             }
           }
         }
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 54,
+            "end": 60
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "<>",
+            "span": {
+              "start": 56,
+              "end": 58
+            }
+          }
+        ]
       },
       {
         "tag": "fun",
@@ -1025,6 +1085,26 @@
             }
           }
         }
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 83,
+            "end": 89
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "&&",
+            "span": {
+              "start": 85,
+              "end": 87
+            }
+          }
+        ]
       },
       {
         "tag": "fun",
@@ -1285,6 +1365,26 @@
         }
       },
       {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 114,
+            "end": 120
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "||",
+            "span": {
+              "start": 116,
+              "end": 118
+            }
+          }
+        ]
+      },
+      {
         "tag": "fun",
         "syntax_node": {
           "kind": "FUN_EXPR",
@@ -1541,6 +1641,26 @@
             }
           ]
         }
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 145,
+            "end": 151
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "|>",
+            "span": {
+              "start": 147,
+              "end": 149
+            }
+          }
+        ]
       },
       {
         "tag": "apply",

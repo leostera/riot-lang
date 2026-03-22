@@ -64,6 +64,8 @@ type pattern_literal = PatternLiteral.t
 type pattern =
   | Identifier of identifier_pattern
   | Wildcard of wildcard_pattern
+  | Attribute of attributed_pattern
+  | Extension of extension
   | Literal of pattern_literal
   | Lazy of lazy_pattern
   | Exception of exception_pattern
@@ -87,6 +89,12 @@ type pattern =
 and identifier_pattern = {
   syntax_node : syntax_node;
   name_token : Token.t;
+}
+
+and attributed_pattern = {
+  syntax_node : syntax_node;
+  pattern : pattern;
+  attribute : attribute;
 }
 
 and wildcard_pattern = {
@@ -279,6 +287,7 @@ type exception_declaration = {
 
 type expression =
   | Path of path_expression
+  | Operator of operator_expression
   | Literal of literal
   | Attribute of attribute
   | Extension of extension
@@ -322,6 +331,11 @@ and path_expression = {
   path : ModulePath.t;
 }
 
+and operator_expression = {
+  syntax_node : syntax_node;
+  operator_tokens : Token.t list;
+}
+
 and object_expression = {
   syntax_node : syntax_node;
   self_pattern : pattern option;
@@ -332,6 +346,7 @@ and object_member =
   | Method of object_method
   | Value of object_value
   | Inherit of object_inherit
+  | Initializer of object_initializer
 
 and object_method = {
   syntax_node : syntax_node;
@@ -359,6 +374,11 @@ and object_inherit = {
   syntax_node : syntax_node;
   attributes : attribute list;
   expression : expression;
+}
+
+and object_initializer = {
+  syntax_node : syntax_node;
+  body : expression option;
 }
 
 and poly_variant_expression = {
@@ -608,6 +628,7 @@ and parenthesized_expression = {
 module Expression : sig
   type t = expression =
     | Path of path_expression
+    | Operator of operator_expression
     | Literal of literal
     | Attribute of attribute
     | Extension of extension
@@ -653,6 +674,8 @@ module Pattern : sig
   type t = pattern =
     | Identifier of identifier_pattern
     | Wildcard of wildcard_pattern
+    | Attribute of attributed_pattern
+    | Extension of extension
     | Literal of pattern_literal
     | Lazy of lazy_pattern
     | Exception of exception_pattern
@@ -1051,6 +1074,9 @@ module TypeDefinition : sig
     | FirstClassModule of {
         syntax_node : syntax_node;
         module_type_syntax_node : syntax_node;
+      }
+    | Object of {
+        syntax_node : syntax_node;
       }
     | Record of RecordField.t list
     | Variant of VariantConstructor.t list

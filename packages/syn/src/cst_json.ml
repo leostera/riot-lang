@@ -105,6 +105,20 @@ and pattern_to_json = function
           ("tag", Json.String "wildcard");
           ("syntax_node", syntax_node_to_json syntax_node);
         ]
+  | Cst.Pattern.Attribute { syntax_node; pattern; attribute } ->
+      Json.Object
+        [
+          ("tag", Json.String "attribute");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("pattern", pattern_to_json pattern);
+          ("attribute", attribute_to_json attribute);
+        ]
+  | Cst.Pattern.Extension extension ->
+      Json.Object
+        [
+          ("tag", Json.String "extension");
+          ("extension", extension_to_json extension);
+        ]
   | Cst.Pattern.Lazy { syntax_node; pattern } ->
       Json.Object
         [
@@ -403,6 +417,13 @@ and object_member_to_json = function
           ("attributes", Json.Array (List.map attribute_to_json attributes));
           ("expression", expression_to_json expression);
         ]
+  | Cst.Initializer { syntax_node; body } ->
+      Json.Object
+        [
+          ("tag", Json.String "initializer");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("body", option_to_json expression_to_json body);
+        ]
 
 and expression_to_json = function
   | Cst.Expression.Path { syntax_node; path } ->
@@ -411,6 +432,13 @@ and expression_to_json = function
           ("tag", Json.String "path");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("path", module_path_to_json path);
+        ]
+  | Cst.Expression.Operator { syntax_node; operator_tokens } ->
+      Json.Object
+        [
+          ("tag", Json.String "operator");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("operator_tokens", Json.Array (List.map token_to_json operator_tokens));
         ]
   | Cst.Expression.Literal literal ->
       Json.Object
@@ -836,6 +864,12 @@ let type_definition_to_json = function
           ("tag", Json.String "first_class_module");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("module_type_syntax_node", syntax_node_to_json module_type_syntax_node);
+        ]
+  | Cst.TypeDefinition.Object { syntax_node } ->
+      Json.Object
+        [
+          ("tag", Json.String "object");
+          ("syntax_node", syntax_node_to_json syntax_node);
         ]
   | Cst.TypeDefinition.Record fields ->
       Json.Object

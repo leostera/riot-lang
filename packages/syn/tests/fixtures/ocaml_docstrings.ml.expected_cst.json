@@ -1,0 +1,6947 @@
+{
+  "status": "ok",
+  "cst": {
+    "kind": "implementation",
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 17696
+      }
+    },
+    "items": [
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 265,
+              "end": 5363
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "Manual",
+            "span": {
+              "start": 272,
+              "end": 278
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 5366,
+                "end": 12093
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 5366,
+                  "end": 5367
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 5367,
+                  "end": 5368
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 5368,
+                  "end": 5369
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 5369,
+                  "end": 5375
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule Manual :\n  sig\n    [@@@ocaml.text\n      \" Special comments can be placed between elements and are kept\\n      by the OCamldoc tool, but are not associated to any element.\\n      @-tags in these comments are ignored.\"]\n    [@@@ocaml.text\n      \" Comments like the one above, with more than two asterisks,\\n      are ignored. \"]\n    val f : int -> int -> int[@@ocaml.doc \" The comment for function f. \"]\n    [@@ocaml.doc \" The continuation of the comment for function f. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type weather2 =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather2  \"]\n    [@@ocaml.doc\n      \" I can continue the comment for type weather2 here\\n      because there is already a comment associated to the last constructor.\"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    [@@ocaml.doc \" Continuation of comment for type my_record \"]\n    val foo : string[@@ocaml.doc \" Comment for foo \"][@@ocaml.doc\n                                                       \" This comment is ambiguous and associated to both foo and bar. \"]\n    val bar : string[@@ocaml.doc\n                      \" This comment is ambiguous and associated to both foo and bar. \"]\n    [@@ocaml.doc \" This comment is associated to bar. \"]\n    class my_class :\n      object\n        inherit cl[@@ocaml.doc \" A comment to describe inheritance from cl \"]\n        val  mutable tutu : string[@@ocaml.doc\n                                    \" The comment for attribute tutu \"]\n        val  toto : int[@@ocaml.doc \" The comment for attribute toto. \"]\n        [@@@ocaml.text\n          \" This comment is not attached to titi since\\n        there is a blank line before titi, but is kept\\n        as a comment in the class. \"]\n        val  titi : string\n        method  toto : string[@@ocaml.doc \" Comment for method toto \"]\n        method  m : float -> int[@@ocaml.doc \" Comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 drops.\\n        For some reason, when a class type begins with two docstrings,\\n        it keeps only the second one.\\n        This is fixed by GPR#2151. \"]\n        val  mutable x : int[@@ocaml.doc \" The comment for variable x. \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 misplaces.\\n        For some reason, when a class type ends with two docstrings,\\n        it keeps both of them, but exchanges their order.\\n        This is again fixed by GPR#2151. \"]\n        [@@@ocaml.text \" Another docstring that OCaml <= 4.07.1 misplaces. \"]\n      end[@@ocaml.doc \" The comment for the class type my_class_type \"]\n    module Foo :\n    sig\n      val x : int[@@ocaml.doc \" The comment for x \"]\n      [@@@ocaml.text\n        \" A special comment that is kept but not associated to any element \"]\n    end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  =\n      sig\n        val x : int[@@ocaml.doc \" The comment for value x. \"]\n        module M :\n        sig val y : int[@@ocaml.doc \" The comment for value y. \"] end\n        [@@ocaml.doc \" The comment for module M. \"]\n      end[@@ocaml.doc \" The comment for module type my_module_type. \"]\n  end =\n  struct\n    let f x y = x + y[@@ocaml.doc \" The comment for function f \"]\n    [@@@ocaml.text\n      \" This comment is not attached to any element since there is another\\n      special comment just before the next element. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    class my_class =\n      object\n        inherit  cl[@@ocaml.doc\n                     \" A comment to describe inheritance from cl \"]\n        val mutable tutu = \"tutu\"[@@ocaml.doc\n                                   \" The comment for the instance variable tutu \"]\n        val toto = 1[@@ocaml.doc \" The comment for toto \"]\n        val titi = \"titi\"[@@ocaml.doc\n                           \" Ambiguous comment on both titi and toto \"]\n        method toto = tutu ^ \"!\"[@@ocaml.doc\n                                  \" Ambiguous comment on both titi and toto \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method m (f : float) = 1[@@ocaml.doc \" The comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        val  mutable x : int[@@ocaml.doc\n                              \" The comment for the instance variable x. \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n      end[@@ocaml.doc \" The comment for class type my_class_type \"]\n    module Foo =\n      struct\n        external x : int[@@ocaml.doc \" The comment for x \"][@@ocaml.doc\n                                                             \" Another comment for x \"]\n      end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  = sig val x : int end[@@ocaml.doc\n                                                       \" The comment for module type my_module_type. \"]\n  end ;;\nLine 141, characters 12-14:\n141 |     inherit cl\n                  ^^\nError: Unbound class \"cl\"\n|}",
+                "span": {
+                  "start": 5376,
+                  "end": 12092
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 12092,
+                  "end": 12093
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 12205,
+              "end": 12360
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 12212,
+              "end": 12213
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 12363,
+                "end": 12605
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 12363,
+                  "end": 12364
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 12364,
+                  "end": 12365
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 12365,
+                  "end": 12366
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 12366,
+                  "end": 12372
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct\n    type t =\n      | Label [@@ocaml.doc \" attached to t \"]\n    [@@@ocaml.text\n      \" Empty docstring comments should not generate attributes \"]\n    type w\n  end;;\nmodule M : sig type t = Label type w end\n|}",
+                "span": {
+                  "start": 12373,
+                  "end": 12604
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 12604,
+                  "end": 12605
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 12747,
+              "end": 12813
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 12754,
+              "end": 12755
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 12816,
+                "end": 12964
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 12816,
+                  "end": 12817
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 12817,
+                  "end": 12818
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 12818,
+                  "end": 12819
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 12819,
+                  "end": 12825
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+                "span": {
+                  "start": 12826,
+                  "end": 12963
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 12963,
+                  "end": 12964
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 12966,
+              "end": 13034
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 12973,
+              "end": 12974
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 13037,
+                "end": 13185
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 13037,
+                  "end": 13038
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 13038,
+                  "end": 13039
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 13039,
+                  "end": 13040
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 13040,
+                  "end": 13046
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+                "span": {
+                  "start": 13047,
+                  "end": 13184
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 13184,
+                  "end": 13185
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 13187,
+              "end": 13255
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 13194,
+              "end": 13195
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 13258,
+                "end": 13423
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 13258,
+                  "end": 13259
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 13259,
+                  "end": 13260
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 13260,
+                  "end": 13261
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 13261,
+                  "end": 13267
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+                "span": {
+                  "start": 13268,
+                  "end": 13422
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 13422,
+                  "end": 13423
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 13425,
+              "end": 13495
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 13432,
+              "end": 13433
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 13498,
+                "end": 13663
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 13498,
+                  "end": 13499
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 13499,
+                  "end": 13500
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 13500,
+                  "end": 13501
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 13501,
+                  "end": 13507
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+                "span": {
+                  "start": 13508,
+                  "end": 13662
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 13662,
+                  "end": 13663
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 13665,
+              "end": 13819
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 13672,
+              "end": 13673
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 13822,
+                "end": 13965
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 13822,
+                  "end": 13823
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 13823,
+                  "end": 13824
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 13824,
+                  "end": 13825
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 13825,
+                  "end": 13831
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct type t[@@ocaml.doc \" foo2 \"]\n         type s[@@ocaml.doc \" bar1 \"] end;;\nmodule M : sig type t type s end\n|}",
+                "span": {
+                  "start": 13832,
+                  "end": 13964
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 13964,
+                  "end": 13965
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 13967,
+              "end": 14067
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 13974,
+              "end": 13975
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 14070,
+                "end": 14286
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 14070,
+                  "end": 14071
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 14071,
+                  "end": 14072
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 14072,
+                  "end": 14073
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 14073,
+                  "end": 14079
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
+                "span": {
+                  "start": 14080,
+                  "end": 14285
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 14285,
+                  "end": 14286
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 14288,
+              "end": 14390
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 14295,
+              "end": 14296
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 14393,
+                "end": 14609
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 14393,
+                  "end": 14394
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 14394,
+                  "end": 14395
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 14395,
+                  "end": 14396
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 14396,
+                  "end": 14402
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
+                "span": {
+                  "start": 14403,
+                  "end": 14608
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 14608,
+                  "end": 14609
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 14611,
+              "end": 14661
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 14618,
+              "end": 14619
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 14664,
+                "end": 14780
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 14664,
+                  "end": 14665
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 14665,
+                  "end": 14666
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 14666,
+                  "end": 14667
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 14667,
+                  "end": 14673
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"][@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t end\n|}",
+                "span": {
+                  "start": 14674,
+                  "end": 14779
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 14779,
+                  "end": 14780
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 14782,
+              "end": 14834
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 14789,
+              "end": 14790
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 14837,
+                "end": 14995
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 14837,
+                  "end": 14838
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 14838,
+                  "end": 14839
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 14839,
+                  "end": 14840
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 14840,
+                  "end": 14846
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  type t\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t end\n|}",
+                "span": {
+                  "start": 14847,
+                  "end": 14994
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 14994,
+                  "end": 14995
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 14997,
+              "end": 15029
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15004,
+              "end": 15005
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 15032,
+                "end": 15116
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 15032,
+                  "end": 15033
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15033,
+                  "end": 15034
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15034,
+                  "end": 15035
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 15035,
+                  "end": 15041
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+                "span": {
+                  "start": 15042,
+                  "end": 15115
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 15115,
+                  "end": 15116
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 15118,
+              "end": 15151
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15125,
+              "end": 15126
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 15154,
+                "end": 15238
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 15154,
+                  "end": 15155
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15155,
+                  "end": 15156
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15156,
+                  "end": 15157
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 15157,
+                  "end": 15163
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+                "span": {
+                  "start": 15164,
+                  "end": 15237
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 15237,
+                  "end": 15238
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 15240,
+              "end": 15273
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15247,
+              "end": 15248
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 15276,
+                "end": 15360
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 15276,
+                  "end": 15277
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15277,
+                  "end": 15278
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15278,
+                  "end": 15279
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 15279,
+                  "end": 15285
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+                "span": {
+                  "start": 15286,
+                  "end": 15359
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 15359,
+                  "end": 15360
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 15362,
+              "end": 15394
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15369,
+              "end": 15370
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 15397,
+                "end": 15481
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 15397,
+                  "end": 15398
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15398,
+                  "end": 15399
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15399,
+                  "end": 15400
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 15400,
+                  "end": 15406
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+                "span": {
+                  "start": 15407,
+                  "end": 15480
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 15480,
+                  "end": 15481
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 15483,
+              "end": 15516
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15490,
+              "end": 15491
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 15519,
+                "end": 15603
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 15519,
+                  "end": 15520
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15520,
+                  "end": 15521
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15521,
+                  "end": 15522
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 15522,
+                  "end": 15528
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+                "span": {
+                  "start": 15529,
+                  "end": 15602
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 15602,
+                  "end": 15603
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 15605,
+              "end": 15638
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15612,
+              "end": 15613
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 15641,
+                "end": 15725
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 15641,
+                  "end": 15642
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15642,
+                  "end": 15643
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15643,
+                  "end": 15644
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 15644,
+                  "end": 15650
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+                "span": {
+                  "start": 15651,
+                  "end": 15724
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 15724,
+                  "end": 15725
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 15727,
+              "end": 15761
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15734,
+              "end": 15735
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 15764,
+                "end": 15848
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 15764,
+                  "end": 15765
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15765,
+                  "end": 15766
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15766,
+                  "end": 15767
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 15767,
+                  "end": 15773
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+                "span": {
+                  "start": 15774,
+                  "end": 15847
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 15847,
+                  "end": 15848
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 15850,
+              "end": 15896
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15857,
+              "end": 15858
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 15899,
+                "end": 16025
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 15899,
+                  "end": 15900
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15900,
+                  "end": 15901
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 15901,
+                  "end": 15902
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 15902,
+                  "end": 15908
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
+                "span": {
+                  "start": 15909,
+                  "end": 16024
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 16024,
+                  "end": 16025
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 16027,
+              "end": 16071
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 16034,
+              "end": 16035
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 16074,
+                "end": 16200
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 16074,
+                  "end": 16075
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 16075,
+                  "end": 16076
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 16076,
+                  "end": 16077
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 16077,
+                  "end": 16083
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
+                "span": {
+                  "start": 16084,
+                  "end": 16199
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 16199,
+                  "end": 16200
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 16364,
+              "end": 16476
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 16372,
+                "end": 16387
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "with_default",
+                "span": {
+                  "start": 16372,
+                  "end": 16384
+                }
+              }
+            ]
+          },
+          "type_params": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_PARAM",
+                "span": {
+                  "start": 16369,
+                  "end": 16371
+                }
+              },
+              "type_variable": {
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 16369,
+                    "end": 16371
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 16370,
+                    "end": 16371
+                  }
+                }
+              }
+            }
+          ],
+          "type_definition": {
+            "tag": "alias",
+            "syntax_node": {
+              "kind": "TYPE_ARROW",
+              "span": {
+                "start": 16390,
+                "end": 16476
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 16479,
+                "end": 16688
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 16479,
+                  "end": 16480
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 16480,
+                  "end": 16481
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 16481,
+                  "end": 16482
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 16482,
+                  "end": 16488
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\ntype 'a with_default =\n  ?size:((int)[@ocaml.doc \" default [42] \"]) ->\n    ?resizable:((bool)[@ocaml.doc \" default [true] \"]) -> 'a;;\ntype 'a with_default = ?size:int -> ?resizable:bool -> 'a\n|}",
+                "span": {
+                  "start": 16489,
+                  "end": 16687
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 16687,
+                  "end": 16688
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 16690,
+              "end": 16785
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 16695,
+                "end": 16699
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "obj",
+                "span": {
+                  "start": 16695,
+                  "end": 16698
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "object",
+            "syntax_node": {
+              "kind": "OBJECT_TYPE",
+              "span": {
+                "start": 16701,
+                "end": 16785
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 16788,
+                "end": 17033
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 16788,
+                  "end": 16789
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 16789,
+                  "end": 16790
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 16790,
+                  "end": 16791
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 16791,
+                  "end": 16797
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\ntype obj =\n  <\n    meth1: int -> int [@ocaml.doc \" method 1 \"] ;meth2: unit -> float\n                                                   [@ocaml.doc \" method 2 \"]\n    > ;;\ntype obj = < meth1 : int -> int; meth2 : unit -> float >\n|}",
+                "span": {
+                  "start": 16798,
+                  "end": 17032
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 17032,
+                  "end": 17033
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_DECL",
+            "span": {
+              "start": 17035,
+              "end": 17106
+            }
+          },
+          "type_name": {
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 17040,
+                "end": 17044
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "var",
+                "span": {
+                  "start": 17040,
+                  "end": 17043
+                }
+              }
+            ]
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "poly_variant",
+            "tags": [
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 17055,
+                    "end": 17073
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Foo",
+                  "span": {
+                    "start": 17056,
+                    "end": 17059
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 17073,
+                    "end": 17105
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Bar",
+                  "span": {
+                    "start": 17074,
+                    "end": 17077
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 17109,
+                "end": 17259
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 17109,
+                  "end": 17110
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 17110,
+                  "end": 17111
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 17111,
+                  "end": 17112
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 17112,
+                  "end": 17118
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\ntype var =\n  [ `Foo [@ocaml.doc \" foo \"] | `Bar of (int * string) [@ocaml.doc \" bar \"]];;\ntype var = [ `Bar of int * string | `Foo ]\n|}",
+                "span": {
+                  "start": 17119,
+                  "end": 17258
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 17258,
+                  "end": 17259
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "module_type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_TYPE_DECL",
+            "span": {
+              "start": 17261,
+              "end": 17415
+            }
+          },
+          "module_type_name": {
+            "kind": "IDENT_EXPR",
+            "text": "S",
+            "span": {
+              "start": 17273,
+              "end": 17274
+            }
+          }
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 17418,
+                "end": 17695
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 17418,
+                  "end": 17419
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 17419,
+                  "end": 17420
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 17420,
+                  "end": 17421
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expect",
+                "span": {
+                  "start": 17421,
+                  "end": 17427
+                }
+              },
+              {
+                "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule type S  =\n  sig\n    val before : unit -> unit[@@ocaml.doc \" docstring before \"]\n    [@@@foo ]\n    [@@@foo ]\n    val after : unit -> unit[@@ocaml.doc \" docstring after \"]\n  end;;\nmodule type S = sig val before : unit -> unit val after : unit -> unit end\n|}",
+                "span": {
+                  "start": 17428,
+                  "end": 17694
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 17694,
+                  "end": 17695
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 3624,
+            "end": 3641
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 3628,
+              "end": 3629
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "f",
+            "span": {
+              "start": 3628,
+              "end": 3629
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "f",
+          "span": {
+            "start": 3628,
+            "end": 3629
+          }
+        },
+        "parameters": [
+          {
+            "tag": "positional",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 3631,
+                "end": 3632
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 3631,
+                "end": 3632
+              }
+            }
+          },
+          {
+            "tag": "positional",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 3633,
+                "end": 3634
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "y",
+              "span": {
+                "start": 3633,
+                "end": 3634
+              }
+            }
+          }
+        ],
+        "value": {
+          "tag": "infix",
+          "syntax_node": {
+            "kind": "INFIX_EXPR",
+            "span": {
+              "start": 3636,
+              "end": 3641
+            }
+          },
+          "left": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 3636,
+                "end": 3637
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 3636,
+                  "end": 3637
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 3636,
+                    "end": 3637
+                  }
+                }
+              ]
+            }
+          },
+          "operator_token": {
+            "kind": "IDENT_EXPR",
+            "text": "+",
+            "span": {
+              "start": 3638,
+              "end": 3639
+            }
+          },
+          "right": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 3640,
+                "end": 3641
+              }
+            },
+            "path": {
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 3640,
+                  "end": 3641
+                }
+              },
+              "segments": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 3640,
+                    "end": 3641
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 281,
+            "end": 3575
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 281,
+              "end": 3575
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sig",
+              "span": {
+                "start": 281,
+                "end": 284
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 670,
+            "end": 671
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 670,
+              "end": 671
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "f",
+              "span": {
+                "start": 670,
+                "end": 671
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 1004,
+            "end": 1012
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 1004,
+              "end": 1012
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "weather",
+              "span": {
+                "start": 1004,
+                "end": 1011
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 1020,
+            "end": 1024
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 1020,
+              "end": 1024
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Rain",
+              "span": {
+                "start": 1020,
+                "end": 1024
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 1078,
+            "end": 1081
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 1078,
+              "end": 1081
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Sun",
+              "span": {
+                "start": 1078,
+                "end": 1081
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 1165,
+            "end": 1174
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 1165,
+              "end": 1174
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "weather2",
+              "span": {
+                "start": 1165,
+                "end": 1173
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 1182,
+            "end": 1186
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 1182,
+              "end": 1186
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Rain",
+              "span": {
+                "start": 1182,
+                "end": 1186
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 1240,
+            "end": 1243
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 1240,
+              "end": 1243
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Sun",
+              "span": {
+                "start": 1240,
+                "end": 1243
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 1466,
+            "end": 1476
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 1466,
+              "end": 1476
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "my_record",
+              "span": {
+                "start": 1466,
+                "end": 1475
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 1664,
+            "end": 1667
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 1664,
+              "end": 1667
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "foo",
+              "span": {
+                "start": 1664,
+                "end": 1667
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 1754,
+            "end": 1757
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 1754,
+              "end": 1757
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "bar",
+              "span": {
+                "start": 1754,
+                "end": 1757
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 1860,
+            "end": 1868
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 1860,
+              "end": 1868
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "my_class",
+              "span": {
+                "start": 1860,
+                "end": 1868
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "object",
+        "syntax_node": {
+          "kind": "OBJECT_EXPR",
+          "span": {
+            "start": 1871,
+            "end": 2377
+          }
+        },
+        "self_pattern": null,
+        "members": [
+          {
+            "tag": "inherit",
+            "syntax_node": {
+              "kind": "OBJECT_INHERIT",
+              "span": {
+                "start": 1935,
+                "end": 1993
+              }
+            },
+            "attributes": [],
+            "expression": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 1943,
+                  "end": 1945
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 1943,
+                    "end": 1945
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "cl",
+                    "span": {
+                      "start": 1943,
+                      "end": 1945
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "tag": "value",
+            "syntax_node": {
+              "kind": "OBJECT_VAL",
+              "span": {
+                "start": 1993,
+                "end": 2067
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "tutu",
+              "span": {
+                "start": 2005,
+                "end": 2009
+              }
+            },
+            "value": null,
+            "type_syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 2012,
+                "end": 2067
+              }
+            },
+            "is_mutable": true,
+            "is_virtual": false,
+            "is_override": false
+          },
+          {
+            "tag": "value",
+            "syntax_node": {
+              "kind": "OBJECT_VAL",
+              "span": {
+                "start": 2067,
+                "end": 2232
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "toto",
+              "span": {
+                "start": 2071,
+                "end": 2075
+              }
+            },
+            "value": null,
+            "type_syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 2078,
+                "end": 2232
+              }
+            },
+            "is_mutable": false,
+            "is_virtual": false,
+            "is_override": false
+          },
+          {
+            "tag": "value",
+            "syntax_node": {
+              "kind": "OBJECT_VAL",
+              "span": {
+                "start": 2232,
+                "end": 2290
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "titi",
+              "span": {
+                "start": 2236,
+                "end": 2240
+              }
+            },
+            "value": null,
+            "type_syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 2243,
+                "end": 2290
+              }
+            },
+            "is_mutable": false,
+            "is_virtual": false,
+            "is_override": false
+          },
+          {
+            "tag": "method",
+            "syntax_node": {
+              "kind": "OBJECT_METHOD",
+              "span": {
+                "start": 2290,
+                "end": 2348
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "toto",
+              "span": {
+                "start": 2297,
+                "end": 2301
+              }
+            },
+            "body": null,
+            "type_syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 2304,
+                "end": 2348
+              }
+            },
+            "is_private": false,
+            "is_virtual": false,
+            "is_override": false
+          },
+          {
+            "tag": "method",
+            "syntax_node": {
+              "kind": "OBJECT_METHOD",
+              "span": {
+                "start": 2348,
+                "end": 2374
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "m",
+              "span": {
+                "start": 2355,
+                "end": 2356
+              }
+            },
+            "body": null,
+            "type_syntax_node": {
+              "kind": "TYPE_ARROW",
+              "span": {
+                "start": 2359,
+                "end": 2374
+              }
+            },
+            "is_private": false,
+            "is_virtual": false,
+            "is_override": false
+          }
+        ]
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 1943,
+            "end": 1945
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 1943,
+              "end": 1945
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "cl",
+              "span": {
+                "start": 1943,
+                "end": 1945
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 2005,
+            "end": 2009
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 2005,
+              "end": 2009
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "tutu",
+              "span": {
+                "start": 2005,
+                "end": 2009
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 2071,
+            "end": 2075
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 2071,
+              "end": 2075
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "toto",
+              "span": {
+                "start": 2071,
+                "end": 2075
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 2236,
+            "end": 2240
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 2236,
+              "end": 2240
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "titi",
+              "span": {
+                "start": 2236,
+                "end": 2240
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 2297,
+            "end": 2301
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 2297,
+              "end": 2301
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "toto",
+              "span": {
+                "start": 2297,
+                "end": 2301
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 2355,
+            "end": 2356
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 2355,
+              "end": 2356
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "m",
+              "span": {
+                "start": 2355,
+                "end": 2356
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 2446,
+            "end": 2459
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 2446,
+              "end": 2459
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "my_class_type",
+              "span": {
+                "start": 2446,
+                "end": 2459
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "object",
+        "syntax_node": {
+          "kind": "OBJECT_EXPR",
+          "span": {
+            "start": 2462,
+            "end": 3100
+          }
+        },
+        "self_pattern": null,
+        "members": [
+          {
+            "tag": "value",
+            "syntax_node": {
+              "kind": "OBJECT_VAL",
+              "span": {
+                "start": 2716,
+                "end": 2778
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 2728,
+                "end": 2729
+              }
+            },
+            "value": null,
+            "type_syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 2732,
+                "end": 2778
+              }
+            },
+            "is_mutable": true,
+            "is_virtual": false,
+            "is_override": false
+          },
+          {
+            "tag": "method",
+            "syntax_node": {
+              "kind": "OBJECT_METHOD",
+              "span": {
+                "start": 2778,
+                "end": 3097
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "m",
+              "span": {
+                "start": 2785,
+                "end": 2786
+              }
+            },
+            "body": null,
+            "type_syntax_node": {
+              "kind": "TYPE_ARROW",
+              "span": {
+                "start": 2789,
+                "end": 3097
+              }
+            },
+            "is_private": false,
+            "is_virtual": false,
+            "is_override": false
+          }
+        ]
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 2728,
+            "end": 2729
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 2728,
+              "end": 2729
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 2728,
+                "end": 2729
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 2785,
+            "end": 2786
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 2785,
+              "end": 2786
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "m",
+              "span": {
+                "start": 2785,
+                "end": 2786
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 3153,
+            "end": 3284
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 3153,
+              "end": 3284
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sig",
+              "span": {
+                "start": 3153,
+                "end": 3156
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 3194,
+            "end": 3195
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 3194,
+              "end": 3195
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 3194,
+                "end": 3195
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 3370,
+            "end": 3570
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 3370,
+              "end": 3570
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sig",
+              "span": {
+                "start": 3370,
+                "end": 3373
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 3418,
+            "end": 3419
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 3418,
+              "end": 3419
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 3418,
+                "end": 3419
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 3479,
+            "end": 3563
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 3479,
+              "end": 3563
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sig",
+              "span": {
+                "start": 3479,
+                "end": 3482
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 3531,
+            "end": 3532
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 3531,
+              "end": 3532
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "y",
+              "span": {
+                "start": 3531,
+                "end": 3532
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "infix",
+        "syntax_node": {
+          "kind": "INFIX_EXPR",
+          "span": {
+            "start": 3636,
+            "end": 3641
+          }
+        },
+        "left": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 3636,
+              "end": 3637
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 3636,
+                "end": 3637
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 3636,
+                  "end": 3637
+                }
+              }
+            ]
+          }
+        },
+        "operator_token": {
+          "kind": "IDENT_EXPR",
+          "text": "+",
+          "span": {
+            "start": 3638,
+            "end": 3639
+          }
+        },
+        "right": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 3640,
+              "end": 3641
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 3640,
+                "end": 3641
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "span": {
+                  "start": 3640,
+                  "end": 3641
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 3636,
+            "end": 3637
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 3636,
+              "end": 3637
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 3636,
+                "end": 3637
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 3640,
+            "end": 3641
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 3640,
+              "end": 3641
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "y",
+              "span": {
+                "start": 3640,
+                "end": 3641
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 4012,
+            "end": 4020
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 4012,
+              "end": 4020
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "weather",
+              "span": {
+                "start": 4012,
+                "end": 4019
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4028,
+            "end": 4032
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4028,
+              "end": 4032
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Rain",
+              "span": {
+                "start": 4028,
+                "end": 4032
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4086,
+            "end": 4089
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4086,
+              "end": 4089
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Sun",
+              "span": {
+                "start": 4086,
+                "end": 4089
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 4177,
+            "end": 4187
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 4177,
+              "end": 4187
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "my_record",
+              "span": {
+                "start": 4177,
+                "end": 4186
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4340,
+            "end": 4348
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4340,
+              "end": 4348
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "my_class",
+              "span": {
+                "start": 4340,
+                "end": 4348
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "object",
+        "syntax_node": {
+          "kind": "OBJECT_EXPR",
+          "span": {
+            "start": 4351,
+            "end": 4780
+          }
+        },
+        "self_pattern": null,
+        "members": [
+          {
+            "tag": "inherit",
+            "syntax_node": {
+              "kind": "OBJECT_INHERIT",
+              "span": {
+                "start": 4415,
+                "end": 4485
+              }
+            },
+            "attributes": [],
+            "expression": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 4423,
+                  "end": 4425
+                }
+              },
+              "path": {
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 4423,
+                    "end": 4425
+                  }
+                },
+                "segments": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "cl",
+                    "span": {
+                      "start": 4423,
+                      "end": 4425
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "tag": "value",
+            "syntax_node": {
+              "kind": "OBJECT_VAL",
+              "span": {
+                "start": 4485,
+                "end": 4548
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "tutu",
+              "span": {
+                "start": 4497,
+                "end": 4501
+              }
+            },
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 4504,
+                    "end": 4510
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"tutu\"",
+                  "span": {
+                    "start": 4504,
+                    "end": 4510
+                  }
+                }
+              }
+            },
+            "type_syntax_node": null,
+            "is_mutable": true,
+            "is_virtual": false,
+            "is_override": false
+          },
+          {
+            "tag": "value",
+            "syntax_node": {
+              "kind": "OBJECT_VAL",
+              "span": {
+                "start": 4548,
+                "end": 4565
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "toto",
+              "span": {
+                "start": 4552,
+                "end": 4556
+              }
+            },
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 4559,
+                    "end": 4560
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "1",
+                  "span": {
+                    "start": 4559,
+                    "end": 4560
+                  }
+                }
+              }
+            },
+            "type_syntax_node": null,
+            "is_mutable": false,
+            "is_virtual": false,
+            "is_override": false
+          },
+          {
+            "tag": "value",
+            "syntax_node": {
+              "kind": "OBJECT_VAL",
+              "span": {
+                "start": 4565,
+                "end": 4638
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "titi",
+              "span": {
+                "start": 4569,
+                "end": 4573
+              }
+            },
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 4576,
+                    "end": 4582
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"titi\"",
+                  "span": {
+                    "start": 4576,
+                    "end": 4582
+                  }
+                }
+              }
+            },
+            "type_syntax_node": null,
+            "is_mutable": false,
+            "is_virtual": false,
+            "is_override": false
+          },
+          {
+            "tag": "method",
+            "syntax_node": {
+              "kind": "OBJECT_METHOD",
+              "span": {
+                "start": 4638,
+                "end": 4750
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "toto",
+              "span": {
+                "start": 4645,
+                "end": 4649
+              }
+            },
+            "body": {
+              "tag": "infix",
+              "syntax_node": {
+                "kind": "INFIX_EXPR",
+                "span": {
+                  "start": 4652,
+                  "end": 4662
+                }
+              },
+              "left": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 4652,
+                    "end": 4656
+                  }
+                },
+                "path": {
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 4652,
+                      "end": 4656
+                    }
+                  },
+                  "segments": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "tutu",
+                      "span": {
+                        "start": 4652,
+                        "end": 4656
+                      }
+                    }
+                  ]
+                }
+              },
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "^",
+                "span": {
+                  "start": 4657,
+                  "end": 4658
+                }
+              },
+              "right": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "string",
+                  "syntax_node": {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 4659,
+                      "end": 4662
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "STRING_LITERAL",
+                    "text": "\"!\"",
+                    "span": {
+                      "start": 4659,
+                      "end": 4662
+                    }
+                  }
+                }
+              }
+            },
+            "type_syntax_node": null,
+            "is_private": false,
+            "is_virtual": false,
+            "is_override": false
+          },
+          {
+            "tag": "method",
+            "syntax_node": {
+              "kind": "OBJECT_METHOD",
+              "span": {
+                "start": 4750,
+                "end": 4777
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "m",
+              "span": {
+                "start": 4757,
+                "end": 4758
+              }
+            },
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 4773,
+                    "end": 4774
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "1",
+                  "span": {
+                    "start": 4773,
+                    "end": 4774
+                  }
+                }
+              }
+            },
+            "type_syntax_node": null,
+            "is_private": false,
+            "is_virtual": false,
+            "is_override": false
+          }
+        ]
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4423,
+            "end": 4425
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4423,
+              "end": 4425
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "cl",
+              "span": {
+                "start": 4423,
+                "end": 4425
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4497,
+            "end": 4501
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4497,
+              "end": 4501
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "tutu",
+              "span": {
+                "start": 4497,
+                "end": 4501
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 4504,
+              "end": 4510
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"tutu\"",
+            "span": {
+              "start": 4504,
+              "end": 4510
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4552,
+            "end": 4556
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4552,
+              "end": 4556
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "toto",
+              "span": {
+                "start": 4552,
+                "end": 4556
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 4559,
+              "end": 4560
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "1",
+            "span": {
+              "start": 4559,
+              "end": 4560
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4569,
+            "end": 4573
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4569,
+              "end": 4573
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "titi",
+              "span": {
+                "start": 4569,
+                "end": 4573
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 4576,
+              "end": 4582
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"titi\"",
+            "span": {
+              "start": 4576,
+              "end": 4582
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4645,
+            "end": 4649
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4645,
+              "end": 4649
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "toto",
+              "span": {
+                "start": 4645,
+                "end": 4649
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "infix",
+        "syntax_node": {
+          "kind": "INFIX_EXPR",
+          "span": {
+            "start": 4652,
+            "end": 4662
+          }
+        },
+        "left": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4652,
+              "end": 4656
+            }
+          },
+          "path": {
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 4652,
+                "end": 4656
+              }
+            },
+            "segments": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "tutu",
+                "span": {
+                  "start": 4652,
+                  "end": 4656
+                }
+              }
+            ]
+          }
+        },
+        "operator_token": {
+          "kind": "IDENT_EXPR",
+          "text": "^",
+          "span": {
+            "start": 4657,
+            "end": 4658
+          }
+        },
+        "right": {
+          "tag": "literal",
+          "literal": {
+            "tag": "string",
+            "syntax_node": {
+              "kind": "STRING_LITERAL",
+              "span": {
+                "start": 4659,
+                "end": 4662
+              }
+            },
+            "literal_token": {
+              "kind": "STRING_LITERAL",
+              "text": "\"!\"",
+              "span": {
+                "start": 4659,
+                "end": 4662
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4652,
+            "end": 4656
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4652,
+              "end": 4656
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "tutu",
+              "span": {
+                "start": 4652,
+                "end": 4656
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "string",
+          "syntax_node": {
+            "kind": "STRING_LITERAL",
+            "span": {
+              "start": 4659,
+              "end": 4662
+            }
+          },
+          "literal_token": {
+            "kind": "STRING_LITERAL",
+            "text": "\"!\"",
+            "span": {
+              "start": 4659,
+              "end": 4662
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4757,
+            "end": 4758
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4757,
+              "end": 4758
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "m",
+              "span": {
+                "start": 4757,
+                "end": 4758
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "literal",
+        "literal": {
+          "tag": "int",
+          "syntax_node": {
+            "kind": "INT_LITERAL",
+            "span": {
+              "start": 4773,
+              "end": 4774
+            }
+          },
+          "literal_token": {
+            "kind": "INT_LITERAL",
+            "text": "1",
+            "span": {
+              "start": 4773,
+              "end": 4774
+            }
+          }
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4845,
+            "end": 4858
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4845,
+              "end": 4858
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "my_class_type",
+              "span": {
+                "start": 4845,
+                "end": 4858
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "object",
+        "syntax_node": {
+          "kind": "OBJECT_EXPR",
+          "span": {
+            "start": 4861,
+            "end": 5059
+          }
+        },
+        "self_pattern": null,
+        "members": [
+          {
+            "tag": "value",
+            "syntax_node": {
+              "kind": "OBJECT_VAL",
+              "span": {
+                "start": 4924,
+                "end": 5032
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4936,
+                "end": 4937
+              }
+            },
+            "value": null,
+            "type_syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 4940,
+                "end": 5032
+              }
+            },
+            "is_mutable": true,
+            "is_virtual": false,
+            "is_override": false
+          },
+          {
+            "tag": "method",
+            "syntax_node": {
+              "kind": "OBJECT_METHOD",
+              "span": {
+                "start": 5032,
+                "end": 5056
+              }
+            },
+            "attributes": [],
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "m",
+              "span": {
+                "start": 5039,
+                "end": 5040
+              }
+            },
+            "body": null,
+            "type_syntax_node": {
+              "kind": "TYPE_ARROW",
+              "span": {
+                "start": 5043,
+                "end": 5056
+              }
+            },
+            "is_private": false,
+            "is_virtual": false,
+            "is_override": false
+          }
+        ]
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 4936,
+            "end": 4937
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 4936,
+              "end": 4937
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4936,
+                "end": 4937
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 5039,
+            "end": 5040
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 5039,
+              "end": 5040
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "m",
+              "span": {
+                "start": 5039,
+                "end": 5040
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 5156,
+            "end": 5157
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 5156,
+              "end": 5157
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 5156,
+                "end": 5157
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 5288,
+            "end": 5358
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 5288,
+              "end": 5358
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sig",
+              "span": {
+                "start": 5288,
+                "end": 5291
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 5331,
+            "end": 5332
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 5331,
+              "end": 5332
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 5331,
+                "end": 5332
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 5366,
+              "end": 12093
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 5366,
+                "end": 5367
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 5367,
+                "end": 5368
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 5368,
+                "end": 5369
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 5369,
+                "end": 5375
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule Manual :\n  sig\n    [@@@ocaml.text\n      \" Special comments can be placed between elements and are kept\\n      by the OCamldoc tool, but are not associated to any element.\\n      @-tags in these comments are ignored.\"]\n    [@@@ocaml.text\n      \" Comments like the one above, with more than two asterisks,\\n      are ignored. \"]\n    val f : int -> int -> int[@@ocaml.doc \" The comment for function f. \"]\n    [@@ocaml.doc \" The continuation of the comment for function f. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type weather2 =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather2  \"]\n    [@@ocaml.doc\n      \" I can continue the comment for type weather2 here\\n      because there is already a comment associated to the last constructor.\"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    [@@ocaml.doc \" Continuation of comment for type my_record \"]\n    val foo : string[@@ocaml.doc \" Comment for foo \"][@@ocaml.doc\n                                                       \" This comment is ambiguous and associated to both foo and bar. \"]\n    val bar : string[@@ocaml.doc\n                      \" This comment is ambiguous and associated to both foo and bar. \"]\n    [@@ocaml.doc \" This comment is associated to bar. \"]\n    class my_class :\n      object\n        inherit cl[@@ocaml.doc \" A comment to describe inheritance from cl \"]\n        val  mutable tutu : string[@@ocaml.doc\n                                    \" The comment for attribute tutu \"]\n        val  toto : int[@@ocaml.doc \" The comment for attribute toto. \"]\n        [@@@ocaml.text\n          \" This comment is not attached to titi since\\n        there is a blank line before titi, but is kept\\n        as a comment in the class. \"]\n        val  titi : string\n        method  toto : string[@@ocaml.doc \" Comment for method toto \"]\n        method  m : float -> int[@@ocaml.doc \" Comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 drops.\\n        For some reason, when a class type begins with two docstrings,\\n        it keeps only the second one.\\n        This is fixed by GPR#2151. \"]\n        val  mutable x : int[@@ocaml.doc \" The comment for variable x. \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 misplaces.\\n        For some reason, when a class type ends with two docstrings,\\n        it keeps both of them, but exchanges their order.\\n        This is again fixed by GPR#2151. \"]\n        [@@@ocaml.text \" Another docstring that OCaml <= 4.07.1 misplaces. \"]\n      end[@@ocaml.doc \" The comment for the class type my_class_type \"]\n    module Foo :\n    sig\n      val x : int[@@ocaml.doc \" The comment for x \"]\n      [@@@ocaml.text\n        \" A special comment that is kept but not associated to any element \"]\n    end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  =\n      sig\n        val x : int[@@ocaml.doc \" The comment for value x. \"]\n        module M :\n        sig val y : int[@@ocaml.doc \" The comment for value y. \"] end\n        [@@ocaml.doc \" The comment for module M. \"]\n      end[@@ocaml.doc \" The comment for module type my_module_type. \"]\n  end =\n  struct\n    let f x y = x + y[@@ocaml.doc \" The comment for function f \"]\n    [@@@ocaml.text\n      \" This comment is not attached to any element since there is another\\n      special comment just before the next element. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    class my_class =\n      object\n        inherit  cl[@@ocaml.doc\n                     \" A comment to describe inheritance from cl \"]\n        val mutable tutu = \"tutu\"[@@ocaml.doc\n                                   \" The comment for the instance variable tutu \"]\n        val toto = 1[@@ocaml.doc \" The comment for toto \"]\n        val titi = \"titi\"[@@ocaml.doc\n                           \" Ambiguous comment on both titi and toto \"]\n        method toto = tutu ^ \"!\"[@@ocaml.doc\n                                  \" Ambiguous comment on both titi and toto \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method m (f : float) = 1[@@ocaml.doc \" The comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        val  mutable x : int[@@ocaml.doc\n                              \" The comment for the instance variable x. \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n      end[@@ocaml.doc \" The comment for class type my_class_type \"]\n    module Foo =\n      struct\n        external x : int[@@ocaml.doc \" The comment for x \"][@@ocaml.doc\n                                                             \" Another comment for x \"]\n      end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  = sig val x : int end[@@ocaml.doc\n                                                       \" The comment for module type my_module_type. \"]\n  end ;;\nLine 141, characters 12-14:\n141 |     inherit cl\n                  ^^\nError: Unbound class \"cl\"\n|}",
+              "span": {
+                "start": 5376,
+                "end": 12092
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 12092,
+                "end": 12093
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 12230,
+            "end": 12232
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 12230,
+              "end": 12232
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 12230,
+                "end": 12231
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 12234,
+            "end": 12239
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 12234,
+              "end": 12239
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "Label",
+              "span": {
+                "start": 12234,
+                "end": 12239
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 12350,
+            "end": 12357
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 12350,
+              "end": 12357
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "w",
+              "span": {
+                "start": 12350,
+                "end": 12351
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 12363,
+              "end": 12605
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 12363,
+                "end": 12364
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12364,
+                "end": 12365
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12365,
+                "end": 12366
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 12366,
+                "end": 12372
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct\n    type t =\n      | Label [@@ocaml.doc \" attached to t \"]\n    [@@@ocaml.text\n      \" Empty docstring comments should not generate attributes \"]\n    type w\n  end;;\nmodule M : sig type t = Label type w end\n|}",
+              "span": {
+                "start": 12373,
+                "end": 12604
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 12604,
+                "end": 12605
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 12785,
+            "end": 12790
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 12785,
+              "end": 12790
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 12785,
+                "end": 12786
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 12795,
+            "end": 12810
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 12795,
+              "end": 12810
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "s",
+              "span": {
+                "start": 12795,
+                "end": 12796
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 12816,
+              "end": 12964
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 12816,
+                "end": 12817
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12817,
+                "end": 12818
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12818,
+                "end": 12819
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 12819,
+                "end": 12825
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 12826,
+                "end": 12963
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 12963,
+                "end": 12964
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 13005,
+            "end": 13010
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 13005,
+              "end": 13010
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 13005,
+                "end": 13006
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 13015,
+            "end": 13031
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 13015,
+              "end": 13031
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "s",
+              "span": {
+                "start": 13015,
+                "end": 13016
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 13037,
+              "end": 13185
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 13037,
+                "end": 13038
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13038,
+                "end": 13039
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13039,
+                "end": 13040
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 13040,
+                "end": 13046
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 13047,
+                "end": 13184
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 13184,
+                "end": 13185
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 13226,
+            "end": 13231
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 13226,
+              "end": 13231
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 13226,
+                "end": 13227
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 13236,
+            "end": 13252
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 13236,
+              "end": 13252
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "s",
+              "span": {
+                "start": 13236,
+                "end": 13237
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 13258,
+              "end": 13423
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 13258,
+                "end": 13259
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13259,
+                "end": 13260
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13260,
+                "end": 13261
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 13261,
+                "end": 13267
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 13268,
+                "end": 13422
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 13422,
+                "end": 13423
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 13465,
+            "end": 13470
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 13465,
+              "end": 13470
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 13465,
+                "end": 13466
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 13475,
+            "end": 13492
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 13475,
+              "end": 13492
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "s",
+              "span": {
+                "start": 13475,
+                "end": 13476
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 13498,
+              "end": 13663
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 13498,
+                "end": 13499
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13499,
+                "end": 13500
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13500,
+                "end": 13501
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 13501,
+                "end": 13507
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 13508,
+                "end": 13662
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 13662,
+                "end": 13663
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 13747,
+            "end": 13752
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 13747,
+              "end": 13752
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 13747,
+                "end": 13748
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 13757,
+            "end": 13816
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 13757,
+              "end": 13816
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "s",
+              "span": {
+                "start": 13757,
+                "end": 13758
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 13822,
+              "end": 13965
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 13822,
+                "end": 13823
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13823,
+                "end": 13824
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13824,
+                "end": 13825
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 13825,
+                "end": 13831
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct type t[@@ocaml.doc \" foo2 \"]\n         type s[@@ocaml.doc \" bar1 \"] end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 13832,
+                "end": 13964
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 13964,
+                "end": 13965
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 14022,
+            "end": 14027
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 14022,
+              "end": 14027
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 14022,
+                "end": 14023
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 14032,
+            "end": 14064
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 14032,
+              "end": 14064
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "s",
+              "span": {
+                "start": 14032,
+                "end": 14033
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 14070,
+              "end": 14286
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 14070,
+                "end": 14071
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14071,
+                "end": 14072
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14072,
+                "end": 14073
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 14073,
+                "end": 14079
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 14080,
+                "end": 14285
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 14285,
+                "end": 14286
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 14344,
+            "end": 14349
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 14344,
+              "end": 14349
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 14344,
+                "end": 14345
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 14354,
+            "end": 14387
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 14354,
+              "end": 14387
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "s",
+              "span": {
+                "start": 14354,
+                "end": 14355
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 14393,
+              "end": 14609
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 14393,
+                "end": 14394
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14394,
+                "end": 14395
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14395,
+                "end": 14396
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 14396,
+                "end": 14402
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
+              "span": {
+                "start": 14403,
+                "end": 14608
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 14608,
+                "end": 14609
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 14645,
+            "end": 14658
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 14645,
+              "end": 14658
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 14645,
+                "end": 14646
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 14664,
+              "end": 14780
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 14664,
+                "end": 14665
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14665,
+                "end": 14666
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14666,
+                "end": 14667
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 14667,
+                "end": 14673
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"][@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t end\n|}",
+              "span": {
+                "start": 14674,
+                "end": 14779
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 14779,
+                "end": 14780
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 14817,
+            "end": 14831
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 14817,
+              "end": 14831
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "t",
+              "span": {
+                "start": 14817,
+                "end": 14818
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 14837,
+              "end": 14995
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 14837,
+                "end": 14838
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14838,
+                "end": 14839
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14839,
+                "end": 14840
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 14840,
+                "end": 14846
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  type t\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t end\n|}",
+              "span": {
+                "start": 14847,
+                "end": 14994
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 14994,
+                "end": 14995
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15032,
+              "end": 15116
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 15032,
+                "end": 15033
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15033,
+                "end": 15034
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15034,
+                "end": 15035
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15035,
+                "end": 15041
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15042,
+                "end": 15115
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15115,
+                "end": 15116
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15154,
+              "end": 15238
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 15154,
+                "end": 15155
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15155,
+                "end": 15156
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15156,
+                "end": 15157
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15157,
+                "end": 15163
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15164,
+                "end": 15237
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15237,
+                "end": 15238
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15276,
+              "end": 15360
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 15276,
+                "end": 15277
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15277,
+                "end": 15278
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15278,
+                "end": 15279
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15279,
+                "end": 15285
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15286,
+                "end": 15359
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15359,
+                "end": 15360
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15397,
+              "end": 15481
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 15397,
+                "end": 15398
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15398,
+                "end": 15399
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15399,
+                "end": 15400
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15400,
+                "end": 15406
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15407,
+                "end": 15480
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15480,
+                "end": 15481
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15519,
+              "end": 15603
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 15519,
+                "end": 15520
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15520,
+                "end": 15521
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15521,
+                "end": 15522
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15522,
+                "end": 15528
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15529,
+                "end": 15602
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15602,
+                "end": 15603
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15641,
+              "end": 15725
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 15641,
+                "end": 15642
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15642,
+                "end": 15643
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15643,
+                "end": 15644
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15644,
+                "end": 15650
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15651,
+                "end": 15724
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15724,
+                "end": 15725
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15764,
+              "end": 15848
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 15764,
+                "end": 15765
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15765,
+                "end": 15766
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15766,
+                "end": 15767
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15767,
+                "end": 15773
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15774,
+                "end": 15847
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 15847,
+                "end": 15848
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 15899,
+              "end": 16025
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 15899,
+                "end": 15900
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15900,
+                "end": 15901
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15901,
+                "end": 15902
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 15902,
+                "end": 15908
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 15909,
+                "end": 16024
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 16024,
+                "end": 16025
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 16074,
+              "end": 16200
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 16074,
+                "end": 16075
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16075,
+                "end": 16076
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16076,
+                "end": 16077
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 16077,
+                "end": 16083
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
+              "span": {
+                "start": 16084,
+                "end": 16199
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 16199,
+                "end": 16200
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 16372,
+            "end": 16387
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 16372,
+              "end": 16387
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "with_default",
+              "span": {
+                "start": 16372,
+                "end": 16384
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 16479,
+              "end": 16688
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 16479,
+                "end": 16480
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16480,
+                "end": 16481
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16481,
+                "end": 16482
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 16482,
+                "end": 16488
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\ntype 'a with_default =\n  ?size:((int)[@ocaml.doc \" default [42] \"]) ->\n    ?resizable:((bool)[@ocaml.doc \" default [true] \"]) -> 'a;;\ntype 'a with_default = ?size:int -> ?resizable:bool -> 'a\n|}",
+              "span": {
+                "start": 16489,
+                "end": 16687
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 16687,
+                "end": 16688
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 16695,
+            "end": 16699
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 16695,
+              "end": 16699
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "obj",
+              "span": {
+                "start": 16695,
+                "end": 16698
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 16788,
+              "end": 17033
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 16788,
+                "end": 16789
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16789,
+                "end": 16790
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16790,
+                "end": 16791
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 16791,
+                "end": 16797
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\ntype obj =\n  <\n    meth1: int -> int [@ocaml.doc \" method 1 \"] ;meth2: unit -> float\n                                                   [@ocaml.doc \" method 2 \"]\n    > ;;\ntype obj = < meth1 : int -> int; meth2 : unit -> float >\n|}",
+              "span": {
+                "start": 16798,
+                "end": 17032
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 17032,
+                "end": 17033
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "MODULE_PATH",
+          "span": {
+            "start": 17040,
+            "end": 17044
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "MODULE_PATH",
+            "span": {
+              "start": 17040,
+              "end": 17044
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "var",
+              "span": {
+                "start": 17040,
+                "end": 17043
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 17109,
+              "end": 17259
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 17109,
+                "end": 17110
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17110,
+                "end": 17111
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17111,
+                "end": 17112
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 17112,
+                "end": 17118
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\ntype var =\n  [ `Foo [@ocaml.doc \" foo \"] | `Bar of (int * string) [@ocaml.doc \" bar \"]];;\ntype var = [ `Bar of int * string | `Foo ]\n|}",
+              "span": {
+                "start": 17119,
+                "end": 17258
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 17258,
+                "end": 17259
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 17277,
+            "end": 17415
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 17277,
+              "end": 17415
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sig",
+              "span": {
+                "start": 17277,
+                "end": 17280
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 17288,
+            "end": 17294
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 17288,
+              "end": 17294
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "before",
+              "span": {
+                "start": 17288,
+                "end": 17294
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "attribute",
+        "attribute": {
+          "syntax_node": {
+            "kind": "ATTRIBUTE_EXPR",
+            "span": {
+              "start": 17297,
+              "end": 17386
+            }
+          },
+          "tokens": []
+        }
+      },
+      {
+        "tag": "attribute",
+        "attribute": {
+          "syntax_node": {
+            "kind": "ATTRIBUTE_EXPR",
+            "span": {
+              "start": 17338,
+              "end": 17346
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 17338,
+                "end": 17339
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "@@",
+              "span": {
+                "start": 17339,
+                "end": 17341
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "@",
+              "span": {
+                "start": 17341,
+                "end": 17342
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "foo",
+              "span": {
+                "start": 17342,
+                "end": 17345
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 17345,
+                "end": 17346
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "attribute",
+        "attribute": {
+          "syntax_node": {
+            "kind": "ATTRIBUTE_EXPR",
+            "span": {
+              "start": 17350,
+              "end": 17358
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 17350,
+                "end": 17351
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "@@",
+              "span": {
+                "start": 17351,
+                "end": 17353
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "@",
+              "span": {
+                "start": 17353,
+                "end": 17354
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "foo",
+              "span": {
+                "start": 17354,
+                "end": 17357
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 17357,
+                "end": 17358
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "path",
+        "syntax_node": {
+          "kind": "IDENT_EXPR",
+          "span": {
+            "start": 17390,
+            "end": 17395
+          }
+        },
+        "path": {
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 17390,
+              "end": 17395
+            }
+          },
+          "segments": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "after",
+              "span": {
+                "start": 17390,
+                "end": 17395
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 17418,
+              "end": 17695
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 17418,
+                "end": 17419
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17419,
+                "end": 17420
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17420,
+                "end": 17421
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expect",
+              "span": {
+                "start": 17421,
+                "end": 17427
+              }
+            },
+            {
+              "kind": "STRING_LITERAL",
+              "text": "{|\n\nmodule type S  =\n  sig\n    val before : unit -> unit[@@ocaml.doc \" docstring before \"]\n    [@@@foo ]\n    [@@@foo ]\n    val after : unit -> unit[@@ocaml.doc \" docstring after \"]\n  end;;\nmodule type S = sig val before : unit -> unit val after : unit -> unit end\n|}",
+              "span": {
+                "start": 17428,
+                "end": 17694
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 17694,
+                "end": 17695
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

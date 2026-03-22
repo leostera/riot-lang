@@ -670,6 +670,34 @@
     ],
     "expressions": [
       {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 22,
+            "end": 30
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 24,
+              "end": 27
+            }
+          },
+          {
+            "kind": "IDENT_EXPR",
+            "text": "+",
+            "span": {
+              "start": 27,
+              "end": 28
+            }
+          }
+        ]
+      },
+      {
         "tag": "field_access",
         "syntax_node": {
           "kind": "FIELD_ACCESS_EXPR",

@@ -147,6 +147,107 @@
       }
     ],
     "let_bindings": [],
-    "expressions": []
+    "expressions": [
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 4,
+            "end": 9
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "/",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          }
+        ]
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 28,
+            "end": 33
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "+",
+            "span": {
+              "start": 30,
+              "end": 31
+            }
+          }
+        ]
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 58,
+            "end": 63
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "!",
+            "span": {
+              "start": 60,
+              "end": 61
+            }
+          }
+        ]
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 83,
+            "end": 89
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": ":=",
+            "span": {
+              "start": 85,
+              "end": 87
+            }
+          }
+        ]
+      },
+      {
+        "tag": "operator",
+        "syntax_node": {
+          "kind": "OPERATOR_PATTERN",
+          "span": {
+            "start": 117,
+            "end": 123
+          }
+        },
+        "operator_tokens": [
+          {
+            "kind": "IDENT_EXPR",
+            "text": "&&",
+            "span": {
+              "start": 119,
+              "end": 121
+            }
+          }
+        ]
+      }
+    ]
   }
 }
