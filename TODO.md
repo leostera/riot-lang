@@ -56,6 +56,162 @@
 - [ ] Make successful CST creation rule out public `Unknown` shapes by construction rather than by validation convention
 - [ ] Add a stronger fixture/checklist pass for syntax that the stock parsetree distinguishes sharply
 
+### OCaml Structure Parity Checklist
+
+#### Completely Absent Today
+
+- [ ] Patterns:
+  - [ ] type-constraint patterns
+  - [ ] effect patterns
+  - [ ] locally opened patterns
+- [ ] Expressions:
+  - [ ] instance-variable assignment expressions
+  - [ ] structure-item expressions
+  - [ ] polymorphic expressions
+  - [ ] locally abstract type expressions
+  - [ ] let-operator expressions
+  - [ ] unreachable expressions
+- [ ] Core types:
+  - [ ] wildcard types
+  - [ ] type variable references
+  - [ ] arrow types
+  - [ ] tuple types
+  - [ ] constructor-applied types
+  - [ ] object types
+  - [ ] class types in type positions
+  - [ ] aliased types
+  - [ ] polyvariant types
+  - [ ] universally quantified types
+  - [ ] package types
+  - [ ] locally opened types
+  - [ ] extension types
+  - [ ] package-type payloads
+  - [ ] row fields
+  - [ ] object fields
+- [ ] Structure items:
+  - [ ] type-extension items
+  - [ ] recursive-module items
+  - [ ] standalone attribute items
+  - [ ] standalone extension items
+- [ ] Signature items:
+  - [ ] type declarations in interfaces
+  - [ ] type substitutions in interfaces
+  - [ ] type extensions in interfaces
+  - [ ] exception declarations in interfaces
+  - [ ] module declarations in interfaces
+  - [ ] module substitutions in interfaces
+  - [ ] recursive modules in interfaces
+  - [ ] module type declarations in interfaces
+  - [ ] module type substitutions in interfaces
+  - [ ] open statements in interfaces
+  - [ ] include statements in interfaces
+  - [ ] class declarations in interfaces
+  - [ ] class type declarations in interfaces
+  - [ ] standalone attribute items in interfaces
+  - [ ] standalone extension items in interfaces
+- [ ] Module expressions:
+  - [ ] module identifiers
+  - [ ] structure module bodies
+  - [ ] functor expressions
+  - [ ] functor application expressions
+  - [ ] unit functor application expressions
+  - [ ] constrained module expressions
+  - [ ] unpacked first-class modules
+  - [ ] module extensions
+- [ ] Module types:
+  - [ ] module type identifiers
+  - [ ] signature module types
+  - [ ] functor module types
+  - [ ] with-constraint module types
+  - [ ] module-type-of expressions
+  - [ ] module type extensions
+  - [ ] module type aliases
+- [ ] Class expressions:
+  - [ ] class constructor references
+  - [ ] class structure bodies
+  - [ ] function-style class expressions
+  - [ ] class application expressions
+  - [ ] let-bound class expressions
+  - [ ] constrained class expressions
+  - [ ] class extensions
+  - [ ] locally opened class expressions
+- [ ] Class types:
+  - [ ] class type constructor references
+  - [ ] class signatures
+  - [ ] arrow-style class types
+  - [ ] class type extensions
+  - [ ] locally opened class types
+- [ ] Class fields:
+  - [ ] class constraints
+  - [ ] class-field attributes
+  - [ ] class-field extensions
+- [ ] Class type fields:
+  - [ ] inherited class type fields
+  - [ ] value declarations in class types
+  - [ ] method declarations in class types
+  - [ ] class type constraints
+  - [ ] class-type-field attributes
+  - [ ] class-type-field extensions
+
+#### Present But Opaque
+
+- [ ] Core types are still mostly opaque `type_syntax_node` placeholders instead of a typed `core_type` tree
+- [ ] Module expressions are still raw syntax in places like:
+  - [ ] `let_module_expression.module_expression_syntax_node`
+  - [ ] `first_class_module_expression.module_syntax_node`
+- [ ] Module types are still raw syntax in places like:
+  - [ ] `first_class_module_expression.module_type_syntax_node`
+  - [ ] class type bodies and other declaration sites
+- [ ] Type definitions are still opaque in several branches:
+  - [ ] `TypeDefinition.Alias`
+  - [ ] `TypeDefinition.Object`
+  - [ ] `TypeDefinition.FirstClassModule`
+  - [ ] `TypeDefinition.Other`
+- [ ] Type declarations still do not expose typed structure for:
+  - [ ] manifest/core type of aliases
+  - [ ] constraints
+  - [ ] variance/injectivity on parameters
+  - [ ] record label declarations
+  - [ ] constructor argument lists
+  - [ ] constructor result types / GADT constructors
+- [ ] Attributes and extensions are still token shells rather than structured payloads
+- [ ] Includes, opens, and with-constraints are still thin wrappers rather than a typed tree
+
+#### Present But Lossy
+
+- [ ] Patterns:
+  - [ ] tuple patterns are missing labelled elements and open tuple `...` structure
+  - [ ] record patterns are missing open-vs-closed structure
+  - [ ] constructor patterns are missing existential type variables
+  - [ ] polyvariant patterns are simplified to tag + optional payload
+  - [ ] literal patterns lose delimiter/suffix detail and exact constant structure
+  - [ ] interval patterns store two tokens instead of parsed constants
+  - [ ] first-class-module patterns are still thinner than the stock unpack form
+  - [ ] Pattern attributes are represented as wrapper nodes instead of orthogonal metadata
+- [ ] Expressions:
+  - [ ] constructor expressions are likely flattened into `Path` or `Apply`
+  - [ ] field assignment expressions are only approximated via `Assign (FieldAccess ...)`
+  - [ ] object override expressions are only approximated via `ObjectUpdate`
+  - [ ] function expressions only store cases, not the richer parameter/type structure
+  - [ ] `for` loops store a direction token instead of a typed direction flag
+  - [ ] record expressions only keep syntax-level field paths and optional values
+  - [ ] packed first-class module expressions are still mostly raw syntax
+  - [ ] Expression attributes are represented as wrapper nodes instead of orthogonal metadata
+- [ ] Type declarations:
+  - [ ] `private_flag` is missing
+  - [ ] parameter variance/injectivity is missing
+  - [ ] `type_kind` detail is still compressed
+  - [ ] record fields only store names + mutability, not field types and attrs
+  - [ ] variant constructors only store names, not arguments/results/attrs
+  - [ ] polyvariant tags only store names, not payload types or closedness
+- [ ] Structure items:
+  - [ ] implementation and interface currently share the same `Item.t`, so signature structure is lossy
+  - [ ] item-level attributes and extension payloads are not modeled like Parsetree
+- [ ] Metadata:
+  - [ ] locations are not modeled orthogonally like `Location.t` / `location_stack`
+  - [ ] many typed flags are represented as tokens/bools or dropped entirely
+  - [ ] attributes are not attached orthogonally across the tree the way Parsetree does
+
 ### Completed CST Syntax Families
 
 - [x] destructuring `let` bindings and mutual `let`
