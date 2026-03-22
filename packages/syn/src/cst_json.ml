@@ -327,6 +327,13 @@ and attribute_to_json (attr : Cst.attribute) =
       ("tokens", Json.Array (List.map token_to_json attr.tokens));
     ]
 
+and extension_to_json (ext : Cst.extension) =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json ext.syntax_node);
+      ("tokens", Json.Array (List.map token_to_json ext.tokens));
+    ]
+
 and expression_to_json = function
   | Cst.Expression.Path { syntax_node; path } ->
       Json.Object
@@ -346,6 +353,12 @@ and expression_to_json = function
         [
           ("tag", Json.String "attribute");
           ("attribute", attribute_to_json attr);
+        ]
+  | Cst.Expression.Extension ext ->
+      Json.Object
+        [
+          ("tag", Json.String "extension");
+          ("extension", extension_to_json ext);
         ]
   | Cst.Expression.PolyVariant { syntax_node; tag_token; payload } ->
       Json.Object
@@ -709,6 +722,12 @@ let type_definition_to_json = function
       Json.Object
         [
           ("tag", Json.String "alias");
+          ("syntax_node", syntax_node_to_json syntax_node);
+        ]
+  | Cst.TypeDefinition.Extensible { syntax_node } ->
+      Json.Object
+        [
+          ("tag", Json.String "extensible");
           ("syntax_node", syntax_node_to_json syntax_node);
         ]
   | Cst.TypeDefinition.FirstClassModule { syntax_node; module_type_syntax_node } ->

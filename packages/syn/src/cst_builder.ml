@@ -66,7 +66,10 @@ let module_path_like_from_node node =
   | _ ->
       Cst.ModulePath.{ syntax_node = node; segments = List.map token (direct_non_trivia_tokens node) }
 
-let attribute_from_node node =
+let attribute_from_node node : Cst.attribute =
+  { Cst.syntax_node = node; tokens = List.map token (direct_non_trivia_tokens node) }
+
+let extension_from_node node : Cst.extension =
   { Cst.syntax_node = node; tokens = List.map token (direct_non_trivia_tokens node) }
 
 let is_parameter_like_kind = function
@@ -528,6 +531,8 @@ and expression_from_node node =
         { syntax_node = node; path = module_path_from_node node }
   | Syntax_kind.ATTRIBUTE_EXPR ->
       Cst.Expression.Attribute (attribute_from_node node)
+  | Syntax_kind.EXTENSION_EXPR ->
+      Cst.Expression.Extension (extension_from_node node)
   | Syntax_kind.UNIT_LITERAL ->
       Cst.Expression.Literal (Cst.Literal.Unit { syntax_node = node })
   | Syntax_kind.FIELD_ACCESS_EXPR -> (
@@ -1273,6 +1278,9 @@ let type_declaration_name_path node =
          | _ -> Cst.ModulePath.{ syntax_node = child; segments = [] })
 
 let type_definition_from_node node =
+  if Ceibo.Red.SyntaxNode.kind node = Syntax_kind.TYPE_EXTENSIBLE then
+    Cst.TypeDefinition.Extensible { syntax_node = node }
+  else
   let direct_children = direct_non_trivia_nodes node in
   let variant_constructors =
     direct_children
@@ -1323,7 +1331,9 @@ let type_definition_from_node node =
             | [] -> Cst.TypeDefinition.Abstract
             | first :: _ ->
                 let kind = Ceibo.Red.SyntaxNode.kind first in
-        if kind = Syntax_kind.TYPE_CONSTR || kind = Syntax_kind.TYPE_ARROW
+        if kind = Syntax_kind.TYPE_EXTENSIBLE then
+          Cst.TypeDefinition.Extensible { syntax_node = first }
+        else if kind = Syntax_kind.TYPE_CONSTR || kind = Syntax_kind.TYPE_ARROW
            || kind = Syntax_kind.TYPE_TUPLE || kind = Syntax_kind.TYPE_VAR
            || kind = Syntax_kind.TYPE_ALIAS
         then
@@ -1631,6 +1641,16 @@ let rec items_from_node node =
       match exception_declaration_from_node node with
       | Some decl -> [ Cst.Item.ExceptionDeclaration decl ]
       | None -> [ Cst.Item.Unknown node ])
+  | Syntax_kind.SEQUENCE_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | only_expr :: [] -> (
+          match expression_from_node only_expr with
+          | Cst.Expression.Unknown _ -> [ Cst.Item.Unknown node ]
+          | expr -> [ Cst.Item.Expression expr ])
+      | _ -> (
+          match expression_from_node node with
+          | Cst.Expression.Unknown _ -> [ Cst.Item.Unknown node ]
+          | expr -> [ Cst.Item.Expression expr ]))
   | _ -> (
       match expression_from_node node with
       | Cst.Expression.Unknown _ -> [ Cst.Item.Unknown node ]
@@ -1724,7 +1744,7 @@ and validate_apply_argument ~context = function
 
 and validate_expression ~context = function
   | Cst.Expression.Path _ | Cst.Expression.Literal _
-  | Cst.Expression.Attribute _
+  | Cst.Expression.Attribute _ | Cst.Expression.Extension _
   | Cst.Expression.FirstClassModule _ ->
       ()
   | Cst.Expression.LetModule { body; _ } ->
@@ -1878,6 +1898,7 @@ and validate_match_case ~context ({ pattern; guard; body; _ } : Cst.match_case) 
 let validate_type_definition ~context = function
   | Cst.TypeDefinition.Abstract -> ()
   | Cst.TypeDefinition.Alias _ -> ()
+  | Cst.TypeDefinition.Extensible _ -> ()
   | Cst.TypeDefinition.FirstClassModule _ -> ()
   | Cst.TypeDefinition.Record _ -> ()
   | Cst.TypeDefinition.Variant _ -> ()

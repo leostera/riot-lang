@@ -39,7 +39,7 @@
 - [ ] Prefer adding real CST node shapes over convenience projections when a fixture fails
 - [ ] Keep `packages/syn/src/cst.ml` focused on types and `packages/syn/src/cst_builder.ml` focused on lifting
 - [ ] Use `python3 packages/syn/tests/test_runner.py cst --refresh-clean` after each syntax slice to refresh all newly supported `.expected_cst.json` fixtures
-- [ ] Current fixture frontier: `50` failures after the latest full `cst --refresh-clean` pass
+- [ ] Current fixture frontier: `41` failures after the latest full `cst --refresh-clean` pass
 - [ ] Keep the current unsupported frontier explicit by fixing one syntax family at a time:
   - [x] destructuring `let` bindings and mutual `let`
   - [x] record/update/index/assignment expressions
@@ -158,6 +158,29 @@
       ```
 
       suggest to make the type opaque 
+
+- [ ] as a rule of thumb when you're writing functions like
+
+      330 +and extension_to_json (ext : Cst.extension) =
+      331 +  Json.Object
+      332 +    [
+      333 +      ("syntax_node", syntax_node_to_json ext.syntax_node);
+      334 +      ("tokens", Json.Array (List.map token_to_json ext.tokens));
+      335 +    ]
+
+      prefer to pattern match like
+
+      330 +and extension_to_json ({syntax_node; tokens} : Cst.extension) =
+      331 +  Json.Object
+      332 +    [
+      333 +      ("syntax_node", syntax_node_to_json syntax_node);
+      334 +      ("tokens", Json.Array (List.map token_to_json tokens));
+      335 +    ]
+
+
+      why? this makes it possibel for the compiler to warn you about fields you
+      aren't destructuring, forcing you to either ignore them with { ... ;_ }
+      or to pattern match and handle new fields!
 
 ## Built-in rules about packages 
 

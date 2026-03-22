@@ -1,0 +1,260 @@
+{
+  "status": "ok",
+  "cst": {
+    "kind": "implementation",
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 20
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 19
+            }
+          },
+          "attributes": [],
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 4,
+                "end": 5
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "parameters": [],
+          "value": {
+            "tag": "extension",
+            "extension": {
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 19
+                }
+              },
+              "tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "[",
+                  "span": {
+                    "start": 8,
+                    "end": 9
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 9,
+                    "end": 10
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "ext",
+                  "span": {
+                    "start": 10,
+                    "end": 13
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "expr",
+                  "span": {
+                    "start": 14,
+                    "end": 18
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "]",
+                  "span": {
+                    "start": 18,
+                    "end": 19
+                  }
+                }
+              ]
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 19
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 8,
+                "end": 19
+              }
+            },
+            "tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 8,
+                  "end": 9
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 9,
+                  "end": 10
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "ext",
+                "span": {
+                  "start": 10,
+                  "end": 13
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "expr",
+                "span": {
+                  "start": 14,
+                  "end": 18
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "span": {
+                  "start": 18,
+                  "end": 19
+                }
+              }
+            ]
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "extension",
+        "extension": {
+          "syntax_node": {
+            "kind": "EXTENSION_EXPR",
+            "span": {
+              "start": 8,
+              "end": 19
+            }
+          },
+          "tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "[",
+              "span": {
+                "start": 8,
+                "end": 9
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 9,
+                "end": 10
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "ext",
+              "span": {
+                "start": 10,
+                "end": 13
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "expr",
+              "span": {
+                "start": 14,
+                "end": 18
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 18,
+                "end": 19
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -17,6 +17,11 @@ type attribute = {
   tokens : Token.t list;
 }
 
+type extension = {
+  syntax_node : syntax_node;
+  tokens : Token.t list;
+}
+
 module ModulePath : sig
   type t = {
     syntax_node : syntax_node;
@@ -264,6 +269,7 @@ type expression =
   | Path of path_expression
   | Literal of literal
   | Attribute of attribute
+  | Extension of extension
   | PolyVariant of poly_variant_expression
   | FirstClassModule of first_class_module_expression
   | LetModule of let_module_expression
@@ -533,6 +539,7 @@ module Expression : sig
     | Path of path_expression
     | Literal of literal
     | Attribute of attribute
+    | Extension of extension
     | PolyVariant of poly_variant_expression
     | FirstClassModule of first_class_module_expression
     | LetModule of let_module_expression
@@ -959,6 +966,9 @@ module TypeDefinition : sig
   type t =
     | Abstract
     | Alias of {
+        syntax_node : syntax_node;
+      }
+    | Extensible of {
         syntax_node : syntax_node;
       }
     | FirstClassModule of {
