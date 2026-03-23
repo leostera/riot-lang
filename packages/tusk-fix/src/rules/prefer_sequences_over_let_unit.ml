@@ -41,13 +41,8 @@ let diagnostic_for_expression = function
   | _ -> None
 
 let check_tree (ctx : Rule.context) _red_root =
-  match ctx.cst with
-  | None -> []
-  | Some source_file ->
-      Syn.Cst.SourceFile.structure_items source_file
-      |> Option.unwrap_or ~default:[]
-      |> List.concat_map Traversal.expressions_of_structure_item
-      |> List.filter_map diagnostic_for_expression
+  Rule_query.expressions ctx
+  |> List.filter_map diagnostic_for_expression
 
 let make () =
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain

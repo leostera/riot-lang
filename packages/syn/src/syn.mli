@@ -106,6 +106,12 @@ module Cst : module type of Cst
 
     `Cst` is only produced for parse results without diagnostics. *)
 
+module Traversal : module type of Traversal
+(** Mechanical child/fold helpers over the typed CST. *)
+
+module Visit : module type of Visit
+(** Defaultable visitor-style traversal over the typed CST. *)
+
 module CstBuilder : module type of Cst_builder
 (** Faithful Ceibo-to-CST lift with a result-based API. *)
 

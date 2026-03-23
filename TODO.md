@@ -73,6 +73,11 @@ doing framework work instead of rule work. The cleanup goal here is:
 
 ### Syn.Traversal
 
+- initial slice landed:
+  - `Syn.Traversal.children_of_expression`
+  - `Syn.Traversal.fold_expression`
+  - `Syn.Traversal.children_of_core_type`
+  - `Syn.Traversal.fold_core_type`
 - [ ] Add generated or shared child traversal helpers for recursive families:
   - [ ] `Traversal.children_of_expression`
   - [ ] `Traversal.children_of_pattern`
@@ -103,6 +108,12 @@ doing framework work instead of rule work. The cleanup goal here is:
 
 ### Rule.Query
 
+- initial slice landed:
+  - `Tusk_fix.Rule_query.structure_items`
+  - `Tusk_fix.Rule_query.signature_items`
+  - `Tusk_fix.Rule_query.expressions`
+  - `Tusk_fix.Rule_query.let_bindings`
+  - `Tusk_fix.Rule_query.type_declarations`
 - [ ] Add query-oriented entrypoints so rules do not all start with `match ctx.cst` and manual top-level unpacking
 - [ ] Provide first-class queries for recurring node families:
   - [ ] `Rule.Query.structure_items`

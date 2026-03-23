@@ -61,16 +61,11 @@ let diagnostic_for_parameter parameter =
   | None -> None
 
 let check_tree (ctx : Rule.context) _red_root =
-  match ctx.cst with
-  | None -> []
-  | Some source_file ->
-      Syn.Cst.SourceFile.structure_items source_file
-      |> Option.unwrap_or ~default:[]
-      |> List.concat_map Traversal.let_bindings_of_structure_item
-      |> List.filter Syn.Cst.LetBinding.is_function
-      |> List.concat_map (fun binding ->
-             Syn.Cst.LetBinding.parameters binding
-             |> List.filter_map diagnostic_for_parameter)
+  Rule_query.let_bindings ctx
+  |> List.filter Syn.Cst.LetBinding.is_function
+  |> List.concat_map (fun binding ->
+         Syn.Cst.LetBinding.parameters binding
+         |> List.filter_map diagnostic_for_parameter)
 
 let make () =
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain

@@ -2175,6 +2175,69 @@ let render x y z =
         Test.assert_true (String.contains binary_path "/build/debug/");
         Test.assert_false (String.contains binary_path "/workspace/_build/debug/");
         Ok ());
+    Test.case "rule query collects expressions from the typed CST" (fun () ->
+        let result =
+          Syn.parse_implementation
+            "let render x = let y = x + 1 in y; y\n"
+        in
+        let expressions =
+          Tusk_fix.Rule_query.expressions
+            Tusk_fix.Rule.
+              {
+                file_path = "sample.ml";
+                cst = result.cst;
+              }
+        in
+        Test.assert_true (List.length expressions >= 5);
+        Ok ());
+    Test.case "rule query collects let bindings from the typed CST" (fun () ->
+        let result =
+          Syn.parse_implementation
+            "let render x = x\nlet other y = let z = y in z\n"
+        in
+        let bindings =
+          Tusk_fix.Rule_query.let_bindings
+            Tusk_fix.Rule.
+              {
+                file_path = "sample.ml";
+                cst = result.cst;
+              }
+        in
+        Test.assert_equal ~expected:[ "render"; "other" ]
+          ~actual:(bindings |> List.map Syn.Cst.LetBinding.name);
+        Ok ());
+    Test.case "rule query collects type declarations from implementations and interfaces" (fun () ->
+        let implementation =
+          Syn.parse_implementation
+            "type user = { name : string }\nlet render x = x\n"
+        in
+        let interface =
+          Syn.parse_interface
+            "type service\nval render : int -> int\n"
+        in
+        let implementation_types =
+          Tusk_fix.Rule_query.type_declarations
+            Tusk_fix.Rule.
+              {
+                file_path = "sample.ml";
+                cst = implementation.cst;
+              }
+          |> List.map (fun declaration ->
+                 Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration))
+        in
+        let interface_types =
+          Tusk_fix.Rule_query.type_declarations
+            Tusk_fix.Rule.
+              {
+                file_path = "sample.mli";
+                cst = interface.cst;
+              }
+          |> List.map (fun declaration ->
+                 Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration))
+        in
+        Test.assert_equal ~expected:[ "user" ] ~actual:implementation_types;
+        Test.assert_equal ~expected:[ "service" ] ~actual:interface_types;
+        Ok ());
     Test.case "prefer-record-destructuring-parameters flags immediate record unpacking" (fun () ->
         let source =
           "let encode user = let { name; email; _ } = user in [ name; email ]\n"

@@ -13,6 +13,7 @@ module Runner = Runner
 module Cli = Cli
 module Rules = Rules
 module Traversal = Traversal
+module Rule_query = Rule_query
 module File_scanner = File_scanner
 module Messages = Messages
 module Worker = Worker

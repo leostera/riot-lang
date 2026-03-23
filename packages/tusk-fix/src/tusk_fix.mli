@@ -38,6 +38,9 @@ module Rules : module type of Rules
 module Traversal : module type of Traversal
 (** CST traversal helpers *)
 
+module Rule_query : module type of Rule_query
+(** Rule-oriented CST query helpers built on top of `Syn.Visit` *)
+
 module File_scanner : module type of File_scanner
 (** File system scanner for finding OCaml source files *)
 

@@ -12,10 +12,11 @@
 6. Keep the CST root explicit about implementation vs interface files; do not collapse `.ml` and `.mli` structure into one ambiguous top-level shape.
 7. Keep file-level item families split between `StructureItem` and `SignatureItem`; do not reintroduce a shared mixed top-level item enum.
 8. Keep `cst.ml` focused on public types, `cst_builder.ml` focused on lifting, and `cst_json.ml` focused on fixture serialization.
-9. Keep pattern attributes orthogonal to pattern shape; attach them via `Pattern.attributes` instead of a `Pattern.Attribute` wrapper node.
-10. Keep expression attributes orthogonal to expression shape; attach them via `Expression.attributes` instead of wrapper nodes or postfix-shell `Apply` artifacts.
-11. Keep record-expression fields parsetree-like: always lift a field value expression, and preserve punning with explicit metadata instead of `None`.
-12. Keep packed first-class module expressions direct: `Expression.ModulePack.module_expression` should be the packed payload itself, and any `: S` ascription should stay in `Expression.ModulePack.module_type` instead of being rewritten as an inner `ModuleExpression.Constraint`.
+9. Keep shared CST recursion in `traversal.ml` and `visit.ml`; rule/query consumers should not each reimplement their own expression and type walkers.
+10. Keep pattern attributes orthogonal to pattern shape; attach them via `Pattern.attributes` instead of a `Pattern.Attribute` wrapper node.
+11. Keep expression attributes orthogonal to expression shape; attach them via `Expression.attributes` instead of wrapper nodes or postfix-shell `Apply` artifacts.
+12. Keep record-expression fields parsetree-like: always lift a field value expression, and preserve punning with explicit metadata instead of `None`.
+13. Keep packed first-class module expressions direct: `Expression.ModulePack.module_expression` should be the packed payload itself, and any `: S` ascription should stay in `Expression.ModulePack.module_type` instead of being rewritten as an inner `ModuleExpression.Constraint`.
 
 ## Validate
 

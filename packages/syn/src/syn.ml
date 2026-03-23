@@ -10,6 +10,8 @@ module Diagnostic = Diagnostic
 module Parser = Parser
 module DiagnosticReporter = Diagnostic_reporter
 module Cst = Cst
+module Traversal = Traversal
+module Visit = Visit
 module CstBuilder = Cst_builder
 module CstJson = Cst_json
 
