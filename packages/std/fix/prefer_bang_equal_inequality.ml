@@ -10,7 +10,6 @@ let explanation =
   Api.Explanation.
     {
       rule_id = package_rule_id;
-      title = "Prefer != for inequality";
       message = "Use != instead of <> for inequality.";
       body =
         {|

@@ -70,7 +70,7 @@ This file is _yours_. Keep it up to date after every big change.
 
 ### Miniriot
 
-- [ ] Warn if a `while` or `for` loop does not immediately `yield ()`
+- [x] Warn if a `while` or `for` loop does not immediately `yield ()`
 
 ### Std
 

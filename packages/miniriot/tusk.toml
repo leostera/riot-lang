@@ -5,8 +5,14 @@ version = "0.0.1"
 [tusk.fix]
 rules = [ "-no-stdlib" ]
 
+[tusk.fix.provider]
+rules = [ "loop-yield" ]
+
 [lib]
 path = "src/miniriot.ml"
 
 [dependencies]
 kernel = { path = "../kernel" }
+
+[build-dependencies]
+tusk-fix-api = { path = "../tusk-fix-api" }

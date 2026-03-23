@@ -10,7 +10,6 @@ let explanation =
   Api.Explanation.
     {
       rule_id = package_rule_id;
-      title = "Avoid double List.rev";
       message = "List.rev (List.rev xs) cancels itself out and should be simplified.";
       body =
         {|

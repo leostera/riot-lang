@@ -10,7 +10,6 @@ let explanation =
   Api.Explanation.
     {
       rule_id = package_rule_id;
-      title = "";
       message = "List emptiness checks should use List.is_empty instead of comparing List.length to zero.";
       body =
         {|

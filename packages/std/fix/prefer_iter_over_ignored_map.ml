@@ -10,7 +10,6 @@ let explanation =
   Api.Explanation.
     {
       rule_id = package_rule_id;
-      title = "";
       message = "Ignoring the result of List.map or Iter.map should usually use the corresponding iter form instead.";
       body =
         {|

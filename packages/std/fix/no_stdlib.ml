@@ -72,7 +72,6 @@ let explanation =
   Api.Explanation.
     {
       rule_id = package_rule_id;
-      title = "No OCaml Stdlib";
       body = rule_explain;
       message = rule_description;
     }
