@@ -244,9 +244,9 @@ and binding_sites_of_expression expr =
       binding_sites_of_expression receiver
   | Syn.Cst.Expression.Index { collection; index; _ } ->
       binding_sites_of_expression collection @ binding_sites_of_expression index
-  | Syn.Cst.Expression.ObjectUpdate { fields; _ } ->
+  | Syn.Cst.Expression.ObjectOverride { fields; _ } ->
       fields
-      |> List.concat_map (fun (field : Syn.Cst.record_expression_field) ->
+      |> List.concat_map (fun (field : Syn.Cst.object_override_field) ->
              Option.to_list field.value |> List.concat_map binding_sites_of_expression)
   | Syn.Cst.Expression.InstanceVariableAssign { value; _ } ->
       binding_sites_of_expression value

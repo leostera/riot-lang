@@ -1937,8 +1937,13 @@ type expression =
       (** A field access such as `record.field`. *)
   | Index of index_expression
       (** An indexing expression such as `arr.(i)` or `s.[i]`. *)
-  | ObjectUpdate of object_update_expression
-      (** An object update literal such as `< x = 1; y = 2 >`. *)
+  | ObjectOverride of object_override_expression
+      (** An object override expression such as `{< x = 1; y = 2 >}`.
+
+          This mirrors the parsetree's `Pexp_override` shape: the overridden
+          instance variables are modeled directly instead of being reused as
+          record fields.
+      *)
   | InstanceVariableAssign of instance_variable_assign_expression
       (** An instance-variable assignment inside object syntax, such as
           `count <- count + 1`. *)
@@ -2311,13 +2316,19 @@ and index_expression = {
   index : expression;
 }
 
-(** Payload for `Expression.ObjectUpdate`.
+(** Payload for `Expression.ObjectOverride`.
 
-    Covers object update syntax written between `<` and `>`.
+    Covers object override syntax written as `{< ... >}`.
+
+    Example:
+
+    ```ocaml,norun
+    {< current = next; count = count + 1 >}
+    ```
 *)
-and object_update_expression = {
+and object_override_expression = {
   syntax_node : syntax_node;
-  fields : record_expression_field list;
+  fields : object_override_field list;
 }
 
 (** Payload for `Expression.InstanceVariableAssign`.
@@ -2472,13 +2483,27 @@ and record_update_expression = {
   fields : record_expression_field list;
 }
 
-(** A single field inside a record literal, record update, or object update.
+(** A single field inside a record literal or record update.
 
     When `value` is `None`, the source used punning syntax such as `{ field }`.
 *)
 and record_expression_field = {
   syntax_node : syntax_node;
   field_path : Ident.t;
+  value : expression option;
+}
+
+(** A single field inside an object override expression.
+
+    Object overrides update instance variables, so `field_name` is always a
+    single identifier token rather than a dotted path.
+
+    When `value` is `None`, the source used shorthand syntax such as
+    `{< current >}`.
+*)
+and object_override_field = {
+  syntax_node : syntax_node;
+  field_name : Token.t;
   value : expression option;
 }
 
@@ -2965,7 +2990,7 @@ module Expression : sig
     | Prefix of prefix_expression
     | FieldAccess of field_access_expression
     | Index of index_expression
-    | ObjectUpdate of object_update_expression
+    | ObjectOverride of object_override_expression
     | InstanceVariableAssign of instance_variable_assign_expression
     | FieldAssign of field_assign_expression
     | Assign of assign_expression

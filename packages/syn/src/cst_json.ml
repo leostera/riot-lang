@@ -1137,12 +1137,12 @@ and expression_to_json = function
           ("collection", expression_to_json collection);
           ("index", expression_to_json index);
         ]
-  | Cst.Expression.ObjectUpdate { syntax_node; fields } ->
+  | Cst.Expression.ObjectOverride { syntax_node; fields } ->
       Json.Object
         [
-          ("tag", Json.String "object_update");
+          ("tag", Json.String "object_override");
           ("syntax_node", syntax_node_to_json syntax_node);
-          ("fields", Json.Array (List.map record_expression_field_to_json fields));
+          ("fields", Json.Array (List.map object_override_field_to_json fields));
         ]
   | Cst.Expression.InstanceVariableAssign
       { syntax_node; name_token; operator_token; value } ->
@@ -1363,6 +1363,14 @@ and record_expression_field_to_json field =
     [
       ("syntax_node", syntax_node_to_json field.syntax_node);
       ("field_path", ident_to_json field.field_path);
+      ("value", option_to_json expression_to_json field.value);
+    ]
+
+and object_override_field_to_json field =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json field.syntax_node);
+      ("field_name", token_to_json field.field_name);
       ("value", option_to_json expression_to_json field.value);
     ]
 

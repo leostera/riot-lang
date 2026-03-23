@@ -2947,8 +2947,8 @@ and expression_from_node node =
       | Some expr -> Cst.Expression.Record (Cst.RecordExpression.Update expr)
       | None -> unsupported_expression node)
   | Syntax_kind.OBJECT_UPDATE_EXPR -> (
-      match object_update_expression_from_node node with
-      | Some expr -> Cst.Expression.ObjectUpdate expr
+      match object_override_expression_from_node node with
+      | Some expr -> Cst.Expression.ObjectOverride expr
       | None -> unsupported_expression node)
   | Syntax_kind.LOCAL_OPEN_EXPR -> (
       match local_open_expression_from_node node with
@@ -3187,7 +3187,20 @@ and new_expression_from_node node =
         }
   | [] -> None
 
-and object_update_expression_from_node node =
+and object_override_field_from_node node =
+  let lifted_field_path = record_field_path_from_node node in
+  match Cst.Ident.segments lifted_field_path with
+  | [ field_name ] ->
+      Some
+        (({
+            Cst.syntax_node = node;
+            field_name;
+            value = record_field_value_from_node node;
+          }
+          : Cst.object_override_field))
+  | _ -> None
+
+and object_override_expression_from_node node =
   let children = direct_non_trivia_nodes node in
   if
     List.for_all
@@ -3197,7 +3210,7 @@ and object_update_expression_from_node node =
     Some
       {
         Cst.syntax_node = node;
-        fields = List.filter_map record_expression_field_from_node children;
+        fields = List.filter_map object_override_field_from_node children;
       }
   else
     None
@@ -3321,11 +3334,12 @@ and record_expression_field_from_node node =
   | [] -> None
   | _ ->
       Some
-        {
-          syntax_node = node;
-          field_path = lifted_field_path;
-          value = record_field_value_from_node node;
-        }
+        (({
+            Cst.syntax_node = node;
+            field_path = lifted_field_path;
+            value = record_field_value_from_node node;
+          }
+          : Cst.record_expression_field))
 
 and record_literal_expression_from_node node =
   let fields =
@@ -5980,13 +5994,13 @@ and validate_expression ~context = function
       validate_expression ~context:("expression.index.collection" :: context)
         collection;
       validate_expression ~context:("expression.index.index" :: context) index
-  | Cst.Expression.ObjectUpdate { fields; _ } ->
+  | Cst.Expression.ObjectOverride { fields; _ } ->
       List.iteri
-        (fun index (field : Cst.record_expression_field) ->
+        (fun index (field : Cst.object_override_field) ->
           Option.iter
             (validate_expression
                ~context:
-                 (("expression.object_update.field[" ^ Int.to_string index ^ "].value")
+                 (("expression.object_override.field[" ^ Int.to_string index ^ "].value")
                  :: context))
             field.value)
         fields

@@ -1013,7 +1013,7 @@ type expression =
   | Prefix of prefix_expression
   | FieldAccess of field_access_expression
   | Index of index_expression
-  | ObjectUpdate of object_update_expression
+  | ObjectOverride of object_override_expression
   | InstanceVariableAssign of instance_variable_assign_expression
   | FieldAssign of field_assign_expression
   | Assign of assign_expression
@@ -1213,9 +1213,9 @@ and index_expression = {
   index : expression;
 }
 
-and object_update_expression = {
+and object_override_expression = {
   syntax_node : syntax_node;
-  fields : record_expression_field list;
+  fields : object_override_field list;
 }
 
 and instance_variable_assign_expression = {
@@ -1304,6 +1304,12 @@ and record_update_expression = {
 and record_expression_field = {
   syntax_node : syntax_node;
   field_path : Ident.t;
+  value : expression option;
+}
+
+and object_override_field = {
+  syntax_node : syntax_node;
+  field_name : Token.t;
   value : expression option;
 }
 
@@ -1564,7 +1570,7 @@ module Expression = struct
     | Prefix of prefix_expression
     | FieldAccess of field_access_expression
     | Index of index_expression
-    | ObjectUpdate of object_update_expression
+    | ObjectOverride of object_override_expression
     | InstanceVariableAssign of instance_variable_assign_expression
     | FieldAssign of field_assign_expression
     | Assign of assign_expression
@@ -1611,7 +1617,7 @@ module Expression = struct
     | Prefix expr -> expr.syntax_node
     | FieldAccess expr -> expr.syntax_node
     | Index expr -> expr.syntax_node
-    | ObjectUpdate expr -> expr.syntax_node
+    | ObjectOverride expr -> expr.syntax_node
     | InstanceVariableAssign expr -> expr.syntax_node
     | Assign expr -> expr.syntax_node
     | Infix expr -> expr.syntax_node

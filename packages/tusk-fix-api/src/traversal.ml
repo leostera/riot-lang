@@ -176,9 +176,9 @@ and let_bindings_of_expression expr =
       let_bindings_of_expression receiver
   | Syn.Cst.Expression.Index { collection; index; _ } ->
       let_bindings_of_expression collection @ let_bindings_of_expression index
-  | Syn.Cst.Expression.ObjectUpdate { fields; _ } ->
+  | Syn.Cst.Expression.ObjectOverride { fields; _ } ->
       fields
-      |> List.concat_map (fun (field : Syn.Cst.record_expression_field) ->
+      |> List.concat_map (fun (field : Syn.Cst.object_override_field) ->
              Option.to_list field.value |> List.concat_map let_bindings_of_expression)
   | Syn.Cst.Expression.InstanceVariableAssign { value; _ } ->
       let_bindings_of_expression value
@@ -382,9 +382,9 @@ let rec expressions_of_expression expr =
         expressions_of_expression receiver
     | Syn.Cst.Expression.Index { collection; index; _ } ->
         expressions_of_expression collection @ expressions_of_expression index
-    | Syn.Cst.Expression.ObjectUpdate { fields; _ } ->
+    | Syn.Cst.Expression.ObjectOverride { fields; _ } ->
         fields
-        |> List.concat_map (fun (field : Syn.Cst.record_expression_field) ->
+        |> List.concat_map (fun (field : Syn.Cst.object_override_field) ->
                Option.to_list field.value |> List.concat_map expressions_of_expression)
     | Syn.Cst.Expression.InstanceVariableAssign { value; _ } ->
         expressions_of_expression value

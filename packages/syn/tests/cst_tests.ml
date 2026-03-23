@@ -4676,6 +4676,51 @@ let tests =
               ~actual:(Syn.Cst.ModulePath.name field_path);
             Ok ()
         | _ -> Error "expected update record expression");
+    Test.case "cst object override expressions preserve instance variables"
+      (fun () ->
+        let source = "let next = {< current = state; count = total >}\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.ObjectOverride
+                  {
+                    fields =
+                      [
+                        {
+                          field_name = current_name;
+                          value =
+                            Some (Syn.Cst.Expression.Path { path = current_value; _ });
+                          _;
+                        };
+                        {
+                          field_name = count_name;
+                          value =
+                            Some (Syn.Cst.Expression.Path { path = count_value; _ });
+                          _;
+                        };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"current"
+              ~actual:(Syn.Cst.Token.text current_name);
+            Test.assert_equal ~expected:(Some "state")
+              ~actual:(Syn.Cst.ModulePath.name current_value);
+            Test.assert_equal ~expected:"count"
+              ~actual:(Syn.Cst.Token.text count_name);
+            Test.assert_equal ~expected:(Some "total")
+              ~actual:(Syn.Cst.ModulePath.name count_value);
+            Ok ()
+        | _ -> Error "expected object override expression");
     Test.case "cst index and assign expressions preserve the written target"
       (fun () ->
         let source = "let x = arr.(0) <- 5\n" in
