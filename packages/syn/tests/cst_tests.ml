@@ -4056,6 +4056,41 @@ let tests =
               ~actual:(Syn.Cst.Token.text operator_token);
             Ok ()
         | _ -> Error "expected assign(index(...)) expression");
+    Test.case "cst field assignments preserve field-access targets" (fun () ->
+        let source = "let () = obj.field <- 10\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.FieldAssign
+                  {
+                    target =
+                      {
+                        receiver = Syn.Cst.Expression.Path { path; _ };
+                        field_name;
+                        _;
+                      };
+                    operator_token;
+                    value = Syn.Cst.Expression.Literal (Syn.Cst.Literal.Int _);
+                    _;
+                  };
+                _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "obj")
+              ~actual:(Syn.Cst.ModulePath.name path);
+            Test.assert_equal ~expected:"field"
+              ~actual:(Syn.Cst.Token.text field_name);
+            Test.assert_equal ~expected:"<-"
+              ~actual:(Syn.Cst.Token.text operator_token);
+            Ok ()
+        | _ -> Error "expected field assignment expression");
     Test.case "cst object methods preserve instance-variable assignments"
       (fun () ->
         let source =

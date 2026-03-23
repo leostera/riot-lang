@@ -1013,6 +1013,17 @@ and expression_to_json = function
           ("operator_token", token_to_json operator_token);
           ("value", expression_to_json value);
         ]
+  | Cst.Expression.FieldAssign
+      { syntax_node; target; operator_token; value } ->
+      Json.Object
+        [
+          ("tag", Json.String "field_assign");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ( "target",
+            expression_to_json (Cst.Expression.FieldAccess target) );
+          ("operator_token", token_to_json operator_token);
+          ("value", expression_to_json value);
+        ]
   | Cst.Expression.Assign { syntax_node; target; operator_token; value } ->
       Json.Object
         [

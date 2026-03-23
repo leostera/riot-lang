@@ -37,7 +37,7 @@
           "binding_name": null,
           "parameters": [],
           "value": {
-            "tag": "assign",
+            "tag": "field_assign",
             "syntax_node": {
               "kind": "ASSIGN_EXPR",
               "span": {
@@ -128,7 +128,7 @@
     "let_bindings": [],
     "expressions": [
       {
-        "tag": "assign",
+        "tag": "field_assign",
         "syntax_node": {
           "kind": "ASSIGN_EXPR",
           "span": {

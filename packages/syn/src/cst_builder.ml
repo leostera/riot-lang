@@ -2632,6 +2632,25 @@ and assign_expression_from_node node =
                 operator_token;
                 value = expression_from_node value_node;
               }
+        | Syntax_kind.FIELD_ACCESS_EXPR, _
+          when String.equal (Cst.Token.text operator_token) "<-" -> (
+            match field_access_expression_from_node target_node with
+            | Some (Cst.Expression.FieldAccess target) ->
+                Cst.Expression.FieldAssign
+                  {
+                    syntax_node = node;
+                    target;
+                    operator_token;
+                    value = expression_from_node value_node;
+                  }
+            | _ ->
+                Cst.Expression.Assign
+                  {
+                    syntax_node = node;
+                    target = expression_from_node target_node;
+                    operator_token;
+                    value = expression_from_node value_node;
+                  })
         | _ ->
             Cst.Expression.Assign
               {
@@ -4553,6 +4572,9 @@ let rec collect_expressions_from_expression expr =
                |> List.concat_map collect_expressions_from_expression)
     | Cst.Expression.InstanceVariableAssign { value; _ } ->
         collect_expressions_from_expression value
+    | Cst.Expression.FieldAssign { target; value; _ } ->
+        collect_expressions_from_expression (Cst.Expression.FieldAccess target)
+        @ collect_expressions_from_expression value
     | Cst.Expression.Assign { target; value; _ } ->
         collect_expressions_from_expression target
         @ collect_expressions_from_expression value
@@ -5269,6 +5291,11 @@ and validate_expression ~context = function
   | Cst.Expression.InstanceVariableAssign { value; _ } ->
       validate_expression
         ~context:("expression.instance_variable_assign.value" :: context)
+        value
+  | Cst.Expression.FieldAssign { target; value; _ } ->
+      validate_expression ~context:("expression.field_assign.receiver" :: context)
+        target.receiver;
+      validate_expression ~context:("expression.field_assign.value" :: context)
         value
   | Cst.Expression.Assign { target; value; _ } ->
       validate_expression ~context:("expression.assign.target" :: context) target;

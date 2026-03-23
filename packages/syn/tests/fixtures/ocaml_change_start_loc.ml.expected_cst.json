@@ -388,7 +388,7 @@
               }
             },
             "body": {
-              "tag": "assign",
+              "tag": "field_assign",
               "syntax_node": {
                 "kind": "ASSIGN_EXPR",
                 "span": {
@@ -1762,7 +1762,7 @@
             }
           },
           "body": {
-            "tag": "assign",
+            "tag": "field_assign",
             "syntax_node": {
               "kind": "ASSIGN_EXPR",
               "span": {
@@ -3261,7 +3261,7 @@
           }
         },
         "body": {
-          "tag": "assign",
+          "tag": "field_assign",
           "syntax_node": {
             "kind": "ASSIGN_EXPR",
             "span": {
@@ -3459,7 +3459,7 @@
         "via_let_open": true
       },
       {
-        "tag": "assign",
+        "tag": "field_assign",
         "syntax_node": {
           "kind": "ASSIGN_EXPR",
           "span": {

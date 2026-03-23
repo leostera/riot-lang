@@ -1612,9 +1612,10 @@ type expression =
   | InstanceVariableAssign of instance_variable_assign_expression
       (** An instance-variable assignment inside object syntax, such as
           `count <- count + 1`. *)
+  | FieldAssign of field_assign_expression
+      (** A record-field assignment such as `record.field <- value`. *)
   | Assign of assign_expression
-      (** A general assignment expression such as `r := 1`,
-          `arr.(i) <- x`, or `record.field <- y`. *)
+      (** A general assignment expression such as `r := 1` or `arr.(i) <- x`. *)
   | Infix of infix_expression
       (** An infix operator expression such as `a + b` or `x |> f`. *)
   | Typed of typed_expression
@@ -1989,10 +1990,28 @@ and instance_variable_assign_expression = {
   value : expression;
 }
 
+(** Payload for `Expression.FieldAssign`.
+
+    This covers assignments whose target is a field-access expression.
+
+    Examples:
+
+    ```ocaml,norun
+    record.field <- value
+    state.current.count <- 0
+    ```
+*)
+and field_assign_expression = {
+  syntax_node : syntax_node;
+  target : field_access_expression;
+  operator_token : Token.t;
+  value : expression;
+}
+
 (** Payload for `Expression.Assign`.
 
     This covers assignment expressions that are not reduced to
-    `InstanceVariableAssign`.
+    `InstanceVariableAssign` or `FieldAssign`.
 *)
 and assign_expression = {
   syntax_node : syntax_node;
@@ -2603,6 +2622,7 @@ module Expression : sig
     | Index of index_expression
     | ObjectUpdate of object_update_expression
     | InstanceVariableAssign of instance_variable_assign_expression
+    | FieldAssign of field_assign_expression
     | Assign of assign_expression
     | Infix of infix_expression
     | Typed of typed_expression

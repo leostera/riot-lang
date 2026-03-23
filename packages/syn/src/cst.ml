@@ -860,6 +860,7 @@ type expression =
   | Index of index_expression
   | ObjectUpdate of object_update_expression
   | InstanceVariableAssign of instance_variable_assign_expression
+  | FieldAssign of field_assign_expression
   | Assign of assign_expression
   | Infix of infix_expression
   | Typed of typed_expression
@@ -1059,6 +1060,13 @@ and object_update_expression = {
 and instance_variable_assign_expression = {
   syntax_node : syntax_node;
   name_token : Token.t;
+  operator_token : Token.t;
+  value : expression;
+}
+
+and field_assign_expression = {
+  syntax_node : syntax_node;
+  target : field_access_expression;
   operator_token : Token.t;
   value : expression;
 }
@@ -1396,6 +1404,7 @@ module Expression = struct
     | Index of index_expression
     | ObjectUpdate of object_update_expression
     | InstanceVariableAssign of instance_variable_assign_expression
+    | FieldAssign of field_assign_expression
     | Assign of assign_expression
     | Infix of infix_expression
     | Typed of typed_expression

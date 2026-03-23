@@ -204,7 +204,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [ ] Pattern attributes are represented as wrapper nodes instead of orthogonal metadata
 - [ ] Expressions:
   - [ ] constructor expressions are likely flattened into `Path` or `Apply`
-  - [ ] field assignment expressions are only approximated via `Assign (FieldAccess ...)`
+  - [x] field assignment expressions are only approximated via `Assign (FieldAccess ...)`
   - [ ] object override expressions are only approximated via `ObjectUpdate`
   - [ ] function expressions only store cases, not the richer parameter/type structure
   - [x] `for` loops store a direction token instead of a typed direction flag
