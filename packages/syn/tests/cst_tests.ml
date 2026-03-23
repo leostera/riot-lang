@@ -765,7 +765,7 @@ let tests =
             | _ -> Error "expected module type substitution path")
         | _ ->
             Error "expected first item to be an interface module type declaration");
-    Test.case "cst interface class declarations preserve class-type anchors"
+    Test.case "cst interface class declarations preserve typed class-type annotations"
       (fun () ->
         let result =
           parse_mli "class c : object method x : int end\n"
@@ -779,7 +779,26 @@ let tests =
         | Syn.Cst.Item.ClassDeclaration
             {
               class_name;
-              class_type_syntax_node = Some class_type_syntax_node;
+              class_type =
+                Some
+                  (Syn.Cst.ClassType.Signature
+                    {
+                      syntax_node = class_type_syntax_node;
+                      fields =
+                        [
+                          Syn.Cst.ClassTypeField.Method
+                            {
+                              name_token = class_type_method_name;
+                              type_ =
+                                Syn.Cst.CoreType.Constr
+                                  {
+                                    constructor_path = declared_type;
+                                    _;
+                                  };
+                              _;
+                            };
+                        ];
+                    });
               class_body =
                 Syn.Cst.Expression.Object
                   {
@@ -807,12 +826,16 @@ let tests =
                 (SyntaxKind.to_string
                    (Ceibo.Red.SyntaxNode.kind class_type_syntax_node));
             Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text class_type_method_name);
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name declared_type);
+            Test.assert_equal ~expected:"x"
               ~actual:(Syn.Cst.Token.text name_token);
             Test.assert_equal ~expected:(Some "int")
               ~actual:(Syn.Cst.Ident.name constructor_path);
             Ok ()
         | _ -> Error "expected interface class declaration");
-    Test.case "cst interface class type declarations preserve raw bodies"
+    Test.case "cst interface class type declarations preserve structured signatures"
       (fun () ->
         let result =
           parse_mli "class type ct = object method x : int end\n"
@@ -824,7 +847,25 @@ let tests =
         in
         match Syn.Cst.SourceFile.items cst with
         | Syn.Cst.Item.ClassTypeDeclaration
-            { class_type_name; class_type_body_syntax_node; _ }
+            {
+              class_type_name;
+              class_type_body =
+                Syn.Cst.ClassType.Signature
+                  {
+                    syntax_node = class_type_body_syntax_node;
+                    fields =
+                      [
+                        Syn.Cst.ClassTypeField.Method
+                          {
+                            name_token;
+                            type_ =
+                              Syn.Cst.CoreType.Constr { constructor_path; _ };
+                            _;
+                          };
+                      ];
+                  };
+              _;
+            }
           :: _ ->
             Test.assert_equal ~expected:"ct"
               ~actual:(Syn.Cst.Token.text class_type_name);
@@ -832,8 +873,172 @@ let tests =
               ~actual:
                 (SyntaxKind.to_string
                    (Ceibo.Red.SyntaxNode.kind class_type_body_syntax_node));
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name constructor_path);
             Ok ()
         | _ -> Error "expected interface class type declaration");
+    Test.case "cst class type declarations preserve path, local-open, and extension bodies"
+      (fun () ->
+        let result =
+          parse_ml
+            "class type direct = C\n\
+             class type opened = M.(C)\n\
+             class type generated = ([%ct])\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassTypeDeclaration
+            { class_type_body = Syn.Cst.ClassType.Path direct_path; _ }
+          :: Syn.Cst.Item.ClassTypeDeclaration
+               {
+                 class_type_body =
+                   Syn.Cst.ClassType.LocalOpen
+                     {
+                       module_path = open_module;
+                       class_type = Syn.Cst.ClassType.Path opened_path;
+                       _;
+                     };
+                 _;
+               }
+             :: Syn.Cst.Item.ClassTypeDeclaration
+                  {
+                    class_type_body =
+                      Syn.Cst.ClassType.Parenthesized
+                        {
+                          inner = Syn.Cst.ClassType.Extension extension;
+                          _;
+                        };
+                    _;
+                  }
+                :: _ ->
+            Test.assert_equal ~expected:(Some "C")
+              ~actual:(Syn.Cst.Ident.name direct_path);
+            Test.assert_equal ~expected:(Some "M")
+              ~actual:(Syn.Cst.Ident.name open_module);
+            Test.assert_equal ~expected:(Some "C")
+              ~actual:(Syn.Cst.Ident.name opened_path);
+            Test.assert_equal ~expected:(Some "ct")
+              ~actual:(Syn.Cst.Ident.name extension.name);
+            Ok ()
+        | _ -> Error "expected class type path/local-open/extension bodies");
+    Test.case "cst class type signatures preserve field structure and field attributes"
+      (fun () ->
+        let result =
+          parse_ml
+            "class type ct = object\n\
+             \  inherit base [@@foo]\n\
+             \  val mutable state : int [@@foo]\n\
+             \  method private close : string [@@foo]\n\
+             \  constraint t = int [@@foo]\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassTypeDeclaration
+            {
+              class_type_body =
+                Syn.Cst.ClassType.Signature
+                  {
+                    fields =
+                      [
+                        Syn.Cst.ClassTypeField.Attribute
+                          {
+                            field =
+                              Syn.Cst.ClassTypeField.Inherit
+                                {
+                                  class_type =
+                                    Syn.Cst.ClassType.Path inherited_class;
+                                  _;
+                                };
+                            attribute = inherit_attribute;
+                            _;
+                          };
+                        Syn.Cst.ClassTypeField.Attribute
+                          {
+                            field =
+                              Syn.Cst.ClassTypeField.Value
+                                {
+                                  name_token = state_name;
+                                  type_ =
+                                    Syn.Cst.CoreType.Constr
+                                      { constructor_path = state_type; _ };
+                                  is_mutable = true;
+                                  _;
+                                };
+                            attribute = state_attribute;
+                            _;
+                          };
+                        Syn.Cst.ClassTypeField.Attribute
+                          {
+                            field =
+                              Syn.Cst.ClassTypeField.Method
+                                {
+                                  name_token = close_name;
+                                  type_ =
+                                    Syn.Cst.CoreType.Constr
+                                      { constructor_path = close_type; _ };
+                                  is_private = true;
+                                  _;
+                                };
+                            attribute = method_attribute;
+                            _;
+                          };
+                        Syn.Cst.ClassTypeField.Attribute
+                          {
+                            field =
+                              Syn.Cst.ClassTypeField.Constraint
+                                {
+                                  left =
+                                    Syn.Cst.CoreType.Constr
+                                      { constructor_path = left_type; _ };
+                                  right =
+                                    Syn.Cst.CoreType.Constr
+                                      { constructor_path = right_type; _ };
+                                  _;
+                                };
+                            attribute = constraint_attribute;
+                            _;
+                          };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "base")
+              ~actual:(Syn.Cst.Ident.name inherited_class);
+            Test.assert_equal ~expected:"@@"
+              ~actual:(Syn.Cst.Token.text inherit_attribute.sigil_token);
+            Test.assert_equal ~expected:"state"
+              ~actual:(Syn.Cst.Token.text state_name);
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name state_type);
+            Test.assert_equal ~expected:"@@"
+              ~actual:(Syn.Cst.Token.text state_attribute.sigil_token);
+            Test.assert_equal ~expected:"close"
+              ~actual:(Syn.Cst.Token.text close_name);
+            Test.assert_equal ~expected:(Some "string")
+              ~actual:(Syn.Cst.Ident.name close_type);
+            Test.assert_equal ~expected:"@@"
+              ~actual:(Syn.Cst.Token.text method_attribute.sigil_token);
+            Test.assert_equal ~expected:(Some "t")
+              ~actual:(Syn.Cst.Ident.name left_type);
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name right_type);
+            Test.assert_equal ~expected:"@@"
+              ~actual:(Syn.Cst.Token.text constraint_attribute.sigil_token);
+            Ok ()
+        | _ -> Error "expected structured class type signature");
     Test.case "cst value declarations preserve names and type nodes" (fun () ->
         let result = parse_mli "val create : name:string -> person\n" in
         let cst =

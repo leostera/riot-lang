@@ -51,7 +51,7 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Replace coarse `*_syntax_node` placeholders with typed CST where possible:
   - [ ] core types
   - [~] module types
-  - [ ] class type bodies
+  - [x] class type bodies
   - [ ] signature-item internals
 - [x] Replace flattened identifier/path segments with a recursive `Ident` CST
 - [x] Make successful CST creation rule out public `Unknown` shapes by construction rather than by validation convention
@@ -148,21 +148,21 @@ Remember to document the CST types and constructors with examples so its easy to
   - [ ] class extensions
   - [ ] locally opened class expressions
 - [ ] Class types:
-  - [ ] class type constructor references
-  - [ ] class signatures
+  - [x] class type constructor references
+  - [x] class signatures
   - [ ] arrow-style class types
-  - [ ] class type extensions
-  - [ ] locally opened class types
+  - [x] class type extensions
+  - [x] locally opened class types
 - [ ] Class fields:
   - [ ] class constraints
   - [ ] class-field attributes
   - [ ] class-field extensions
 - [ ] Class type fields:
-  - [ ] inherited class type fields
-  - [ ] value declarations in class types
-  - [ ] method declarations in class types
-  - [ ] class type constraints
-  - [ ] class-type-field attributes
+  - [x] inherited class type fields
+  - [x] value declarations in class types
+  - [x] method declarations in class types
+  - [x] class type constraints
+  - [x] class-type-field attributes
   - [ ] class-type-field extensions
 
 #### Present But Opaque

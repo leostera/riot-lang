@@ -228,6 +228,59 @@ and module_type =
     }
   | Extension of extension
 
+and local_open_class_type = {
+  syntax_node : syntax_node;
+  module_path : Ident.t;
+  class_type : class_type;
+}
+
+and class_type =
+  | Path of Ident.t
+  | Signature of {
+      syntax_node : syntax_node;
+      fields : class_type_field list;
+    }
+  | Parenthesized of {
+      syntax_node : syntax_node;
+      inner : class_type;
+    }
+  | LocalOpen of local_open_class_type
+  | Attribute of {
+      syntax_node : syntax_node;
+      class_type : class_type;
+      attribute : attribute;
+    }
+  | Extension of extension
+
+and class_type_field =
+  | Inherit of {
+      syntax_node : syntax_node;
+      class_type : class_type;
+    }
+  | Value of {
+      syntax_node : syntax_node;
+      name_token : Token.t;
+      type_ : core_type;
+      is_mutable : bool;
+    }
+  | Method of {
+      syntax_node : syntax_node;
+      name_token : Token.t;
+      type_ : core_type;
+      is_private : bool;
+    }
+  | Constraint of {
+      syntax_node : syntax_node;
+      left : core_type;
+      right : core_type;
+    }
+  | Attribute of {
+      syntax_node : syntax_node;
+      field : class_type_field;
+      attribute : attribute;
+    }
+  | Extension of extension
+
 module CoreType = struct
   type t = core_type =
     | Wildcard of {
@@ -370,6 +423,77 @@ module ModuleType = struct
     | Functor { syntax_node; _ }
     | With { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
+    | Attribute { syntax_node; _ } ->
+        syntax_node
+    | Extension extension ->
+        extension.syntax_node
+end
+
+module ClassType = struct
+  type t = class_type =
+    | Path of Ident.t
+    | Signature of {
+        syntax_node : syntax_node;
+        fields : class_type_field list;
+      }
+    | Parenthesized of {
+        syntax_node : syntax_node;
+        inner : class_type;
+      }
+    | LocalOpen of local_open_class_type
+    | Attribute of {
+        syntax_node : syntax_node;
+        class_type : class_type;
+        attribute : attribute;
+      }
+    | Extension of extension
+
+  let syntax_node = function
+    | Path path -> Ident.syntax_node path
+    | Signature { syntax_node; _ }
+    | Parenthesized { syntax_node; _ }
+    | LocalOpen { syntax_node; _ }
+    | Attribute { syntax_node; _ } ->
+        syntax_node
+    | Extension extension ->
+        extension.syntax_node
+end
+
+module ClassTypeField = struct
+  type t = class_type_field =
+    | Inherit of {
+        syntax_node : syntax_node;
+        class_type : class_type;
+      }
+    | Value of {
+        syntax_node : syntax_node;
+        name_token : Token.t;
+        type_ : core_type;
+        is_mutable : bool;
+      }
+    | Method of {
+        syntax_node : syntax_node;
+        name_token : Token.t;
+        type_ : core_type;
+        is_private : bool;
+      }
+    | Constraint of {
+        syntax_node : syntax_node;
+        left : core_type;
+        right : core_type;
+      }
+    | Attribute of {
+        syntax_node : syntax_node;
+        field : class_type_field;
+        attribute : attribute;
+      }
+    | Extension of extension
+
+  let syntax_node = function
+    | Inherit { syntax_node; _ }
+    | Value { syntax_node; _ }
+    | Method { syntax_node; _ }
+    | Constraint { syntax_node; _ }
     | Attribute { syntax_node; _ } ->
         syntax_node
     | Extension extension ->
@@ -1629,7 +1753,7 @@ type class_declaration = {
   syntax_node : syntax_node;
   type_params : TypeParameter.t list;
   class_name : Token.t;
-  class_type_syntax_node : syntax_node option;
+  class_type : class_type option;
   class_body : expression;
 }
 
@@ -1637,7 +1761,7 @@ type class_type_declaration = {
   syntax_node : syntax_node;
   type_params : TypeParameter.t list;
   class_type_name : Token.t;
-  class_type_body_syntax_node : syntax_node;
+  class_type_body : class_type;
 }
 
 type include_target =

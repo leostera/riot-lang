@@ -36,6 +36,10 @@ let unsupported_module_expression node =
   bail ~message:"unsupported module expression shape during Ceibo -> CST lifting"
     ~syntax_node:node ~context:[ "module_expression" ]
 
+let unsupported_class_type node =
+  bail ~message:"unsupported class type shape during Ceibo -> CST lifting"
+    ~syntax_node:node ~context:[ "class_type" ]
+
 let unsupported_item node =
   bail ~message:"unsupported structure item during Ceibo -> CST lifting"
     ~syntax_node:node ~context:[ "item" ]
@@ -223,6 +227,11 @@ let attributes_from_node node =
          Ceibo.Red.SyntaxNode.kind child = Syntax_kind.ATTRIBUTE_EXPR)
   |> List.map attribute_from_node
 
+let attribute_is_item_like (attribute : Cst.attribute) =
+  match Cst.Token.text attribute.sigil_token with
+  | "@@" | "@@@" -> true
+  | _ -> false
+
 let non_paren_tokens node =
   direct_non_trivia_tokens node
   |> List.filter (fun syntax_token ->
@@ -270,6 +279,33 @@ let rec can_lift_module_type_node node =
       match direct_non_trivia_tokens node with
       | first :: _ ->
           String.equal (Ceibo.Red.SyntaxToken.text first) "sig"
+      | [] -> false)
+  | _ ->
+      false
+
+let rec can_lift_class_type_field_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.OBJECT_INHERIT
+  | Syntax_kind.OBJECT_VAL
+  | Syntax_kind.OBJECT_METHOD
+  | Syntax_kind.TYPE_CONSTRAINT
+  | Syntax_kind.EXTENSION_EXPR ->
+      true
+  | Syntax_kind.ATTRIBUTE_EXPR ->
+      direct_non_trivia_nodes node |> List.exists can_lift_class_type_field_node
+  | _ ->
+      false
+
+let rec can_lift_class_type_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.OBJECT_EXPR | Syntax_kind.MODULE_PATH | Syntax_kind.EXTENSION_EXPR
+  | Syntax_kind.ARRAY_INDEX_EXPR ->
+      true
+  | Syntax_kind.PAREN_EXPR | Syntax_kind.ATTRIBUTE_EXPR | Syntax_kind.APPLY_EXPR ->
+      direct_non_trivia_nodes node |> List.exists can_lift_class_type_node
+  | Syntax_kind.IDENT_EXPR -> (
+      match direct_non_trivia_tokens node with
+      | _ :: _ -> true
       | [] -> false)
   | _ ->
       false
@@ -482,6 +518,9 @@ let rec simple_pattern_name_token node =
 
 let is_attribute_node node =
   Ceibo.Red.SyntaxNode.kind node = Syntax_kind.ATTRIBUTE_EXPR
+
+let is_extension_node node =
+  Ceibo.Red.SyntaxNode.kind node = Syntax_kind.EXTENSION_EXPR
 
 let is_let_binding_node node =
   let kind = Ceibo.Red.SyntaxNode.kind node in
@@ -869,6 +908,236 @@ and module_type_from_first_class_module_type_node node =
         ~message:
           "expected module type inside first-class module type during Ceibo -> CST lifting"
         ~syntax_node:node ~context:[ "module_type.first_class_module" ]
+
+and core_type_payload_and_field_attribute node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.ATTRIBUTE_EXPR ->
+      let attribute = attribute_from_node node in
+      if attribute_is_item_like attribute then
+        match attribute.payload_syntax_node with
+        | Some payload_node when can_lift_core_type_node payload_node ->
+            (payload_node, Some attribute)
+        | _ ->
+            (node, None)
+      else
+        (node, None)
+  | _ ->
+      (node, None)
+
+and class_type_field_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.OBJECT_INHERIT ->
+      let make_field class_type =
+        Cst.ClassTypeField.Inherit { syntax_node = node; class_type }
+      in
+      begin
+        match direct_non_trivia_nodes node with
+        | child :: _ when Ceibo.Red.SyntaxNode.kind child = Syntax_kind.APPLY_EXPR -> (
+            match direct_non_trivia_nodes child with
+            | payload_node :: rest -> (
+                match List.find_opt is_attribute_node rest with
+                | Some attribute_node when can_lift_class_type_node payload_node ->
+                    Cst.ClassTypeField.Attribute
+                      {
+                        syntax_node = node;
+                        field = make_field (class_type_from_node payload_node);
+                        attribute = attribute_from_node attribute_node;
+                      }
+                | _ ->
+                    unsupported_class_type node)
+            | [] ->
+                unsupported_class_type node)
+        | child :: _ ->
+            make_field (class_type_from_node child)
+        | [] ->
+            unsupported_class_type node
+      end
+  | Syntax_kind.OBJECT_VAL -> (
+      match direct_non_trivia_nodes node with
+      | name_node :: remainder
+        when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
+          match
+            first_ident_token_in_subtree name_node,
+            List.find_opt can_lift_core_type_node remainder
+          with
+          | Some name_token, Some type_node ->
+              let payload_type_node, field_attribute =
+                core_type_payload_and_field_attribute type_node
+              in
+              let field =
+                Cst.ClassTypeField.Value
+                  {
+                    syntax_node = node;
+                    name_token;
+                    type_ = core_type_from_node payload_type_node;
+                    is_mutable =
+                      List.exists
+                        (fun tok ->
+                          String.equal (Ceibo.Red.SyntaxToken.text tok) "mutable")
+                        (direct_non_trivia_tokens node);
+                  }
+              in
+              (match field_attribute with
+              | Some attribute ->
+                  Cst.ClassTypeField.Attribute
+                    { syntax_node = node; field; attribute }
+              | None ->
+                  field)
+          | _ ->
+              unsupported_class_type node)
+      | _ ->
+          unsupported_class_type node)
+  | Syntax_kind.OBJECT_METHOD -> (
+      match direct_non_trivia_nodes node with
+      | name_node :: remainder
+        when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
+          match
+            first_ident_token_in_subtree name_node,
+            List.find_opt can_lift_core_type_node remainder
+          with
+          | Some name_token, Some type_node ->
+              let payload_type_node, field_attribute =
+                core_type_payload_and_field_attribute type_node
+              in
+              let field =
+                Cst.ClassTypeField.Method
+                  {
+                    syntax_node = node;
+                    name_token;
+                    type_ = core_type_from_node payload_type_node;
+                    is_private =
+                      List.exists
+                        (fun tok ->
+                          String.equal (Ceibo.Red.SyntaxToken.text tok) "private")
+                        (direct_non_trivia_tokens node);
+                  }
+              in
+              (match field_attribute with
+              | Some attribute ->
+                  Cst.ClassTypeField.Attribute
+                    { syntax_node = node; field; attribute }
+              | None ->
+                  field)
+          | _ ->
+              unsupported_class_type node)
+      | _ ->
+          unsupported_class_type node)
+  | Syntax_kind.TYPE_CONSTRAINT -> (
+      match
+        direct_non_trivia_nodes node |> List.filter can_lift_core_type_node
+      with
+      | left_node :: right_node :: _ ->
+          let payload_right_node, field_attribute =
+            core_type_payload_and_field_attribute right_node
+          in
+          let field =
+            Cst.ClassTypeField.Constraint
+              {
+                syntax_node = node;
+                left = core_type_from_node left_node;
+                right = core_type_from_node payload_right_node;
+              }
+          in
+          (match field_attribute with
+          | Some attribute ->
+              Cst.ClassTypeField.Attribute
+                { syntax_node = node; field; attribute }
+          | None ->
+              field)
+      | _ ->
+          unsupported_class_type node)
+  | Syntax_kind.ATTRIBUTE_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | first_child :: rest -> (
+          match
+            List.find_opt can_lift_class_type_field_node (first_child :: rest),
+            List.find_opt is_attribute_node rest
+          with
+          | Some payload_node, Some attribute_node ->
+              Cst.ClassTypeField.Attribute
+                {
+                  syntax_node = node;
+                  field = class_type_field_from_node payload_node;
+                  attribute = attribute_from_node attribute_node;
+                }
+          | _ ->
+              unsupported_class_type node)
+      | [] ->
+          unsupported_class_type node)
+  | Syntax_kind.EXTENSION_EXPR ->
+      Cst.ClassTypeField.Extension (extension_from_node node)
+  | _ ->
+      unsupported_class_type node
+
+and class_type_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.IDENT_EXPR ->
+      Cst.ClassType.Path (ident_path_from_node node)
+  | Syntax_kind.MODULE_PATH ->
+      Cst.ClassType.Path (module_path_from_node node)
+  | Syntax_kind.OBJECT_EXPR ->
+      Cst.ClassType.Signature
+        {
+          syntax_node = node;
+          fields =
+            direct_non_trivia_nodes node
+            |> List.map class_type_field_from_node;
+        }
+  | Syntax_kind.ARRAY_INDEX_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | module_path_node :: class_type_node :: _ ->
+          Cst.ClassType.LocalOpen
+            {
+              syntax_node = node;
+              module_path = module_path_like_from_node module_path_node;
+              class_type = class_type_from_node class_type_node;
+            }
+      | _ ->
+          unsupported_class_type node)
+  | Syntax_kind.APPLY_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | payload_node :: rest -> (
+          match List.find_opt is_attribute_node rest with
+          | Some attribute_node when can_lift_class_type_node payload_node ->
+              Cst.ClassType.Attribute
+                {
+                  syntax_node = node;
+                  class_type = class_type_from_node payload_node;
+                  attribute = attribute_from_node attribute_node;
+                }
+          | _ ->
+              unsupported_class_type node)
+      | [] ->
+          unsupported_class_type node)
+  | Syntax_kind.PAREN_EXPR -> (
+      match direct_non_trivia_nodes node |> List.find_opt can_lift_class_type_node with
+      | Some inner_node ->
+          Cst.ClassType.Parenthesized
+            { syntax_node = node; inner = class_type_from_node inner_node }
+      | None ->
+          unsupported_class_type node)
+  | Syntax_kind.ATTRIBUTE_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | first_child :: rest -> (
+          match
+            List.find_opt can_lift_class_type_node (first_child :: rest),
+            List.find_opt is_attribute_node rest
+          with
+          | Some payload_node, Some attribute_node ->
+              Cst.ClassType.Attribute
+                {
+                  syntax_node = node;
+                  class_type = class_type_from_node payload_node;
+                  attribute = attribute_from_node attribute_node;
+                }
+          | _ ->
+              unsupported_class_type node)
+      | [] ->
+          unsupported_class_type node)
+  | Syntax_kind.EXTENSION_EXPR ->
+      Cst.ClassType.Extension (extension_from_node node)
+  | _ ->
+      unsupported_class_type node
 
 and core_type_from_node node =
   let child_type_nodes node =
@@ -3166,10 +3435,12 @@ let class_declaration_from_node node =
               Cst.syntax_node = node;
               type_params = type_parameters_from_node node;
               class_name;
-              class_type_syntax_node =
+              class_type =
                 (match List.rev rev_prefix with
-                | class_type_syntax_node :: _ -> Some class_type_syntax_node
-                | [] when has_colon_body -> Some class_body_node
+                | class_type_node :: _ when can_lift_class_type_node class_type_node ->
+                    Some (class_type_from_node class_type_node)
+                | [] when has_colon_body && can_lift_class_type_node class_body_node ->
+                    Some (class_type_from_node class_body_node)
                 | [] -> None);
               class_body = expression_from_node class_body_node;
             }
@@ -3193,13 +3464,16 @@ let class_type_declaration_from_node node =
   | Some (name_node, _prefix, body_node :: _) -> (
       match first_ident_token_in_subtree name_node with
       | Some class_type_name ->
-          Some
-            {
-              Cst.syntax_node = node;
-              type_params = type_parameters_from_node node;
-              class_type_name;
-              class_type_body_syntax_node = body_node;
-            }
+          if can_lift_class_type_node body_node then
+            Some
+              {
+                Cst.syntax_node = node;
+                type_params = type_parameters_from_node node;
+                class_type_name;
+                class_type_body = class_type_from_node body_node;
+              }
+          else
+            None
       | None -> None)
   | _ -> None
 
@@ -3787,6 +4061,46 @@ and validate_poly_variant ~context poly_variant =
   Cst.PolyVariant.fields poly_variant
   |> List.iteri (validate_row_field ~context)
 
+and validate_class_type_field ~context = function
+  | Cst.ClassTypeField.Inherit { class_type; _ } ->
+      validate_class_type
+        ~context:("class_type_field.inherit" :: context)
+        class_type
+  | Cst.ClassTypeField.Value { type_; _ } ->
+      validate_core_type ~context:("class_type_field.value" :: context) type_
+  | Cst.ClassTypeField.Method { type_; _ } ->
+      validate_core_type ~context:("class_type_field.method" :: context) type_
+  | Cst.ClassTypeField.Constraint { left; right; _ } ->
+      validate_core_type ~context:("class_type_field.constraint.left" :: context)
+        left;
+      validate_core_type ~context:("class_type_field.constraint.right" :: context)
+        right
+  | Cst.ClassTypeField.Attribute { field; _ } ->
+      validate_class_type_field
+        ~context:("class_type_field.attribute" :: context)
+        field
+  | Cst.ClassTypeField.Extension _ ->
+      ()
+
+and validate_class_type ~context = function
+  | Cst.ClassType.Path _ | Cst.ClassType.Extension _ ->
+      ()
+  | Cst.ClassType.Signature { fields; _ } ->
+      List.iteri
+        (fun index field ->
+          validate_class_type_field
+            ~context:
+              (("class_type.signature.field[" ^ Int.to_string index ^ "]")
+              :: context)
+            field)
+        fields
+  | Cst.ClassType.Parenthesized { inner; _ } ->
+      validate_class_type ~context:("class_type.parenthesized" :: context) inner
+  | Cst.ClassType.LocalOpen { class_type; _ } ->
+      validate_class_type ~context:("class_type.local_open" :: context) class_type
+  | Cst.ClassType.Attribute { class_type; _ } ->
+      validate_class_type ~context:("class_type.attribute" :: context) class_type
+
 and validate_apply_argument ~context = function
   | Cst.Positional expr ->
       validate_expression ~context:("apply_argument.positional" :: context) expr
@@ -4105,11 +4419,15 @@ let validate_item ~context = function
       validate_expression ~context:("item.let_binding.value" :: context) value
   | Cst.Item.Expression expr ->
       validate_expression ~context:("item.expression" :: context) expr
-  | Cst.Item.ClassDeclaration { class_body; _ } ->
+  | Cst.Item.ClassDeclaration { class_type; class_body; _ } ->
+      Option.iter
+        (validate_class_type ~context:("item.class_declaration.type" :: context))
+        class_type;
       validate_expression ~context:("item.class_declaration.body" :: context)
         class_body
-  | Cst.Item.ClassTypeDeclaration _ ->
-      ()
+  | Cst.Item.ClassTypeDeclaration { class_type_body; _ } ->
+      validate_class_type ~context:("item.class_type_declaration.body" :: context)
+        class_type_body
   | Cst.Item.Attribute _ | Cst.Item.Extension _ ->
       ()
   | Cst.Item.ValueDeclaration { type_; _ } ->

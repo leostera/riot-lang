@@ -330,7 +330,7 @@
               "end": 826
             }
           },
-          "class_type_syntax_node": null,
+          "class_type": null,
           "class_body": {
             "tag": "fun",
             "syntax_node": {
@@ -1208,11 +1208,659 @@
               "end": 1157
             }
           },
-          "class_type_body_syntax_node": {
-            "kind": "ATTRIBUTE_EXPR",
-            "span": {
-              "start": 1160,
-              "end": 1326
+          "class_type_body": {
+            "tag": "attribute",
+            "syntax_node": {
+              "kind": "ATTRIBUTE_EXPR",
+              "span": {
+                "start": 1160,
+                "end": 1326
+              }
+            },
+            "class_type": {
+              "tag": "signature",
+              "syntax_node": {
+                "kind": "OBJECT_EXPR",
+                "span": {
+                  "start": 1160,
+                  "end": 1320
+                }
+              },
+              "fields": [
+                {
+                  "tag": "attribute",
+                  "syntax_node": {
+                    "kind": "OBJECT_INHERIT",
+                    "span": {
+                      "start": 1169,
+                      "end": 1189
+                    }
+                  },
+                  "field": {
+                    "tag": "inherit",
+                    "syntax_node": {
+                      "kind": "OBJECT_INHERIT",
+                      "span": {
+                        "start": 1169,
+                        "end": 1189
+                      }
+                    },
+                    "class_type": {
+                      "tag": "path",
+                      "path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 1177,
+                            "end": 1178
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "t",
+                          "span": {
+                            "start": 1177,
+                            "end": 1178
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "attribute": {
+                    "syntax_node": {
+                      "kind": "ATTRIBUTE_EXPR",
+                      "span": {
+                        "start": 1179,
+                        "end": 1186
+                      }
+                    },
+                    "sigil_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "@@",
+                      "span": {
+                        "start": 1180,
+                        "end": 1182
+                      }
+                    },
+                    "name": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 1179,
+                          "end": 1186
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "foo",
+                        "span": {
+                          "start": 1182,
+                          "end": 1185
+                        }
+                      }
+                    },
+                    "payload_syntax_node": null
+                  }
+                },
+                {
+                  "tag": "attribute",
+                  "syntax_node": {
+                    "kind": "OBJECT_VAL",
+                    "span": {
+                      "start": 1189,
+                      "end": 1209
+                    }
+                  },
+                  "field": {
+                    "tag": "value",
+                    "syntax_node": {
+                      "kind": "OBJECT_VAL",
+                      "span": {
+                        "start": 1189,
+                        "end": 1209
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 1193,
+                        "end": 1194
+                      }
+                    },
+                    "type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 1197,
+                          "end": 1199
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 1197,
+                            "end": 1199
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "t",
+                          "span": {
+                            "start": 1197,
+                            "end": 1198
+                          }
+                        }
+                      },
+                      "arguments": []
+                    },
+                    "is_mutable": false
+                  },
+                  "attribute": {
+                    "syntax_node": {
+                      "kind": "ATTRIBUTE_EXPR",
+                      "span": {
+                        "start": 1197,
+                        "end": 1209
+                      }
+                    },
+                    "sigil_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "@@",
+                      "span": {
+                        "start": 1200,
+                        "end": 1202
+                      }
+                    },
+                    "name": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 1199,
+                          "end": 1206
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "foo",
+                        "span": {
+                          "start": 1202,
+                          "end": 1205
+                        }
+                      }
+                    },
+                    "payload_syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 1197,
+                        "end": 1199
+                      }
+                    }
+                  }
+                },
+                {
+                  "tag": "attribute",
+                  "syntax_node": {
+                    "kind": "OBJECT_VAL",
+                    "span": {
+                      "start": 1209,
+                      "end": 1237
+                    }
+                  },
+                  "field": {
+                    "tag": "value",
+                    "syntax_node": {
+                      "kind": "OBJECT_VAL",
+                      "span": {
+                        "start": 1209,
+                        "end": 1237
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 1221,
+                        "end": 1222
+                      }
+                    },
+                    "type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 1225,
+                          "end": 1227
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 1225,
+                            "end": 1227
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "t",
+                          "span": {
+                            "start": 1225,
+                            "end": 1226
+                          }
+                        }
+                      },
+                      "arguments": []
+                    },
+                    "is_mutable": true
+                  },
+                  "attribute": {
+                    "syntax_node": {
+                      "kind": "ATTRIBUTE_EXPR",
+                      "span": {
+                        "start": 1225,
+                        "end": 1237
+                      }
+                    },
+                    "sigil_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "@@",
+                      "span": {
+                        "start": 1228,
+                        "end": 1230
+                      }
+                    },
+                    "name": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 1227,
+                          "end": 1234
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "foo",
+                        "span": {
+                          "start": 1230,
+                          "end": 1233
+                        }
+                      }
+                    },
+                    "payload_syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 1225,
+                        "end": 1227
+                      }
+                    }
+                  }
+                },
+                {
+                  "tag": "attribute",
+                  "syntax_node": {
+                    "kind": "OBJECT_METHOD",
+                    "span": {
+                      "start": 1237,
+                      "end": 1260
+                    }
+                  },
+                  "field": {
+                    "tag": "method",
+                    "syntax_node": {
+                      "kind": "OBJECT_METHOD",
+                      "span": {
+                        "start": 1237,
+                        "end": 1260
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 1244,
+                        "end": 1245
+                      }
+                    },
+                    "type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 1248,
+                          "end": 1250
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 1248,
+                            "end": 1250
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "t",
+                          "span": {
+                            "start": 1248,
+                            "end": 1249
+                          }
+                        }
+                      },
+                      "arguments": []
+                    },
+                    "is_private": false
+                  },
+                  "attribute": {
+                    "syntax_node": {
+                      "kind": "ATTRIBUTE_EXPR",
+                      "span": {
+                        "start": 1248,
+                        "end": 1260
+                      }
+                    },
+                    "sigil_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "@@",
+                      "span": {
+                        "start": 1251,
+                        "end": 1253
+                      }
+                    },
+                    "name": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 1250,
+                          "end": 1257
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "foo",
+                        "span": {
+                          "start": 1253,
+                          "end": 1256
+                        }
+                      }
+                    },
+                    "payload_syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 1248,
+                        "end": 1250
+                      }
+                    }
+                  }
+                },
+                {
+                  "tag": "attribute",
+                  "syntax_node": {
+                    "kind": "OBJECT_METHOD",
+                    "span": {
+                      "start": 1260,
+                      "end": 1291
+                    }
+                  },
+                  "field": {
+                    "tag": "method",
+                    "syntax_node": {
+                      "kind": "OBJECT_METHOD",
+                      "span": {
+                        "start": 1260,
+                        "end": 1291
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 1275,
+                        "end": 1276
+                      }
+                    },
+                    "type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 1279,
+                          "end": 1281
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 1279,
+                            "end": 1281
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "t",
+                          "span": {
+                            "start": 1279,
+                            "end": 1280
+                          }
+                        }
+                      },
+                      "arguments": []
+                    },
+                    "is_private": true
+                  },
+                  "attribute": {
+                    "syntax_node": {
+                      "kind": "ATTRIBUTE_EXPR",
+                      "span": {
+                        "start": 1279,
+                        "end": 1291
+                      }
+                    },
+                    "sigil_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "@@",
+                      "span": {
+                        "start": 1282,
+                        "end": 1284
+                      }
+                    },
+                    "name": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 1281,
+                          "end": 1288
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "foo",
+                        "span": {
+                          "start": 1284,
+                          "end": 1287
+                        }
+                      }
+                    },
+                    "payload_syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 1279,
+                        "end": 1281
+                      }
+                    }
+                  }
+                },
+                {
+                  "tag": "attribute",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTRAINT",
+                    "span": {
+                      "start": 1291,
+                      "end": 1317
+                    }
+                  },
+                  "field": {
+                    "tag": "constraint",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTRAINT",
+                      "span": {
+                        "start": 1291,
+                        "end": 1317
+                      }
+                    },
+                    "left": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 1302,
+                          "end": 1304
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 1302,
+                            "end": 1304
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "t",
+                          "span": {
+                            "start": 1302,
+                            "end": 1303
+                          }
+                        }
+                      },
+                      "arguments": []
+                    },
+                    "right": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 1306,
+                          "end": 1309
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 1306,
+                            "end": 1309
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "t'",
+                          "span": {
+                            "start": 1306,
+                            "end": 1308
+                          }
+                        }
+                      },
+                      "arguments": []
+                    }
+                  },
+                  "attribute": {
+                    "syntax_node": {
+                      "kind": "ATTRIBUTE_EXPR",
+                      "span": {
+                        "start": 1306,
+                        "end": 1317
+                      }
+                    },
+                    "sigil_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "@@",
+                      "span": {
+                        "start": 1310,
+                        "end": 1312
+                      }
+                    },
+                    "name": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 1309,
+                          "end": 1316
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "foo",
+                        "span": {
+                          "start": 1312,
+                          "end": 1315
+                        }
+                      }
+                    },
+                    "payload_syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 1306,
+                        "end": 1309
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "attribute": {
+              "syntax_node": {
+                "kind": "ATTRIBUTE_EXPR",
+                "span": {
+                  "start": 1320,
+                  "end": 1326
+                }
+              },
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "@",
+                "span": {
+                  "start": 1321,
+                  "end": 1322
+                }
+              },
+              "name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "ATTRIBUTE_EXPR",
+                  "span": {
+                    "start": 1320,
+                    "end": 1326
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "foo",
+                  "span": {
+                    "start": 1322,
+                    "end": 1325
+                  }
+                }
+              },
+              "payload_syntax_node": null
             }
           }
         }
@@ -2208,7 +2856,7 @@
               "end": 1759
             }
           },
-          "class_type_syntax_node": null,
+          "class_type": null,
           "class_body": {
             "tag": "path",
             "syntax_node": {
@@ -2258,11 +2906,25 @@
               "end": 1788
             }
           },
-          "class_type_body_syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 1791,
-              "end": 1792
+          "class_type_body": {
+            "tag": "path",
+            "path": {
+              "tag": "ident",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 1791,
+                  "end": 1792
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 1791,
+                  "end": 1792
+                }
+              }
             }
           }
         }

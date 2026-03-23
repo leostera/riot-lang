@@ -608,6 +608,138 @@ and module_type =
           Example: `[%foo: S]`.
       *)
 
+(** A locally opened class type.
+
+    This preserves the explicit `Module.(...)` wrapper used to resolve a class
+    type inside a temporary module-open scope.
+
+    Examples:
+
+    ```ocaml,norun
+    M.(c)
+    Outer.Inner.(service)
+    ```
+*)
+and local_open_class_type = {
+  syntax_node : syntax_node;
+  module_path : Ident.t;
+  class_type : class_type;
+}
+
+(** Class type syntax.
+
+    This family covers the type grammar used by `class ... : ...` annotations
+    and `class type ... = ...` declarations.
+*)
+and class_type =
+  | Path of Ident.t
+      (** A named class type path such as `c`, `Widget.t`, or `Driver.class_t`. *)
+  | Signature of {
+      syntax_node : syntax_node;
+      fields : class_type_field list;
+    }
+      (** An `object ... end` class signature.
+
+          Example:
+
+          ```ocaml,norun
+          object
+            inherit base
+            val mutable state : int
+            method run : unit -> unit
+            constraint t = int
+          end
+          ```
+      *)
+  | Parenthesized of {
+      syntax_node : syntax_node;
+      inner : class_type;
+    }
+      (** A parenthesized class type used for grouping.
+
+          Example: `([%driver])`.
+      *)
+  | LocalOpen of local_open_class_type
+      (** A locally opened class type such as `M.(c)`. *)
+  | Attribute of {
+      syntax_node : syntax_node;
+      class_type : class_type;
+      attribute : attribute;
+    }
+      (** A class type with an attached attribute.
+
+          Example: `object method x : int end [@foo]`.
+      *)
+  | Extension of extension
+      (** A PPX extension parsed in class-type position.
+
+          Example: `[%foo]`.
+      *)
+
+(** Fields inside an `object ... end` class signature. *)
+and class_type_field =
+  | Inherit of {
+      syntax_node : syntax_node;
+      class_type : class_type;
+    }
+      (** An inherited class type field.
+
+          Example: `inherit base`.
+      *)
+  | Value of {
+      syntax_node : syntax_node;
+      name_token : Token.t;
+      type_ : core_type;
+      is_mutable : bool;
+    }
+      (** A value declaration in a class signature.
+
+          Examples:
+
+          ```ocaml,norun
+          val x : int
+          val mutable state : int
+          ```
+      *)
+  | Method of {
+      syntax_node : syntax_node;
+      name_token : Token.t;
+      type_ : core_type;
+      is_private : bool;
+    }
+      (** A method declaration in a class signature.
+
+          Examples:
+
+          ```ocaml,norun
+          method run : unit -> unit
+          method private close : unit
+          ```
+      *)
+  | Constraint of {
+      syntax_node : syntax_node;
+      left : core_type;
+      right : core_type;
+    }
+      (** A class-type constraint.
+
+          Example: `constraint t = int`.
+      *)
+  | Attribute of {
+      syntax_node : syntax_node;
+      field : class_type_field;
+      attribute : attribute;
+    }
+      (** A class-type field with an attached attribute.
+
+          Example: `val x : int [@@foo]`.
+      *)
+  | Extension of extension
+      (** A PPX extension parsed as a class-type field.
+
+          Example: `[%%foo]`.
+      *)
+
 (** Namespace view over `core_type`.
 
     This is useful when you want constructor names under `CoreType`, for
@@ -736,6 +868,67 @@ module ModuleType : sig
     | Attribute of {
         syntax_node : syntax_node;
         module_type : module_type;
+        attribute : attribute;
+      }
+    | Extension of extension
+
+  val syntax_node : t -> syntax_node
+end
+
+(** Namespace view over `class_type`.
+
+    The constructors mirror `class_type` exactly, so the grammar coverage and
+    examples documented on `class_type` apply here unchanged.
+*)
+module ClassType : sig
+  type t = class_type =
+    | Path of Ident.t
+    | Signature of {
+        syntax_node : syntax_node;
+        fields : class_type_field list;
+      }
+    | Parenthesized of {
+        syntax_node : syntax_node;
+        inner : class_type;
+      }
+    | LocalOpen of local_open_class_type
+    | Attribute of {
+        syntax_node : syntax_node;
+        class_type : class_type;
+        attribute : attribute;
+      }
+    | Extension of extension
+
+  val syntax_node : t -> syntax_node
+end
+
+(** Namespace view over `class_type_field`. *)
+module ClassTypeField : sig
+  type t = class_type_field =
+    | Inherit of {
+        syntax_node : syntax_node;
+        class_type : class_type;
+      }
+    | Value of {
+        syntax_node : syntax_node;
+        name_token : Token.t;
+        type_ : core_type;
+        is_mutable : bool;
+      }
+    | Method of {
+        syntax_node : syntax_node;
+        name_token : Token.t;
+        type_ : core_type;
+        is_private : bool;
+      }
+    | Constraint of {
+        syntax_node : syntax_node;
+        left : core_type;
+        right : core_type;
+      }
+    | Attribute of {
+        syntax_node : syntax_node;
+        field : class_type_field;
         attribute : attribute;
       }
     | Extension of extension
@@ -2643,29 +2836,33 @@ type external_declaration = {
 
 (** A `class` declaration item.
 
-    The public CST exposes the declared name, type parameters, optional raw
-    class-type annotation node, and the class body expression. Signature-only
-    declarations such as `class c : object ... end` currently reuse the parsed
-    trailing node for both `class_type_syntax_node` and `class_body`, because
-    the parser still routes class-type bodies through the expression grammar.
+    The public CST exposes the declared name, type parameters, optional typed
+    class-type annotation, and the class body expression. Signature-only
+    declarations such as `class c : object ... end` still reuse the parsed
+    trailing node for both `class_type` and `class_body`, because the parser
+    continues to route class declarations through the expression grammar.
 *)
 type class_declaration = {
   syntax_node : syntax_node;
   type_params : TypeParameter.t list;
   class_name : Token.t;
-  class_type_syntax_node : syntax_node option;
+  class_type : class_type option;
   class_body : expression;
 }
 
 (** A `class type` declaration item.
 
-    The class-type body is currently preserved as a raw `syntax_node`.
+    Example:
+
+    ```ocaml,norun
+    class type service = object method run : unit -> unit end
+    ```
 *)
 type class_type_declaration = {
   syntax_node : syntax_node;
   type_params : TypeParameter.t list;
   class_type_name : Token.t;
-  class_type_body_syntax_node : syntax_node;
+  class_type_body : class_type;
 }
 
 (** The payload of an `include` item. *)

@@ -56,7 +56,7 @@
               "end": 155
             }
           },
-          "class_type_syntax_node": null,
+          "class_type": null,
           "class_body": {
             "tag": "object",
             "syntax_node": {
