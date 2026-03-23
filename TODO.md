@@ -40,6 +40,142 @@ This file is _yours_. Keep it up to date after every big change.
 - [x] Remove the runner_tests.ml code_id by refacotring the tests to pass in a `~rule` instead of `~code` and refactoring the assertions too
 - [x] Keep explanations example-driven rather than structured as "why this rule exists"
 
+## CST and Rule Ergonomics Follow-up
+
+The current rules are proving the typed CST is useful, but too many rules are still
+doing framework work instead of rule work. The cleanup goal here is:
+
+- a good rule should mostly read like `query nodes -> match shape -> emit diagnostic`
+- rules should not need to recover file kind, recurse half the grammar, or dig into raw `Ceibo`
+- exact edits can still target the lossless tree, but routine diagnostics should come from CST/query helpers
+
+### Syn.Cst
+
+- [ ] Give every named construct a canonical site:
+  - [ ] `LetBinding.name_site`
+  - [ ] `TypeDeclaration.name_site`
+  - [ ] `RecordField.name_site`
+  - [ ] `VariantConstructor.name_site`
+  - [ ] `Parameter.name_site`
+  - [ ] `ModuleDeclaration.name_site`
+- [ ] Give common nodes canonical spans without requiring raw `Ceibo` access:
+  - [ ] `Expression.span`
+  - [ ] `Pattern.span`
+  - [ ] `CoreType.span`
+  - [ ] `LetBinding.span`
+- [ ] Keep convenience predicates out of the core CST when they are interpretive:
+  - [ ] move helpers like `LetBinding.is_function` into matcher/query modules
+  - [ ] keep `Syn.Cst` focused on faithful structure, not rule-specific convenience
+- [ ] Keep file roots explicit instead of optional top-level accessors:
+  - [ ] `SourceFile.Implementation { items; ... }`
+  - [ ] `SourceFile.Interface { items; ... }`
+- [ ] Keep top-level item families split between structure and signature surfaces instead of pushing rules through optional `structure_items` / `signature_items`
+
+### Syn.Traversal
+
+- [ ] Add generated or shared child traversal helpers for recursive families:
+  - [ ] `Traversal.children_of_expression`
+  - [ ] `Traversal.children_of_pattern`
+  - [ ] `Traversal.children_of_core_type`
+  - [ ] `Traversal.children_of_module_expression`
+  - [ ] `Traversal.children_of_module_type`
+- [ ] Add shared folds/iters so rules stop hand-rolling visitors:
+  - [ ] `Traversal.fold_expression`
+  - [ ] `Traversal.exists_expression`
+  - [ ] `Traversal.fold_pattern`
+  - [ ] `Traversal.fold_core_type`
+  - [ ] `Traversal.iter_expression`
+- [ ] Standardize traversal over function bodies, match cases, and declaration payloads so rules do not need bespoke recursion just to recurse consistently
+
+### Syn.Matchers
+
+- [ ] Extract shared matcher helpers for common wrapper and shape logic:
+  - [ ] `Matchers.Expression.unwrap_parens`
+  - [ ] `Matchers.Expression.unwrap_wrappers`
+  - [ ] `Matchers.Expression.flatten_apply`
+  - [ ] `Matchers.Pattern.unwrap_alias_typed_parens`
+  - [ ] `Matchers.CoreType.unwrap`
+  - [ ] shared helpers for arrow types and field-access-root detection
+- [ ] Add reusable semantic-ish helpers for rules that are currently doing local syntax analysis:
+  - [ ] collect variable reads
+  - [ ] collect field accesses rooted at local `x`
+  - [ ] detect whether an expression mentions binding `x` outside allowed contexts
+
+### Rule.Query
+
+- [ ] Add query-oriented entrypoints so rules do not all start with `match ctx.cst` and manual top-level unpacking
+- [ ] Provide first-class queries for recurring node families:
+  - [ ] `Rule.Query.structure_items`
+  - [ ] `Rule.Query.signature_items`
+  - [ ] `Rule.Query.expressions`
+  - [ ] `Rule.Query.let_bindings`
+  - [ ] `Rule.Query.function_bindings`
+  - [ ] `Rule.Query.type_declarations`
+  - [ ] `Rule.Query.signature_type_declarations`
+  - [ ] `Rule.Query.record_fields`
+  - [ ] `Rule.Query.variant_constructors`
+
+### Rule Authoring Conventions
+
+- [ ] Treat local custom recursive descent as a yellow flag in rules
+- [ ] Standardize naming-rule helpers instead of rebuilding the same “extract token -> test predicate -> emit diagnostic” loop:
+  - [ ] `Naming_rule.check_binding_site`
+  - [ ] `Naming_rule.check_parameter`
+  - [ ] `Naming_rule.check_type_name`
+  - [ ] `Naming_rule.check_record_field`
+  - [ ] `Naming_rule.check_constructor`
+- [ ] Standardize diagnostic builders/accumulators so rules stop building many small lists with repeated `@`
+- [ ] Keep raw `Syn.Ceibo.Red.SyntaxNode.span` / `SyntaxToken.text` access as the escape hatch for exact edits, not the default path for routine diagnostics
+
+### First Refactors
+
+- [ ] Refactor `prefer_record_destructuring_parameters` to use shared traversal/query helpers instead of local grammar walking
+- [ ] Refactor `no_eta_expansion` to share application flattening and expression-mention helpers
+- [ ] Refactor `prefer_scoped_field_access` to use shared expression traversal instead of a bespoke recursive walker
+- [ ] Refactor `no_positional_bool_parameters` to rely on shared arrow-type / parameter queries
+- [ ] Refactor `no_redundant_parentheses` to use shared wrapper helpers
+
+### Proposed Module Layout
+
+Target split:
+
+- `Syn.Cst`: faithful typed structure and canonical sites/spans
+- `Syn.Matchers`: small shared shape helpers like unwrap/flatten/extract
+- `Syn.Traversal`: generated or hand-written children/iter/fold helpers
+- `Tusk_fix.Rule_query`: rule-friendly entrypoints over CST roots and common declaration families
+
+Rough signatures:
+
+```ocaml
+module Syn.Traversal : sig
+  val fold_expression :
+    ('acc -> Syn.Cst.Expression.t -> 'acc) -> 'acc -> Syn.Cst.Expression.t -> 'acc
+
+  val fold_core_type :
+    ('acc -> Syn.Cst.CoreType.t -> 'acc) -> 'acc -> Syn.Cst.CoreType.t -> 'acc
+
+  val children_of_expression : Syn.Cst.Expression.t -> Syn.Cst.Expression.t list
+end
+
+module Syn.Matchers.Expression : sig
+  val unwrap_parens : Syn.Cst.Expression.t -> Syn.Cst.Expression.t
+  val unwrap_wrappers : Syn.Cst.Expression.t -> Syn.Cst.Expression.t
+  val flatten_apply :
+    Syn.Cst.Expression.t -> Syn.Cst.Expression.t * Syn.Cst.argument list
+end
+
+module Tusk_fix.Rule_query : sig
+  val expressions :
+    Tusk_fix_api.Rule.context -> Syn.Cst.Expression.t list
+
+  val let_bindings :
+    Tusk_fix_api.Rule.context -> Syn.Cst.LetBinding.t list
+
+  val type_declarations :
+    Tusk_fix_api.Rule.context -> Syn.Cst.TypeDeclaration.t list
+end
+```
+
 ## Next Built-in Lints
 
 - [x] Prefer named closed polymorphic variants over inline closed polymorphic variants like ``[ `a | `b ] list``
