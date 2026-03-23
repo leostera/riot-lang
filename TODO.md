@@ -26,16 +26,182 @@ This file is _yours_. Keep it up to date after every big change.
 
 ## krasny Checklist
 
+### Bootstrap and Safety
+
 - [x] Initialize the `krasny` package, CLI, focused tests, and expectation harness
 - [x] Seed `krasny` formatter fixtures from `packages/syn/tests/fixtures`
-- bootstrap status: `krasny` builds, focused tests pass, and the expectation harness runs against the full seeded corpus (`858` passing / `337` failing) while the formatter is still a lossless token renderer
-- [ ] Cover trivia and comments
-- [ ] Cover literals
-- [ ] Cover expressions
-- [ ] Cover patterns
-- [ ] Cover type expressions
-- [ ] Cover top-level declarations
-- [ ] Cover structural elements and module/signature items
+- [x] Add a focused round-trip syntax-hash invariant test for selected real codebase files
+- [ ] Add a dedicated round-trip syntax-hash corpus runner over selected repo files
+- [ ] Add a `krasny` expectation suite for formatted output, separate from the current lossless-token baseline
+- bootstrap status: `krasny` builds, focused tests pass, the expectation harness runs against the full seeded corpus (`858` passing / `337` failing), and the current formatter is still a lossless token renderer
+
+### Formatter Pipeline
+
+- [ ] Replace the current lossless token renderer with a CST-driven `Doc` lowering pipeline
+- [ ] Introduce the `Doc` / layout engine used by both `krasny format` and future synthetic fix rendering
+- [ ] Add comment and trivia attachment rules to the formatter pipeline
+- [ ] Add Ceibo fallback formatting for parse results whose CST lift fails
+- [ ] Add a codebase smoke runner for `krasny format` over real workspace files
+
+### Trivia
+
+- [ ] `WHITESPACE`
+- [ ] `COMMENT`
+- [ ] `DOCSTRING`
+
+### Literals
+
+- [ ] `INT_LITERAL`
+- [ ] `FLOAT_LITERAL`
+- [ ] `STRING_LITERAL`
+- [ ] `CHAR_LITERAL`
+- [ ] `BOOL_LITERAL`
+- [ ] `UNIT_LITERAL`
+
+### Expressions
+
+- [ ] `IDENT_EXPR`
+- [ ] `PATH_EXPR`
+- [ ] `APPLY_EXPR`
+- [ ] `LABELED_ARG`
+- [ ] `OPTIONAL_ARG`
+- [ ] `INFIX_EXPR`
+- [ ] `PREFIX_EXPR`
+- [ ] `IF_EXPR`
+- [ ] `MATCH_EXPR`
+- [ ] `FUN_EXPR`
+- [ ] `LABELED_PARAM`
+- [ ] `OPTIONAL_PARAM`
+- [ ] `OPTIONAL_PARAM_DEFAULT`
+- [ ] `FUNCTION_EXPR`
+- [ ] `LET_EXPR`
+- [ ] `LET_REC_EXPR`
+- [ ] `SEQUENCE_EXPR`
+- [ ] `PAREN_EXPR`
+- [ ] `TUPLE_EXPR`
+- [ ] `LIST_EXPR`
+- [ ] `ARRAY_EXPR`
+- [ ] `RECORD_EXPR`
+- [ ] `RECORD_UPDATE_EXPR`
+- [ ] `UNREACHABLE_EXPR`
+- [ ] `FIELD_ACCESS_EXPR`
+- [ ] `ARRAY_INDEX_EXPR`
+- [ ] `STRING_INDEX_EXPR`
+- [ ] `ASSIGN_EXPR`
+- [ ] `CONSTRUCTOR_EXPR`
+- [ ] `POLY_VARIANT_EXPR`
+- [ ] `ASSERT_EXPR`
+- [ ] `LAZY_EXPR`
+- [ ] `WHILE_EXPR`
+- [ ] `FOR_EXPR`
+- [ ] `TRY_EXPR`
+- [ ] `TYPED_EXPR`
+- [ ] `COERCE_EXPR`
+- [ ] `ATTRIBUTE_EXPR`
+- [ ] `EXTENSION_EXPR`
+- [ ] `OBJECT_EXPR`
+- [ ] `OBJECT_SELF`
+- [ ] `OBJECT_METHOD`
+- [ ] `OBJECT_VAL`
+- [ ] `OBJECT_INHERIT`
+- [ ] `OBJECT_UPDATE_EXPR`
+- [ ] `METHOD_CALL_EXPR`
+- [ ] `NEW_EXPR`
+- [ ] `LOCAL_OPEN_EXPR`
+- [ ] `LET_MODULE_EXPR`
+- [ ] `FIRST_CLASS_MODULE_EXPR`
+- [ ] `STRUCT_EXPR`
+- [ ] `MODULE_PATH`
+
+### Patterns
+
+- [ ] `IDENT_PATTERN`
+- [ ] `WILDCARD_PATTERN`
+- [ ] `LITERAL_PATTERN`
+- [ ] `CONSTRUCTOR_PATTERN`
+- [ ] `TUPLE_PATTERN`
+- [ ] `LIST_PATTERN`
+- [ ] `ARRAY_PATTERN`
+- [ ] `CONS_PATTERN`
+- [ ] `RECORD_PATTERN`
+- [ ] `OR_PATTERN`
+- [ ] `AS_PATTERN`
+- [ ] `RANGE_PATTERN`
+- [ ] `TYPED_PATTERN`
+- [ ] `LAZY_PATTERN`
+- [ ] `EXCEPTION_PATTERN`
+- [ ] `PAREN_PATTERN`
+- [ ] `POLY_VARIANT_PATTERN`
+- [ ] `POLY_VARIANT_TYPE_PATTERN`
+- [ ] `EFFECT_PATTERN`
+- [ ] `LOCAL_OPEN_PATTERN`
+- [ ] `OPERATOR_PATTERN`
+- [ ] `FIRST_CLASS_MODULE_PATTERN`
+
+### Type Expressions
+
+- [ ] `TYPE_VAR`
+- [ ] `TYPE_CONSTR`
+- [ ] `TYPE_ALIAS`
+- [ ] `TYPE_ARROW`
+- [ ] `TYPE_TUPLE`
+- [ ] `TYPE_PAREN`
+- [ ] `TYPE_POLY_VARIANT`
+- [ ] `POLY_VARIANT_TAG`
+- [ ] `TYPE_PARAM`
+- [ ] `TYPE_PARAMS`
+- [ ] `TYPE_VARIANT_CONSTR`
+- [ ] `TYPE_EXTENSIBLE`
+- [ ] `TYPE_RECORD`
+- [ ] `TYPE_RECORD_FIELD`
+- [ ] `OBJECT_TYPE`
+- [ ] `OBJECT_TYPE_FIELD`
+- [ ] `LOCAL_OPEN_TYPE`
+- [ ] `TYPE_CONSTRAINT`
+- [ ] `POLY_TYPE`
+- [ ] `MODULE_TYPE_EXPR`
+- [ ] `FIRST_CLASS_MODULE_TYPE`
+- [ ] `MODULE_TYPE_PATH`
+- [ ] `FUNCTOR_PARAM`
+- [ ] `FUNCTOR_TYPE`
+- [ ] `MODULE_APPLICATION`
+- [ ] `MODULE_UNIT_APPLICATION`
+
+### Top-Level Declarations
+
+- [ ] `LET_BINDING`
+- [ ] `LET_REC_BINDING`
+- [ ] `LET_MUTUAL_DECL`
+- [ ] `TYPE_DECL`
+- [ ] `TYPE_MUTUAL_DECL`
+- [ ] `EXCEPTION_DECL`
+- [ ] `MODULE_DECL`
+- [ ] `CLASS_DECL`
+- [ ] `CLASS_TYPE_DECL`
+- [ ] `MODULE_TYPE_DECL`
+- [ ] `MODULE_TYPE_OF`
+- [ ] `OPEN_STMT`
+- [ ] `INCLUDE_STMT`
+- [ ] `VAL_DECL`
+- [ ] `EXTERNAL_DECL`
+
+### Structural
+
+- [ ] `SOURCE_FILE`
+- [ ] `STRUCTURE`
+- [ ] `SIGNATURE`
+- [ ] `MATCH_CASE`
+- [ ] `PATTERN_GUARD`
+- [ ] `RECORD_FIELD`
+- [ ] `RECORD_FIELD_PATTERN`
+- [ ] `PARAMETER`
+- [ ] `LOCALLY_ABSTRACT_TYPE_PARAM`
+- [ ] `ARGUMENT`
+
+### Error Recovery and Fallback
+
+- [ ] `ERROR`
+- [ ] `MISSING`
 - [ ] Cover parser-recovery / fallback formatting from Ceibo when CST lifting fails
 
 ## Package Rules
