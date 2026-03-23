@@ -1477,10 +1477,23 @@ let module_type_declaration_to_json decl =
     ]
 
 let open_statement_to_json stmt =
+  let open_target_to_json = function
+    | Cst.OpenStatement.Path path ->
+        Json.Object
+          [ ("tag", Json.String "path"); ("value", ident_to_json path) ]
+    | Cst.OpenStatement.ModuleExpression module_expression ->
+        Json.Object
+          [
+            ("tag", Json.String "module_expression");
+            ("value", module_expression_to_json module_expression);
+          ]
+  in
   Json.Object
     [
       ("syntax_node", syntax_node_to_json (Cst.OpenStatement.syntax_node stmt));
-      ("module_path", ident_to_json (Cst.OpenStatement.module_path stmt));
+      ("target", open_target_to_json (Cst.OpenStatement.target stmt));
+      ( "module_path",
+        option_to_json ident_to_json (Cst.OpenStatement.module_path stmt) );
       ("bang_token", option_to_json token_to_json (Cst.OpenStatement.bang_token stmt));
     ]
 

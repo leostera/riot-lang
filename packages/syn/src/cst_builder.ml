@@ -4324,24 +4324,43 @@ let open_statement_from_node node =
            String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "!")
     |> Option.map token
   in
-  let module_tokens =
-    tokens
-    |> List.filter (fun syntax_token ->
-           let text = Ceibo.Red.SyntaxToken.text syntax_token in
-           not
-             (String.equal text "open"
-             || String.equal text "!"))
+  let lifted_target =
+    direct_non_trivia_nodes node
+    |> List.find_opt can_lift_module_expression_node
+    |> Option.map (fun target_node ->
+           Cst.OpenStatement.ModuleExpression
+             (module_expression_from_node target_node))
   in
-  match module_tokens with
-  | [] -> None
-  | _ ->
+  match lifted_target with
+  | Some lifted_target ->
       Some
         Cst.OpenStatement.
           {
             syntax_node = node;
-            module_path = module_path_from_tokens ~syntax_node:node module_tokens;
+            target = lifted_target;
             bang_token = bang_token_opt;
           }
+  | None ->
+      let module_tokens =
+        tokens
+        |> List.filter (fun syntax_token ->
+               let text = Ceibo.Red.SyntaxToken.text syntax_token in
+               not
+                 (String.equal text "open"
+                 || String.equal text "!"))
+      in
+      (match module_tokens with
+      | [] -> None
+      | _ ->
+          Some
+            Cst.OpenStatement.
+              {
+                syntax_node = node;
+                target =
+                  Cst.OpenStatement.Path
+                    (module_path_from_tokens ~syntax_node:node module_tokens);
+                bang_token = bang_token_opt;
+              })
 
 let declaration_name_token_from_node node =
   let operator_token_from_node node =
@@ -5091,6 +5110,51 @@ and validate_apply_argument ~context = function
         (validate_expression ~context:("apply_argument.optional.value" :: context))
         value
 
+and validate_module_expression ~context = function
+  | Cst.ModuleExpression.Path _ | Cst.ModuleExpression.Structure _
+  | Cst.ModuleExpression.Extension _ ->
+      ()
+  | Cst.ModuleExpression.Functor { parameters; body; _ } ->
+      List.iteri
+        (fun index ({ module_type; _ } : Cst.functor_parameter) ->
+          validate_module_type
+            ~context:
+              (("module_expression.functor.parameter[" ^ Int.to_string index ^ "]")
+              :: context)
+            module_type)
+        parameters;
+      validate_module_expression ~context:("module_expression.functor.body" :: context)
+        body
+  | Cst.ModuleExpression.Apply { callee; argument; _ } ->
+      validate_module_expression ~context:("module_expression.apply.callee" :: context)
+        callee;
+      validate_module_expression ~context:("module_expression.apply.argument" :: context)
+        argument
+  | Cst.ModuleExpression.ApplyUnit { callee; _ } ->
+      validate_module_expression
+        ~context:("module_expression.apply_unit.callee" :: context)
+        callee
+  | Cst.ModuleExpression.Constraint { module_expression; module_type; _ } ->
+      validate_module_expression
+        ~context:("module_expression.constraint.expression" :: context)
+        module_expression;
+      validate_module_type ~context:("module_expression.constraint.type" :: context)
+        module_type
+  | Cst.ModuleExpression.Unpack { expression; module_type; _ } ->
+      validate_expression ~context:("module_expression.unpack.expression" :: context)
+        expression;
+      Option.iter
+        (validate_module_type ~context:("module_expression.unpack.type" :: context))
+        module_type
+  | Cst.ModuleExpression.Parenthesized { inner; _ } ->
+      validate_module_expression
+        ~context:("module_expression.parenthesized" :: context)
+        inner
+  | Cst.ModuleExpression.Attribute { module_expression; _ } ->
+      validate_module_expression
+        ~context:("module_expression.attribute" :: context)
+        module_expression
+
 and validate_object_member ~context = function
   | Cst.ObjectMember.Method { body; type_; _ } ->
       Option.iter
@@ -5121,7 +5185,10 @@ and validate_expression ~context = function
   | Cst.Expression.Unreachable _ | Cst.Expression.Attribute _
   | Cst.Expression.Extension _ ->
       ()
-  | Cst.Expression.FirstClassModule { module_type; _ } ->
+  | Cst.Expression.FirstClassModule { module_expression; module_type; _ } ->
+      validate_module_expression
+        ~context:("expression.first_class_module.expression" :: context)
+        module_expression;
       Option.iter
         (validate_module_type
            ~context:("expression.first_class_module.type" :: context))
@@ -5480,9 +5547,16 @@ let validate_item ~context = function
       Option.iter
         (validate_module_type ~context:("item.module_type_declaration" :: context))
         module_type
+  | Cst.Item.OpenStatement stmt -> (
+      match Cst.OpenStatement.target stmt with
+      | Cst.OpenStatement.Path _ ->
+          ()
+      | Cst.OpenStatement.ModuleExpression expr ->
+          validate_module_expression ~context:("item.open_statement.target" :: context)
+            expr)
   | Cst.Item.ModuleDeclaration _
   | Cst.Item.RecursiveModuleDeclaration _
-  | Cst.Item.OpenStatement _ | Cst.Item.IncludeStatement _
+  | Cst.Item.IncludeStatement _
   | Cst.Item.ExceptionDeclaration _ ->
       ()
 

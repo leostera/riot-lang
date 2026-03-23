@@ -10113,8 +10113,8 @@ and parse_class_type_decl parser =
     @ tokens_to_green parser trivia_after_name
     @ body_children)
 
-(** Parse open statement: open Module *)
-and parse_open_stmt parser =
+(** Parse open statement: `open M` / `open! M` / `open struct ... end` *)
+and parse_open_stmt ~signature parser =
   (* Consume 'open' keyword *)
   let open_kw = consume parser in
   let trivia_after_open = consume_trivia parser in
@@ -10158,7 +10158,23 @@ and parse_open_stmt parser =
         [ make_token parser found ]
   in
   
-  let module_path = parse_module_path () in
+  let can_start_module_expression =
+    match peek_kind parser with
+    | Token.OpenDelim Token.Bracket when is_extension_start parser -> true
+    | Token.OpenDelim Token.Brace when is_brace_extension_start parser -> true
+    | Token.Keyword Keyword.Functor -> true
+    | Token.OpenDelim Token.StructEnd | Token.OpenDelim Token.Paren -> true
+    | Token.Ident name when ident_starts_uppercase name -> true
+    | _ -> false
+  in
+  let opened_thing =
+    if signature then
+      parse_module_path ()
+    else if can_start_module_expression then
+      [ Ceibo.Green.Node (parse_module_expr parser) ]
+    else
+      parse_module_path ()
+  in
 
   (* Build OPEN_STMT node *)
   make_node Syntax_kind.OPEN_STMT
@@ -10169,7 +10185,7 @@ and parse_open_stmt parser =
     @ attr_nodes
     @ bang_children
     @ tokens_to_green parser trivia_after_bang
-    @ module_path)
+    @ opened_thing)
 
 (** Parse include statement: include Module or include Module.Submodule *)
 and parse_include_stmt ~signature parser =
@@ -10326,7 +10342,7 @@ and parse_structure_item ?(in_block = false) parser =
       if is_class_type then parse_class_type_decl parser else parse_class_decl parser
   | Token.Keyword Keyword.External -> parse_external_decl parser
   | Token.Keyword Keyword.Exception -> parse_exception_decl parser
-  | Token.Keyword Keyword.Open -> parse_open_stmt parser
+  | Token.Keyword Keyword.Open -> parse_open_stmt ~signature:false parser
   | Token.Keyword Keyword.Include -> parse_include_stmt ~signature:false parser
   | _ ->
       (* Try to parse as expression - top-level expressions are allowed in .ml files *)
@@ -10457,7 +10473,7 @@ and parse_signature_item parser =
       if is_class_type then parse_class_type_decl parser else parse_class_decl parser
   | Token.Keyword Keyword.External -> parse_external_decl parser
   | Token.Keyword Keyword.Exception -> parse_exception_decl parser
-  | Token.Keyword Keyword.Open -> parse_open_stmt parser
+  | Token.Keyword Keyword.Open -> parse_open_stmt ~signature:true parser
   | Token.Keyword Keyword.Include -> parse_include_stmt ~signature:true parser
   | Token.Keyword Keyword.And ->
       (* Parse 'and' in signature context - always for type declarations *)

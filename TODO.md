@@ -188,7 +188,7 @@ Remember to document the CST types and constructors with examples so its easy to
 - [~] Attributes and extensions now preserve sigils, names, and payload anchors, but their payloads are not yet fully typed
 - [~] Includes, opens, and with-constraints are still thinner than they should be
   - [x] include statements now carry typed module-expression/module-type targets
-  - [ ] open statements still only preserve qualified identifiers
+  - [x] open statements now distinguish signature-style paths from implementation module-expression targets
   - [ ] with-constraints still do not form a richer typed tree
 
 #### Present But Lossy

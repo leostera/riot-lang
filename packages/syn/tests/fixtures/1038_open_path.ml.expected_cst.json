@@ -20,21 +20,71 @@
               "end": 14
             }
           },
+          "target": {
+            "tag": "module_expression",
+            "value": {
+              "tag": "path",
+              "path": {
+                "tag": "qualified",
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 5,
+                    "end": 14
+                  }
+                },
+                "prefix": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "MODULE_PATH",
+                    "span": {
+                      "start": 5,
+                      "end": 14
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "List",
+                    "span": {
+                      "start": 5,
+                      "end": 9
+                    }
+                  }
+                },
+                "dot_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 9,
+                    "end": 10
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Set",
+                  "span": {
+                    "start": 10,
+                    "end": 13
+                  }
+                }
+              }
+            }
+          },
           "module_path": {
             "tag": "qualified",
             "syntax_node": {
-              "kind": "OPEN_STMT",
+              "kind": "MODULE_PATH",
               "span": {
-                "start": 0,
+                "start": 5,
                 "end": 14
               }
             },
             "prefix": {
               "tag": "ident",
               "syntax_node": {
-                "kind": "OPEN_STMT",
+                "kind": "MODULE_PATH",
                 "span": {
-                  "start": 0,
+                  "start": 5,
                   "end": 14
                 }
               },

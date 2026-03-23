@@ -7420,28 +7420,35 @@
             "width": 1
           },
           {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "width": 1
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": "\n\n",
-            "width": 2
-          },
-          {
-            "type": "token",
-            "kind": "COMMENT",
-            "text": "(* Signature items *)",
-            "width": 21
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": "\n",
-            "width": 1
+            "type": "node",
+            "kind": "MODULE_PATH",
+            "width": 25,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "M",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n\n",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* Signature items *)",
+                "width": 21
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
+              }
+            ]
           }
         ]
       },

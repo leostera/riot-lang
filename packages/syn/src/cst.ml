@@ -1999,14 +1999,26 @@ module ModuleTypeDeclaration = struct
 end
 
 module OpenStatement = struct
+  type target =
+    | Path of Ident.t
+    | ModuleExpression of module_expression
+
   type t = {
     syntax_node : syntax_node;
-    module_path : Ident.t;
+    target : target;
     bang_token : Token.t option;
   }
 
   let syntax_node stmt = stmt.syntax_node
-  let module_path stmt = stmt.module_path
+  let target stmt = stmt.target
+  let module_expression stmt =
+    match stmt.target with
+    | ModuleExpression expr -> Some expr
+    | Path _ -> None
+  let module_path stmt =
+    match stmt.target with
+    | Path path | ModuleExpression (ModuleExpression.Path path) -> Some path
+    | ModuleExpression _ -> None
   let bang_token stmt = stmt.bang_token
   let has_bang stmt = Option.is_some stmt.bang_token
 end

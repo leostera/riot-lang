@@ -22,28 +22,35 @@
             "width": 1
           },
           {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "List",
-            "width": 4
-          },
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": ".",
-            "width": 1
-          },
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "Set",
-            "width": 3
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": "\n",
-            "width": 1
+            "type": "node",
+            "kind": "MODULE_PATH",
+            "width": 9,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "List",
+                "width": 4
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "Set",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
+              }
+            ]
           }
         ]
       }

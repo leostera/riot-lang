@@ -2490,11 +2490,25 @@ let tests =
         match Syn.Cst.SourceFile.items cst with
         | Syn.Cst.Item.OpenStatement stmt :: _ ->
             Test.assert_true (Syn.Cst.OpenStatement.has_bang stmt);
+            (match Syn.Cst.OpenStatement.target stmt with
+            | Syn.Cst.OpenStatement.ModuleExpression
+                (Syn.Cst.ModuleExpression.Path path) ->
+                Test.assert_equal ~expected:(Some "List")
+                  ~actual:(Syn.Cst.Ident.name path)
+            | _ ->
+                ());
             Test.assert_equal ~expected:(Some "List")
               ~actual:
-                (Syn.Cst.OpenStatement.module_path stmt
-                |> Syn.Cst.ModulePath.name);
-            Ok ()
+                (match Syn.Cst.OpenStatement.module_path stmt with
+                | Some module_path -> Syn.Cst.ModulePath.name module_path
+                | None -> None);
+            (match Syn.Cst.OpenStatement.target stmt with
+            | Syn.Cst.OpenStatement.ModuleExpression
+                (Syn.Cst.ModuleExpression.Path _) ->
+                Ok ()
+            | _ ->
+                Error
+                  "expected implementation open target to lift as a module expression")
         | _ -> Error "expected first item to be an open statement");
     Test.case "cst interface open statements preserve open! structurally"
       (fun () ->
@@ -2507,13 +2521,50 @@ let tests =
         match Syn.Cst.SourceFile.items cst with
         | Syn.Cst.Item.OpenStatement stmt :: _ ->
             Test.assert_true (Syn.Cst.OpenStatement.has_bang stmt);
+            (match Syn.Cst.OpenStatement.target stmt with
+            | Syn.Cst.OpenStatement.Path path ->
+                Test.assert_equal ~expected:(Some "List")
+                  ~actual:(Syn.Cst.Ident.name path)
+            | _ ->
+                ());
             Test.assert_equal ~expected:(Some "List")
               ~actual:
-                (Syn.Cst.OpenStatement.module_path stmt
-                |> Syn.Cst.ModulePath.name);
-            Ok ()
+                (match Syn.Cst.OpenStatement.module_path stmt with
+                | Some module_path -> Syn.Cst.ModulePath.name module_path
+                | None -> None);
+            (match Syn.Cst.OpenStatement.target stmt with
+            | Syn.Cst.OpenStatement.Path _ ->
+                Ok ()
+            | _ ->
+                Error "expected interface open target to remain a module path")
         | _ ->
             Error "expected first item to be an interface open statement");
+    Test.case "cst implementation open statements lift non-path module expressions"
+      (fun () ->
+        let result =
+          parse_ml
+            "open struct\n\
+             let value = 1\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.OpenStatement stmt :: _ -> (
+            match Syn.Cst.OpenStatement.target stmt with
+            | Syn.Cst.OpenStatement.ModuleExpression
+                (Syn.Cst.ModuleExpression.Structure { item_syntax_nodes; _ }) ->
+                Test.assert_true (List.length item_syntax_nodes > 0);
+                Test.assert_equal ~expected:None
+                  ~actual:(Syn.Cst.OpenStatement.module_path stmt);
+                Ok ()
+            | _ ->
+                Error "expected implementation open target to preserve structure syntax")
+        | _ ->
+            Error "expected first item to be an implementation open statement");
     Test.case "cst source files collect let bindings recursively" (fun () ->
         let source =
           "let top_level = 1\nlet render x = let local_value = x in local_value\n"

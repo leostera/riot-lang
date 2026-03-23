@@ -28,16 +28,23 @@
             "width": 1
           },
           {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "List",
-            "width": 4
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": "\n",
-            "width": 1
+            "type": "node",
+            "kind": "MODULE_PATH",
+            "width": 5,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "List",
+                "width": 4
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
+              }
+            ]
           }
         ]
       }

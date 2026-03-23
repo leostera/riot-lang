@@ -3263,14 +3263,34 @@ end
     Covers both `open M` and `open! M`.
 *)
 module OpenStatement : sig
+  type target =
+    | Path of Ident.t
+        (** A path-style open target such as `open Std.List`.
+
+            This is the only form accepted in signatures.
+        *)
+    | ModuleExpression of module_expression
+        (** An implementation open target lifted through `module_expression`.
+
+            Examples:
+
+            ```ocaml,norun
+            open Std.List
+            open Make(Std)
+            open struct let value = 1 end
+            ```
+        *)
+
   type t = {
     syntax_node : syntax_node;
-    module_path : Ident.t;
+    target : target;
     bang_token : Token.t option;
   }
 
   val syntax_node : t -> syntax_node
-  val module_path : t -> Ident.t
+  val target : t -> target
+  val module_expression : t -> module_expression option
+  val module_path : t -> Ident.t option
   val bang_token : t -> Token.t option
   val has_bang : t -> bool
 end

@@ -146,16 +146,23 @@
             "width": 1
           },
           {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "Parsetree",
-            "width": 9
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": "\n\n",
-            "width": 2
+            "type": "node",
+            "kind": "MODULE_PATH",
+            "width": 11,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "Parsetree",
+                "width": 9
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n\n",
+                "width": 2
+              }
+            ]
           }
         ]
       },

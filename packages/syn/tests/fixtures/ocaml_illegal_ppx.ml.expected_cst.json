@@ -110,12 +110,36 @@
               "end": 60
             }
           },
+          "target": {
+            "tag": "module_expression",
+            "value": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 49,
+                    "end": 60
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Parsetree",
+                  "span": {
+                    "start": 49,
+                    "end": 58
+                  }
+                }
+              }
+            }
+          },
           "module_path": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "OPEN_STMT",
+              "kind": "MODULE_PATH",
               "span": {
-                "start": 44,
+                "start": 49,
                 "end": 60
               }
             },

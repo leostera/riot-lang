@@ -3291,21 +3291,45 @@
               "end": 2014
             }
           },
+          "target": {
+            "tag": "module_expression",
+            "value": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 1989,
+                    "end": 2014
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "M",
+                  "span": {
+                    "start": 1989,
+                    "end": 1990
+                  }
+                }
+              }
+            }
+          },
           "module_path": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "OPEN_STMT",
+              "kind": "MODULE_PATH",
               "span": {
-                "start": 1973,
+                "start": 1989,
                 "end": 2014
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
-              "text": "%",
+              "text": "M",
               "span": {
-                "start": 1977,
-                "end": 1978
+                "start": 1989,
+                "end": 1990
               }
             }
           },
