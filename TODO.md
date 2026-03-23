@@ -180,7 +180,7 @@ Remember to document the CST types and constructors with examples so its easy to
 - [ ] Type declarations still do not expose typed structure for:
   - [ ] manifest/core type of aliases
   - [ ] constraints
-  - [ ] variance/injectivity on parameters
+  - [x] variance/injectivity on parameters
   - [ ] record label declarations
   - [ ] constructor argument lists
   - [ ] constructor result types / GADT constructors
@@ -213,7 +213,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [ ] Expression attributes are represented as wrapper nodes instead of orthogonal metadata
 - [ ] Type declarations:
   - [ ] `private_flag` is missing
-  - [ ] parameter variance/injectivity is missing
+  - [x] parameter variance/injectivity is missing
   - [ ] `type_kind` detail is still compressed
   - [ ] record fields only store names + mutability, not field types and attrs
   - [ ] variant constructors only store names, not arguments/results/attrs

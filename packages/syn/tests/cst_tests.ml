@@ -150,6 +150,51 @@ let tests =
             Test.assert_equal ~expected:[ "'a"; "'error" ] ~actual:params;
             Ok ()
         | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst type declarations expose parameter variance and injectivity"
+      (fun () ->
+        let result =
+          parse_ml "type (+!'a, -'b, !'c, 'd) descriptor = int\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.TypeDeclaration decl :: _ ->
+            let params = Syn.Cst.TypeDeclaration.type_params decl in
+            let variances =
+              params
+              |> List.map (fun param ->
+                     match Syn.Cst.TypeParameter.variance param with
+                     | Some (Syn.Cst.TypeParameterVariance.Covariant _) ->
+                         Some "covariant"
+                     | Some (Syn.Cst.TypeParameterVariance.Contravariant _) ->
+                         Some "contravariant"
+                     | None -> None)
+            in
+            let injectivity =
+              params |> List.map Syn.Cst.TypeParameter.is_injective
+            in
+            let names =
+              params
+              |> List.map (fun param ->
+                     Syn.Cst.TypeParameter.type_variable param
+                     |> Option.map Syn.Cst.TypeVariable.text)
+            in
+            Test.assert_equal
+              ~expected:
+                [ Some "covariant"; Some "contravariant"; None; None ]
+              ~actual:variances;
+            Test.assert_equal ~expected:[ true; false; true; false ]
+              ~actual:injectivity;
+            Test.assert_equal
+              ~expected:
+                [ Some "'a"; Some "'b"; Some "'c"; Some "'d" ]
+              ~actual:names;
+            Ok ()
+        | _ -> Error "expected first item to be a type declaration");
     Test.case "cst type declarations expose record fields structurally" (fun () ->
         let result =
           parse_ml

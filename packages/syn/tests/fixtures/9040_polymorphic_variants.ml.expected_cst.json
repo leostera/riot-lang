@@ -395,6 +395,8 @@
                   "end": 238
                 }
               },
+              "variance": null,
+              "is_injective": false,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -421,6 +423,8 @@
                   "end": 244
                 }
               },
+              "variance": null,
+              "is_injective": false,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",

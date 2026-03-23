@@ -29,6 +29,8 @@
                   "end": 149
                 }
               },
+              "variance": null,
+              "is_injective": false,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -108,6 +110,8 @@
                   "end": 177
                 }
               },
+              "variance": null,
+              "is_injective": false,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -262,6 +266,8 @@
                   "end": 431
                 }
               },
+              "variance": null,
+              "is_injective": false,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -410,6 +416,8 @@
                   "end": 458
                 }
               },
+              "variance": null,
+              "is_injective": false,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",

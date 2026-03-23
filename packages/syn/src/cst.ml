@@ -1677,13 +1677,31 @@ module TypeVariable = struct
   let name type_variable = Token.text type_variable.name_token
 end
 
+module TypeParameterVariance = struct
+  type t =
+    | Covariant of {
+        marker_token : Token.t;
+      }
+    | Contravariant of {
+        marker_token : Token.t;
+      }
+
+  let marker_token = function
+    | Covariant { marker_token } | Contravariant { marker_token } ->
+        marker_token
+end
+
 module TypeParameter = struct
   type t = {
     syntax_node : syntax_node;
+    variance : TypeParameterVariance.t option;
+    is_injective : bool;
     type_variable : TypeVariable.t option;
   }
 
   let syntax_node type_param = type_param.syntax_node
+  let variance type_param = type_param.variance
+  let is_injective type_param = type_param.is_injective
   let type_variable type_param = type_param.type_variable
 end
 

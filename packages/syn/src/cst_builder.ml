@@ -3549,7 +3549,32 @@ and type_parameter_from_node node =
     | Some child -> type_variable_from_node child
     | None -> None
   in
-  Cst.TypeParameter.{ syntax_node = node; type_variable = lifted_type_variable }
+  let parameter_variance =
+    direct_non_trivia_tokens node
+    |> List.find_map (fun syntax_token ->
+           match Ceibo.Red.SyntaxToken.text syntax_token with
+           | "+" ->
+               Some
+                 (Cst.TypeParameterVariance.Covariant
+                    { marker_token = token syntax_token })
+           | "-" ->
+               Some
+                 (Cst.TypeParameterVariance.Contravariant
+                    { marker_token = token syntax_token })
+           | _ -> None)
+  in
+  let parameter_is_injective =
+    direct_non_trivia_tokens node
+    |> List.exists (fun syntax_token ->
+           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "!")
+  in
+  Cst.TypeParameter.
+    {
+      syntax_node = node;
+      variance = parameter_variance;
+      is_injective = parameter_is_injective;
+      type_variable = lifted_type_variable;
+    }
 
 and type_parameters_from_node node =
   direct_non_trivia_nodes node

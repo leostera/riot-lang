@@ -2746,16 +2746,37 @@ end
 
 (** A single type parameter in a type or class declaration.
 
-    This covers named parameters such as `'a` as well as placeholder parameters
-    where no recoverable named variable is exposed publicly.
+    This keeps the parameter's declared variance and injectivity flags together
+    with the written variable token.
+
+    Examples include `+'a` in `type +'a t = ...`, `!'a`-style injective
+    parameters, and `_` in `type _ t = ...`.
 *)
+module TypeParameterVariance : sig
+  type t =
+    | Covariant of {
+        marker_token : Token.t;
+      }
+        (** A `+` variance marker, as in `type +'a t = ...`. *)
+    | Contravariant of {
+        marker_token : Token.t;
+      }
+        (** A `-` variance marker, as in `type -'a sink = ...`. *)
+
+  val marker_token : t -> Token.t
+end
+
 module TypeParameter : sig
   type t = {
     syntax_node : syntax_node;
+    variance : TypeParameterVariance.t option;
+    is_injective : bool;
     type_variable : TypeVariable.t option;
   }
 
   val syntax_node : t -> syntax_node
+  val variance : t -> TypeParameterVariance.t option
+  val is_injective : t -> bool
   val type_variable : t -> TypeVariable.t option
 end
 

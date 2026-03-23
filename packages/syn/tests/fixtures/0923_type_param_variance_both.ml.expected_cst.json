@@ -47,6 +47,18 @@
                   "end": 9
                 }
               },
+              "variance": {
+                "tag": "covariant",
+                "marker_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "+",
+                  "span": {
+                    "start": 6,
+                    "end": 7
+                  }
+                }
+              },
+              "is_injective": false,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -73,6 +85,18 @@
                   "end": 14
                 }
               },
+              "variance": {
+                "tag": "contravariant",
+                "marker_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "-",
+                  "span": {
+                    "start": 11,
+                    "end": 12
+                  }
+                }
+              },
+              "is_injective": false,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",

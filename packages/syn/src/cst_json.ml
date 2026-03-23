@@ -1229,10 +1229,28 @@ let type_variable_to_json type_variable =
       ("name_token", token_to_json (Cst.TypeVariable.name_token type_variable));
     ]
 
+let type_parameter_variance_to_json = function
+  | Cst.TypeParameterVariance.Covariant { marker_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "covariant");
+          ("marker_token", token_to_json marker_token);
+        ]
+  | Cst.TypeParameterVariance.Contravariant { marker_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "contravariant");
+          ("marker_token", token_to_json marker_token);
+        ]
+
 let type_parameter_to_json type_parameter =
   Json.Object
     [
       ("syntax_node", syntax_node_to_json (Cst.TypeParameter.syntax_node type_parameter));
+      ( "variance",
+        option_to_json type_parameter_variance_to_json
+          (Cst.TypeParameter.variance type_parameter) );
+      ("is_injective", Json.Bool (Cst.TypeParameter.is_injective type_parameter));
       ( "type_variable",
         option_to_json type_variable_to_json
           (Cst.TypeParameter.type_variable type_parameter) );
