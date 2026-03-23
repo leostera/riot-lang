@@ -19,6 +19,55 @@ let source_of_result (result : Syn.Parser.parse_result) = result.source
 let source_of_pattern pattern = source_of_syntax_node (Syn.Cst.Pattern.syntax_node pattern) |> String.trim
 let source_of_parameter parameter = source_of_syntax_node (Syn.Cst.Parameter.syntax_node parameter) |> String.trim
 
+let identifier_character = function
+  | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '\'' ->
+      true
+  | _ ->
+      false
+
+let source_mentions_identifier source identifier =
+  let source_length = String.length source in
+  let identifier_length = String.length identifier in
+  let rec loop index =
+    if index + identifier_length > source_length then
+      false
+    else if String.sub source index identifier_length = identifier then
+      let before_ok =
+        index = 0 || not (identifier_character source.[index - 1])
+      in
+      let after_index = index + identifier_length in
+      let after_ok =
+        after_index = source_length
+        || not (identifier_character source.[after_index])
+      in
+      if before_ok && after_ok then
+        true
+      else loop (index + 1)
+    else loop (index + 1)
+  in
+  loop 0
+
+let fresh_match_parameter_name syntax_node =
+  let source = source_of_syntax_node syntax_node in
+  let rec pick = function
+    | [] ->
+        "value"
+    | name :: rest ->
+        if source_mentions_identifier source name then
+          pick rest
+        else name
+  in
+  pick
+    [
+      "x";
+      "value";
+      "arg";
+      "input";
+      "subject";
+      "subject0";
+      "subject1";
+    ]
+
 let has_comment_like_trivia (result : Syn.Parser.parse_result) =
   let rec loop = function
     | Syn.Ceibo.Green.Token _ as element -> (
@@ -101,6 +150,14 @@ let render_binding ~indent ~keyword binding_pattern value =
     prefix ^ keyword ^ binding_pattern ^ " =\n" ^ value
   else prefix ^ keyword ^ binding_pattern ^ " = " ^ value
 
+let indent_block spaces text =
+  text |> String.split_on_char '\n'
+  |> List.map (fun line -> if line = "" then line else indent_string spaces ^ line)
+  |> String.concat "\n"
+
+let source_of_or_pattern_alternatives { Syn.Cst.alternatives; _ } =
+  alternatives |> List.map source_of_pattern
+
 let rec render_expression ~indent = function
   | Syn.Cst.Expression.Literal literal ->
       render_literal literal
@@ -122,10 +179,45 @@ let rec render_expression ~indent = function
       render_fun_expression ~indent fun_
   | Syn.Cst.Expression.Function function_ ->
       render_function_expression ~indent function_
+  | Syn.Cst.Expression.Match match_ ->
+      render_match_expression ~indent ~keyword_trailing_space:true match_
   | Syn.Cst.Expression.Apply apply ->
       render_apply_expression ~indent apply
   | expression ->
       source_of_syntax_node (Syn.Cst.Expression.syntax_node expression)
+
+and multiline_case_lines ~case_indent ~or_indent ~is_last_case (case : Syn.Cst.match_case) =
+  let guard =
+    match case.guard with
+    | None -> ""
+    | Some guard -> " when " ^ render_expression ~indent:0 guard
+  in
+  let body = render_expression ~indent:0 case.body in
+  let trailing_space = if is_last_case then "" else " " in
+  match case.pattern with
+  | Syn.Cst.Pattern.Or or_pattern -> (
+      match source_of_or_pattern_alternatives or_pattern |> List.rev with
+      | [] ->
+          []
+      | last :: rest_reversed ->
+          let alternatives = List.rev rest_reversed in
+          let rendered_alternatives =
+            alternatives
+            |> List.map (fun alternative ->
+                   indent_string or_indent ^ "| " ^ alternative ^ " ")
+          in
+          rendered_alternatives
+          @ [ indent_string or_indent ^ "| " ^ last ^ guard ^ " -> " ^ body ^ trailing_space ])
+  | _ ->
+      [ indent_string case_indent ^ "| " ^ source_of_pattern case.pattern ^ guard ^ " -> " ^ body
+        ^ trailing_space ]
+
+and multiline_cases ~case_indent ~or_indent cases =
+  cases
+  |> List.mapi (fun index case ->
+         multiline_case_lines ~case_indent ~or_indent
+           ~is_last_case:(index = List.length cases - 1) case)
+  |> List.flatten
 
 and render_let_expression ~indent
     ({ syntax_node; binding_pattern; bound_value; and_bindings; body; is_recursive; _ } :
@@ -163,48 +255,73 @@ and render_fun_expression ~indent
       parameters |> List.map source_of_parameter |> String.concat " "
     in
     match body with
+    | Syn.Cst.Expression (Syn.Cst.Expression.Match match_) ->
+        "fun " ^ rendered_parameters ^ " -> \n"
+        ^ render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:true match_
     | Syn.Cst.Expression expression ->
         let rendered_body = render_expression ~indent:(indent + 2) expression in
         if String.contains rendered_body "\n" then
-          "fun " ^ rendered_parameters ^ " ->\n" ^ rendered_body
+          "fun " ^ rendered_parameters ^ " -> \n" ^ rendered_body
         else "fun " ^ rendered_parameters ^ " -> " ^ rendered_body
     | Syn.Cst.Cases case_body ->
         source_of_syntax_node case_body.syntax_node
 
 and render_function_expression ~indent
     ({ syntax_node; cases; _ } : Syn.Cst.function_expression) =
+  let has_or_patterns =
+    List.exists
+      (fun (case : Syn.Cst.match_case) ->
+        match case.pattern with
+        | Syn.Cst.Pattern.Or _ -> true
+        | _ -> false)
+      cases
+  in
+  let should_lower_to_fun_match =
+    List.length cases > 1
+    && not has_or_patterns
+    && List.for_all
+         (fun (case : Syn.Cst.match_case) ->
+           case.guard = None
+           &&
+           match case.pattern with
+           | Syn.Cst.Pattern.Literal _ | Syn.Cst.Pattern.Wildcard _ ->
+               true
+           | _ ->
+               false)
+         cases
+  in
   match cases with
   | [ case ] when case.guard = None ->
       "fun " ^ render_fun_parameter_pattern case.pattern ^ " -> "
       ^ render_expression ~indent case.body
+  | cases when should_lower_to_fun_match ->
+      let parameter_name = fresh_match_parameter_name syntax_node in
+      let scrutinee = parameter_name in
+      "fun " ^ parameter_name ^ " ->\n"
+      ^ render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:false
+          {
+            syntax_node;
+            scrutinee =
+              Syn.Cst.Expression.Path
+                {
+                  syntax_node;
+                  path = Syn.Cst.Ident.from_string scrutinee;
+                  attributes = [];
+                };
+            cases;
+            attributes = [];
+          }
   | (cases : Syn.Cst.match_case list) ->
-      if
-        List.exists
-          (fun (case : Syn.Cst.match_case) ->
-            match case.pattern with
-            | Syn.Cst.Pattern.Or _ -> true
-            | _ -> false)
-          cases
-      then source_of_syntax_node syntax_node
-      else
-        let render_case index (case : Syn.Cst.match_case) =
-          let pattern = source_of_pattern case.pattern in
-          let guard =
-            match case.guard with
-            | None -> ""
-            | Some guard -> " when " ^ render_expression ~indent:0 guard
-          in
-          let body = render_expression ~indent:0 case.body in
-          let trailing_space =
-            if index < List.length cases - 1 then
-              " "
-            else ""
-          in
-          indent_string (indent + 2) ^ "| " ^ pattern ^ guard ^ " -> " ^ body
-          ^ trailing_space
-        in
-        indent_string indent ^ "function \n"
-        ^ (cases |> List.mapi render_case |> String.concat "\n")
+      let case_indent = if has_or_patterns then indent + 1 else indent + 2 in
+      indent_string indent ^ "function \n"
+      ^ (multiline_cases ~case_indent ~or_indent:(indent + 1) cases
+        |> String.concat "\n")
+
+and render_match_expression ~indent ~keyword_trailing_space
+    ({ scrutinee; cases; _ } : Syn.Cst.match_expression) =
+  indent_string indent ^ "match " ^ render_expression ~indent:0 scrutinee
+  ^ (if keyword_trailing_space then " with \n" else " with\n")
+  ^ (multiline_cases ~case_indent:indent ~or_indent:indent cases |> String.concat "\n")
 
 and render_apply_expression ~indent
     ({ syntax_node; callee; argument; _ } : Syn.Cst.apply_expression) =
@@ -232,16 +349,17 @@ let render_let_binding (binding : Syn.Cst.LetBinding.t) =
   else
     let keyword = if binding.is_recursive then "let rec " else "let " in
     let pattern = source_of_pattern binding.binding_pattern in
-    let value =
-      match binding.value with
-      | Syn.Cst.Expression.Let _ -> render_expression ~indent:2 binding.value
-      | _ -> render_expression ~indent:0 binding.value
-    in
     Some
       (match binding.value with
+      | Syn.Cst.Expression.Function { cases; _ } as function_
+        when List.exists (fun (case : Syn.Cst.match_case) -> Option.is_some case.guard) cases ->
+          keyword ^ pattern ^ " = \n"
+          ^ indent_block 2 (render_expression ~indent:0 function_)
       | Syn.Cst.Expression.Let _ ->
+          let value = render_expression ~indent:2 binding.value in
           render_binding ~indent:0 ~keyword pattern value
       | _ ->
+          let value = render_expression ~indent:0 binding.value in
           keyword ^ pattern ^ " = " ^ value)
 
 let render_structure_item = function

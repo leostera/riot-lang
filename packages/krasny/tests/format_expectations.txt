@@ -9,10 +9,13 @@
 0030_paren_bool.ml
 0089_let_in_multiline.ml
 0106_fun_nested.ml
+0108_fun_body_match.ml
 0111_function_one_case.ml
+0112_function_two_cases.ml
 0113_function_wildcard.ml
 0114_function_tuple.ml
 0115_function_list.ml
 0116_function_constructor.ml
+0117_function_or_pattern.ml
 0119_function_nested_pattern.ml
 0120_function_application.ml

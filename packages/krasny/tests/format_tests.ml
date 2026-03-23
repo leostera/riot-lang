@@ -92,6 +92,40 @@ let tests =
           ~expected:"let f = function \n  | [] -> 0 \n  | x :: xs -> x\n"
           ~actual;
         Ok ());
+    Test.case "format expands match bodies inside fun expressions" (fun () ->
+        let source = "let f = fun x -> match x with 0 -> \"zero\" | _ -> \"other\"\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"match bodies should format"
+        in
+        Test.assert_equal
+          ~expected:
+            "let f = fun x -> \n  match x with \n  | 0 -> \"zero\" \n  | _ -> \"other\"\n"
+          ~actual;
+        Ok ());
+    Test.case "format rewrites simple multi-case functions into fun-match"
+      (fun () ->
+        let source = "let f = function 0 -> \"zero\" | _ -> \"other\"\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"simple multi-case functions should format"
+        in
+        Test.assert_equal
+          ~expected:
+            "let f = fun x ->\n  match x with\n  | 0 -> \"zero\" \n  | _ -> \"other\"\n"
+          ~actual;
+        Ok ());
+    Test.case "format keeps or-pattern function cases multiline"
+      (fun () ->
+        let source = "let ors = function 1 | 2 | 3 -> true | _ -> false\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"or-pattern functions should format"
+        in
+        Test.assert_equal
+          ~expected:"let ors = function \n | 1 \n | 2 \n | 3 -> true \n | _ -> false\n"
+          ~actual;
+        Ok ());
     Test.case "format preserves syntax hash for selected codebase files"
       (fun () ->
         List.iter assert_roundtrip_hash workspace_files;
