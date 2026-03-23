@@ -3261,7 +3261,10 @@
                                 },
                                 "pattern": null
                               }
-                            ]
+                            ],
+                            "closedness": {
+                              "tag": "closed"
+                            }
                           },
                           {
                             "tag": "wildcard",
@@ -3490,7 +3493,10 @@
                                 },
                                 "pattern": null
                               }
-                            ]
+                            ],
+                            "closedness": {
+                              "tag": "closed"
+                            }
                           },
                           {
                             "tag": "wildcard",
@@ -3719,7 +3725,10 @@
                                 },
                                 "pattern": null
                               }
-                            ]
+                            ],
+                            "closedness": {
+                              "tag": "closed"
+                            }
                           },
                           {
                             "tag": "constructor",
@@ -3876,7 +3885,18 @@
                                           ]
                                         }
                                       }
-                                    ]
+                                    ],
+                                    "closedness": {
+                                      "tag": "open",
+                                      "wildcard_token": {
+                                        "kind": "WILDCARD_PATTERN",
+                                        "text": "_",
+                                        "span": {
+                                          "start": 1003,
+                                          "end": 1004
+                                        }
+                                      }
+                                    }
                                   }
                                 ]
                               }
@@ -4442,7 +4462,10 @@
                                 },
                                 "pattern": null
                               }
-                            ]
+                            ],
+                            "closedness": {
+                              "tag": "closed"
+                            }
                           },
                           {
                             "tag": "wildcard",
@@ -4973,7 +4996,10 @@
                                 },
                                 "pattern": null
                               }
-                            ]
+                            ],
+                            "closedness": {
+                              "tag": "closed"
+                            }
                           },
                           {
                             "tag": "wildcard",
@@ -5549,7 +5575,10 @@
                                       },
                                       "pattern": null
                                     }
-                                  ]
+                                  ],
+                                  "closedness": {
+                                    "tag": "closed"
+                                  }
                                 },
                                 {
                                   "tag": "wildcard",
@@ -5836,7 +5865,10 @@
                                       },
                                       "pattern": null
                                     }
-                                  ]
+                                  ],
+                                  "closedness": {
+                                    "tag": "closed"
+                                  }
                                 },
                                 {
                                   "tag": "wildcard",
@@ -6407,7 +6439,10 @@
                                       },
                                       "pattern": null
                                     }
-                                  ]
+                                  ],
+                                  "closedness": {
+                                    "tag": "closed"
+                                  }
                                 },
                                 {
                                   "tag": "wildcard",
@@ -10404,7 +10439,10 @@
                               },
                               "pattern": null
                             }
-                          ]
+                          ],
+                          "closedness": {
+                            "tag": "closed"
+                          }
                         },
                         {
                           "tag": "wildcard",
@@ -10633,7 +10671,10 @@
                               },
                               "pattern": null
                             }
-                          ]
+                          ],
+                          "closedness": {
+                            "tag": "closed"
+                          }
                         },
                         {
                           "tag": "wildcard",
@@ -10862,7 +10903,10 @@
                               },
                               "pattern": null
                             }
-                          ]
+                          ],
+                          "closedness": {
+                            "tag": "closed"
+                          }
                         },
                         {
                           "tag": "constructor",
@@ -11019,7 +11063,18 @@
                                         ]
                                       }
                                     }
-                                  ]
+                                  ],
+                                  "closedness": {
+                                    "tag": "open",
+                                    "wildcard_token": {
+                                      "kind": "WILDCARD_PATTERN",
+                                      "text": "_",
+                                      "span": {
+                                        "start": 1003,
+                                        "end": 1004
+                                      }
+                                    }
+                                  }
                                 }
                               ]
                             }
@@ -11582,7 +11637,10 @@
                               },
                               "pattern": null
                             }
-                          ]
+                          ],
+                          "closedness": {
+                            "tag": "closed"
+                          }
                         },
                         {
                           "tag": "wildcard",
@@ -12110,7 +12168,10 @@
                               },
                               "pattern": null
                             }
-                          ]
+                          ],
+                          "closedness": {
+                            "tag": "closed"
+                          }
                         },
                         {
                           "tag": "wildcard",
@@ -12683,7 +12744,10 @@
                                     },
                                     "pattern": null
                                   }
-                                ]
+                                ],
+                                "closedness": {
+                                  "tag": "closed"
+                                }
                               },
                               {
                                 "tag": "wildcard",
@@ -12970,7 +13034,10 @@
                                     },
                                     "pattern": null
                                   }
-                                ]
+                                ],
+                                "closedness": {
+                                  "tag": "closed"
+                                }
                               },
                               {
                                 "tag": "wildcard",
@@ -13538,7 +13605,10 @@
                                     },
                                     "pattern": null
                                   }
-                                ]
+                                ],
+                                "closedness": {
+                                  "tag": "closed"
+                                }
                               },
                               {
                                 "tag": "wildcard",
@@ -23453,7 +23523,10 @@
                             },
                             "pattern": null
                           }
-                        ]
+                        ],
+                        "closedness": {
+                          "tag": "closed"
+                        }
                       },
                       {
                         "tag": "wildcard",
@@ -23682,7 +23755,10 @@
                             },
                             "pattern": null
                           }
-                        ]
+                        ],
+                        "closedness": {
+                          "tag": "closed"
+                        }
                       },
                       {
                         "tag": "wildcard",
@@ -23911,7 +23987,10 @@
                             },
                             "pattern": null
                           }
-                        ]
+                        ],
+                        "closedness": {
+                          "tag": "closed"
+                        }
                       },
                       {
                         "tag": "constructor",
@@ -24068,7 +24147,18 @@
                                       ]
                                     }
                                   }
-                                ]
+                                ],
+                                "closedness": {
+                                  "tag": "open",
+                                  "wildcard_token": {
+                                    "kind": "WILDCARD_PATTERN",
+                                    "text": "_",
+                                    "span": {
+                                      "start": 1003,
+                                      "end": 1004
+                                    }
+                                  }
+                                }
                               }
                             ]
                           }
@@ -25588,7 +25678,10 @@
                             },
                             "pattern": null
                           }
-                        ]
+                        ],
+                        "closedness": {
+                          "tag": "closed"
+                        }
                       },
                       {
                         "tag": "wildcard",
@@ -26685,7 +26778,10 @@
                             },
                             "pattern": null
                           }
-                        ]
+                        ],
+                        "closedness": {
+                          "tag": "closed"
+                        }
                       },
                       {
                         "tag": "wildcard",
@@ -27827,7 +27923,10 @@
                                   },
                                   "pattern": null
                                 }
-                              ]
+                              ],
+                              "closedness": {
+                                "tag": "closed"
+                              }
                             },
                             {
                               "tag": "wildcard",
@@ -28114,7 +28213,10 @@
                                   },
                                   "pattern": null
                                 }
-                              ]
+                              ],
+                              "closedness": {
+                                "tag": "closed"
+                              }
                             },
                             {
                               "tag": "wildcard",
@@ -29276,7 +29378,10 @@
                                   },
                                   "pattern": null
                                 }
-                              ]
+                              ],
+                              "closedness": {
+                                "tag": "closed"
+                              }
                             },
                             {
                               "tag": "wildcard",

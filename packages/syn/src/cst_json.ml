@@ -573,12 +573,13 @@ and pattern_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("elements", Json.Array (List.map pattern_to_json elements));
         ]
-  | Cst.Pattern.Record { syntax_node; fields } ->
+  | Cst.Pattern.Record { syntax_node; fields; closedness } ->
       Json.Object
         [
           ("tag", Json.String "record");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("fields", Json.Array (List.map record_pattern_field_to_json fields));
+          ("closedness", record_pattern_closedness_to_json closedness);
         ]
   | Cst.Pattern.Cons { syntax_node; head; tail } ->
       Json.Object
@@ -642,6 +643,16 @@ and record_pattern_field_to_json field =
       ("field_path", ident_to_json field.field_path);
       ("pattern", option_to_json pattern_to_json field.pattern);
     ]
+
+and record_pattern_closedness_to_json = function
+  | Cst.Closed ->
+      Json.Object [ ("tag", Json.String "closed") ]
+  | Cst.Open { wildcard_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "open");
+          ("wildcard_token", token_to_json wildcard_token);
+        ]
 
 and parameter_to_json = function
   | Cst.Parameter.Positional { syntax_node; name_token } ->

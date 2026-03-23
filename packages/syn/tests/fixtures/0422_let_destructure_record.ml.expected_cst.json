@@ -87,7 +87,10 @@
                 },
                 "pattern": null
               }
-            ]
+            ],
+            "closedness": {
+              "tag": "closed"
+            }
           },
           "bound_value": {
             "tag": "path",
@@ -273,7 +276,10 @@
               },
               "pattern": null
             }
-          ]
+          ],
+          "closedness": {
+            "tag": "closed"
+          }
         },
         "bound_value": {
           "tag": "path",

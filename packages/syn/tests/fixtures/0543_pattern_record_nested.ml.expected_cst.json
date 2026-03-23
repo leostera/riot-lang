@@ -112,10 +112,16 @@
                         }
                       }
                     }
-                  ]
+                  ],
+                  "closedness": {
+                    "tag": "closed"
+                  }
                 }
               }
-            ]
+            ],
+            "closedness": {
+              "tag": "closed"
+            }
           },
           "binding_name": null,
           "parameters": [],

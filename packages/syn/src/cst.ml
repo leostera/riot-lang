@@ -691,7 +691,14 @@ and array_pattern = {
 and record_pattern = {
   syntax_node : syntax_node;
   fields : record_pattern_field list;
+  closedness : record_pattern_closedness;
 }
+
+and record_pattern_closedness =
+  | Closed
+  | Open of {
+      wildcard_token : Token.t;
+    }
 
 and record_pattern_field = {
   syntax_node : syntax_node;

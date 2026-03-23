@@ -4220,12 +4220,14 @@ let tests =
                                                     _;
                                                   };
                                                 ];
+                                              closedness = Syn.Cst.Closed;
                                               _;
                                             });
                                       _;
                                     };
                                     { field_path = name_field; pattern = None; _ };
                                   ];
+                                closedness = Syn.Cst.Closed;
                                 _;
                               };
                           _;
@@ -4244,6 +4246,45 @@ let tests =
               ~actual:(Syn.Cst.ModulePath.name name_field);
             Ok ()
         | _ -> Error "expected record pattern structure");
+    Test.case "cst record patterns preserve open wildcard tails" (fun () ->
+        let source = "let x = match r with { user; _ } -> user\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      [
+                        {
+                          pattern =
+                            Syn.Cst.Pattern.Record
+                              {
+                                fields =
+                                  [ { field_path; pattern = None; _ } ];
+                                closedness = Syn.Cst.Open { wildcard_token };
+                                _;
+                              };
+                          _;
+                        };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "user")
+              ~actual:(Syn.Cst.ModulePath.name field_path);
+            Test.assert_equal ~expected:"_"
+              ~actual:(Syn.Cst.Token.text wildcard_token);
+            Ok ()
+        | _ -> Error "expected open record pattern");
     Test.case "cst array patterns preserve literal element patterns" (fun () ->
         let source = "let x = match xs with [| 1; value |] -> value\n" in
         let result = parse_ml source in

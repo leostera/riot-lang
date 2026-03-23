@@ -1764,6 +1764,17 @@ let rec pattern_from_node node =
   | Syntax_kind.ARRAY_PATTERN ->
       Cst.Pattern.Array { syntax_node = node; elements = pattern_children node }
   | Syntax_kind.RECORD_PATTERN ->
+      let closedness =
+        match
+          direct_non_trivia_tokens node
+          |> List.find_opt (fun syntax_token ->
+                 String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "_")
+        with
+        | Some wildcard_token ->
+            Cst.Open { wildcard_token = token wildcard_token }
+        | None ->
+            Cst.Closed
+      in
       Cst.Pattern.Record
         {
           syntax_node = node;
@@ -1772,6 +1783,7 @@ let rec pattern_from_node node =
             |> List.filter (fun child ->
                    Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD_PATTERN)
             |> List.filter_map record_pattern_field_from_node;
+          closedness;
         }
   | Syntax_kind.CONS_PATTERN -> (
       match direct_non_trivia_nodes node with

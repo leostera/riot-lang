@@ -258,10 +258,16 @@
                               }
                             }
                           }
-                        ]
+                        ],
+                        "closedness": {
+                          "tag": "closed"
+                        }
                       }
                     }
-                  ]
+                  ],
+                  "closedness": {
+                    "tag": "closed"
+                  }
                 },
                 "guard": null,
                 "body": {
@@ -546,10 +552,16 @@
                             }
                           }
                         }
-                      ]
+                      ],
+                      "closedness": {
+                        "tag": "closed"
+                      }
                     }
                   }
-                ]
+                ],
+                "closedness": {
+                  "tag": "closed"
+                }
               },
               "guard": null,
               "body": {
@@ -797,10 +809,16 @@
                           }
                         }
                       }
-                    ]
+                    ],
+                    "closedness": {
+                      "tag": "closed"
+                    }
                   }
                 }
-              ]
+              ],
+              "closedness": {
+                "tag": "closed"
+              }
             },
             "guard": null,
             "body": {

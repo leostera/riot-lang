@@ -188,7 +188,10 @@
                         },
                         "pattern": null
                       }
-                    ]
+                    ],
+                    "closedness": {
+                      "tag": "closed"
+                    }
                   },
                   "name_token": {
                     "kind": "IDENT_EXPR",
@@ -412,7 +415,10 @@
                       },
                       "pattern": null
                     }
-                  ]
+                  ],
+                  "closedness": {
+                    "tag": "closed"
+                  }
                 },
                 "name_token": {
                   "kind": "IDENT_EXPR",
@@ -580,7 +586,10 @@
                     },
                     "pattern": null
                   }
-                ]
+                ],
+                "closedness": {
+                  "tag": "closed"
+                }
               },
               "name_token": {
                 "kind": "IDENT_EXPR",

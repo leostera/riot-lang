@@ -1308,11 +1308,31 @@ and array_pattern = {
 (** Payload for `Pattern.Record`.
 
     Each field may be explicit, as in `{ x = p }`, or punning, as in `{ x }`.
+    The `closedness` field preserves whether the pattern is closed or carries
+    an explicit `_` wildcard tail.
 *)
 and record_pattern = {
   syntax_node : syntax_node;
   fields : record_pattern_field list;
+  closedness : record_pattern_closedness;
 }
+
+(** Whether a record pattern is closed or explicitly open.
+
+    Examples:
+
+    ```ocaml,norun
+    { user; name }
+    { user; _ }
+    ```
+*)
+and record_pattern_closedness =
+  | Closed
+      (** A closed record pattern such as `{ user; name }`. *)
+  | Open of {
+      wildcard_token : Token.t;
+    }
+      (** An open record pattern such as `{ user; _ }`. *)
 
 (** A single field inside a record pattern.
 

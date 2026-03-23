@@ -160,7 +160,10 @@
                       },
                       "pattern": null
                     }
-                  ]
+                  ],
+                  "closedness": {
+                    "tag": "closed"
+                  }
                 },
                 "guard": null,
                 "body": {
@@ -393,7 +396,10 @@
                     },
                     "pattern": null
                   }
-                ]
+                ],
+                "closedness": {
+                  "tag": "closed"
+                }
               },
               "guard": null,
               "body": {
@@ -589,7 +595,10 @@
                   },
                   "pattern": null
                 }
-              ]
+              ],
+              "closedness": {
+                "tag": "closed"
+              }
             },
             "guard": null,
             "body": {
