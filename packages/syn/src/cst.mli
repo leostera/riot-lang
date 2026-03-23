@@ -1361,14 +1361,26 @@ and poly_variant_inherit_pattern = {
   type_path : Ident.t;
 }
 
+(** Existential binders introduced by a constructor pattern.
+
+    This covers the `(type ...)` clause in GADT-style patterns such as
+    `Closure (type a) ((f, x) : (a -> _) * _)`.
+*)
+and constructor_pattern_existentials = {
+  syntax_node : syntax_node;
+  binders : type_binder list;
+}
+
 (** Payload for `Pattern.Constructor`.
 
-    Constructor arguments are stored in source order, so both unary and tupled
-    payloads can be inspected structurally.
+    `existentials` is present for GADT-style patterns such as
+    `Closure (type a) payload`. Constructor arguments are stored in source
+    order, so both unary and tupled payloads can be inspected structurally.
 *)
 and constructor_pattern = {
   syntax_node : syntax_node;
   constructor_path : Ident.t;
+  existentials : constructor_pattern_existentials option;
   arguments : pattern list;
 }
 

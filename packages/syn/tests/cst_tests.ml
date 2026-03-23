@@ -4176,6 +4176,60 @@ let tests =
               ~actual:(Syn.Cst.ModulePath.name none_path);
             Ok ()
         | _ -> Error "expected faithful constructor pattern structure");
+    Test.case "cst constructor patterns preserve existential binders"
+      (fun () ->
+        let source =
+          "let unwrap = function | Pair (type a b) ((left, right) : a * b) -> left\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Function
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Constructor
+                            {
+                              constructor_path;
+                              existentials =
+                                Some
+                                  {
+                                    binders =
+                                      [
+                                        Syn.Cst.TypeBinder.Bare
+                                          { name_token = a_name };
+                                        Syn.Cst.TypeBinder.Bare
+                                          { name_token = b_name };
+                                      ];
+                                    _;
+                                  };
+                              arguments = [ Syn.Cst.Pattern.Typed _ ];
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "Pair")
+              ~actual:(Syn.Cst.ModulePath.name constructor_path);
+            Test.assert_equal ~expected:"a"
+              ~actual:(Syn.Cst.Token.text a_name);
+            Test.assert_equal ~expected:"b"
+              ~actual:(Syn.Cst.Token.text b_name);
+            Ok ()
+        | _ -> Error "expected constructor existential binders");
     Test.case "cst match cases preserve alias and typed patterns structurally"
       (fun () ->
         let source =

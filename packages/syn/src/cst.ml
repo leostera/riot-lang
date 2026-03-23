@@ -725,9 +725,15 @@ and poly_variant_inherit_pattern = {
   type_path : Ident.t;
 }
 
+and constructor_pattern_existentials = {
+  syntax_node : syntax_node;
+  binders : type_binder list;
+}
+
 and constructor_pattern = {
   syntax_node : syntax_node;
   constructor_path : Ident.t;
+  existentials : constructor_pattern_existentials option;
   arguments : pattern list;
 }
 

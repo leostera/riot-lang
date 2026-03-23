@@ -559,14 +559,19 @@ and pattern_to_json = function
         [
           ("tag", Json.String "poly_variant_inherit");
           ("syntax_node", syntax_node_to_json syntax_node);
-      ("type_path", ident_to_json type_path);
+          ("type_path", ident_to_json type_path);
         ]
-  | Cst.Pattern.Constructor { syntax_node; constructor_path; arguments } ->
+  | Cst.Pattern.Constructor
+      { syntax_node; constructor_path; existentials; arguments } ->
       Json.Object
         [
           ("tag", Json.String "constructor");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("constructor_path", ident_to_json constructor_path);
+          ( "existentials",
+            option_to_json
+              constructor_pattern_existentials_to_json
+              existentials );
           ("arguments", Json.Array (List.map pattern_to_json arguments));
         ]
   | Cst.Pattern.Tuple { syntax_node; elements; open_tail } ->
@@ -653,6 +658,14 @@ and pattern_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("inner", pattern_to_json inner);
         ]
+
+and constructor_pattern_existentials_to_json
+    ({ syntax_node; binders } : Cst.constructor_pattern_existentials) =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json syntax_node);
+      ("binders", Json.Array (List.map type_binder_to_json binders));
+    ]
 
 and record_pattern_field_to_json field =
   Json.Object

@@ -829,15 +829,41 @@ let bare_type_binders_from_tokens syntax_tokens =
   in
   collect false [] syntax_tokens
 
-let locally_abstract_type_parameter_from_node node =
+let bare_type_binders_from_node ~context node =
   let binders = bare_type_binders_from_tokens (direct_non_trivia_tokens node) in
   if List.length binders = 0 then
     bail
       ~message:
         "expected locally abstract type binders during Ceibo -> CST lifting"
-      ~syntax_node:node ~context:[ "parameter.locally_abstract" ]
+      ~syntax_node:node ~context
   else
-    { Cst.syntax_node = node; binders }
+    binders
+
+let locally_abstract_type_parameter_from_node node :
+    Cst.locally_abstract_type_parameter =
+  let binders =
+    bare_type_binders_from_node ~context:[ "parameter.locally_abstract" ] node
+  in
+  { Cst.syntax_node = node; binders }
+
+let constructor_pattern_existentials_from_node node :
+    Cst.constructor_pattern_existentials =
+  let binders =
+    bare_type_binders_from_node
+      ~context:[ "pattern.constructor.existentials" ]
+      node
+  in
+  { Cst.syntax_node = node; binders }
+
+let constructor_pattern_existentials_from_children node =
+  direct_non_trivia_nodes node
+  |> List.find_map (fun child ->
+         if
+           Ceibo.Red.SyntaxNode.kind child = Syntax_kind.LOCALLY_ABSTRACT_TYPE_PARAM
+         then
+           Some (constructor_pattern_existentials_from_node child)
+         else
+           None)
 
 let parameter_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
@@ -1685,7 +1711,12 @@ and core_type_from_node node =
         ~syntax_node:node ~context:[ "core_type" ]
 
 let rec pattern_from_node node =
-  let pattern_children node = direct_non_trivia_nodes node |> List.map pattern_from_node in
+  let pattern_children node =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child ->
+           is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+    |> List.map pattern_from_node
+  in
   let poly_variant_tag_token node =
     match direct_non_trivia_tokens node with
     | _backtick :: tag_syntax_token :: _ -> Some (token tag_syntax_token)
@@ -1950,6 +1981,7 @@ let rec pattern_from_node node =
         {
           syntax_node = node;
           constructor_path = module_path_from_node node;
+          existentials = constructor_pattern_existentials_from_children node;
           arguments = pattern_children node;
         }
   | Syntax_kind.TUPLE_PATTERN ->

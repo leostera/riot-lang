@@ -147,6 +147,7 @@
                       }
                     }
                   },
+                  "existentials": null,
                   "arguments": []
                 },
                 "guard": null,
@@ -207,6 +208,7 @@
                       }
                     }
                   },
+                  "existentials": null,
                   "arguments": [
                     {
                       "tag": "wildcard",
@@ -385,6 +387,7 @@
                     }
                   }
                 },
+                "existentials": null,
                 "arguments": []
               },
               "guard": null,
@@ -445,6 +448,7 @@
                     }
                   }
                 },
+                "existentials": null,
                 "arguments": [
                   {
                     "tag": "wildcard",
@@ -586,6 +590,7 @@
                   }
                 }
               },
+              "existentials": null,
               "arguments": []
             },
             "guard": null,
@@ -646,6 +651,7 @@
                   }
                 }
               },
+              "existentials": null,
               "arguments": [
                 {
                   "tag": "wildcard",

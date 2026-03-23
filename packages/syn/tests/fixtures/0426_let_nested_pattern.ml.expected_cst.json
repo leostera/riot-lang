@@ -60,6 +60,7 @@
                       }
                     }
                   },
+                  "existentials": null,
                   "arguments": [
                     {
                       "tag": "parenthesized",
@@ -356,6 +357,7 @@
                     }
                   }
                 },
+                "existentials": null,
                 "arguments": [
                   {
                     "tag": "parenthesized",

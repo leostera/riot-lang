@@ -2261,6 +2261,30 @@ and parse_ident_or_constructor_pattern parser =
   if ident_starts_uppercase text then
     (* Constructor - may have module path: Module.Submodule.Constructor *)
     (* Collect module path segments: Ident . Ident . ... *)
+    let make_constructor_pattern path_segments trivia_after_path =
+      let existential_nodes =
+        match parse_locally_abstract_types parser with
+        | Some existentials ->
+            let trivia_after_existentials = consume_trivia parser in
+            [ Ceibo.Green.Node existentials ]
+            @ tokens_to_green parser trivia_after_existentials
+        | None ->
+            []
+      in
+      let argument_nodes =
+        if can_start_pattern_arg parser then
+          let arg = parse_primary_pattern parser in
+          [ Ceibo.Green.Node arg ]
+        else
+          []
+      in
+      make_node Syntax_kind.CONSTRUCTOR_PATTERN
+        (path_segments
+        @ tokens_to_green parser trivia_after_path
+        @ existential_nodes
+        @ argument_nodes)
+    in
+
     let rec collect_path_segments acc acc_trivia =
       let trivia_after = consume_trivia parser in
       match peek_kind parser with
@@ -2321,24 +2345,9 @@ and parse_ident_or_constructor_pattern parser =
             @ [ make_token parser close_paren ])
       | _ ->
           Token_cursor.set_position parser.cursor saved_pos;
-          if can_start_pattern_arg parser then
-            let arg = parse_primary_pattern parser in
-            make_node Syntax_kind.CONSTRUCTOR_PATTERN
-              (path_segments
-              @ tokens_to_green parser trivia_after_path
-              @ [ Ceibo.Green.Node arg ])
-          else
-            make_node Syntax_kind.CONSTRUCTOR_PATTERN
-              (path_segments @ tokens_to_green parser trivia_after_path)
-    else if can_start_pattern_arg parser then
-      let arg = parse_primary_pattern parser in
-      make_node Syntax_kind.CONSTRUCTOR_PATTERN
-        (path_segments
-        @ tokens_to_green parser trivia_after_path
-        @ [ Ceibo.Green.Node arg ])
+          make_constructor_pattern path_segments trivia_after_path
     else
-      make_node Syntax_kind.CONSTRUCTOR_PATTERN
-        (path_segments @ tokens_to_green parser trivia_after_path)
+      make_constructor_pattern path_segments trivia_after_path
   else
     make_node Syntax_kind.IDENT_PATTERN [ make_token parser ident ]
 
