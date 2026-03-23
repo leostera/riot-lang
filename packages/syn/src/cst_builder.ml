@@ -297,6 +297,7 @@ let constant_from_syntax_token ~syntax_node syntax_token =
           delimiter;
           contents;
           terminated;
+          attributes = [];
         }
   | Syntax_kind.INT_LITERAL ->
       let base, prefix, digits, suffix = integer_parts (Cst.Token.text literal_token) in
@@ -308,6 +309,7 @@ let constant_from_syntax_token ~syntax_node syntax_token =
           prefix;
           digits;
           suffix;
+          attributes = [];
         }
   | Syntax_kind.FLOAT_LITERAL ->
       let integral_digits, fractional_digits, exponent, suffix =
@@ -321,6 +323,7 @@ let constant_from_syntax_token ~syntax_node syntax_token =
           fractional_digits;
           exponent;
           suffix;
+          attributes = [];
         }
   | Syntax_kind.CHAR_LITERAL ->
       Cst.Constant.Char
@@ -328,6 +331,7 @@ let constant_from_syntax_token ~syntax_node syntax_token =
           syntax_node;
           literal_token;
           contents = char_contents (Cst.Token.text literal_token);
+          attributes = [];
         }
   | Syntax_kind.BOOL_LITERAL ->
       Cst.Constant.Bool
@@ -335,9 +339,10 @@ let constant_from_syntax_token ~syntax_node syntax_token =
           syntax_node;
           literal_token;
           value = String.equal (Cst.Token.text literal_token) "true";
+          attributes = [];
         }
   | Syntax_kind.UNIT_LITERAL ->
-      Cst.Constant.Unit { syntax_node }
+      Cst.Constant.Unit { syntax_node; attributes = [] }
   | _ ->
       bail ~message:"expected literal token during Ceibo -> CST lifting"
         ~syntax_node ~context:[ "constant" ]
@@ -345,7 +350,7 @@ let constant_from_syntax_token ~syntax_node syntax_token =
 let constant_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.UNIT_LITERAL ->
-      Cst.Constant.Unit { syntax_node = node }
+      Cst.Constant.Unit { syntax_node = node; attributes = [] }
   | _ ->
       let literal_token = literal_token_from_node ~context:[ "constant" ] node in
       constant_from_syntax_token ~syntax_node:node
@@ -640,6 +645,7 @@ let extension_from_node node : Cst.extension =
             ~sigils:[ "%"; "%%"; "%%%" ] shell_tokens;
         payload_syntax_node;
         payload = annotation_payload_from_shell shell_node;
+        attributes = [];
       }
   | None ->
       bail ~message:"expected extension sigil during Ceibo -> CST lifting"
@@ -904,6 +910,13 @@ let is_expression_syntax_kind = function
   | Syntax_kind.PAREN_EXPR ->
       true
   | _ -> false
+
+let rec can_lift_expression_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.ATTRIBUTE_EXPR ->
+      direct_non_trivia_nodes node |> List.exists can_lift_expression_node
+  | kind ->
+      is_expression_syntax_kind kind
 
 let is_parameter_like_kind = function
   | Syntax_kind.IDENT_PATTERN
@@ -2488,8 +2501,7 @@ and effect_pattern_from_node node =
 let rec apply_argument_from_node node =
   let first_nontrivia_expression_child node =
     direct_non_trivia_nodes node
-    |> List.find_opt (fun child ->
-           is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+    |> List.find_opt can_lift_expression_node
     |> Option.map expression_from_node
   in
   match Ceibo.Red.SyntaxNode.kind node with
@@ -2522,9 +2534,9 @@ and expression_with_type_annotation ~syntax_node ~expression type_node =
   match type_ with
   | Cst.CoreType.Poly { binders; _ }
     when List.exists Cst.TypeBinder.is_quoted binders ->
-      Cst.Expression.Polymorphic { syntax_node; expression; type_ }
+      Cst.Expression.Polymorphic { syntax_node; expression; type_; attributes = [] }
   | _ ->
-      Cst.Expression.Typed { syntax_node; expression; type_ }
+      Cst.Expression.Typed { syntax_node; expression; type_; attributes = [] }
 
 and binding_type_annotation_node prefix_nodes =
   prefix_nodes |> List.find_opt can_lift_core_type_node
@@ -2641,9 +2653,153 @@ and module_expression_from_node node =
 and expression_from_node node =
   let known_expression_children node =
     direct_non_trivia_nodes node
-    |> List.filter (fun child ->
-           is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+    |> List.filter can_lift_expression_node
     |> List.map expression_from_node
+  in
+  let rec peel_outer_expression_attributes node =
+    match Ceibo.Red.SyntaxNode.kind node with
+    | Syntax_kind.ATTRIBUTE_EXPR -> (
+        match direct_non_trivia_nodes node with
+        | first_child :: rest -> (
+            match
+              List.find_opt can_lift_expression_node (first_child :: rest),
+              List.find_opt is_attribute_node rest
+            with
+            | Some payload_node, Some attribute_node ->
+                let payload_node, attributes =
+                  peel_outer_expression_attributes payload_node
+                in
+                (payload_node, attributes @ [ attribute_from_node attribute_node ])
+            | _ ->
+                (node, []))
+        | [] ->
+            (node, []))
+    | _ ->
+        (node, [])
+  in
+  let constant_with_attributes constant attributes =
+    match attributes with
+    | [] ->
+        constant
+    | _ ->
+        let append existing = existing @ attributes in
+        match constant with
+        | Cst.Constant.String constant ->
+            Cst.Constant.String { constant with attributes = append constant.attributes }
+        | Cst.Constant.Int constant ->
+            Cst.Constant.Int { constant with attributes = append constant.attributes }
+        | Cst.Constant.Float constant ->
+            Cst.Constant.Float { constant with attributes = append constant.attributes }
+        | Cst.Constant.Char constant ->
+            Cst.Constant.Char { constant with attributes = append constant.attributes }
+        | Cst.Constant.Bool constant ->
+            Cst.Constant.Bool { constant with attributes = append constant.attributes }
+        | Cst.Constant.Unit constant ->
+            Cst.Constant.Unit { constant with attributes = append constant.attributes }
+  in
+  let expression_with_attributes expression attributes =
+    match attributes with
+    | [] ->
+        expression
+    | _ ->
+        let append existing = existing @ attributes in
+        match expression with
+        | Cst.Expression.Path expr ->
+            Cst.Expression.Path { expr with attributes = append expr.attributes }
+        | Cst.Expression.Constructor expr ->
+            Cst.Expression.Constructor { expr with attributes = append expr.attributes }
+        | Cst.Expression.Operator expr ->
+            Cst.Expression.Operator { expr with attributes = append expr.attributes }
+        | Cst.Expression.Literal literal ->
+            Cst.Expression.Literal (constant_with_attributes literal attributes)
+        | Cst.Expression.Unreachable expr ->
+            Cst.Expression.Unreachable { expr with attributes = append expr.attributes }
+        | Cst.Expression.Extension ext ->
+            Cst.Expression.Extension { ext with attributes = append ext.attributes }
+        | Cst.Expression.Object expr ->
+            Cst.Expression.Object { expr with attributes = append expr.attributes }
+        | Cst.Expression.PolyVariant expr ->
+            Cst.Expression.PolyVariant { expr with attributes = append expr.attributes }
+        | Cst.Expression.FirstClassModule expr ->
+            Cst.Expression.FirstClassModule
+              { expr with attributes = append expr.attributes }
+        | Cst.Expression.LetModule expr ->
+            Cst.Expression.LetModule { expr with attributes = append expr.attributes }
+        | Cst.Expression.LetException expr ->
+            Cst.Expression.LetException { expr with attributes = append expr.attributes }
+        | Cst.Expression.Assert expr ->
+            Cst.Expression.Assert { expr with attributes = append expr.attributes }
+        | Cst.Expression.Lazy expr ->
+            Cst.Expression.Lazy { expr with attributes = append expr.attributes }
+        | Cst.Expression.While expr ->
+            Cst.Expression.While { expr with attributes = append expr.attributes }
+        | Cst.Expression.For expr ->
+            Cst.Expression.For { expr with attributes = append expr.attributes }
+        | Cst.Expression.Apply expr ->
+            Cst.Expression.Apply { expr with attributes = append expr.attributes }
+        | Cst.Expression.MethodCall expr ->
+            Cst.Expression.MethodCall { expr with attributes = append expr.attributes }
+        | Cst.Expression.New expr ->
+            Cst.Expression.New { expr with attributes = append expr.attributes }
+        | Cst.Expression.Prefix expr ->
+            Cst.Expression.Prefix { expr with attributes = append expr.attributes }
+        | Cst.Expression.FieldAccess expr ->
+            Cst.Expression.FieldAccess { expr with attributes = append expr.attributes }
+        | Cst.Expression.Index expr ->
+            Cst.Expression.Index { expr with attributes = append expr.attributes }
+        | Cst.Expression.ObjectOverride expr ->
+            Cst.Expression.ObjectOverride
+              { expr with attributes = append expr.attributes }
+        | Cst.Expression.InstanceVariableAssign expr ->
+            Cst.Expression.InstanceVariableAssign
+              { expr with attributes = append expr.attributes }
+        | Cst.Expression.FieldAssign expr ->
+            Cst.Expression.FieldAssign { expr with attributes = append expr.attributes }
+        | Cst.Expression.Assign expr ->
+            Cst.Expression.Assign { expr with attributes = append expr.attributes }
+        | Cst.Expression.Infix expr ->
+            Cst.Expression.Infix { expr with attributes = append expr.attributes }
+        | Cst.Expression.Typed expr ->
+            Cst.Expression.Typed { expr with attributes = append expr.attributes }
+        | Cst.Expression.Polymorphic expr ->
+            Cst.Expression.Polymorphic { expr with attributes = append expr.attributes }
+        | Cst.Expression.Coerce expr ->
+            Cst.Expression.Coerce { expr with attributes = append expr.attributes }
+        | Cst.Expression.Sequence expr ->
+            Cst.Expression.Sequence { expr with attributes = append expr.attributes }
+        | Cst.Expression.Tuple expr ->
+            Cst.Expression.Tuple { expr with attributes = append expr.attributes }
+        | Cst.Expression.List expr ->
+            Cst.Expression.List { expr with attributes = append expr.attributes }
+        | Cst.Expression.Array expr ->
+            Cst.Expression.Array { expr with attributes = append expr.attributes }
+        | Cst.Expression.Record (Cst.RecordExpression.Literal expr) ->
+            Cst.Expression.Record
+              (Cst.RecordExpression.Literal
+                 { expr with attributes = append expr.attributes })
+        | Cst.Expression.Record (Cst.RecordExpression.Update expr) ->
+            Cst.Expression.Record
+              (Cst.RecordExpression.Update
+                 { expr with attributes = append expr.attributes })
+        | Cst.Expression.LocalOpen expr ->
+            Cst.Expression.LocalOpen { expr with attributes = append expr.attributes }
+        | Cst.Expression.Fun expr ->
+            Cst.Expression.Fun { expr with attributes = append expr.attributes }
+        | Cst.Expression.Function expr ->
+            Cst.Expression.Function { expr with attributes = append expr.attributes }
+        | Cst.Expression.LetOperator expr ->
+            Cst.Expression.LetOperator { expr with attributes = append expr.attributes }
+        | Cst.Expression.Let expr ->
+            Cst.Expression.Let { expr with attributes = append expr.attributes }
+        | Cst.Expression.Match expr ->
+            Cst.Expression.Match { expr with attributes = append expr.attributes }
+        | Cst.Expression.Try expr ->
+            Cst.Expression.Try { expr with attributes = append expr.attributes }
+        | Cst.Expression.If expr ->
+            Cst.Expression.If { expr with attributes = append expr.attributes }
+        | Cst.Expression.Parenthesized expr ->
+            Cst.Expression.Parenthesized
+              { expr with attributes = append expr.attributes }
   in
   let poly_variant_tag_token node =
     match direct_non_trivia_tokens node with
@@ -2651,7 +2807,9 @@ and expression_from_node node =
     | tag_syntax_token :: _ -> Some (token tag_syntax_token)
     | [] -> None
   in
-  match Ceibo.Red.SyntaxNode.kind node with
+  let node, attributes = peel_outer_expression_attributes node in
+  let expression =
+    match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.IDENT_EXPR -> (
       let path = ident_path_from_node node in
       if is_constructor_path path then
@@ -2660,9 +2818,10 @@ and expression_from_node node =
             syntax_node = node;
             constructor_path = path;
             payload = None;
+            attributes = [];
           }
       else
-        Cst.Expression.Path { syntax_node = node; path })
+        Cst.Expression.Path { syntax_node = node; path; attributes = [] })
   | Syntax_kind.MODULE_PATH -> (
       let path = module_path_from_node node in
       if is_constructor_path path then
@@ -2671,20 +2830,27 @@ and expression_from_node node =
             syntax_node = node;
             constructor_path = path;
             payload = None;
+            attributes = [];
           }
       else
-        Cst.Expression.Path { syntax_node = node; path })
+        Cst.Expression.Path { syntax_node = node; path; attributes = [] })
   | Syntax_kind.OPERATOR_PATTERN ->
       Cst.Expression.Operator
-        { syntax_node = node; operator_tokens = operator_tokens_from_node node }
+        {
+          syntax_node = node;
+          operator_tokens = operator_tokens_from_node node;
+          attributes = [];
+        }
   | Syntax_kind.UNREACHABLE_EXPR -> (
       match direct_non_trivia_tokens node with
       | dot_syntax_token :: _ ->
           Cst.Expression.Unreachable
-            { syntax_node = node; dot_token = token dot_syntax_token }
+            {
+              syntax_node = node;
+              dot_token = token dot_syntax_token;
+              attributes = [];
+            }
       | [] -> unsupported_expression node)
-  | Syntax_kind.ATTRIBUTE_EXPR ->
-      Cst.Expression.Attribute (attribute_from_node node)
   | Syntax_kind.EXTENSION_EXPR ->
       Cst.Expression.Extension (extension_from_node node)
   | Syntax_kind.OBJECT_EXPR -> (
@@ -2709,6 +2875,7 @@ and expression_from_node node =
               syntax_node = node;
               constructor_path;
               payload = None;
+              attributes = [];
             }
       | None -> (
           match field_access_expression_from_node node with
@@ -2733,30 +2900,32 @@ and expression_from_node node =
   | Syntax_kind.ASSERT_EXPR -> (
       match
         direct_non_trivia_nodes node
-        |> List.find_opt (fun child ->
-               is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+        |> List.find_opt can_lift_expression_node
         |> Option.map expression_from_node
       with
       | Some asserted ->
-          Cst.Expression.Assert { syntax_node = node; asserted }
+          Cst.Expression.Assert { syntax_node = node; asserted; attributes = [] }
       | None -> unsupported_expression node)
   | Syntax_kind.LAZY_EXPR -> (
       match
         direct_non_trivia_nodes node
-        |> List.find_opt (fun child ->
-               is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+        |> List.find_opt can_lift_expression_node
         |> Option.map expression_from_node
       with
-      | Some body -> Cst.Expression.Lazy { syntax_node = node; body }
+      | Some body -> Cst.Expression.Lazy { syntax_node = node; body; attributes = [] }
       | None -> unsupported_expression node)
   | Syntax_kind.WHILE_EXPR -> (
-      match direct_non_trivia_nodes node with
+      match
+        direct_non_trivia_nodes node
+        |> List.filter (fun child -> not (is_attribute_node child))
+      with
       | condition_node :: body_node :: _ ->
           Cst.Expression.While
             {
               syntax_node = node;
               condition = expression_from_node condition_node;
               body = expression_from_node body_node;
+              attributes = [];
             }
       | _ -> unsupported_expression node)
   | Syntax_kind.FOR_EXPR -> (
@@ -2779,7 +2948,12 @@ and expression_from_node node =
                        "expected for-loop direction token during Ceibo -> CST lifting"
                      ~syntax_node:node ~context:[ "expression.for"; "direction" ])
       in
-      match direct_non_trivia_nodes node, non_trivia_tokens, direction with
+      match
+        ( direct_non_trivia_nodes node
+          |> List.filter (fun child -> not (is_attribute_node child)) ),
+        non_trivia_tokens,
+        direction
+      with
       | start_node :: end_node :: body_node :: _, _for_kw :: iterator_syntax_token :: _, Some direction ->
           Cst.Expression.For
             {
@@ -2789,10 +2963,15 @@ and expression_from_node node =
               direction;
               end_expr = expression_from_node end_node;
               body = expression_from_node body_node;
+              attributes = [];
             }
       | _ -> unsupported_expression node)
   | Syntax_kind.APPLY_EXPR -> (
       match direct_non_trivia_nodes node with
+      | callee_node :: [ attribute_node ]
+        when Ceibo.Red.SyntaxNode.kind attribute_node = Syntax_kind.ATTRIBUTE_EXPR ->
+          expression_with_attributes (expression_from_node callee_node)
+            [ attribute_from_node attribute_node ]
       | callee_node :: argument_node :: _ -> (
           match
             constructor_path_from_expression_node callee_node,
@@ -2804,6 +2983,7 @@ and expression_from_node node =
                   syntax_node = node;
                   constructor_path;
                   payload = Some payload;
+                  attributes = [];
                 }
           | _ ->
               Cst.Expression.Apply
@@ -2811,6 +2991,7 @@ and expression_from_node node =
                   syntax_node = node;
                   callee = expression_from_node callee_node;
                   argument = apply_argument_from_node argument_node;
+                  attributes = [];
                 })
       | _ -> unsupported_expression node)
   | Syntax_kind.POLY_VARIANT_EXPR -> (
@@ -2822,9 +3003,9 @@ and expression_from_node node =
               tag_token;
               payload =
                 (direct_non_trivia_nodes node
-                |> List.find_opt (fun child ->
-                       is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+                |> List.find_opt can_lift_expression_node
                 |> Option.map expression_from_node);
+              attributes = [];
             }
       | None -> unsupported_expression node)
   | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> (
@@ -2841,6 +3022,7 @@ and expression_from_node node =
               syntax_node = node;
               module_expression = module_expression_from_node module_expression_node;
               module_type;
+              attributes = [];
             }
       | _ -> unsupported_expression node)
   | Syntax_kind.LET_MODULE_EXPR -> (
@@ -2866,6 +3048,7 @@ and expression_from_node node =
                         name_token = token name_syntax_token;
                       };
                     body = expression_from_node body_node;
+                    attributes = [];
                   }
             | _ -> unsupported_expression node)
         | _ -> (
@@ -2891,6 +3074,7 @@ and expression_from_node node =
               expression = expression_from_node expr_node;
               from_type = None;
               to_type = core_type_from_node to_type_node;
+              attributes = [];
             }
       | expr_node :: from_type_node :: to_type_node :: _ ->
           Cst.Expression.Coerce
@@ -2899,6 +3083,7 @@ and expression_from_node node =
               expression = expression_from_node expr_node;
               from_type = Some (core_type_from_node from_type_node);
               to_type = core_type_from_node to_type_node;
+              attributes = [];
             }
       | _ -> unsupported_expression node)
   | Syntax_kind.PREFIX_EXPR -> (
@@ -2914,6 +3099,7 @@ and expression_from_node node =
               left = expression_from_node left_node;
               operator_token = token operator_syntax_token;
               right = expression_from_node right_node;
+              attributes = [];
             }
       | _ -> unsupported_expression node)
   | Syntax_kind.SEQUENCE_EXPR -> (
@@ -2924,11 +3110,14 @@ and expression_from_node node =
           | Some expr -> Cst.Expression.Sequence expr
           | None -> unsupported_expression node))
   | Syntax_kind.TUPLE_EXPR ->
-      Cst.Expression.Tuple { syntax_node = node; elements = known_expression_children node }
+      Cst.Expression.Tuple
+        { syntax_node = node; elements = known_expression_children node; attributes = [] }
   | Syntax_kind.LIST_EXPR ->
-      Cst.Expression.List { syntax_node = node; elements = known_expression_children node }
+      Cst.Expression.List
+        { syntax_node = node; elements = known_expression_children node; attributes = [] }
   | Syntax_kind.ARRAY_EXPR ->
-      Cst.Expression.Array { syntax_node = node; elements = known_expression_children node }
+      Cst.Expression.Array
+        { syntax_node = node; elements = known_expression_children node; attributes = [] }
   | Syntax_kind.RECORD_EXPR -> (
       match record_literal_expression_from_node node with
       | Some expr -> Cst.Expression.Record (Cst.RecordExpression.Literal expr)
@@ -2964,8 +3153,7 @@ and expression_from_node node =
   | Syntax_kind.IF_EXPR -> (
       let expression_children =
         direct_non_trivia_nodes node
-        |> List.filter (fun child ->
-               is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+        |> List.filter can_lift_expression_node
       in
       match expression_children with
       | condition_node :: then_node :: else_nodes ->
@@ -2978,15 +3166,25 @@ and expression_from_node node =
                 (match else_nodes with
                 | else_node :: _ -> Some (expression_from_node else_node)
                 | [] -> None);
+              attributes = [];
             }
       | _ -> unsupported_expression node)
   | Syntax_kind.PAREN_EXPR -> (
-      match direct_non_trivia_nodes node with
+      match
+        direct_non_trivia_nodes node
+        |> List.filter (fun child -> not (is_attribute_node child))
+      with
       | inner_node :: _ ->
           Cst.Expression.Parenthesized
-            { syntax_node = node; inner = expression_from_node inner_node }
+            {
+              syntax_node = node;
+              inner = expression_from_node inner_node;
+              attributes = [];
+            }
       | [] -> unsupported_expression node)
   | _ -> unsupported_expression node
+  in
+  expression_with_attributes expression attributes
 
 and object_method_from_node node =
   let children_without_attributes =
@@ -3007,8 +3205,7 @@ and object_method_from_node node =
               body =
                 (remainder
                 |> List.rev
-                |> List.find_opt (fun child ->
-                       is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+                |> List.find_opt can_lift_expression_node
                 |> Option.map expression_from_node);
               type_ =
                 List.find_opt
@@ -3050,8 +3247,7 @@ and object_value_from_node node =
               value =
                 (remainder
                 |> List.rev
-                |> List.find_opt (fun child ->
-                       is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+                |> List.find_opt can_lift_expression_node
                 |> Option.map expression_from_node);
               type_ =
                 List.find_opt
@@ -3080,7 +3276,7 @@ and object_inherit_from_node node =
     |> List.filter (fun child ->
            Ceibo.Red.SyntaxNode.kind child != Syntax_kind.ATTRIBUTE_EXPR)
     |> List.find_map (fun child ->
-           if is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child) then
+           if can_lift_expression_node child then
              Some (expression_from_node child)
            else
              None)
@@ -3102,7 +3298,7 @@ and object_initializer_from_node node =
         children
         |> List.filter (fun child -> not (is_attribute_node child))
         |> List.find_map (fun child ->
-               if is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child) then
+               if can_lift_expression_node child then
                  Some (expression_from_node child)
                else
                  None)
@@ -3154,7 +3350,9 @@ and object_expression_from_node node =
   in
   match lift_members [] member_children with
   | Some members ->
-      Some ({ syntax_node = node; self_pattern; members } : Cst.object_expression)
+      Some
+        ({ syntax_node = node; self_pattern; members; attributes = [] }
+          : Cst.object_expression)
   | None -> None
 
 and method_call_expression_from_node node =
@@ -3165,16 +3363,21 @@ and method_call_expression_from_node node =
           Cst.syntax_node = node;
           receiver = expression_from_node receiver_node;
           method_name = token method_name_tok;
+          attributes = [];
         }
   | _ -> None
 
 and new_expression_from_node node =
-  match direct_non_trivia_nodes node with
+  match
+    direct_non_trivia_nodes node
+    |> List.filter (fun child -> not (is_attribute_node child))
+  with
   | class_path_node :: _ ->
       Some
         {
           Cst.syntax_node = node;
           class_path = module_path_like_from_node class_path_node;
+          attributes = [];
         }
   | [] -> None
 
@@ -3202,6 +3405,7 @@ and object_override_expression_from_node node =
       {
         Cst.syntax_node = node;
         fields = List.filter_map object_override_field_from_node children;
+        attributes = [];
       }
   else
     None
@@ -3212,7 +3416,7 @@ and field_access_expression_from_node node =
       let receiver =
         match module_like_path_from_expression_node receiver_node with
         | Some path ->
-            Cst.Expression.Path { syntax_node = receiver_node; path }
+            Cst.Expression.Path { syntax_node = receiver_node; path; attributes = [] }
         | None ->
             expression_from_node receiver_node
       in
@@ -3222,6 +3426,7 @@ and field_access_expression_from_node node =
              syntax_node = node;
              receiver;
              field_name = token field_token;
+             attributes = [];
            })
   | _ -> None
 
@@ -3233,6 +3438,7 @@ and index_expression_from_node node =
           syntax_node = node;
           collection = expression_from_node collection_node;
           index = expression_from_node index_node;
+          attributes = [];
         }
   | _ -> None
 
@@ -3253,6 +3459,7 @@ and assign_expression_from_node node =
                 name_token = token name_syntax_token;
                 operator_token;
                 value = expression_from_node value_node;
+                attributes = [];
               }
         | Syntax_kind.FIELD_ACCESS_EXPR, _
           when String.equal (Cst.Token.text operator_token) "<-" -> (
@@ -3264,6 +3471,7 @@ and assign_expression_from_node node =
                     target;
                     operator_token;
                     value = expression_from_node value_node;
+                    attributes = [];
                   }
             | _ ->
                 Cst.Expression.Assign
@@ -3272,6 +3480,7 @@ and assign_expression_from_node node =
                     target = expression_from_node target_node;
                     operator_token;
                     value = expression_from_node value_node;
+                    attributes = [];
                   })
         | _ ->
             Cst.Expression.Assign
@@ -3280,6 +3489,7 @@ and assign_expression_from_node node =
                 target = expression_from_node target_node;
                 operator_token;
                 value = expression_from_node value_node;
+                attributes = [];
               })
   | _ -> None
 
@@ -3291,6 +3501,7 @@ and prefix_expression_from_node node =
           syntax_node = node;
           operator_token = token operator_syntax_token;
           operand = expression_from_node operand_node;
+          attributes = [];
         }
   | _ -> None
 
@@ -3302,6 +3513,7 @@ and sequence_expression_from_node node =
           syntax_node = node;
           left = expression_from_node left_node;
           right = expression_from_node right_node;
+          attributes = [];
         }
   | _ -> None
 
@@ -3314,7 +3526,7 @@ and record_field_path_from_node node =
 and record_field_value_from_node node =
   direct_non_trivia_nodes node
   |> List.find_map (fun child ->
-         if is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child) then
+         if can_lift_expression_node child then
            Some (expression_from_node child)
          else
            None)
@@ -3328,7 +3540,8 @@ and record_expression_field_from_node node =
         match record_field_value_from_node node with
         | Some value -> (value, Cst.Explicit)
         | None ->
-            ( Cst.Expression.Path { syntax_node = node; path = lifted_field_path },
+            ( Cst.Expression.Path
+                { syntax_node = node; path = lifted_field_path; attributes = [] },
               Cst.Punned )
       in
       Some
@@ -3348,7 +3561,7 @@ and record_literal_expression_from_node node =
            Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD)
     |> List.filter_map record_expression_field_from_node
   in
-  Some ({ syntax_node = node; fields } : Cst.record_literal_expression)
+  Some ({ syntax_node = node; fields; attributes = [] } : Cst.record_literal_expression)
 
 and record_update_expression_from_node node =
   match direct_non_trivia_nodes node with
@@ -3360,10 +3573,10 @@ and record_update_expression_from_node node =
             | Some { field_path; source = Cst.Punned; _ } ->
                 Some
                   (Cst.Expression.Path
-                     { syntax_node = base_node; path = field_path })
+                     { syntax_node = base_node; path = field_path; attributes = [] })
             | _ -> None)
         | _ ->
-            if is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind base_node) then
+            if can_lift_expression_node base_node then
               Some (expression_from_node base_node)
             else
               None
@@ -3379,6 +3592,7 @@ and record_update_expression_from_node node =
                   |> List.filter (fun child ->
                          Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD)
                   |> List.filter_map record_expression_field_from_node;
+                attributes = [];
               }
               : Cst.record_update_expression )
       | None -> None)
@@ -3425,14 +3639,14 @@ and local_open_expression_from_node node =
     if via_let_open then
       List.rev non_trivia_children
       |> List.find_map (fun child ->
-             if is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child) then
+             if can_lift_expression_node child then
                Some (expression_from_node child)
              else
                None)
     else
       match non_trivia_children with
       | _module_path_node :: body_node :: _ ->
-          if is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind body_node) then
+          if can_lift_expression_node body_node then
             Some (expression_from_node body_node)
           else
             None
@@ -3446,6 +3660,7 @@ and local_open_expression_from_node node =
           module_path = lifted_module_path;
           body = lifted_body;
           via_let_open;
+          attributes = [];
         }
   | _ -> None
 
@@ -3462,6 +3677,7 @@ and let_module_expression_from_node node =
           module_name_token = token module_name_token;
           module_expression = module_expression_from_node module_expression_node;
           body = expression_from_node body_node;
+          attributes = [];
         }
   | _ -> None
 
@@ -3478,6 +3694,7 @@ and fun_expression_from_node node =
                    is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
             |> List.map parameter_from_node;
           body = fun_body_from_node body_node;
+          attributes = [];
         }
   | [] -> None
 
@@ -3503,6 +3720,7 @@ and function_expression_from_node node =
     {
       Cst.syntax_node = node;
       cases = (function_case_body_from_node node).cases;
+      attributes = [];
     }
 
 and let_operator_expression_from_node node =
@@ -3550,6 +3768,7 @@ and let_operator_expression_from_node node =
                 binding;
                 and_bindings;
                 body = expression_from_node body_node;
+                attributes = [];
               }
         | [] -> None)
   | [] ->
@@ -3616,6 +3835,7 @@ and let_expression_from_node ~is_recursive_binding node =
             |> List.filter_map lift_and_binding;
           body = expression_from_node body_node;
           is_recursive = is_recursive_binding;
+          attributes = [];
         }
   | _ -> None
 
@@ -3637,8 +3857,7 @@ and apply_payload_and_item_attribute ~can_lift_payload node =
 
 and expression_payload_and_field_attribute node =
   apply_payload_and_item_attribute
-    ~can_lift_payload:(fun child ->
-      is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+    ~can_lift_payload:can_lift_expression_node
     node
 
 and class_expression_payload_and_field_attribute node =
@@ -3659,8 +3878,7 @@ and class_method_from_node node =
             match
               remainder
               |> List.rev
-              |> List.find_opt (fun child ->
-                     is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+              |> List.find_opt can_lift_expression_node
             with
             | Some body_node ->
                 let payload_node, field_attribute =
@@ -3723,8 +3941,7 @@ and class_value_from_node node =
             match
               remainder
               |> List.rev
-              |> List.find_opt (fun child ->
-                     is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+              |> List.find_opt can_lift_expression_node
             with
             | Some value_node ->
                 let payload_node, field_attribute =
@@ -3823,7 +4040,7 @@ and class_initializer_from_node node =
           children
           |> List.filter (fun child -> not (is_attribute_node child))
           |> List.find_map (fun child ->
-                 if is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child) then
+                 if can_lift_expression_node child then
                    let payload_node, field_attribute =
                      expression_payload_and_field_attribute child
                    in
@@ -4080,6 +4297,15 @@ and class_expression_from_node node =
           unsupported_class_expression node)
   | Syntax_kind.APPLY_EXPR -> (
       match direct_non_trivia_nodes node with
+      | callee_node :: [ attribute_node ]
+        when can_lift_class_expression_node callee_node
+             && Ceibo.Red.SyntaxNode.kind attribute_node = Syntax_kind.ATTRIBUTE_EXPR ->
+          Cst.ClassExpression.Attribute
+            {
+              syntax_node = node;
+              class_expression = class_expression_from_node callee_node;
+              attribute = attribute_from_node attribute_node;
+            }
       | callee_node :: argument_node :: _ when can_lift_class_expression_node callee_node ->
           Cst.ClassExpression.Apply
             {
@@ -4163,8 +4389,7 @@ and match_case_from_node node =
   let non_trivia_children = direct_non_trivia_nodes node in
   let expression_children =
     non_trivia_children
-    |> List.filter (fun child ->
-           is_expression_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+    |> List.filter can_lift_expression_node
     |> List.map expression_from_node
   in
   let has_guard =
@@ -4207,7 +4432,11 @@ and match_case_from_node node =
   | [] -> None
 
 and match_expression_from_node node =
-  match direct_non_trivia_nodes node with
+  let non_attribute_children =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child -> not (is_attribute_node child))
+  in
+  match non_attribute_children with
   | scrutinee_node :: rest ->
       let match_cases =
         rest
@@ -4220,11 +4449,16 @@ and match_expression_from_node node =
           syntax_node = node;
           scrutinee = expression_from_node scrutinee_node;
           cases = match_cases;
+          attributes = [];
         }
   | [] -> None
 
 and try_expression_from_node node =
-  match direct_non_trivia_nodes node with
+  let non_attribute_children =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child -> not (is_attribute_node child))
+  in
+  match non_attribute_children with
   | body_node :: rest ->
       let match_cases =
         rest
@@ -4237,6 +4471,7 @@ and try_expression_from_node node =
           syntax_node = node;
           body = expression_from_node body_node;
           cases = match_cases;
+          attributes = [];
         }
   | [] -> None
 
@@ -5244,6 +5479,10 @@ let rec structure_items_from_node node =
       | None -> unsupported_item node)
   | Syntax_kind.ATTRIBUTE_EXPR ->
       [ Cst.StructureItem.Attribute (attribute_from_node node) ]
+  | Syntax_kind.APPLY_EXPR when List.for_all is_attribute_node (direct_non_trivia_nodes node) ->
+      direct_non_trivia_nodes node
+      |> List.map (fun child ->
+             Cst.StructureItem.Attribute (attribute_from_node child))
   | Syntax_kind.EXTENSION_EXPR ->
       [ Cst.StructureItem.Extension (extension_from_node node) ]
   | Syntax_kind.SEQUENCE_EXPR -> (
@@ -5323,6 +5562,10 @@ let rec signature_items_from_node node =
       | None -> unsupported_item node)
   | Syntax_kind.ATTRIBUTE_EXPR ->
       [ Cst.SignatureItem.Attribute (attribute_from_node node) ]
+  | Syntax_kind.APPLY_EXPR when List.for_all is_attribute_node (direct_non_trivia_nodes node) ->
+      direct_non_trivia_nodes node
+      |> List.map (fun child ->
+             Cst.SignatureItem.Attribute (attribute_from_node child))
   | Syntax_kind.EXTENSION_EXPR ->
       [ Cst.SignatureItem.Extension (extension_from_node node) ]
   | _ ->
@@ -5961,8 +6204,7 @@ and validate_fun_body ~context = function
 
 and validate_expression ~context = function
   | Cst.Expression.Path _ | Cst.Expression.Operator _ | Cst.Expression.Literal _
-  | Cst.Expression.Unreachable _ | Cst.Expression.Attribute _
-  | Cst.Expression.Extension _ ->
+  | Cst.Expression.Unreachable _ | Cst.Expression.Extension _ ->
       ()
   | Cst.Expression.Constructor { payload; _ } ->
       Option.iter

@@ -212,7 +212,6 @@ and binding_sites_of_expression expr =
   | Syn.Cst.Expression.Operator _
   | Syn.Cst.Expression.Literal _
   | Syn.Cst.Expression.Unreachable _
-  | Syn.Cst.Expression.Attribute _
   | Syn.Cst.Expression.Extension _
   | Syn.Cst.Expression.New _ ->
       []

@@ -49,44 +49,48 @@
               }
             },
             "inner": {
-              "tag": "apply",
-              "syntax_node": {
-                "kind": "APPLY_EXPR",
-                "span": {
-                  "start": 9,
-                  "end": 20
-                }
+              "tag": "literal",
+              "literal": {
+                "tag": "int",
+                "syntax_node": {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 9,
+                    "end": 10
+                  }
+                },
+                "literal_token": {
+                  "kind": "INT_LITERAL",
+                  "text": "5",
+                  "span": {
+                    "start": 9,
+                    "end": 10
+                  }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "5",
+                "suffix": null
               },
-              "callee": {
-                "tag": "literal",
-                "literal": {
-                  "tag": "int",
+              "attributes": [
+                {
                   "syntax_node": {
-                    "kind": "INT_LITERAL",
+                    "kind": "ATTRIBUTE_EXPR",
                     "span": {
-                      "start": 9,
-                      "end": 10
+                      "start": 11,
+                      "end": 20
                     }
                   },
-                  "literal_token": {
-                    "kind": "INT_LITERAL",
-                    "text": "5",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "@",
                     "span": {
-                      "start": 9,
-                      "end": 10
+                      "start": 12,
+                      "end": 13
                     }
                   },
-                  "base": "decimal",
-                  "prefix": null,
-                  "digits": "5",
-                  "suffix": null
-                }
-              },
-              "argument": {
-                "tag": "positional",
-                "value": {
-                  "tag": "attribute",
-                  "attribute": {
+                  "name": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "ATTRIBUTE_EXPR",
                       "span": {
@@ -94,37 +98,19 @@
                         "end": 20
                       }
                     },
-                    "sigil_token": {
+                    "name_token": {
                       "kind": "IDENT_EXPR",
-                      "text": "@",
+                      "text": "inline",
                       "span": {
-                        "start": 12,
-                        "end": 13
+                        "start": 13,
+                        "end": 19
                       }
-                    },
-                    "name": {
-                      "tag": "ident",
-                      "syntax_node": {
-                        "kind": "ATTRIBUTE_EXPR",
-                        "span": {
-                          "start": 11,
-                          "end": 20
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "inline",
-                        "span": {
-                          "start": 13,
-                          "end": 19
-                        }
-                      }
-                    },
-                    "payload_syntax_node": null,
-                    "payload": null
-                  }
+                    }
+                  },
+                  "payload_syntax_node": null,
+                  "payload": null
                 }
-              }
+              ]
             }
           },
           "and_bindings": [],

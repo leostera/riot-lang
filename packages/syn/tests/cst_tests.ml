@@ -2571,28 +2571,25 @@ let tests =
         match structure_items cst with
         | Syn.Cst.StructureItem.LetBinding
             {
-              value =
-                Syn.Cst.Expression.Apply
-                  {
-                    argument =
-                      Syn.Cst.Positional
-                        (Syn.Cst.Expression.Attribute
-                          {
-                            payload_syntax_node = None;
-                            payload =
-                              Some
-                                (Syn.Cst.Payload.Structure
-                                  { item_syntax_nodes = item_node :: _ });
-                            _;
-                          });
-                    _;
-                  };
+              value;
               _;
             }
-          :: _ ->
-            Test.assert_equal ~expected:"INFIX_EXPR"
-              ~actual:(SyntaxKind.to_string (Ceibo.Red.SyntaxNode.kind item_node));
-            Ok ()
+          :: _ -> (
+            let attributes = Syn.Cst.Expression.attributes value in
+            Test.assert_equal ~expected:1 ~actual:(List.length attributes);
+            match attributes with
+            | {
+               payload_syntax_node = None;
+               payload =
+                 Some (Syn.Cst.Payload.Structure { item_syntax_nodes = item_node :: _ });
+               _;
+              }
+              :: _ ->
+                Test.assert_equal ~expected:"INFIX_EXPR"
+                  ~actual:(SyntaxKind.to_string (Ceibo.Red.SyntaxNode.kind item_node));
+                Ok ()
+            | _ ->
+                Error "expected expression attribute with structure payload")
         | _ ->
             Error "expected expression attribute with structure payload");
     Test.case "cst extensions lift typed `:` payloads" (fun () ->

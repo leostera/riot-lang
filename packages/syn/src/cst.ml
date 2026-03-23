@@ -64,6 +64,7 @@ and extension = {
   name : Ident.t;
   payload_syntax_node : syntax_node option;
   payload : payload option;
+  attributes : attribute list;
 }
 
 and payload =
@@ -610,6 +611,7 @@ type string_constant = {
   delimiter : string_delimiter;
   contents : string;
   terminated : bool;
+  attributes : attribute list;
 }
 
 type integer_constant = {
@@ -619,6 +621,7 @@ type integer_constant = {
   prefix : string option;
   digits : string;
   suffix : string option;
+  attributes : attribute list;
 }
 
 type float_exponent = {
@@ -634,18 +637,21 @@ type float_constant = {
   fractional_digits : string;
   exponent : float_exponent option;
   suffix : string option;
+  attributes : attribute list;
 }
 
 type char_constant = {
   syntax_node : syntax_node;
   literal_token : Token.t;
   contents : string;
+  attributes : attribute list;
 }
 
 type bool_constant = {
   syntax_node : syntax_node;
   literal_token : Token.t;
   value : bool;
+  attributes : attribute list;
 }
 
 type constant =
@@ -654,7 +660,10 @@ type constant =
   | Float of float_constant
   | Char of char_constant
   | Bool of bool_constant
-  | Unit of { syntax_node : syntax_node }
+  | Unit of {
+      syntax_node : syntax_node;
+      attributes : attribute list;
+    }
 
 module Constant = struct
   type t = constant =
@@ -663,7 +672,10 @@ module Constant = struct
     | Float of float_constant
     | Char of char_constant
     | Bool of bool_constant
-    | Unit of { syntax_node : syntax_node }
+    | Unit of {
+        syntax_node : syntax_node;
+        attributes : attribute list;
+      }
 
   let syntax_node = function
     | String { syntax_node; _ }
@@ -671,8 +683,17 @@ module Constant = struct
     | Float { syntax_node; _ }
     | Char { syntax_node; _ }
     | Bool { syntax_node; _ }
-    | Unit { syntax_node } ->
+    | Unit { syntax_node; _ } ->
         syntax_node
+
+  let attributes = function
+    | String { attributes; _ }
+    | Int { attributes; _ }
+    | Float { attributes; _ }
+    | Char { attributes; _ }
+    | Bool { attributes; _ }
+    | Unit { attributes; _ } ->
+        attributes
 end
 
 module PatternLiteral = Constant
@@ -996,7 +1017,6 @@ type expression =
   | Operator of operator_expression
   | Literal of literal
   | Unreachable of unreachable_expression
-  | Attribute of attribute
   | Extension of extension
   | Object of object_expression
   | PolyVariant of poly_variant_expression
@@ -1039,28 +1059,33 @@ type expression =
 and path_expression = {
   syntax_node : syntax_node;
   path : Ident.t;
+  attributes : attribute list;
 }
 
 and constructor_expression = {
   syntax_node : syntax_node;
   constructor_path : Ident.t;
   payload : expression option;
+  attributes : attribute list;
 }
 
 and operator_expression = {
   syntax_node : syntax_node;
   operator_tokens : Token.t list;
+  attributes : attribute list;
 }
 
 and unreachable_expression = {
   syntax_node : syntax_node;
   dot_token : Token.t;
+  attributes : attribute list;
 }
 
 and object_expression = {
   syntax_node : syntax_node;
   self_pattern : pattern option;
   members : object_member list;
+  attributes : attribute list;
 }
 
 and object_member =
@@ -1107,12 +1132,14 @@ and poly_variant_expression = {
   syntax_node : syntax_node;
   tag_token : Token.t;
   payload : expression option;
+  attributes : attribute list;
 }
 
 and first_class_module_expression = {
   syntax_node : syntax_node;
   module_expression : module_expression;
   module_type : module_type option;
+  attributes : attribute list;
 }
 
 and let_module_expression = {
@@ -1120,28 +1147,33 @@ and let_module_expression = {
   module_name_token : Token.t;
   module_expression : module_expression;
   body : expression;
+  attributes : attribute list;
 }
 
 and let_exception_expression = {
   syntax_node : syntax_node;
   exception_declaration : exception_declaration;
   body : expression;
+  attributes : attribute list;
 }
 
 and assert_expression = {
   syntax_node : syntax_node;
   asserted : expression;
+  attributes : attribute list;
 }
 
 and lazy_expression = {
   syntax_node : syntax_node;
   body : expression;
+  attributes : attribute list;
 }
 
 and while_expression = {
   syntax_node : syntax_node;
   condition : expression;
   body : expression;
+  attributes : attribute list;
 }
 
 and for_direction =
@@ -1159,6 +1191,7 @@ and for_expression = {
   direction : for_direction;
   end_expr : expression;
   body : expression;
+  attributes : attribute list;
 }
 
 and apply_argument =
@@ -1182,40 +1215,47 @@ and apply_expression = {
   syntax_node : syntax_node;
   callee : expression;
   argument : apply_argument;
+  attributes : attribute list;
 }
 
 and method_call_expression = {
   syntax_node : syntax_node;
   receiver : expression;
   method_name : Token.t;
+  attributes : attribute list;
 }
 
 and new_expression = {
   syntax_node : syntax_node;
   class_path : Ident.t;
+  attributes : attribute list;
 }
 
 and prefix_expression = {
   syntax_node : syntax_node;
   operator_token : Token.t;
   operand : expression;
+  attributes : attribute list;
 }
 
 and field_access_expression = {
   syntax_node : syntax_node;
   receiver : expression;
   field_name : Token.t;
+  attributes : attribute list;
 }
 
 and index_expression = {
   syntax_node : syntax_node;
   collection : expression;
   index : expression;
+  attributes : attribute list;
 }
 
 and object_override_expression = {
   syntax_node : syntax_node;
   fields : object_override_field list;
+  attributes : attribute list;
 }
 
 and instance_variable_assign_expression = {
@@ -1223,6 +1263,7 @@ and instance_variable_assign_expression = {
   name_token : Token.t;
   operator_token : Token.t;
   value : expression;
+  attributes : attribute list;
 }
 
 and field_assign_expression = {
@@ -1230,6 +1271,7 @@ and field_assign_expression = {
   target : field_access_expression;
   operator_token : Token.t;
   value : expression;
+  attributes : attribute list;
 }
 
 and assign_expression = {
@@ -1237,6 +1279,7 @@ and assign_expression = {
   target : expression;
   operator_token : Token.t;
   value : expression;
+  attributes : attribute list;
 }
 
 and infix_expression = {
@@ -1244,18 +1287,21 @@ and infix_expression = {
   left : expression;
   operator_token : Token.t;
   right : expression;
+  attributes : attribute list;
 }
 
 and typed_expression = {
   syntax_node : syntax_node;
   expression : expression;
   type_ : core_type;
+  attributes : attribute list;
 }
 
 and polymorphic_expression = {
   syntax_node : syntax_node;
   expression : expression;
   type_ : core_type;
+  attributes : attribute list;
 }
 
 and coerce_expression = {
@@ -1263,27 +1309,32 @@ and coerce_expression = {
   expression : expression;
   from_type : core_type option;
   to_type : core_type;
+  attributes : attribute list;
 }
 
 and sequence_expression = {
   syntax_node : syntax_node;
   left : expression;
   right : expression;
+  attributes : attribute list;
 }
 
 and tuple_expression = {
   syntax_node : syntax_node;
   elements : expression list;
+  attributes : attribute list;
 }
 
 and list_expression = {
   syntax_node : syntax_node;
   elements : expression list;
+  attributes : attribute list;
 }
 
 and array_expression = {
   syntax_node : syntax_node;
   elements : expression list;
+  attributes : attribute list;
 }
 
 and record_expression =
@@ -1293,12 +1344,14 @@ and record_expression =
 and record_literal_expression = {
   syntax_node : syntax_node;
   fields : record_expression_field list;
+  attributes : attribute list;
 }
 
 and record_update_expression = {
   syntax_node : syntax_node;
   base : expression;
   fields : record_expression_field list;
+  attributes : attribute list;
 }
 
 and record_expression_field_source =
@@ -1324,6 +1377,7 @@ and local_open_expression = {
   module_path : Ident.t;
   body : expression;
   via_let_open : bool;
+  attributes : attribute list;
 }
 
 and function_case_body = {
@@ -1339,11 +1393,13 @@ and fun_expression = {
   syntax_node : syntax_node;
   parameters : Parameter.t list;
   body : fun_body;
+  attributes : attribute list;
 }
 
 and function_expression = {
   syntax_node : syntax_node;
   cases : match_case list;
+  attributes : attribute list;
 }
 
 and let_binding = {
@@ -1368,6 +1424,7 @@ and let_operator_expression = {
   binding : binding_operator_binding;
   and_bindings : binding_operator_binding list;
   body : expression;
+  attributes : attribute list;
 }
 
 and let_expression = {
@@ -1377,18 +1434,21 @@ and let_expression = {
   and_bindings : let_binding list;
   body : expression;
   is_recursive : bool;
+  attributes : attribute list;
 }
 
 and match_expression = {
   syntax_node : syntax_node;
   scrutinee : expression;
   cases : match_case list;
+  attributes : attribute list;
 }
 
 and try_expression = {
   syntax_node : syntax_node;
   body : expression;
   cases : match_case list;
+  attributes : attribute list;
 }
 
 and match_case = {
@@ -1403,11 +1463,13 @@ and if_expression = {
   condition : expression;
   then_branch : expression;
   else_branch : expression option;
+  attributes : attribute list;
 }
 
 and parenthesized_expression = {
   syntax_node : syntax_node;
   inner : expression;
+  attributes : attribute list;
 }
 
 and class_expression =
@@ -1568,7 +1630,6 @@ module Expression = struct
     | Operator of operator_expression
     | Literal of literal
     | Unreachable of unreachable_expression
-    | Attribute of attribute
     | Extension of extension
     | Object of object_expression
     | PolyVariant of poly_variant_expression
@@ -1615,7 +1676,6 @@ module Expression = struct
     | Literal literal ->
         Constant.syntax_node literal
     | Unreachable expr -> expr.syntax_node
-    | Attribute attr -> attr.syntax_node
     | Extension ext -> ext.syntax_node
     | Object expr -> expr.syntax_node
     | PolyVariant expr -> expr.syntax_node
@@ -1656,6 +1716,55 @@ module Expression = struct
     | Try expr -> expr.syntax_node
     | If expr -> expr.syntax_node
     | Parenthesized expr -> expr.syntax_node
+
+  let attributes = function
+    | Path expr -> expr.attributes
+    | Constructor expr -> expr.attributes
+    | Operator expr -> expr.attributes
+    | Literal literal ->
+        Constant.attributes literal
+    | Unreachable expr -> expr.attributes
+    | Extension ext -> ext.attributes
+    | Object expr -> expr.attributes
+    | PolyVariant expr -> expr.attributes
+    | FirstClassModule expr -> expr.attributes
+    | LetModule expr -> expr.attributes
+    | LetException expr -> expr.attributes
+    | Assert expr -> expr.attributes
+    | Lazy expr -> expr.attributes
+    | While expr -> expr.attributes
+    | For expr -> expr.attributes
+    | Apply expr -> expr.attributes
+    | MethodCall expr -> expr.attributes
+    | New expr -> expr.attributes
+    | Prefix expr -> expr.attributes
+    | FieldAccess expr -> expr.attributes
+    | Index expr -> expr.attributes
+    | ObjectOverride expr -> expr.attributes
+    | InstanceVariableAssign expr -> expr.attributes
+    | FieldAssign expr -> expr.attributes
+    | Assign expr -> expr.attributes
+    | Infix expr -> expr.attributes
+    | Typed expr -> expr.attributes
+    | Polymorphic expr -> expr.attributes
+    | Coerce expr -> expr.attributes
+    | Sequence expr -> expr.attributes
+    | Tuple expr -> expr.attributes
+    | List expr -> expr.attributes
+    | Array expr -> expr.attributes
+    | Record expr -> (
+        match expr with
+        | Literal record -> record.attributes
+        | Update record -> record.attributes)
+    | LocalOpen expr -> expr.attributes
+    | Fun expr -> expr.attributes
+    | Function expr -> expr.attributes
+    | LetOperator expr -> expr.attributes
+    | Let expr -> expr.attributes
+    | Match expr -> expr.attributes
+    | Try expr -> expr.attributes
+    | If expr -> expr.attributes
+    | Parenthesized expr -> expr.attributes
 end
 
 module ObjectMember = struct
@@ -1878,6 +1987,7 @@ module InfixExpression = struct
     left : expression;
     operator_token : Token.t;
     right : expression;
+    attributes : attribute list;
   }
 
   let syntax_node expr = expr.syntax_node
@@ -1885,6 +1995,7 @@ module InfixExpression = struct
   let operator_token expr = expr.operator_token
   let operator expr = Token.text expr.operator_token
   let right expr = expr.right
+  let attributes expr = expr.attributes
 end
 
 module RecordExpression = struct
