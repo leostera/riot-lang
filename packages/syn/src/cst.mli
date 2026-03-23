@@ -1407,6 +1407,9 @@ and first_class_module_pattern = {
 
 (** Payload for `Pattern.PolyVariant`.
 
+    This mirrors OCaml's `Parsetree.Ppat_variant` shape: a variant label plus an
+    optional nested payload pattern.
+
     The `payload` is present for forms like `` `Ok x `` and absent for bare tags
     like `` `Done ``.
 *)

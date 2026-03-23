@@ -4847,8 +4847,11 @@ let tests =
             Test.assert_equal ~expected:2 ~actual:(List.length fields);
             Ok ()
         | _ -> Error "expected polyvariant expression");
-    Test.case "cst polyvariant patterns preserve tags and payloads" (fun () ->
-        let source = "let x = match y with `Point (a, b) -> a\n" in
+    Test.case "cst polyvariant patterns mirror bare and payload parsetree forms"
+      (fun () ->
+        let source =
+          "let x = match y with `Done -> 0 | `Point (a, b) -> a\n"
+        in
         let result = parse_ml source in
         let cst =
           expect_some result.cst
@@ -4863,6 +4866,12 @@ let tests =
                   {
                     cases =
                       [
+                        {
+                          pattern =
+                            Syn.Cst.Pattern.PolyVariant
+                              { tag_token = bare_tag_token; payload = None; _ };
+                          _;
+                        };
                         {
                           pattern =
                             Syn.Cst.Pattern.PolyVariant
@@ -4900,6 +4909,8 @@ let tests =
               _;
             }
           :: _ ->
+            Test.assert_equal ~expected:"Done"
+              ~actual:(Syn.Cst.Token.text bare_tag_token);
             Test.assert_equal ~expected:"Point"
               ~actual:(Syn.Cst.Token.text tag_token);
             Test.assert_equal ~expected:"a"

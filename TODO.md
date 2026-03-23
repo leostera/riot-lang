@@ -185,7 +185,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] tuple patterns are missing labelled elements and open tuple `...` structure
   - [x] record patterns are missing open-vs-closed structure
   - [x] constructor patterns are missing existential type variables
-  - [ ] polyvariant patterns are simplified to tag + optional payload
+  - [x] polyvariant patterns are simplified to tag + optional payload
   - [ ] literal patterns lose delimiter/suffix detail and exact constant structure
   - [ ] interval patterns store two tokens instead of parsed constants
   - [ ] first-class-module patterns are still thinner than the stock unpack form
