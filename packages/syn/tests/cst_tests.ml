@@ -1207,6 +1207,72 @@ let tests =
               ~actual:(Syn.Cst.Ident.name declared_type);
             Ok ()
         | _ -> Error "expected interface class declaration");
+    Test.case
+      "cst implementation class declarations preserve declaration-site class-type annotations"
+      (fun () ->
+        let result =
+          parse_ml
+            "class service : object method run : response end = object method run = value end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassDeclaration
+            {
+              class_name;
+              class_type =
+                Some
+                  (Syn.Cst.ClassType.Signature
+                    {
+                      fields =
+                        [
+                          Syn.Cst.ClassTypeField.Method
+                            {
+                              name_token = method_name;
+                              type_ =
+                                Syn.Cst.CoreType.Constr
+                                  { constructor_path = response_type; _ };
+                              _;
+                            };
+                        ];
+                      _;
+                    });
+              class_body =
+                Some
+                  (Syn.Cst.ClassExpression.Structure
+                    {
+                      fields =
+                        [
+                            Syn.Cst.ClassField.Method
+                              {
+                                name_token = body_method_name;
+                                body =
+                                  Some
+                                    (Syn.Cst.Expression.Path
+                                      { path = body_value_path; _ });
+                                _;
+                              };
+                        ];
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"service"
+              ~actual:(Syn.Cst.Token.text class_name);
+            Test.assert_equal ~expected:"run"
+              ~actual:(Syn.Cst.Token.text method_name);
+            Test.assert_equal ~expected:(Some "response")
+              ~actual:(Syn.Cst.Ident.name response_type);
+            Test.assert_equal ~expected:"run"
+              ~actual:(Syn.Cst.Token.text body_method_name);
+            Test.assert_equal ~expected:(Some "value")
+              ~actual:(Syn.Cst.Ident.name body_value_path);
+            Ok ()
+        | _ -> Error "expected implementation class declaration");
     Test.case "cst class declarations preserve typed class-expression forms"
       (fun () ->
         let result =

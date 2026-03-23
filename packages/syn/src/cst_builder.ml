@@ -4321,6 +4321,27 @@ let class_declaration_from_node node =
     |> List.exists (fun syntax_token ->
            String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":")
   in
+  let class_type_and_body_from_child child =
+    match Ceibo.Red.SyntaxNode.kind child with
+    | Syntax_kind.INFIX_EXPR -> (
+        match direct_non_trivia_nodes child with
+        | class_type_node :: class_body_node :: _
+          when can_lift_class_type_node class_type_node
+               && can_lift_class_expression_node class_body_node ->
+            ( Some (class_type_from_node class_type_node),
+              Some (class_expression_from_node class_body_node) )
+        | _ ->
+            (None, None))
+    | _ ->
+        ( (if has_colon_body && can_lift_class_type_node child then
+             Some (class_type_from_node child)
+           else
+             None),
+          if has_equals_body && can_lift_class_expression_node child then
+            Some (class_expression_from_node child)
+          else
+            None )
+  in
   let children =
     direct_non_trivia_nodes node
     |> List.filter (fun child ->
@@ -4337,26 +4358,28 @@ let class_declaration_from_node node =
   | Some (name_node, _prefix, remainder) -> (
       match first_ident_token_in_subtree name_node, List.rev remainder with
       | Some class_name, class_body_node :: rev_prefix ->
+          let suffix_class_type, suffix_class_body =
+            class_type_and_body_from_child class_body_node
+          in
+          let prefix_class_type =
+            if Option.is_some suffix_class_type then
+              None
+            else
+              match List.rev rev_prefix with
+              | class_type_node :: _ when can_lift_class_type_node class_type_node ->
+                  Some (class_type_from_node class_type_node)
+              | _ -> None
+          in
           Some
             {
               Cst.syntax_node = node;
               type_params = type_parameters_from_node node;
               class_name;
               class_type =
-                (if has_colon_body then
-                   match List.rev rev_prefix with
-                   | class_type_node :: _ when can_lift_class_type_node class_type_node ->
-                       Some (class_type_from_node class_type_node)
-                   | [] when can_lift_class_type_node class_body_node ->
-                       Some (class_type_from_node class_body_node)
-                   | _ -> None
-                 else
-                   None);
-              class_body =
-                if has_equals_body then
-                  Some (class_expression_from_node class_body_node)
-                else
-                  None;
+                (match suffix_class_type with
+                | Some _ -> suffix_class_type
+                | None -> prefix_class_type);
+              class_body = suffix_class_body;
             }
       | _ -> None)
   | None -> None

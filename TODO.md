@@ -154,9 +154,9 @@ Remember to document the CST types and constructors with examples so its easy to
 
 - [x] Core types still have opaque branches and missing families even though the first typed `core_type` tree is in place
 - [x] First-class module expressions, `let module`, and module declarations now lift through `module_expression`
-- [ ] Module types are still raw syntax in places like:
+- [x] Module types are still raw syntax in places like:
   - [x] first-class module expressions / patterns / type definitions now lift through `module_type`
-  - [ ] class type bodies and some declaration sites still keep raw syntax
+  - [x] class type bodies and some declaration sites still keep raw syntax
 - [x] Type definitions are still opaque in several branches:
   - [x] `TypeDefinition.Alias`
   - [x] `TypeDefinition.Object`
