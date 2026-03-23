@@ -10,7 +10,8 @@
 4. Prefer explicit syntax kinds and spans over inferred structure.
 5. Keep `Syn.Cst` faithful to the successful `Ceibo` parse. If a syntax family cannot be lifted precisely, bail from the builder instead of introducing public placeholder nodes.
 6. Keep the CST root explicit about implementation vs interface files; do not collapse `.ml` and `.mli` structure into one ambiguous top-level shape.
-7. Keep `cst.ml` focused on public types, `cst_builder.ml` focused on lifting, and `cst_json.ml` focused on fixture serialization.
+7. Keep file-level item families split between `StructureItem` and `SignatureItem`; do not reintroduce a shared mixed top-level item enum.
+8. Keep `cst.ml` focused on public types, `cst_builder.ml` focused on lifting, and `cst_json.ml` focused on fixture serialization.
 
 ## Validate
 

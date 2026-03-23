@@ -4953,33 +4953,37 @@ and collect_expressions_from_class_expression = function
   | Cst.ClassExpression.Attribute { class_expression; _ } ->
       collect_expressions_from_class_expression class_expression
 
-let collect_expressions_from_item = function
-  | Cst.Item.TypeDeclaration _ | Cst.Item.TypeExtension _
-  | Cst.Item.ModuleDeclaration _
-  | Cst.Item.RecursiveModuleDeclaration _
-  | Cst.Item.ModuleTypeDeclaration _ | Cst.Item.OpenStatement _
-  | Cst.Item.ValueDeclaration _ | Cst.Item.ExternalDeclaration _
-  | Cst.Item.IncludeStatement _ | Cst.Item.ExceptionDeclaration _
-  | Cst.Item.ClassTypeDeclaration _ | Cst.Item.Attribute _
-  | Cst.Item.Extension _ ->
+let collect_expressions_from_structure_item = function
+  | Cst.StructureItem.TypeDeclaration _ | Cst.StructureItem.TypeExtension _
+  | Cst.StructureItem.ModuleDeclaration _
+  | Cst.StructureItem.RecursiveModuleDeclaration _
+  | Cst.StructureItem.ModuleTypeDeclaration _
+  | Cst.StructureItem.OpenStatement _
+  | Cst.StructureItem.ValueDeclaration _
+  | Cst.StructureItem.ExternalDeclaration _
+  | Cst.StructureItem.IncludeStatement _
+  | Cst.StructureItem.ExceptionDeclaration _
+  | Cst.StructureItem.ClassTypeDeclaration _
+  | Cst.StructureItem.Attribute _
+  | Cst.StructureItem.Extension _ ->
       []
-  | Cst.Item.LetBinding binding ->
+  | Cst.StructureItem.LetBinding binding ->
       collect_expressions_from_let_binding binding
-  | Cst.Item.Expression expr ->
+  | Cst.StructureItem.Expression expr ->
       collect_expressions_from_expression expr
-  | Cst.Item.ClassDeclaration { class_body; _ } ->
+  | Cst.StructureItem.ClassDeclaration { class_body; _ } ->
       Option.to_list class_body |> List.concat_map collect_expressions_from_class_expression
 
-let rec items_from_node node =
+let rec structure_items_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.TYPE_DECL -> (
       if is_type_extension_node node then
         match type_extension_from_node node with
-        | Some decl -> [ Cst.Item.TypeExtension decl ]
+        | Some decl -> [ Cst.StructureItem.TypeExtension decl ]
         | None -> unsupported_item node
       else
         match type_declaration_from_node node with
-        | Some decl -> [ Cst.Item.TypeDeclaration decl ]
+        | Some decl -> [ Cst.StructureItem.TypeDeclaration decl ]
         | None -> unsupported_item node)
   | Syntax_kind.TYPE_MUTUAL_DECL ->
       let child_nodes = direct_non_trivia_nodes node in
@@ -4992,31 +4996,31 @@ let rec items_from_node node =
         match
           recursive_module_declaration_from_nodes ~group_syntax_node:node child_nodes
         with
-        | Some decl -> [ Cst.Item.RecursiveModuleDeclaration decl ]
+        | Some decl -> [ Cst.StructureItem.RecursiveModuleDeclaration decl ]
         | None -> unsupported_item node
       else
-        child_nodes |> List.concat_map items_from_node
+        child_nodes |> List.concat_map structure_items_from_node
   | Syntax_kind.LET_BINDING -> (
       match let_binding_from_node ~is_recursive_binding:false node with
-      | Some binding -> [ Cst.Item.LetBinding binding ]
+      | Some binding -> [ Cst.StructureItem.LetBinding binding ]
       | None -> unsupported_item node)
   | Syntax_kind.LET_REC_BINDING -> (
       match let_binding_from_node ~is_recursive_binding:true node with
-      | Some binding -> [ Cst.Item.LetBinding binding ]
+      | Some binding -> [ Cst.StructureItem.LetBinding binding ]
       | None -> unsupported_item node)
   | Syntax_kind.LET_MUTUAL_DECL ->
       direct_non_trivia_nodes node
       |> List.filter (fun child ->
              let kind = Ceibo.Red.SyntaxNode.kind child in
              kind = Syntax_kind.LET_BINDING || kind = Syntax_kind.LET_REC_BINDING)
-      |> List.concat_map items_from_node
+      |> List.concat_map structure_items_from_node
   | Syntax_kind.CLASS_DECL -> (
       match class_declaration_from_node node with
-      | Some decl -> [ Cst.Item.ClassDeclaration decl ]
+      | Some decl -> [ Cst.StructureItem.ClassDeclaration decl ]
       | None -> unsupported_item node)
   | Syntax_kind.CLASS_TYPE_DECL -> (
       match class_type_declaration_from_node node with
-      | Some decl -> [ Cst.Item.ClassTypeDeclaration decl ]
+      | Some decl -> [ Cst.StructureItem.ClassTypeDeclaration decl ]
       | None -> unsupported_item node)
   | Syntax_kind.MODULE_DECL -> (
       match module_declaration_from_node node with
@@ -5025,47 +5029,120 @@ let rec items_from_node node =
             recursive_module_declaration_from_nodes ~group_syntax_node:node [ node ]
           with
           | Some recursive_decl ->
-              [ Cst.Item.RecursiveModuleDeclaration recursive_decl ]
+              [ Cst.StructureItem.RecursiveModuleDeclaration recursive_decl ]
           | None ->
               unsupported_item node)
-      | Some decl -> [ Cst.Item.ModuleDeclaration decl ]
+      | Some decl -> [ Cst.StructureItem.ModuleDeclaration decl ]
       | None -> unsupported_item node)
   | Syntax_kind.MODULE_TYPE_DECL -> (
       match module_type_declaration_from_node node with
-      | Some decl -> [ Cst.Item.ModuleTypeDeclaration decl ]
+      | Some decl -> [ Cst.StructureItem.ModuleTypeDeclaration decl ]
       | None -> unsupported_item node)
   | Syntax_kind.OPEN_STMT -> (
       match open_statement_from_node node with
-      | Some stmt -> [ Cst.Item.OpenStatement stmt ]
+      | Some stmt -> [ Cst.StructureItem.OpenStatement stmt ]
       | None -> unsupported_item node)
   | Syntax_kind.VAL_DECL -> (
       match value_declaration_from_node node with
-      | Some decl -> [ Cst.Item.ValueDeclaration decl ]
+      | Some decl -> [ Cst.StructureItem.ValueDeclaration decl ]
       | None -> unsupported_item node)
   | Syntax_kind.EXTERNAL_DECL -> (
       match external_declaration_from_node node with
-      | Some decl -> [ Cst.Item.ExternalDeclaration decl ]
+      | Some decl -> [ Cst.StructureItem.ExternalDeclaration decl ]
       | None -> unsupported_item node)
   | Syntax_kind.INCLUDE_STMT -> (
       match include_statement_from_node node with
-      | Some stmt -> [ Cst.Item.IncludeStatement stmt ]
+      | Some stmt -> [ Cst.StructureItem.IncludeStatement stmt ]
       | None -> unsupported_item node)
   | Syntax_kind.EXCEPTION_DECL -> (
       match exception_declaration_from_node node with
-      | Some decl -> [ Cst.Item.ExceptionDeclaration decl ]
+      | Some decl -> [ Cst.StructureItem.ExceptionDeclaration decl ]
       | None -> unsupported_item node)
   | Syntax_kind.ATTRIBUTE_EXPR ->
-      [ Cst.Item.Attribute (attribute_from_node node) ]
+      [ Cst.StructureItem.Attribute (attribute_from_node node) ]
   | Syntax_kind.EXTENSION_EXPR ->
-      [ Cst.Item.Extension (extension_from_node node) ]
+      [ Cst.StructureItem.Extension (extension_from_node node) ]
   | Syntax_kind.SEQUENCE_EXPR -> (
       match direct_non_trivia_nodes node with
       | only_expr :: [] -> (
-          [ Cst.Item.Expression (expression_from_node only_expr) ])
+          [ Cst.StructureItem.Expression (expression_from_node only_expr) ])
       | _ -> (
-          [ Cst.Item.Expression (expression_from_node node) ]))
+          [ Cst.StructureItem.Expression (expression_from_node node) ]))
   | _ -> (
-      [ Cst.Item.Expression (expression_from_node node) ])
+      [ Cst.StructureItem.Expression (expression_from_node node) ])
+
+let rec signature_items_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.TYPE_DECL -> (
+      if is_type_extension_node node then
+        match type_extension_from_node node with
+        | Some decl -> [ Cst.SignatureItem.TypeExtension decl ]
+        | None -> unsupported_item node
+      else
+        match type_declaration_from_node node with
+        | Some decl -> [ Cst.SignatureItem.TypeDeclaration decl ]
+        | None -> unsupported_item node)
+  | Syntax_kind.TYPE_MUTUAL_DECL ->
+      let child_nodes = direct_non_trivia_nodes node in
+      if
+        child_nodes != []
+        && List.for_all
+             (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.MODULE_DECL)
+             child_nodes
+      then
+        match
+          recursive_module_declaration_from_nodes ~group_syntax_node:node child_nodes
+        with
+        | Some decl -> [ Cst.SignatureItem.RecursiveModuleDeclaration decl ]
+        | None -> unsupported_item node
+      else
+        child_nodes |> List.concat_map signature_items_from_node
+  | Syntax_kind.CLASS_DECL -> (
+      match class_declaration_from_node node with
+      | Some decl -> [ Cst.SignatureItem.ClassDeclaration decl ]
+      | None -> unsupported_item node)
+  | Syntax_kind.CLASS_TYPE_DECL -> (
+      match class_type_declaration_from_node node with
+      | Some decl -> [ Cst.SignatureItem.ClassTypeDeclaration decl ]
+      | None -> unsupported_item node)
+  | Syntax_kind.MODULE_DECL -> (
+      match module_declaration_from_node node with
+      | Some decl when Cst.ModuleDeclaration.is_recursive decl -> (
+          match
+            recursive_module_declaration_from_nodes ~group_syntax_node:node [ node ]
+          with
+          | Some recursive_decl ->
+              [ Cst.SignatureItem.RecursiveModuleDeclaration recursive_decl ]
+          | None ->
+              unsupported_item node)
+      | Some decl -> [ Cst.SignatureItem.ModuleDeclaration decl ]
+      | None -> unsupported_item node)
+  | Syntax_kind.MODULE_TYPE_DECL -> (
+      match module_type_declaration_from_node node with
+      | Some decl -> [ Cst.SignatureItem.ModuleTypeDeclaration decl ]
+      | None -> unsupported_item node)
+  | Syntax_kind.OPEN_STMT -> (
+      match open_statement_from_node node with
+      | Some stmt -> [ Cst.SignatureItem.OpenStatement stmt ]
+      | None -> unsupported_item node)
+  | Syntax_kind.VAL_DECL -> (
+      match value_declaration_from_node node with
+      | Some decl -> [ Cst.SignatureItem.ValueDeclaration decl ]
+      | None -> unsupported_item node)
+  | Syntax_kind.INCLUDE_STMT -> (
+      match include_statement_from_node node with
+      | Some stmt -> [ Cst.SignatureItem.IncludeStatement stmt ]
+      | None -> unsupported_item node)
+  | Syntax_kind.EXCEPTION_DECL -> (
+      match exception_declaration_from_node node with
+      | Some decl -> [ Cst.SignatureItem.ExceptionDeclaration decl ]
+      | None -> unsupported_item node)
+  | Syntax_kind.ATTRIBUTE_EXPR ->
+      [ Cst.SignatureItem.Attribute (attribute_from_node node) ]
+  | Syntax_kind.EXTENSION_EXPR ->
+      [ Cst.SignatureItem.Extension (extension_from_node node) ]
+  | _ ->
+      unsupported_item node
 
 let raw_annotation_payload_from_shell shell_node =
   let all_tokens = direct_tokens shell_node in
@@ -5144,16 +5221,32 @@ let raw_annotation_payload_from_shell shell_node =
           start_offset = (Ceibo.Red.SyntaxToken.span first_payload_token).start;
         }
 
-let item_syntax_nodes_from_parse_result result =
+let structure_payload_item_syntax_nodes_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.VAL_DECL -> (
+      match value_declaration_from_node node with
+      | Some decl -> [ decl.syntax_node ]
+      | None -> unsupported_item node)
+  | _ ->
+      structure_items_from_node node |> List.map Cst.StructureItem.syntax_node
+
+let signature_payload_item_syntax_nodes_from_node node =
+  signature_items_from_node node |> List.map Cst.SignatureItem.syntax_node
+
+let item_syntax_nodes_from_parse_result ~kind result =
   if List.length result.Parser.diagnostics > 0 then
     None
   else
     let root = Ceibo.Red.new_root result.tree in
     try
       Some
-        (direct_non_trivia_nodes root
-        |> List.concat_map items_from_node
-        |> List.map Cst.Item.syntax_node)
+        (match kind with
+        | `Implementation ->
+            direct_non_trivia_nodes root
+            |> List.concat_map structure_payload_item_syntax_nodes_from_node
+        | `Interface ->
+            direct_non_trivia_nodes root
+            |> List.concat_map signature_payload_item_syntax_nodes_from_node)
     with
     | Bail _ ->
         None
@@ -5164,7 +5257,7 @@ let annotation_payload_from_shell_lift shell_node =
       make_padded_fragment ~start_offset:raw_payload.start_offset raw_payload.text
     in
     parse_implementation_fragment source
-    |> item_syntax_nodes_from_parse_result
+    |> item_syntax_nodes_from_parse_result ~kind:`Implementation
     |> Option.map (fun item_syntax_nodes ->
            Cst.Payload.Structure { item_syntax_nodes })
   in
@@ -5173,7 +5266,7 @@ let annotation_payload_from_shell_lift shell_node =
       make_padded_fragment ~start_offset:raw_payload.start_offset raw_payload.text
     in
     parse_interface_fragment source
-    |> item_syntax_nodes_from_parse_result
+    |> item_syntax_nodes_from_parse_result ~kind:`Interface
     |> Option.map (fun item_syntax_nodes ->
            Cst.Payload.Signature { item_syntax_nodes })
   in
@@ -5245,7 +5338,7 @@ let annotation_payload_from_shell_lift shell_node =
 let () =
   Cell.set annotation_payload_from_shell_impl annotation_payload_from_shell_lift
 
-let build_source_file_body tree =
+let build_source_file_body tree items_from_node =
   let root = Ceibo.Red.new_root tree in
   let file_items =
     direct_non_trivia_nodes root
@@ -5974,88 +6067,144 @@ let validate_type_constraint ~context ({ left; right; _ } : Cst.type_constraint)
   validate_core_type ~context:("type_constraint.left" :: context) left;
   validate_core_type ~context:("type_constraint.right" :: context) right
 
-let validate_item ~context = function
-  | Cst.Item.TypeDeclaration { type_definition; constraints; _ } ->
-      validate_type_definition ~context:("item.type_declaration" :: context)
-        type_definition;
-      List.iteri
-        (fun index constraint_ ->
-          validate_type_constraint
-            ~context:
-              (("item.type_declaration.constraint[" ^ Int.to_string index ^ "]")
-              :: context)
-            constraint_)
-        constraints
-  | Cst.Item.TypeExtension { constructors; _ } ->
-      List.iteri
-        (fun index constructor ->
-          Option.iter
-            (validate_constructor_arguments
-               ~context:
-                 (("item.type_extension.constructor[" ^ Int.to_string index
-                  ^ "].arguments")
-                 :: context))
-            (Cst.VariantConstructor.arguments constructor);
-          Option.iter
-            (validate_core_type
-               ~context:
-                 (("item.type_extension.constructor[" ^ Int.to_string index
-                  ^ "].payload")
-                 :: context))
-            (Cst.VariantConstructor.payload_type constructor);
-          Option.iter
-            (validate_core_type
-               ~context:
-                 (("item.type_extension.constructor[" ^ Int.to_string index
-                  ^ "].result")
-                 :: context))
-            (Cst.VariantConstructor.result_type constructor))
-        constructors
-  | Cst.Item.LetBinding { binding_pattern; value; _ } ->
+let validate_type_declaration ~context
+    ({ type_definition; constraints; _ } : Cst.TypeDeclaration.t) =
+  validate_type_definition ~context:("item.type_declaration" :: context)
+    type_definition;
+  List.iteri
+    (fun index constraint_ ->
+      validate_type_constraint
+        ~context:
+          (("item.type_declaration.constraint[" ^ Int.to_string index ^ "]")
+          :: context)
+        constraint_)
+    constraints
+
+let validate_type_extension ~context ({ constructors; _ } : Cst.TypeExtension.t) =
+  List.iteri
+    (fun index constructor ->
+      Option.iter
+        (validate_constructor_arguments
+           ~context:
+             (("item.type_extension.constructor[" ^ Int.to_string index
+              ^ "].arguments")
+             :: context))
+        (Cst.VariantConstructor.arguments constructor);
+      Option.iter
+        (validate_core_type
+           ~context:
+             (("item.type_extension.constructor[" ^ Int.to_string index
+              ^ "].payload")
+             :: context))
+        (Cst.VariantConstructor.payload_type constructor);
+      Option.iter
+        (validate_core_type
+           ~context:
+             (("item.type_extension.constructor[" ^ Int.to_string index
+              ^ "].result")
+             :: context))
+        (Cst.VariantConstructor.result_type constructor))
+    constructors
+
+let validate_class_declaration ~context ({ class_type; class_body; _ } : Cst.class_declaration)
+    =
+  Option.iter
+    (validate_class_type ~context:("item.class_declaration.type" :: context))
+    class_type;
+  Option.iter
+    (validate_class_expression ~context:("item.class_declaration.body" :: context))
+    class_body
+
+let validate_class_type_declaration ~context
+    ({ class_type_body; _ } : Cst.class_type_declaration) =
+  validate_class_type ~context:("item.class_type_declaration.body" :: context)
+    class_type_body
+
+let validate_module_type_declaration ~context
+    ({ module_type; _ } : Cst.ModuleTypeDeclaration.t) =
+  Option.iter
+    (validate_module_type ~context:("item.module_type_declaration" :: context))
+    module_type
+
+let validate_open_statement ~context stmt =
+  match Cst.OpenStatement.target stmt with
+  | Cst.OpenStatement.Path _ ->
+      ()
+  | Cst.OpenStatement.ModuleExpression expr ->
+      validate_module_expression ~context:("item.open_statement.target" :: context)
+        expr
+
+let validate_structure_item ~context = function
+  | Cst.StructureItem.TypeDeclaration decl ->
+      validate_type_declaration ~context decl
+  | Cst.StructureItem.TypeExtension decl ->
+      validate_type_extension ~context decl
+  | Cst.StructureItem.LetBinding { binding_pattern; value; _ } ->
       validate_pattern ~context:("item.let_binding.pattern" :: context)
         binding_pattern;
       validate_expression ~context:("item.let_binding.value" :: context) value
-  | Cst.Item.Expression expr ->
+  | Cst.StructureItem.Expression expr ->
       validate_expression ~context:("item.expression" :: context) expr
-  | Cst.Item.ClassDeclaration { class_type; class_body; _ } ->
-      Option.iter
-        (validate_class_type ~context:("item.class_declaration.type" :: context))
-        class_type;
-      Option.iter
-        (validate_class_expression ~context:("item.class_declaration.body" :: context))
-        class_body
-  | Cst.Item.ClassTypeDeclaration { class_type_body; _ } ->
-      validate_class_type ~context:("item.class_type_declaration.body" :: context)
-        class_type_body
-  | Cst.Item.Attribute _ | Cst.Item.Extension _ ->
+  | Cst.StructureItem.ClassDeclaration decl ->
+      validate_class_declaration ~context decl
+  | Cst.StructureItem.ClassTypeDeclaration decl ->
+      validate_class_type_declaration ~context decl
+  | Cst.StructureItem.Attribute _ | Cst.StructureItem.Extension _ ->
       ()
-  | Cst.Item.ValueDeclaration { type_; _ } ->
+  | Cst.StructureItem.ValueDeclaration { type_; _ } ->
       validate_core_type ~context:("item.value_declaration.type" :: context) type_
-  | Cst.Item.ExternalDeclaration { type_; _ } ->
+  | Cst.StructureItem.ExternalDeclaration { type_; _ } ->
       validate_core_type ~context:("item.external_declaration.type" :: context)
         type_
-  | Cst.Item.ModuleTypeDeclaration { module_type; _ } ->
-      Option.iter
-        (validate_module_type ~context:("item.module_type_declaration" :: context))
-        module_type
-  | Cst.Item.OpenStatement stmt -> (
-      match Cst.OpenStatement.target stmt with
-      | Cst.OpenStatement.Path _ ->
-          ()
-      | Cst.OpenStatement.ModuleExpression expr ->
-          validate_module_expression ~context:("item.open_statement.target" :: context)
-            expr)
-  | Cst.Item.ModuleDeclaration _
-  | Cst.Item.RecursiveModuleDeclaration _
-  | Cst.Item.IncludeStatement _
-  | Cst.Item.ExceptionDeclaration _ ->
+  | Cst.StructureItem.ModuleTypeDeclaration decl ->
+      validate_module_type_declaration ~context decl
+  | Cst.StructureItem.OpenStatement stmt ->
+      validate_open_statement ~context stmt
+  | Cst.StructureItem.ModuleDeclaration _
+  | Cst.StructureItem.RecursiveModuleDeclaration _
+  | Cst.StructureItem.IncludeStatement _
+  | Cst.StructureItem.ExceptionDeclaration _ ->
+      ()
+
+let validate_signature_item ~context = function
+  | Cst.SignatureItem.TypeDeclaration decl ->
+      validate_type_declaration ~context decl
+  | Cst.SignatureItem.TypeExtension decl ->
+      validate_type_extension ~context decl
+  | Cst.SignatureItem.Attribute _ | Cst.SignatureItem.Extension _ ->
+      ()
+  | Cst.SignatureItem.ClassDeclaration decl ->
+      validate_class_declaration ~context decl
+  | Cst.SignatureItem.ClassTypeDeclaration decl ->
+      validate_class_type_declaration ~context decl
+  | Cst.SignatureItem.ModuleTypeDeclaration decl ->
+      validate_module_type_declaration ~context decl
+  | Cst.SignatureItem.OpenStatement stmt ->
+      validate_open_statement ~context stmt
+  | Cst.SignatureItem.ValueDeclaration { type_; _ } ->
+      validate_core_type ~context:("item.value_declaration.type" :: context) type_
+  | Cst.SignatureItem.ModuleDeclaration _
+  | Cst.SignatureItem.RecursiveModuleDeclaration _
+  | Cst.SignatureItem.IncludeStatement _
+  | Cst.SignatureItem.ExceptionDeclaration _ ->
       ()
 
 let validate_source_file source_file =
-  List.iteri
-    (fun index item ->
-      validate_item ~context:[ "source_file.items[" ^ Int.to_string index ^ "]" ] item)
-    (Cst.SourceFile.items source_file);
+  (match source_file with
+  | Cst.Implementation { items; _ } ->
+      List.iteri
+        (fun index item ->
+          validate_structure_item
+            ~context:[ "source_file.items[" ^ Int.to_string index ^ "]" ]
+            item)
+        items
+  | Cst.Interface { items; _ } ->
+      List.iteri
+        (fun index item ->
+          validate_signature_item
+            ~context:[ "source_file.items[" ^ Int.to_string index ^ "]" ]
+            item)
+        items);
   List.iteri
     (fun index binding ->
       validate_expression
@@ -6070,13 +6219,21 @@ let validate_source_file source_file =
     (Cst.SourceFile.expressions source_file)
 
 let lift ~kind tree =
-  let syntax_node, items, let_bindings = build_source_file_body tree in
-  let expressions = items |> List.concat_map collect_expressions_from_item in
   let cst =
     match kind with
     | `Implementation ->
+        let syntax_node, items, let_bindings =
+          build_source_file_body tree structure_items_from_node
+        in
+        let expressions =
+          items |> List.concat_map collect_expressions_from_structure_item
+        in
         Cst.Implementation { syntax_node; items; let_bindings; expressions }
     | `Interface ->
+        let syntax_node, items, let_bindings =
+          build_source_file_body tree signature_items_from_node
+        in
+        let expressions = [] in
         Cst.Interface { syntax_node; items; let_bindings; expressions }
   in
   validate_source_file cst;

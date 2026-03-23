@@ -2200,7 +2200,7 @@ type include_statement = {
   target : include_target;
 }
 
-module Item = struct
+module StructureItem = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
     | TypeExtension of TypeExtension.t
@@ -2239,16 +2239,49 @@ module Item = struct
     | ExceptionDeclaration decl -> decl.syntax_node
 end
 
+module SignatureItem = struct
+  type t =
+    | TypeDeclaration of TypeDeclaration.t
+    | TypeExtension of TypeExtension.t
+    | Attribute of attribute
+    | Extension of extension
+    | ClassDeclaration of class_declaration
+    | ClassTypeDeclaration of class_type_declaration
+    | ModuleDeclaration of ModuleDeclaration.t
+    | RecursiveModuleDeclaration of RecursiveModuleDeclaration.t
+    | ModuleTypeDeclaration of ModuleTypeDeclaration.t
+    | OpenStatement of OpenStatement.t
+    | ValueDeclaration of value_declaration
+    | IncludeStatement of include_statement
+    | ExceptionDeclaration of exception_declaration
+
+  let syntax_node = function
+    | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
+    | TypeExtension decl -> TypeExtension.syntax_node decl
+    | Attribute attribute -> attribute.syntax_node
+    | Extension extension -> extension.syntax_node
+    | ClassDeclaration decl -> decl.syntax_node
+    | ClassTypeDeclaration decl -> decl.syntax_node
+    | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
+    | RecursiveModuleDeclaration decl ->
+        RecursiveModuleDeclaration.syntax_node decl
+    | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
+    | OpenStatement stmt -> OpenStatement.syntax_node stmt
+    | ValueDeclaration decl -> decl.syntax_node
+    | IncludeStatement stmt -> stmt.syntax_node
+    | ExceptionDeclaration decl -> decl.syntax_node
+end
+
 type implementation = {
   syntax_node : syntax_node;
-  items : Item.t list;
+  items : StructureItem.t list;
   let_bindings : LetBinding.t list;
   expressions : Expression.t list;
 }
 
 type interface = {
   syntax_node : syntax_node;
-  items : Item.t list;
+  items : SignatureItem.t list;
   let_bindings : LetBinding.t list;
   expressions : Expression.t list;
 }
@@ -2266,9 +2299,13 @@ module SourceFile = struct
     | Implementation source_file -> source_file.syntax_node
     | Interface source_file -> source_file.syntax_node
 
-  let items = function
-    | Implementation source_file -> source_file.items
-    | Interface source_file -> source_file.items
+  let structure_items = function
+    | Implementation source_file -> Some source_file.items
+    | Interface _ -> None
+
+  let signature_items = function
+    | Implementation _ -> None
+    | Interface source_file -> Some source_file.items
 
   let let_bindings = function
     | Implementation source_file -> source_file.let_bindings

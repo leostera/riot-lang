@@ -1920,98 +1920,178 @@ let include_statement_to_json (stmt : Cst.include_statement) =
       ("target", target);
     ]
 
-let item_to_json = function
-  | Cst.Item.TypeDeclaration decl ->
+let structure_item_to_json = function
+  | Cst.StructureItem.TypeDeclaration decl ->
       Json.Object
         [
           ("tag", Json.String "type_declaration");
           ("item", type_declaration_to_json decl);
         ]
-  | Cst.Item.TypeExtension decl ->
+  | Cst.StructureItem.TypeExtension decl ->
       Json.Object
         [
           ("tag", Json.String "type_extension");
           ("item", type_extension_to_json decl);
         ]
-  | Cst.Item.LetBinding binding ->
+  | Cst.StructureItem.LetBinding binding ->
       Json.Object
         [
           ("tag", Json.String "let_binding");
           ("item", let_binding_to_json binding);
         ]
-  | Cst.Item.Expression expr ->
+  | Cst.StructureItem.Expression expr ->
       Json.Object
         [
           ("tag", Json.String "expression");
           ("item", expression_to_json expr);
         ]
-  | Cst.Item.ClassDeclaration decl ->
+  | Cst.StructureItem.ClassDeclaration decl ->
       Json.Object
         [
           ("tag", Json.String "class_declaration");
           ("item", class_declaration_to_json decl);
         ]
-  | Cst.Item.Attribute attribute ->
+  | Cst.StructureItem.Attribute attribute ->
       Json.Object
         [
           ("tag", Json.String "attribute_item");
           ("attribute", attribute_to_json attribute);
         ]
-  | Cst.Item.Extension extension ->
+  | Cst.StructureItem.Extension extension ->
       Json.Object
         [
           ("tag", Json.String "extension_item");
           ("extension", extension_to_json extension);
         ]
-  | Cst.Item.ClassTypeDeclaration decl ->
+  | Cst.StructureItem.ClassTypeDeclaration decl ->
       Json.Object
         [
           ("tag", Json.String "class_type_declaration");
           ("item", class_type_declaration_to_json decl);
         ]
-  | Cst.Item.ModuleDeclaration decl ->
+  | Cst.StructureItem.ModuleDeclaration decl ->
       Json.Object
         [
           ("tag", Json.String "module_declaration");
           ("item", module_declaration_to_json decl);
         ]
-  | Cst.Item.RecursiveModuleDeclaration decl ->
+  | Cst.StructureItem.RecursiveModuleDeclaration decl ->
       Json.Object
         [
           ("tag", Json.String "recursive_module_declaration");
           ("item", recursive_module_declaration_to_json decl);
         ]
-  | Cst.Item.ModuleTypeDeclaration decl ->
+  | Cst.StructureItem.ModuleTypeDeclaration decl ->
       Json.Object
         [
           ("tag", Json.String "module_type_declaration");
           ("item", module_type_declaration_to_json decl);
         ]
-  | Cst.Item.OpenStatement stmt ->
+  | Cst.StructureItem.OpenStatement stmt ->
       Json.Object
         [
           ("tag", Json.String "open_statement");
           ("item", open_statement_to_json stmt);
         ]
-  | Cst.Item.ValueDeclaration decl ->
+  | Cst.StructureItem.ValueDeclaration decl ->
       Json.Object
         [
           ("tag", Json.String "value_declaration");
           ("item", value_declaration_to_json decl);
         ]
-  | Cst.Item.ExternalDeclaration decl ->
+  | Cst.StructureItem.ExternalDeclaration decl ->
       Json.Object
         [
           ("tag", Json.String "external_declaration");
           ("item", external_declaration_to_json decl);
         ]
-  | Cst.Item.IncludeStatement stmt ->
+  | Cst.StructureItem.IncludeStatement stmt ->
       Json.Object
         [
           ("tag", Json.String "include_statement");
           ("item", include_statement_to_json stmt);
         ]
-  | Cst.Item.ExceptionDeclaration decl ->
+  | Cst.StructureItem.ExceptionDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "exception_declaration");
+          ("item", exception_declaration_to_json decl);
+        ]
+
+let signature_item_to_json = function
+  | Cst.SignatureItem.TypeDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "type_declaration");
+          ("item", type_declaration_to_json decl);
+        ]
+  | Cst.SignatureItem.TypeExtension decl ->
+      Json.Object
+        [
+          ("tag", Json.String "type_extension");
+          ("item", type_extension_to_json decl);
+        ]
+  | Cst.SignatureItem.Attribute attribute ->
+      Json.Object
+        [
+          ("tag", Json.String "attribute_item");
+          ("attribute", attribute_to_json attribute);
+        ]
+  | Cst.SignatureItem.Extension extension ->
+      Json.Object
+        [
+          ("tag", Json.String "extension_item");
+          ("extension", extension_to_json extension);
+        ]
+  | Cst.SignatureItem.ClassDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "class_declaration");
+          ("item", class_declaration_to_json decl);
+        ]
+  | Cst.SignatureItem.ClassTypeDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "class_type_declaration");
+          ("item", class_type_declaration_to_json decl);
+        ]
+  | Cst.SignatureItem.ModuleDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "module_declaration");
+          ("item", module_declaration_to_json decl);
+        ]
+  | Cst.SignatureItem.RecursiveModuleDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "recursive_module_declaration");
+          ("item", recursive_module_declaration_to_json decl);
+        ]
+  | Cst.SignatureItem.ModuleTypeDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "module_type_declaration");
+          ("item", module_type_declaration_to_json decl);
+        ]
+  | Cst.SignatureItem.OpenStatement stmt ->
+      Json.Object
+        [
+          ("tag", Json.String "open_statement");
+          ("item", open_statement_to_json stmt);
+        ]
+  | Cst.SignatureItem.ValueDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "value_declaration");
+          ("item", value_declaration_to_json decl);
+        ]
+  | Cst.SignatureItem.IncludeStatement stmt ->
+      Json.Object
+        [
+          ("tag", Json.String "include_statement");
+          ("item", include_statement_to_json stmt);
+        ]
+  | Cst.SignatureItem.ExceptionDeclaration decl ->
       Json.Object
         [
           ("tag", Json.String "exception_declaration");
@@ -2019,6 +2099,13 @@ let item_to_json = function
         ]
 
 let of_source_file source_file =
+  let items =
+    match source_file with
+    | Cst.Implementation { items; _ } ->
+        List.map structure_item_to_json items
+    | Cst.Interface { items; _ } ->
+        List.map signature_item_to_json items
+  in
   Json.Object
     [
       ( "kind",
@@ -2027,7 +2114,7 @@ let of_source_file source_file =
           | `Implementation -> "implementation"
           | `Interface -> "interface") );
       ("syntax_node", syntax_node_to_json (Cst.SourceFile.syntax_node source_file));
-      ("items", Json.Array (List.map item_to_json (Cst.SourceFile.items source_file)));
+      ("items", Json.Array items);
       ( "let_bindings",
         Json.Array
           (List.map let_binding_to_json (Cst.SourceFile.let_bindings source_file))

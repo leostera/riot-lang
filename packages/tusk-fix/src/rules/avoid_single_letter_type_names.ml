@@ -35,25 +35,33 @@ let make_diagnostic token =
     ~suggestion:("Rename " ^ original ^ " to a descriptive type name")
     ()
 
-let diagnostic_for_decl = function
-  | Syn.Cst.Item.TypeDeclaration decl -> (
-      match Syn.Cst.ModulePath.name (Syn.Cst.TypeDeclaration.type_name decl) with
-      | Some name when should_flag_type_name name ->
-          let token =
-            Syn.Cst.TypeDeclaration.name_token decl
-            |> Syn.Cst.Token.syntax_token
-          in
-          Some (make_diagnostic token)
-      | Some _ | None -> None)
-  | _ ->
-      None
+let diagnostic_for_decl decl =
+  match Syn.Cst.ModulePath.name (Syn.Cst.TypeDeclaration.type_name decl) with
+  | Some name when should_flag_type_name name ->
+      let token =
+        Syn.Cst.TypeDeclaration.name_token decl
+        |> Syn.Cst.Token.syntax_token
+      in
+      Some (make_diagnostic token)
+  | Some _ | None -> None
+
+let diagnostics_for_items source_file =
+  match source_file with
+  | Syn.Cst.Implementation { items; _ } ->
+      items
+      |> List.filter_map (function
+           | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostic_for_decl decl
+           | _ -> None)
+  | Syn.Cst.Interface { items; _ } ->
+      items
+      |> List.filter_map (function
+           | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostic_for_decl decl
+           | _ -> None)
 
 let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with
   | None -> []
-  | Some source_file ->
-      Syn.Cst.SourceFile.items source_file
-      |> List.filter_map diagnostic_for_decl
+  | Some source_file -> diagnostics_for_items source_file
 
 let make () =
   Rule.make ~id:rule_id ~code:rule_code ~name:rule_name

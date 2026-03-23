@@ -19,7 +19,8 @@ open Std
       `(module S with type t = int)`
     - `module_type` and `module_expression` for module-language syntax such as
       `sig ... end`, `functor (X : S) -> T`, `F(X)`, or `F()`
-    - `Item.t` and `SourceFile.t` for file-level structure
+    - `StructureItem.t`, `SignatureItem.t`, and `SourceFile.t` for file-level
+      structure
 
     Some public nodes deliberately retain raw `syntax_node`s for subgrammars
     that parse successfully but are not yet reified into a richer public type.
@@ -877,6 +878,24 @@ and class_type_field =
     The constructors mirror `core_type` exactly, so the grammar coverage and
     examples documented on `core_type` apply here unchanged.
 *)
+(** Core type syntax.
+
+    This covers the type grammar that appears in annotations, manifests,
+    constructor payloads, object fields, and module constraints.
+
+    Examples:
+
+    ```ocaml,norun
+    int
+    'a list
+    name:string -> age:int -> person
+    < close : unit -> unit >
+    (module S with type t = int)
+    ```
+
+    This view stays faithful to the parsed source. Parentheses, local opens,
+    attributes, and extensions remain explicit instead of being normalized away.
+*)
 module CoreType : sig
   type t = core_type =
     | Wildcard of {
@@ -946,7 +965,15 @@ module CoreType : sig
   val syntax_node : t -> syntax_node
 end
 
-(** Namespace view over `module_type_constraint`. *)
+(** A single `with`-constraint inside a module type.
+
+    Examples:
+
+    ```ocaml,norun
+    S with type t = int
+    S with type t := int
+    ```
+*)
 module ModuleTypeConstraint : sig
   type t = module_type_constraint = {
     syntax_node : syntax_node;
@@ -956,7 +983,14 @@ module ModuleTypeConstraint : sig
   }
 end
 
-(** Namespace view over `type_constraint`. *)
+(** A type equality constraint attached to a declaration.
+
+    Example:
+
+    ```ocaml,norun
+    type ('a, 'b) t constraint 'a = 'b
+    ```
+*)
 module TypeConstraint : sig
   type t = type_constraint = {
     syntax_node : syntax_node;
@@ -965,7 +999,12 @@ module TypeConstraint : sig
   }
 end
 
-(** Namespace view over `arrow_label`. *)
+(** A function-arrow label.
+
+    This preserves whether the argument was unlabeled, labeled, or optional.
+    The label itself is kept as written rather than normalized into a plain
+    string.
+*)
 module ArrowLabel : sig
   type t = arrow_label =
     | Named of {
@@ -983,7 +1022,14 @@ module ArrowLabel : sig
   val is_optional : t -> bool
 end
 
-(** Namespace view over `functor_parameter`. *)
+(** A named functor parameter together with its module type.
+
+    Example:
+
+    ```ocaml,norun
+    functor (X : S) -> T
+    ```
+*)
 module FunctorParameter : sig
   type t = functor_parameter = {
     syntax_node : syntax_node;
@@ -992,10 +1038,20 @@ module FunctorParameter : sig
   }
 end
 
-(** Namespace view over `module_type`.
+(** Module type syntax.
 
-    The constructors mirror `module_type` exactly, so the grammar coverage and
-    examples documented on `module_type` apply here unchanged.
+    Examples:
+
+    ```ocaml,norun
+    S
+    sig type t end
+    functor (X : S) -> T
+    S with type t = int
+    ```
+
+    Signature bodies are still represented by their `signature_syntax_node`
+    anchor today. That keeps the CST faithful and lossless without pretending
+    signature items are already reified more deeply than they are.
 *)
 module ModuleType : sig
   type t = module_type =
@@ -1032,10 +1088,15 @@ module ModuleType : sig
   val syntax_node : t -> syntax_node
 end
 
-(** Namespace view over `class_type`.
+(** Class type syntax.
 
-    The constructors mirror `class_type` exactly, so the grammar coverage and
-    examples documented on `class_type` apply here unchanged.
+    Examples:
+
+    ```ocaml,norun
+    service
+    object method run : unit -> unit end
+    label:int -> service
+    ```
 *)
 module ClassType : sig
   type t = class_type =
@@ -1065,7 +1126,11 @@ module ClassType : sig
   val syntax_node : t -> syntax_node
 end
 
-(** Namespace view over `class_type_field`. *)
+(** A field inside a class type signature.
+
+    This covers inherited class types, values, methods, constraints, and the
+    attribute/extension shells that can wrap them.
+*)
 module ClassTypeField : sig
   type t = class_type_field =
     | Inherit of {
@@ -2739,10 +2804,12 @@ and module_expression =
           Example: `[%driver]`.
       *)
 
-(** Namespace view over `expression`.
+(** Expression syntax.
 
-    The constructors mirror `expression` exactly, so the grammar coverage and
-    examples documented on `expression` apply here unchanged.
+    This is the main value-language tree used by lint rules and other syntax
+    consumers. The constructors intentionally preserve surface distinctions such
+    as `fun` versus `function`, `record` literals versus updates, and explicit
+    parentheses.
 *)
 module Expression : sig
   type t = expression =
@@ -2793,7 +2860,7 @@ module Expression : sig
   val syntax_node : t -> syntax_node
 end
 
-(** Namespace view over `object_member`. *)
+(** A member inside an object expression body. *)
 module ObjectMember : sig
   type t = object_member =
     | Method of object_method
@@ -2805,11 +2872,15 @@ module ObjectMember : sig
   val syntax_node : t -> syntax_node
 end
 
-(** Namespace view over `class_expression`.
+(** Class expression syntax.
 
-    The constructors mirror `class_expression` exactly, so the grammar
-    coverage and examples documented on `class_expression` apply here
-    unchanged.
+    Examples:
+
+    ```ocaml,norun
+    object method run = () end
+    fun x -> object end
+    C(arg)
+    ```
 *)
 module ClassExpression : sig
   type t = class_expression =
@@ -2831,7 +2902,7 @@ module ClassExpression : sig
   val syntax_node : t -> syntax_node
 end
 
-(** Namespace view over `class_field`. *)
+(** A field inside a class structure body. *)
 module ClassField : sig
   type t = class_field =
     | Method of class_method
@@ -2849,11 +2920,20 @@ module ClassField : sig
   val syntax_node : t -> syntax_node
 end
 
-(** Namespace view over `module_expression`.
+(** Module expression syntax.
 
-    The constructors mirror `module_expression` exactly, so the grammar
-    coverage and examples documented on `module_expression` apply here
-    unchanged.
+    Examples:
+
+    ```ocaml,norun
+    M
+    struct let x = 1 end
+    functor (X : S) -> F(X)
+    (val m : S)
+    ```
+
+    Structure bodies currently preserve their top-level item anchors via
+    `item_syntax_nodes` rather than exposing a second fully typed item tree
+    here.
 *)
 module ModuleExpression : sig
   type t = module_expression =
@@ -2900,10 +2980,11 @@ module ModuleExpression : sig
   val syntax_node : t -> syntax_node
 end
 
-(** Namespace view over `pattern`.
+(** Pattern syntax helper namespace.
 
-    The constructors mirror `pattern` exactly, so the grammar coverage and
-    examples documented on `pattern` apply here unchanged.
+    This mirrors `pattern` exactly and exists mainly so callers can write
+    qualified matches such as `Pattern.Constructor ...` when that reads more
+    clearly than matching the raw variant directly.
 *)
 module Pattern : sig
   type t = pattern =
@@ -3006,6 +3087,20 @@ module TypeParameterVariance : sig
   val marker_token : t -> Token.t
 end
 
+(** A full declared type parameter.
+
+    This combines the parameter token with any written variance or injectivity
+    markers.
+
+    Examples:
+
+    ```ocaml,norun
+    'a
+    +'a
+    !'a
+    _ 
+    ```
+*)
 module TypeParameter : sig
   type t = {
     syntax_node : syntax_node;
@@ -3550,7 +3645,11 @@ type include_statement = {
   target : include_target;
 }
 
-(** Helper view over `pattern_payload`. *)
+(** A pattern payload together with its optional `when` guard.
+
+    This is the payload shape used by pattern-oriented attributes and
+    extensions.
+*)
 module PatternPayload : sig
   type t = pattern_payload = {
     pattern_syntax_node : syntax_node;
@@ -3561,7 +3660,11 @@ module PatternPayload : sig
   val guard_syntax_node : t -> syntax_node option
 end
 
-(** Helper view over annotation payloads. *)
+(** Helper view over attribute and extension payloads.
+
+    This is useful when a consumer wants to branch on payload family without
+    inspecting the surrounding attribute or extension shell directly.
+*)
 module Payload : sig
   type t = payload =
     | Structure of {
@@ -3579,8 +3682,12 @@ module Payload : sig
   val guard_syntax_node : t -> syntax_node option
 end
 
-(** Top-level items collected from a source file. *)
-module Item : sig
+(** Top-level items that can appear in an implementation source file.
+
+    This covers structure items such as `let`, `module`, `type`, floating
+    attributes, and standalone expressions.
+*)
+module StructureItem : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
         (** A `type` declaration item. *)
@@ -3618,6 +3725,43 @@ module Item : sig
   val syntax_node : t -> syntax_node
 end
 
+(** Top-level items that can appear in an interface source file.
+
+    This covers signature items such as `val`, `module`, `type`, `class`, and
+    floating signature attributes or extensions.
+*)
+module SignatureItem : sig
+  type t =
+    | TypeDeclaration of TypeDeclaration.t
+        (** A `type` declaration item. *)
+    | TypeExtension of TypeExtension.t
+        (** A `type ... += ...` extension item. *)
+    | Attribute of attribute
+        (** A floating attribute item such as `[@@@warning "-32"]`. *)
+    | Extension of extension
+        (** A floating extension item. *)
+    | ClassDeclaration of class_declaration
+        (** A `class` declaration item. *)
+    | ClassTypeDeclaration of class_type_declaration
+        (** A `class type` declaration item. *)
+    | ModuleDeclaration of ModuleDeclaration.t
+        (** A non-recursive `module` declaration item. *)
+    | RecursiveModuleDeclaration of RecursiveModuleDeclaration.t
+        (** A `module rec ... and ...` item. *)
+    | ModuleTypeDeclaration of ModuleTypeDeclaration.t
+        (** A `module type` declaration item. *)
+    | OpenStatement of OpenStatement.t
+        (** An `open` item. *)
+    | ValueDeclaration of value_declaration
+        (** A `val` declaration item. *)
+    | IncludeStatement of include_statement
+        (** An `include` item. *)
+    | ExceptionDeclaration of exception_declaration
+        (** An `exception` declaration item. *)
+
+  val syntax_node : t -> syntax_node
+end
+
 (** A parsed implementation source file.
 
     `items` keeps the original item ordering, while `let_bindings` and
@@ -3625,7 +3769,7 @@ end
 *)
 type implementation = {
   syntax_node : syntax_node;
-  items : Item.t list;
+  items : StructureItem.t list;
   let_bindings : LetBinding.t list;
   expressions : Expression.t list;
 }
@@ -3637,7 +3781,7 @@ type implementation = {
 *)
 type interface = {
   syntax_node : syntax_node;
-  items : Item.t list;
+  items : SignatureItem.t list;
   let_bindings : LetBinding.t list;
   expressions : Expression.t list;
 }
@@ -3653,12 +3797,17 @@ type t =
 (** Alias for the full-file CST root. *)
 type source_file = t
 
-(** Namespace helpers for `source_file`. *)
+(** Namespace helpers for the file-level CST root.
+
+    This provides convenient access to the common projections shared by both
+    `Implementation` and `Interface` roots.
+*)
 module SourceFile : sig
   type t = source_file
 
   val syntax_node : t -> syntax_node
-  val items : t -> Item.t list
+  val structure_items : t -> StructureItem.t list option
+  val signature_items : t -> SignatureItem.t list option
   val let_bindings : t -> LetBinding.t list
   val expressions : t -> Expression.t list
   val kind : t -> [ `Implementation | `Interface ]

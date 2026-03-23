@@ -39,15 +39,25 @@ let diagnostic_for_open_statement stmt =
       Some (make_diagnostic (Syn.Cst.Token.syntax_token bang_token))
   | None -> None
 
+let diagnostics_for_items source_file =
+  match source_file with
+  | Syn.Cst.Implementation { items; _ } ->
+      items
+      |> List.filter_map (function
+           | Syn.Cst.StructureItem.OpenStatement stmt ->
+               diagnostic_for_open_statement stmt
+           | _ -> None)
+  | Syn.Cst.Interface { items; _ } ->
+      items
+      |> List.filter_map (function
+           | Syn.Cst.SignatureItem.OpenStatement stmt ->
+               diagnostic_for_open_statement stmt
+           | _ -> None)
+
 let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with
   | None -> []
-  | Some source_file ->
-      Syn.Cst.SourceFile.items source_file
-      |> List.filter_map (function
-           | Syn.Cst.Item.OpenStatement stmt ->
-               diagnostic_for_open_statement stmt
-           | _ -> None)
+  | Some source_file -> diagnostics_for_items source_file
 
 let make () =
   Rule.make ~id:rule_id ~code:rule_code ~name:rule_name

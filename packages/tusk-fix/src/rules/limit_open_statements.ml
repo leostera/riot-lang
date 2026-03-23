@@ -40,10 +40,17 @@ Examples:
 |}
 
 let open_statements source_file =
-  Syn.Cst.SourceFile.items source_file
-  |> List.filter_map (function
-       | Syn.Cst.Item.OpenStatement stmt -> Some stmt
-       | _ -> None)
+  match source_file with
+  | Syn.Cst.Implementation { items; _ } ->
+      items
+      |> List.filter_map (function
+           | Syn.Cst.StructureItem.OpenStatement stmt -> Some stmt
+           | _ -> None)
+  | Syn.Cst.Interface { items; _ } ->
+      items
+      |> List.filter_map (function
+           | Syn.Cst.SignatureItem.OpenStatement stmt -> Some stmt
+           | _ -> None)
 
 let diagnostic_for_open_count opens =
   if List.length opens <= 2 then

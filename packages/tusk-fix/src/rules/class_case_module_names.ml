@@ -90,19 +90,33 @@ let diagnostics_for_recursive_module_decl decl =
   Syn.Cst.RecursiveModuleDeclaration.declarations decl
   |> List.filter_map diagnostic_for_module_decl
 
+let diagnostics_for_items source_file =
+  match source_file with
+  | Syn.Cst.Implementation { items; _ } ->
+      items
+      |> List.concat_map (function
+           | Syn.Cst.StructureItem.ModuleDeclaration decl ->
+               Option.to_list (diagnostic_for_module_decl decl)
+           | Syn.Cst.StructureItem.RecursiveModuleDeclaration decl ->
+               diagnostics_for_recursive_module_decl decl
+           | Syn.Cst.StructureItem.ModuleTypeDeclaration decl ->
+               Option.to_list (diagnostic_for_module_type_decl decl)
+           | _ -> [])
+  | Syn.Cst.Interface { items; _ } ->
+      items
+      |> List.concat_map (function
+           | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
+               Option.to_list (diagnostic_for_module_decl decl)
+           | Syn.Cst.SignatureItem.RecursiveModuleDeclaration decl ->
+               diagnostics_for_recursive_module_decl decl
+           | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
+               Option.to_list (diagnostic_for_module_type_decl decl)
+           | _ -> [])
+
 let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with
   | None -> []
-  | Some source_file ->
-      Syn.Cst.SourceFile.items source_file
-      |> List.concat_map (function
-           | Syn.Cst.Item.ModuleDeclaration decl ->
-               Option.to_list (diagnostic_for_module_decl decl)
-           | Syn.Cst.Item.RecursiveModuleDeclaration decl ->
-               diagnostics_for_recursive_module_decl decl
-           | Syn.Cst.Item.ModuleTypeDeclaration decl ->
-               Option.to_list (diagnostic_for_module_type_decl decl)
-           | _ -> [])
+  | Some source_file -> diagnostics_for_items source_file
 
 let make () =
   Rule.make ~id:rule_id ~code:rule_code ~name:rule_name

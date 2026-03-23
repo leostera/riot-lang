@@ -80,14 +80,23 @@ let diagnostic_for_decl = function
           Some (make_diagnostic token)
       | _ -> None)
 
+let diagnostics_for_items source_file =
+  match source_file with
+  | Syn.Cst.Implementation { items; _ } ->
+      items
+      |> List.filter_map (function
+           | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostic_for_decl decl
+           | _ -> None)
+  | Syn.Cst.Interface { items; _ } ->
+      items
+      |> List.filter_map (function
+           | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostic_for_decl decl
+           | _ -> None)
+
 let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with
   | None -> []
-  | Some source_file ->
-      Syn.Cst.SourceFile.items source_file
-      |> List.filter_map (function
-           | Syn.Cst.Item.TypeDeclaration decl -> diagnostic_for_decl decl
-           | _ -> None)
+  | Some source_file -> diagnostics_for_items source_file
 
 let make () =
   Rule.make ~id:rule_id ~code:rule_code ~name:rule_name

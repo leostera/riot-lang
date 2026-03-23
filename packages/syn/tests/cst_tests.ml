@@ -12,6 +12,14 @@ let sample_mli = Path.v "sample.mli"
 let parse_ml source = Syn.parse ~filename:sample_ml source
 let parse_mli source = Syn.parse ~filename:sample_mli source
 
+let structure_items = function
+  | Syn.Cst.Implementation { items; _ } -> items
+  | Syn.Cst.Interface _ -> []
+
+let signature_items = function
+  | Syn.Cst.Interface { items; _ } -> items
+  | Syn.Cst.Implementation _ -> []
+
 let tests =
   [
     Test.case "cst exists for diagnostics-free parse" (fun () ->
@@ -46,9 +54,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.TypeExtension decl :: _ ->
+        | Syn.Cst.StructureItem.TypeExtension decl :: _ ->
             Test.assert_equal ~expected:"t"
               ~actual:(Syn.Cst.Token.text (Syn.Cst.TypeExtension.name_token decl));
             Ok ()
@@ -60,8 +68,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.TypeExtension decl :: _ ->
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.TypeExtension decl :: _ ->
             let constructors =
               Syn.Cst.TypeExtension.constructors decl
               |> List.map Syn.Cst.VariantConstructor.name
@@ -81,10 +89,10 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.TypeDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.TypeDeclaration
             { type_definition = Syn.Cst.TypeDefinition.Abstract; _ }
-          :: Syn.Cst.Item.TypeDeclaration
+          :: Syn.Cst.SignatureItem.TypeDeclaration
                {
                  type_definition =
                    Syn.Cst.TypeDefinition.Alias
@@ -109,8 +117,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.TypeDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.TypeDeclaration
             {
               type_name;
               type_definition =
@@ -146,9 +154,9 @@ let tests =
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
         let declarations =
-          Syn.Cst.SourceFile.items cst
+          structure_items cst
           |> List.filter_map (function
-               | Syn.Cst.Item.TypeDeclaration decl -> Some decl
+               | Syn.Cst.StructureItem.TypeDeclaration decl -> Some decl
                | _ -> None)
         in
         match declarations with
@@ -174,9 +182,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.TypeDeclaration decl :: _ ->
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ ->
             let params =
               Syn.Cst.TypeDeclaration.type_params decl
               |> List.filter_map Syn.Cst.TypeParameter.type_variable
@@ -195,9 +203,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.TypeDeclaration decl :: _ ->
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ ->
             let params = Syn.Cst.TypeDeclaration.type_params decl in
             let variances =
               params
@@ -240,9 +248,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.TypeDeclaration decl :: _ ->
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ ->
             let constraints = Syn.Cst.TypeDeclaration.constraints decl in
             let sides =
               constraints
@@ -278,9 +286,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
             | Syn.Cst.TypeDefinition.Record fields ->
                 let names =
@@ -306,9 +314,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
             | Syn.Cst.TypeDefinition.Record [ name_field; code_field ] ->
                 let attribute_name ({ name; _ } : Syn.Cst.attribute) =
@@ -361,9 +369,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
             | Syn.Cst.TypeDefinition.Variant constructors ->
                 let names =
@@ -386,8 +394,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+        match structure_items cst with
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
             | Syn.Cst.TypeDefinition.Variant [ point2d; wrapped ] ->
                 (match Syn.Cst.VariantConstructor.arguments point2d with
@@ -426,8 +434,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+        match structure_items cst with
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
             | Syn.Cst.TypeDefinition.Variant [ person; anonymous ] ->
                 (match Syn.Cst.VariantConstructor.arguments person with
@@ -454,8 +462,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+        match structure_items cst with
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
             | Syn.Cst.TypeDefinition.Variant [ int_constr; val_constr ] ->
                 Test.assert_equal ~expected:None
@@ -504,8 +512,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.TypeExtension decl :: _ -> (
+        match structure_items cst with
+        | Syn.Cst.StructureItem.TypeExtension decl :: _ -> (
             match Syn.Cst.TypeExtension.constructors decl with
             | [ yield ] ->
                 Test.assert_equal ~expected:None
@@ -531,9 +539,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
             | Syn.Cst.TypeDefinition.PolyVariant poly_variant ->
                 let names =
@@ -555,8 +563,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ValueDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration
             {
               type_ =
                 Syn.Cst.CoreType.Arrow
@@ -594,9 +602,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.LetBinding binding :: _ ->
+        | Syn.Cst.StructureItem.LetBinding binding :: _ ->
             Test.assert_equal ~expected:"userProfile"
               ~actual:(Syn.Cst.LetBinding.name binding);
             Test.assert_true (Syn.Cst.LetBinding.is_function binding);
@@ -609,9 +617,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.LetBinding binding :: _ ->
+        | Syn.Cst.StructureItem.LetBinding binding :: _ ->
             Test.assert_false (Syn.Cst.LetBinding.is_function binding);
             Ok ()
         | _ -> Error "expected first item to be a let binding");
@@ -623,9 +631,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.ModuleDeclaration
+        | Syn.Cst.StructureItem.ModuleDeclaration
             {
               module_name;
               functor_parameters = [];
@@ -656,8 +664,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
             {
               module_type =
                 Some
@@ -721,8 +729,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
             {
               module_expression = Some (Syn.Cst.ModuleExpression.Path path);
               _;
@@ -741,8 +749,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
             {
               module_expression =
                 Some
@@ -773,8 +781,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
             {
               module_expression =
                 Some
@@ -810,8 +818,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
             {
               module_expression =
                 Some
@@ -836,8 +844,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
             {
               module_expression =
                 Some (Syn.Cst.ModuleExpression.Extension extension);
@@ -859,8 +867,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
             {
               module_expression =
                 Some
@@ -897,9 +905,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.RecursiveModuleDeclaration decl :: _ ->
+        | Syn.Cst.StructureItem.RecursiveModuleDeclaration decl :: _ ->
             let declarations =
               Syn.Cst.RecursiveModuleDeclaration.declarations decl
             in
@@ -923,8 +931,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ModuleDeclaration
             {
               module_name;
               module_type = Some (Syn.Cst.ModuleType.Signature _);
@@ -945,8 +953,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleDeclaration decl :: _ -> (
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ModuleDeclaration decl :: _ -> (
             match Syn.Cst.ModuleDeclaration.module_expression decl with
             | Some (Syn.Cst.ModuleExpression.Path path) ->
                 Test.assert_equal ~expected:"Alias"
@@ -969,8 +977,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.RecursiveModuleDeclaration decl :: _ ->
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.RecursiveModuleDeclaration decl :: _ ->
             let declarations =
               Syn.Cst.RecursiveModuleDeclaration.declarations decl
             in
@@ -996,9 +1004,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = structure_items cst in
         match items with
-        | Syn.Cst.Item.ModuleTypeDeclaration decl :: _ ->
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration decl :: _ ->
             Test.assert_equal ~expected:"Foo_bar"
               ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
             Ok ()
@@ -1011,9 +1019,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let items = Syn.Cst.SourceFile.items cst in
+        let items = signature_items cst in
         match items with
-        | Syn.Cst.Item.ModuleTypeDeclaration decl :: _ ->
+        | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl :: _ ->
             Test.assert_equal ~expected:"Foo_bar"
               ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
             Ok ()
@@ -1027,8 +1035,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleTypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration
             { module_type = Some (Syn.Cst.ModuleType.Path path); _ }
           :: _ ->
             Test.assert_equal ~expected:(Some "Source")
@@ -1045,8 +1053,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleTypeDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ModuleTypeDeclaration
             { module_type = Some (Syn.Cst.ModuleType.Path path); _ }
           :: _ ->
             Test.assert_equal ~expected:(Some "Source")
@@ -1063,8 +1071,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleTypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration
             { module_type = Some (Syn.Cst.ModuleType.Signature _); _ }
           :: _ ->
             Ok ()
@@ -1080,8 +1088,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleTypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration
             {
               module_type =
                 Some
@@ -1116,8 +1124,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleTypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration
             {
               module_type =
                 Some
@@ -1139,8 +1147,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleTypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration
             {
               module_type = Some (Syn.Cst.ModuleType.Extension extension);
               _;
@@ -1161,8 +1169,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleTypeDeclaration decl :: _ -> (
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl :: _ -> (
             match Syn.Cst.ModuleTypeDeclaration.module_type decl with
             | Some (Syn.Cst.ModuleType.Path path) ->
                 Test.assert_equal ~expected:"Alias"
@@ -1185,8 +1193,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ClassDeclaration
             {
               class_name;
               class_type =
@@ -1237,8 +1245,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassDeclaration
             {
               class_name;
               class_type =
@@ -1307,15 +1315,15 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassDeclaration
             {
               class_name = direct_name;
               class_body =
                 Some (Syn.Cst.ClassExpression.Path direct_path);
               _;
             }
-          :: Syn.Cst.Item.ClassDeclaration
+          :: Syn.Cst.StructureItem.ClassDeclaration
                {
                  class_name = applied_name;
                  class_body =
@@ -1330,7 +1338,7 @@ let tests =
                        });
                  _;
                }
-             :: Syn.Cst.Item.ClassDeclaration
+             :: Syn.Cst.StructureItem.ClassDeclaration
                   {
                     class_name = factory_name;
                     class_body =
@@ -1363,7 +1371,7 @@ let tests =
                           });
                     _;
                   }
-                :: Syn.Cst.Item.ClassDeclaration
+                :: Syn.Cst.StructureItem.ClassDeclaration
                      {
                        class_name = local_name;
                        class_body =
@@ -1396,7 +1404,7 @@ let tests =
                              });
                        _;
                      }
-                   :: Syn.Cst.Item.ClassDeclaration
+                   :: Syn.Cst.StructureItem.ClassDeclaration
                         {
                           class_name = opened_name;
                           class_body =
@@ -1410,7 +1418,7 @@ let tests =
                                 });
                           _;
                         }
-                      :: Syn.Cst.Item.ClassDeclaration
+                      :: Syn.Cst.StructureItem.ClassDeclaration
                            {
                              class_name = generated_name;
                              class_body =
@@ -1467,8 +1475,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassDeclaration
             {
               class_name;
               class_body =
@@ -1507,8 +1515,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassDeclaration
             {
               class_body =
                 Some
@@ -1651,8 +1659,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassDeclaration
             {
               class_body =
                 Some
@@ -1767,8 +1775,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassTypeDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ClassTypeDeclaration
             {
               class_type_name;
               class_type_body =
@@ -1814,10 +1822,10 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassTypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassTypeDeclaration
             { class_type_body = Syn.Cst.ClassType.Path direct_path; _ }
-          :: Syn.Cst.Item.ClassTypeDeclaration
+          :: Syn.Cst.StructureItem.ClassTypeDeclaration
                {
                  class_type_body =
                    Syn.Cst.ClassType.LocalOpen
@@ -1828,7 +1836,7 @@ let tests =
                      };
                  _;
                }
-             :: Syn.Cst.Item.ClassTypeDeclaration
+             :: Syn.Cst.StructureItem.ClassTypeDeclaration
                   {
                     class_type_body =
                       Syn.Cst.ClassType.Parenthesized
@@ -1859,8 +1867,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ClassDeclaration
             {
               class_name;
               class_type =
@@ -1914,8 +1922,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassTypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassTypeDeclaration
             {
               class_type_name = factory_name;
               class_type_body =
@@ -1937,7 +1945,7 @@ let tests =
                   };
               _;
             }
-          :: Syn.Cst.Item.ClassTypeDeclaration
+          :: Syn.Cst.StructureItem.ClassTypeDeclaration
                {
                  class_type_name = grouped_name;
                  class_type_body =
@@ -1989,8 +1997,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassTypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassTypeDeclaration
             {
               class_type_body =
                 Syn.Cst.ClassType.Signature
@@ -2098,8 +2106,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ClassTypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassTypeDeclaration
             {
               class_type_body =
                 Syn.Cst.ClassType.Signature
@@ -2137,8 +2145,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ValueDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration
             {
               name_token;
               type_ =
@@ -2176,8 +2184,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ValueDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration
             {
               type_ =
                 Syn.Cst.CoreType.Arrow
@@ -2205,8 +2213,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ValueDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration
             {
               type_ =
                 Syn.Cst.CoreType.Poly
@@ -2243,8 +2251,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ValueDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration
             {
               type_ =
                 Syn.Cst.CoreType.FirstClassModule
@@ -2276,8 +2284,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ValueDeclaration
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration
             {
               type_ =
                 Syn.Cst.CoreType.LocalOpen
@@ -2326,8 +2334,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ExternalDeclaration { name_token; primitive_name_tokens; _ } :: _ ->
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ExternalDeclaration { name_token; primitive_name_tokens; _ } :: _ ->
             Test.assert_equal ~expected:"sqrt"
               ~actual:(Syn.Cst.Token.text name_token);
             Test.assert_equal ~expected:[ "\"caml_sqrt_float\"" ]
@@ -2343,8 +2351,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.IncludeStatement
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.IncludeStatement
             { target = Syn.Cst.ModuleType (Syn.Cst.ModuleType.TypeOf { module_path; _ }); _ }
           :: _ ->
             Test.assert_equal ~expected:(Some "Array")
@@ -2358,8 +2366,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.IncludeStatement
+        match structure_items cst with
+        | Syn.Cst.StructureItem.IncludeStatement
             {
               target =
                 Syn.Cst.ModuleExpression
@@ -2387,8 +2395,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.Attribute attribute :: _ ->
+        match structure_items cst with
+        | Syn.Cst.StructureItem.Attribute attribute :: _ ->
             Test.assert_equal ~expected:"ATTRIBUTE_EXPR"
               ~actual:
                 (SyntaxKind.to_string
@@ -2412,8 +2420,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.Extension extension :: _ ->
+        match structure_items cst with
+        | Syn.Cst.StructureItem.Extension extension :: _ ->
             Test.assert_equal ~expected:"EXTENSION_EXPR"
               ~actual:
                 (SyntaxKind.to_string
@@ -2441,8 +2449,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.Attribute attribute :: _ ->
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.Attribute attribute :: _ ->
             Test.assert_equal ~expected:(Some "attr")
               ~actual:(Syn.Cst.Ident.name attribute.name);
             Test.assert_equal ~expected:0
@@ -2457,8 +2465,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.Extension extension :: _ ->
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.Extension extension :: _ ->
             Test.assert_equal ~expected:(Some "signature_item")
               ~actual:(Syn.Cst.Ident.name extension.name);
             Test.assert_equal ~expected:0
@@ -2475,11 +2483,19 @@ let tests =
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
         let payload_nodes =
-          Syn.Cst.SourceFile.items cst
+          signature_items cst
           |> List.filter_map (function
-               | Syn.Cst.Item.Extension
+               | Syn.Cst.SignatureItem.Extension
                    {
-                     payload = Some (Syn.Cst.Payload.Structure { item_syntax_nodes });
+                     payload =
+                       Some (Syn.Cst.Payload.Signature { item_syntax_nodes });
+                     _;
+                   } ->
+                   Some item_syntax_nodes
+               | Syn.Cst.SignatureItem.Extension
+                   {
+                     payload =
+                       Some (Syn.Cst.Payload.Structure { item_syntax_nodes });
                      _;
                    } ->
                    Some item_syntax_nodes
@@ -2498,8 +2514,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.TypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.TypeDeclaration
             {
               type_definition =
                 Syn.Cst.TypeDefinition.Alias
@@ -2523,8 +2539,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Apply
@@ -2557,8 +2573,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Extension
@@ -2593,8 +2609,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ExceptionDeclaration { name_token; _ } :: _ ->
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ExceptionDeclaration { name_token; _ } :: _ ->
             Test.assert_equal ~expected:"Not_found"
               ~actual:(Syn.Cst.Token.text name_token);
             Ok ()
@@ -2607,8 +2623,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ExceptionDeclaration { name_token; _ } :: _ ->
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ExceptionDeclaration { name_token; _ } :: _ ->
             Test.assert_equal ~expected:"Not_found"
               ~actual:(Syn.Cst.Token.text name_token);
             Ok ()
@@ -2626,9 +2642,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
+        match structure_items cst with
         | _first_decl
-          :: Syn.Cst.Item.TypeDeclaration
+          :: Syn.Cst.StructureItem.TypeDeclaration
                {
                  type_definition =
                    Syn.Cst.TypeDefinition.FirstClassModule
@@ -2662,8 +2678,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.TypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.TypeDeclaration
             {
               type_definition =
                 Syn.Cst.TypeDefinition.Alias
@@ -2680,7 +2696,7 @@ let tests =
                   };
               _;
             }
-          :: Syn.Cst.Item.TypeDeclaration
+          :: Syn.Cst.StructureItem.TypeDeclaration
                {
                  type_definition =
                    Syn.Cst.TypeDefinition.Alias
@@ -2722,8 +2738,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.OpenStatement stmt :: _ ->
+        match structure_items cst with
+        | Syn.Cst.StructureItem.OpenStatement stmt :: _ ->
             Test.assert_true (Syn.Cst.OpenStatement.has_bang stmt);
             (match Syn.Cst.OpenStatement.target stmt with
             | Syn.Cst.OpenStatement.ModuleExpression
@@ -2753,8 +2769,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.OpenStatement stmt :: _ ->
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.OpenStatement stmt :: _ ->
             Test.assert_true (Syn.Cst.OpenStatement.has_bang stmt);
             (match Syn.Cst.OpenStatement.target stmt with
             | Syn.Cst.OpenStatement.Path path ->
@@ -2787,8 +2803,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.OpenStatement stmt :: _ -> (
+        match structure_items cst with
+        | Syn.Cst.StructureItem.OpenStatement stmt :: _ -> (
             match Syn.Cst.OpenStatement.target stmt with
             | Syn.Cst.OpenStatement.ModuleExpression
                 (Syn.Cst.ModuleExpression.Structure { item_syntax_nodes; _ }) ->
@@ -2890,8 +2906,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Typed
@@ -2914,8 +2930,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Polymorphic
@@ -2952,8 +2968,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding binding :: _ -> (
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding binding :: _ -> (
             match Syn.Cst.LetBinding.value binding with
             | Syn.Cst.Expression.Infix expr ->
                 Test.assert_equal ~expected:"^"
@@ -2969,8 +2985,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding binding :: _ -> (
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding binding :: _ -> (
             match Syn.Cst.LetBinding.value binding with
             | Syn.Cst.Expression.Infix expr ->
                 Test.assert_equal ~expected:"%>"
@@ -2986,8 +3002,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding binding :: _ -> (
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding binding :: _ -> (
             match Syn.Cst.LetBinding.value binding with
             | Syn.Cst.Expression.If expr -> (
                 match expr.else_branch with
@@ -3003,8 +3019,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.If
@@ -3036,8 +3052,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Typed
@@ -3061,8 +3077,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Coerce
@@ -3087,8 +3103,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.Expression
+        match structure_items cst with
+        | Syn.Cst.StructureItem.Expression
             (Syn.Cst.Expression.Apply
               {
                 callee =
@@ -3115,8 +3131,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.Expression
+        match structure_items cst with
+        | Syn.Cst.StructureItem.Expression
             (Syn.Cst.Expression.Let
               {
                 binding_pattern =
@@ -3160,8 +3176,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Match
@@ -3229,8 +3245,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Function
@@ -3289,8 +3305,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Match
@@ -3328,8 +3344,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | _ :: Syn.Cst.Item.Expression
+        match structure_items cst with
+        | _ :: Syn.Cst.StructureItem.Expression
                  (Syn.Cst.Expression.LetOperator
                    {
                      binding =
@@ -3367,8 +3383,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | _ :: _ :: Syn.Cst.Item.Expression
+        match structure_items cst with
+        | _ :: _ :: Syn.Cst.StructureItem.Expression
                      (Syn.Cst.Expression.LetOperator
                        {
                          binding =
@@ -3417,8 +3433,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Let
@@ -3441,8 +3457,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Fun
@@ -3468,8 +3484,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value = Syn.Cst.Expression.Function { cases; _ };
               _;
@@ -3486,8 +3502,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Match
@@ -3528,8 +3544,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Try
@@ -3561,8 +3577,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Try
@@ -3644,8 +3660,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding binding :: _ -> (
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding binding :: _ -> (
             match Syn.Cst.LetBinding.value binding with
             | Syn.Cst.Expression.Apply outer -> (
                 match outer with
@@ -3683,8 +3699,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Apply
@@ -3718,8 +3734,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Apply
@@ -3749,8 +3765,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.LocalOpen
@@ -3776,8 +3792,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.LocalOpen
@@ -3806,8 +3822,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Function
@@ -3868,8 +3884,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.FirstClassModule
@@ -3905,8 +3921,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.FirstClassModule
@@ -3990,8 +4006,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.ModuleTypeDeclaration
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration
             {
               module_type =
                 Some
@@ -4022,8 +4038,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.LetModule
@@ -4057,8 +4073,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.FieldAccess
@@ -4092,8 +4108,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding binding :: _ ->
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding binding :: _ ->
             let rec depth = function
               | Syn.Cst.Expression.Parenthesized expr ->
                   1 + depth expr.inner
@@ -4114,8 +4130,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Function
@@ -4187,8 +4203,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Function
@@ -4241,8 +4257,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Match
@@ -4286,8 +4302,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Match
@@ -4329,8 +4345,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Match
@@ -4366,8 +4382,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Match
@@ -4403,8 +4419,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Record
@@ -4435,8 +4451,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Record
@@ -4464,8 +4480,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Assign
@@ -4502,8 +4518,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.FieldAssign
@@ -4540,8 +4556,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Object
@@ -4587,8 +4603,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Object
@@ -4630,8 +4646,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Match
@@ -4692,8 +4708,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Match
@@ -4731,8 +4747,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Match
@@ -4772,8 +4788,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Index
@@ -4801,8 +4817,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.PolyVariant
@@ -4830,8 +4846,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Match
@@ -4889,8 +4905,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Record
@@ -4923,8 +4939,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Assert
@@ -4949,8 +4965,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.Lazy
@@ -4977,8 +4993,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.While
@@ -5002,8 +5018,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.For
@@ -5030,8 +5046,8 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.items cst with
-        | Syn.Cst.Item.LetBinding
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
             {
               value =
                 Syn.Cst.Expression.For

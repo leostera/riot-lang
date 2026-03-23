@@ -49,10 +49,15 @@ let check_tree (ctx : Rule.context) _red_root =
     match ctx.cst with
     | None -> []
     | Some source_file ->
-        Syn.Cst.SourceFile.items source_file
-        |> List.concat_map (function
-             | Syn.Cst.Item.TypeDeclaration decl -> diagnostics_for_decl decl
-             | _ -> [])
+        (match Syn.Cst.SourceFile.signature_items source_file with
+        | Some items ->
+            items
+            |> List.concat_map (function
+                 | Syn.Cst.SignatureItem.TypeDeclaration decl ->
+                     diagnostics_for_decl decl
+                 | _ -> [])
+        | None ->
+            [])
 
 let make () =
   Rule.make ~id:rule_id ~code:rule_code ~name:rule_name

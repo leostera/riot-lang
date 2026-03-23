@@ -79,14 +79,23 @@ let diagnostics_for_decl = function
                None)
   | _ -> []
 
+let diagnostics_for_items source_file =
+  match source_file with
+  | Syn.Cst.Implementation { items; _ } ->
+      items
+      |> List.concat_map (function
+           | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostics_for_decl decl
+           | _ -> [])
+  | Syn.Cst.Interface { items; _ } ->
+      items
+      |> List.concat_map (function
+           | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostics_for_decl decl
+           | _ -> [])
+
 let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with
   | None -> []
-  | Some source_file ->
-      Syn.Cst.SourceFile.items source_file
-      |> List.concat_map (function
-           | Syn.Cst.Item.TypeDeclaration decl -> diagnostics_for_decl decl
-           | _ -> [])
+  | Some source_file -> diagnostics_for_items source_file
 
 let make () =
   Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
