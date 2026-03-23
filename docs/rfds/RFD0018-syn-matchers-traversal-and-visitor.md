@@ -22,8 +22,6 @@ The proposal introduces four distinct layers:
   - shared child, iter, and fold helpers for recursive CST families
 - `Syn.Visit`
   - an explicit, reentrant visitor API with full traversal control
-- `Tusk_fix.Rule_query`
-  - rule-oriented queries built on top of `Syn.Visit`
 
 The central design requirement is:
 
@@ -72,13 +70,12 @@ The main objective of this RFD is to centralize that repeated structural work.
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Contributors should think of the post-CST syntax stack as five layers:
+Contributors should think of the post-CST syntax stack as four layers:
 
 1. `Syn.Cst`
 2. `Syn.Matchers`
 3. `Syn.Traversal`
 4. `Syn.Visit`
-5. `Tusk_fix.Rule_query`
 
 Each layer has a different job.
 
@@ -164,32 +161,6 @@ This matches the mental model used by systems such as Rust `syn`:
 - a separate default walker performs standard recursion
 - continuing traversal is explicit, not automatic
 
-### 5. `Tusk_fix.Rule_query` is rule-oriented sugar
-
-Rules usually do not want a raw visitor or a raw fold. They usually want a
-higher-level query such as:
-
-- “all expressions”
-- “all let bindings”
-- “all type declarations”
-- “all record fields”
-
-`Tusk_fix.Rule_query` should provide that thin, rule-focused surface on top of
-`Syn.Visit`.
-
-That keeps rule code close to:
-
-- query nodes
-- match shape
-- emit diagnostic
-
-instead of:
-
-- unpack source-file kind
-- walk top-level items
-- recurse through half the grammar
-- manually collect results
-
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
@@ -202,7 +173,6 @@ module Syn.Cst
 module Syn.Matchers
 module Syn.Traversal
 module Syn.Visit
-module Tusk_fix.Rule_query
 ```
 
 The responsibilities are:
@@ -233,12 +203,6 @@ The responsibilities are:
 - explicit reentrant `walker`
 - full-spectrum node-family coverage
 - no implicit child traversal hidden behind a control return value
-
-### `Tusk_fix.Rule_query`
-
-- rule-specific query entrypoints
-- built on top of `Syn.Visit`
-- returns rule-friendly lists or iterators over CST families
 
 ## 2. `Syn.Visit` should be explicit and reentrant
 
@@ -351,34 +315,7 @@ Consumers should choose based on need:
 - use `Traversal` for folds and structural predicates
 - use `Visit` for explicit visitor control
 
-## 5. `Tusk_fix.Rule_query` should be built on top of `Syn.Visit`
-
-`Rule_query` should not invent a second traversal engine.
-
-Instead, it should define queries in terms of the shared visitor:
-
-```ocaml
-module Tusk_fix.Rule_query : sig
-  val structure_items :
-    Rule.context -> Cst.StructureItem.t list
-  val signature_items :
-    Rule.context -> Cst.SignatureItem.t list
-  val expressions :
-    Rule.context -> Cst.Expression.t list
-  val let_bindings :
-    Rule.context -> Cst.LetBinding.t list
-  val type_declarations :
-    Rule.context -> Cst.TypeDeclaration.t list
-end
-```
-
-This ensures:
-
-- one shared traversal model
-- one place to improve traversal correctness
-- simpler future rule refactors
-
-## 6. Full-spectrum visitor coverage
+## 5. Full-spectrum visitor coverage
 
 `Syn.Visit` should expose callbacks across the meaningful public CST node
 families, not only the few node kinds current rules happen to use.
@@ -398,13 +335,14 @@ That includes:
 The goal is that a consumer should not have to fall back to bespoke recursion
 just because it cares about a less common public node family.
 
-## 7. Rule authoring conventions
+## 6. Rule authoring conventions
 
 Once these layers exist, rule-authoring conventions should be:
 
-1. prefer `Tusk_fix.Rule_query` when it expresses the rule directly
-2. otherwise prefer `Syn.Visit` for explicit custom traversal
-3. otherwise prefer `Syn.Traversal` for small structural folds
+1. prefer `Syn.Visit` for explicit custom traversal
+2. otherwise prefer `Syn.Traversal` for small structural folds
+3. use `Syn.Matchers` for local unwrap/flatten/extract helpers instead of
+   rebuilding those ad hoc in each consumer
 4. only write bespoke recursion when the shared layers truly cannot express the
    behavior
 
@@ -424,7 +362,6 @@ There is also a real design burden in keeping:
 - `Matchers`
 - `Traversal`
 - `Visit`
-- `Rule_query`
 
 distinct enough that they do not collapse into one confusing pile of helpers.
 
@@ -485,7 +422,6 @@ is the right model for Riot as well.
 
 - whether `Syn.Visit` should expose only `visit_*` hooks or also optional
   `leave_*` hooks
-- whether `Rule_query` should stay list-based or grow iterator-style APIs
 - how much of `Syn.Traversal` should be generated versus hand-written
 - whether canonical `span` / `name_site` accessors should be proposed in a
   follow-up RFD or folded into this one later
