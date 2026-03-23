@@ -70,6 +70,19 @@ let tests =
         in
         Test.assert_equal ~expected:"let c = 'a'\n\nlet u = ()\n\nlet x = y\n" ~actual;
         Ok ());
+    Test.case "format keeps infix expressions stable" (fun () ->
+        let source =
+          "let arithmetic = 1 + (2 * 3)\nlet comparisons = 1 < 2 && 2 < 3\nlet logic = (true && false) || true\n"
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"infix expressions should format"
+        in
+        Test.assert_equal
+          ~expected:
+            "let arithmetic = 1 + (2 * 3)\n\nlet comparisons = 1 < 2 && 2 < 3\n\nlet logic = (true && false) || true\n"
+          ~actual;
+        Ok ());
     Test.case "format expands nested let-in bindings across lines" (fun () ->
         let source = "let x =\n  let y = 1 in let z = 2 in y + z\n" in
         let actual =
