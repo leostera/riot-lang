@@ -999,6 +999,44 @@ let tests =
               ~actual:(Syn.Cst.Token.text right_name);
             Ok ()
         | _ -> Error "expected top-level let expression item");
+    Test.case "cst match cases preserve unreachable expressions" (fun () ->
+        let source =
+          "let absurd maybe = match maybe with | Some value -> value | None -> .\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    scrutinee = Syn.Cst.Expression.Path { path = scrutinee_path; _ };
+                    cases =
+                      [
+                        _;
+                        {
+                          body =
+                            Syn.Cst.Expression.Unreachable
+                              { dot_token; _ };
+                          _;
+                        };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "maybe")
+              ~actual:(Syn.Cst.ModulePath.name scrutinee_path);
+            Test.assert_equal ~expected:"."
+              ~actual:(Syn.Cst.Token.text dot_token);
+            Ok ()
+        | _ -> Error "expected match expression with unreachable branch");
     Test.case "cst let-operator expressions preserve the leading operator clause"
       (fun () ->
         let source =

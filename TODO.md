@@ -99,7 +99,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] polymorphic expressions
   - [x] locally abstract type expressions
   - [x] let-operator expressions
-  - [ ] unreachable expressions
+  - [x] unreachable expressions
 - [ ] Structure items:
   - [ ] type-extension items
   - [ ] recursive-module items

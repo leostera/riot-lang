@@ -684,6 +684,7 @@ type expression =
   | Path of path_expression
   | Operator of operator_expression
   | Literal of literal
+  | Unreachable of unreachable_expression
   | Attribute of attribute
   | Extension of extension
   | Object of object_expression
@@ -731,6 +732,11 @@ and path_expression = {
 and operator_expression = {
   syntax_node : syntax_node;
   operator_tokens : Token.t list;
+}
+
+and unreachable_expression = {
+  syntax_node : syntax_node;
+  dot_token : Token.t;
 }
 
 and object_expression = {
@@ -1085,6 +1091,7 @@ module Expression = struct
     | Path of path_expression
     | Operator of operator_expression
     | Literal of literal
+    | Unreachable of unreachable_expression
     | Attribute of attribute
     | Extension of extension
     | Object of object_expression
@@ -1136,6 +1143,7 @@ module Expression = struct
         | Literal.Bool { syntax_node; _ }
         | Literal.Unit { syntax_node } ->
             syntax_node)
+    | Unreachable expr -> expr.syntax_node
     | Attribute attr -> attr.syntax_node
     | Extension ext -> ext.syntax_node
     | Object expr -> expr.syntax_node

@@ -369,6 +369,7 @@ let is_expression_syntax_kind = function
   | Syntax_kind.ARRAY_EXPR
   | Syntax_kind.RECORD_EXPR
   | Syntax_kind.RECORD_UPDATE_EXPR
+  | Syntax_kind.UNREACHABLE_EXPR
   | Syntax_kind.OBJECT_UPDATE_EXPR
   | Syntax_kind.LOCAL_OPEN_EXPR
   | Syntax_kind.FUN_EXPR
@@ -1632,6 +1633,12 @@ and expression_from_node node =
   | Syntax_kind.OPERATOR_PATTERN ->
       Cst.Expression.Operator
         { syntax_node = node; operator_tokens = operator_tokens_from_node node }
+  | Syntax_kind.UNREACHABLE_EXPR -> (
+      match direct_non_trivia_tokens node with
+      | dot_syntax_token :: _ ->
+          Cst.Expression.Unreachable
+            { syntax_node = node; dot_token = token dot_syntax_token }
+      | [] -> unsupported_expression node)
   | Syntax_kind.ATTRIBUTE_EXPR ->
       Cst.Expression.Attribute (attribute_from_node node)
   | Syntax_kind.EXTENSION_EXPR ->
@@ -3242,7 +3249,8 @@ let rec collect_expressions_from_expression expr =
   let nested =
     match expr with
     | Cst.Expression.Path _ | Cst.Expression.Operator _
-    | Cst.Expression.Literal _ | Cst.Expression.Attribute _
+    | Cst.Expression.Literal _ | Cst.Expression.Unreachable _
+    | Cst.Expression.Attribute _
     | Cst.Expression.Extension _ | Cst.Expression.New _ ->
         []
     | Cst.Expression.Object { members; _ } ->
@@ -3683,7 +3691,8 @@ and validate_object_member ~context = function
 
 and validate_expression ~context = function
   | Cst.Expression.Path _ | Cst.Expression.Operator _ | Cst.Expression.Literal _
-  | Cst.Expression.Attribute _ | Cst.Expression.Extension _ ->
+  | Cst.Expression.Unreachable _ | Cst.Expression.Attribute _
+  | Cst.Expression.Extension _ ->
       ()
   | Cst.Expression.FirstClassModule { module_type; _ } ->
       Option.iter

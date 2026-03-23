@@ -809,6 +809,13 @@ and expression_to_json = function
           ("tag", Json.String "literal");
           ("literal", literal_to_json literal);
         ]
+  | Cst.Expression.Unreachable { syntax_node; dot_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "unreachable");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("dot_token", token_to_json dot_token);
+        ]
   | Cst.Expression.Attribute attr ->
       Json.Object
         [

@@ -1283,6 +1283,11 @@ type expression =
       (** An operator identifier used as an expression, such as `(+)` or `(@@)`. *)
   | Literal of literal
       (** A literal expression such as `"hello"`, `42`, `true`, or `()`. *)
+  | Unreachable of unreachable_expression
+      (** An unreachable expression written as `.`.
+
+          Example: `| None -> .`.
+      *)
   | Attribute of attribute
       (** An expression carrying an attached attribute, such as `expr [@inline]`. *)
   | Extension of extension
@@ -1418,6 +1423,15 @@ and path_expression = {
 and operator_expression = {
   syntax_node : syntax_node;
   operator_tokens : Token.t list;
+}
+
+(** Payload for `Expression.Unreachable`.
+
+    Covers the standalone `.` expression used in impossible branches.
+*)
+and unreachable_expression = {
+  syntax_node : syntax_node;
+  dot_token : Token.t;
 }
 
 (** Payload for `Expression.Object`.
@@ -2033,6 +2047,7 @@ module Expression : sig
     | Path of path_expression
     | Operator of operator_expression
     | Literal of literal
+    | Unreachable of unreachable_expression
     | Attribute of attribute
     | Extension of extension
     | Object of object_expression

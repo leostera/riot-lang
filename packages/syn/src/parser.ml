@@ -4310,6 +4310,9 @@ and parse_primary_expr parser =
         ([ make_token parser op ]
         @ tokens_to_green parser trivia_after_op
         @ [ Ceibo.Green.Node operand ])
+  | Token.Dot ->
+      let dot = consume parser in
+      make_node Syntax_kind.UNREACHABLE_EXPR [ make_token parser dot ]
   | Token.Ident _ ->
       let ident = consume parser in
       make_node Syntax_kind.IDENT_EXPR [ make_token parser ident ]
@@ -4477,6 +4480,7 @@ and can_start_arg_expr parser =
   | Token.OpenDelim Token.Bracket
   | Token.OpenDelim Token.Array
   | Token.OpenDelim Token.Brace
+  | Token.Dot
   | Token.Keyword Keyword.New
   | Token.OpenDelim Token.ObjectEnd
   | Token.Bang

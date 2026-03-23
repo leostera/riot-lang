@@ -72,6 +72,7 @@ type t =
   | ARRAY_EXPR  (** Array literal: `[|1; 2; 3|]` *)
   | RECORD_EXPR  (** Record: `{ x = 1; y = 2 }` *)
   | RECORD_UPDATE_EXPR  (** Record update: `{ r with x = 3 }` *)
+  | UNREACHABLE_EXPR  (** Unreachable expression: `.` *)
   | FIELD_ACCESS_EXPR  (** Field access: `r.field` *)
   | ARRAY_INDEX_EXPR  (** Array indexing: `arr.(i)` *)
   | STRING_INDEX_EXPR  (** String indexing: `s.[i]` *)

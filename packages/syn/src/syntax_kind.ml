@@ -43,6 +43,7 @@ type t =
   | ARRAY_EXPR (* [|e1; e2; e3|] *)
   | RECORD_EXPR (* { field1 = e1; field2 = e2 } *)
   | RECORD_UPDATE_EXPR (* { record with field = e } *)
+  | UNREACHABLE_EXPR (* . *)
   | FIELD_ACCESS_EXPR (* record.field *)
   | ARRAY_INDEX_EXPR (* arr.(i) *)
   | STRING_INDEX_EXPR (* s.[i] *)
@@ -194,6 +195,7 @@ let to_string = function
   | ARRAY_EXPR -> "ARRAY_EXPR"
   | RECORD_EXPR -> "RECORD_EXPR"
   | RECORD_UPDATE_EXPR -> "RECORD_UPDATE_EXPR"
+  | UNREACHABLE_EXPR -> "UNREACHABLE_EXPR"
   | FIELD_ACCESS_EXPR -> "FIELD_ACCESS_EXPR"
   | ARRAY_INDEX_EXPR -> "ARRAY_INDEX_EXPR"
   | STRING_INDEX_EXPR -> "STRING_INDEX_EXPR"
@@ -330,6 +332,7 @@ let from_string = function
   | "ARRAY_EXPR" -> Some ARRAY_EXPR
   | "RECORD_EXPR" -> Some RECORD_EXPR
   | "RECORD_UPDATE_EXPR" -> Some RECORD_UPDATE_EXPR
+  | "UNREACHABLE_EXPR" -> Some UNREACHABLE_EXPR
   | "FIELD_ACCESS_EXPR" -> Some FIELD_ACCESS_EXPR
   | "ARRAY_INDEX_EXPR" -> Some ARRAY_INDEX_EXPR
   | "STRING_INDEX_EXPR" -> Some STRING_INDEX_EXPR
