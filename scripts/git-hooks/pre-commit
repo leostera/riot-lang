@@ -16,20 +16,9 @@ fi
 
 packages=$(
   printf "%s\n" "$staged_paths" \
-    | awk -F/ '/^packages\/[^/]+\// { print $2 }' \
+    | awk -F/ 'NF >= 3 && $1 == "packages" { print $2 }' \
     | sort -u
 )
-
-if [ -z "$packages" ]; then
-  printf "pre-commit: no modified packages in staged paths\n"
-  exit 0
-fi
-
-printf "pre-commit: checking packages\n"
-printf "%s\n" "$packages" | while IFS= read -r pkg; do
-  [ -n "$pkg" ] || continue
-  printf "  %s\n" "$pkg"
-done
 
 run() {
   if [ "${TUSK_PRECOMMIT_DRY_RUN-0}" = "1" ]; then
@@ -41,6 +30,17 @@ run() {
 
   "$@"
 }
+
+if [ -z "$packages" ]; then
+  printf "pre-commit: no modified packages in staged paths\n"
+  exit 0
+fi
+
+printf "pre-commit: checking packages\n"
+printf "%s\n" "$packages" | while IFS= read -r pkg; do
+  [ -n "$pkg" ] || continue
+  printf "  %s\n" "$pkg"
+done
 
 printf "%s\n" "$packages" | while IFS= read -r pkg; do
   [ -n "$pkg" ] || continue
