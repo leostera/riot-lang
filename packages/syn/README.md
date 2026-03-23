@@ -1,229 +1,116 @@
 # syn
 
-A lossless OCaml parser producing a Concrete Syntax Tree (CST) for developer tooling.
+`syn` is Riot's lossless OCaml lexer, parser, and typed CST layer.
 
-## Purpose
+It exists for tooling, not compilation. The package keeps the exact parsed
+syntax available through Ceibo trees and can also lift successful parses into a
+typed `Syn.Cst` for lints, refactors, fixture tests, and future type-directed
+tools.
 
-Parse OCaml source code into a **lossless syntax tree** that preserves:
-- All tokens (keywords, operators, literals, delimiters)
-- All trivia (comments, docstrings, whitespace positions)
-- Exact source structure and formatting
+## Current shape
 
-Perfect for building:
-- 🎨 Code formatters
-- 🔍 Linters and analyzers  
-- 🛠️ Refactoring tools
-- 📝 Documentation generators
-- 🔬 Static analysis tools
+`syn` works in layers:
 
-**Not** for compilation - for tooling!
+1. `Lexer` tokenizes source code.
+2. `Parser` builds a lossless Ceibo green tree and structured diagnostics.
+3. `Ceibo.Red` provides positioned traversal over that lossless tree.
+4. `CstBuilder` can lift a successful parse into a typed `Syn.Cst`.
 
-## Architecture
+Two invariants matter:
 
-```
-Source Code
-    ↓
-  Lexer → Token stream (with positions)
-    ↓
-  Parser → Lossless CST (Ceibo Green Tree)
-    ↓
-  Red Tree → Traversable AST with parent pointers
-```
+- the parser always returns a Ceibo tree, even for malformed input
+- the typed CST only exists when parsing was clean
 
-## Key Features
-
-### 1. Lossless Parsing
-Every byte of the source is represented in the tree:
-- All whitespace positions tracked
-- Comments and docstrings preserved
-- Exact formatting recoverable
-
-### 2. Ceibo Green/Red Trees
-- **Green Tree**: Immutable, memory-efficient, shareable
-- **Red Tree**: Lazy wrapper with parent pointers for traversal
-- Convert between them as needed
-
-### 3. Production Ready
-- ✅ **100% codebase coverage** (443/443 files in Riot monorepo)
-- ✅ **98.9% test coverage** (1081/1093 tests)
-- ✅ Handles all modern OCaml syntax
-- ✅ Private types, modules, functors, objects, polymorphic variants
-- ✅ Labeled/optional arguments, GADTs, first-class modules
-
-## API
-
-### Command Line
-
-```bash
-# Parse a file and output JSON
-tusk run syn -- parse --json file.ml
-
-# Tokenize a file
-tusk run syn -- token-stream --json file.ml
-```
-
-### Library
+In other words:
 
 ```ocaml
-open Std
+let result = Syn.parse ~filename:(Path.v "file.ml") source in
 
-(* Parse source code *)
-let source = Fs.read (Path.v "file.ml") |> Result.unwrap in
-let tokens = Syn.Lexer.tokenize source in
-let tree = Syn.Parser.parse tokens in
-
-match tree with
-| Ok green_tree ->
-    (* Work with the lossless CST *)
-    let width = Ceibo.Green.width green_tree in
-    Log.info "Parsed %d bytes" width
-    
-| Error diagnostics ->
-    List.iter (fun d -> 
-      Log.error "Parse error: %s" (Syn.Diagnostic.to_string d)
-    ) diagnostics
+match result.cst, result.diagnostics with
+| Some cst, [] ->
+    (* safe to do typed structural analysis *)
+    cst
+| None, diagnostics ->
+    (* stay on diagnostics and the raw lossless tree *)
+    ignore diagnostics
 ```
 
-## CST Structure
+## Public API
 
-The parser produces a hierarchical tree of nodes and tokens:
+The high-level entrypoints are:
 
-```ocaml
-type ('kind, 'data) element =
-  | Node of ('kind, 'data) node
-  | Token of 'data
+- `Syn.tokenize`
+- `Syn.parse`
+- `Syn.parse_implementation`
+- `Syn.parse_interface`
 
-type ('kind, 'data) node = {
-  kind : 'kind;
-  width : int;
-  children : ('kind, 'data) element list;
-}
+`Syn.parse` returns a `Parser.parse_result` with:
+
+- `tree`: the lossless Ceibo green tree
+- `cst`: `Syn.Cst.source_file option`
+- `diagnostics`: structured parse diagnostics
+
+Use `Ceibo.Red.new_root result.tree` when you need direct access to the lossless
+syntax tree. Use `result.cst` when you want a typed, grammar-oriented view of a
+clean parse.
+
+## CLI helpers
+
+The package also ships CLI surfaces that are used heavily by the fixture suite:
+
+```sh
+tusk run syn -- print-ceibo path/to/file.ml
+tusk run syn -- print-cst path/to/file.ml
+tusk run syn -- parse --json path/to/file.ml
+tusk run syn -- token-stream --json path/to/file.ml
 ```
 
-Each node has a **syntax kind** (e.g., `LET_BINDING`, `IF_EXPR`, `TYPE_DECL`) and contains:
-- Child nodes (sub-structures)
-- Tokens (keywords, identifiers, operators)
-- Trivia (comments, docstrings)
+`print-ceibo` always prints the lossless parse result plus diagnostics.
+`print-cst` prints a typed CST result when the parse was clean, or a
+`parse_error` payload otherwise.
 
-## Example
+## CST design
 
-```ocaml
-(* Source: *)
-let add x y = x + y
+`Syn.Cst` is intentionally faithful to the successful Ceibo parse.
 
-(* CST structure: *)
-SOURCE_FILE
-└─ LET_BINDING
-   ├─ 'let' keyword
-   ├─ IDENT_PATTERN (name: 'add')
-   ├─ IDENT_PATTERN (param: 'x')
-   ├─ IDENT_PATTERN (param: 'y')
-   ├─ '=' token
-   └─ INFIX_EXPR
-      ├─ IDENT_EXPR (name: 'x')
-      ├─ '+' operator
-      └─ IDENT_EXPR (name: 'y')
+- keep exact `syntax_node` and `Token.t` handles when spelling matters
+- represent implementation and interface files explicitly
+- keep the public tree grammar-oriented rather than rule-oriented
+- bail from the lift when a syntax family cannot be reified precisely
+
+That split lets tooling stay ergonomic without losing exact source anchoring for
+future refactors and formatting.
+
+## Testing
+
+The main validation surfaces are:
+
+```sh
+timeout 30 tusk build syn
+timeout 180 tusk test syn:cst_tests
+timeout 900 python3 packages/syn/tests/test_runner.py fixtures
+timeout 900 python3 packages/syn/tests/test_runner.py cst
+timeout 900 python3 packages/syn/tests/test_runner.py diagnostics
 ```
 
-## Supported Syntax
+The fixture runner compares:
 
-### Expressions ✅
-- Literals, identifiers, operators
-- Function application and definition
-- Let bindings (let, let rec, let module)
-- Pattern matching (match, function, try)
-- Conditionals (if/then/else)
-- Sequences and blocks
-- Records, tuples, lists, arrays
-- Objects and polymorphic variants
+- `*.expected_lossless.json` for Ceibo output
+- `*.expected_cst.json` for typed CST output
+- `*.diagnostic` files for diagnostic expectations
 
-### Patterns ✅
-- Variable, constant, wildcard patterns
-- Constructor and tuple patterns
-- Record and array patterns  
-- Or-patterns and guards
-- As-patterns and type annotations
-
-### Types ✅
-- Type constructors and variables
-- Function types (arrows)
-- Tuple and record types
-- Variant and polymorphic variant types
-- Object types
-- Module types and signatures
-- GADTs and constraints
-
-### Declarations ✅
-- Type declarations (normal, private, extensible)
-- Value declarations (val, external)
-- Module declarations and signatures
-- Module type declarations
-- Class and class type declarations
-- Exception declarations
-
-### Modules ✅
-- Module expressions (struct...end)
-- Module types (sig...end)
-- Functors and applications
-- Module constraints and sealing
-- First-class modules
-
-## Design Philosophy
-
-**Lossless over Convenient**:
-- Preserve every detail of the source
-- Enable accurate formatting and refactoring
-- Comments in the right places
-
-**Structure over Semantics**:
-- Syntax tree, not semantic tree
-- No name resolution or type checking
-- Fast and simple
-
-**Production Ready**:
-- Handles real-world code
-- Comprehensive test coverage
-- Battle-tested on large codebase
-
-## Non-Goals
-
-- ❌ Not a compiler (use OCaml's compiler-libs)
-- ❌ Not desugaring (preserves exact syntax)
-- ❌ Not semantic analysis (just syntax)
-- ❌ Not for learning OCaml (use tutorials)
-
-## Status
-
-🎉 **Production Ready**
-
-Coverage:
-- ✅ Lexer: Complete
-- ✅ Parser: 100% codebase coverage
-- ✅ Tests: 98.9% (1081/1093)
-- ✅ Trivia: Fully preserved
-
-Used by:
-- **tusk_fix**: OCaml linter
-- **tusk_fmt**: Code formatter (planned)
+Both the lossless and CST fixture modes reject parses that produce diagnostics.
 
 ## Contributing
 
-The parser is structured as a recursive-descent Pratt parser:
-- `lexer.ml`: Tokenization with position tracking
-- `parser.ml`: Recursive descent parsing
-- `ceibo/`: Green/Red tree implementation
-- `syntax_kind.ml`: All node types
-- `diagnostic.ml`: Error reporting
+When extending `syn`:
 
-To add support for new syntax:
-1. Add tokens to lexer if needed
-2. Add syntax kind to `syntax_kind.ml`
-3. Add parsing function to `parser.ml`
-4. Add tests to `tests/fixtures/`
-5. Run `./packages/syn/tests/regenerate_expected.sh`
+1. preserve the lossless Ceibo tree first
+2. add or update typed CST nodes in `cst.ml`
+3. lift them in `cst_builder.ml`
+4. update `cst_json.ml` if the fixture shape changed
+5. refresh or add fixtures in `packages/syn/tests/fixtures`
+6. run the fixture runner
 
-See existing parsing functions for patterns to follow.
-
-## License
-
-Same as Riot project
+If a syntax family cannot be modeled precisely yet, fix the lift or keep working
+at the Ceibo layer. Do not reintroduce public placeholder nodes into the CST.

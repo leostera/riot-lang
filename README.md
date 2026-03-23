@@ -70,12 +70,12 @@ At its core Riot includes:
 
 * **Std**: a modern standard library surface used across the workspace for I/O, collections, paths, networking, concurrency, configuration, logging, testing, and more -- Std defines how you write applications, helping you structure supervision trees, configuration loading, and more.
 
-* **Tusk**: a friendly package manager and extensible build system for OCaml -- Finally Tusk helps you structure your projects and packages in predictable ways, and lets you extend it by defining commands, and more.
+* **Tusk**: a friendly package manager and extensible build system for OCaml -- Tusk structures workspaces around explicit build, runtime, and dev-time package phases, and lets packages extend tooling by exporting commands and providers.
 
 But we also includes a broader set of packages that exercise and extend the platform in meaningful ways:
 
 * **Ceibo**: shared syntax-tree and span infrastructure
-* **Syn**: a parser and CST toolkit for OCaml
+* **Syn**: a lossless OCaml parser with both Ceibo trees and a typed CST for tooling
 * **Macro**: a new procedural macro system for OCaml
 * **Swisstable**: an implementation of Google's Swisstable hashmap
 * **Pubgrub**: version solving

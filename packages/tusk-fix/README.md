@@ -1,315 +1,119 @@
-# tusk_fix - OCaml Linter and Fixer
+# tusk-fix
 
-A pipeline-based linter and code fixer for OCaml, built on top of the `syn` parser.
+`tusk-fix` is Riot's linting and safe-fix pipeline for OCaml code.
 
-## Architecture
+It is built on top of `syn`:
 
-### Core Design Principles
+- Ceibo provides exact lossless syntax and spans
+- `Syn.Cst` provides typed structure for clean parses
+- `tusk-fix-api` provides the shared rule-authoring surface
 
-1. **Parse Once**: Source code is parsed exactly once into a `syn` AST
-2. **Pipeline Processing**: The AST flows through a pipeline of linters and fixers
-3. **Structured Diagnostics**: All issues are reported as structured `Diagnostic` objects
-4. **Multiple Output Formats**: Diagnostics can be rendered as human-readable text or machine-readable JSON
-5. **Extensible Rules**: Easy to add new linting rules
+## Current model
 
-### Components
+The pipeline is:
 
+1. parse each file once with `syn`
+2. keep parse diagnostics separate from lint diagnostics
+3. run enabled rules against the red tree plus optional typed CST
+4. apply only safe, package-owned fixes
+5. report remaining issues in text or JSON
+
+Rules can be built in or provided by workspace packages. Package-provided rules
+are fused into a generated runtime under `_build`, so `tusk-fix` does not spawn
+one subprocess per rule.
+
+## Rule ids vs diagnostic codes
+
+These are distinct concepts:
+
+- a **rule id** identifies the checker, for example `riot:snake-case-type-names`
+- a **diagnostic code** identifies a concrete finding, for example `f0101` or
+  `std:f0001`
+
+Many rules emit exactly one diagnostic code, but the CLI keeps the surfaces
+separate on purpose:
+
+- `--list-rules` lists rules
+- `--list-diagnostics` lists diagnostic codes
+- `--explain CODE` explains a diagnostic code
+
+Explain text lives with the rule definition, not in a central registry package.
+
+## CLI
+
+Typical usage:
+
+```sh
+# check a path without modifying files
+tusk run tusk -- fix --check packages/syn
+
+# stop early after surfacing a small number of diagnostics
+tusk run tusk -- fix --check --limit 10 packages/syn
+
+# apply safe fixes
+tusk run tusk -- fix packages/tusk-fix
+
+# inspect the currently loaded rule and diagnostic surfaces
+tusk run tusk -- fix --list-rules
+tusk run tusk -- fix --list-diagnostics
+
+# explain a diagnostic code
+tusk run tusk -- fix --explain F0101
+tusk run tusk -- fix --explain std:f0001
 ```
-Source Code
-     ↓
-  Syn.parse → AST + Parse Diagnostics
-     ↓
-  Pipeline (Rule₁, Rule₂, ..., Ruleₙ)
-     ↓
-  Diagnostic Collection
-     ↓
-  Reporter (Text | JSON)
-```
 
-#### 1. Diagnostic
+## Rule authoring
 
-Represents a single issue found in the code:
+Rules are defined with `tusk-fix-api` and run against:
+
+- the file path
+- the optional typed CST for clean parses
+- the Ceibo red tree for exact source traversal
+
+At a high level:
 
 ```ocaml
-type severity = Error | Warning | Info | Hint
-
-type t = {
-  severity : severity;
-  message : string;
-  span : Syn.Ceibo.Span.t;  (* Source location *)
-  rule_id : string;          (* Which rule detected this *)
-  suggestion : string option; (* Optional fix suggestion *)
-}
-```
-
-Diagnostics can be:
-- Converted to human-readable strings (`Diagnostic.to_string`)
-- Serialized to JSON for tooling (`Diagnostic.to_json`)
-
-#### 2. Rule
-
-A linting rule that inspects the AST and produces diagnostics:
-
-```ocaml
-type t = {
-  id : string;
-  name : string;
-  description : string;
-  enabled : bool;
-  run : Syn.Ceibo.Green.t -> Diagnostic.t list;
-}
-```
-
-Rules:
-- Receive the parsed AST (green tree)
-- Traverse the tree looking for patterns
-- Emit `Diagnostic` values for issues found
-- Can be enabled/disabled
-
-#### 3. Pipeline
-
-Orchestrates the linting process:
-
-```ocaml
-type result = {
-  tree : Syn.Ceibo.Green.t;
-  diagnostics : Diagnostic.t list;
-}
-
-val run : t -> string -> result
-```
-
-The pipeline:
-1. Parses source code once using `Syn.parse`
-2. Collects parse errors as diagnostics
-3. Runs each enabled rule on the AST
-4. Aggregates all diagnostics
-5. Returns the tree + diagnostics
-
-#### 4. Reporter
-
-Renders diagnostics in different formats:
-
-```ocaml
-type format = Text | Json
-
-val report : format:format -> Diagnostic.t list -> unit
-```
-
-Formats:
-- **Text**: Human-readable error messages for CLI output
-- **JSON**: Machine-readable format for IDE/tooling integration
-
-## Usage
-
-### Command Line
-
-```bash
-# Lint a file (text output)
-tusk_fix src/main.ml
-
-# JSON output for tooling
-tusk_fix --format=json src/main.ml
-
-# Exit codes:
-#   0 - No issues found
-#   1 - Issues found or error occurred
-```
-
-### Programmatic
-
-```ocaml
-open Std
-
-(* Create a custom pipeline *)
-let pipeline = Pipeline.make 
-  ~rules:[
-    Snake_case_type_names.make ();
-    (* Add more rules here *)
-  ] 
-  ()
-
-(* Run on source code *)
-let source = Fs.read (Path.v "file.ml") |> Result.unwrap in
-let result = Pipeline.run pipeline source in
-
-(* Process results *)
-match result.diagnostics with
-| [] -> Log.info "All good!"
-| diagnostics -> 
-    Reporter.report ~format:Text diagnostics
-```
-
-## Built-in Rules
-
-### snake-case-type-names
-
-**Rule ID**: `snake-case-type-names`
-
-Detects type declarations that use camelCase instead of `snake_case`.
-
-**Example**:
-
-```ocaml
-(* BAD *)
-type userProfile = {
-  name : string;
-}
-
-(* GOOD *)
-type user_profile = {
-  name : string;
-}
-```
-
-## Creating Custom Rules
-
-### Step 1: Implement the Rule
-
-Create a new file in `src/rules/`:
-
-```ocaml
-(* src/rules/my_rule.ml *)
-open Std
-
-let rule_id = "my-rule"
-let rule_name = "My Custom Rule"
-let rule_description = "Detects some pattern in the code"
-
-let check_tree tree =
-  let diagnostics = ref [] in
-  
-  let rec traverse node =
-    match node with
-    | Syn.Ceibo.Green.Node n ->
-        (* Inspect node, check for patterns *)
-        Array.iter traverse (Syn.Ceibo.Green.children_of_node n)
-    | Syn.Ceibo.Green.Token t ->
-        (* Inspect token *)
-        ()
-  in
-  
-  traverse tree;
-  !diagnostics
-
 let make () =
-  Rule.make ~id:rule_id ~name:rule_name 
-    ~description:rule_description
-    ~run:check_tree ()
+  Rule.make
+    ~id:"snake-case-type-names"
+    ~code:"F0101"
+    ~name:"Snake-case Type Names"
+    ~description:"Type names should use snake_case instead of camelCase"
+    ~explain:"Prefer snake_case type names so declarations read consistently."
+    ~run:(fun context red_root ->
+      ignore context;
+      ignore red_root;
+      [])
+    ()
 ```
 
-### Step 2: Add to Pipeline
+The important constraints are:
 
-Update `pipeline.ml`:
+- keep rules small and specific
+- prefer typed `Syn.Cst` structure when the grammar has already been lifted
+- push structural parser assumptions down into `syn` instead of re-encoding
+  grammar in every rule
+- only emit fixes that are clearly safe
 
-```ocaml
-let default_rules () = [
-  Snake_case_type_names.make ();
-  My_rule.make ();  (* Add your rule *)
-]
+## Configuration
+
+Rules are enabled and disabled through `tusk.toml`. Built-in Riot rules are
+enabled by default unless they are explicitly disabled in config.
+
+Package-provided rules keep their package-qualified ids, for example:
+
+- `riot:snake-case-type-names`
+- `riot:descriptive-type-variables`
+- `std:no-stdlib`
+
+## Validation
+
+The usual checks are:
+
+```sh
+timeout 30 tusk build tusk-fix
+timeout 180 tusk test tusk-fix:runner_tests
+tusk run tusk -- fix --list-rules
+tusk run tusk -- fix --list-diagnostics
+tusk run tusk -- fix --check --limit 10 packages/tusk-fix
 ```
-
-### Rule Writing Guide
-
-**Traversal Pattern**:
-
-```ocaml
-let check_tree tree =
-  let diagnostics = ref [] in
-  
-  let rec traverse node =
-    match node with
-    | Syn.Ceibo.Green.Node n ->
-        (* Check node kind *)
-        let kind = Syn.Ceibo.Green.kind_of_node n in
-        
-        (* Get children *)
-        let children = Syn.Ceibo.Green.children_of_node n in
-        
-        (* Recurse *)
-        Array.iter traverse children
-        
-    | Syn.Ceibo.Green.Token t ->
-        (* Get token text and kind *)
-        let text = Syn.Ceibo.Green.text_of_token t in
-        let kind = Syn.Ceibo.Green.kind_of_token t in
-        
-        (* Check for issues *)
-        if is_problematic text then
-          let span = compute_span () in
-          let diag = Diagnostic.make
-            ~severity:Warning
-            ~message:"Problem detected"
-            ~span
-            ~rule_id
-            ~suggestion:"Try this instead"
-            ()
-          in
-          diagnostics := diag :: !diagnostics
-  in
-  
-  traverse tree;
-  !diagnostics
-```
-
-**Emitting Diagnostics**:
-
-```ocaml
-(* Warning with suggestion *)
-Diagnostic.make 
-  ~severity:Warning
-  ~message:"Type names should use snake_case instead of camelCase."
-  ~span
-  ~rule_id:"snake-case-type-names"
-  ~suggestion:"Rename userProfile to user_profile"
-  ()
-
-(* Error without suggestion *)
-Diagnostic.make 
-  ~severity:Error
-  ~message:"Invalid syntax"
-  ~span
-  ~rule_id:"syntax-error"
-  ()
-```
-
-## Future: User-Defined Lints
-
-The architecture is designed to support user-land lints in the future:
-
-```toml
-# .tusk_fix.toml (future)
-[rules]
-enable = ["snake-case-type-names", "custom-rule"]
-
-[rules.custom-rule]
-plugin = "./lints/custom_rule.cmxs"
-config = { threshold = 10 }
-```
-
-Users will be able to:
-1. Write custom rules as OCaml modules
-2. Compile them to plugins (`.cmxs`)
-3. Load them dynamically via configuration
-4. Share rules across projects/teams
-
-## Implementation Status
-
-✅ Core infrastructure
-  - ✅ Diagnostic type with severity levels
-  - ✅ Rule abstraction
-  - ✅ Pipeline architecture
-  - ✅ Text reporter
-  - ✅ JSON reporter
-  - ✅ CLI interface
-
-✅ Built-in rules
-  - ✅ snake-case-type-names
-
-🚧 Future work
-  - ⬜ More built-in rules
-  - ⬜ Auto-fix capabilities
-  - ⬜ Configuration file support
-  - ⬜ User-defined lint plugins
-  - ⬜ IDE integration (LSP)
-  - ⬜ Incremental linting
