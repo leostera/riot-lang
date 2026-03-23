@@ -1,0 +1,18 @@
+[package]
+name = "krasny"
+version = "0.1.0"
+
+[lib]
+path = "src/krasny.ml"
+
+[[bin]]
+name = "krasny"
+path = "src/main.ml"
+
+[[bin]]
+name = "format_tests"
+path = "tests/format_tests.ml"
+
+[dependencies]
+std = { path = "../std" }
+syn = { path = "../syn" }

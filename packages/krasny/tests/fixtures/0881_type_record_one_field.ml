@@ -1,0 +1,1 @@
+type wrapper = { value : int }

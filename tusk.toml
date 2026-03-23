@@ -9,6 +9,7 @@ members = [
   "packages/propane",
   "packages/jsonrpc",
   "packages/kernel",
+  "packages/krasny",
   "packages/mcp",
   "packages/mime",
   "packages/miniriot",

@@ -17,6 +17,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/jsonrpc/AGENTS.md`: JSON-RPC framing and codec behavior
 - `packages/mcp/AGENTS.md`: MCP transport and protocol types
 - `packages/syn/AGENTS.md`: parser, lexer, CST, diagnostics
+- `packages/krasny/AGENTS.md`: OCaml formatter, document layout, syntax-to-text rendering
 - `packages/tusk-model/AGENTS.md`: shared build-system types and workspace/package model
 - `packages/tusk-planner/AGENTS.md`: build planning and dependency graph construction
 - `packages/tusk-executor/AGENTS.md`: build execution and result aggregation

@@ -1,0 +1,49 @@
+open Std
+
+let parse_file ~file ~source =
+  if String.ends_with ~suffix:".mli" file then
+    Syn.parse_interface source
+  else Syn.parse_implementation source
+
+let handle_format file =
+  match Fs.read (Path.v file) with
+  | Error _err ->
+      Log.error ("Error reading file: " ^ file);
+      exit 1
+  | Ok source ->
+      let result = parse_file ~file ~source in
+      print (Krasny.format result)
+
+let () =
+  let cmd =
+    let open ArgParser in
+    let open Arg in
+    command "krasny" |> version "0.1.0" |> about "Riot OCaml formatter"
+    |> subcommands
+         [
+           command "format"
+           |> about "Format an OCaml source file"
+           |> args
+                [
+                  positional "FILE"
+                  |> help "OCaml source file to format"
+                  |> required true;
+                ];
+         ]
+  in
+  match ArgParser.get_matches cmd Env.args with
+  | Error err ->
+      ArgParser.print_error err;
+      ArgParser.print_help cmd;
+      exit 1
+  | Ok matches -> (
+      match ArgParser.get_subcommand matches with
+      | Some ("format", sub_matches) ->
+          let file =
+            ArgParser.get_one sub_matches "FILE"
+            |> Option.expect ~msg:"FILE required"
+          in
+          handle_format file
+      | _ ->
+          ArgParser.print_help cmd;
+          exit 1)

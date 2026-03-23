@@ -11,215 +11,38 @@ This file is _yours_. Keep it up to date after every big change.
 
 ## TASKS
 
-- [x] Go over the OCaml Structure Parity Checklist below and check all the boxes
-- [x] Work on refactoring the existing lints
-- [x] Refactor linting explanations to be in-depth with examples and not a structured "why | better | worse" garbage. Also explanations dont' need a title, its enough with the rule-id and the body 
+- [ ] Work on Krasny
 - [ ] Work on implementing the remaining lints
 - [ ] Work on fixing the broken tests
 
 ## Verification Commands
 
 1. Rebuild `tusk` when build-system, parser, or lint-runtime changes affect the binary:
-   - `tusk build tusk-cli`
-2. Use the narrowest verification command that matches the change:
-   - `tusk build syn`
-   - `tusk build tusk-fix`
-3. After a parser or CST slice lands, rerun the focused test suites:
-   - `tusk test syn:cst_tests`
-   - `tusk test tusk-fix:runner_tests`
-4. After a CST syntax-family slice lands, optionally refreshing the fixture corpus if necessary:
-   - `timeout 900 python3 packages/syn/tests/test_runner.py cst --refresh-clean`
-4. When making changes to the parser in general call:
-   - `timeout 900 python3 packages/syn/tests/test_runner.py all`
-5. When smoke-checking lint output, prefer the auto-rebuilding path:
-   - `tusk run tusk -- fix --check --limit 10 <file>`
+   - `tusk build <pkg>`
+3. After a package slice lands, rerun the focused test suites:
+   - `tusk test <pkg>:cst_tests`
+4. If the package has an expectation test runner, run it:
+   - `timeout 900 python3 packages/<pkg>/tests/test_runner.py`
 
-## tusk-fix Cleanup
+## krasny Checklist
 
-- [x] Simplify built-in and package rule metadata to `id`, short description, and long explanation
-- [x] Remove the runner_tests.ml code_id by refacotring the tests to pass in a `~rule` instead of `~code` and refactoring the assertions too
-- [x] Keep explanations example-driven rather than structured as "why this rule exists"
-
-## CST and Rule Ergonomics Follow-up
-
-The current rules are proving the typed CST is useful, but too many rules are still
-doing framework work instead of rule work. The cleanup goal here is:
-
-- a good rule should mostly read like `query nodes -> match shape -> emit diagnostic`
-- rules should not need to recover file kind, recurse half the grammar, or dig into raw `Ceibo`
-- exact edits can still target the lossless tree, but routine diagnostics should come from CST/query helpers
-
-### Syn.Cst
-
-- initial slice landed:
-  - parsing now returns Ceibo trees plus diagnostics without an attached CST
-  - `Syn.build_cst` performs the explicit faithful lift step
-  - `tusk-fix` now skips rule execution when CST construction fails
-- [ ] Give every named construct a canonical site:
-  - [ ] `LetBinding.name_site`
-  - [ ] `TypeDeclaration.name_site`
-  - [ ] `RecordField.name_site`
-  - [ ] `VariantConstructor.name_site`
-  - [ ] `Parameter.name_site`
-  - [ ] `ModuleDeclaration.name_site`
-- [ ] Give common nodes canonical spans without requiring raw `Ceibo` access:
-  - [ ] `Expression.span`
-  - [ ] `Pattern.span`
-  - [ ] `CoreType.span`
-  - [ ] `LetBinding.span`
-- [ ] Keep convenience predicates out of the core CST when they are interpretive:
-  - [ ] move helpers like `LetBinding.is_function` into matcher/query modules
-  - [ ] keep `Syn.Cst` focused on faithful structure, not rule-specific convenience
-- [ ] Keep file roots explicit instead of optional top-level accessors:
-  - [ ] `SourceFile.Implementation { items; ... }`
-  - [ ] `SourceFile.Interface { items; ... }`
-- [ ] Keep top-level item families split between structure and signature surfaces instead of pushing rules through optional `structure_items` / `signature_items`
-
-### Syn.Visit
-
-- initial slice landed:
-  - explicit `visit_*` hooks
-  - explicit reentrant walker
-  - `walker.descend_*` helpers for standard child traversal
-- [ ] Expand visitor coverage so all major CST node families are visitable
-- [ ] Standardize descent over function bodies, match cases, and declaration payloads so rules do not need bespoke recursion just to recurse consistently
-- [ ] Keep `visit.mli` thoroughly documented with examples and the visitor-vs-walker distinction
-
-### Syn.Matchers
-
-- [ ] Extract shared matcher helpers for common wrapper and shape logic:
-  - [ ] `Matchers.Expression.unwrap_parens`
-  - [ ] `Matchers.Expression.unwrap_wrappers`
-  - [ ] `Matchers.Expression.flatten_apply`
-  - [ ] `Matchers.Pattern.unwrap_alias_typed_parens`
-  - [ ] `Matchers.CoreType.unwrap`
-  - [ ] shared helpers for arrow types and field-access-root detection
-- [ ] Add reusable semantic-ish helpers for rules that are currently doing local syntax analysis:
-  - [ ] collect variable reads
-  - [ ] collect field accesses rooted at local `x`
-  - [ ] detect whether an expression mentions binding `x` outside allowed contexts
-
-### Rule.Query
-
-- initial slice landed:
-  - `Tusk_fix.Rule_query.structure_items`
-  - `Tusk_fix.Rule_query.signature_items`
-  - `Tusk_fix.Rule_query.expressions`
-  - `Tusk_fix.Rule_query.let_bindings`
-  - `Tusk_fix.Rule_query.type_declarations`
-- [ ] Add query-oriented entrypoints so rules do not all start with `match ctx.cst` and manual top-level unpacking
-- [ ] Provide first-class queries for recurring node families:
-  - [ ] `Rule.Query.structure_items`
-  - [ ] `Rule.Query.signature_items`
-  - [ ] `Rule.Query.expressions`
-  - [ ] `Rule.Query.let_bindings`
-  - [ ] `Rule.Query.function_bindings`
-  - [ ] `Rule.Query.type_declarations`
-  - [ ] `Rule.Query.signature_type_declarations`
-  - [ ] `Rule.Query.record_fields`
-  - [ ] `Rule.Query.variant_constructors`
-
-### Rule Authoring Conventions
-
-- [ ] Treat local custom recursive descent as a yellow flag in rules
-- [ ] Standardize naming-rule helpers instead of rebuilding the same “extract token -> test predicate -> emit diagnostic” loop:
-  - [ ] `Naming_rule.check_binding_site`
-  - [ ] `Naming_rule.check_parameter`
-  - [ ] `Naming_rule.check_type_name`
-  - [ ] `Naming_rule.check_record_field`
-  - [ ] `Naming_rule.check_constructor`
-- [ ] Standardize diagnostic builders/accumulators so rules stop building many small lists with repeated `@`
-- [ ] Keep raw `Syn.Ceibo.Red.SyntaxNode.span` / `SyntaxToken.text` access as the escape hatch for exact edits, not the default path for routine diagnostics
-
-### First Refactors
-
-- [ ] Refactor `prefer_record_destructuring_parameters` to use shared traversal/query helpers instead of local grammar walking
-- [ ] Refactor `no_eta_expansion` to share application flattening and expression-mention helpers
-- [ ] Refactor `prefer_scoped_field_access` to use shared expression traversal instead of a bespoke recursive walker
-- [ ] Refactor `no_positional_bool_parameters` to rely on shared arrow-type / parameter queries
-- [ ] Refactor `no_redundant_parentheses` to use shared wrapper helpers
-
-### Proposed Module Layout
-
-Target split:
-
-- `Syn.Cst`: faithful typed structure and canonical sites/spans
-- `Syn.Matchers`: small shared shape helpers like unwrap/flatten/extract
-- `Syn.Visit`: explicit visitor hooks plus reentrant descent helpers
-- `Tusk_fix.Rule_query`: rule-friendly entrypoints over CST roots and common declaration families
-
-Rough signatures:
-
-```ocaml
-module Syn.Visit : sig
-  type 'ctx walker
-  type 'ctx visitor
-
-  val default : 'ctx visitor
-  val source_file : 'ctx visitor -> 'ctx -> Syn.Cst.SourceFile.t -> 'ctx
-end
-
-module Syn.Matchers.Expression : sig
-  val unwrap_parens : Syn.Cst.Expression.t -> Syn.Cst.Expression.t
-  val unwrap_wrappers : Syn.Cst.Expression.t -> Syn.Cst.Expression.t
-  val flatten_apply :
-    Syn.Cst.Expression.t -> Syn.Cst.Expression.t * Syn.Cst.argument list
-end
-
-module Tusk_fix.Rule_query : sig
-  val expressions :
-    Tusk_fix_api.Rule.context -> Syn.Cst.Expression.t list
-
-  val let_bindings :
-    Tusk_fix_api.Rule.context -> Syn.Cst.LetBinding.t list
-
-  val type_declarations :
-    Tusk_fix_api.Rule.context -> Syn.Cst.TypeDeclaration.t list
-end
-```
-
-## Next Built-in Lints
-
-- [x] Prefer named closed polymorphic variants over inline closed polymorphic variants like ``[ `a | `b ] list``
-- [x] Warn on bool positional parameters in functions; suggest a named parameter or an enum
-- [x] Warn on tuples that should be records:
-  - [x] more than 3 elements of the same type
-  - [x] more than 4 elements of any type
-- [x] Prefer scoped module qualification syntax over inline qualified field syntax:
-  - [x] `let open Foo in [...]` -> prefer `Foo.[...]` unless there are multiple stacked local opens
-  - [x] `Module.{ field = value }` over `{ Module.field = value }`
-- [x] If a module has a single type definition, prefer it be called `t`
-- [x] If a module has a public record type and accessor functions like
-  - [x] `.mli`: `type t = { field : string }`
-  - [x] `.mli`: `val field : t -> string`
-  - [x] then suggest making the type opaque
-- [x] Add a style rule encouraging record destructuring in function parameters for internal helpers like JSON serializers, so new fields are harder to ignore accidentally
-  - covers both `let f record = let { a; b; _ } = record in ...` and repeated `record.field` helper bodies
+- [x] Initialize the `krasny` package, CLI, focused tests, and expectation harness
+- [x] Seed `krasny` formatter fixtures from `packages/syn/tests/fixtures`
+- bootstrap status: `krasny` builds, focused tests pass, and the expectation harness runs against the full seeded corpus (`858` passing / `337` failing) while the formatter is still a lossless token renderer
+- [ ] Cover trivia and comments
+- [ ] Cover literals
+- [ ] Cover expressions
+- [ ] Cover patterns
+- [ ] Cover type expressions
+- [ ] Cover top-level declarations
+- [ ] Cover structural elements and module/signature items
+- [ ] Cover parser-recovery / fallback formatting from Ceibo when CST lifting fails
 
 ## Package Rules
 
-### Built-in Package Rules
-
-- [x] Package names should be `kebab-case`
-- [x] Package names should start with a letter
-- [x] Package names should not have trailing dashes or underscores
-- [x] Subdirectories and file names should be in `snake_case`
-- [x] Warn about modules without `.mli` files
-
-### Miniriot
-
-- [x] Warn if a `while` or `for` loop does not immediately `yield ()`
-
 ### Std
 
-- [x] `std:prefer-bang-equal-inequality`
-- [x] `std:no-double-list-rev`
-- [x] `ignore (List.map f xs)` / `ignore (Iter.map f iter)` should prefer the corresponding iterator form
-- [x] `List.length x == 0` / `List.length x > 0` should prefer `List.is_empty`
 - [ ] Constants like `3.14` should prefer `Std.Math.PI`
-- [x] Prefer combinators over manual matches:
-  - [x] `Option.map`
-  - [x] `Result.map`
 - [ ] Suggest `Result.protect`-style helpers instead of exceptions for flow control where appropriate
 - [ ] Replace `x_of_y` / `string_of_int`-style names with the newer module APIs:
   - [ ] `string_of_int -> Int.to_string`
