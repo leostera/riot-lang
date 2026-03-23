@@ -57,6 +57,18 @@
                   "end": 36
                 }
               },
+              "label": {
+                "tag": "named",
+                "sigil_token": null,
+                "label_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 9,
+                    "end": 10
+                  }
+                }
+              },
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -93,6 +105,25 @@
                   "span": {
                     "start": 18,
                     "end": 36
+                  }
+                },
+                "label": {
+                  "tag": "optional_named",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "?",
+                    "span": {
+                      "start": 18,
+                      "end": 19
+                    }
+                  },
+                  "label_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "y",
+                    "span": {
+                      "start": 19,
+                      "end": 20
+                    }
                   }
                 },
                 "parameter_type": {

@@ -389,6 +389,35 @@ and local_open_core_type = {
   type_ : core_type;
 }
 
+(** A named label attached to an arrow parameter type.
+
+    This mirrors the stock parsetree's distinction between regular labeled
+    arguments and optional labeled arguments while still preserving any leading
+    sigil token that appeared in source.
+
+    Examples:
+
+    ```ocaml,norun
+    x:int -> string
+    ?state:string -> bool
+    ```
+*)
+and arrow_label =
+  | Named of {
+      sigil_token : Token.t option;
+      label_token : Token.t;
+    }
+      (** A regular labeled arrow parameter such as `x:int -> ...`.
+
+          The optional `sigil_token` preserves syntaxes that spell the label
+          with an explicit `~`.
+      *)
+  | OptionalNamed of {
+      sigil_token : Token.t;
+      label_token : Token.t;
+    }
+      (** An optional arrow parameter such as `?state:string -> ...`. *)
+
 (** Core type syntax.
 
     This family covers the type grammar used in annotations, manifests, record
@@ -480,20 +509,19 @@ and core_type =
       *)
   | Arrow of {
       syntax_node : syntax_node;
+      label : arrow_label option;
       parameter_type : core_type;
       result_type : core_type;
     }
       (** A function type.
 
-          This covers simple, labeled, and optional arrows. The structured CST
-          stores only the parameter and result types; labels remain recoverable
-          from the underlying `syntax_node`.
+          This covers simple, labeled, and optional arrows.
 
           Examples:
 
           ```ocaml,norun
           int -> string
-          ~label:int -> string
+          label:int -> string
           ?state:string -> bool
           ```
       *)
@@ -694,6 +722,7 @@ and class_type =
       *)
   | Arrow of {
       syntax_node : syntax_node;
+      label : arrow_label option;
       parameter_type : core_type;
       result_type : class_type;
     }
@@ -842,6 +871,7 @@ module CoreType : sig
       }
     | Arrow of {
         syntax_node : syntax_node;
+        label : arrow_label option;
         parameter_type : core_type;
         result_type : core_type;
       }
@@ -888,6 +918,24 @@ module TypeConstraint : sig
     left : core_type;
     right : core_type;
   }
+end
+
+(** Namespace view over `arrow_label`. *)
+module ArrowLabel : sig
+  type t = arrow_label =
+    | Named of {
+        sigil_token : Token.t option;
+        label_token : Token.t;
+      }
+    | OptionalNamed of {
+        sigil_token : Token.t;
+        label_token : Token.t;
+      }
+
+  val sigil_token : t -> Token.t option
+  val label_token : t -> Token.t
+  val name : t -> string
+  val is_optional : t -> bool
 end
 
 (** Namespace view over `functor_parameter`. *)
@@ -953,6 +1001,7 @@ module ClassType : sig
       }
     | Arrow of {
         syntax_node : syntax_node;
+        label : arrow_label option;
         parameter_type : core_type;
         result_type : class_type;
       }

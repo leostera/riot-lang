@@ -57,6 +57,7 @@
                   "end": 31
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -95,6 +96,7 @@
                     "end": 31
                   }
                 },
+                "label": null,
                 "parameter_type": {
                   "tag": "constr",
                   "syntax_node": {

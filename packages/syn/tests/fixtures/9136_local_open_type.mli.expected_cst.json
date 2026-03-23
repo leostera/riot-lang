@@ -90,6 +90,7 @@
                   "end": 45
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {

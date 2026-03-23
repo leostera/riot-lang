@@ -124,6 +124,7 @@
                   "end": 31
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "var",
                 "syntax_node": {
@@ -279,6 +280,7 @@
                 "end": 31
               }
             },
+            "label": null,
             "parameter_type": {
               "tag": "var",
               "syntax_node": {
@@ -397,6 +399,7 @@
               "end": 31
             }
           },
+          "label": null,
           "parameter_type": {
             "tag": "var",
             "syntax_node": {

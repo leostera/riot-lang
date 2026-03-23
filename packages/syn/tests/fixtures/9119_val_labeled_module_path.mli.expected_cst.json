@@ -37,6 +37,18 @@
                 "end": 127
               }
             },
+            "label": {
+              "tag": "named",
+              "sigil_token": null,
+              "label_token": {
+                "kind": "IDENT_EXPR",
+                "text": "namespace",
+                "span": {
+                  "start": 73,
+                  "end": 82
+                }
+              }
+            },
             "parameter_type": {
               "tag": "constr",
               "syntax_node": {
@@ -99,6 +111,18 @@
                 "span": {
                   "start": 100,
                   "end": 127
+                }
+              },
+              "label": {
+                "tag": "named",
+                "sigil_token": null,
+                "label_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "library_name",
+                  "span": {
+                    "start": 100,
+                    "end": 112
+                  }
                 }
               },
               "parameter_type": {

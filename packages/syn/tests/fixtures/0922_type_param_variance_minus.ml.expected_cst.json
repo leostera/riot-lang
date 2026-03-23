@@ -96,6 +96,7 @@
                   "end": 36
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "var",
                 "syntax_node": {

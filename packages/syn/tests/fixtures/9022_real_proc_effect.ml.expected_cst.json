@@ -149,6 +149,7 @@
                               "end": 93
                             }
                           },
+                          "label": null,
                           "parameter_type": {
                             "tag": "constr",
                             "syntax_node": {
@@ -294,6 +295,7 @@
                     "end": 125
                   }
                 },
+                "label": null,
                 "parameter_type": {
                   "tag": "record",
                   "syntax_node": {
@@ -329,6 +331,7 @@
                             "end": 93
                           }
                         },
+                        "label": null,
                         "parameter_type": {
                           "tag": "constr",
                           "syntax_node": {

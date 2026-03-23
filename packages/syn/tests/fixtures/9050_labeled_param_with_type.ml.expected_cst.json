@@ -599,6 +599,18 @@
                   "end": 340
                 }
               },
+              "label": {
+                "tag": "named",
+                "sigil_token": null,
+                "label_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 317,
+                    "end": 318
+                  }
+                }
+              },
               "parameter_type": {
                 "tag": "parenthesized",
                 "syntax_node": {
@@ -617,6 +629,7 @@
                       "end": 330
                     }
                   },
+                  "label": null,
                   "parameter_type": {
                     "tag": "constr",
                     "syntax_node": {

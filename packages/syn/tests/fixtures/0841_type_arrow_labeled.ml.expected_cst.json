@@ -57,6 +57,18 @@
                   "end": 25
                 }
               },
+              "label": {
+                "tag": "named",
+                "sigil_token": null,
+                "label_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 9,
+                    "end": 10
+                  }
+                }
+              },
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {

@@ -129,6 +129,22 @@ and type_binder_to_json = function
           ("name_token", token_to_json name_token);
         ]
 
+and arrow_label_to_json = function
+  | Cst.ArrowLabel.Named { sigil_token; label_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "named");
+          ("sigil_token", option_to_json token_to_json sigil_token);
+          ("label_token", token_to_json label_token);
+        ]
+  | Cst.ArrowLabel.OptionalNamed { sigil_token; label_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "optional_named");
+          ("sigil_token", token_to_json sigil_token);
+          ("label_token", token_to_json label_token);
+        ]
+
 and core_type_to_json = function
   | Cst.CoreType.Wildcard { syntax_node; wildcard_token } ->
       Json.Object
@@ -191,11 +207,12 @@ and core_type_to_json = function
           ("binders", Json.Array (List.map type_binder_to_json binders));
           ("body", core_type_to_json body);
         ]
-  | Cst.CoreType.Arrow { syntax_node; parameter_type; result_type } ->
+  | Cst.CoreType.Arrow { syntax_node; label; parameter_type; result_type } ->
       Json.Object
         [
           ("tag", Json.String "arrow");
           ("syntax_node", syntax_node_to_json syntax_node);
+          ("label", option_to_json arrow_label_to_json label);
           ("parameter_type", core_type_to_json parameter_type);
           ("result_type", core_type_to_json result_type);
         ]
@@ -1756,11 +1773,12 @@ and class_type_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("fields", Json.Array (List.map class_type_field_to_json fields));
         ]
-  | Cst.ClassType.Arrow { syntax_node; parameter_type; result_type } ->
+  | Cst.ClassType.Arrow { syntax_node; label; parameter_type; result_type } ->
       Json.Object
         [
           ("tag", Json.String "arrow");
           ("syntax_node", syntax_node_to_json syntax_node);
+          ("label", option_to_json arrow_label_to_json label);
           ("parameter_type", core_type_to_json parameter_type);
           ("result_type", class_type_to_json result_type);
         ]

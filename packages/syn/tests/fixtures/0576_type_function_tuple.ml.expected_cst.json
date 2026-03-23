@@ -57,6 +57,7 @@
                   "end": 26
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "tuple",
                 "syntax_node": {

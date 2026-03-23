@@ -57,6 +57,7 @@
                   "end": 45
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "parenthesized",
                 "syntax_node": {
@@ -75,6 +76,7 @@
                       "end": 35
                     }
                   },
+                  "label": null,
                   "parameter_type": {
                     "tag": "constr",
                     "syntax_node": {

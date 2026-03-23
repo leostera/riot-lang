@@ -153,6 +153,7 @@
                     "end": 20
                   }
                 },
+                "label": null,
                 "parameter_type": {
                   "tag": "var",
                   "syntax_node": {
@@ -338,6 +339,7 @@
                   "end": 20
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "var",
                 "syntax_node": {
@@ -486,6 +488,7 @@
                 "end": 20
               }
             },
+            "label": null,
             "parameter_type": {
               "tag": "var",
               "syntax_node": {

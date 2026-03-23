@@ -146,6 +146,16 @@ and local_open_core_type = {
   type_ : core_type;
 }
 
+and arrow_label =
+  | Named of {
+      sigil_token : Token.t option;
+      label_token : Token.t;
+    }
+  | OptionalNamed of {
+      sigil_token : Token.t;
+      label_token : Token.t;
+    }
+
 and core_type =
   | Wildcard of {
       syntax_node : syntax_node;
@@ -184,6 +194,7 @@ and core_type =
     }
   | Arrow of {
       syntax_node : syntax_node;
+      label : arrow_label option;
       parameter_type : core_type;
       result_type : core_type;
     }
@@ -255,6 +266,7 @@ and class_type =
     }
   | Arrow of {
       syntax_node : syntax_node;
+      label : arrow_label option;
       parameter_type : core_type;
       result_type : class_type;
     }
@@ -338,6 +350,7 @@ module CoreType = struct
       }
     | Arrow of {
         syntax_node : syntax_node;
+        label : arrow_label option;
         parameter_type : core_type;
         result_type : core_type;
       }
@@ -402,6 +415,33 @@ module TypeConstraint = struct
   }
 end
 
+module ArrowLabel = struct
+  type t = arrow_label =
+    | Named of {
+        sigil_token : Token.t option;
+        label_token : Token.t;
+      }
+    | OptionalNamed of {
+        sigil_token : Token.t;
+        label_token : Token.t;
+      }
+
+  let sigil_token = function
+    | Named { sigil_token; _ } -> sigil_token
+    | OptionalNamed { sigil_token; _ } -> Some sigil_token
+
+  let label_token = function
+    | Named { label_token; _ }
+    | OptionalNamed { label_token; _ } ->
+        label_token
+
+  let name label = Token.text (label_token label)
+
+  let is_optional = function
+    | Named _ -> false
+    | OptionalNamed _ -> true
+end
+
 module FunctorParameter = struct
   type t = functor_parameter = {
     syntax_node : syntax_node;
@@ -464,6 +504,7 @@ module ClassType = struct
       }
     | Arrow of {
         syntax_node : syntax_node;
+        label : arrow_label option;
         parameter_type : core_type;
         result_type : class_type;
       }

@@ -1802,6 +1802,25 @@
                   "end": 16476
                 }
               },
+              "label": {
+                "tag": "optional_named",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "?",
+                  "span": {
+                    "start": 16390,
+                    "end": 16391
+                  }
+                },
+                "label_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "size",
+                  "span": {
+                    "start": 16391,
+                    "end": 16395
+                  }
+                }
+              },
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -1838,6 +1857,25 @@
                   "span": {
                     "start": 16431,
                     "end": 16476
+                  }
+                },
+                "label": {
+                  "tag": "optional_named",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "?",
+                    "span": {
+                      "start": 16431,
+                      "end": 16432
+                    }
+                  },
+                  "label_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "resizable",
+                    "span": {
+                      "start": 16432,
+                      "end": 16441
+                    }
                   }
                 },
                 "parameter_type": {
@@ -1996,6 +2034,7 @@
                       "end": 16723
                     }
                   },
+                  "label": null,
                   "parameter_type": {
                     "tag": "constr",
                     "syntax_node": {
@@ -2081,6 +2120,7 @@
                       "end": 16782
                     }
                   },
+                  "label": null,
                   "parameter_type": {
                     "tag": "constr",
                     "syntax_node": {

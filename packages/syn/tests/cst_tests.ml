@@ -2057,14 +2057,62 @@ let tests =
         | Syn.Cst.Item.ValueDeclaration
             {
               name_token;
-              type_ = Syn.Cst.CoreType.Arrow _;
+              type_ =
+                Syn.Cst.CoreType.Arrow
+                  {
+                    label =
+                      Some
+                        (Syn.Cst.ArrowLabel.Named
+                          { sigil_token = None; label_token; });
+                    parameter_type =
+                      Syn.Cst.CoreType.Constr
+                        { constructor_path = parameter_path; _ };
+                    result_type =
+                      Syn.Cst.CoreType.Constr
+                        { constructor_path = result_path; _ };
+                    _;
+                  };
               _;
             }
           :: _ ->
             Test.assert_equal ~expected:"create"
               ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:"name"
+              ~actual:(Syn.Cst.Token.text label_token);
+            Test.assert_equal ~expected:(Some "string")
+              ~actual:(Syn.Cst.Ident.name parameter_path);
+            Test.assert_equal ~expected:(Some "person")
+              ~actual:(Syn.Cst.Ident.name result_path);
             Ok ()
         | _ -> Error "expected first item to be a value declaration");
+    Test.case "cst value declarations preserve optional arrow labels" (fun () ->
+        let result = parse_mli "val create : ?state:string -> person\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ValueDeclaration
+            {
+              type_ =
+                Syn.Cst.CoreType.Arrow
+                  {
+                    label =
+                      Some
+                        (Syn.Cst.ArrowLabel.OptionalNamed
+                          { sigil_token; label_token; });
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"?"
+              ~actual:(Syn.Cst.Token.text sigil_token);
+            Test.assert_equal ~expected:"state"
+              ~actual:(Syn.Cst.Token.text label_token);
+            Ok ()
+        | _ -> Error "expected optional labeled value declaration");
     Test.case "cst value declarations lift explicit polymorphic core types"
       (fun () ->
         let result = parse_mli "val id : 'a 'b. 'a -> 'b -> 'a\n" in

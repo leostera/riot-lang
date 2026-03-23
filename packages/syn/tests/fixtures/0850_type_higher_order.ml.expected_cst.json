@@ -57,6 +57,7 @@
                   "end": 42
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "parenthesized",
                 "syntax_node": {
@@ -75,6 +76,7 @@
                       "end": 18
                     }
                   },
+                  "label": null,
                   "parameter_type": {
                     "tag": "var",
                     "syntax_node": {
@@ -122,6 +124,7 @@
                     "end": 42
                   }
                 },
+                "label": null,
                 "parameter_type": {
                   "tag": "constr",
                   "syntax_node": {

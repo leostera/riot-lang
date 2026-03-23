@@ -7,7 +7,7 @@ This file is _yours_. Keep it up to date after every big change.
 1. Read this file from top to bottom and pick the next unchecked item that is unblocked.
 2. Work until its completed.
 3. Mark a task complete in this document only after the relevant verification has passed.
-4. DON'T FORGET TO GIT COMMIT AFTER EVERY SLICE!
+4. DON'T FORGET TO GIT COMMIT AFTER EVERY SLICE! And use conevntional commit messages like: feat(pkg): <value delivered>
 
 ## TASKS
 
@@ -57,7 +57,7 @@ Remember to document the CST types and constructors with examples so its easy to
 
 #### Completely Absent Today
 
-- [ ] Core types:
+- [x] Core types:
   - [x] wildcard types
   - [x] type variable references
   - [x] arrow types
@@ -74,18 +74,18 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] package-type payloads
   - [x] row fields
   - [x] object fields
-- [ ] Patterns:
+- [x] Patterns:
   - [x] type-constraint patterns
   - [x] effect patterns
   - [x] locally opened patterns
-- [ ] Expressions:
+- [x] Expressions:
   - [x] instance-variable assignment expressions
   - [x] structure-item expressions
   - [x] polymorphic expressions
   - [x] locally abstract type expressions
   - [x] let-operator expressions
   - [x] unreachable expressions
-- [ ] Structure items:
+- [x] Structure items:
   - [x] type-extension items
   - [x] recursive-module items
   - [x] standalone attribute items
@@ -106,7 +106,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] class type declarations in interfaces
   - [x] standalone attribute items in interfaces
   - [x] standalone extension items in interfaces
-- [ ] Module expressions:
+- [x] Module expressions:
   - [x] module identifiers
   - [x] structure module bodies
   - [x] functor expressions
@@ -115,7 +115,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] constrained module expressions
   - [x] unpacked first-class modules
   - [x] module extensions
-- [ ] Module types:
+- [x] Module types:
   - [x] module type identifiers
   - [x] signature module types
   - [x] functor module types
@@ -152,7 +152,7 @@ Remember to document the CST types and constructors with examples so its easy to
 
 #### Present But Opaque
 
-- [ ] Core types still have opaque branches and missing families even though the first typed `core_type` tree is in place
+- [x] Core types still have opaque branches and missing families even though the first typed `core_type` tree is in place
 - [x] First-class module expressions, `let module`, and module declarations now lift through `module_expression`
 - [ ] Module types are still raw syntax in places like:
   - [x] first-class module expressions / patterns / type definitions now lift through `module_type`

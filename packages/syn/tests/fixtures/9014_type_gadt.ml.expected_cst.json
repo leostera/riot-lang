@@ -130,6 +130,7 @@
                       "end": 30
                     }
                   },
+                  "label": null,
                   "parameter_type": {
                     "tag": "constr",
                     "syntax_node": {
@@ -338,6 +339,7 @@
                       "end": 60
                     }
                   },
+                  "label": null,
                   "parameter_type": {
                     "tag": "constr",
                     "syntax_node": {

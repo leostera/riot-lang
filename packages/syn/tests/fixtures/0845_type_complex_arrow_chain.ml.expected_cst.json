@@ -57,6 +57,7 @@
                   "end": 45
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "var",
                 "syntax_node": {
@@ -84,6 +85,7 @@
                     "end": 45
                   }
                 },
+                "label": null,
                 "parameter_type": {
                   "tag": "parenthesized",
                   "syntax_node": {
@@ -102,6 +104,7 @@
                         "end": 24
                       }
                     },
+                    "label": null,
                     "parameter_type": {
                       "tag": "var",
                       "syntax_node": {
@@ -149,6 +152,7 @@
                       "end": 45
                     }
                   },
+                  "label": null,
                   "parameter_type": {
                     "tag": "parenthesized",
                     "syntax_node": {
@@ -167,6 +171,7 @@
                           "end": 38
                         }
                       },
+                      "label": null,
                       "parameter_type": {
                         "tag": "var",
                         "syntax_node": {

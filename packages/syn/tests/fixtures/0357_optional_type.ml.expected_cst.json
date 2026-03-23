@@ -94,6 +94,25 @@
                   "end": 26
                 }
               },
+              "label": {
+                "tag": "optional_named",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "?",
+                  "span": {
+                    "start": 13,
+                    "end": 14
+                  }
+                },
+                "label_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 14,
+                    "end": 15
+                  }
+                }
+              },
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -241,6 +260,25 @@
                 "end": 26
               }
             },
+            "label": {
+              "tag": "optional_named",
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "?",
+                "span": {
+                  "start": 13,
+                  "end": 14
+                }
+              },
+              "label_token": {
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "span": {
+                  "start": 14,
+                  "end": 15
+                }
+              }
+            },
             "parameter_type": {
               "tag": "constr",
               "syntax_node": {
@@ -349,6 +387,25 @@
             "span": {
               "start": 13,
               "end": 26
+            }
+          },
+          "label": {
+            "tag": "optional_named",
+            "sigil_token": {
+              "kind": "IDENT_EXPR",
+              "text": "?",
+              "span": {
+                "start": 13,
+                "end": 14
+              }
+            },
+            "label_token": {
+              "kind": "IDENT_EXPR",
+              "text": "y",
+              "span": {
+                "start": 14,
+                "end": 15
+              }
             }
           },
           "parameter_type": {

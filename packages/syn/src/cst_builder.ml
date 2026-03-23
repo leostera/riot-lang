@@ -850,6 +850,35 @@ let operator_tokens_from_node node =
            || String.equal text " "))
   |> List.map token
 
+let arrow_label_from_node node =
+  let text syntax_token = Ceibo.Red.SyntaxToken.text syntax_token in
+  match direct_non_trivia_tokens node with
+  | label_syntax_token :: colon_syntax_token :: _
+    when String.equal (text colon_syntax_token) ":" ->
+      Some
+        (Cst.ArrowLabel.Named
+           { sigil_token = None; label_token = token label_syntax_token })
+  | sigil_syntax_token :: label_syntax_token :: colon_syntax_token :: _
+    when String.equal (text sigil_syntax_token) "~"
+         && String.equal (text colon_syntax_token) ":" ->
+      Some
+        (Cst.ArrowLabel.Named
+           {
+             sigil_token = Some (token sigil_syntax_token);
+             label_token = token label_syntax_token;
+           })
+  | sigil_syntax_token :: label_syntax_token :: colon_syntax_token :: _
+    when String.equal (text sigil_syntax_token) "?"
+         && String.equal (text colon_syntax_token) ":" ->
+      Some
+        (Cst.ArrowLabel.OptionalNamed
+           {
+             sigil_token = token sigil_syntax_token;
+             label_token = token label_syntax_token;
+           })
+  | _ ->
+      None
+
 let rec module_type_constraint_from_node node =
   let type_name =
     match direct_non_trivia_tokens node with
@@ -1206,6 +1235,7 @@ and class_type_from_node node =
           Cst.ClassType.Arrow
             {
               syntax_node = node;
+              label = arrow_label_from_node node;
               parameter_type = core_type_from_node parameter_node;
               result_type = class_type_from_node result_node;
             }
@@ -1551,6 +1581,7 @@ and core_type_from_node node =
           Cst.CoreType.Arrow
             {
               syntax_node = node;
+              label = arrow_label_from_node node;
               parameter_type = core_type_from_node parameter_node;
               result_type = core_type_from_node result_node;
             }

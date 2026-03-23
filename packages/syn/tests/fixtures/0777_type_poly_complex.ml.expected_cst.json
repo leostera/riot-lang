@@ -114,6 +114,7 @@
                   "end": 56
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "tuple",
                 "syntax_node": {

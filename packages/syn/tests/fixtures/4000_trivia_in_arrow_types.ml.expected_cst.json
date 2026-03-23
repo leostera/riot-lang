@@ -57,6 +57,7 @@
                   "end": 147
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -167,6 +168,7 @@
                   "end": 224
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -277,6 +279,7 @@
                   "end": 301
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -387,6 +390,7 @@
                   "end": 393
                 }
               },
+              "label": null,
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -425,6 +429,7 @@
                     "end": 393
                   }
                 },
+                "label": null,
                 "parameter_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -534,6 +539,25 @@
                 "span": {
                   "start": 403,
                   "end": 474
+                }
+              },
+              "label": {
+                "tag": "named",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "~",
+                  "span": {
+                    "start": 403,
+                    "end": 404
+                  }
+                },
+                "label_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "label",
+                  "span": {
+                    "start": 404,
+                    "end": 409
+                  }
                 }
               },
               "parameter_type": {
@@ -646,6 +670,25 @@
                   "end": 555
                 }
               },
+              "label": {
+                "tag": "named",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "~",
+                  "span": {
+                    "start": 484,
+                    "end": 485
+                  }
+                },
+                "label_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "label",
+                  "span": {
+                    "start": 485,
+                    "end": 490
+                  }
+                }
+              },
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -754,6 +797,25 @@
                 "span": {
                   "start": 565,
                   "end": 636
+                }
+              },
+              "label": {
+                "tag": "optional_named",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "?",
+                  "span": {
+                    "start": 565,
+                    "end": 566
+                  }
+                },
+                "label_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "label",
+                  "span": {
+                    "start": 566,
+                    "end": 571
+                  }
                 }
               },
               "parameter_type": {
@@ -866,6 +928,25 @@
                   "end": 745
                 }
               },
+              "label": {
+                "tag": "named",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "~",
+                  "span": {
+                    "start": 649,
+                    "end": 650
+                  }
+                },
+                "label_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "first",
+                  "span": {
+                    "start": 650,
+                    "end": 655
+                  }
+                }
+              },
               "parameter_type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -902,6 +983,25 @@
                   "span": {
                     "start": 684,
                     "end": 745
+                  }
+                },
+                "label": {
+                  "tag": "optional_named",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "?",
+                    "span": {
+                      "start": 684,
+                      "end": 685
+                    }
+                  },
+                  "label_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "second",
+                    "span": {
+                      "start": 685,
+                      "end": 691
+                    }
                   }
                 },
                 "parameter_type": {
