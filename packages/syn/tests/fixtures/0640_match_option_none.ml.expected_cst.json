@@ -143,7 +143,11 @@
                         "start": 31,
                         "end": 32
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               },

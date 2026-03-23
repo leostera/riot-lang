@@ -174,7 +174,11 @@
                       "start": 18,
                       "end": 19
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               }
             }

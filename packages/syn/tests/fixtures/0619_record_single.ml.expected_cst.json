@@ -103,7 +103,12 @@
                         "start": 17,
                         "end": 24
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "Alice",
+                    "terminated": true
                   }
                 }
               }

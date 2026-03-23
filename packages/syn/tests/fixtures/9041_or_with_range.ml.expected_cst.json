@@ -75,21 +75,43 @@
                       "end": 78
                     }
                   },
-                  "lower_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'0'",
-                    "span": {
-                      "start": 68,
-                      "end": 71
-                    }
+                  "lower": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 68,
+                        "end": 78
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'0'",
+                      "span": {
+                        "start": 68,
+                        "end": 71
+                      }
+                    },
+                    "contents": "0"
                   },
-                  "upper_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'9'",
-                    "span": {
-                      "start": 75,
-                      "end": 78
-                    }
+                  "upper": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 68,
+                        "end": 78
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'9'",
+                      "span": {
+                        "start": 75,
+                        "end": 78
+                      }
+                    },
+                    "contents": "9"
                   }
                 },
                 "guard": null,
@@ -111,7 +133,12 @@
                         "start": 82,
                         "end": 89
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "digit",
+                    "terminated": true
                   }
                 }
               },
@@ -132,21 +159,43 @@
                       "end": 104
                     }
                   },
-                  "lower_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'a'",
-                    "span": {
-                      "start": 94,
-                      "end": 97
-                    }
+                  "lower": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 94,
+                        "end": 104
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'a'",
+                      "span": {
+                        "start": 94,
+                        "end": 97
+                      }
+                    },
+                    "contents": "a"
                   },
-                  "upper_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'z'",
-                    "span": {
-                      "start": 101,
-                      "end": 104
-                    }
+                  "upper": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 94,
+                        "end": 104
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'z'",
+                      "span": {
+                        "start": 101,
+                        "end": 104
+                      }
+                    },
+                    "contents": "z"
                   }
                 },
                 "guard": null,
@@ -168,7 +217,12 @@
                         "start": 108,
                         "end": 119
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "lowercase",
+                    "terminated": true
                   }
                 }
               },
@@ -189,21 +243,43 @@
                       "end": 134
                     }
                   },
-                  "lower_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'A'",
-                    "span": {
-                      "start": 124,
-                      "end": 127
-                    }
+                  "lower": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 124,
+                        "end": 134
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'A'",
+                      "span": {
+                        "start": 124,
+                        "end": 127
+                      }
+                    },
+                    "contents": "A"
                   },
-                  "upper_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'Z'",
-                    "span": {
-                      "start": 131,
-                      "end": 134
-                    }
+                  "upper": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 124,
+                        "end": 134
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'Z'",
+                      "span": {
+                        "start": 131,
+                        "end": 134
+                      }
+                    },
+                    "contents": "Z"
                   }
                 },
                 "guard": null,
@@ -225,7 +301,12 @@
                         "start": 138,
                         "end": 149
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "uppercase",
+                    "terminated": true
                   }
                 }
               },
@@ -266,7 +347,12 @@
                         "start": 159,
                         "end": 166
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "other",
+                    "terminated": true
                   }
                 }
               }
@@ -359,7 +445,8 @@
                             "start": 244,
                             "end": 247
                           }
-                        }
+                        },
+                        "contents": "-"
                       }
                     },
                     {
@@ -380,7 +467,8 @@
                             "start": 250,
                             "end": 253
                           }
-                        }
+                        },
+                        "contents": "+"
                       }
                     },
                     {
@@ -392,21 +480,43 @@
                           "end": 266
                         }
                       },
-                      "lower_token": {
-                        "kind": "CHAR_LITERAL",
-                        "text": "'0'",
-                        "span": {
-                          "start": 256,
-                          "end": 259
-                        }
+                      "lower": {
+                        "tag": "char",
+                        "syntax_node": {
+                          "kind": "RANGE_PATTERN",
+                          "span": {
+                            "start": 256,
+                            "end": 266
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "CHAR_LITERAL",
+                          "text": "'0'",
+                          "span": {
+                            "start": 256,
+                            "end": 259
+                          }
+                        },
+                        "contents": "0"
                       },
-                      "upper_token": {
-                        "kind": "CHAR_LITERAL",
-                        "text": "'9'",
-                        "span": {
-                          "start": 263,
-                          "end": 266
-                        }
+                      "upper": {
+                        "tag": "char",
+                        "syntax_node": {
+                          "kind": "RANGE_PATTERN",
+                          "span": {
+                            "start": 256,
+                            "end": 266
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "CHAR_LITERAL",
+                          "text": "'9'",
+                          "span": {
+                            "start": 263,
+                            "end": 266
+                          }
+                        },
+                        "contents": "9"
                       }
                     }
                   ]
@@ -430,7 +540,8 @@
                         "start": 270,
                         "end": 274
                       }
-                    }
+                    },
+                    "value": true
                   }
                 }
               },
@@ -471,7 +582,8 @@
                         "start": 282,
                         "end": 287
                       }
-                    }
+                    },
+                    "value": false
                   }
                 }
               }
@@ -602,7 +714,8 @@
                                   "start": 360,
                                   "end": 363
                                 }
-                              }
+                              },
+                              "contents": "-"
                             }
                           },
                           {
@@ -614,21 +727,43 @@
                                 "end": 376
                               }
                             },
-                            "lower_token": {
-                              "kind": "CHAR_LITERAL",
-                              "text": "'0'",
-                              "span": {
-                                "start": 366,
-                                "end": 369
-                              }
+                            "lower": {
+                              "tag": "char",
+                              "syntax_node": {
+                                "kind": "RANGE_PATTERN",
+                                "span": {
+                                  "start": 366,
+                                  "end": 376
+                                }
+                              },
+                              "literal_token": {
+                                "kind": "CHAR_LITERAL",
+                                "text": "'0'",
+                                "span": {
+                                  "start": 366,
+                                  "end": 369
+                                }
+                              },
+                              "contents": "0"
                             },
-                            "upper_token": {
-                              "kind": "CHAR_LITERAL",
-                              "text": "'9'",
-                              "span": {
-                                "start": 373,
-                                "end": 376
-                              }
+                            "upper": {
+                              "tag": "char",
+                              "syntax_node": {
+                                "kind": "RANGE_PATTERN",
+                                "span": {
+                                  "start": 366,
+                                  "end": 376
+                                }
+                              },
+                              "literal_token": {
+                                "kind": "CHAR_LITERAL",
+                                "text": "'9'",
+                                "span": {
+                                  "start": 373,
+                                  "end": 376
+                                }
+                              },
+                              "contents": "9"
                             }
                           }
                         ]
@@ -655,7 +790,12 @@
                         "start": 381,
                         "end": 389
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "number",
+                    "terminated": true
                   }
                 }
               },
@@ -733,7 +873,8 @@
                                   "start": 400,
                                   "end": 403
                                 }
-                              }
+                              },
+                              "contents": "\""
                             }
                           },
                           {
@@ -754,7 +895,8 @@
                                   "start": 406,
                                   "end": 410
                                 }
-                              }
+                              },
+                              "contents": "\\'"
                             }
                           }
                         ]
@@ -781,7 +923,12 @@
                         "start": 415,
                         "end": 423
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "string",
+                    "terminated": true
                   }
                 }
               },
@@ -842,7 +989,12 @@
                         "start": 436,
                         "end": 441
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "eof",
+                    "terminated": true
                   }
                 }
               }

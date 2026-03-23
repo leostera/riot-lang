@@ -123,7 +123,11 @@
                                     "start": 11,
                                     "end": 12
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "1",
+                                "suffix": null
                               }
                             },
                             {
@@ -144,7 +148,11 @@
                                     "start": 14,
                                     "end": 15
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "2",
+                                "suffix": null
                               }
                             }
                           ]
@@ -187,7 +195,11 @@
                                     "start": 19,
                                     "end": 20
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "3",
+                                "suffix": null
                               }
                             },
                             {
@@ -208,7 +220,11 @@
                                     "start": 22,
                                     "end": 23
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "4",
+                                "suffix": null
                               }
                             }
                           ]
@@ -273,7 +289,11 @@
                                     "start": 29,
                                     "end": 30
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "5",
+                                "suffix": null
                               }
                             },
                             {
@@ -294,7 +314,11 @@
                                     "start": 32,
                                     "end": 33
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "6",
+                                "suffix": null
                               }
                             }
                           ]
@@ -337,7 +361,11 @@
                                     "start": 37,
                                     "end": 38
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "7",
+                                "suffix": null
                               }
                             },
                             {
@@ -358,7 +386,11 @@
                                     "start": 40,
                                     "end": 41
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "8",
+                                "suffix": null
                               }
                             }
                           ]

@@ -245,7 +245,11 @@
                         "start": 52,
                         "end": 53
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

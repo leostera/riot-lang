@@ -230,7 +230,11 @@
                         "start": 45,
                         "end": 46
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

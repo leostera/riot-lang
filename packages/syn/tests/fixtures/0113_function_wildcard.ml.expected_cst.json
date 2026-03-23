@@ -95,7 +95,11 @@
                         "start": 22,
                         "end": 24
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "42",
+                    "suffix": null
                   }
                 }
               }

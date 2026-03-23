@@ -75,7 +75,11 @@
                     "start": 14,
                     "end": 15
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             },
             "cases": [
@@ -105,7 +109,11 @@
                         "start": 21,
                         "end": 22
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -127,7 +135,8 @@
                         "start": 26,
                         "end": 30
                       }
-                    }
+                    },
+                    "value": true
                   }
                 }
               },
@@ -168,7 +177,8 @@
                         "start": 38,
                         "end": 43
                       }
-                    }
+                    },
+                    "value": false
                   }
                 }
               }

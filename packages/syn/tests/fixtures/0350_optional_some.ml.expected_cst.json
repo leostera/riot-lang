@@ -168,7 +168,11 @@
                             "start": 19,
                             "end": 20
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "5",
+                        "suffix": null
                       }
                     }
                   }

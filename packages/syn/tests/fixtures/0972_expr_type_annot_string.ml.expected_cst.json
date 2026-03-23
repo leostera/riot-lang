@@ -75,7 +75,12 @@
                     "start": 9,
                     "end": 16
                   }
-                }
+                },
+                "delimiter": {
+                  "tag": "double_quote"
+                },
+                "contents": "hello",
+                "terminated": true
               }
             },
             "type": {

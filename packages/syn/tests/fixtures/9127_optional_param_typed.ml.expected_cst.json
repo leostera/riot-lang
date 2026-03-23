@@ -132,7 +132,11 @@
                     "start": 109,
                     "end": 110
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             }
           },
@@ -457,7 +461,12 @@
                       "start": 312,
                       "end": 315
                     }
-                  }
+                  },
+                  "delimiter": {
+                    "tag": "double_quote"
+                  },
+                  "contents": " ",
+                  "terminated": true
                 }
               },
               "operator_token": {

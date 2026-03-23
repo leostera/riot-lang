@@ -81,7 +81,11 @@
                     "start": 199,
                     "end": 200
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "3",
+                "suffix": null
               }
             },
             "and_bindings": [
@@ -177,7 +181,11 @@
                         "start": 215,
                         "end": 216
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "4",
+                    "suffix": null
                   }
                 },
                 "is_recursive": false
@@ -417,7 +425,11 @@
                       "start": 863,
                       "end": 864
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "3",
+                  "suffix": null
                 }
               },
               "and_bindings": [],
@@ -563,7 +575,11 @@
                                 "start": 911,
                                 "end": 912
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "3",
+                            "suffix": null
                           }
                         },
                         "type": null,
@@ -729,7 +745,11 @@
                                 "start": 972,
                                 "end": 973
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "3",
+                            "suffix": null
                           }
                         },
                         "type": null,
@@ -819,7 +839,11 @@
                                 "start": 997,
                                 "end": 998
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "3",
+                            "suffix": null
                           }
                         },
                         "type": null,
@@ -985,7 +1009,11 @@
                                 "start": 1064,
                                 "end": 1065
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "3",
+                            "suffix": null
                           }
                         },
                         "type": null,
@@ -2613,7 +2641,11 @@
                   "start": 1656,
                   "end": 1657
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "4",
+              "suffix": null
             }
           },
           "is_recursive": false

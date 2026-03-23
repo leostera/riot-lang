@@ -102,7 +102,11 @@
                       "start": 18,
                       "end": 19
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               "operator_token": {
@@ -131,7 +135,11 @@
                       "start": 22,
                       "end": 23
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "2",
+                  "suffix": null
                 }
               }
             },
@@ -226,7 +234,11 @@
                         "start": 41,
                         "end": 42
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "3",
+                    "suffix": null
                   }
                 }
               },
@@ -294,7 +306,11 @@
                         "start": 52,
                         "end": 53
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               },

@@ -290,7 +290,11 @@
                         "start": 50,
                         "end": 51
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

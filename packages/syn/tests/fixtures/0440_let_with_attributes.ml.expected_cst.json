@@ -75,7 +75,11 @@
                       "start": 9,
                       "end": 10
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "5",
+                  "suffix": null
                 }
               },
               "argument": {
@@ -187,7 +191,11 @@
                     "start": 29,
                     "end": 30
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             }
           },

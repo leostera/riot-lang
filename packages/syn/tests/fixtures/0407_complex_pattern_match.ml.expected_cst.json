@@ -350,7 +350,11 @@
                         "start": 57,
                         "end": 58
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

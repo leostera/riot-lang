@@ -83,7 +83,11 @@
                     "start": 18,
                     "end": 19
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "0",
+                "suffix": null
               }
             },
             "direction": {
@@ -160,7 +164,11 @@
                       "start": 40,
                       "end": 41
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               },
               "direction": {

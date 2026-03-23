@@ -149,7 +149,11 @@
                         "start": 24,
                         "end": 25
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               },
@@ -199,7 +203,11 @@
                       "start": 38,
                       "end": 39
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               }
             }

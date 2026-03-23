@@ -701,7 +701,12 @@
                         "start": 360,
                         "end": 365
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "red",
+                    "terminated": true
                   }
                 }
               },
@@ -751,7 +756,12 @@
                         "start": 378,
                         "end": 385
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "green",
+                    "terminated": true
                   }
                 }
               },
@@ -801,7 +811,12 @@
                         "start": 397,
                         "end": 403
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "blue",
+                    "terminated": true
                   }
                 }
               }
@@ -935,7 +950,12 @@
                         "start": 512,
                         "end": 521
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "blocked",
+                    "terminated": true
                   }
                 }
               },
@@ -1016,7 +1036,12 @@
                         "start": 540,
                         "end": 545
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "eof",
+                    "terminated": true
                   }
                 }
               },
@@ -1096,7 +1121,12 @@
                         "start": 558,
                         "end": 562
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "ok",
+                    "terminated": true
                   }
                 }
               }
@@ -1230,7 +1260,11 @@
                         "start": 634,
                         "end": 635
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               },
@@ -1311,7 +1345,11 @@
                         "start": 651,
                         "end": 652
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "2",
+                    "suffix": null
                   }
                 }
               },
@@ -1372,7 +1410,11 @@
                         "start": 663,
                         "end": 664
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

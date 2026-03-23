@@ -75,7 +75,11 @@
                     "start": 9,
                     "end": 10
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "5",
+                "suffix": null
               }
             },
             "type": {

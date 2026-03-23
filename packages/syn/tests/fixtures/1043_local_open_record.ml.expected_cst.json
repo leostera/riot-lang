@@ -130,7 +130,11 @@
                           "start": 20,
                           "end": 22
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "42",
+                      "suffix": null
                     }
                   }
                 }

@@ -75,7 +75,8 @@
                     "start": 8,
                     "end": 12
                   }
-                }
+                },
+                "value": true
               }
             },
             "operator_token": {
@@ -104,7 +105,8 @@
                     "start": 16,
                     "end": 21
                   }
-                }
+                },
+                "value": false
               }
             }
           },

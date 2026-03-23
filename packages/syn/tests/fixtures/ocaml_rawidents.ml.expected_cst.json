@@ -1905,7 +1905,11 @@
                     "start": 2107,
                     "end": 2108
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             },
             "argument": {
@@ -2040,7 +2044,8 @@
                       "start": 2190,
                       "end": 2194
                     }
-                  }
+                  },
+                  "value": true
                 }
               },
               "type": {
@@ -2276,7 +2281,8 @@
                       "start": 2440,
                       "end": 2444
                     }
-                  }
+                  },
+                  "value": true
                 }
               }
             },
@@ -2630,7 +2636,11 @@
                     "start": 2622,
                     "end": 2623
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "0",
+                "suffix": null
               }
             },
             "argument": {
@@ -2947,7 +2957,11 @@
                             "start": 3048,
                             "end": 3049
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "0",
+                        "suffix": null
                       }
                     }
                   }

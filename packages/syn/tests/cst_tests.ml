@@ -4402,8 +4402,12 @@ let tests =
                         pattern =
                           Syn.Cst.Pattern.Range
                             {
-                              lower_token;
-                              upper_token;
+                              lower =
+                                Syn.Cst.PatternLiteral.Char
+                                  { literal_token = lower_token; contents = lower_contents; _ };
+                              upper =
+                                Syn.Cst.PatternLiteral.Char
+                                  { literal_token = upper_token; contents = upper_contents; _ };
                               _;
                             };
                         _;
@@ -4416,10 +4420,68 @@ let tests =
           :: _ ->
             Test.assert_equal ~expected:"'a'"
               ~actual:(Syn.Cst.Token.text lower_token);
+            Test.assert_equal ~expected:"a" ~actual:lower_contents;
             Test.assert_equal ~expected:"'z'"
               ~actual:(Syn.Cst.Token.text upper_token);
+            Test.assert_equal ~expected:"z" ~actual:upper_contents;
             Ok ()
         | _ -> Error "expected range pattern structure");
+    Test.case "cst literals preserve structured constant details" (fun () ->
+        let source = "let x = 0xffL\nlet y = 1.2g\nlet z = {|hello|}\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Literal
+                  (Syn.Cst.Literal.Int
+                    { base = Syn.Cst.Hexadecimal; prefix; digits; suffix; _ });
+              _;
+            }
+          :: Syn.Cst.StructureItem.LetBinding
+               {
+                 value =
+                   Syn.Cst.Expression.Literal
+                     (Syn.Cst.Literal.Float
+                       {
+                         integral_digits;
+                         fractional_digits;
+                         exponent = None;
+                         suffix = Some float_suffix;
+                         _;
+                       });
+                 _;
+               }
+             :: Syn.Cst.StructureItem.LetBinding
+                  {
+                    value =
+                      Syn.Cst.Expression.Literal
+                        (Syn.Cst.Literal.String
+                          {
+                            delimiter = Syn.Cst.Quoted { marker = string_marker };
+                            contents;
+                            terminated;
+                            _;
+                          });
+                    _;
+                  }
+                :: _ ->
+            Test.assert_equal ~expected:(Some "0x") ~actual:prefix;
+            Test.assert_equal ~expected:"ff" ~actual:digits;
+            Test.assert_equal ~expected:(Some "L") ~actual:suffix;
+            Test.assert_equal ~expected:"1" ~actual:integral_digits;
+            Test.assert_equal ~expected:"2" ~actual:fractional_digits;
+            Test.assert_equal ~expected:"g" ~actual:float_suffix;
+            Test.assert_equal ~expected:"" ~actual:string_marker;
+            Test.assert_equal ~expected:"hello" ~actual:contents;
+            Test.assert_true terminated;
+            Ok ()
+        | _ -> Error "expected structured literal constants");
     Test.case "cst record expressions preserve literal fields structurally" (fun () ->
         let source = "let point = { x = 1; y = 2 }\n" in
         let result = parse_ml source in

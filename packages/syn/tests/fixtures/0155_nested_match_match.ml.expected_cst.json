@@ -75,7 +75,11 @@
                     "start": 14,
                     "end": 15
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             },
             "cases": [
@@ -105,7 +109,11 @@
                         "start": 21,
                         "end": 22
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -145,7 +153,11 @@
                             "start": 34,
                             "end": 35
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "2",
+                        "suffix": null
                       }
                     },
                     "cases": [
@@ -175,7 +187,11 @@
                                 "start": 41,
                                 "end": 42
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "2",
+                            "suffix": null
                           }
                         },
                         "guard": null,
@@ -197,7 +213,11 @@
                                 "start": 46,
                                 "end": 47
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "3",
+                            "suffix": null
                           }
                         }
                       },
@@ -238,7 +258,11 @@
                                 "start": 55,
                                 "end": 56
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "4",
+                            "suffix": null
                           }
                         }
                       },
@@ -279,7 +303,11 @@
                                 "start": 64,
                                 "end": 65
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "5",
+                            "suffix": null
                           }
                         }
                       }

@@ -141,7 +141,12 @@
                             "start": 23,
                             "end": 26
                           }
-                        }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "a",
+                        "terminated": true
                       }
                     },
                     {
@@ -162,7 +167,12 @@
                             "start": 29,
                             "end": 32
                           }
-                        }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "b",
+                        "terminated": true
                       }
                     },
                     {
@@ -183,7 +193,12 @@
                             "start": 35,
                             "end": 38
                           }
-                        }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "c",
+                        "terminated": true
                       }
                     }
                   ]
@@ -207,7 +222,11 @@
                         "start": 42,
                         "end": 43
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               },
@@ -248,7 +267,11 @@
                         "start": 51,
                         "end": 52
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

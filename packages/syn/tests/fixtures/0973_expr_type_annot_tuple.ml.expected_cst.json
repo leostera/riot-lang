@@ -94,7 +94,11 @@
                           "start": 10,
                           "end": 11
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   },
                   {
@@ -115,7 +119,12 @@
                           "start": 13,
                           "end": 16
                         }
-                      }
+                      },
+                      "delimiter": {
+                        "tag": "double_quote"
+                      },
+                      "contents": "a",
+                      "terminated": true
                     }
                   }
                 ]

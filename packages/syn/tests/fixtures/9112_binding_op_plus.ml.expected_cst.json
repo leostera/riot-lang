@@ -335,7 +335,11 @@
                       "start": 85,
                       "end": 86
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "2",
+                  "suffix": null
                 }
               }
             }

@@ -66,7 +66,11 @@
                   "start": 42,
                   "end": 48
                 }
-              }
+              },
+              "base": "binary",
+              "prefix": "0b",
+              "digits": "1010",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -128,7 +132,11 @@
                   "start": 60,
                   "end": 71
                 }
-              }
+              },
+              "base": "binary",
+              "prefix": "0b",
+              "digits": "1111_0000",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -190,7 +198,11 @@
                   "start": 83,
                   "end": 89
                 }
-              }
+              },
+              "base": "binary",
+              "prefix": "0b",
+              "digits": "0000",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -317,7 +329,11 @@
                         "start": 154,
                         "end": 160
                       }
-                    }
+                    },
+                    "base": "binary",
+                    "prefix": "0b",
+                    "digits": "0000",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -339,7 +355,12 @@
                         "start": 164,
                         "end": 170
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "none",
+                    "terminated": true
                   }
                 }
               },
@@ -369,7 +390,11 @@
                         "start": 175,
                         "end": 181
                       }
-                    }
+                    },
+                    "base": "binary",
+                    "prefix": "0b",
+                    "digits": "0001",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -391,7 +416,12 @@
                         "start": 185,
                         "end": 191
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "read",
+                    "terminated": true
                   }
                 }
               },
@@ -421,7 +451,11 @@
                         "start": 196,
                         "end": 202
                       }
-                    }
+                    },
+                    "base": "binary",
+                    "prefix": "0b",
+                    "digits": "0010",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -443,7 +477,12 @@
                         "start": 206,
                         "end": 213
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "write",
+                    "terminated": true
                   }
                 }
               },
@@ -473,7 +512,11 @@
                         "start": 218,
                         "end": 224
                       }
-                    }
+                    },
+                    "base": "binary",
+                    "prefix": "0b",
+                    "digits": "0100",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -495,7 +538,12 @@
                         "start": 228,
                         "end": 237
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "execute",
+                    "terminated": true
                   }
                 }
               },
@@ -536,7 +584,12 @@
                         "start": 247,
                         "end": 257
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "multiple",
+                    "terminated": true
                   }
                 }
               }

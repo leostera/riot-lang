@@ -186,8 +186,8 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] record patterns are missing open-vs-closed structure
   - [x] constructor patterns are missing existential type variables
   - [x] polyvariant patterns are simplified to tag + optional payload
-  - [ ] literal patterns lose delimiter/suffix detail and exact constant structure
-  - [ ] interval patterns store two tokens instead of parsed constants
+  - [x] literal patterns lose delimiter/suffix detail and exact constant structure
+  - [x] interval patterns store two tokens instead of parsed constants
   - [ ] first-class-module patterns are still thinner than the stock unpack form
   - [ ] Pattern attributes are represented as wrapper nodes instead of orthogonal metadata
 - [ ] Expressions:
@@ -270,3 +270,5 @@ Remember to document the CST types and constructors with examples so its easy to
   - [ ] `string_of_int -> Int.to_string`
   - [ ] `int_of_string -> Int.parse`
   - [ ] `float_of_int -> Float.from_int`
+
+## Tests

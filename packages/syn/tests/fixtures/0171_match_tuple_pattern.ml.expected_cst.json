@@ -94,7 +94,11 @@
                           "start": 15,
                           "end": 16
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   },
                   {
@@ -115,7 +119,11 @@
                           "start": 18,
                           "end": 19
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   }
                 ]

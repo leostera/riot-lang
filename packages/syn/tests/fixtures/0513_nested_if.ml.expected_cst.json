@@ -140,7 +140,11 @@
                       "start": 28,
                       "end": 29
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               "else_branch": {
@@ -161,7 +165,11 @@
                       "start": 35,
                       "end": 36
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "2",
+                  "suffix": null
                 }
               }
             },
@@ -183,7 +191,11 @@
                     "start": 42,
                     "end": 43
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "3",
+                "suffix": null
               }
             }
           },

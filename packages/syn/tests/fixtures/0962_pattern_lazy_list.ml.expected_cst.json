@@ -277,7 +277,11 @@
                         "start": 60,
                         "end": 61
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

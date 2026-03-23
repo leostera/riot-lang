@@ -122,21 +122,43 @@
                       "end": 39
                     }
                   },
-                  "lower_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'a'",
-                    "span": {
-                      "start": 29,
-                      "end": 32
-                    }
+                  "lower": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 29,
+                        "end": 39
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'a'",
+                      "span": {
+                        "start": 29,
+                        "end": 32
+                      }
+                    },
+                    "contents": "a"
                   },
-                  "upper_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'z'",
-                    "span": {
-                      "start": 36,
-                      "end": 39
-                    }
+                  "upper": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 29,
+                        "end": 39
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'z'",
+                      "span": {
+                        "start": 36,
+                        "end": 39
+                      }
+                    },
+                    "contents": "z"
                   }
                 },
                 "guard": null,
@@ -158,7 +180,12 @@
                         "start": 43,
                         "end": 54
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "lowercase",
+                    "terminated": true
                   }
                 }
               },
@@ -179,21 +206,43 @@
                       "end": 69
                     }
                   },
-                  "lower_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'A'",
-                    "span": {
-                      "start": 59,
-                      "end": 62
-                    }
+                  "lower": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 59,
+                        "end": 69
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'A'",
+                      "span": {
+                        "start": 59,
+                        "end": 62
+                      }
+                    },
+                    "contents": "A"
                   },
-                  "upper_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'Z'",
-                    "span": {
-                      "start": 66,
-                      "end": 69
-                    }
+                  "upper": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 59,
+                        "end": 69
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'Z'",
+                      "span": {
+                        "start": 66,
+                        "end": 69
+                      }
+                    },
+                    "contents": "Z"
                   }
                 },
                 "guard": null,
@@ -215,7 +264,12 @@
                         "start": 73,
                         "end": 84
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "uppercase",
+                    "terminated": true
                   }
                 }
               },
@@ -256,7 +310,12 @@
                         "start": 94,
                         "end": 101
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "other",
+                    "terminated": true
                   }
                 }
               }

@@ -66,7 +66,11 @@
                   "start": 115,
                   "end": 116
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "1",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -128,7 +132,11 @@
                   "start": 174,
                   "end": 175
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "1",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -190,7 +198,11 @@
                   "start": 197,
                   "end": 198
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "2",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -316,7 +328,11 @@
                     "start": 275,
                     "end": 276
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             }
           },
@@ -444,7 +460,11 @@
                         "start": 395,
                         "end": 396
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -466,7 +486,11 @@
                         "start": 426,
                         "end": 427
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               },
@@ -560,7 +584,11 @@
                           "start": 470,
                           "end": 471
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   }
                 }
@@ -699,7 +727,11 @@
                       "start": 532,
                       "end": 533
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               }
             },
@@ -721,7 +753,11 @@
                     "start": 566,
                     "end": 567
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             },
             "else_branch": {
@@ -759,7 +795,11 @@
                       "start": 605,
                       "end": 606
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               }
             }
@@ -825,7 +865,11 @@
                     "start": 708,
                     "end": 709
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "0",
+                "suffix": null
               }
             },
             "direction": {
@@ -857,7 +901,11 @@
                     "start": 745,
                     "end": 747
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "10",
+                "suffix": null
               }
             },
             "body": {
@@ -983,7 +1031,8 @@
                     "start": 879,
                     "end": 883
                   }
-                }
+                },
+                "value": true
               }
             },
             "body": {
@@ -1043,7 +1092,12 @@
                         "start": 934,
                         "end": 940
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "loop",
+                    "terminated": true
                   }
                 }
               }

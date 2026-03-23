@@ -214,7 +214,11 @@
                           "start": 48,
                           "end": 49
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   },
                   "else_branch": {
@@ -235,7 +239,11 @@
                           "start": 55,
                           "end": 56
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   }
                 },
@@ -257,7 +265,11 @@
                         "start": 62,
                         "end": 63
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "3",
+                    "suffix": null
                   }
                 }
               },
@@ -279,7 +291,11 @@
                       "start": 69,
                       "end": 70
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "4",
+                  "suffix": null
                 }
               }
             },
@@ -301,7 +317,11 @@
                     "start": 76,
                     "end": 77
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "5",
+                "suffix": null
               }
             }
           },

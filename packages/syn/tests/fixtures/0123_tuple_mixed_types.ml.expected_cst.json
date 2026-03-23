@@ -85,7 +85,11 @@
                         "start": 9,
                         "end": 10
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 },
                 {
@@ -106,7 +110,12 @@
                         "start": 12,
                         "end": 19
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "hello",
+                    "terminated": true
                   }
                 },
                 {
@@ -127,7 +136,8 @@
                         "start": 21,
                         "end": 25
                       }
-                    }
+                    },
+                    "value": true
                   }
                 }
               ]

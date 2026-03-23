@@ -93,7 +93,8 @@
                         "start": 9,
                         "end": 13
                       }
-                    }
+                    },
+                    "value": true
                   }
                 },
                 "operator_token": {
@@ -122,7 +123,8 @@
                         "start": 17,
                         "end": 22
                       }
-                    }
+                    },
+                    "value": false
                   }
                 }
               }
@@ -153,7 +155,8 @@
                     "start": 27,
                     "end": 31
                   }
-                }
+                },
+                "value": true
               }
             }
           },

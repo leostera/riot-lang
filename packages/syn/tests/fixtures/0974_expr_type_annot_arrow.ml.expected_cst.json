@@ -149,7 +149,11 @@
                         "start": 22,
                         "end": 23
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               }

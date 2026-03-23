@@ -75,7 +75,8 @@
                     "start": 11,
                     "end": 15
                   }
-                }
+                },
+                "value": true
               }
             },
             "then_branch": {

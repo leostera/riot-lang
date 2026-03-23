@@ -115,7 +115,11 @@
                           "start": 75,
                           "end": 76
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   },
                   {
@@ -136,7 +140,11 @@
                           "start": 78,
                           "end": 79
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   },
                   {
@@ -157,7 +165,11 @@
                           "start": 81,
                           "end": 82
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "3",
+                      "suffix": null
                     }
                   }
                 ]

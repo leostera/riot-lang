@@ -267,7 +267,12 @@
                     "start": 138,
                     "end": 145
                   }
-                }
+                },
+                "delimiter": {
+                  "tag": "double_quote"
+                },
+                "contents": "value",
+                "terminated": true
               }
             },
             "type": {

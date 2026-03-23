@@ -383,7 +383,11 @@
                             "start": 94,
                             "end": 95
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "1",
+                        "suffix": null
                       }
                     }
                   }

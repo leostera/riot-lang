@@ -1173,7 +1173,11 @@
                                 "start": 255,
                                 "end": 256
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "1",
+                            "suffix": null
                           }
                         }
                       }
@@ -1972,7 +1976,11 @@
                       "start": 377,
                       "end": 378
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "2",
+                  "suffix": null
                 }
               }
             }

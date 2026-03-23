@@ -167,7 +167,11 @@
                         "start": 32,
                         "end": 33
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               },

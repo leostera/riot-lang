@@ -75,7 +75,11 @@
                     "start": 9,
                     "end": 11
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "42",
+                "suffix": null
               }
             },
             "type": {

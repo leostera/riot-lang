@@ -371,7 +371,11 @@
                         "start": 58,
                         "end": 59
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

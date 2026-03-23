@@ -75,7 +75,11 @@
                     "start": 14,
                     "end": 15
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             },
             "cases": [
@@ -105,7 +109,11 @@
                         "start": 21,
                         "end": 22
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -136,7 +144,8 @@
                           "start": 29,
                           "end": 33
                         }
-                      }
+                      },
+                      "value": true
                     }
                   },
                   "then_branch": {
@@ -157,7 +166,11 @@
                           "start": 39,
                           "end": 40
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   },
                   "else_branch": {
@@ -178,7 +191,11 @@
                           "start": 46,
                           "end": 47
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "3",
+                      "suffix": null
                     }
                   }
                 }
@@ -220,7 +237,11 @@
                         "start": 55,
                         "end": 56
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

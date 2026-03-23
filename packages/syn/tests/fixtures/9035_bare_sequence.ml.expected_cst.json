@@ -126,7 +126,12 @@
                         "start": 23,
                         "end": 26
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "a",
+                    "terminated": true
                   }
                 }
               }
@@ -188,7 +193,12 @@
                         "start": 36,
                         "end": 39
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "b",
+                    "terminated": true
                   }
                 }
               }

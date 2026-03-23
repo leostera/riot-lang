@@ -790,7 +790,12 @@
                             "start": 509,
                             "end": 532
                           }
-                        }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "indices: @[[|%a|]@]@.",
+                        "terminated": true
                       }
                     }
                   }
@@ -1052,7 +1057,12 @@
                                           "start": 608,
                                           "end": 613
                                         }
-                                      }
+                                      },
+                                      "delimiter": {
+                                        "tag": "double_quote"
+                                      },
+                                      "contents": ";@ ",
+                                      "terminated": true
                                     }
                                   }
                                 }
@@ -1945,7 +1955,11 @@
                             "start": 1365,
                             "end": 1366
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "3",
+                        "suffix": null
                       }
                     },
                     {
@@ -1966,7 +1980,11 @@
                             "start": 1368,
                             "end": 1369
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "3",
+                        "suffix": null
                       }
                     },
                     {
@@ -1987,7 +2005,11 @@
                             "start": 1371,
                             "end": 1372
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "3",
+                        "suffix": null
                       }
                     }
                   ]
@@ -2127,7 +2149,11 @@
                       "start": 1538,
                       "end": 1539
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               "right": {
@@ -2148,7 +2174,11 @@
                       "start": 1541,
                       "end": 1542
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               }
             }
@@ -2179,7 +2209,11 @@
                   "start": 1550,
                   "end": 1551
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "2",
+              "suffix": null
             }
           }
         }
@@ -2313,7 +2347,11 @@
                       "start": 1615,
                       "end": 1616
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               },
               "right": {
@@ -2334,7 +2372,11 @@
                       "start": 1618,
                       "end": 1619
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               }
             }
@@ -2365,7 +2407,11 @@
                   "start": 1627,
                   "end": 1628
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "3",
+              "suffix": null
             }
           }
         }
@@ -2499,7 +2545,11 @@
                       "start": 1692,
                       "end": 1693
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               },
               "right": {
@@ -2520,7 +2570,11 @@
                       "start": 1695,
                       "end": 1696
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               }
             }
@@ -2551,7 +2605,11 @@
                   "start": 1704,
                   "end": 1705
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "5",
+              "suffix": null
             }
           }
         }
@@ -2694,7 +2752,11 @@
                         "start": 1769,
                         "end": 1770
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 },
                 "right": {
@@ -2715,7 +2777,11 @@
                         "start": 1772,
                         "end": 1773
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               }
@@ -2746,7 +2812,11 @@
                     "start": 1781,
                     "end": 1782
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "7",
+                "suffix": null
               }
             }
           },
@@ -2814,7 +2884,11 @@
                       "start": 1788,
                       "end": 1789
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               },
               "right": {
@@ -2835,7 +2909,11 @@
                       "start": 1791,
                       "end": 1792
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               }
             }
@@ -3123,7 +3201,11 @@
                             "start": 1999,
                             "end": 2000
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "1",
+                        "suffix": null
                       }
                     },
                     "right": {
@@ -3144,7 +3226,11 @@
                             "start": 2002,
                             "end": 2003
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "0",
+                        "suffix": null
                       }
                     }
                   }
@@ -3185,7 +3271,11 @@
                         "start": 2013,
                         "end": 2014
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 },
                 "right": {
@@ -3206,7 +3296,11 @@
                         "start": 2016,
                         "end": 2017
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               }
@@ -3247,7 +3341,11 @@
                     "start": 2027,
                     "end": 2028
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "0",
+                "suffix": null
               }
             },
             "right": {
@@ -3268,7 +3366,11 @@
                     "start": 2030,
                     "end": 2031
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "0",
+                "suffix": null
               }
             }
           }
@@ -3733,7 +3835,11 @@
                       "start": 2530,
                       "end": 2531
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               "right": {
@@ -3754,7 +3860,11 @@
                       "start": 2533,
                       "end": 2534
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               }
             }
@@ -3785,7 +3895,11 @@
                   "start": 2542,
                   "end": 2543
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "7",
+              "suffix": null
             }
           }
         }
@@ -3934,7 +4048,11 @@
                       "start": 3218,
                       "end": 3219
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               },
               "right": {
@@ -3955,7 +4073,11 @@
                       "start": 3221,
                       "end": 3222
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               }
             }
@@ -3986,7 +4108,11 @@
                   "start": 3230,
                   "end": 3232
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "11",
+              "suffix": null
             }
           }
         }
@@ -4138,7 +4264,11 @@
                       "start": 3303,
                       "end": 3304
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               },
               "right": {
@@ -4159,7 +4289,11 @@
                       "start": 3306,
                       "end": 3307
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               }
             }
@@ -4190,7 +4324,11 @@
                   "start": 3315,
                   "end": 3317
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "13",
+              "suffix": null
             }
           }
         }
@@ -4387,7 +4525,11 @@
                                 "start": 3388,
                                 "end": 3389
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "1",
+                            "suffix": null
                           }
                         },
                         "right": {
@@ -4408,7 +4550,11 @@
                                 "start": 3391,
                                 "end": 3392
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "0",
+                            "suffix": null
                           }
                         }
                       }
@@ -4458,7 +4604,11 @@
                           "start": 3405,
                           "end": 3406
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "0",
+                      "suffix": null
                     }
                   },
                   "right": {
@@ -4479,7 +4629,11 @@
                           "start": 3408,
                           "end": 3409
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   }
                 }
@@ -4529,7 +4683,11 @@
                     "start": 3422,
                     "end": 3423
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "0",
+                "suffix": null
               }
             },
             "right": {
@@ -4550,7 +4708,11 @@
                     "start": 3425,
                     "end": 3426
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "0",
+                "suffix": null
               }
             }
           }

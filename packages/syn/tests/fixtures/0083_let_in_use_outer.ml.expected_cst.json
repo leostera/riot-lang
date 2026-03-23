@@ -57,7 +57,11 @@
                   "start": 8,
                   "end": 10
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "10",
+              "suffix": null
             }
           },
           "and_bindings": [],
@@ -151,7 +155,11 @@
                       "start": 26,
                       "end": 27
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               }
             },

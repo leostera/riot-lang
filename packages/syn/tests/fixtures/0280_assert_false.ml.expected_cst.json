@@ -75,7 +75,8 @@
                     "start": 15,
                     "end": 20
                   }
-                }
+                },
+                "value": false
               }
             }
           },

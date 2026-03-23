@@ -129,6 +129,97 @@ and type_binder_to_json = function
           ("name_token", token_to_json name_token);
         ]
 
+and string_delimiter_to_json = function
+  | Cst.DoubleQuote ->
+      Json.Object [ ("tag", Json.String "double_quote") ]
+  | Cst.Quoted { marker } ->
+      Json.Object
+        [
+          ("tag", Json.String "quoted");
+          ("marker", Json.String marker);
+        ]
+
+and integer_base_to_json = function
+  | Cst.Decimal ->
+      Json.String "decimal"
+  | Cst.Hexadecimal ->
+      Json.String "hexadecimal"
+  | Cst.Octal ->
+      Json.String "octal"
+  | Cst.Binary ->
+      Json.String "binary"
+
+and exponent_sign_to_json = function
+  | Cst.Positive ->
+      Json.String "positive"
+  | Cst.Negative ->
+      Json.String "negative"
+
+and float_exponent_to_json ({ marker; sign; digits } : Cst.float_exponent) =
+  Json.Object
+    [
+      ("marker", Json.String marker);
+      ("sign", option_to_json exponent_sign_to_json sign);
+      ("digits", Json.String digits);
+    ]
+
+and constant_to_json = function
+  | Cst.Constant.String { syntax_node; literal_token; delimiter; contents; terminated } ->
+      Json.Object
+        [
+          ("tag", Json.String "string");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("literal_token", token_to_json literal_token);
+          ("delimiter", string_delimiter_to_json delimiter);
+          ("contents", Json.String contents);
+          ("terminated", Json.Bool terminated);
+        ]
+  | Cst.Constant.Int { syntax_node; literal_token; base; prefix; digits; suffix } ->
+      Json.Object
+        [
+          ("tag", Json.String "int");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("literal_token", token_to_json literal_token);
+          ("base", integer_base_to_json base);
+          ("prefix", option_to_json (fun text -> Json.String text) prefix);
+          ("digits", Json.String digits);
+          ("suffix", option_to_json (fun text -> Json.String text) suffix);
+        ]
+  | Cst.Constant.Float
+      { syntax_node; literal_token; integral_digits; fractional_digits; exponent; suffix } ->
+      Json.Object
+        [
+          ("tag", Json.String "float");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("literal_token", token_to_json literal_token);
+          ("integral_digits", Json.String integral_digits);
+          ("fractional_digits", Json.String fractional_digits);
+          ("exponent", option_to_json float_exponent_to_json exponent);
+          ("suffix", option_to_json (fun text -> Json.String text) suffix);
+        ]
+  | Cst.Constant.Char { syntax_node; literal_token; contents } ->
+      Json.Object
+        [
+          ("tag", Json.String "char");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("literal_token", token_to_json literal_token);
+          ("contents", Json.String contents);
+        ]
+  | Cst.Constant.Bool { syntax_node; literal_token; value } ->
+      Json.Object
+        [
+          ("tag", Json.String "bool");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("literal_token", token_to_json literal_token);
+          ("value", Json.Bool value);
+        ]
+  | Cst.Constant.Unit { syntax_node } ->
+      Json.Object
+        [
+          ("tag", Json.String "unit");
+          ("syntax_node", syntax_node_to_json syntax_node);
+        ]
+
 and arrow_label_to_json = function
   | Cst.ArrowLabel.Named { sigil_token; label_token } ->
       Json.Object
@@ -432,48 +523,8 @@ and exception_declaration_to_json (decl : Cst.exception_declaration) =
       ("name_token", token_to_json decl.name_token);
     ]
 
-and pattern_literal_to_json = function
-  | Cst.PatternLiteral.String { syntax_node; literal_token } ->
-      Json.Object
-        [
-          ("tag", Json.String "string");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("literal_token", token_to_json literal_token);
-        ]
-  | Cst.PatternLiteral.Int { syntax_node; literal_token } ->
-      Json.Object
-        [
-          ("tag", Json.String "int");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("literal_token", token_to_json literal_token);
-        ]
-  | Cst.PatternLiteral.Float { syntax_node; literal_token } ->
-      Json.Object
-        [
-          ("tag", Json.String "float");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("literal_token", token_to_json literal_token);
-        ]
-  | Cst.PatternLiteral.Char { syntax_node; literal_token } ->
-      Json.Object
-        [
-          ("tag", Json.String "char");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("literal_token", token_to_json literal_token);
-        ]
-  | Cst.PatternLiteral.Bool { syntax_node; literal_token } ->
-      Json.Object
-        [
-          ("tag", Json.String "bool");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("literal_token", token_to_json literal_token);
-        ]
-  | Cst.PatternLiteral.Unit { syntax_node } ->
-      Json.Object
-        [
-          ("tag", Json.String "unit");
-          ("syntax_node", syntax_node_to_json syntax_node);
-        ]
+and pattern_literal_to_json literal =
+  constant_to_json literal
 
 and pattern_to_json = function
   | Cst.Pattern.Identifier { syntax_node; name_token } ->
@@ -517,13 +568,13 @@ and pattern_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("pattern", pattern_to_json pattern);
         ]
-  | Cst.Pattern.Range { syntax_node; lower_token; upper_token } ->
+  | Cst.Pattern.Range { syntax_node; lower; upper } ->
       Json.Object
         [
           ("tag", Json.String "range");
           ("syntax_node", syntax_node_to_json syntax_node);
-          ("lower_token", token_to_json lower_token);
-          ("upper_token", token_to_json upper_token);
+          ("lower", pattern_literal_to_json lower);
+          ("upper", pattern_literal_to_json upper);
         ]
   | Cst.Pattern.Operator { syntax_node; operator_tokens } ->
       Json.Object
@@ -731,48 +782,8 @@ and parameter_to_json = function
           ("binders", Json.Array (List.map type_binder_to_json binders));
         ]
 
-and literal_to_json = function
-  | Cst.Literal.String { syntax_node; literal_token } ->
-      Json.Object
-        [
-          ("tag", Json.String "string");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("literal_token", token_to_json literal_token);
-        ]
-  | Cst.Literal.Int { syntax_node; literal_token } ->
-      Json.Object
-        [
-          ("tag", Json.String "int");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("literal_token", token_to_json literal_token);
-        ]
-  | Cst.Literal.Float { syntax_node; literal_token } ->
-      Json.Object
-        [
-          ("tag", Json.String "float");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("literal_token", token_to_json literal_token);
-        ]
-  | Cst.Literal.Char { syntax_node; literal_token } ->
-      Json.Object
-        [
-          ("tag", Json.String "char");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("literal_token", token_to_json literal_token);
-        ]
-  | Cst.Literal.Bool { syntax_node; literal_token } ->
-      Json.Object
-        [
-          ("tag", Json.String "bool");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("literal_token", token_to_json literal_token);
-        ]
-  | Cst.Literal.Unit { syntax_node } ->
-      Json.Object
-        [
-          ("tag", Json.String "unit");
-          ("syntax_node", syntax_node_to_json syntax_node);
-        ]
+and literal_to_json literal =
+  constant_to_json literal
 
 and attribute_to_json (attr : Cst.attribute) =
   Json.Object

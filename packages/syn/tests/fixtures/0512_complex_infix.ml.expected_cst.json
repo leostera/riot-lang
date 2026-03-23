@@ -84,7 +84,11 @@
                       "start": 8,
                       "end": 9
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               "operator_token": {
@@ -131,7 +135,11 @@
                           "start": 13,
                           "end": 14
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   },
                   "operator_token": {
@@ -160,7 +168,11 @@
                           "start": 17,
                           "end": 18
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "3",
+                      "suffix": null
                     }
                   }
                 }
@@ -192,7 +204,11 @@
                     "start": 22,
                     "end": 23
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "4",
+                "suffix": null
               }
             }
           },

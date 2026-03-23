@@ -105,7 +105,11 @@
                       "start": 12,
                       "end": 13
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "5",
+                  "suffix": null
                 }
               }
             }

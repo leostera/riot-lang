@@ -201,7 +201,11 @@
                                   "start": 16,
                                   "end": 17
                                 }
-                              }
+                              },
+                              "base": "decimal",
+                              "prefix": null,
+                              "digits": "1",
+                              "suffix": null
                             }
                           }
                         }

@@ -210,7 +210,11 @@
                                     "start": 31,
                                     "end": 32
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "1",
+                                "suffix": null
                               }
                             }
                           }
@@ -428,7 +432,11 @@
                         "start": 73,
                         "end": 74
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

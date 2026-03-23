@@ -130,7 +130,12 @@
                           "start": 218,
                           "end": 249
                         }
-                      }
+                      },
+                      "delimiter": {
+                        "tag": "double_quote"
+                      },
+                      "contents": "------should not appear------",
+                      "terminated": true
                     }
                   }
                 },
@@ -178,7 +183,11 @@
                           "start": 268,
                           "end": 271
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "100",
+                      "suffix": null
                     }
                   }
                 },
@@ -226,7 +235,11 @@
                           "start": 289,
                           "end": 293
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1000",
+                      "suffix": null
                     }
                   }
                 },
@@ -274,7 +287,11 @@
                           "start": 312,
                           "end": 316
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1010",
+                      "suffix": null
                     }
                   }
                 }
@@ -775,7 +792,12 @@
                             "start": 729,
                             "end": 735
                           }
-                        }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": ")f x",
+                        "terminated": true
                       }
                     }
                   }
@@ -1016,7 +1038,12 @@
                               "start": 864,
                               "end": 873
                             }
-                          }
+                          },
+                          "delimiter": {
+                            "tag": "double_quote"
+                          },
+                          "contents": "file.ml",
+                          "terminated": true
                         }
                       }
                     }
@@ -1309,7 +1336,12 @@
                         "start": 1042,
                         "end": 1065
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "Incomplete version:\\n",
+                    "terminated": true
                   }
                 }
               }

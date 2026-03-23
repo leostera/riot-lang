@@ -299,7 +299,11 @@
                         "start": 61,
                         "end": 62
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

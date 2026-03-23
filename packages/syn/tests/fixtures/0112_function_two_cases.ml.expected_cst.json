@@ -84,7 +84,11 @@
                         "start": 17,
                         "end": 18
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -106,7 +110,12 @@
                         "start": 22,
                         "end": 28
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "zero",
+                    "terminated": true
                   }
                 }
               },
@@ -147,7 +156,12 @@
                         "start": 36,
                         "end": 43
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "other",
+                    "terminated": true
                   }
                 }
               }

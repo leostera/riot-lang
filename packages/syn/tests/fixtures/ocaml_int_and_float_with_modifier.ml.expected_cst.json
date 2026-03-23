@@ -66,7 +66,11 @@
                   "start": 186,
                   "end": 241
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "1234567890_1234567890_1234567890_1234567890_1234567890",
+              "suffix": "z"
             }
           },
           "is_recursive": false
@@ -128,7 +132,11 @@
                   "start": 278,
                   "end": 334
                 }
-              }
+              },
+              "integral_digits": "1234567890_1234567890_1234567890_1234567890_1234567890",
+              "fractional_digits": "",
+              "exponent": null,
+              "suffix": "z"
             }
           },
           "is_recursive": false
@@ -190,7 +198,11 @@
                   "start": 348,
                   "end": 353
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "1234",
+              "suffix": "l"
             }
           },
           "is_recursive": false
@@ -252,7 +264,11 @@
                   "start": 366,
                   "end": 371
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "1234",
+              "suffix": "L"
             }
           },
           "is_recursive": false
@@ -314,7 +330,11 @@
                   "start": 388,
                   "end": 393
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "1234",
+              "suffix": "n"
             }
           },
           "is_recursive": false
@@ -376,7 +396,11 @@
                   "start": 421,
                   "end": 426
                 }
-              }
+              },
+              "base": "hexadecimal",
+              "prefix": "0x",
+              "digits": "32f",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -438,7 +462,11 @@
                   "start": 451,
                   "end": 456
                 }
-              }
+              },
+              "base": "hexadecimal",
+              "prefix": "0x",
+              "digits": "32",
+              "suffix": "g"
             }
           },
           "is_recursive": false
@@ -509,7 +537,11 @@
                     "start": 485,
                     "end": 489
                   }
-                }
+                },
+                "integral_digits": "1",
+                "fractional_digits": "2",
+                "exponent": null,
+                "suffix": "e"
               }
             },
             "argument": {
@@ -532,7 +564,11 @@
                       "start": 489,
                       "end": 490
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "3",
+                  "suffix": null
                 }
               }
             }
@@ -596,7 +632,11 @@
                   "start": 516,
                   "end": 520
                 }
-              }
+              },
+              "integral_digits": "1",
+              "fractional_digits": "2",
+              "exponent": null,
+              "suffix": "g"
             }
           },
           "is_recursive": false

@@ -249,7 +249,11 @@
                         "start": 81,
                         "end": 82
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }
@@ -497,7 +501,11 @@
                         "start": 128,
                         "end": 129
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

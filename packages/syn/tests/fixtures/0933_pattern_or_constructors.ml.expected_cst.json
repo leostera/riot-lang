@@ -215,7 +215,12 @@
                         "start": 40,
                         "end": 48
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "option",
+                    "terminated": true
                   }
                 }
               }

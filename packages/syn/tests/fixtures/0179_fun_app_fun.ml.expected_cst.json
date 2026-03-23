@@ -226,7 +226,11 @@
                       "start": 34,
                       "end": 36
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "42",
+                  "suffix": null
                 }
               }
             }

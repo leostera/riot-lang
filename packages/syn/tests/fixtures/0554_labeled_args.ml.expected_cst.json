@@ -129,7 +129,11 @@
                         "start": 13,
                         "end": 14
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 },
                 "argument": {
@@ -167,7 +171,11 @@
                           "start": 18,
                           "end": 19
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   }
                 }

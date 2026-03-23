@@ -279,7 +279,11 @@
                         "start": 42,
                         "end": 43
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               }

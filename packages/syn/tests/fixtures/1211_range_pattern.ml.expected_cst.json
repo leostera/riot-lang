@@ -75,21 +75,43 @@
                       "end": 38
                     }
                   },
-                  "lower_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'a'",
-                    "span": {
-                      "start": 28,
-                      "end": 31
-                    }
+                  "lower": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 28,
+                        "end": 38
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'a'",
+                      "span": {
+                        "start": 28,
+                        "end": 31
+                      }
+                    },
+                    "contents": "a"
                   },
-                  "upper_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'z'",
-                    "span": {
-                      "start": 35,
-                      "end": 38
-                    }
+                  "upper": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 28,
+                        "end": 38
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'z'",
+                      "span": {
+                        "start": 35,
+                        "end": 38
+                      }
+                    },
+                    "contents": "z"
                   }
                 },
                 "guard": null,
@@ -111,7 +133,8 @@
                         "start": 42,
                         "end": 46
                       }
-                    }
+                    },
+                    "value": true
                   }
                 }
               },
@@ -152,7 +175,8 @@
                         "start": 56,
                         "end": 61
                       }
-                    }
+                    },
+                    "value": false
                   }
                 }
               }

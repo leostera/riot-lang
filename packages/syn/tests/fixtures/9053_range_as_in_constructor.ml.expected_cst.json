@@ -122,21 +122,43 @@
                               "end": 96
                             }
                           },
-                          "lower_token": {
-                            "kind": "CHAR_LITERAL",
-                            "text": "'0'",
-                            "span": {
-                              "start": 86,
-                              "end": 89
-                            }
+                          "lower": {
+                            "tag": "char",
+                            "syntax_node": {
+                              "kind": "RANGE_PATTERN",
+                              "span": {
+                                "start": 86,
+                                "end": 96
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "CHAR_LITERAL",
+                              "text": "'0'",
+                              "span": {
+                                "start": 86,
+                                "end": 89
+                              }
+                            },
+                            "contents": "0"
                           },
-                          "upper_token": {
-                            "kind": "CHAR_LITERAL",
-                            "text": "'9'",
-                            "span": {
-                              "start": 93,
-                              "end": 96
-                            }
+                          "upper": {
+                            "tag": "char",
+                            "syntax_node": {
+                              "kind": "RANGE_PATTERN",
+                              "span": {
+                                "start": 86,
+                                "end": 96
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "CHAR_LITERAL",
+                              "text": "'9'",
+                              "span": {
+                                "start": 93,
+                                "end": 96
+                              }
+                            },
+                            "contents": "9"
                           }
                         },
                         "name_token": {
@@ -238,7 +260,8 @@
                         "start": 118,
                         "end": 121
                       }
-                    }
+                    },
+                    "contents": "?"
                   }
                 }
               }
@@ -397,21 +420,43 @@
                                     "end": 182
                                   }
                                 },
-                                "lower_token": {
-                                  "kind": "CHAR_LITERAL",
-                                  "text": "'a'",
-                                  "span": {
-                                    "start": 172,
-                                    "end": 175
-                                  }
+                                "lower": {
+                                  "tag": "char",
+                                  "syntax_node": {
+                                    "kind": "RANGE_PATTERN",
+                                    "span": {
+                                      "start": 172,
+                                      "end": 182
+                                    }
+                                  },
+                                  "literal_token": {
+                                    "kind": "CHAR_LITERAL",
+                                    "text": "'a'",
+                                    "span": {
+                                      "start": 172,
+                                      "end": 175
+                                    }
+                                  },
+                                  "contents": "a"
                                 },
-                                "upper_token": {
-                                  "kind": "CHAR_LITERAL",
-                                  "text": "'z'",
-                                  "span": {
-                                    "start": 179,
-                                    "end": 182
-                                  }
+                                "upper": {
+                                  "tag": "char",
+                                  "syntax_node": {
+                                    "kind": "RANGE_PATTERN",
+                                    "span": {
+                                      "start": 172,
+                                      "end": 182
+                                    }
+                                  },
+                                  "literal_token": {
+                                    "kind": "CHAR_LITERAL",
+                                    "text": "'z'",
+                                    "span": {
+                                      "start": 179,
+                                      "end": 182
+                                    }
+                                  },
+                                  "contents": "z"
                                 }
                               },
                               "name_token": {
@@ -496,7 +541,8 @@
                         "start": 202,
                         "end": 205
                       }
-                    }
+                    },
+                    "contents": "x"
                   }
                 }
               }
@@ -664,21 +710,43 @@
                               "end": 267
                             }
                           },
-                          "lower_token": {
-                            "kind": "CHAR_LITERAL",
-                            "text": "'A'",
-                            "span": {
-                              "start": 257,
-                              "end": 260
-                            }
+                          "lower": {
+                            "tag": "char",
+                            "syntax_node": {
+                              "kind": "RANGE_PATTERN",
+                              "span": {
+                                "start": 257,
+                                "end": 267
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "CHAR_LITERAL",
+                              "text": "'A'",
+                              "span": {
+                                "start": 257,
+                                "end": 260
+                              }
+                            },
+                            "contents": "A"
                           },
-                          "upper_token": {
-                            "kind": "CHAR_LITERAL",
-                            "text": "'Z'",
-                            "span": {
-                              "start": 264,
-                              "end": 267
-                            }
+                          "upper": {
+                            "tag": "char",
+                            "syntax_node": {
+                              "kind": "RANGE_PATTERN",
+                              "span": {
+                                "start": 257,
+                                "end": 267
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "CHAR_LITERAL",
+                              "text": "'Z'",
+                              "span": {
+                                "start": 264,
+                                "end": 267
+                              }
+                            },
+                            "contents": "Z"
                           }
                         },
                         "name_token": {
@@ -787,21 +855,43 @@
                               "end": 307
                             }
                           },
-                          "lower_token": {
-                            "kind": "CHAR_LITERAL",
-                            "text": "'a'",
-                            "span": {
-                              "start": 297,
-                              "end": 300
-                            }
+                          "lower": {
+                            "tag": "char",
+                            "syntax_node": {
+                              "kind": "RANGE_PATTERN",
+                              "span": {
+                                "start": 297,
+                                "end": 307
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "CHAR_LITERAL",
+                              "text": "'a'",
+                              "span": {
+                                "start": 297,
+                                "end": 300
+                              }
+                            },
+                            "contents": "a"
                           },
-                          "upper_token": {
-                            "kind": "CHAR_LITERAL",
-                            "text": "'z'",
-                            "span": {
-                              "start": 304,
-                              "end": 307
-                            }
+                          "upper": {
+                            "tag": "char",
+                            "syntax_node": {
+                              "kind": "RANGE_PATTERN",
+                              "span": {
+                                "start": 297,
+                                "end": 307
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "CHAR_LITERAL",
+                              "text": "'z'",
+                              "span": {
+                                "start": 304,
+                                "end": 307
+                              }
+                            },
+                            "contents": "z"
                           }
                         },
                         "name_token": {
@@ -883,7 +973,8 @@
                         "start": 336,
                         "end": 339
                       }
-                    }
+                    },
+                    "contents": " "
                   }
                 }
               }

@@ -66,7 +66,11 @@
                   "start": 41,
                   "end": 46
                 }
-              }
+              },
+              "base": "octal",
+              "prefix": "0o",
+              "digits": "755",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -128,7 +132,11 @@
                   "start": 58,
                   "end": 63
                 }
-              }
+              },
+              "base": "octal",
+              "prefix": "0o",
+              "digits": "777",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -190,7 +198,11 @@
                   "start": 75,
                   "end": 80
                 }
-              }
+              },
+              "base": "octal",
+              "prefix": "0o",
+              "digits": "000",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -317,7 +329,11 @@
                         "start": 145,
                         "end": 150
                       }
-                    }
+                    },
+                    "base": "octal",
+                    "prefix": "0o",
+                    "digits": "644",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -339,7 +355,12 @@
                         "start": 154,
                         "end": 166
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "read/write",
+                    "terminated": true
                   }
                 }
               },
@@ -369,7 +390,11 @@
                         "start": 171,
                         "end": 176
                       }
-                    }
+                    },
+                    "base": "octal",
+                    "prefix": "0o",
+                    "digits": "755",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -391,7 +416,12 @@
                         "start": 180,
                         "end": 192
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "executable",
+                    "terminated": true
                   }
                 }
               },
@@ -432,7 +462,12 @@
                         "start": 202,
                         "end": 210
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "custom",
+                    "terminated": true
                   }
                 }
               }

@@ -66,7 +66,11 @@
                   "start": 43,
                   "end": 49
                 }
-              }
+              },
+              "base": "hexadecimal",
+              "prefix": "0x",
+              "digits": "000A",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -128,7 +132,11 @@
                   "start": 58,
                   "end": 62
                 }
-              }
+              },
+              "base": "hexadecimal",
+              "prefix": "0x",
+              "digits": "FF",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -190,7 +198,11 @@
                   "start": 71,
                   "end": 81
                 }
-              }
+              },
+              "base": "hexadecimal",
+              "prefix": "0x",
+              "digits": "DEADBEEF",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -252,7 +264,11 @@
                   "start": 90,
                   "end": 99
                 }
-              }
+              },
+              "base": "hexadecimal",
+              "prefix": "0x",
+              "digits": "1_2_3_4",
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -379,7 +395,11 @@
                         "start": 159,
                         "end": 165
                       }
-                    }
+                    },
+                    "base": "hexadecimal",
+                    "prefix": "0x",
+                    "digits": "000A",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -401,7 +421,12 @@
                         "start": 169,
                         "end": 173
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "LF",
+                    "terminated": true
                   }
                 }
               },
@@ -431,7 +456,11 @@
                         "start": 178,
                         "end": 184
                       }
-                    }
+                    },
+                    "base": "hexadecimal",
+                    "prefix": "0x",
+                    "digits": "000D",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -453,7 +482,12 @@
                         "start": 188,
                         "end": 192
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "CR",
+                    "terminated": true
                   }
                 }
               },
@@ -483,7 +517,11 @@
                         "start": 197,
                         "end": 203
                       }
-                    }
+                    },
+                    "base": "hexadecimal",
+                    "prefix": "0x",
+                    "digits": "0020",
+                    "suffix": null
                   }
                 },
                 "guard": null,
@@ -505,7 +543,12 @@
                         "start": 207,
                         "end": 214
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "Space",
+                    "terminated": true
                   }
                 }
               },
@@ -546,7 +589,12 @@
                         "start": 224,
                         "end": 231
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "Other",
+                    "terminated": true
                   }
                 }
               }

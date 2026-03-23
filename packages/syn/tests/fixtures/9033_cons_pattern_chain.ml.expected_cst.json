@@ -125,7 +125,12 @@
                           "start": 44,
                           "end": 46
                         }
-                      }
+                      },
+                      "delimiter": {
+                        "tag": "double_quote"
+                      },
+                      "contents": "",
+                      "terminated": true
                     }
                   },
                   "tail": {
@@ -155,7 +160,12 @@
                             "start": 50,
                             "end": 52
                           }
-                        }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "",
+                        "terminated": true
                       }
                     },
                     "tail": {

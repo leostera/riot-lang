@@ -223,7 +223,11 @@
                         "start": 43,
                         "end": 44
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

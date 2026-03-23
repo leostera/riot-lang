@@ -372,7 +372,11 @@
                         "start": 121,
                         "end": 122
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               },

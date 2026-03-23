@@ -103,7 +103,11 @@
                         "start": 14,
                         "end": 15
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               },
@@ -151,7 +155,12 @@
                         "start": 21,
                         "end": 27
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "test",
+                    "terminated": true
                   }
                 }
               },
@@ -199,7 +208,8 @@
                         "start": 33,
                         "end": 37
                       }
-                    }
+                    },
+                    "value": true
                   }
                 }
               },
@@ -257,7 +267,11 @@
                             "start": 45,
                             "end": 46
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "1",
+                        "suffix": null
                       }
                     },
                     {
@@ -278,7 +292,11 @@
                             "start": 48,
                             "end": 49
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "2",
+                        "suffix": null
                       }
                     },
                     {
@@ -299,7 +317,11 @@
                             "start": 51,
                             "end": 52
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "3",
+                        "suffix": null
                       }
                     }
                   ]

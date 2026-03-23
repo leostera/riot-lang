@@ -102,7 +102,11 @@
                         "start": 14,
                         "end": 15
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               }

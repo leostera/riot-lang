@@ -179,7 +179,11 @@
                         "start": 46,
                         "end": 47
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

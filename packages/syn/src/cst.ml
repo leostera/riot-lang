@@ -590,30 +590,92 @@ module ClassTypeField = struct
         extension.syntax_node
 end
 
-module PatternLiteral = struct
-  type t =
-    | String of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-    | Int of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-    | Float of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-    | Char of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-    | Bool of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
+type string_delimiter =
+  | DoubleQuote
+  | Quoted of { marker : string }
+
+type integer_base =
+  | Decimal
+  | Hexadecimal
+  | Octal
+  | Binary
+
+type exponent_sign =
+  | Positive
+  | Negative
+
+type string_constant = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+  delimiter : string_delimiter;
+  contents : string;
+  terminated : bool;
+}
+
+type integer_constant = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+  base : integer_base;
+  prefix : string option;
+  digits : string;
+  suffix : string option;
+}
+
+type float_exponent = {
+  marker : string;
+  sign : exponent_sign option;
+  digits : string;
+}
+
+type float_constant = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+  integral_digits : string;
+  fractional_digits : string;
+  exponent : float_exponent option;
+  suffix : string option;
+}
+
+type char_constant = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+  contents : string;
+}
+
+type bool_constant = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+  value : bool;
+}
+
+type constant =
+  | String of string_constant
+  | Int of integer_constant
+  | Float of float_constant
+  | Char of char_constant
+  | Bool of bool_constant
+  | Unit of { syntax_node : syntax_node }
+
+module Constant = struct
+  type t = constant =
+    | String of string_constant
+    | Int of integer_constant
+    | Float of float_constant
+    | Char of char_constant
+    | Bool of bool_constant
     | Unit of { syntax_node : syntax_node }
+
+  let syntax_node = function
+    | String { syntax_node; _ }
+    | Int { syntax_node; _ }
+    | Float { syntax_node; _ }
+    | Char { syntax_node; _ }
+    | Bool { syntax_node; _ }
+    | Unit { syntax_node } ->
+        syntax_node
 end
+
+module PatternLiteral = Constant
 
 module TypeBinder = struct
   type t = type_binder =
@@ -699,8 +761,8 @@ and exception_pattern = {
 
 and range_pattern = {
   syntax_node : syntax_node;
-  lower_token : Token.t;
-  upper_token : Token.t;
+  lower : pattern_literal;
+  upper : pattern_literal;
 }
 
 and operator_pattern = {
@@ -885,30 +947,7 @@ module Parameter = struct
         false
 end
 
-module Literal = struct
-  type t =
-    | String of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-    | Int of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-    | Float of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-    | Char of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-    | Bool of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-    | Unit of { syntax_node : syntax_node }
-end
+module Literal = Constant
 
 type literal = Literal.t
 
@@ -1509,15 +1548,8 @@ module Expression = struct
   let syntax_node = function
     | Path expr -> expr.syntax_node
     | Operator expr -> expr.syntax_node
-    | Literal literal -> (
-        match literal with
-        | Literal.String { syntax_node; _ }
-        | Literal.Int { syntax_node; _ }
-        | Literal.Float { syntax_node; _ }
-        | Literal.Char { syntax_node; _ }
-        | Literal.Bool { syntax_node; _ }
-        | Literal.Unit { syntax_node } ->
-            syntax_node)
+    | Literal literal ->
+        Constant.syntax_node literal
     | Unreachable expr -> expr.syntax_node
     | Attribute attr -> attr.syntax_node
     | Extension ext -> ext.syntax_node
@@ -1721,13 +1753,8 @@ module Pattern = struct
     | Wildcard pattern -> pattern.syntax_node
     | Attribute pattern -> pattern.syntax_node
     | Extension extension -> extension.syntax_node
-    | Literal (PatternLiteral.String { syntax_node; _ })
-    | Literal (PatternLiteral.Int { syntax_node; _ })
-    | Literal (PatternLiteral.Float { syntax_node; _ })
-    | Literal (PatternLiteral.Char { syntax_node; _ })
-    | Literal (PatternLiteral.Bool { syntax_node; _ })
-    | Literal (PatternLiteral.Unit { syntax_node }) ->
-        syntax_node
+    | Literal literal ->
+        Constant.syntax_node literal
     | Lazy pattern -> pattern.syntax_node
     | Exception pattern -> pattern.syntax_node
     | Range pattern -> pattern.syntax_node

@@ -88,7 +88,11 @@
                     "start": 18,
                     "end": 20
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "42",
+                "suffix": null
               }
             }
           },

@@ -162,7 +162,11 @@
                                     "start": 24,
                                     "end": 25
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "1",
+                                "suffix": null
                               }
                             },
                             {
@@ -183,7 +187,11 @@
                                     "start": 28,
                                     "end": 29
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "2",
+                                "suffix": null
                               }
                             }
                           ]
@@ -229,7 +237,11 @@
                                     "start": 33,
                                     "end": 34
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "3",
+                                "suffix": null
                               }
                             },
                             {
@@ -250,7 +262,11 @@
                                     "start": 37,
                                     "end": 38
                                   }
-                                }
+                                },
+                                "base": "decimal",
+                                "prefix": null,
+                                "digits": "4",
+                                "suffix": null
                               }
                             }
                           ]
@@ -279,7 +295,8 @@
                         "start": 43,
                         "end": 47
                       }
-                    }
+                    },
+                    "value": true
                   }
                 }
               },
@@ -320,7 +337,8 @@
                         "start": 55,
                         "end": 60
                       }
-                    }
+                    },
+                    "value": false
                   }
                 }
               }

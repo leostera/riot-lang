@@ -131,7 +131,11 @@
                         "start": 25,
                         "end": 26
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "3",
+                    "suffix": null
                   }
                 }
               }

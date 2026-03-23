@@ -611,7 +611,11 @@
                     "start": 322,
                     "end": 323
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "0",
+                "suffix": null
               }
             },
             "type": {
@@ -733,7 +737,11 @@
                   "start": 359,
                   "end": 360
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "0",
+              "suffix": null
             }
           },
           "is_recursive": false

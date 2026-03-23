@@ -75,7 +75,8 @@
                     "start": 11,
                     "end": 15
                   }
-                }
+                },
+                "value": true
               }
             },
             "then_branch": {
@@ -105,7 +106,8 @@
                       "start": 24,
                       "end": 29
                     }
-                  }
+                  },
+                  "value": false
                 }
               },
               "then_branch": {
@@ -126,7 +128,11 @@
                       "start": 35,
                       "end": 36
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               "else_branch": {
@@ -147,7 +153,11 @@
                       "start": 42,
                       "end": 43
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "2",
+                  "suffix": null
                 }
               }
             },
@@ -169,7 +179,11 @@
                     "start": 49,
                     "end": 50
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "3",
+                "suffix": null
               }
             }
           },

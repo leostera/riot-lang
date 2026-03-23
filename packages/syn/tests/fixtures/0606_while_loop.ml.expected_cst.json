@@ -75,7 +75,8 @@
                     "start": 16,
                     "end": 20
                   }
-                }
+                },
+                "value": true
               }
             },
             "body": {
@@ -135,7 +136,12 @@
                         "start": 34,
                         "end": 40
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "loop",
+                    "terminated": true
                   }
                 }
               }

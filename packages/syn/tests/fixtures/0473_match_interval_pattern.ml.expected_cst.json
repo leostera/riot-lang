@@ -103,21 +103,43 @@
                       "end": 31
                     }
                   },
-                  "lower_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'a'",
-                    "span": {
-                      "start": 21,
-                      "end": 24
-                    }
+                  "lower": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 21,
+                        "end": 31
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'a'",
+                      "span": {
+                        "start": 21,
+                        "end": 24
+                      }
+                    },
+                    "contents": "a"
                   },
-                  "upper_token": {
-                    "kind": "CHAR_LITERAL",
-                    "text": "'z'",
-                    "span": {
-                      "start": 28,
-                      "end": 31
-                    }
+                  "upper": {
+                    "tag": "char",
+                    "syntax_node": {
+                      "kind": "RANGE_PATTERN",
+                      "span": {
+                        "start": 21,
+                        "end": 31
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "CHAR_LITERAL",
+                      "text": "'z'",
+                      "span": {
+                        "start": 28,
+                        "end": 31
+                      }
+                    },
+                    "contents": "z"
                   }
                 },
                 "guard": null,
@@ -139,7 +161,8 @@
                         "start": 35,
                         "end": 39
                       }
-                    }
+                    },
+                    "value": true
                   }
                 }
               },
@@ -180,7 +203,8 @@
                         "start": 47,
                         "end": 52
                       }
-                    }
+                    },
+                    "value": false
                   }
                 }
               }

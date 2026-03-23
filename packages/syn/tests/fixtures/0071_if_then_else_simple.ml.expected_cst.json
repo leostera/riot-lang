@@ -75,7 +75,8 @@
                     "start": 11,
                     "end": 15
                   }
-                }
+                },
+                "value": true
               }
             },
             "then_branch": {
@@ -96,7 +97,11 @@
                     "start": 21,
                     "end": 22
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             },
             "else_branch": {
@@ -117,7 +122,11 @@
                     "start": 28,
                     "end": 29
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "2",
+                "suffix": null
               }
             }
           },

@@ -75,7 +75,11 @@
                     "start": 8,
                     "end": 11
                   }
-                }
+                },
+                "integral_digits": "1",
+                "fractional_digits": "5",
+                "exponent": null,
+                "suffix": null
               }
             },
             "operator_token": {
@@ -104,7 +108,11 @@
                     "start": 15,
                     "end": 18
                   }
-                }
+                },
+                "integral_digits": "2",
+                "fractional_digits": "5",
+                "exponent": null,
+                "suffix": null
               }
             }
           },

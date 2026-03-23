@@ -103,7 +103,11 @@
                     "start": 13,
                     "end": 14
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "0",
+                "suffix": null
               }
             }
           },

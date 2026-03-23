@@ -183,7 +183,11 @@
                         "start": 25,
                         "end": 26
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               }
@@ -245,7 +249,11 @@
                         "start": 34,
                         "end": 35
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "2",
+                    "suffix": null
                   }
                 }
               }

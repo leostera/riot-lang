@@ -176,7 +176,11 @@
                           "start": 51,
                           "end": 52
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   }
                 }
@@ -218,7 +222,11 @@
                         "start": 60,
                         "end": 61
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

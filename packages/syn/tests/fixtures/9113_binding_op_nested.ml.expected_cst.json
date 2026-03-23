@@ -989,7 +989,11 @@
                           "start": 220,
                           "end": 221
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   }
                 }

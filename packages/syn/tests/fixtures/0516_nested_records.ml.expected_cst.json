@@ -140,7 +140,11 @@
                               "start": 20,
                               "end": 21
                             }
-                          }
+                          },
+                          "base": "decimal",
+                          "prefix": null,
+                          "digits": "1",
+                          "suffix": null
                         }
                       }
                     }

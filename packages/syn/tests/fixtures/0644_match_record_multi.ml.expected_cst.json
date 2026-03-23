@@ -148,7 +148,11 @@
                               "start": 27,
                               "end": 28
                             }
-                          }
+                          },
+                          "base": "decimal",
+                          "prefix": null,
+                          "digits": "0",
+                          "suffix": null
                         }
                       }
                     },
@@ -196,7 +200,11 @@
                               "start": 34,
                               "end": 35
                             }
-                          }
+                          },
+                          "base": "decimal",
+                          "prefix": null,
+                          "digits": "0",
+                          "suffix": null
                         }
                       }
                     }
@@ -224,7 +232,12 @@
                         "start": 41,
                         "end": 49
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "origin",
+                    "terminated": true
                   }
                 }
               },
@@ -265,7 +278,12 @@
                         "start": 57,
                         "end": 64
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "point",
+                    "terminated": true
                   }
                 }
               }

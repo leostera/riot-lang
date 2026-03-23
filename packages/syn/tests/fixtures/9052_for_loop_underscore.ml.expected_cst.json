@@ -71,7 +71,11 @@
                     "start": 68,
                     "end": 69
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             },
             "direction": {
@@ -103,7 +107,11 @@
                     "start": 73,
                     "end": 75
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "10",
+                "suffix": null
               }
             },
             "body": {
@@ -163,7 +171,12 @@
                         "start": 97,
                         "end": 104
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "hello",
+                    "terminated": true
                   }
                 }
               }
@@ -233,7 +246,11 @@
                     "start": 153,
                     "end": 155
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "10",
+                "suffix": null
               }
             },
             "direction": {
@@ -265,7 +282,11 @@
                     "start": 163,
                     "end": 164
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             },
             "body": {
@@ -325,7 +346,12 @@
                         "start": 186,
                         "end": 191
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "bye",
+                    "terminated": true
                   }
                 }
               }

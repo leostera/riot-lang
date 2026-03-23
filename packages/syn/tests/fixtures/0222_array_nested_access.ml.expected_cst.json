@@ -112,7 +112,11 @@
                       "start": 16,
                       "end": 17
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               }
             },
@@ -134,7 +138,11 @@
                     "start": 20,
                     "end": 21
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             }
           },

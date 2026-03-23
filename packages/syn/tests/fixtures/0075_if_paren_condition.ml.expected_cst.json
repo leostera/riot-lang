@@ -149,7 +149,11 @@
                     "start": 23,
                     "end": 24
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "1",
+                "suffix": null
               }
             },
             "else_branch": {
@@ -170,7 +174,11 @@
                     "start": 30,
                     "end": 31
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "0",
+                "suffix": null
               }
             }
           },

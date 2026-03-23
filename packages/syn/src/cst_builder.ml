@@ -55,6 +55,200 @@ let is_trivia kind =
 
 let token syntax_tok = Cst.Token.{ syntax_token = syntax_tok }
 
+let substring text start length =
+  let text_length = String.length text in
+  if length <= 0 || start >= text_length then
+    ""
+  else
+    let safe_start = Int.max 0 start in
+    String.sub text safe_start (Int.min length (text_length - safe_start))
+
+let is_ascii_alpha = function
+  | 'a' .. 'z' | 'A' .. 'Z' ->
+      true
+  | _ ->
+      false
+
+let find_char_from text start target =
+  let rec loop index =
+    if index >= String.length text then
+      None
+    else if Char.equal (String.get text index) target then
+      Some index
+    else
+      loop (index + 1)
+  in
+  loop start
+
+let split_trailing_alpha_suffix text =
+  let rec loop index =
+    if index < 0 then
+      0
+    else if is_ascii_alpha (String.get text index) then
+      loop (index - 1)
+    else
+      index + 1
+  in
+  let suffix_start = loop (String.length text - 1) in
+  ( substring text 0 suffix_start,
+    if suffix_start < String.length text then
+      Some (substring text suffix_start (String.length text - suffix_start))
+    else
+      None )
+
+let string_delimiter_and_contents text =
+  let len = String.length text in
+  if len > 0 && Char.equal (String.get text 0) '"' then
+    let terminated = len > 1 && Char.equal (String.get text (len - 1)) '"' in
+    let contents_end = if terminated then len - 1 else len in
+    ( Cst.DoubleQuote,
+      substring text 1 (contents_end - 1),
+      terminated )
+  else if len > 0 && Char.equal (String.get text 0) '{' then
+    match find_char_from text 1 '|' with
+    | Some pipe_index ->
+        let marker = substring text 1 (pipe_index - 1) in
+        let closing = "|" ^ marker ^ "}" in
+        let closing_len = String.length closing in
+        let terminated =
+          len >= pipe_index + 1 + closing_len
+          && String.equal (substring text (len - closing_len) closing_len) closing
+        in
+        let contents_start = pipe_index + 1 in
+        let contents_end = if terminated then len - closing_len else len in
+        ( Cst.Quoted { marker },
+          substring text contents_start (contents_end - contents_start),
+          terminated )
+    | None ->
+        (Cst.Quoted { marker = "" }, substring text 1 (len - 1), false)
+  else
+    (Cst.DoubleQuote, text, false)
+
+let integer_parts text =
+  let base, prefix =
+    let starts_with prefix =
+      let prefix_len = String.length prefix in
+      if String.length text < prefix_len then
+        false
+      else
+        String.equal (substring text 0 prefix_len) prefix
+    in
+    if starts_with "0x" || starts_with "0X" then
+      (Cst.Hexadecimal, Some (substring text 0 2))
+    else if starts_with "0o" || starts_with "0O" then
+      (Cst.Octal, Some (substring text 0 2))
+    else if starts_with "0b" || starts_with "0B" then
+      (Cst.Binary, Some (substring text 0 2))
+    else
+      (Cst.Decimal, None)
+  in
+  let digit_start =
+    match prefix with
+    | Some prefix -> String.length prefix
+    | None -> 0
+  in
+  let is_digit =
+    match base with
+    | Cst.Decimal ->
+        (function '0' .. '9' | '_' -> true | _ -> false)
+    | Cst.Hexadecimal ->
+        (function
+        | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' | '_' -> true
+        | _ -> false)
+    | Cst.Octal ->
+        (function '0' .. '7' | '_' -> true | _ -> false)
+    | Cst.Binary ->
+        (function '0' | '1' | '_' -> true | _ -> false)
+  in
+  let rec find_suffix_start index =
+    if index >= String.length text then
+      index
+    else if is_digit (String.get text index) then
+      find_suffix_start (index + 1)
+    else
+      index
+  in
+  let suffix_start = find_suffix_start digit_start in
+  let digits = substring text digit_start (suffix_start - digit_start) in
+  let suffix =
+    if suffix_start < String.length text then
+      Some (substring text suffix_start (String.length text - suffix_start))
+    else
+      None
+  in
+  (base, prefix, digits, suffix)
+
+let float_parts text =
+  let body, suffix = split_trailing_alpha_suffix text in
+  let exponent_marker_index =
+    match find_char_from body 0 'e' with
+    | Some _ as found -> found
+    | None -> find_char_from body 0 'E'
+  in
+  let body_without_exponent, exponent =
+    match exponent_marker_index with
+    | Some index ->
+        let exponent_body =
+          substring body (index + 1) (String.length body - index - 1)
+        in
+        let sign, digits =
+          if String.length exponent_body = 0 then
+            (None, "")
+          else
+            match String.get exponent_body 0 with
+            | '+' ->
+                (Some Cst.Positive, substring exponent_body 1 (String.length exponent_body - 1))
+            | '-' ->
+                (Some Cst.Negative, substring exponent_body 1 (String.length exponent_body - 1))
+            | _ ->
+                (None, exponent_body)
+        in
+        ( substring body 0 index,
+          Some
+            {
+              Cst.marker = substring body index 1;
+              sign;
+              digits;
+            } )
+    | None ->
+        (body, None)
+  in
+  let dot_index = find_char_from body_without_exponent 0 '.' in
+  let integral_digits, fractional_digits =
+    match dot_index with
+    | Some index ->
+        ( substring body_without_exponent 0 index,
+          substring body_without_exponent (index + 1)
+            (String.length body_without_exponent - index - 1) )
+    | None ->
+        (body_without_exponent, "")
+  in
+  (integral_digits, fractional_digits, exponent, suffix)
+
+let char_contents text =
+  let len = String.length text in
+  if len > 0 && Char.equal (String.get text 0) '\'' then
+    let contents_end =
+      if len > 1 && Char.equal (String.get text (len - 1)) '\'' then
+        len - 1
+      else
+        len
+    in
+    substring text 1 (contents_end - 1)
+  else
+    text
+
+let is_constant_syntax_kind = function
+  | Syntax_kind.STRING_LITERAL
+  | Syntax_kind.INT_LITERAL
+  | Syntax_kind.FLOAT_LITERAL
+  | Syntax_kind.CHAR_LITERAL
+  | Syntax_kind.BOOL_LITERAL
+  | Syntax_kind.UNIT_LITERAL ->
+      true
+  | _ ->
+      false
+
 let direct_non_trivia_nodes node =
   Ceibo.Red.SyntaxNode.children node
   |> Array.to_list
@@ -80,6 +274,82 @@ let direct_tokens node =
   |> List.filter_map (function
        | Ceibo.Red.Token tok -> Some tok
        | Ceibo.Red.Node _ -> None)
+
+let literal_token_from_node ~context node =
+  match direct_non_trivia_tokens node with
+  | literal_syntax_token :: _ ->
+      token literal_syntax_token
+  | [] ->
+      bail ~message:"expected literal token during Ceibo -> CST lifting"
+        ~syntax_node:node ~context
+
+let constant_from_syntax_token ~syntax_node syntax_token =
+  let literal_token = token syntax_token in
+  match Ceibo.Red.SyntaxToken.kind syntax_token with
+  | Syntax_kind.STRING_LITERAL ->
+      let delimiter, contents, terminated =
+        string_delimiter_and_contents (Cst.Token.text literal_token)
+      in
+      Cst.Constant.String
+        {
+          syntax_node;
+          literal_token;
+          delimiter;
+          contents;
+          terminated;
+        }
+  | Syntax_kind.INT_LITERAL ->
+      let base, prefix, digits, suffix = integer_parts (Cst.Token.text literal_token) in
+      Cst.Constant.Int
+        {
+          syntax_node;
+          literal_token;
+          base;
+          prefix;
+          digits;
+          suffix;
+        }
+  | Syntax_kind.FLOAT_LITERAL ->
+      let integral_digits, fractional_digits, exponent, suffix =
+        float_parts (Cst.Token.text literal_token)
+      in
+      Cst.Constant.Float
+        {
+          syntax_node;
+          literal_token;
+          integral_digits;
+          fractional_digits;
+          exponent;
+          suffix;
+        }
+  | Syntax_kind.CHAR_LITERAL ->
+      Cst.Constant.Char
+        {
+          syntax_node;
+          literal_token;
+          contents = char_contents (Cst.Token.text literal_token);
+        }
+  | Syntax_kind.BOOL_LITERAL ->
+      Cst.Constant.Bool
+        {
+          syntax_node;
+          literal_token;
+          value = String.equal (Cst.Token.text literal_token) "true";
+        }
+  | Syntax_kind.UNIT_LITERAL ->
+      Cst.Constant.Unit { syntax_node }
+  | _ ->
+      bail ~message:"expected literal token during Ceibo -> CST lifting"
+        ~syntax_node ~context:[ "constant" ]
+
+let constant_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.UNIT_LITERAL ->
+      Cst.Constant.Unit { syntax_node = node }
+  | _ ->
+      let literal_token = literal_token_from_node ~context:[ "constant" ] node in
+      constant_from_syntax_token ~syntax_node:node
+        (Cst.Token.syntax_token literal_token)
 
 let module_path_from_tokens ~syntax_node syntax_tokens =
   let rec skip_to_name = function
@@ -1886,8 +2156,8 @@ let rec pattern_from_node node =
           Cst.Pattern.Range
             {
               syntax_node = node;
-              lower_token = token lower_syntax_token;
-              upper_token = token upper_syntax_token;
+              lower = constant_from_syntax_token ~syntax_node:node lower_syntax_token;
+              upper = constant_from_syntax_token ~syntax_node:node upper_syntax_token;
             }
       | _ -> unsupported_pattern node)
   | Syntax_kind.OPERATOR_PATTERN ->
@@ -1907,58 +2177,10 @@ let rec pattern_from_node node =
                  |> Option.map module_type_from_node);
             }
       | _ -> unsupported_pattern node)
-  | Syntax_kind.STRING_LITERAL -> (
-      match direct_non_trivia_tokens node with
-      | literal_syntax_token :: _ ->
-          Cst.Pattern.Literal
-            (Cst.PatternLiteral.String
-               {
-                 syntax_node = node;
-                 literal_token = token literal_syntax_token;
-               })
-      | [] -> unsupported_pattern node)
-  | Syntax_kind.INT_LITERAL -> (
-      match direct_non_trivia_tokens node with
-      | literal_syntax_token :: _ ->
-          Cst.Pattern.Literal
-            (Cst.PatternLiteral.Int
-               {
-                 syntax_node = node;
-                 literal_token = token literal_syntax_token;
-               })
-      | [] -> unsupported_pattern node)
-  | Syntax_kind.FLOAT_LITERAL -> (
-      match direct_non_trivia_tokens node with
-      | literal_syntax_token :: _ ->
-          Cst.Pattern.Literal
-            (Cst.PatternLiteral.Float
-               {
-                 syntax_node = node;
-                 literal_token = token literal_syntax_token;
-               })
-      | [] -> unsupported_pattern node)
-  | Syntax_kind.CHAR_LITERAL -> (
-      match direct_non_trivia_tokens node with
-      | literal_syntax_token :: _ ->
-          Cst.Pattern.Literal
-            (Cst.PatternLiteral.Char
-               {
-                 syntax_node = node;
-                 literal_token = token literal_syntax_token;
-               })
-      | [] -> unsupported_pattern node)
-  | Syntax_kind.BOOL_LITERAL -> (
-      match direct_non_trivia_tokens node with
-      | literal_syntax_token :: _ ->
-          Cst.Pattern.Literal
-            (Cst.PatternLiteral.Bool
-               {
-                 syntax_node = node;
-                 literal_token = token literal_syntax_token;
-               })
-      | [] -> unsupported_pattern node)
-  | Syntax_kind.UNIT_LITERAL ->
-      Cst.Pattern.Literal (Cst.PatternLiteral.Unit { syntax_node = node })
+  | Syntax_kind.STRING_LITERAL | Syntax_kind.INT_LITERAL
+  | Syntax_kind.FLOAT_LITERAL | Syntax_kind.CHAR_LITERAL
+  | Syntax_kind.BOOL_LITERAL | Syntax_kind.UNIT_LITERAL ->
+      Cst.Pattern.Literal (constant_from_node node)
   | Syntax_kind.POLY_VARIANT_PATTERN -> (
       match poly_variant_tag_token node with
       | Some tag_token ->
@@ -2295,7 +2517,7 @@ and expression_from_node node =
       | Some expr -> Cst.Expression.Object expr
       | None -> unsupported_expression node)
   | Syntax_kind.UNIT_LITERAL ->
-      Cst.Expression.Literal (Cst.Literal.Unit { syntax_node = node })
+      Cst.Expression.Literal (constant_from_node node)
   | Syntax_kind.METHOD_CALL_EXPR -> (
       match method_call_expression_from_node node with
       | Some expr -> Cst.Expression.MethodCall expr
@@ -2320,56 +2542,10 @@ and expression_from_node node =
       match assign_expression_from_node node with
       | Some expr -> expr
       | None -> unsupported_expression node)
-  | Syntax_kind.STRING_LITERAL -> (
-      match direct_non_trivia_tokens node with
-      | literal_syntax_token :: _ ->
-          Cst.Expression.Literal
-            (Cst.Literal.String
-               {
-                 syntax_node = node;
-                 literal_token = token literal_syntax_token;
-               })
-      | [] -> unsupported_expression node)
-  | Syntax_kind.INT_LITERAL -> (
-      match direct_non_trivia_tokens node with
-      | literal_syntax_token :: _ ->
-          Cst.Expression.Literal
-            (Cst.Literal.Int
-               {
-                 syntax_node = node;
-                 literal_token = token literal_syntax_token;
-               })
-      | [] -> unsupported_expression node)
-  | Syntax_kind.FLOAT_LITERAL -> (
-      match direct_non_trivia_tokens node with
-      | literal_syntax_token :: _ ->
-          Cst.Expression.Literal
-            (Cst.Literal.Float
-               {
-                 syntax_node = node;
-                 literal_token = token literal_syntax_token;
-               })
-      | [] -> unsupported_expression node)
-  | Syntax_kind.CHAR_LITERAL -> (
-      match direct_non_trivia_tokens node with
-      | literal_syntax_token :: _ ->
-          Cst.Expression.Literal
-            (Cst.Literal.Char
-               {
-                 syntax_node = node;
-                 literal_token = token literal_syntax_token;
-               })
-      | [] -> unsupported_expression node)
-  | Syntax_kind.BOOL_LITERAL -> (
-      match direct_non_trivia_tokens node with
-      | literal_syntax_token :: _ ->
-          Cst.Expression.Literal
-            (Cst.Literal.Bool
-               {
-                 syntax_node = node;
-                 literal_token = token literal_syntax_token;
-               })
-      | [] -> unsupported_expression node)
+  | Syntax_kind.STRING_LITERAL | Syntax_kind.INT_LITERAL
+  | Syntax_kind.FLOAT_LITERAL | Syntax_kind.CHAR_LITERAL
+  | Syntax_kind.BOOL_LITERAL ->
+      Cst.Expression.Literal (constant_from_node node)
   | Syntax_kind.ASSERT_EXPR -> (
       match
         direct_non_trivia_nodes node

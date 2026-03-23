@@ -224,7 +224,11 @@
                               "start": 31,
                               "end": 32
                             }
-                          }
+                          },
+                          "base": "decimal",
+                          "prefix": null,
+                          "digits": "1",
+                          "suffix": null
                         }
                       }
                     },
@@ -269,7 +273,11 @@
                                       "start": 35,
                                       "end": 36
                                     }
-                                  }
+                                  },
+                                  "base": "decimal",
+                                  "prefix": null,
+                                  "digits": "2",
+                                  "suffix": null
                                 }
                               }
                             },
@@ -293,7 +301,11 @@
                                       "start": 38,
                                       "end": 39
                                     }
-                                  }
+                                  },
+                                  "base": "decimal",
+                                  "prefix": null,
+                                  "digits": "3",
+                                  "suffix": null
                                 }
                               }
                             }
@@ -324,7 +336,8 @@
                         "start": 44,
                         "end": 48
                       }
-                    }
+                    },
+                    "value": true
                   }
                 }
               },
@@ -365,7 +378,8 @@
                         "start": 56,
                         "end": 61
                       }
-                    }
+                    },
+                    "value": false
                   }
                 }
               }

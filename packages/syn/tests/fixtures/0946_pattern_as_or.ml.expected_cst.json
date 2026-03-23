@@ -159,7 +159,11 @@
                                 "start": 24,
                                 "end": 25
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "1",
+                            "suffix": null
                           }
                         },
                         {
@@ -180,7 +184,11 @@
                                 "start": 28,
                                 "end": 29
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "2",
+                            "suffix": null
                           }
                         },
                         {
@@ -201,7 +209,11 @@
                                 "start": 32,
                                 "end": 33
                               }
-                            }
+                            },
+                            "base": "decimal",
+                            "prefix": null,
+                            "digits": "3",
+                            "suffix": null
                           }
                         }
                       ]
@@ -283,7 +295,11 @@
                         "start": 52,
                         "end": 53
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

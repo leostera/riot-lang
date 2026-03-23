@@ -954,7 +954,12 @@
                           "start": 248,
                           "end": 251
                         }
-                      }
+                      },
+                      "delimiter": {
+                        "tag": "double_quote"
+                      },
+                      "contents": "T",
+                      "terminated": true
                     }
                   }
                 }
@@ -2345,7 +2350,12 @@
                                         "start": 578,
                                         "end": 581
                                       }
-                                    }
+                                    },
+                                    "delimiter": {
+                                      "tag": "double_quote"
+                                    },
+                                    "contents": "F",
+                                    "terminated": true
                                   }
                                 }
                               }
@@ -2407,7 +2417,12 @@
                                         "start": 590,
                                         "end": 593
                                       }
-                                    }
+                                    },
+                                    "delimiter": {
+                                      "tag": "double_quote"
+                                    },
+                                    "contents": "X",
+                                    "terminated": true
                                   }
                                 }
                               }
@@ -3232,7 +3247,12 @@
                                           "start": 806,
                                           "end": 813
                                         }
-                                      }
+                                      },
+                                      "delimiter": {
+                                        "tag": "double_quote"
+                                      },
+                                      "contents": "tuple",
+                                      "terminated": true
                                     }
                                   }
                                 },
@@ -3472,7 +3492,12 @@
                                           "start": 872,
                                           "end": 880
                                         }
-                                      }
+                                      },
+                                      "delimiter": {
+                                        "tag": "double_quote"
+                                      },
+                                      "contents": "record",
+                                      "terminated": true
                                     }
                                   }
                                 },
@@ -3712,7 +3737,12 @@
                                           "start": 946,
                                           "end": 955
                                         }
-                                      }
+                                      },
+                                      "delimiter": {
+                                        "tag": "double_quote"
+                                      },
+                                      "contents": "no_args",
+                                      "terminated": true
                                     }
                                   }
                                 },
@@ -4466,7 +4496,12 @@
                                           "start": 1145,
                                           "end": 1173
                                         }
-                                      }
+                                      },
+                                      "delimiter": {
+                                        "tag": "double_quote"
+                                      },
+                                      "contents": "record_with_functor_fields",
+                                      "terminated": true
                                     }
                                   }
                                 },
@@ -5008,7 +5043,12 @@
                                           "start": 1318,
                                           "end": 1337
                                         }
-                                      }
+                                      },
+                                      "delimiter": {
+                                        "tag": "double_quote"
+                                      },
+                                      "contents": "empty_poly_binder",
+                                      "terminated": true
                                     }
                                   }
                                 },
@@ -5597,7 +5637,12 @@
                                                   "start": 1511,
                                                   "end": 1522
                                                 }
-                                              }
+                                              },
+                                              "delimiter": {
+                                                "tag": "double_quote"
+                                              },
+                                              "contents": "empty_let",
+                                              "terminated": true
                                             }
                                           }
                                         },
@@ -5902,7 +5947,12 @@
                                                   "start": 1599,
                                                   "end": 1611
                                                 }
-                                              }
+                                              },
+                                              "delimiter": {
+                                                "tag": "double_quote"
+                                              },
+                                              "contents": "empty_type",
+                                              "terminated": true
                                             }
                                           }
                                         },
@@ -6491,7 +6541,12 @@
                                                   "start": 1793,
                                                   "end": 1806
                                                 }
-                                              }
+                                              },
+                                              "delimiter": {
+                                                "tag": "double_quote"
+                                              },
+                                              "contents": "missing_rhs",
+                                              "terminated": true
                                             }
                                           }
                                         },
@@ -6900,7 +6955,12 @@
                         "start": 1912,
                         "end": 1925
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "illegal ppx",
+                    "terminated": true
                   }
                 }
               }

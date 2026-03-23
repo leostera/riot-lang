@@ -120,7 +120,11 @@
                       "start": 30,
                       "end": 31
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               "and_bindings": [],
@@ -187,7 +191,11 @@
                         "start": 43,
                         "end": 44
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 }
               },
@@ -257,7 +265,11 @@
                       "start": 56,
                       "end": 57
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               }
             },

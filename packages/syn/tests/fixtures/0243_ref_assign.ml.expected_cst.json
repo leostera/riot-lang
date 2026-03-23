@@ -111,7 +111,11 @@
                     "start": 13,
                     "end": 15
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "10",
+                "suffix": null
               }
             }
           },

@@ -84,7 +84,11 @@
                       "start": 11,
                       "end": 12
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               "operator_token": {
@@ -113,7 +117,11 @@
                       "start": 15,
                       "end": 16
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "2",
+                  "suffix": null
                 }
               }
             },
@@ -135,7 +143,12 @@
                     "start": 22,
                     "end": 27
                   }
-                }
+                },
+                "delimiter": {
+                  "tag": "double_quote"
+                },
+                "contents": "yes",
+                "terminated": true
               }
             },
             "else_branch": {
@@ -156,7 +169,12 @@
                     "start": 33,
                     "end": 37
                   }
-                }
+                },
+                "delimiter": {
+                  "tag": "double_quote"
+                },
+                "contents": "no",
+                "terminated": true
               }
             }
           },

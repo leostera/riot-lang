@@ -715,7 +715,11 @@
                         "start": 118,
                         "end": 119
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

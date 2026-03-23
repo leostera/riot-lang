@@ -310,7 +310,11 @@
                         "start": 78,
                         "end": 79
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }

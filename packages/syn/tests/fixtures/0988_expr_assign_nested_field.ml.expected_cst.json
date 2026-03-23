@@ -135,7 +135,11 @@
                     "start": 27,
                     "end": 30
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "100",
+                "suffix": null
               }
             }
           },

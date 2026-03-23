@@ -234,7 +234,12 @@
                         "start": 45,
                         "end": 52
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "color",
+                    "terminated": true
                   }
                 }
               },
@@ -275,7 +280,12 @@
                         "start": 60,
                         "end": 67
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "other",
+                    "terminated": true
                   }
                 }
               }

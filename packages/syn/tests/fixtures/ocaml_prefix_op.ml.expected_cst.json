@@ -47,7 +47,11 @@
                   "start": 64,
                   "end": 65
                 }
-              }
+              },
+              "base": "decimal",
+              "prefix": null,
+              "digits": "1",
+              "suffix": null
             }
           }
         }
@@ -72,7 +76,11 @@
                 "start": 68,
                 "end": 69
               }
-            }
+            },
+            "base": "decimal",
+            "prefix": null,
+            "digits": "1",
+            "suffix": null
           }
         }
       },
@@ -113,7 +121,11 @@
                   "start": 73,
                   "end": 76
                 }
-              }
+              },
+              "integral_digits": "1",
+              "fractional_digits": "0",
+              "exponent": null,
+              "suffix": null
             }
           }
         }
@@ -138,7 +150,11 @@
                 "start": 79,
                 "end": 82
               }
-            }
+            },
+            "integral_digits": "1",
+            "fractional_digits": "0",
+            "exponent": null,
+            "suffix": null
           }
         }
       },
@@ -179,7 +195,11 @@
                   "start": 86,
                   "end": 89
                 }
-              }
+              },
+              "integral_digits": "1",
+              "fractional_digits": "0",
+              "exponent": null,
+              "suffix": null
             }
           }
         }
@@ -204,7 +224,11 @@
                 "start": 92,
                 "end": 95
               }
-            }
+            },
+            "integral_digits": "1",
+            "fractional_digits": "0",
+            "exponent": null,
+            "suffix": null
           }
         }
       },
@@ -262,7 +286,11 @@
                     "start": 123,
                     "end": 124
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "2",
+                "suffix": null
               }
             }
           }
@@ -323,7 +351,11 @@
                       "start": 177,
                       "end": 178
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               "argument": {
@@ -428,7 +460,11 @@
                       "start": 191,
                       "end": 192
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               "argument": {
@@ -533,7 +569,11 @@
                       "start": 205,
                       "end": 208
                     }
-                  }
+                  },
+                  "integral_digits": "1",
+                  "fractional_digits": "0",
+                  "exponent": null,
+                  "suffix": null
                 }
               },
               "argument": {
@@ -638,7 +678,11 @@
                       "start": 221,
                       "end": 224
                     }
-                  }
+                  },
+                  "integral_digits": "1",
+                  "fractional_digits": "0",
+                  "exponent": null,
+                  "suffix": null
                 }
               },
               "argument": {
@@ -743,7 +787,11 @@
                       "start": 238,
                       "end": 241
                     }
-                  }
+                  },
+                  "integral_digits": "1",
+                  "fractional_digits": "0",
+                  "exponent": null,
+                  "suffix": null
                 }
               },
               "argument": {
@@ -848,7 +896,11 @@
                       "start": 255,
                       "end": 258
                     }
-                  }
+                  },
+                  "integral_digits": "1",
+                  "fractional_digits": "0",
+                  "exponent": null,
+                  "suffix": null
                 }
               },
               "argument": {
@@ -970,7 +1022,11 @@
                         "start": 272,
                         "end": 273
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "2",
+                    "suffix": null
                   }
                 },
                 "argument": {

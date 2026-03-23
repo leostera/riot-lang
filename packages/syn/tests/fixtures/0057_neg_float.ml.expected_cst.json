@@ -83,7 +83,11 @@
                     "start": 9,
                     "end": 13
                   }
-                }
+                },
+                "integral_digits": "3",
+                "fractional_digits": "14",
+                "exponent": null,
+                "suffix": null
               }
             }
           },

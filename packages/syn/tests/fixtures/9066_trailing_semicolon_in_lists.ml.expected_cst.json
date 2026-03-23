@@ -76,7 +76,11 @@
                       "start": 154,
                       "end": 155
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               }
             ]
@@ -150,7 +154,11 @@
                       "start": 230,
                       "end": 231
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               {
@@ -171,7 +179,11 @@
                       "start": 233,
                       "end": 234
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "2",
+                  "suffix": null
                 }
               },
               {
@@ -192,7 +204,11 @@
                       "start": 236,
                       "end": 237
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "3",
+                  "suffix": null
                 }
               }
             ]
@@ -328,7 +344,11 @@
                           "start": 381,
                           "end": 382
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   },
                   {
@@ -349,7 +369,11 @@
                           "start": 384,
                           "end": 385
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   }
                 ]
@@ -382,7 +406,11 @@
                           "start": 394,
                           "end": 395
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "3",
+                      "suffix": null
                     }
                   },
                   {
@@ -403,7 +431,11 @@
                           "start": 397,
                           "end": 398
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "4",
+                      "suffix": null
                     }
                   }
                 ]
@@ -488,7 +520,11 @@
                         "start": 488,
                         "end": 489
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 },
                 "operator_token": {
@@ -517,7 +553,11 @@
                         "start": 492,
                         "end": 493
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "2",
+                    "suffix": null
                   }
                 }
               },
@@ -548,7 +588,11 @@
                         "start": 497,
                         "end": 498
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "3",
+                    "suffix": null
                   }
                 },
                 "operator_token": {
@@ -577,7 +621,11 @@
                         "start": 501,
                         "end": 502
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "4",
+                    "suffix": null
                   }
                 }
               },
@@ -608,7 +656,11 @@
                         "start": 506,
                         "end": 507
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "5",
+                    "suffix": null
                   }
                 },
                 "operator_token": {
@@ -637,7 +689,11 @@
                         "start": 510,
                         "end": 511
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "6",
+                    "suffix": null
                   }
                 }
               }
@@ -836,7 +892,11 @@
                               "start": 579,
                               "end": 580
                             }
-                          }
+                          },
+                          "base": "decimal",
+                          "prefix": null,
+                          "digits": "1",
+                          "suffix": null
                         }
                       }
                     }
@@ -874,7 +934,11 @@
                           "start": 584,
                           "end": 585
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   },
                   {
@@ -895,7 +959,11 @@
                           "start": 587,
                           "end": 588
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   },
                   {
@@ -916,7 +984,11 @@
                           "start": 590,
                           "end": 591
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "3",
+                      "suffix": null
                     }
                   }
                 ]
@@ -1258,7 +1330,11 @@
                         "start": 738,
                         "end": 739
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               }
@@ -1333,7 +1409,11 @@
                       "start": 830,
                       "end": 831
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               }
             ]
@@ -1407,7 +1487,11 @@
                       "start": 909,
                       "end": 910
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
                 }
               },
               {
@@ -1428,7 +1512,11 @@
                       "start": 912,
                       "end": 913
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "2",
+                  "suffix": null
                 }
               },
               {
@@ -1449,7 +1537,11 @@
                       "start": 915,
                       "end": 916
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "3",
+                  "suffix": null
                 }
               }
             ]
@@ -1585,7 +1677,11 @@
                           "start": 1069,
                           "end": 1070
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   },
                   {
@@ -1606,7 +1702,11 @@
                           "start": 1072,
                           "end": 1073
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   }
                 ]
@@ -1639,7 +1739,11 @@
                           "start": 1084,
                           "end": 1085
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "3",
+                      "suffix": null
                     }
                   },
                   {
@@ -1660,7 +1764,11 @@
                           "start": 1087,
                           "end": 1088
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "4",
+                      "suffix": null
                     }
                   }
                 ]
@@ -1793,7 +1901,12 @@
                               "start": 1275,
                               "end": 1278
                             }
-                          }
+                          },
+                          "delimiter": {
+                            "tag": "double_quote"
+                          },
+                          "contents": "a",
+                          "terminated": true
                         }
                       }
                     }
@@ -1816,7 +1929,11 @@
                           "start": 1280,
                           "end": 1281
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   }
                 }
@@ -1896,7 +2013,12 @@
                               "start": 1299,
                               "end": 1302
                             }
-                          }
+                          },
+                          "delimiter": {
+                            "tag": "double_quote"
+                          },
+                          "contents": "b",
+                          "terminated": true
                         }
                       }
                     }
@@ -1919,7 +2041,11 @@
                           "start": 1304,
                           "end": 1305
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   }
                 }
@@ -2052,7 +2178,12 @@
                               "start": 1396,
                               "end": 1399
                             }
-                          }
+                          },
+                          "delimiter": {
+                            "tag": "double_quote"
+                          },
+                          "contents": "a",
+                          "terminated": true
                         }
                       }
                     }
@@ -2075,7 +2206,11 @@
                           "start": 1401,
                           "end": 1402
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   }
                 }
@@ -2155,7 +2290,12 @@
                               "start": 1420,
                               "end": 1423
                             }
-                          }
+                          },
+                          "delimiter": {
+                            "tag": "double_quote"
+                          },
+                          "contents": "b",
+                          "terminated": true
                         }
                       }
                     }
@@ -2178,7 +2318,11 @@
                           "start": 1425,
                           "end": 1426
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   }
                 }
@@ -2290,7 +2434,11 @@
                           "start": 1500,
                           "end": 1501
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   },
                   "and_bindings": [],
@@ -2357,7 +2505,11 @@
                             "start": 1509,
                             "end": 1510
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "1",
+                        "suffix": null
                       }
                     }
                   },
@@ -2418,7 +2570,11 @@
                           "start": 1524,
                           "end": 1525
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   },
                   "and_bindings": [],
@@ -2485,7 +2641,11 @@
                             "start": 1533,
                             "end": 1534
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "2",
+                        "suffix": null
                       }
                     }
                   },

@@ -1,5 +1,3 @@
-open Std
-
 (** Lossless concrete syntax tree (CST) nodes produced from successful `syn`
     parses.
 
@@ -27,6 +25,9 @@ open Std
     When that happens, the documentation calls it out explicitly so consumers
     know which details live in the red tree instead of dedicated fields.
 *)
+
+open Std
+
 type syntax_node = (Syntax_kind.t, string) Ceibo.Red.syntax_node
 (** A red-tree node from Ceibo.
 
@@ -1164,49 +1165,142 @@ module ClassTypeField : sig
   val syntax_node : t -> syntax_node
 end
 
-(** Literal forms accepted directly in pattern position.
+(** How a string literal is delimited in source.
 
-    These are the exact constant-pattern shapes that the CST lifts without
-    wrapping them in a more general `pattern` payload.
+    `"..."` uses `DoubleQuote`, while OCaml's quoted-string form uses
+    `Quoted { marker }`, where `marker` is the identifier between `{` and `|`.
+
+    Examples:
+
+    ```ocaml,norun
+    "hello"
+    {tag|hello|tag}
+    ```
 *)
-module PatternLiteral : sig
+type string_delimiter =
+  | DoubleQuote
+  | Quoted of { marker : string }
+
+(** The numeric base of an integer literal. *)
+type integer_base =
+  | Decimal
+  | Hexadecimal
+  | Octal
+  | Binary
+
+(** The explicit sign written in a float exponent. *)
+type exponent_sign =
+  | Positive
+  | Negative
+
+(** A string literal with delimiter and body details preserved.
+
+    `contents` stores the literal body exactly as written between the
+    delimiters. Escape sequences remain escaped.
+*)
+type string_constant = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+  delimiter : string_delimiter;
+  contents : string;
+  terminated : bool;
+}
+
+(** An integer literal with its base and optional suffix preserved.
+
+    `digits` stores the exact digits as written, including underscores.
+
+    Examples:
+
+    ```ocaml,norun
+    42
+    0xff
+    0b1111_0000l
+    ```
+*)
+type integer_constant = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+  base : integer_base;
+  prefix : string option;
+  digits : string;
+  suffix : string option;
+}
+
+(** The exponent part of a floating-point literal.
+
+    Examples include the `e-5` in `1.0e-5` and the `E10` in `3.14E10`.
+*)
+type float_exponent = {
+  marker : string;
+  sign : exponent_sign option;
+  digits : string;
+}
+
+(** A floating-point literal with its written pieces preserved.
+
+    `integral_digits` and `fractional_digits` keep underscores exactly as they
+    appeared in source.
+
+    Examples:
+
+    ```ocaml,norun
+    3.14
+    2.0e-5
+    1.2g
+    ```
+*)
+type float_constant = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+  integral_digits : string;
+  fractional_digits : string;
+  exponent : float_exponent option;
+  suffix : string option;
+}
+
+(** A character literal with its inner contents preserved exactly as written.
+
+    For example, `contents = "\\n"` for the literal `'\n'`.
+*)
+type char_constant = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+  contents : string;
+}
+
+(** A boolean literal such as `true` or `false`. *)
+type bool_constant = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+  value : bool;
+}
+
+(** Literal forms accepted directly in pattern and expression position.
+
+    The constructors intentionally preserve the written constant structure
+    instead of collapsing everything to a single token.
+*)
+module Constant : sig
   type t =
-    | String of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-        (** String literal patterns that match a specific quoted string.
-
-            Examples:
-
-            ```ocaml,norun
-            "hello"
-            "world"
-            ```
-        *)
-    | Int of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-        (** Integer literal patterns such as `0`, `42`, or `2112`. *)
-    | Float of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-        (** Floating-point literal patterns such as `0.0` or `3.14`. *)
-    | Char of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-        (** Character literal patterns such as `'a'` or `'\n'`. *)
-    | Bool of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-        (** Boolean literal patterns `true` and `false`. *)
+    | String of string_constant
+        (** String literals such as `"hello"` or `{tag|hello|tag}`. *)
+    | Int of integer_constant
+        (** Integer literals such as `0`, `42`, or `0xffL`. *)
+    | Float of float_constant
+        (** Floating-point literals such as `3.14` or `2.0e-5`. *)
+    | Char of char_constant
+        (** Character literals such as `'a'` or `'\n'`. *)
+    | Bool of bool_constant
+        (** Boolean literals `true` and `false`. *)
     | Unit of { syntax_node : syntax_node }
-        (** The unit literal pattern `()`. *)
+        (** The unit literal `()`. *)
+
+  val syntax_node : t -> syntax_node
 end
+
+(** Alias of {!Constant} used for direct literal patterns. *)
+module PatternLiteral = Constant
 
 (** Alias for `PatternLiteral.t`. *)
 type pattern_literal = PatternLiteral.t
@@ -1376,13 +1470,13 @@ and exception_pattern = {
 
 (** Payload for `Pattern.Range`.
 
-    The public CST preserves the lower and upper endpoint tokens exactly as they
-    appeared in source.
+    Both endpoints are lifted as parsed constants so tools can reason about the
+    written interval structure without reparsing token text.
 *)
 and range_pattern = {
   syntax_node : syntax_node;
-  lower_token : Token.t;
-  upper_token : Token.t;
+  lower : pattern_literal;
+  upper : pattern_literal;
 }
 
 (** Payload for `Pattern.Operator`.
@@ -1689,41 +1783,8 @@ module Parameter : sig
   val has_default : t -> bool
 end
 
-(** Literal forms accepted directly in expression position.
-
-    These are the same constant categories as `PatternLiteral`, but used for
-    expressions instead of patterns.
-*)
-module Literal : sig
-  type t =
-    | String of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-        (** String literal expressions such as `"hello"` or `"world"`. *)
-    | Int of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-        (** Integer literal expressions such as `0`, `42`, or `0xff`. *)
-    | Float of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-        (** Floating-point literal expressions such as `3.14`. *)
-    | Char of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-        (** Character literal expressions such as `'a'`. *)
-    | Bool of {
-        syntax_node : syntax_node;
-        literal_token : Token.t;
-      }
-        (** Boolean literal expressions `true` and `false`. *)
-    | Unit of { syntax_node : syntax_node }
-        (** The unit literal expression `()`. *)
-end
+(** Alias of {!Constant} used for direct literal expressions. *)
+module Literal = Constant
 
 (** Alias for `Literal.t`. *)
 type literal = Literal.t

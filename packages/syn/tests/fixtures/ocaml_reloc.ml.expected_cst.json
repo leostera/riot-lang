@@ -93,7 +93,13 @@
                     "start": 239,
                     "end": 300
                   }
-                }
+                },
+                "delimiter": {
+                  "tag": "quoted",
+                  "marker": ""
+                },
+                "contents": " ( (* comment *) (( \"contant\" [@attr] )  (* comment *))) ",
+                "terminated": true
               }
             },
             "and_bindings": [],

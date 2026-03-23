@@ -75,7 +75,11 @@
                     "start": 8,
                     "end": 12
                   }
-                }
+                },
+                "integral_digits": "1",
+                "fractional_digits": "5",
+                "exponent": null,
+                "suffix": "e"
               }
             },
             "argument": {
@@ -98,7 +102,11 @@
                       "start": 12,
                       "end": 14
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "10",
+                  "suffix": null
                 }
               }
             }

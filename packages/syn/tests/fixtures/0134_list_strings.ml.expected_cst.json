@@ -76,7 +76,12 @@
                       "start": 10,
                       "end": 13
                     }
-                  }
+                  },
+                  "delimiter": {
+                    "tag": "double_quote"
+                  },
+                  "contents": "a",
+                  "terminated": true
                 }
               },
               {
@@ -97,7 +102,12 @@
                       "start": 15,
                       "end": 18
                     }
-                  }
+                  },
+                  "delimiter": {
+                    "tag": "double_quote"
+                  },
+                  "contents": "b",
+                  "terminated": true
                 }
               },
               {
@@ -118,7 +128,12 @@
                       "start": 20,
                       "end": 23
                     }
-                  }
+                  },
+                  "delimiter": {
+                    "tag": "double_quote"
+                  },
+                  "contents": "c",
+                  "terminated": true
                 }
               }
             ]

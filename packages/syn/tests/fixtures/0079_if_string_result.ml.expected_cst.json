@@ -103,7 +103,12 @@
                     "start": 21,
                     "end": 25
                   }
-                }
+                },
+                "delimiter": {
+                  "tag": "double_quote"
+                },
+                "contents": "on",
+                "terminated": true
               }
             },
             "else_branch": {
@@ -124,7 +129,12 @@
                     "start": 31,
                     "end": 36
                   }
-                }
+                },
+                "delimiter": {
+                  "tag": "double_quote"
+                },
+                "contents": "off",
+                "terminated": true
               }
             }
           },

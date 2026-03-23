@@ -92,7 +92,11 @@
                       "start": 18,
                       "end": 19
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "0",
+                  "suffix": null
                 }
               },
               "direction": {
@@ -124,7 +128,11 @@
                       "start": 23,
                       "end": 24
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "5",
+                  "suffix": null
                 }
               },
               "body": {
@@ -159,7 +167,11 @@
                     "start": 45,
                     "end": 46
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "0",
+                "suffix": null
               }
             }
           },

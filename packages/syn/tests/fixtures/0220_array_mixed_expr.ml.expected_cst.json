@@ -85,7 +85,11 @@
                         "start": 11,
                         "end": 12
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   }
                 },
                 "operator_token": {
@@ -114,7 +118,11 @@
                         "start": 15,
                         "end": 16
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "2",
+                    "suffix": null
                   }
                 }
               },
@@ -175,7 +183,11 @@
                           "start": 20,
                           "end": 21
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "3",
+                      "suffix": null
                     }
                   }
                 }

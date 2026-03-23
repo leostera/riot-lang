@@ -124,7 +124,11 @@
                         "start": 29,
                         "end": 30
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
                   }
                 }
               },

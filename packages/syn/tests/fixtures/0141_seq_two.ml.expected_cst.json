@@ -114,7 +114,12 @@
                         "start": 16,
                         "end": 23
                       }
-                    }
+                    },
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "hello",
+                    "terminated": true
                   }
                 }
               }
@@ -137,7 +142,11 @@
                     "start": 27,
                     "end": 29
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "42",
+                "suffix": null
               }
             }
           },

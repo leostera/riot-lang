@@ -123,7 +123,11 @@
                         "start": 30,
                         "end": 32
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "42",
+                    "suffix": null
                   }
                 }
               }

@@ -105,7 +105,11 @@
                       "start": 61,
                       "end": 62
                     }
-                  }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "5",
+                  "suffix": null
                 }
               }
             }
@@ -169,7 +173,11 @@
                   "start": 71,
                   "end": 75
                 }
-              }
+              },
+              "integral_digits": "3",
+              "fractional_digits": "14",
+              "exponent": null,
+              "suffix": null
             }
           },
           "is_recursive": false
@@ -296,7 +304,11 @@
                           "start": 91,
                           "end": 92
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   }
                 }
@@ -427,7 +439,11 @@
                           "start": 109,
                           "end": 112
                         }
-                      }
+                      },
+                      "integral_digits": "2",
+                      "fractional_digits": "5",
+                      "exponent": null,
+                      "suffix": null
                     }
                   }
                 }
@@ -696,7 +712,11 @@
                           "start": 145,
                           "end": 147
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "42",
+                      "suffix": null
                     }
                   }
                 }

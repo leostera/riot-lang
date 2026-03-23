@@ -102,7 +102,11 @@
                           "start": 9,
                           "end": 10
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
                     }
                   },
                   "operator_token": {
@@ -131,7 +135,11 @@
                           "start": 13,
                           "end": 14
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   }
                 }
@@ -180,7 +188,11 @@
                           "start": 19,
                           "end": 20
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "3",
+                      "suffix": null
                     }
                   },
                   "operator_token": {
@@ -209,7 +221,11 @@
                           "start": 23,
                           "end": 24
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "4",
+                      "suffix": null
                     }
                   }
                 }
@@ -268,7 +284,11 @@
                           "start": 29,
                           "end": 30
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "5",
+                      "suffix": null
                     }
                   },
                   "operator_token": {
@@ -297,7 +317,11 @@
                           "start": 33,
                           "end": 34
                         }
-                      }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "6",
+                      "suffix": null
                     }
                   }
                 },
@@ -345,7 +369,11 @@
                             "start": 38,
                             "end": 39
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "7",
+                        "suffix": null
                       }
                     },
                     "operator_token": {
@@ -374,7 +402,11 @@
                             "start": 42,
                             "end": 43
                           }
-                        }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "8",
+                        "suffix": null
                       }
                     }
                   }

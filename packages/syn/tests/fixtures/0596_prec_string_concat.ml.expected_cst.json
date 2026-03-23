@@ -75,7 +75,12 @@
                     "start": 8,
                     "end": 11
                   }
-                }
+                },
+                "delimiter": {
+                  "tag": "double_quote"
+                },
+                "contents": "a",
+                "terminated": true
               }
             },
             "operator_token": {
@@ -113,7 +118,12 @@
                       "start": 14,
                       "end": 17
                     }
-                  }
+                  },
+                  "delimiter": {
+                    "tag": "double_quote"
+                  },
+                  "contents": "b",
+                  "terminated": true
                 }
               },
               "operator_token": {
@@ -142,7 +152,12 @@
                       "start": 20,
                       "end": 23
                     }
-                  }
+                  },
+                  "delimiter": {
+                    "tag": "double_quote"
+                  },
+                  "contents": "c",
+                  "terminated": true
                 }
               }
             }

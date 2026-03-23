@@ -222,7 +222,11 @@
                               "start": 36,
                               "end": 37
                             }
-                          }
+                          },
+                          "base": "decimal",
+                          "prefix": null,
+                          "digits": "1",
+                          "suffix": null
                         }
                       }
                     }

@@ -99,7 +99,11 @@
                     "start": 14,
                     "end": 16
                   }
-                }
+                },
+                "base": "decimal",
+                "prefix": null,
+                "digits": "42",
+                "suffix": null
               }
             }
           },
