@@ -6,6 +6,8 @@ let rules () =
     No_double_list_rev.rule ();
     Prefer_iter_over_ignored_map.rule ();
     Prefer_list_is_empty.rule ();
+    Prefer_option_map_over_manual_match.rule ();
+    Prefer_result_map_over_manual_match.rule ();
   ]
 
 let explanations () =
@@ -14,3 +16,5 @@ let explanations () =
   @ No_double_list_rev.explanations ()
   @ Prefer_iter_over_ignored_map.explanations ()
   @ Prefer_list_is_empty.explanations ()
+  @ Prefer_option_map_over_manual_match.explanations ()
+  @ Prefer_result_map_over_manual_match.explanations ()

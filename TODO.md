@@ -79,9 +79,9 @@ This file is _yours_. Keep it up to date after every big change.
 - [x] `ignore (List.map f xs)` / `ignore (Iter.map f iter)` should prefer the corresponding iterator form
 - [x] `List.length x == 0` / `List.length x > 0` should prefer `List.is_empty`
 - [ ] Constants like `3.14` should prefer `Std.Math.PI`
-- [ ] Prefer combinators over manual matches:
-  - [ ] `Option.map`
-  - [ ] `Result.map`
+- [x] Prefer combinators over manual matches:
+  - [x] `Option.map`
+  - [x] `Result.map`
 - [ ] Suggest `Result.protect`-style helpers instead of exceptions for flow control where appropriate
 - [ ] Replace `x_of_y` / `string_of_int`-style names with the newer module APIs:
   - [ ] `string_of_int -> Int.to_string`

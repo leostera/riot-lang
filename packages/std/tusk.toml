@@ -12,6 +12,8 @@ rules = [
   "no-double-list-rev",
   "prefer-iter-over-ignored-map",
   "prefer-list-is-empty",
+  "prefer-option-map-over-manual-match",
+  "prefer-result-map-over-manual-match",
 ]
 
 [dependencies]

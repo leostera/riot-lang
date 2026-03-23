@@ -107,6 +107,7 @@ let plan ~workspace_root ~target_dir_root providers =
     Path.(target_dir_root / Path.v "tusk-fix" / Path.v "fused" / Path.v hash)
   in
   let workspace_root = Path.(generated_dir / Path.v "workspace") in
+  let build_dir_root = Path.(generated_dir / Path.v "build") in
   let package_dir = Path.(workspace_root / Path.v "packages" / Path.v "tusk-fix-fused") in
   let src_dir = Path.(package_dir / Path.v "src") in
   let providers_dir = Path.(generated_dir / Path.v "providers") in
@@ -128,7 +129,10 @@ let plan ~workspace_root ~target_dir_root providers =
       registry_path = Path.(generated_dir / Path.v "fused_registry.ml");
       binary_path =
         Path.(
-          Tusk_model.Tusk_dirs.out_dir ~workspace_root
+          build_dir_root
+          / Path.v "debug"
+          / Path.v (Tusk_model.Tusk_dirs.host_target ())
+          / Path.v "out"
           / Path.v (package_name ^ "/" ^ binary_name));
       package_name;
       binary_name;

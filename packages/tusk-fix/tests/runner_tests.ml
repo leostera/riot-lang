@@ -2154,6 +2154,27 @@ let render x y z =
         Test.assert_true (String.contains source "Provider_std_std");
         Test.assert_true (String.contains source "Provider_suri_suri");
         Ok ());
+    Test.case "fused runtime binary path uses generated build dir" (fun () ->
+        let provider =
+          Tusk_model.Fix_provider.
+            {
+              name = "std";
+              package_name = "std";
+              package_path = Path.v "packages/std";
+              source_path = Path.v "/workspace/packages/std/fix/tusk_fix_rules.ml";
+              rules = [ "std:no-stdlib" ];
+            }
+        in
+        let plan =
+          Tusk_fix.Fused_runtime.plan
+            ~workspace_root:(Path.v "/workspace")
+            ~target_dir_root:Path.(Path.v "/workspace" / Path.v "_build")
+            [ provider ]
+        in
+        let binary_path = Path.to_string plan.binary_path in
+        Test.assert_true (String.contains binary_path "/build/debug/");
+        Test.assert_false (String.contains binary_path "/workspace/_build/debug/");
+        Ok ());
     Test.case "prefer-record-destructuring-parameters flags immediate record unpacking" (fun () ->
         let source =
           "let encode user = let { name; email; _ } = user in [ name; email ]\n"
