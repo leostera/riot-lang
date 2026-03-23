@@ -73,6 +73,8 @@ open Std
 (** # Types *)
 
 type parse_result = {
+  source : string;
+      (** The original source text that produced this parse result. *)
   kind : [ `Implementation | `Interface ];
       (** Which file grammar produced this parse result. *)
   tree : (Syntax_kind.t, string) Ceibo.Green.node;

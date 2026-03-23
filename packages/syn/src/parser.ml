@@ -12,6 +12,7 @@ open Std.Collections
     - TDD approach with test_runner.py *)
 
 type parse_result = {
+  source : string;
   kind : [ `Implementation | `Interface ];
   tree : (Syntax_kind.t, string) Ceibo.Green.node;
   diagnostics : Diagnostic.t list;
@@ -10744,7 +10745,7 @@ and parse ~cst_kind ~parse_item ~source ~tokens =
   let tree = make_node Syntax_kind.SOURCE_FILE children in
 
   let diagnostics = List.rev (Cell.get parser.diagnostics) |> dedupe_diagnostics in
-  { kind = cst_kind; tree; diagnostics }
+  { source; kind = cst_kind; tree; diagnostics }
 
 (** Parse interface file (.mli) *)
 let parse_interface ~source tokens =

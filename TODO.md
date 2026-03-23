@@ -26,6 +26,20 @@ This file is _yours_. Keep it up to date after every big change.
 
 ## krasny Checklist
 
+Rough guidelines for formatting decisions:
+* optimize for readability, newlines are cheap
+* ~100 columns is good, we have wider screens now
+* put comments _before_ the item they document! not after. double check the ast parses them well!
+* on type definitions and whenever you can line-break, you should!
+  for ex. type a = | A | B | C should be formattes as
+          type a =
+                 | A 
+                 | B
+                 | C
+  same for match arms, put them one in each line
+* remove parenthesis wherever possible
+* and format large numbers with _s by default: 1000 -> 1_000, 10022 -> 10_022 
+
 ### Bootstrap and Safety
 
 - [x] Initialize the `krasny` package, CLI, focused tests, and expectation harness
@@ -33,15 +47,15 @@ This file is _yours_. Keep it up to date after every big change.
 - [x] Add a focused round-trip syntax-hash invariant test for selected real codebase files
 - [x] Add a dedicated round-trip syntax-hash corpus runner over selected repo files
 - current green corpus: `11` repo files across `krasny`, `syn`, `std`, and `tusk-fix`
-- [ ] Add a `krasny` expectation suite for formatted output, separate from the current lossless-token baseline
-- bootstrap status: `krasny` builds, focused tests pass, the expectation harness runs against the full seeded corpus (`858` passing / `337` failing), and the current formatter is still a lossless token renderer
+- [x] Add a `krasny` expectation suite for formatted output, separate from the current lossless-token baseline
+- bootstrap status: `krasny` builds, focused tests pass, the format expectation runner is green on the first curated block (`9` fixtures), and the round-trip syntax-hash corpus is green on `11` selected repo files
 
 ### Formatter Pipeline
 
 - [ ] Replace the current lossless token renderer with a CST-driven `Doc` lowering pipeline
 - [ ] Introduce the `Doc` / layout engine used by both `krasny format` and future synthetic fix rendering
 - [ ] Add comment and trivia attachment rules to the formatter pipeline
-- [ ] Add Ceibo fallback formatting for parse results whose CST lift fails
+- [x] Require a successful CST lift before formatting; do not pretty-print broken files
 - [ ] Add a codebase smoke runner for `krasny format` over real workspace files
 
 ### Trivia
@@ -52,22 +66,22 @@ This file is _yours_. Keep it up to date after every big change.
 
 ### Literals
 
-- [ ] `INT_LITERAL`
-- [ ] `FLOAT_LITERAL`
-- [ ] `STRING_LITERAL`
+- [x] `INT_LITERAL`
+- [x] `FLOAT_LITERAL`
+- [x] `STRING_LITERAL`
 - [ ] `CHAR_LITERAL`
-- [ ] `BOOL_LITERAL`
+- [x] `BOOL_LITERAL`
 - [ ] `UNIT_LITERAL`
 
 ### Expressions
 
 - [ ] `IDENT_EXPR`
-- [ ] `PATH_EXPR`
+- [x] `PATH_EXPR`
 - [ ] `APPLY_EXPR`
 - [ ] `LABELED_ARG`
 - [ ] `OPTIONAL_ARG`
 - [ ] `INFIX_EXPR`
-- [ ] `PREFIX_EXPR`
+- [x] `PREFIX_EXPR`
 - [ ] `IF_EXPR`
 - [ ] `MATCH_EXPR`
 - [ ] `FUN_EXPR`
@@ -78,7 +92,7 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] `LET_EXPR`
 - [ ] `LET_REC_EXPR`
 - [ ] `SEQUENCE_EXPR`
-- [ ] `PAREN_EXPR`
+- [x] `PAREN_EXPR`
 - [ ] `TUPLE_EXPR`
 - [ ] `LIST_EXPR`
 - [ ] `ARRAY_EXPR`
@@ -170,7 +184,7 @@ This file is _yours_. Keep it up to date after every big change.
 
 ### Top-Level Declarations
 
-- [ ] `LET_BINDING`
+- [x] `LET_BINDING`
 - [ ] `LET_REC_BINDING`
 - [ ] `LET_MUTUAL_DECL`
 - [ ] `TYPE_DECL`
@@ -188,8 +202,8 @@ This file is _yours_. Keep it up to date after every big change.
 
 ### Structural
 
-- [ ] `SOURCE_FILE`
-- [ ] `STRUCTURE`
+- [x] `SOURCE_FILE`
+- [x] `STRUCTURE`
 - [ ] `SIGNATURE`
 - [ ] `MATCH_CASE`
 - [ ] `PATTERN_GUARD`
@@ -203,7 +217,7 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] `ERROR`
 - [ ] `MISSING`
-- [ ] Cover parser-recovery / fallback formatting from Ceibo when CST lifting fails
+- [x] Refuse to format parser-recovery results when CST lifting fails
 
 ## Package Rules
 

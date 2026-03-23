@@ -18,7 +18,9 @@ let parse_file path =
 let assert_roundtrip_hash path =
   let parsed = parse_file path in
   let original_hash = Krasny.syntax_hash parsed in
-  let formatted = Krasny.format parsed in
+  let formatted =
+    Krasny.format parsed |> Result.expect ~msg:"selected repo files should format"
+  in
   let reparsed = Syn.parse ~filename:path formatted in
   let reparsed_hash = Krasny.syntax_hash reparsed in
   Test.assert_equal ~expected:original_hash ~actual:reparsed_hash
@@ -28,13 +30,37 @@ let tests =
     Test.case "format returns the original source for a simple implementation"
       (fun () ->
         let source = "let x = 1 + 2\n" in
-        let actual = parse_ml source |> Krasny.format in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"simple implementations should format"
+        in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
     Test.case "format preserves comments and trivia losslessly for now" (fun () ->
         let source = "(* hi *)\nlet x = 1  +  2\n" in
-        let actual = parse_ml source |> Krasny.format in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"commented sources should format"
+        in
         Test.assert_equal ~expected:source ~actual;
+        Ok ());
+    Test.case "format inserts blank lines between top-level let bindings"
+      (fun () ->
+        let source = "let x = 1\nlet y = 2\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"top-level lets should format"
+        in
+        Test.assert_equal ~expected:"let x = 1\n\nlet y = 2\n" ~actual;
+        Ok ());
+    Test.case "format normalizes parenthesized literals and negative literals"
+      (fun () ->
+        let source = "let x = (1)\nlet y = -2.5\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"simple literals should format"
+        in
+        Test.assert_equal ~expected:"let x = 1\n\nlet y = (-2.5)\n" ~actual;
         Ok ());
     Test.case "format preserves syntax hash for selected codebase files"
       (fun () ->
