@@ -1373,6 +1373,10 @@ type expression =
       (** A `fun` expression with explicit parameters. *)
   | Function of function_expression
       (** A `function` expression made of match cases. *)
+  | LetOperator of let_operator_expression
+      (** A binding-operator expression such as
+          `let* x = expr in body` or
+          `let* x = expr and* y = expr in body`. *)
   | Let of let_expression
       (** A `let ... in ...` or `let rec ... in ...` expression. *)
   | Match of match_expression
@@ -1831,6 +1835,38 @@ and let_binding = {
   is_recursive : bool;
 }
 
+(** A single binding-operator clause inside a `let*`/`let+`-style expression.
+
+    `keyword_token` preserves whether the clause started with `let` or `and`,
+    while `operator_token` keeps the operator suffix such as `*`, `+`, or `=`.
+
+    These clauses are reconstructed from the surrounding `LET_EXPR` token and
+    child-node stream because the parser does not yet emit dedicated clause
+    nodes for binding operators.
+*)
+and binding_operator_binding = {
+  keyword_token : Token.t;
+  operator_token : Token.t;
+  binding_pattern : pattern;
+  bound_value : expression;
+}
+
+(** Payload for `Expression.LetOperator`.
+
+    Covers binding-operator expressions such as:
+
+    ```ocaml,norun
+    let* x = read () in
+    let* x = read () and* y = load () in
+    ```
+*)
+and let_operator_expression = {
+  syntax_node : syntax_node;
+  binding : binding_operator_binding;
+  and_bindings : binding_operator_binding list;
+  body : expression;
+}
+
 (** Payload for `Expression.Let`.
 
     The first binding is split into `binding_pattern` and `bound_value`, while
@@ -1998,6 +2034,7 @@ module Expression : sig
     | LocalOpen of local_open_expression
     | Fun of fun_expression
     | Function of function_expression
+    | LetOperator of let_operator_expression
     | Let of let_expression
     | Match of match_expression
     | Try of try_expression

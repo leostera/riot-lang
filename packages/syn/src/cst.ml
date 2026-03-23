@@ -715,6 +715,7 @@ type expression =
   | LocalOpen of local_open_expression
   | Fun of fun_expression
   | Function of function_expression
+  | LetOperator of let_operator_expression
   | Let of let_expression
   | Match of match_expression
   | Try of try_expression
@@ -987,6 +988,20 @@ and let_binding = {
   is_recursive : bool;
 }
 
+and binding_operator_binding = {
+  keyword_token : Token.t;
+  operator_token : Token.t;
+  binding_pattern : pattern;
+  bound_value : expression;
+}
+
+and let_operator_expression = {
+  syntax_node : syntax_node;
+  binding : binding_operator_binding;
+  and_bindings : binding_operator_binding list;
+  body : expression;
+}
+
 and let_expression = {
   syntax_node : syntax_node;
   binding_pattern : pattern;
@@ -1094,6 +1109,7 @@ module Expression = struct
     | LocalOpen of local_open_expression
     | Fun of fun_expression
     | Function of function_expression
+    | LetOperator of let_operator_expression
     | Let of let_expression
     | Match of match_expression
     | Try of try_expression
@@ -1146,6 +1162,7 @@ module Expression = struct
     | LocalOpen expr -> expr.syntax_node
     | Fun expr -> expr.syntax_node
     | Function expr -> expr.syntax_node
+    | LetOperator expr -> expr.syntax_node
     | Let expr -> expr.syntax_node
     | Match expr -> expr.syntax_node
     | Try expr -> expr.syntax_node

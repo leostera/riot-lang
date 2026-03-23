@@ -777,6 +777,17 @@ and object_member_to_json = function
           ("body", option_to_json expression_to_json body);
         ]
 
+and binding_operator_binding_to_json
+    ({ keyword_token; operator_token; binding_pattern; bound_value } :
+      Cst.binding_operator_binding) =
+  Json.Object
+    [
+      ("keyword_token", token_to_json keyword_token);
+      ("operator_token", token_to_json operator_token);
+      ("binding_pattern", pattern_to_json binding_pattern);
+      ("bound_value", expression_to_json bound_value);
+    ]
+
 and expression_to_json = function
   | Cst.Expression.Path { syntax_node; path } ->
       Json.Object
@@ -1057,6 +1068,15 @@ and expression_to_json = function
           ("tag", Json.String "function");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("cases", Json.Array (List.map match_case_to_json cases));
+        ]
+  | Cst.Expression.LetOperator { syntax_node; binding; and_bindings; body } ->
+      Json.Object
+        [
+          ("tag", Json.String "let_operator");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("binding", binding_operator_binding_to_json binding);
+          ("and_bindings", Json.Array (List.map binding_operator_binding_to_json and_bindings));
+          ("body", expression_to_json body);
         ]
   | Cst.Expression.Let
       { syntax_node; binding_pattern; bound_value; and_bindings; body; is_recursive } ->

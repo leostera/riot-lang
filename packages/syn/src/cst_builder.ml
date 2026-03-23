@@ -534,6 +534,56 @@ let let_expression_parts ~is_recursive_binding node =
       | [] -> None)
   | [] -> None
 
+let is_binding_operator_expression_node node =
+  let non_trivia_children =
+    Ceibo.Red.SyntaxNode.children node
+    |> Array.to_list
+    |> List.filter (function
+         | Ceibo.Red.Token syntax_token
+           when is_trivia (Ceibo.Red.SyntaxToken.kind syntax_token) ->
+             false
+         | _ -> true)
+  in
+  match Ceibo.Red.SyntaxNode.kind node, non_trivia_children with
+  | Syntax_kind.LET_EXPR,
+    Ceibo.Red.Token let_kw
+    :: Ceibo.Red.Token operator_syntax_token
+    :: Ceibo.Red.Node pattern_node
+    :: Ceibo.Red.Token equals_syntax_token
+    :: _
+    when String.equal (Ceibo.Red.SyntaxToken.text let_kw) "let"
+         && is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind pattern_node)
+         && String.equal (Ceibo.Red.SyntaxToken.text equals_syntax_token) "="
+         && not (String.equal (Ceibo.Red.SyntaxToken.text operator_syntax_token) "rec")
+         && not (String.equal (Ceibo.Red.SyntaxToken.text operator_syntax_token) "open")
+         && not (String.equal (Ceibo.Red.SyntaxToken.text operator_syntax_token) "module")
+         && not (String.equal (Ceibo.Red.SyntaxToken.text operator_syntax_token) "exception") ->
+      true
+  | _ ->
+      false
+
+let binding_operator_pairs_from_tokens node =
+  let rec loop acc = function
+    | keyword_syntax_token :: operator_syntax_token :: equals_syntax_token :: rest
+      when (String.equal (Ceibo.Red.SyntaxToken.text keyword_syntax_token) "let"
+            || String.equal (Ceibo.Red.SyntaxToken.text keyword_syntax_token) "and")
+           && String.equal (Ceibo.Red.SyntaxToken.text equals_syntax_token) "=" ->
+        loop
+          ((token keyword_syntax_token, token operator_syntax_token) :: acc)
+          rest
+    | in_syntax_token :: _
+      when String.equal (Ceibo.Red.SyntaxToken.text in_syntax_token) "in" ->
+        List.rev acc
+    | [] ->
+        List.rev acc
+    | _ ->
+        bail
+          ~message:
+            "expected binding-operator token sequence during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "expression"; "let_operator"; "tokens" ]
+  in
+  loop [] (direct_non_trivia_tokens node)
+
 let first_ident_token_in_subtree node =
   let rec go_node node =
     match
@@ -1735,25 +1785,30 @@ and expression_from_node node =
       | Some expr -> Cst.Expression.LetModule expr
       | None -> unsupported_expression node)
   | Syntax_kind.LET_EXPR -> (
-      match let_expression_parts ~is_recursive_binding:false node with
-      | Some (`Exception (exception_decl_node, body_node)) -> (
-          match direct_non_trivia_tokens exception_decl_node with
-          | _exception_kw :: name_syntax_token :: _ ->
-              Cst.Expression.LetException
-                {
-                  syntax_node = node;
-                  exception_declaration =
-                    {
-                      syntax_node = exception_decl_node;
-                      name_token = token name_syntax_token;
-                    };
-                  body = expression_from_node body_node;
-                }
-          | _ -> unsupported_expression node)
-      | _ -> (
-          match let_expression_from_node ~is_recursive_binding:false node with
-          | Some expr -> Cst.Expression.Let expr
-          | None -> unsupported_expression node))
+      if is_binding_operator_expression_node node then
+        match let_operator_expression_from_node node with
+        | Some expr -> Cst.Expression.LetOperator expr
+        | None -> unsupported_expression node
+      else
+        match let_expression_parts ~is_recursive_binding:false node with
+        | Some (`Exception (exception_decl_node, body_node)) -> (
+            match direct_non_trivia_tokens exception_decl_node with
+            | _exception_kw :: name_syntax_token :: _ ->
+                Cst.Expression.LetException
+                  {
+                    syntax_node = node;
+                    exception_declaration =
+                      {
+                        syntax_node = exception_decl_node;
+                        name_token = token name_syntax_token;
+                      };
+                    body = expression_from_node body_node;
+                  }
+            | _ -> unsupported_expression node)
+        | _ -> (
+            match let_expression_from_node ~is_recursive_binding:false node with
+            | Some expr -> Cst.Expression.Let expr
+            | None -> unsupported_expression node))
   | Syntax_kind.LET_REC_EXPR -> (
       match let_expression_from_node ~is_recursive_binding:true node with
       | Some expr -> Cst.Expression.Let expr
@@ -2318,7 +2373,60 @@ and function_expression_from_node node =
   in
   Some { Cst.syntax_node = node; cases = match_cases }
 
+and let_operator_expression_from_node node =
+  let operator_pairs = binding_operator_pairs_from_tokens node in
+  let lifted_children =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child -> not (is_attribute_node child))
+  in
+  match List.rev lifted_children with
+  | body_node :: rev_binding_nodes ->
+      let binding_nodes = List.rev rev_binding_nodes in
+      let expected_binding_nodes = 2 * List.length operator_pairs in
+      if
+        List.length operator_pairs = 0
+        || not (Int.equal (List.length binding_nodes) expected_binding_nodes)
+      then
+        None
+      else
+        let rec lift_bindings acc token_pairs nodes =
+          match token_pairs, nodes with
+          | [], [] ->
+              List.rev acc
+          | (keyword_token, operator_token) :: rest_pairs, binding_pattern_node :: bound_value_node :: rest_nodes ->
+              let binding : Cst.binding_operator_binding =
+                {
+                  keyword_token;
+                  operator_token;
+                  binding_pattern = pattern_from_node binding_pattern_node;
+                  bound_value = expression_from_node bound_value_node;
+                }
+              in
+              lift_bindings (binding :: acc) rest_pairs rest_nodes
+          | _ ->
+              bail
+                ~message:
+                  "expected alternating binding-operator pattern/value nodes during Ceibo -> CST lifting"
+                ~syntax_node:node
+                ~context:[ "expression"; "let_operator"; "bindings" ]
+        in
+        (match lift_bindings [] operator_pairs binding_nodes with
+        | binding :: and_bindings ->
+            Some
+              {
+                Cst.syntax_node = node;
+                binding;
+                and_bindings;
+                body = expression_from_node body_node;
+              }
+        | [] -> None)
+  | [] ->
+      None
+
 and let_expression_from_node ~is_recursive_binding node =
+  if is_binding_operator_expression_node node then
+    None
+  else
   match let_expression_parts ~is_recursive_binding node with
   | Some
       (`Value
@@ -2374,6 +2482,21 @@ and let_expression_from_node ~is_recursive_binding node =
           is_recursive = is_recursive_binding;
         }
   | _ -> None
+
+and let_binding_from_binding_operator_binding ~binding_syntax_node
+    ( { binding_pattern = clause_pattern; bound_value = clause_value; _ } :
+        Cst.binding_operator_binding ) =
+  Cst.LetBinding.
+    {
+      syntax_node = binding_syntax_node;
+      attributes = [];
+      binding_pattern = clause_pattern;
+      binding_name =
+        simple_pattern_name_token (Cst.Pattern.syntax_node clause_pattern);
+      parameters = [];
+      value = clause_value;
+      is_recursive = false;
+    }
 
 and match_case_from_node node =
   let non_trivia_children = direct_non_trivia_nodes node in
@@ -2766,6 +2889,15 @@ let let_binding_from_node ~is_recursive_binding node =
   | [] -> None
 
 let let_expression_binding_from_node ~is_recursive_binding node =
+  if (not is_recursive_binding) && is_binding_operator_expression_node node then
+    match let_operator_expression_from_node node with
+    | Some expr ->
+        Some
+          (let_binding_from_binding_operator_binding ~binding_syntax_node:node
+             expr.binding)
+    | None ->
+        None
+  else
   match let_expression_parts ~is_recursive_binding node with
   | Some
       (`Value
@@ -3176,6 +3308,12 @@ let rec collect_expressions_from_expression expr =
         collect_expressions_from_expression body
     | Cst.Expression.Function { cases; _ } ->
         cases |> List.concat_map collect_expressions_from_match_case
+    | Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
+        collect_expressions_from_expression binding.bound_value
+        @ (and_bindings
+          |> List.concat_map (fun ({ bound_value; _ } : Cst.binding_operator_binding) ->
+                 collect_expressions_from_expression bound_value))
+        @ collect_expressions_from_expression body
     | Cst.Expression.Let { bound_value; and_bindings; body; _ } ->
         collect_expressions_from_expression bound_value
         @ (and_bindings |> List.concat_map collect_expressions_from_let_binding)
@@ -3656,6 +3794,29 @@ and validate_expression ~context = function
             ~context:(("expression.function.case[" ^ Int.to_string index ^ "]") :: context)
             case)
         cases
+  | Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
+      validate_pattern ~context:("expression.let_operator.binding.pattern" :: context)
+        binding.binding_pattern;
+      validate_expression
+        ~context:("expression.let_operator.binding.value" :: context)
+        binding.bound_value;
+      List.iteri
+        (fun index ({ binding_pattern; bound_value; _ } : Cst.binding_operator_binding) ->
+          validate_pattern
+            ~context:
+              (("expression.let_operator.and_bindings[" ^ Int.to_string index
+               ^ "].pattern")
+              :: context)
+            binding_pattern;
+          validate_expression
+            ~context:
+              (("expression.let_operator.and_bindings[" ^ Int.to_string index
+               ^ "].value")
+              :: context)
+            bound_value)
+        and_bindings;
+      validate_expression ~context:("expression.let_operator.body" :: context)
+        body
   | Cst.Expression.Let { binding_pattern; bound_value; and_bindings; body; _ } ->
       validate_pattern ~context:("expression.let.pattern" :: context) binding_pattern;
       validate_expression ~context:("expression.let.bound_value" :: context) bound_value;

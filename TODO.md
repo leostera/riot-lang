@@ -95,10 +95,10 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] locally opened patterns
 - [ ] Expressions:
   - [x] instance-variable assignment expressions
-  - [ ] structure-item expressions
+  - [x] structure-item expressions
   - [ ] polymorphic expressions
   - [x] locally abstract type expressions
-  - [ ] let-operator expressions
+  - [x] let-operator expressions
   - [ ] unreachable expressions
 - [ ] Structure items:
   - [ ] type-extension items

@@ -877,6 +877,34 @@ let tests =
               ~actual:(Syn.Cst.ModulePath.name path);
             Ok ()
         | _ -> Error "expected coerce expression value");
+    Test.case "cst source files keep top-level eval expressions as items" (fun () ->
+        let source = "print_endline \"hello\"\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.Expression
+            (Syn.Cst.Expression.Apply
+              {
+                callee =
+                  Syn.Cst.Expression.Path
+                    {
+                      path = Syn.Cst.Ident.Ident { name_token; _ };
+                      _;
+                    };
+                argument =
+                  Syn.Cst.Positional
+                    (Syn.Cst.Expression.Literal (Syn.Cst.Literal.String _));
+                _;
+              })
+          :: _ ->
+            Test.assert_equal ~expected:"print_endline"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Ok ()
+        | _ -> Error "expected top-level eval expression item");
     Test.case "cst source files keep top-level let-in expressions as items" (fun () ->
         let source = "let a, b = pair in a\n" in
         let result = parse_ml source in
@@ -908,6 +936,98 @@ let tests =
               ~actual:(Syn.Cst.Token.text right_name);
             Ok ()
         | _ -> Error "expected top-level let expression item");
+    Test.case "cst let-operator expressions preserve the leading operator clause"
+      (fun () ->
+        let source =
+          "let ( let* ) = Result.bind\nlet* value = Ok 1 in Ok value\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | _ :: Syn.Cst.Item.Expression
+                 (Syn.Cst.Expression.LetOperator
+                   {
+                     binding =
+                       {
+                         keyword_token;
+                         operator_token;
+                         binding_pattern =
+                           Syn.Cst.Pattern.Identifier
+                             { name_token = binding_name; _ };
+                         bound_value = Syn.Cst.Expression.Apply _;
+                       };
+                     and_bindings = [];
+                     body = Syn.Cst.Expression.Apply _;
+                     _;
+                   })
+               :: _ ->
+            Test.assert_equal ~expected:"let"
+              ~actual:(Syn.Cst.Token.text keyword_token);
+            Test.assert_equal ~expected:"*"
+              ~actual:(Syn.Cst.Token.text operator_token);
+            Test.assert_equal ~expected:"value"
+              ~actual:(Syn.Cst.Token.text binding_name);
+            Ok ()
+        | _ -> Error "expected top-level let-operator expression item");
+    Test.case "cst let-operator expressions preserve parallel and-bindings"
+      (fun () ->
+        let source =
+          "let ( let* ) = Result.bind\n\
+           let ( and* ) = Result.both\n\
+           let* a = Ok 1 and* b = Ok 2 in Ok (a, b)\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | _ :: _ :: Syn.Cst.Item.Expression
+                     (Syn.Cst.Expression.LetOperator
+                       {
+                         binding =
+                           {
+                             keyword_token = let_keyword;
+                             operator_token = let_operator;
+                             binding_pattern =
+                               Syn.Cst.Pattern.Identifier
+                                 { name_token = left_name; _ };
+                             bound_value = Syn.Cst.Expression.Apply _;
+                           };
+                         and_bindings =
+                           [
+                             {
+                               keyword_token = and_keyword;
+                               operator_token = and_operator;
+                               binding_pattern =
+                                 Syn.Cst.Pattern.Identifier
+                                   { name_token = right_name; _ };
+                               bound_value = Syn.Cst.Expression.Apply _;
+                             };
+                           ];
+                         body = Syn.Cst.Expression.Apply _;
+                         _;
+                       })
+               :: _ ->
+            Test.assert_equal ~expected:"let"
+              ~actual:(Syn.Cst.Token.text let_keyword);
+            Test.assert_equal ~expected:"*"
+              ~actual:(Syn.Cst.Token.text let_operator);
+            Test.assert_equal ~expected:"a"
+              ~actual:(Syn.Cst.Token.text left_name);
+            Test.assert_equal ~expected:"and"
+              ~actual:(Syn.Cst.Token.text and_keyword);
+            Test.assert_equal ~expected:"*"
+              ~actual:(Syn.Cst.Token.text and_operator);
+            Test.assert_equal ~expected:"b"
+              ~actual:(Syn.Cst.Token.text right_name);
+            Ok ()
+        | _ -> Error "expected parallel let-operator expression item");
     Test.case "cst let expressions expose unit-pattern sequencing structurally" (fun () ->
         let source = "let render () = let () = log () in flush ()\n" in
         let result = parse_ml source in
