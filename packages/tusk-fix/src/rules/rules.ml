@@ -36,3 +36,4 @@ module T_first_named_arguments = T_first_named_arguments
 module Snake_case_record_fields = Snake_case_record_fields
 module Class_case_constructors = Class_case_constructors
 module Snake_case_polyvariant_tags = Snake_case_polyvariant_tags
+module No_positional_bool_parameters = No_positional_bool_parameters

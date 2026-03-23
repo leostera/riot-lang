@@ -49,6 +49,7 @@ let builtin_rule_factories () =
     ("snake-case-record-fields", Rules.Snake_case_record_fields.make);
     ("class-case-constructors", Rules.Class_case_constructors.make);
     ("snake-case-polyvariant-tags", Rules.Snake_case_polyvariant_tags.make);
+    ("no-positional-bool-parameters", Rules.No_positional_bool_parameters.make);
   ]
 
 let package_rules () =

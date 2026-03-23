@@ -36,13 +36,14 @@ This file is _yours_. Keep it up to date after every big change.
 ## tusk-fix Cleanup
 
 - [x] Simplify built-in and package rule metadata to `id`, short description, and long explanation
+- [ ] Remove the runner_tests.ml code_id by refacotring the tests to pass in a `~rule` instead of `~code` and refactoring the assertions too
 - [ ] Keep explanations example-driven rather than structured as "why this rule exists"
 - [ ] Group built-in lints by category, similar to Clippy
 
 ## Next Built-in Lints
 
 - [ ] Prefer named closed polymorphic variants over inline closed polymorphic variants like ``[ `a | `b ] list``
-- [ ] Warn on bool positional parameters in functions; suggest a named parameter or an enum
+- [x] Warn on bool positional parameters in functions; suggest a named parameter or an enum
 - [ ] Warn on tuples that should be records:
   - [ ] more than 3 elements of the same type
   - [ ] more than 4 elements of any type

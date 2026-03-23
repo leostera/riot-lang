@@ -70,6 +70,7 @@ let legacy_code_to_rule_id = function
   | "F0139" -> "no-redundant-begin-end"
   | "F0140" -> "prefer-scoped-field-access"
   | "F0141" -> "no-public-mutable-fields"
+  | "F0142" -> "no-positional-bool-parameters"
   | rule_id -> rule_id
 
 let legacy_code_of_rule_id = function
@@ -111,6 +112,7 @@ let legacy_code_of_rule_id = function
   | "no-redundant-begin-end" -> "F0139"
   | "prefer-scoped-field-access" -> "F0140"
   | "no-public-mutable-fields" -> "F0141"
+  | "no-positional-bool-parameters" -> "F0142"
   | rule_id -> rule_id
 
 let diagnostic_codes diagnostics =
@@ -1319,6 +1321,45 @@ let render x y z =
         Ok ());
     Test.case "diagnostic code registry explains public mutable fields" (fun () ->
         assert_explanation_contains ~code:"F0141" ~snippet:"mutable field");
+    Test.case "no-positional-bool-parameters flags inline bool parameters" (fun () ->
+        let source = "let render (enabled : bool) user = user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_positional_bool_parameters.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0142" ] ~actual:codes;
+        Ok ());
+    Test.case "no-positional-bool-parameters flags bool arrows in interfaces" (fun () ->
+        let source = "val render : bool -> user -> user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_positional_bool_parameters.make () ]
+            ()
+        in
+        let result =
+          Tusk_fix.Pipeline.run ~filename:(Path.v "sample.mli") pipeline source
+        in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0142" ] ~actual:codes;
+        Ok ());
+    Test.case "no-positional-bool-parameters keeps named bool arrows clean" (fun () ->
+        let source = "val render : enabled:bool -> user -> user\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_positional_bool_parameters.make () ]
+            ()
+        in
+        let result =
+          Tusk_fix.Pipeline.run ~filename:(Path.v "sample.mli") pipeline source
+        in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains positional bool parameters" (fun () ->
+        assert_explanation_contains ~code:"F0142" ~snippet:"~enabled");
     Test.case "cli list-rules text output prints one rule per line" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true
