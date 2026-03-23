@@ -506,6 +506,14 @@ class TestRunner:
             if verbose:
                 print(f"{RED}Empty parse tree - feature not implemented{NC}")
             return False
+
+        diagnostics = green_data.get("diagnostics", [])
+        if diagnostics:
+            if verbose:
+                print(
+                    f"{RED}Parser produced {len(diagnostics)} diagnostics for {fixture_path.name}{NC}"
+                )
+            return False
         
         # If .expected_lossless.json file doesn't exist, create it with actual output
         if not expected_path.exists():
@@ -631,6 +639,12 @@ class TestRunner:
             return f"{RED}✗{NC} {fixture_path.name} (invalid CST JSON output)"
 
         status = result.get("status", "unknown")
+        diagnostics = result.get("diagnostics", [])
+        if diagnostics:
+            return (
+                f"{RED}✗{NC} {fixture_path.name} "
+                f"(status={status}, {len(diagnostics)} diagnostics)"
+            )
         return f"{RED}✗{NC} {fixture_path.name} (status={status})"
 
     def test_cst_fixture(self, fixture_path: Path, verbose: bool = False) -> bool:
@@ -657,6 +671,14 @@ class TestRunner:
             if verbose:
                 print(
                     f"{RED}CST lift did not succeed (status={parsed.get('status', 'unknown')}){NC}"
+                )
+            return False
+
+        diagnostics = parsed.get("diagnostics", [])
+        if diagnostics:
+            if verbose:
+                print(
+                    f"{RED}CST output produced {len(diagnostics)} diagnostics for {fixture_path.name}{NC}"
                 )
             return False
 
@@ -692,6 +714,10 @@ class TestRunner:
             return False
 
         if parsed.get("status") != "ok":
+            return False
+
+        diagnostics = parsed.get("diagnostics", [])
+        if diagnostics:
             return False
 
         expected_path.write_text(self.format_expected_json(actual))
