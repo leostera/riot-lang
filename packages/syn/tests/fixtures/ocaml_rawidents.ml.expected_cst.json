@@ -963,7 +963,8 @@
                 }
               }
             }
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {
@@ -1085,7 +1086,8 @@
                 "is_mutable": true
               }
             ]
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {
@@ -1287,11 +1289,12 @@
                 "end": 1762
               }
             }
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {
-        "tag": "type_declaration",
+        "tag": "type_extension",
         "item": {
           "syntax_node": {
             "kind": "TYPE_DECL",
@@ -1319,29 +1322,26 @@
             }
           },
           "type_params": [],
-          "type_definition": {
-            "tag": "variant",
-            "constructors": [
-              {
-                "syntax_node": {
-                  "kind": "TYPE_VARIANT_CONSTR",
-                  "span": {
-                    "start": 1777,
-                    "end": 1782
-                  }
-                },
-                "constructor_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "Foo",
-                  "span": {
-                    "start": 1777,
-                    "end": 1780
-                  }
-                },
-                "payload_type": null
-              }
-            ]
-          }
+          "constructors": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_VARIANT_CONSTR",
+                "span": {
+                  "start": 1777,
+                  "end": 1782
+                }
+              },
+              "constructor_name": {
+                "kind": "IDENT_EXPR",
+                "text": "Foo",
+                "span": {
+                  "start": 1777,
+                  "end": 1780
+                }
+              },
+              "payload_type": null
+            }
+          ]
         }
       },
       {
@@ -2264,7 +2264,8 @@
                 "is_mutable": false
               }
             ]
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {
@@ -2347,7 +2348,8 @@
                 "is_mutable": false
               }
             ]
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {
@@ -2605,7 +2607,8 @@
                 "is_mutable": false
               }
             ]
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {

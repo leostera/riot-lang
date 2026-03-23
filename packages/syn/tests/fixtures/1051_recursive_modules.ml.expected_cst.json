@@ -1,0 +1,285 @@
+{
+  "status": "ok",
+  "cst": {
+    "kind": "implementation",
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 119
+      }
+    },
+    "items": [
+      {
+        "tag": "recursive_module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "TYPE_MUTUAL_DECL",
+            "span": {
+              "start": 0,
+              "end": 119
+            }
+          },
+          "declarations": [
+            {
+              "syntax_node": {
+                "kind": "MODULE_DECL",
+                "span": {
+                  "start": 0,
+                  "end": 63
+                }
+              },
+              "module_name": {
+                "kind": "IDENT_EXPR",
+                "text": "A",
+                "span": {
+                  "start": 11,
+                  "end": 12
+                }
+              },
+              "functor_parameters": [],
+              "module_type": {
+                "tag": "signature",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 15,
+                    "end": 36
+                  }
+                },
+                "signature_syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 15,
+                    "end": 36
+                  }
+                }
+              },
+              "module_expression": {
+                "tag": "structure",
+                "syntax_node": {
+                  "kind": "STRUCT_EXPR",
+                  "span": {
+                    "start": 39,
+                    "end": 63
+                  }
+                },
+                "item_syntax_nodes": [
+                  {
+                    "kind": "LET_BINDING",
+                    "span": {
+                      "start": 48,
+                      "end": 60
+                    }
+                  }
+                ]
+              },
+              "is_recursive": true
+            },
+            {
+              "syntax_node": {
+                "kind": "MODULE_DECL",
+                "span": {
+                  "start": 68,
+                  "end": 118
+                }
+              },
+              "module_name": {
+                "kind": "IDENT_EXPR",
+                "text": "B",
+                "span": {
+                  "start": 68,
+                  "end": 69
+                }
+              },
+              "functor_parameters": [],
+              "module_type": {
+                "tag": "signature",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 72,
+                    "end": 93
+                  }
+                },
+                "signature_syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 72,
+                    "end": 93
+                  }
+                }
+              },
+              "module_expression": {
+                "tag": "structure",
+                "syntax_node": {
+                  "kind": "STRUCT_EXPR",
+                  "span": {
+                    "start": 96,
+                    "end": 118
+                  }
+                },
+                "item_syntax_nodes": [
+                  {
+                    "kind": "LET_BINDING",
+                    "span": {
+                      "start": 105,
+                      "end": 114
+                    }
+                  }
+                ]
+              },
+              "is_recursive": true
+            }
+          ]
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 48,
+            "end": 60
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 52,
+              "end": 53
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 52,
+              "end": 53
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 52,
+            "end": 53
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "field_access",
+          "syntax_node": {
+            "kind": "FIELD_ACCESS_EXPR",
+            "span": {
+              "start": 56,
+              "end": 60
+            }
+          },
+          "receiver": {
+            "tag": "path",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 56,
+                "end": 57
+              }
+            },
+            "path": {
+              "tag": "ident",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 56,
+                  "end": 57
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "B",
+                "span": {
+                  "start": 56,
+                  "end": 57
+                }
+              }
+            }
+          },
+          "field_name": {
+            "kind": "IDENT_EXPR",
+            "text": "y",
+            "span": {
+              "start": 58,
+              "end": 59
+            }
+          }
+        },
+        "is_recursive": false
+      },
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 105,
+            "end": 114
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 109,
+              "end": 110
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "y",
+            "span": {
+              "start": 109,
+              "end": 110
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "y",
+          "span": {
+            "start": 109,
+            "end": 110
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "literal",
+          "literal": {
+            "tag": "int",
+            "syntax_node": {
+              "kind": "INT_LITERAL",
+              "span": {
+                "start": 113,
+                "end": 114
+              }
+            },
+            "literal_token": {
+              "kind": "INT_LITERAL",
+              "text": "1",
+              "span": {
+                "start": 113,
+                "end": 114
+              }
+            }
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": []
+  }
+}

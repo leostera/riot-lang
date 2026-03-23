@@ -8929,6 +8929,8 @@ and parse_module_decl parser =
       | None -> [])
     @ module_expr_parts
   in
+  let trivia_after_first_start = position parser in
+  let trivia_after_first = consume_trivia parser in
   let rec parse_and_modules acc =
     match peek_kind parser with
     | Token.Keyword Keyword.And ->
@@ -9008,10 +9010,12 @@ and parse_module_decl parser =
   in
   let and_children = parse_and_modules [] in
   if and_children = [] then
+    let () = Token_cursor.set_position parser.cursor trivia_after_first_start in
     make_node Syntax_kind.MODULE_DECL children
   else
     make_node Syntax_kind.TYPE_MUTUAL_DECL
       ([ Ceibo.Green.Node (make_node Syntax_kind.MODULE_DECL children) ]
+      @ tokens_to_green parser trivia_after_first
       @ and_children)
 
 (** Parse module expression: struct...end, functor application, or identifier *)

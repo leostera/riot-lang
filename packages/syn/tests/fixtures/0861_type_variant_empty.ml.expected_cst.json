@@ -97,7 +97,8 @@
                 "payload_type": null
               }
             ]
-          }
+          },
+          "is_destructive_substitution": false
         }
       }
     ],

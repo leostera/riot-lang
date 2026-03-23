@@ -137,7 +137,8 @@
                 "is_mutable": false
               }
             ]
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {
@@ -220,7 +221,8 @@
                 "is_mutable": false
               }
             ]
-          }
+          },
+          "is_destructive_substitution": false
         }
       }
     ],

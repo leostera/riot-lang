@@ -1473,12 +1473,14 @@ module TypeDeclaration = struct
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
+    is_destructive_substitution : bool;
   }
 
   let syntax_node decl = decl.syntax_node
   let type_name decl = decl.type_name
   let type_params decl = decl.type_params
   let type_definition decl = decl.type_definition
+  let is_destructive_substitution decl = decl.is_destructive_substitution
 
   let name_token decl =
     match Ident.last_segment decl.type_name with
@@ -1557,6 +1559,16 @@ module ModuleDeclaration = struct
   let name decl = Token.text decl.module_name
 end
 
+module RecursiveModuleDeclaration = struct
+  type t = {
+    syntax_node : syntax_node;
+    declarations : ModuleDeclaration.t list;
+  }
+
+  let syntax_node decl = decl.syntax_node
+  let declarations decl = decl.declarations
+end
+
 module ModuleTypeDeclaration = struct
   type t = {
     syntax_node : syntax_node;
@@ -1631,6 +1643,7 @@ module Item = struct
     | ClassDeclaration of class_declaration
     | ClassTypeDeclaration of class_type_declaration
     | ModuleDeclaration of ModuleDeclaration.t
+    | RecursiveModuleDeclaration of RecursiveModuleDeclaration.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t
     | ValueDeclaration of value_declaration
@@ -1648,6 +1661,8 @@ module Item = struct
     | ClassDeclaration decl -> decl.syntax_node
     | ClassTypeDeclaration decl -> decl.syntax_node
     | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
+    | RecursiveModuleDeclaration decl ->
+        RecursiveModuleDeclaration.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
     | OpenStatement stmt -> OpenStatement.syntax_node stmt
     | ValueDeclaration decl -> decl.syntax_node

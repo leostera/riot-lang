@@ -184,7 +184,8 @@
                 "is_mutable": true
               }
             ]
-          }
+          },
+          "is_destructive_substitution": false
         }
       }
     ],

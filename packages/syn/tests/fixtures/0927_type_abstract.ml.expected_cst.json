@@ -41,7 +41,8 @@
           "type_params": [],
           "type_definition": {
             "tag": "abstract"
-          }
+          },
+          "is_destructive_substitution": false
         }
       }
     ],

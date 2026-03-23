@@ -1298,6 +1298,8 @@ let type_declaration_to_json decl =
       );
       ( "type_definition",
         type_definition_to_json (Cst.TypeDeclaration.type_definition decl) );
+      ( "is_destructive_substitution",
+        Json.Bool (Cst.TypeDeclaration.is_destructive_substitution decl) );
     ]
 
 let type_extension_to_json decl =
@@ -1330,6 +1332,17 @@ let module_declaration_to_json decl =
         option_to_json module_expression_to_json
           (Cst.ModuleDeclaration.module_expression decl) );
       ("is_recursive", Json.Bool (Cst.ModuleDeclaration.is_recursive decl));
+    ]
+
+let recursive_module_declaration_to_json decl =
+  Json.Object
+    [
+      ( "syntax_node",
+        syntax_node_to_json (Cst.RecursiveModuleDeclaration.syntax_node decl) );
+      ( "declarations",
+        Json.Array
+          (List.map module_declaration_to_json
+             (Cst.RecursiveModuleDeclaration.declarations decl)) );
     ]
 
 let module_type_declaration_to_json decl =
@@ -1466,6 +1479,12 @@ let item_to_json = function
         [
           ("tag", Json.String "module_declaration");
           ("item", module_declaration_to_json decl);
+        ]
+  | Cst.Item.RecursiveModuleDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "recursive_module_declaration");
+          ("item", recursive_module_declaration_to_json decl);
         ]
   | Cst.Item.ModuleTypeDeclaration decl ->
       Json.Object

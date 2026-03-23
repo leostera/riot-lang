@@ -2416,6 +2416,7 @@ end
     ```ocaml,norun
     type t = int
     type ('a, 'b) pair = 'a * 'b
+    type t := string
     ```
 *)
 module TypeDeclaration : sig
@@ -2424,12 +2425,15 @@ module TypeDeclaration : sig
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
+    is_destructive_substitution : bool;
   }
 
   val syntax_node : t -> syntax_node
   val type_name : t -> Ident.t
   val type_params : t -> TypeParameter.t list
   val type_definition : t -> TypeDefinition.t
+  (** `true` for interface destructive substitutions such as `type t := string`. *)
+  val is_destructive_substitution : t -> bool
   val name_token : t -> Token.t
 end
 
@@ -2485,17 +2489,17 @@ module LetBinding : sig
   val is_function : t -> bool
 end
 
-(** A module declaration item.
+(** A single module binding.
 
-    Covered grammar includes plain module bindings, recursive modules, functor
-    declarations, and declarations with optional module type annotations.
+    This covers plain `module` items and the individual bindings nested under a
+    recursive module item. `is_recursive` reports whether the binding belongs to
+    a `module rec` group.
 
     Examples:
 
     ```ocaml,norun
     module M = N
     module F (X : S) : T = struct end
-    module rec M : S = N
     ```
 *)
 module ModuleDeclaration : sig
@@ -2515,6 +2519,28 @@ module ModuleDeclaration : sig
   val module_expression : t -> module_expression option
   val is_recursive : t -> bool
   val name : t -> string
+end
+
+(** A recursive module structure item.
+
+    The grouped `declarations` preserve source order for bindings introduced by
+    `module rec ... and ...`.
+
+    Example:
+
+    ```ocaml,norun
+    module rec A : S = X
+    and B : T = Y
+    ```
+*)
+module RecursiveModuleDeclaration : sig
+  type t = {
+    syntax_node : syntax_node;
+    declarations : ModuleDeclaration.t list;
+  }
+
+  val syntax_node : t -> syntax_node
+  val declarations : t -> ModuleDeclaration.t list
 end
 
 (** A `module type` declaration item.
@@ -2643,7 +2669,9 @@ module Item : sig
     | ClassTypeDeclaration of class_type_declaration
         (** A `class type` declaration item. *)
     | ModuleDeclaration of ModuleDeclaration.t
-        (** A `module` declaration item. *)
+        (** A non-recursive `module` declaration item. *)
+    | RecursiveModuleDeclaration of RecursiveModuleDeclaration.t
+        (** A `module rec ... and ...` item. *)
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
         (** A `module type` declaration item. *)
     | OpenStatement of OpenStatement.t

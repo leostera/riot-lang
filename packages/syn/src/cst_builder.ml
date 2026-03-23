@@ -2870,6 +2870,11 @@ let type_declaration_from_node node =
            Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_PARAM)
     |> List.map type_parameter_from_node
   in
+  let has_destructive_substitution =
+    direct_non_trivia_tokens node
+    |> List.exists (fun syntax_token ->
+           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":=")
+  in
   match type_declaration_name_path node with
   | Some lifted_type_name -> (
       match Cst.Ident.last_segment lifted_type_name with
@@ -2881,6 +2886,7 @@ let type_declaration_from_node node =
                 type_name = lifted_type_name;
                 type_params = lifted_type_params;
                 type_definition = type_definition_from_node node;
+                is_destructive_substitution = has_destructive_substitution;
               }
       | None -> None)
   | None -> None
@@ -2995,11 +3001,18 @@ let let_expression_binding_from_node ~is_recursive_binding node =
 
 let module_declaration_from_node node =
   match direct_non_trivia_tokens node with
-  | _module_kw :: rest -> (
+  | first_token :: rest -> (
+      let token_text = Ceibo.Red.SyntaxToken.text in
+      let binding_tokens =
+        if String.equal (token_text first_token) "module" then
+          rest
+        else
+          first_token :: rest
+      in
       let is_recursive_declaration, module_name =
-        match rest with
+        match binding_tokens with
         | rec_kw :: module_name :: _
-          when String.equal (Ceibo.Red.SyntaxToken.text rec_kw) "rec" ->
+          when String.equal (token_text rec_kw) "rec" ->
             (true, module_name)
         | module_name :: _ ->
             (false, module_name)
@@ -3058,6 +3071,30 @@ let module_declaration_from_node node =
             is_recursive = is_recursive_declaration;
           })
   | _ -> None
+
+let recursive_module_declaration_from_nodes ~group_syntax_node module_decl_nodes =
+  let recursive_declarations =
+    module_decl_nodes
+    |> List.map (fun module_decl_node ->
+           match module_declaration_from_node module_decl_node with
+           | Some decl ->
+               ({ decl with is_recursive = true } : Cst.ModuleDeclaration.t)
+           | None ->
+               bail
+                 ~message:
+                   "expected recursive module binding during Ceibo -> CST lifting"
+                 ~syntax_node:module_decl_node
+                 ~context:[ "item"; "recursive_module_declaration" ])
+  in
+  match recursive_declarations with
+  | [] -> None
+  | _ ->
+      Some
+        Cst.RecursiveModuleDeclaration.
+          {
+            syntax_node = group_syntax_node;
+            declarations = recursive_declarations;
+          }
 
 let module_type_declaration_from_node node =
   match direct_non_trivia_tokens node with
@@ -3416,6 +3453,7 @@ and collect_expressions_from_match_case { guard; body; _ } =
 let collect_expressions_from_item = function
   | Cst.Item.TypeDeclaration _ | Cst.Item.TypeExtension _
   | Cst.Item.ModuleDeclaration _
+  | Cst.Item.RecursiveModuleDeclaration _
   | Cst.Item.ModuleTypeDeclaration _ | Cst.Item.OpenStatement _
   | Cst.Item.ValueDeclaration _ | Cst.Item.ExternalDeclaration _
   | Cst.Item.IncludeStatement _ | Cst.Item.ExceptionDeclaration _
@@ -3441,7 +3479,20 @@ let rec items_from_node node =
         | Some decl -> [ Cst.Item.TypeDeclaration decl ]
         | None -> unsupported_item node)
   | Syntax_kind.TYPE_MUTUAL_DECL ->
-      direct_non_trivia_nodes node |> List.concat_map items_from_node
+      let child_nodes = direct_non_trivia_nodes node in
+      if
+        child_nodes != []
+        && List.for_all
+             (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.MODULE_DECL)
+             child_nodes
+      then
+        match
+          recursive_module_declaration_from_nodes ~group_syntax_node:node child_nodes
+        with
+        | Some decl -> [ Cst.Item.RecursiveModuleDeclaration decl ]
+        | None -> unsupported_item node
+      else
+        child_nodes |> List.concat_map items_from_node
   | Syntax_kind.LET_BINDING -> (
       match let_binding_from_node ~is_recursive_binding:false node with
       | Some binding -> [ Cst.Item.LetBinding binding ]
@@ -3466,6 +3517,14 @@ let rec items_from_node node =
       | None -> unsupported_item node)
   | Syntax_kind.MODULE_DECL -> (
       match module_declaration_from_node node with
+      | Some decl when Cst.ModuleDeclaration.is_recursive decl -> (
+          match
+            recursive_module_declaration_from_nodes ~group_syntax_node:node [ node ]
+          with
+          | Some recursive_decl ->
+              [ Cst.Item.RecursiveModuleDeclaration recursive_decl ]
+          | None ->
+              unsupported_item node)
       | Some decl -> [ Cst.Item.ModuleDeclaration decl ]
       | None -> unsupported_item node)
   | Syntax_kind.MODULE_TYPE_DECL -> (
@@ -4030,6 +4089,7 @@ let validate_item ~context = function
         (validate_module_type ~context:("item.module_type_declaration" :: context))
         module_type
   | Cst.Item.ModuleDeclaration _
+  | Cst.Item.RecursiveModuleDeclaration _
   | Cst.Item.OpenStatement _ | Cst.Item.IncludeStatement _
   | Cst.Item.ExceptionDeclaration _ ->
       ()

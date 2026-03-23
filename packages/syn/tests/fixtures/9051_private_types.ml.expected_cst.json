@@ -137,7 +137,8 @@
                 "is_mutable": false
               }
             ]
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {
@@ -171,7 +172,8 @@
           "type_params": [],
           "type_definition": {
             "tag": "abstract"
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {
@@ -261,7 +263,8 @@
                 "payload_type": null
               }
             ]
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {
@@ -331,7 +334,8 @@
               },
               "arguments": []
             }
-          }
+          },
+          "is_destructive_substitution": false
         }
       }
     ],

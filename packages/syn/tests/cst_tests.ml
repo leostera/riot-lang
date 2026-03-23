@@ -69,6 +69,67 @@ let tests =
             Test.assert_equal ~expected:[ "Added" ] ~actual:constructors;
             Ok ()
         | _ -> Error "expected first item to be a type extension");
+    Test.case "cst interface type declarations preserve abstract and manifest forms"
+      (fun () ->
+        let result =
+          parse_mli
+            "type t\n\
+             type alias = int\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.TypeDeclaration
+            { type_definition = Syn.Cst.TypeDefinition.Abstract; _ }
+          :: Syn.Cst.Item.TypeDeclaration
+               {
+                 type_definition =
+                   Syn.Cst.TypeDefinition.Alias
+                     {
+                       manifest =
+                         Syn.Cst.CoreType.Constr { constructor_path; _ };
+                       _;
+                     };
+                 is_destructive_substitution = false;
+                 _;
+               }
+             :: _ ->
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name constructor_path);
+            Ok ()
+        | _ -> Error "expected interface type declarations");
+    Test.case "cst interface type declarations distinguish destructive substitutions"
+      (fun () ->
+        let result = parse_mli "type view := string\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.TypeDeclaration
+            {
+              type_name;
+              type_definition =
+                Syn.Cst.TypeDefinition.Alias
+                  {
+                    manifest =
+                      Syn.Cst.CoreType.Constr { constructor_path; _ };
+                    _;
+                  };
+              is_destructive_substitution = true;
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "view")
+              ~actual:(Syn.Cst.Ident.name type_name);
+            Test.assert_equal ~expected:(Some "string")
+              ~actual:(Syn.Cst.Ident.name constructor_path);
+            Ok ()
+        | _ -> Error "expected destructive type substitution");
     Test.case "cst type declarations expose direct type parameters" (fun () ->
         let result =
           parse_ml "type ('a, 'error) resultish = int\n"
@@ -260,6 +321,34 @@ let tests =
               ~actual:(Syn.Cst.Token.text module_name);
             Ok ()
         | _ -> Error "expected first item to be a module declaration");
+    Test.case "cst recursive module items preserve grouped bindings" (fun () ->
+        let result =
+          parse_ml
+            "module rec A : sig val x : int end = struct let x = B.y end\nand B : sig val y : int end = struct let y = 1 end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.RecursiveModuleDeclaration decl :: _ ->
+            let declarations =
+              Syn.Cst.RecursiveModuleDeclaration.declarations decl
+            in
+            let names =
+              declarations |> List.map Syn.Cst.ModuleDeclaration.name
+            in
+            let recursive_flags =
+              declarations |> List.map Syn.Cst.ModuleDeclaration.is_recursive
+            in
+            Test.assert_equal ~expected:[ "A"; "B" ] ~actual:names;
+            Test.assert_equal ~expected:[ true; true ]
+              ~actual:recursive_flags;
+            Ok ()
+        | _ ->
+            Error "expected first item to be a recursive module declaration");
     Test.case "cst module type declarations expose declared names" (fun () ->
         let result = parse_ml "module type Foo_bar = sig end\n" in
         let cst =

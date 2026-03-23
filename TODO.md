@@ -102,12 +102,12 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] unreachable expressions
 - [ ] Structure items:
   - [x] type-extension items
-  - [ ] recursive-module items
+  - [x] recursive-module items
   - [x] standalone attribute items
   - [x] standalone extension items
 - [ ] Signature items:
-  - [ ] type declarations in interfaces
-  - [ ] type substitutions in interfaces
+  - [x] type declarations in interfaces
+  - [x] type substitutions in interfaces
   - [x] type extensions in interfaces
   - [ ] exception declarations in interfaces
   - [ ] module declarations in interfaces
