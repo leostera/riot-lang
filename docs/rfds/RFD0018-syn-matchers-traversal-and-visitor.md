@@ -297,13 +297,48 @@ walker abstraction makes that distinction explicit.
 ## Prior art
 [prior-art]: #prior-art
 
-The most relevant prior art is Rust `syn`:
+The most relevant prior art is Tree-sitter and Rust `syn`.
+
+### Tree-sitter
+
+Tree-sitter is strong prior art for:
+
+- explicit structural trees as the basis for tooling
+- field-oriented matching over syntax nodes
+- declarative structural queries
+- preserving exact source ranges on every node
+
+Riot should learn two things from that model:
+
+1. syntax consumers want to describe shapes, not rediscover raw child positions
+2. exact source anchoring should remain first-class even when the consumer API
+   becomes much nicer
+
+Riot is intentionally *not* copying Tree-sitter's stringly query DSL as the
+primary API. `Syn.Cst` is typed, and `Syn.Visit` is meant to feel like normal
+OCaml code, not a separate little language embedded beside the host language.
+
+### Rust `syn`
+
+Rust `syn` is the clearest model for the visitor side:
 
 - hook methods define custom behavior
 - the default walker is a separate traversal function
 - continuing traversal is explicit
 
 That split between hooks and traversal engine is the right model here as well.
+
+Rust tooling also shows the value of keeping different layers distinct:
+
+- `syn` for typed syntax structure
+- visitor APIs for traversal
+- separate lint or refactoring layers on top
+
+That layering matches Riot's direction:
+
+- `Syn.Cst` for the faithful typed tree
+- `Syn.Matchers` for local shape helpers
+- `Syn.Visit` for explicit traversal
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions

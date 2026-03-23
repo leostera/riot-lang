@@ -245,14 +245,43 @@ much larger and harder to land incrementally.
 ## Prior art
 [prior-art]: #prior-art
 
-This follows the same broad layering as many syntax tooling systems:
+The most relevant prior art here is Tree-sitter-based tooling and Rust's
+linting/refactoring ecosystem.
+
+### Tree-sitter
+
+Tree-sitter-based tools usually operate in three steps:
 
 - match on a structured tree
 - describe a structural rewrite
 - lower to source edits at the backend boundary
 
-The specific operation vocabulary is intentionally small because Riot already
-has exact source slices available through the lossless Ceibo tree.
+That is close to what Riot wants as well, with one important difference:
+Tree-sitter itself usually stops at nodes plus byte ranges, so many downstream
+tools still make users author edits in terms of raw text ranges.
+
+This RFD deliberately goes one level higher. Riot already has CST nodes backed
+by exact Ceibo source ranges, so rule authors should be able to express
+rewrites in terms of syntax objects instead of manually reconstructing spans.
+
+### Rust linting and rewriting
+
+Rust offers a useful split across several tools:
+
+- `rustc` diagnostics can attach machine-applicable suggestions
+- `rustfix` can apply those suggestions in bulk
+- `rust-analyzer` exposes syntax-directed assists and refactorings
+
+The lesson is not that Riot should copy any one API exactly. The lesson is that
+rewrites are strongest when:
+
+- they are authored at the syntax level
+- they stay attached to diagnostics or refactoring intent
+- text edits are treated as an execution format, not the authoring model
+
+The specific operation vocabulary in this RFD stays intentionally small because
+Riot already has exact source slices available through the lossless Ceibo tree
+and does not yet need a larger synthetic rewrite language.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
