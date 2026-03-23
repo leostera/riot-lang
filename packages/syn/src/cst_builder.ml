@@ -3632,6 +3632,16 @@ let type_constraint_from_node node =
   | _ ->
       None
 
+let private_flag_from_type_declaration_node node =
+  direct_non_trivia_tokens node
+  |> List.find_opt (fun syntax_token ->
+         String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "private")
+  |> function
+  | Some private_token ->
+      Cst.PrivateFlag.Private { private_token = token private_token }
+  | None ->
+      Cst.PrivateFlag.Public
+
 let record_field_from_node node =
   record_field_name_token node
   |> Option.map (fun field_name ->
@@ -3975,6 +3985,7 @@ let type_declaration_from_node node =
                 type_name = lifted_type_name;
                 type_params = lifted_type_params;
                 type_definition = type_definition_from_node node;
+                private_flag = private_flag_from_type_declaration_node node;
                 constraints = lifted_constraints;
                 is_destructive_substitution = has_destructive_substitution;
               }

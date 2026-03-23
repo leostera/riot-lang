@@ -1321,6 +1321,16 @@ let type_constraint_to_json ({ syntax_node; left; right } : Cst.type_constraint)
       ("right", core_type_to_json right);
     ]
 
+let private_flag_to_json = function
+  | Cst.PrivateFlag.Public ->
+      Json.Object [ ("tag", Json.String "public") ]
+  | Cst.PrivateFlag.Private { private_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "private");
+          ("private_token", token_to_json private_token);
+        ]
+
 let type_definition_to_json = function
   | Cst.TypeDefinition.Abstract ->
       Json.Object [ ("tag", Json.String "abstract") ]
@@ -1395,6 +1405,12 @@ let type_declaration_to_json decl =
        ( "type_definition",
          type_definition_to_json (Cst.TypeDeclaration.type_definition decl) );
      ]
+    @
+    (match Cst.TypeDeclaration.private_flag decl with
+    | Cst.PrivateFlag.Public ->
+        []
+    | private_flag ->
+        [ ("private_flag", private_flag_to_json private_flag) ])
     @
     (if constraints = [] then []
      else [ ("constraints", Json.Array constraints) ])

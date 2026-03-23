@@ -39,6 +39,17 @@
             }
           },
           "type_params": [],
+          "private_flag": {
+            "tag": "private",
+            "private_token": {
+              "kind": "IDENT_EXPR",
+              "text": "private",
+              "span": {
+                "start": 78,
+                "end": 85
+              }
+            }
+          },
           "type_definition": {
             "tag": "record",
             "fields": [

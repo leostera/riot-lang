@@ -317,6 +317,26 @@ and type_constraint = {
   right : core_type;
 }
 
+(** Whether a type declaration is public or explicitly `private`.
+
+    Examples:
+
+    ```ocaml,norun
+    type t = int
+    type t = private int
+    type color = private Red | Blue
+    ```
+*)
+and private_flag =
+  | Public
+      (** A declaration with no `private` keyword, such as `type t = int`. *)
+  | Private of {
+      private_token : Token.t;
+    }
+      (** A declaration introduced with `private`, such as
+          `type t = private int`.
+      *)
+
 (** A `with type` constraint attached to a module type.
 
     Both ordinary equality constraints and destructive substitutions are covered
@@ -2810,6 +2830,24 @@ module TypeParameter : sig
   val type_variable : t -> TypeVariable.t option
 end
 
+(** Helper view over `private_flag`.
+
+    This keeps the written `private` keyword when one was present instead of
+    flattening the declaration down to a boolean.
+*)
+module PrivateFlag : sig
+  type t = private_flag =
+    | Public
+        (** A public declaration such as `type t = int`. *)
+    | Private of {
+        private_token : Token.t;
+      }
+        (** A private declaration such as `type t = private int`. *)
+
+  val private_token : t -> Token.t option
+  val is_private : t -> bool
+end
+
 (** A field inside a record type definition.
 
     Covers entries such as `name : string`, `mutable count : int`, and
@@ -3040,9 +3078,8 @@ module TypeDefinition : sig
         (** A successfully parsed type definition whose exact grammar is not yet
             given a dedicated public constructor.
 
-            This is where consumers should expect richer shapes such as
-            unsupported `private` definitions to remain accessible only through
-            the raw `syntax_node`.
+            The original syntax node is still preserved so callers can inspect
+            unlifted details while parity work continues.
         *)
 end
 
@@ -3062,6 +3099,7 @@ module TypeDeclaration : sig
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
+    private_flag : private_flag;
     constraints : type_constraint list;
     is_destructive_substitution : bool;
   }
@@ -3070,9 +3108,16 @@ module TypeDeclaration : sig
   val type_name : t -> Ident.t
   val type_params : t -> TypeParameter.t list
   val type_definition : t -> TypeDefinition.t
+  val private_flag : t -> private_flag
+  (** Preserves whether the declaration was written with `private`.
+
+      Examples include `type t = private int` and
+      `type color = private Red | Blue`.
+  *)
   val constraints : t -> TypeConstraint.t list
   (** `true` for interface destructive substitutions such as `type t := string`. *)
   val is_destructive_substitution : t -> bool
+  val is_private : t -> bool
   val name_token : t -> Token.t
 end
 

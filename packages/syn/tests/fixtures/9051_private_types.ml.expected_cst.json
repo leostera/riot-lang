@@ -39,6 +39,17 @@
             }
           },
           "type_params": [],
+          "private_flag": {
+            "tag": "private",
+            "private_token": {
+              "kind": "IDENT_EXPR",
+              "text": "private",
+              "span": {
+                "start": 41,
+                "end": 48
+              }
+            }
+          },
           "type_definition": {
             "tag": "record",
             "fields": [
@@ -170,6 +181,17 @@
             }
           },
           "type_params": [],
+          "private_flag": {
+            "tag": "private",
+            "private_token": {
+              "kind": "IDENT_EXPR",
+              "text": "private",
+              "span": {
+                "start": 112,
+                "end": 119
+              }
+            }
+          },
           "type_definition": {
             "tag": "abstract"
           },
@@ -205,6 +227,17 @@
             }
           },
           "type_params": [],
+          "private_flag": {
+            "tag": "private",
+            "private_token": {
+              "kind": "IDENT_EXPR",
+              "text": "private",
+              "span": {
+                "start": 156,
+                "end": 163
+              }
+            }
+          },
           "type_definition": {
             "tag": "variant",
             "constructors": [
@@ -296,6 +329,17 @@
             }
           },
           "type_params": [],
+          "private_flag": {
+            "tag": "private",
+            "private_token": {
+              "kind": "IDENT_EXPR",
+              "text": "private",
+              "span": {
+                "start": 219,
+                "end": 226
+              }
+            }
+          },
           "type_definition": {
             "tag": "alias",
             "syntax_node": {

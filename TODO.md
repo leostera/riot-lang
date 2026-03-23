@@ -212,7 +212,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [ ] packed first-class module expressions are still mostly raw syntax
   - [ ] Expression attributes are represented as wrapper nodes instead of orthogonal metadata
 - [ ] Type declarations:
-  - [ ] `private_flag` is missing
+  - [x] `private_flag` is missing
   - [x] parameter variance/injectivity is missing
   - [ ] `type_kind` detail is still compressed
   - [x] record fields only store names + mutability, not field types and attrs

@@ -130,6 +130,41 @@ let tests =
               ~actual:(Syn.Cst.Ident.name constructor_path);
             Ok ()
         | _ -> Error "expected destructive type substitution");
+    Test.case "cst type declarations preserve private flags structurally"
+      (fun () ->
+        let result =
+          parse_ml
+            "type visible = int\n\
+             type hidden_record = private { value : int }\n\
+             type hidden_abstract = private\n\
+             type hidden_variant = private Left | Right\n\
+             type hidden_alias = private int\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let declarations =
+          Syn.Cst.SourceFile.items cst
+          |> List.filter_map (function
+               | Syn.Cst.Item.TypeDeclaration decl -> Some decl
+               | _ -> None)
+        in
+        match declarations with
+        | visible :: hidden_record :: hidden_abstract :: hidden_variant :: hidden_alias :: _ ->
+            Test.assert_false (Syn.Cst.TypeDeclaration.is_private visible);
+            Test.assert_true (Syn.Cst.TypeDeclaration.is_private hidden_record);
+            Test.assert_true (Syn.Cst.TypeDeclaration.is_private hidden_abstract);
+            Test.assert_true (Syn.Cst.TypeDeclaration.is_private hidden_variant);
+            Test.assert_true (Syn.Cst.TypeDeclaration.is_private hidden_alias);
+            Test.assert_equal ~expected:(Some "private")
+              ~actual:
+                (Syn.Cst.TypeDeclaration.private_flag hidden_record
+                |> Syn.Cst.PrivateFlag.private_token
+                |> Option.map Syn.Cst.Token.text);
+            Ok ()
+        | _ -> Error "expected private and public type declarations");
     Test.case "cst type declarations expose direct type parameters" (fun () ->
         let result =
           parse_ml "type ('a, 'error) resultish = int\n"

@@ -121,6 +121,12 @@ and type_constraint = {
   right : core_type;
 }
 
+and private_flag =
+  | Public
+  | Private of {
+      private_token : Token.t;
+    }
+
 and module_type_constraint = {
   syntax_node : syntax_node;
   type_name : Token.t;
@@ -1720,6 +1726,22 @@ module TypeParameter = struct
   let type_variable type_param = type_param.type_variable
 end
 
+module PrivateFlag = struct
+  type t = private_flag =
+    | Public
+    | Private of {
+        private_token : Token.t;
+      }
+
+  let private_token = function
+    | Public -> None
+    | Private { private_token } -> Some private_token
+
+  let is_private = function
+    | Public -> false
+    | Private _ -> true
+end
+
 module RecordField = struct
   type t = {
     syntax_node : syntax_node;
@@ -1858,6 +1880,7 @@ module TypeDeclaration = struct
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
+    private_flag : private_flag;
     constraints : type_constraint list;
     is_destructive_substitution : bool;
   }
@@ -1866,8 +1889,10 @@ module TypeDeclaration = struct
   let type_name decl = decl.type_name
   let type_params decl = decl.type_params
   let type_definition decl = decl.type_definition
+  let private_flag decl = decl.private_flag
   let constraints decl = decl.constraints
   let is_destructive_substitution decl = decl.is_destructive_substitution
+  let is_private decl = PrivateFlag.is_private decl.private_flag
 
   let name_token decl =
     match Ident.last_segment decl.type_name with
