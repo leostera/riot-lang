@@ -2,6 +2,13 @@
 0008_int_negative.ml
 0009_int_hex.ml
 0013_float_negative.ml
+0018_char_simple.ml
+0020_unit.ml
+0021_ident_simple.ml
+0022_ident_underscore.ml
+0023_ident_prime.ml
+0024_ident_caps.ml
+0025_ident_digits.ml
 0026_paren_simple.ml
 0027_paren_nested.ml
 0028_paren_ident.ml

@@ -62,6 +62,14 @@ let tests =
         in
         Test.assert_equal ~expected:"let x = 1\n\nlet y = (-2.5)\n" ~actual;
         Ok ());
+    Test.case "format keeps chars, unit, and bare identifiers stable" (fun () ->
+        let source = "let c = 'a'\nlet u = ()\nlet x = y\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"simple atoms should format"
+        in
+        Test.assert_equal ~expected:"let c = 'a'\n\nlet u = ()\n\nlet x = y\n" ~actual;
+        Ok ());
     Test.case "format expands nested let-in bindings across lines" (fun () ->
         let source = "let x =\n  let y = 1 in let z = 2 in y + z\n" in
         let actual =
