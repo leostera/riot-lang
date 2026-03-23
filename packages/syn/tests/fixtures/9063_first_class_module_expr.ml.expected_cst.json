@@ -157,53 +157,22 @@
               }
             },
             "module_expression": {
-              "tag": "constraint",
-              "syntax_node": {
-                "kind": "FIRST_CLASS_MODULE_EXPR",
-                "span": {
-                  "start": 54,
-                  "end": 68
-                }
-              },
-              "module_expression": {
-                "tag": "path",
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "MODULE_PATH",
-                    "span": {
-                      "start": 62,
-                      "end": 64
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "M",
-                    "span": {
-                      "start": 62,
-                      "end": 63
-                    }
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 62,
+                    "end": 64
                   }
-                }
-              },
-              "module_type": {
-                "tag": "path",
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "MODULE_TYPE_PATH",
-                    "span": {
-                      "start": 66,
-                      "end": 67
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "S",
-                    "span": {
-                      "start": 66,
-                      "end": 67
-                    }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "M",
+                  "span": {
+                    "start": 62,
+                    "end": 63
                   }
                 }
               }

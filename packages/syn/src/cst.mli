@@ -2135,6 +2135,11 @@ and poly_variant_expression = {
 
     Covers packed module expressions such as `(module M)` and
     `(module M : S)`.
+
+    `module_expression` preserves the packed module payload directly, for
+    example as `ModuleExpression.Path` or `ModuleExpression.Structure`.
+    `module_type` carries the optional `: S` ascription without re-encoding it
+    as a nested `ModuleExpression.Constraint`.
 *)
 and first_class_module_expression = {
   syntax_node : syntax_node;
@@ -2973,7 +2978,6 @@ and module_expression =
 
           ```ocaml,norun
           module M : S = struct end
-          (module Impl : S)
           ```
 
           Declaration-site constraints such as `module M : S = ...` are

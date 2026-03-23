@@ -4111,15 +4111,7 @@ let tests =
               value =
                 Syn.Cst.Expression.FirstClassModule
                   {
-                    module_expression =
-                      Syn.Cst.ModuleExpression.Constraint
-                        {
-                          module_expression =
-                            Syn.Cst.ModuleExpression.Path module_path;
-                          module_type =
-                            Syn.Cst.ModuleType.Path constrained_type_path;
-                          _;
-                        };
+                    module_expression = Syn.Cst.ModuleExpression.Path module_path;
                     module_type = Some (Syn.Cst.ModuleType.Path module_type_path);
                     _;
                   };
@@ -4128,8 +4120,6 @@ let tests =
           :: _ ->
             Test.assert_equal ~expected:(Some "M")
               ~actual:(Syn.Cst.ModulePath.name module_path);
-            Test.assert_equal ~expected:(Some "S")
-              ~actual:(Syn.Cst.ModulePath.name constrained_type_path);
             Test.assert_equal ~expected:(Some "S")
               ~actual:(Syn.Cst.ModulePath.name module_type_path);
             Ok ()
@@ -4149,38 +4139,19 @@ let tests =
                 Syn.Cst.Expression.FirstClassModule
                   {
                     module_expression =
-                      Syn.Cst.ModuleExpression.Constraint
-                        {
-                          module_expression =
-                            Syn.Cst.ModuleExpression.Path
-                              (Syn.Cst.ModulePath.Qualified
+                      Syn.Cst.ModuleExpression.Path
+                        (Syn.Cst.ModulePath.Qualified
+                          {
+                            prefix =
+                              Syn.Cst.ModulePath.Qualified
                                 {
-                                  prefix =
-                                    Syn.Cst.ModulePath.Qualified
-                                      {
-                                        prefix = Syn.Cst.ModulePath.Ident { name_token = root; _ };
-                                        name_token = mid;
-                                        _;
-                                      };
-                                  name_token = leaf;
+                                  prefix = Syn.Cst.ModulePath.Ident { name_token = root; _ };
+                                  name_token = mid;
                                   _;
-                                });
-                          module_type =
-                            Syn.Cst.ModuleType.Path
-                              (Syn.Cst.ModulePath.Qualified
-                                {
-                                  prefix =
-                                    Syn.Cst.ModulePath.Qualified
-                                      {
-                                        prefix = Syn.Cst.ModulePath.Ident { name_token = constrained_type_root; _ };
-                                        name_token = constrained_type_mid;
-                                        _;
-                                      };
-                                  name_token = constrained_type_leaf;
-                                  _;
-                                });
-                          _;
-                        };
+                                };
+                            name_token = leaf;
+                            _;
+                          });
                     module_type =
                       Some
                         (Syn.Cst.ModuleType.Path
@@ -4205,18 +4176,43 @@ let tests =
             Test.assert_equal ~expected:"Net" ~actual:(Syn.Cst.Token.text mid);
             Test.assert_equal ~expected:"TcpClient"
               ~actual:(Syn.Cst.Token.text leaf);
-            Test.assert_equal ~expected:"Std"
-              ~actual:(Syn.Cst.Token.text constrained_type_root);
-            Test.assert_equal ~expected:"Net"
-              ~actual:(Syn.Cst.Token.text constrained_type_mid);
-            Test.assert_equal ~expected:"Transport"
-              ~actual:(Syn.Cst.Token.text constrained_type_leaf);
             Test.assert_equal ~expected:"Std" ~actual:(Syn.Cst.Token.text type_root);
             Test.assert_equal ~expected:"Net" ~actual:(Syn.Cst.Token.text type_mid);
             Test.assert_equal ~expected:"Transport"
               ~actual:(Syn.Cst.Token.text type_leaf);
             Ok ()
         | _ -> Error "expected qualified first-class module path");
+    Test.case
+      "cst first-class module expressions preserve structured packed payloads"
+      (fun () ->
+        let source = "let x = (module struct let y = 1 end : S)\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.FirstClassModule
+                  {
+                    module_expression =
+                      Syn.Cst.ModuleExpression.Structure
+                        { item_syntax_nodes = [ item_node ]; _ };
+                    module_type = Some (Syn.Cst.ModuleType.Path module_type_path);
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:SyntaxKind.LET_BINDING
+              ~actual:(Ceibo.Red.SyntaxNode.kind item_node);
+            Test.assert_equal ~expected:(Some "S")
+              ~actual:(Syn.Cst.ModulePath.name module_type_path);
+            Ok ()
+        | _ -> Error "expected structured packed first-class module expression");
     Test.case "cst module type declarations preserve functor module type bodies"
       (fun () ->
         let result =

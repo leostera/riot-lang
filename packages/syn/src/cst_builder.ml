@@ -2836,19 +2836,10 @@ and expression_from_node node =
             |> List.find_opt can_lift_module_type_node
             |> Option.map module_type_from_node
           in
-          let module_expression =
-            module_expression_from_node module_expression_node
-          in
           Cst.Expression.FirstClassModule
             {
               syntax_node = node;
-              module_expression =
-                (match module_type with
-                | Some lifted_module_type ->
-                    constrain_module_expression ~syntax_node:node
-                      ~module_expression lifted_module_type
-                | None ->
-                    module_expression);
+              module_expression = module_expression_from_node module_expression_node;
               module_type;
             }
       | _ -> unsupported_expression node)
