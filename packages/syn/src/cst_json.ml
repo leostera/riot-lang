@@ -1275,15 +1275,14 @@ and expression_to_json = function
           ("tag", Json.String "fun");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("parameters", Json.Array (List.map parameter_to_json parameters));
-          ("body", function_body_to_json body);
+          ("body", fun_body_to_json body);
         ]
-  | Cst.Expression.Function { syntax_node; parameters; body } ->
+  | Cst.Expression.Function { syntax_node; cases } ->
       Json.Object
         [
           ("tag", Json.String "function");
           ("syntax_node", syntax_node_to_json syntax_node);
-          ("parameters", Json.Array (List.map parameter_to_json parameters));
-          ("body", function_body_to_json body);
+          ("cases", Json.Array (List.map match_case_to_json cases));
         ]
   | Cst.Expression.LetOperator { syntax_node; binding; and_bindings; body } ->
       Json.Object
@@ -1388,7 +1387,7 @@ and function_case_body_to_json ({ syntax_node; cases } : Cst.function_case_body)
       ("cases", Json.Array (List.map match_case_to_json cases));
     ]
 
-and function_body_to_json = function
+and fun_body_to_json = function
   | Cst.Expression body ->
       Json.Object
         [

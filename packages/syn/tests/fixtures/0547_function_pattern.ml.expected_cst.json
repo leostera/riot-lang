@@ -57,203 +57,190 @@
                 "end": 57
               }
             },
-            "parameters": [],
-            "body": {
-              "tag": "cases",
-              "cases_body": {
+            "cases": [
+              {
                 "syntax_node": {
-                  "kind": "FUNCTION_EXPR",
+                  "kind": "MATCH_CASE",
                   "span": {
-                    "start": 8,
-                    "end": 57
+                    "start": 17,
+                    "end": 28
                   }
                 },
-                "cases": [
-                  {
+                "pattern": {
+                  "tag": "literal",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 17,
+                      "end": 18
+                    }
+                  },
+                  "literal": {
+                    "tag": "int",
                     "syntax_node": {
-                      "kind": "MATCH_CASE",
+                      "kind": "INT_LITERAL",
                       "span": {
                         "start": 17,
+                        "end": 18
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "0",
+                      "span": {
+                        "start": 17,
+                        "end": 18
+                      }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "0",
+                    "suffix": null
+                  }
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 22,
                         "end": 28
                       }
                     },
-                    "pattern": {
-                      "tag": "literal",
-                      "syntax_node": {
-                        "kind": "INT_LITERAL",
-                        "span": {
-                          "start": 17,
-                          "end": 18
-                        }
-                      },
-                      "literal": {
-                        "tag": "int",
-                        "syntax_node": {
-                          "kind": "INT_LITERAL",
-                          "span": {
-                            "start": 17,
-                            "end": 18
-                          }
-                        },
-                        "literal_token": {
-                          "kind": "INT_LITERAL",
-                          "text": "0",
-                          "span": {
-                            "start": 17,
-                            "end": 18
-                          }
-                        },
-                        "base": "decimal",
-                        "prefix": null,
-                        "digits": "0",
-                        "suffix": null
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"zero\"",
+                      "span": {
+                        "start": 22,
+                        "end": 28
                       }
                     },
-                    "guard": null,
-                    "body": {
-                      "tag": "literal",
-                      "literal": {
-                        "tag": "string",
-                        "syntax_node": {
-                          "kind": "STRING_LITERAL",
-                          "span": {
-                            "start": 22,
-                            "end": 28
-                          }
-                        },
-                        "literal_token": {
-                          "kind": "STRING_LITERAL",
-                          "text": "\"zero\"",
-                          "span": {
-                            "start": 22,
-                            "end": 28
-                          }
-                        },
-                        "delimiter": {
-                          "tag": "double_quote"
-                        },
-                        "contents": "zero",
-                        "terminated": true
-                      }
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "zero",
+                    "terminated": true
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 29,
+                    "end": 41
+                  }
+                },
+                "pattern": {
+                  "tag": "literal",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 31,
+                      "end": 32
                     }
                   },
-                  {
+                  "literal": {
+                    "tag": "int",
                     "syntax_node": {
-                      "kind": "MATCH_CASE",
+                      "kind": "INT_LITERAL",
                       "span": {
-                        "start": 29,
+                        "start": 31,
+                        "end": 32
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "1",
+                      "span": {
+                        "start": 31,
+                        "end": 32
+                      }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
+                  }
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
+                    "syntax_node": {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 36,
                         "end": 41
                       }
                     },
-                    "pattern": {
-                      "tag": "literal",
-                      "syntax_node": {
-                        "kind": "INT_LITERAL",
-                        "span": {
-                          "start": 31,
-                          "end": 32
-                        }
-                      },
-                      "literal": {
-                        "tag": "int",
-                        "syntax_node": {
-                          "kind": "INT_LITERAL",
-                          "span": {
-                            "start": 31,
-                            "end": 32
-                          }
-                        },
-                        "literal_token": {
-                          "kind": "INT_LITERAL",
-                          "text": "1",
-                          "span": {
-                            "start": 31,
-                            "end": 32
-                          }
-                        },
-                        "base": "decimal",
-                        "prefix": null,
-                        "digits": "1",
-                        "suffix": null
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"one\"",
+                      "span": {
+                        "start": 36,
+                        "end": 41
                       }
                     },
-                    "guard": null,
-                    "body": {
-                      "tag": "literal",
-                      "literal": {
-                        "tag": "string",
-                        "syntax_node": {
-                          "kind": "STRING_LITERAL",
-                          "span": {
-                            "start": 36,
-                            "end": 41
-                          }
-                        },
-                        "literal_token": {
-                          "kind": "STRING_LITERAL",
-                          "text": "\"one\"",
-                          "span": {
-                            "start": 36,
-                            "end": 41
-                          }
-                        },
-                        "delimiter": {
-                          "tag": "double_quote"
-                        },
-                        "contents": "one",
-                        "terminated": true
-                      }
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "one",
+                    "terminated": true
+                  }
+                }
+              },
+              {
+                "syntax_node": {
+                  "kind": "MATCH_CASE",
+                  "span": {
+                    "start": 42,
+                    "end": 56
+                  }
+                },
+                "pattern": {
+                  "tag": "wildcard",
+                  "syntax_node": {
+                    "kind": "WILDCARD_PATTERN",
+                    "span": {
+                      "start": 44,
+                      "end": 45
                     }
-                  },
-                  {
+                  }
+                },
+                "guard": null,
+                "body": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "string",
                     "syntax_node": {
-                      "kind": "MATCH_CASE",
+                      "kind": "STRING_LITERAL",
                       "span": {
-                        "start": 42,
+                        "start": 49,
                         "end": 56
                       }
                     },
-                    "pattern": {
-                      "tag": "wildcard",
-                      "syntax_node": {
-                        "kind": "WILDCARD_PATTERN",
-                        "span": {
-                          "start": 44,
-                          "end": 45
-                        }
+                    "literal_token": {
+                      "kind": "STRING_LITERAL",
+                      "text": "\"other\"",
+                      "span": {
+                        "start": 49,
+                        "end": 56
                       }
                     },
-                    "guard": null,
-                    "body": {
-                      "tag": "literal",
-                      "literal": {
-                        "tag": "string",
-                        "syntax_node": {
-                          "kind": "STRING_LITERAL",
-                          "span": {
-                            "start": 49,
-                            "end": 56
-                          }
-                        },
-                        "literal_token": {
-                          "kind": "STRING_LITERAL",
-                          "text": "\"other\"",
-                          "span": {
-                            "start": 49,
-                            "end": 56
-                          }
-                        },
-                        "delimiter": {
-                          "tag": "double_quote"
-                        },
-                        "contents": "other",
-                        "terminated": true
-                      }
-                    }
+                    "delimiter": {
+                      "tag": "double_quote"
+                    },
+                    "contents": "other",
+                    "terminated": true
                   }
-                ]
+                }
               }
-            }
+            ]
           },
           "is_recursive": false
         }

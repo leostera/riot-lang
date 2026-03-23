@@ -1331,17 +1331,20 @@ and function_case_body = {
   cases : match_case list;
 }
 
-and function_body =
+and fun_body =
   | Expression of expression
   | Cases of function_case_body
 
-and function_expression = {
+and fun_expression = {
   syntax_node : syntax_node;
   parameters : Parameter.t list;
-  body : function_body;
+  body : fun_body;
 }
 
-and fun_expression = function_expression
+and function_expression = {
+  syntax_node : syntax_node;
+  cases : match_case list;
+}
 
 and let_binding = {
   syntax_node : syntax_node;

@@ -3284,42 +3284,37 @@ let tests =
               value =
                 Syn.Cst.Expression.Function
                   {
-                    body =
-                      Syn.Cst.Cases
-                        {
-                          cases =
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Tuple
                             {
-                              pattern =
-                                Syn.Cst.Pattern.Tuple
+                              elements =
+                                [
                                   {
-                                    elements =
-                                      [
+                                    label_token = Some label_token;
+                                    pattern =
+                                      Syn.Cst.Pattern.Typed
                                         {
-                                          label_token = Some label_token;
-                                          pattern =
-                                            Syn.Cst.Pattern.Typed
-                                              {
-                                                pattern =
-                                                  Syn.Cst.Pattern.Identifier
-                                                    { name_token = x_name; _ };
-                                                _;
-                                              };
-                                        };
-                                        {
-                                          label_token = None;
                                           pattern =
                                             Syn.Cst.Pattern.Identifier
-                                              { name_token = y_name; _ };
+                                              { name_token = x_name; _ };
+                                          _;
                                         };
-                                      ];
-                                    open_tail = None;
-                                    _;
                                   };
+                                  {
+                                    label_token = None;
+                                    pattern =
+                                      Syn.Cst.Pattern.Identifier
+                                        { name_token = y_name; _ };
+                                  };
+                                ];
+                              open_tail = None;
                               _;
-                            }
-                            :: _;
-                          _;
-                        };
+                            };
+                        _;
+                      }
+                      :: _;
                     _;
                   };
               _;
@@ -3528,13 +3523,7 @@ let tests =
         match structure_items cst with
         | Syn.Cst.StructureItem.LetBinding
             {
-              value =
-                Syn.Cst.Expression.Function
-                  {
-                    parameters = [];
-                    body = Syn.Cst.Cases { cases; _ };
-                    _;
-                  };
+              value = Syn.Cst.Expression.Function { cases; _ };
               _;
             }
           :: _ ->
@@ -4010,43 +3999,38 @@ let tests =
               value =
                 Syn.Cst.Expression.Function
                   {
-                    body =
-                      Syn.Cst.Cases
-                        {
-                          cases =
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.LocalOpen
                             {
-                              pattern =
-                                Syn.Cst.Pattern.LocalOpen
+                              module_path =
+                                Syn.Cst.ModulePath.Qualified
                                   {
-                                    module_path =
-                                      Syn.Cst.ModulePath.Qualified
-                                        {
-                                          prefix =
-                                            Syn.Cst.ModulePath.Ident
-                                              { name_token = outer_module; _ };
-                                          name_token = inner_module;
-                                          _;
-                                        };
-                                    pattern =
-                                      Syn.Cst.Pattern.Constructor
-                                        {
-                                          constructor_path =
-                                            Syn.Cst.Ident.Ident
-                                              { name_token = constructor_name; _ };
-                                          arguments =
-                                            [
-                                              Syn.Cst.Pattern.Identifier
-                                                { name_token = binding_name; _ };
-                                            ];
-                                          _;
-                                        };
+                                    prefix =
+                                      Syn.Cst.ModulePath.Ident
+                                        { name_token = outer_module; _ };
+                                    name_token = inner_module;
+                                    _;
+                                  };
+                              pattern =
+                                Syn.Cst.Pattern.Constructor
+                                  {
+                                    constructor_path =
+                                      Syn.Cst.Ident.Ident
+                                        { name_token = constructor_name; _ };
+                                    arguments =
+                                      [
+                                        Syn.Cst.Pattern.Identifier
+                                          { name_token = binding_name; _ };
+                                      ];
                                     _;
                                   };
                               _;
-                            }
-                            :: _;
-                          _;
-                        };
+                            };
+                        _;
+                      }
+                      :: _;
                     _;
                   };
               _;
@@ -4373,54 +4357,49 @@ let tests =
               value =
                 Syn.Cst.Expression.Function
                   {
-                    body =
-                      Syn.Cst.Cases
-                        {
-                          cases =
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Constructor
                             {
-                              pattern =
-                                Syn.Cst.Pattern.Constructor
-                                  {
-                                    constructor_path = some_path;
-                                    arguments =
-                                      [
-                                        Syn.Cst.Pattern.Parenthesized
+                              constructor_path = some_path;
+                              arguments =
+                                [
+                                  Syn.Cst.Pattern.Parenthesized
+                                    {
+                                      inner =
+                                        Syn.Cst.Pattern.Tuple
                                           {
-                                            inner =
-                                              Syn.Cst.Pattern.Tuple
+                                            elements =
+                                              [
                                                 {
-                                                  elements =
-                                                    [
-                                                      {
-                                                        pattern =
-                                                          Syn.Cst.Pattern.Identifier
-                                                            { name_token = head_name; _ };
-                                                        _;
-                                                      };
-                                                      {
-                                                        pattern = Syn.Cst.Pattern.Wildcard _;
-                                                        _;
-                                                      };
-                                                    ];
-                                                  open_tail = None;
+                                                  pattern =
+                                                    Syn.Cst.Pattern.Identifier
+                                                      { name_token = head_name; _ };
                                                   _;
                                                 };
+                                                {
+                                                  pattern = Syn.Cst.Pattern.Wildcard _;
+                                                  _;
+                                                };
+                                              ];
+                                            open_tail = None;
                                             _;
                                           };
-                                      ];
-                                    _;
-                                  };
+                                      _;
+                                    };
+                                ];
                               _;
-                            }
-                            :: {
-                                 pattern =
-                                   Syn.Cst.Pattern.Constructor
-                                     { constructor_path = none_path; arguments = []; _ };
-                                 _;
-                               }
-                            :: _;
-                          _;
-                        };
+                            };
+                        _;
+                      }
+                      :: {
+                           pattern =
+                             Syn.Cst.Pattern.Constructor
+                               { constructor_path = none_path; arguments = []; _ };
+                           _;
+                         }
+                      :: _;
                     _;
                   };
               _;
@@ -4451,35 +4430,30 @@ let tests =
               value =
                 Syn.Cst.Expression.Function
                   {
-                    body =
-                      Syn.Cst.Cases
-                        {
-                          cases =
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Constructor
                             {
-                              pattern =
-                                Syn.Cst.Pattern.Constructor
+                              constructor_path;
+                              existentials =
+                                Some
                                   {
-                                    constructor_path;
-                                    existentials =
-                                      Some
-                                        {
-                                          binders =
-                                            [
-                                              Syn.Cst.TypeBinder.Bare
-                                                { name_token = a_name };
-                                              Syn.Cst.TypeBinder.Bare
-                                                { name_token = b_name };
-                                            ];
-                                          _;
-                                        };
-                                    arguments = [ Syn.Cst.Pattern.Typed _ ];
+                                    binders =
+                                      [
+                                        Syn.Cst.TypeBinder.Bare
+                                          { name_token = a_name };
+                                        Syn.Cst.TypeBinder.Bare
+                                          { name_token = b_name };
+                                      ];
                                     _;
                                   };
+                              arguments = [ Syn.Cst.Pattern.Typed _ ];
                               _;
-                            }
-                            :: _;
-                          _;
-                        };
+                            };
+                        _;
+                      }
+                      :: _;
                     _;
                   };
               _;

@@ -58,6 +58,8 @@ Remember to document the CST types and constructors with examples so its easy to
 - [x] Split Item.t into StructureItem.t and SignatureItem.t to make those enums/variants less likely to be mixed up
 - [x] Remove the convenience views from  type implementation and type interface, since the ordering in which these let bindings and expressions occur in the source tree is relevant so they can't be interweaved. If someone wants to find the let bindings or val signatures, etc, they have to iterate over the items (SignatureITem.t or StructureItem.t)
 
+- [x] Expression.Fun and Expression.Function are fundamentally different: the `function | ... -> ...` expresion doesn't have parameters! it only has _cases_ and each case basically has a single parameter, like `function | x -> x` or `function | 1 -> 2` -- only the `fun x -> x` syntax and the `let f x = x` syntax have parameters. They can be in the same Expression.Function constructor, but internally they probably should be 2 different records/variants since they don't really overlap, wdyt?
+
 #### Completely Absent Today
 
 - [x] Core types:
@@ -196,7 +198,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] object override expressions are only approximated via `ObjectUpdate`
   - [x] function expressions only store cases, not the richer parameter/type structure
   - [x] `for` loops store a direction token instead of a typed direction flag
-  - [ ] record expressions only keep syntax-level field paths and optional values
+  - [x] record expressions only keep syntax-level field paths and optional values
   - [ ] packed first-class module expressions are still mostly raw syntax
   - [ ] Expression attributes are represented as wrapper nodes instead of orthogonal metadata
 - [ ] Type declarations:

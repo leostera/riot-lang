@@ -1989,8 +1989,8 @@ type expression =
       (** A `fun` expression with explicit parameters and either a direct body
           expression or a nested `function`-style case body. *)
   | Function of function_expression
-      (** A `function` expression. This preserves the case body explicitly and
-          keeps the payload shape aligned with `Expression.Fun`. *)
+      (** A `function` expression with case clauses and no explicit
+          parameter list. *)
   | LetOperator of let_operator_expression
       (** A binding-operator expression such as
           `let* x = expr in body` or
@@ -2553,36 +2553,44 @@ and function_case_body = {
   cases : match_case list;
 }
 
-(** The body of a function-like expression.
+(** The body of a `fun` expression.
 
     `Expression body` covers forms such as `fun x -> x + 1`, while
     `Cases body` covers forms such as `fun x -> function | Some y -> y`
-    or a bare `function | ...`.
+    where the `fun` body itself is a nested `function` expression.
 *)
-and function_body =
+and fun_body =
   | Expression of expression
       (** A direct expression body, such as `fun x -> x + 1`. *)
   | Cases of function_case_body
       (** A case list body introduced by `function`, such as
           `fun x -> function | Some y -> y`. *)
 
-(** Shared payload for `Expression.Fun` and `Expression.Function`.
-
-    This keeps parameter structure and the distinction between direct
-    expression bodies and `function`-style case bodies explicit.
-*)
-and function_expression = {
-  syntax_node : syntax_node;
-  parameters : Parameter.t list;
-  body : function_body;
-}
-
 (** Payload for `Expression.Fun`.
 
     Covers `fun` expressions with explicit parameter lists, such as
     `fun x ~label ?opt -> body` or `fun x -> function | Some y -> y`.
 *)
-and fun_expression = function_expression
+and fun_expression = {
+  syntax_node : syntax_node;
+  parameters : Parameter.t list;
+  body : fun_body;
+}
+
+(** Payload for `Expression.Function`.
+
+    Covers `function` expressions whose payload is only a case list, such as:
+
+    ```ocaml,norun
+    function
+    | Some value -> value
+    | None -> default
+    ```
+*)
+and function_expression = {
+  syntax_node : syntax_node;
+  cases : match_case list;
+}
 
 (** A single `let` binding.
 
