@@ -42,7 +42,9 @@ let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with
   | None -> []
   | Some source_file ->
-      Syn.Cst.SourceFile.let_bindings source_file
+      Syn.Cst.SourceFile.structure_items source_file
+      |> Option.unwrap_or ~default:[]
+      |> List.concat_map Traversal.let_bindings_of_structure_item
       |> List.filter Syn.Cst.LetBinding.is_function
       |> List.filter_map diagnostic_for_binding
 

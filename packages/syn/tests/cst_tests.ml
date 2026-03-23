@@ -20,6 +20,14 @@ let signature_items = function
   | Syn.Cst.Interface { items; _ } -> items
   | Syn.Cst.Implementation _ -> []
 
+let top_level_let_bindings cst =
+  structure_items cst
+  |> List.filter_map (function
+       | Syn.Cst.StructureItem.LetBinding binding ->
+           Some binding
+       | _ ->
+           None)
+
 let tests =
   [
     Test.case "cst exists for diagnostics-free parse" (fun () ->
@@ -2406,8 +2414,6 @@ let tests =
             Test.assert_equal ~expected:(Some "attr")
               ~actual:(Syn.Cst.Ident.name attribute.name);
             Test.assert_equal ~expected:None ~actual:attribute.payload_syntax_node;
-            Test.assert_equal ~expected:0
-              ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
             Ok ()
         | _ ->
             Error "expected first item to be an attribute item");
@@ -2435,8 +2441,6 @@ let tests =
             | Some (Syn.Cst.Payload.Structure { item_syntax_nodes }) ->
                 Test.assert_equal ~expected:1
                   ~actual:(List.length item_syntax_nodes);
-                Test.assert_equal ~expected:0
-                  ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
                 Ok ()
             | _ ->
                 Error "expected structure payload for standalone extension item")
@@ -2453,8 +2457,6 @@ let tests =
         | Syn.Cst.SignatureItem.Attribute attribute :: _ ->
             Test.assert_equal ~expected:(Some "attr")
               ~actual:(Syn.Cst.Ident.name attribute.name);
-            Test.assert_equal ~expected:0
-              ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
             Ok ()
         | _ ->
             Error "expected first item to be an interface attribute item");
@@ -2469,8 +2471,6 @@ let tests =
         | Syn.Cst.SignatureItem.Extension extension :: _ ->
             Test.assert_equal ~expected:(Some "signature_item")
               ~actual:(Syn.Cst.Ident.name extension.name);
-            Test.assert_equal ~expected:0
-              ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
             Ok ()
         | _ ->
             Error "expected first item to be an interface extension item");
@@ -2816,9 +2816,9 @@ let tests =
                 Error "expected implementation open target to preserve structure syntax")
         | _ ->
             Error "expected first item to be an implementation open statement");
-    Test.case "cst source files collect let bindings recursively" (fun () ->
+    Test.case "cst source files preserve mixed structure item ordering" (fun () ->
         let source =
-          "let top_level = 1\nlet render x = let local_value = x in local_value\n"
+          "let first = 1\nmodule Middle = struct end\nlet second = 2\n"
         in
         let result = parse_ml source in
         let cst =
@@ -2826,14 +2826,18 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let bindings =
-          Syn.Cst.SourceFile.let_bindings cst
-          |> List.map Syn.Cst.LetBinding.name
-          |> List.sort String.compare
-        in
-        Test.assert_equal ~expected:[ "local_value"; "render"; "top_level" ]
-          ~actual:bindings;
-        Ok ());
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding first
+          :: Syn.Cst.StructureItem.ModuleDeclaration _
+          :: Syn.Cst.StructureItem.LetBinding second
+          :: _ ->
+            Test.assert_equal ~expected:"first"
+              ~actual:(Syn.Cst.LetBinding.name first);
+            Test.assert_equal ~expected:"second"
+              ~actual:(Syn.Cst.LetBinding.name second);
+            Ok ()
+        | _ ->
+            Error "expected let/module/let item ordering");
     Test.case "cst let bindings expose typed parameters" (fun () ->
         let source =
           "let render userId ~displayName ?pageSize current_user = current_user\n"
@@ -2844,12 +2848,9 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match
-          Syn.Cst.SourceFile.let_bindings cst
-          |> List.find_opt (fun binding ->
-                 String.equal (Syn.Cst.LetBinding.name binding) "render")
-        with
-        | Some binding ->
+        match top_level_let_bindings cst with
+        | binding :: _
+          when String.equal (Syn.Cst.LetBinding.name binding) "render" ->
             let names =
               Syn.Cst.LetBinding.parameters binding
               |> List.map Syn.Cst.Parameter.name
@@ -2859,7 +2860,8 @@ let tests =
                 [ Some "userId"; Some "displayName"; Some "pageSize"; Some "current_user" ]
               ~actual:names;
             Ok ()
-        | None -> Error "expected render binding parameters");
+        | _ ->
+            Error "expected render binding parameters");
     Test.case "cst let bindings preserve locally abstract type parameters"
       (fun () ->
         let source = "let id (type a b) value = value\n" in
@@ -2869,7 +2871,7 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.let_bindings cst with
+        match top_level_let_bindings cst with
         | binding :: _ -> (
             match Syn.Cst.LetBinding.parameters binding with
             | Syn.Cst.Parameter.LocallyAbstract { binders; _ } :: _ ->
@@ -2892,7 +2894,7 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        match Syn.Cst.SourceFile.let_bindings cst with
+        match top_level_let_bindings cst with
         | binding :: _ ->
             Test.assert_true (Syn.Cst.LetBinding.is_recursive binding);
             Ok ()
@@ -3635,7 +3637,7 @@ let tests =
               ~actual:(Syn.Cst.Token.text continuation);
             Ok ()
         | _ -> Error "expected first item to be a let binding with an effect handler");
-    Test.case "cst source files collect recognized expressions recursively" (fun () ->
+    Test.case "cst let bindings preserve infix expressions structurally" (fun () ->
         let source = "let changed = (left <> right)\n" in
         let result = parse_ml source in
         let cst =
@@ -3643,15 +3645,22 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let operators =
-          Syn.Cst.SourceFile.expressions cst
-          |> List.filter_map (function
-               | Syn.Cst.Expression.Infix expr ->
-                   Some (Syn.Cst.InfixExpression.operator expr)
-               | _ -> None)
-        in
-        Test.assert_equal ~expected:[ "<>" ] ~actual:operators;
-        Ok ());
+        match top_level_let_bindings cst with
+        | binding :: _ -> (
+            let value =
+              match Syn.Cst.LetBinding.value binding with
+              | Syn.Cst.Expression.Parenthesized { inner; _ } -> inner
+              | expr -> expr
+            in
+            match value with
+            | Syn.Cst.Expression.Infix expr ->
+                Test.assert_equal ~expected:"<>"
+                  ~actual:(Syn.Cst.InfixExpression.operator expr);
+                Ok ()
+            | _ ->
+                Error "expected bound value to contain an infix expression")
+        | [] ->
+            Error "expected let binding");
     Test.case "cst let bindings expose apply and field access expressions structurally" (fun () ->
         let source = "let reversed = List.rev (List.rev xs)\n" in
         let result = parse_ml source in

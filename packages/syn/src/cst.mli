@@ -3764,26 +3764,24 @@ end
 
 (** A parsed implementation source file.
 
-    `items` keeps the original item ordering, while `let_bindings` and
-    `expressions` provide flattened convenience views collected from the tree.
+    `items` preserves the original source ordering. Consumers that want to work
+    with specific item families should iterate that list directly so
+    interleaved `let`, `module`, attribute, and expression items stay in order.
 *)
 type implementation = {
   syntax_node : syntax_node;
   items : StructureItem.t list;
-  let_bindings : LetBinding.t list;
-  expressions : Expression.t list;
 }
 
 (** A parsed interface source file.
 
-    The same convenience views as `implementation` are exposed for symmetry,
-    even though many interfaces will naturally have fewer nested expressions.
+    `items` preserves the original source ordering. Consumers that want to find
+    particular declaration families should iterate the signature items directly
+    instead of relying on flattened projections.
 *)
 type interface = {
   syntax_node : syntax_node;
   items : SignatureItem.t list;
-  let_bindings : LetBinding.t list;
-  expressions : Expression.t list;
 }
 
 (** A parsed source file, distinguished by whether the grammar was an
@@ -3800,7 +3798,8 @@ type source_file = t
 (** Namespace helpers for the file-level CST root.
 
     This provides convenient access to the common projections shared by both
-    `Implementation` and `Interface` roots.
+    `Implementation` and `Interface` roots while keeping the ordered item lists
+    as the canonical file body.
 *)
 module SourceFile : sig
   type t = source_file
@@ -3808,8 +3807,6 @@ module SourceFile : sig
   val syntax_node : t -> syntax_node
   val structure_items : t -> StructureItem.t list option
   val signature_items : t -> SignatureItem.t list option
-  val let_bindings : t -> LetBinding.t list
-  val expressions : t -> Expression.t list
   val kind : t -> [ `Implementation | `Interface ]
 end
 

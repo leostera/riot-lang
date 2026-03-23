@@ -56,16 +56,13 @@ let make_diagnostic token =
     ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
     ()
 
-let diagnostic_for_binding binding =
-  if not (Syn.Cst.LetBinding.is_function binding) then
+let diagnostic_for_binding_site (site : Traversal.binding_site) =
+  if not site.is_function then
     None
   else
-    let name = Syn.Cst.LetBinding.name binding in
+    let name = Syn.Cst.Token.text site.name_token in
     if should_flag_function_name name then
-      match Syn.Cst.LetBinding.binding_name_token binding with
-      | Some token ->
-          Some (make_diagnostic (Syn.Cst.Token.syntax_token token))
-      | None -> None
+      Some (make_diagnostic (Syn.Cst.Token.syntax_token site.name_token))
     else
       None
 
@@ -73,8 +70,10 @@ let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with
   | None -> []
   | Some source_file ->
-      Syn.Cst.SourceFile.let_bindings source_file
-      |> List.filter_map diagnostic_for_binding
+      Syn.Cst.SourceFile.structure_items source_file
+      |> Option.unwrap_or ~default:[]
+      |> List.concat_map Traversal.binding_sites_of_structure_item
+      |> List.filter_map diagnostic_for_binding_site
 
 let make () =
   Rule.make ~id:rule_id ~code:rule_code ~name:rule_name

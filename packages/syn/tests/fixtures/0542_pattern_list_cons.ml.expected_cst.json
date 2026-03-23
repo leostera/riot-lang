@@ -138,37 +138,6 @@
           "is_recursive": false
         }
       }
-    ],
-    "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "path",
-        "syntax_node": {
-          "kind": "IDENT_EXPR",
-          "span": {
-            "start": 23,
-            "end": 27
-          }
-        },
-        "path": {
-          "tag": "ident",
-          "syntax_node": {
-            "kind": "IDENT_EXPR",
-            "span": {
-              "start": 23,
-              "end": 27
-            }
-          },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "list",
-            "span": {
-              "start": 23,
-              "end": 27
-            }
-          }
-        }
-      }
     ]
   }
 }

@@ -70,61 +70,6 @@
           "is_recursive": false
         }
       }
-    ],
-    "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "assert",
-        "syntax_node": {
-          "kind": "ASSERT_EXPR",
-          "span": {
-            "start": 79,
-            "end": 91
-          }
-        },
-        "asserted": {
-          "tag": "literal",
-          "literal": {
-            "tag": "bool",
-            "syntax_node": {
-              "kind": "BOOL_LITERAL",
-              "span": {
-                "start": 86,
-                "end": 91
-              }
-            },
-            "literal_token": {
-              "kind": "BOOL_LITERAL",
-              "text": "false",
-              "span": {
-                "start": 86,
-                "end": 91
-              }
-            }
-          }
-        }
-      },
-      {
-        "tag": "literal",
-        "literal": {
-          "tag": "bool",
-          "syntax_node": {
-            "kind": "BOOL_LITERAL",
-            "span": {
-              "start": 86,
-              "end": 91
-            }
-          },
-          "literal_token": {
-            "kind": "BOOL_LITERAL",
-            "text": "false",
-            "span": {
-              "start": 86,
-              "end": 91
-            }
-          }
-        }
-      }
     ]
   }
 }

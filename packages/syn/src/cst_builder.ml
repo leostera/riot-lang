@@ -4748,232 +4748,6 @@ let exception_declaration_from_node node =
           : Cst.exception_declaration)
   | _ -> None
 
-let rec collect_let_bindings node =
-  let bindings_here =
-    match Ceibo.Red.SyntaxNode.kind node with
-    | Syntax_kind.LET_BINDING ->
-        Option.to_list (let_binding_from_node ~is_recursive_binding:false node)
-        |> List.filter (fun binding ->
-               Option.is_some (Cst.LetBinding.binding_name_token binding))
-    | Syntax_kind.LET_REC_BINDING ->
-        Option.to_list (let_binding_from_node ~is_recursive_binding:true node)
-        |> List.filter (fun binding ->
-               Option.is_some (Cst.LetBinding.binding_name_token binding))
-    | Syntax_kind.LET_EXPR ->
-        Option.to_list
-          (let_expression_binding_from_node ~is_recursive_binding:false node)
-        |> List.filter (fun binding ->
-               Option.is_some (Cst.LetBinding.binding_name_token binding))
-    | Syntax_kind.LET_REC_EXPR ->
-        Option.to_list
-          (let_expression_binding_from_node ~is_recursive_binding:true node)
-        |> List.filter (fun binding ->
-               Option.is_some (Cst.LetBinding.binding_name_token binding))
-    | _ -> []
-  in
-  let nested =
-    direct_non_trivia_nodes node |> List.concat_map collect_let_bindings
-  in
-  bindings_here @ nested
-
-let rec collect_expressions_from_expression expr =
-  let nested =
-    match expr with
-    | Cst.Expression.Path _ | Cst.Expression.Operator _
-    | Cst.Expression.Literal _ | Cst.Expression.Unreachable _
-    | Cst.Expression.Attribute _
-    | Cst.Expression.Extension _ | Cst.Expression.New _ ->
-        []
-    | Cst.Expression.Object { members; _ } ->
-        members
-        |> List.concat_map (function
-             | Cst.ObjectMember.Method { body; _ } ->
-                 Option.to_list body |> List.concat_map collect_expressions_from_expression
-             | Cst.ObjectMember.Value { value; _ } ->
-                 Option.to_list value |> List.concat_map collect_expressions_from_expression
-             | Cst.ObjectMember.Inherit { expression; _ } ->
-                 collect_expressions_from_expression expression
-             | Cst.ObjectMember.Extension _ ->
-                 []
-             | Cst.ObjectMember.Initializer { body; _ } ->
-                 Option.to_list body |> List.concat_map collect_expressions_from_expression)
-    | Cst.Expression.PolyVariant { payload; _ } ->
-        Option.to_list payload |> List.concat_map collect_expressions_from_expression
-    | Cst.Expression.FirstClassModule _ ->
-        []
-    | Cst.Expression.LetModule { body; _ } ->
-        collect_expressions_from_expression body
-    | Cst.Expression.LetException { body; _ } ->
-        collect_expressions_from_expression body
-    | Cst.Expression.Assert { asserted; _ } ->
-        collect_expressions_from_expression asserted
-    | Cst.Expression.Lazy { body; _ } ->
-        collect_expressions_from_expression body
-    | Cst.Expression.While { condition; body; _ } ->
-        collect_expressions_from_expression condition
-        @ collect_expressions_from_expression body
-    | Cst.Expression.For { start_expr; end_expr; body; _ } ->
-        collect_expressions_from_expression start_expr
-        @ collect_expressions_from_expression end_expr
-        @ collect_expressions_from_expression body
-    | Cst.Expression.Apply { callee; argument; _ } ->
-        collect_expressions_from_expression callee
-        @ collect_expressions_from_apply_argument argument
-    | Cst.Expression.MethodCall { receiver; _ } ->
-        collect_expressions_from_expression receiver
-    | Cst.Expression.Prefix { operand; _ } ->
-        collect_expressions_from_expression operand
-    | Cst.Expression.FieldAccess { receiver; _ } ->
-        collect_expressions_from_expression receiver
-    | Cst.Expression.Index { collection; index; _ } ->
-        collect_expressions_from_expression collection
-        @ collect_expressions_from_expression index
-    | Cst.Expression.ObjectUpdate { fields; _ } ->
-        fields
-        |> List.concat_map (fun (field : Cst.record_expression_field) ->
-               Option.to_list (field.value)
-               |> List.concat_map collect_expressions_from_expression)
-    | Cst.Expression.InstanceVariableAssign { value; _ } ->
-        collect_expressions_from_expression value
-    | Cst.Expression.FieldAssign { target; value; _ } ->
-        collect_expressions_from_expression (Cst.Expression.FieldAccess target)
-        @ collect_expressions_from_expression value
-    | Cst.Expression.Assign { target; value; _ } ->
-        collect_expressions_from_expression target
-        @ collect_expressions_from_expression value
-    | Cst.Expression.Infix { left; right; _ } ->
-        collect_expressions_from_expression left
-        @ collect_expressions_from_expression right
-    | Cst.Expression.Typed { expression; _ }
-    | Cst.Expression.Polymorphic { expression; _ } ->
-        collect_expressions_from_expression expression
-    | Cst.Expression.Coerce { expression; _ } ->
-        collect_expressions_from_expression expression
-    | Cst.Expression.Sequence { left; right; _ } ->
-        collect_expressions_from_expression left
-        @ collect_expressions_from_expression right
-    | Cst.Expression.Tuple { elements; _ }
-    | Cst.Expression.List { elements; _ }
-    | Cst.Expression.Array { elements; _ } ->
-        elements |> List.concat_map collect_expressions_from_expression
-    | Cst.Expression.Record (Cst.RecordExpression.Literal { fields; _ }) ->
-        fields
-        |> List.concat_map (fun (field : Cst.record_expression_field) ->
-               Option.to_list (field.value)
-               |> List.concat_map collect_expressions_from_expression)
-    | Cst.Expression.Record (Cst.RecordExpression.Update { base; fields; _ }) ->
-        collect_expressions_from_expression base
-        @
-        (fields
-        |> List.concat_map (fun (field : Cst.record_expression_field) ->
-               Option.to_list (field.value)
-               |> List.concat_map collect_expressions_from_expression))
-    | Cst.Expression.LocalOpen { body; _ } ->
-        collect_expressions_from_expression body
-    | Cst.Expression.Fun { body; _ } ->
-        collect_expressions_from_expression body
-    | Cst.Expression.Function { cases; _ } ->
-        cases |> List.concat_map collect_expressions_from_match_case
-    | Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
-        collect_expressions_from_expression binding.bound_value
-        @ (and_bindings
-          |> List.concat_map (fun ({ bound_value; _ } : Cst.binding_operator_binding) ->
-                 collect_expressions_from_expression bound_value))
-        @ collect_expressions_from_expression body
-    | Cst.Expression.Let { bound_value; and_bindings; body; _ } ->
-        collect_expressions_from_expression bound_value
-        @ (and_bindings |> List.concat_map collect_expressions_from_let_binding)
-        @ collect_expressions_from_expression body
-    | Cst.Expression.Match { scrutinee; cases; _ } ->
-        collect_expressions_from_expression scrutinee
-        @ (cases |> List.concat_map collect_expressions_from_match_case)
-    | Cst.Expression.Try { body; cases; _ } ->
-        collect_expressions_from_expression body
-        @ (cases |> List.concat_map collect_expressions_from_match_case)
-    | Cst.Expression.If { condition; then_branch; else_branch; _ } ->
-        collect_expressions_from_expression condition
-        @ collect_expressions_from_expression then_branch
-        @
-        (Option.to_list else_branch
-        |> List.concat_map collect_expressions_from_expression)
-    | Cst.Expression.Parenthesized { inner; _ } ->
-        collect_expressions_from_expression inner
-  in
-  expr :: nested
-
-and collect_expressions_from_apply_argument = function
-  | Cst.Positional argument ->
-      collect_expressions_from_expression argument
-  | Cst.Labeled { value; _ } | Cst.Optional { value; _ } ->
-      Option.to_list value |> List.concat_map collect_expressions_from_expression
-
-and collect_expressions_from_let_binding binding =
-  collect_expressions_from_expression (Cst.LetBinding.value binding)
-
-and collect_expressions_from_match_case { guard; body; _ } =
-  (Option.to_list guard |> List.concat_map collect_expressions_from_expression)
-  @ collect_expressions_from_expression body
-
-and collect_expressions_from_class_field = function
-  | Cst.ClassField.Method { body; _ } ->
-      Option.to_list body |> List.concat_map collect_expressions_from_expression
-  | Cst.ClassField.Value { value; _ } ->
-      Option.to_list value |> List.concat_map collect_expressions_from_expression
-  | Cst.ClassField.Inherit { class_expression; _ } ->
-      collect_expressions_from_class_expression class_expression
-  | Cst.ClassField.Constraint _ ->
-      []
-  | Cst.ClassField.Initializer { body; _ } ->
-      Option.to_list body |> List.concat_map collect_expressions_from_expression
-  | Cst.ClassField.Attribute { field; _ } ->
-      collect_expressions_from_class_field field
-  | Cst.ClassField.Extension _ ->
-      []
-
-and collect_expressions_from_class_expression = function
-  | Cst.ClassExpression.Path _ | Cst.ClassExpression.Extension _ ->
-      []
-  | Cst.ClassExpression.Structure { fields; _ } ->
-      fields |> List.concat_map collect_expressions_from_class_field
-  | Cst.ClassExpression.Fun { body; _ } ->
-      collect_expressions_from_class_expression body
-  | Cst.ClassExpression.Apply { callee; argument; _ } ->
-      collect_expressions_from_class_expression callee
-      @ collect_expressions_from_apply_argument argument
-  | Cst.ClassExpression.Let { bound_value; and_bindings; body; _ } ->
-      collect_expressions_from_expression bound_value
-      @ (and_bindings |> List.concat_map collect_expressions_from_let_binding)
-      @ collect_expressions_from_class_expression body
-  | Cst.ClassExpression.Constraint { class_expression; _ } ->
-      collect_expressions_from_class_expression class_expression
-  | Cst.ClassExpression.LocalOpen { class_expression; _ } ->
-      collect_expressions_from_class_expression class_expression
-  | Cst.ClassExpression.Parenthesized { inner; _ } ->
-      collect_expressions_from_class_expression inner
-  | Cst.ClassExpression.Attribute { class_expression; _ } ->
-      collect_expressions_from_class_expression class_expression
-
-let collect_expressions_from_structure_item = function
-  | Cst.StructureItem.TypeDeclaration _ | Cst.StructureItem.TypeExtension _
-  | Cst.StructureItem.ModuleDeclaration _
-  | Cst.StructureItem.RecursiveModuleDeclaration _
-  | Cst.StructureItem.ModuleTypeDeclaration _
-  | Cst.StructureItem.OpenStatement _
-  | Cst.StructureItem.ValueDeclaration _
-  | Cst.StructureItem.ExternalDeclaration _
-  | Cst.StructureItem.IncludeStatement _
-  | Cst.StructureItem.ExceptionDeclaration _
-  | Cst.StructureItem.ClassTypeDeclaration _
-  | Cst.StructureItem.Attribute _
-  | Cst.StructureItem.Extension _ ->
-      []
-  | Cst.StructureItem.LetBinding binding ->
-      collect_expressions_from_let_binding binding
-  | Cst.StructureItem.Expression expr ->
-      collect_expressions_from_expression expr
-  | Cst.StructureItem.ClassDeclaration { class_body; _ } ->
-      Option.to_list class_body |> List.concat_map collect_expressions_from_class_expression
-
 let rec structure_items_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.TYPE_DECL -> (
@@ -5344,8 +5118,7 @@ let build_source_file_body tree items_from_node =
     direct_non_trivia_nodes root
     |> List.concat_map items_from_node
   in
-  let file_let_bindings = collect_let_bindings root in
-  (root, file_items, file_let_bindings)
+  (root, file_items)
 
 let rec validate_pattern ~context = function
   | Cst.Pattern.Identifier _ | Cst.Pattern.Wildcard _ | Cst.Pattern.Literal _
@@ -6204,37 +5977,21 @@ let validate_source_file source_file =
           validate_signature_item
             ~context:[ "source_file.items[" ^ Int.to_string index ^ "]" ]
             item)
-        items);
-  List.iteri
-    (fun index binding ->
-      validate_expression
-        ~context:[ "source_file.let_bindings[" ^ Int.to_string index ^ "].value" ]
-        (Cst.LetBinding.value binding))
-    (Cst.SourceFile.let_bindings source_file);
-  List.iteri
-    (fun index expr ->
-      validate_expression
-        ~context:[ "source_file.expressions[" ^ Int.to_string index ^ "]" ]
-        expr)
-    (Cst.SourceFile.expressions source_file)
+        items)
 
 let lift ~kind tree =
   let cst =
     match kind with
     | `Implementation ->
-        let syntax_node, items, let_bindings =
+        let syntax_node, items =
           build_source_file_body tree structure_items_from_node
         in
-        let expressions =
-          items |> List.concat_map collect_expressions_from_structure_item
-        in
-        Cst.Implementation { syntax_node; items; let_bindings; expressions }
+        Cst.Implementation { syntax_node; items }
     | `Interface ->
-        let syntax_node, items, let_bindings =
+        let syntax_node, items =
           build_source_file_body tree signature_items_from_node
         in
-        let expressions = [] in
-        Cst.Interface { syntax_node; items; let_bindings; expressions }
+        Cst.Interface { syntax_node; items }
   in
   validate_source_file cst;
   cst

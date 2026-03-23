@@ -101,3 +101,25 @@ val fold : 'acc visitor -> 'acc -> red_tree -> 'acc
 
 val is_trivia : Syn.SyntaxKind.t -> bool
 (** [is_trivia kind] returns true if [kind] is whitespace, comment, or docstring. *)
+
+(** {1 Typed CST Helpers} *)
+
+val expressions_of_structure_item :
+  Syn.Cst.StructureItem.t -> Syn.Cst.Expression.t list
+(** [expressions_of_structure_item item] returns the expressions reachable from
+    [item] in the same pre-order traversal used by lint rules.
+
+    The ordered structure-item list remains the canonical source-file body, so
+    callers should iterate the file's items and concatenate this helper's
+    results when they need recursive expression access.
+*)
+
+val let_bindings_of_structure_item :
+  Syn.Cst.StructureItem.t -> Syn.Cst.LetBinding.t list
+(** [let_bindings_of_structure_item item] returns the already-lifted
+    [LetBinding.t] values reachable from [item], preserving item-local order.
+
+    This does not synthesize a [LetBinding.t] for the primary binding inside
+    [Expression.Let] or [ClassExpression.Let]; those stay represented on the
+    enclosing expression nodes and must be inspected there when needed.
+*)

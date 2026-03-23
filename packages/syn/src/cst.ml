@@ -2275,15 +2275,11 @@ end
 type implementation = {
   syntax_node : syntax_node;
   items : StructureItem.t list;
-  let_bindings : LetBinding.t list;
-  expressions : Expression.t list;
 }
 
 type interface = {
   syntax_node : syntax_node;
   items : SignatureItem.t list;
-  let_bindings : LetBinding.t list;
-  expressions : Expression.t list;
 }
 
 type t =
@@ -2306,14 +2302,6 @@ module SourceFile = struct
   let signature_items = function
     | Implementation _ -> None
     | Interface source_file -> Some source_file.items
-
-  let let_bindings = function
-    | Implementation source_file -> source_file.let_bindings
-    | Interface source_file -> source_file.let_bindings
-
-  let expressions = function
-    | Implementation source_file -> source_file.expressions
-    | Interface source_file -> source_file.expressions
 
   let kind = function
     | Implementation _ -> `Implementation

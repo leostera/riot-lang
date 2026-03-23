@@ -2115,14 +2115,6 @@ let of_source_file source_file =
           | `Interface -> "interface") );
       ("syntax_node", syntax_node_to_json (Cst.SourceFile.syntax_node source_file));
       ("items", Json.Array items);
-      ( "let_bindings",
-        Json.Array
-          (List.map let_binding_to_json (Cst.SourceFile.let_bindings source_file))
-      );
-      ( "expressions",
-        Json.Array
-          (List.map expression_to_json (Cst.SourceFile.expressions source_file))
-      );
     ]
 
 let of_error (error : Cst_builder.error) =

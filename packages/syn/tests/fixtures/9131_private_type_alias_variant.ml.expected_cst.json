@@ -39,17 +39,6 @@
             }
           },
           "type_params": [],
-          "private_flag": {
-            "tag": "private",
-            "private_token": {
-              "kind": "IDENT_EXPR",
-              "text": "private",
-              "span": {
-                "start": 80,
-                "end": 87
-              }
-            }
-          },
           "type_definition": {
             "tag": "variant",
             "constructors": [
@@ -441,11 +430,20 @@
               }
             ]
           },
+          "private_flag": {
+            "tag": "private",
+            "private_token": {
+              "kind": "IDENT_EXPR",
+              "text": "private",
+              "span": {
+                "start": 80,
+                "end": 87
+              }
+            }
+          },
           "is_destructive_substitution": false
         }
       }
-    ],
-    "let_bindings": [],
-    "expressions": []
+    ]
   }
 }

@@ -220,8 +220,6 @@
           "is_destructive_substitution": false
         }
       }
-    ],
-    "let_bindings": [],
-    "expressions": []
+    ]
   }
 }

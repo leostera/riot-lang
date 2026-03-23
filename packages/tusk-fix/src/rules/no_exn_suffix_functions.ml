@@ -25,28 +25,23 @@ Examples:
   Better:  let parse_result text = ...
 |}
 
-let should_flag_binding binding =
-  Syn.Cst.LetBinding.is_function binding
-  && String.ends_with ~suffix:"_exn" (Syn.Cst.LetBinding.name binding)
+let should_flag_binding_site (site : Traversal.binding_site) =
+  site.is_function
+  && String.ends_with ~suffix:"_exn" (Syn.Cst.Token.text site.name_token)
 
-let make_diagnostic binding =
-  let name = Syn.Cst.LetBinding.name binding in
-  match Syn.Cst.LetBinding.binding_name_token binding with
-  | Some token ->
-      Some
-        (Diagnostic.make ~severity:Warning
-           ~kind:
-             (Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
-           ~span:(Syn.Cst.Token.syntax_token token |> Syn.Ceibo.Red.SyntaxToken.span)
-           ~suggestion:
-             ("Rename " ^ name
-            ^ " to remove the _exn suffix and prefer a Result/Option API.")
-           ())
-  | None -> None
+let make_diagnostic (site : Traversal.binding_site) =
+  let name = Syn.Cst.Token.text site.name_token in
+  Diagnostic.make ~severity:Warning
+    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~span:(Syn.Cst.Token.syntax_token site.name_token |> Syn.Ceibo.Red.SyntaxToken.span)
+    ~suggestion:
+      ("Rename " ^ name
+     ^ " to remove the _exn suffix and prefer a Result/Option API.")
+    ()
 
-let diagnostic_for_binding binding =
-  if should_flag_binding binding then
-    make_diagnostic binding
+let diagnostic_for_binding_site (site : Traversal.binding_site) =
+  if should_flag_binding_site site then
+    Some (make_diagnostic site)
   else
     None
 
@@ -54,8 +49,10 @@ let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with
   | None -> []
   | Some source_file ->
-      Syn.Cst.SourceFile.let_bindings source_file
-      |> List.filter_map diagnostic_for_binding
+      Syn.Cst.SourceFile.structure_items source_file
+      |> Option.unwrap_or ~default:[]
+      |> List.concat_map Traversal.binding_sites_of_structure_item
+      |> List.filter_map diagnostic_for_binding_site
 
 let make () =
   Rule.make ~id:rule_id ~code:rule_code ~name:rule_name

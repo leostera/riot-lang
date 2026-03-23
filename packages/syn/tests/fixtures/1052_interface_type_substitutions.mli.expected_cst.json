@@ -187,8 +187,6 @@
           "is_destructive_substitution": true
         }
       }
-    ],
-    "let_bindings": [],
-    "expressions": []
+    ]
   }
 }

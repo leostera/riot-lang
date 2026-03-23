@@ -631,8 +631,6 @@
           }
         }
       }
-    ],
-    "let_bindings": [],
-    "expressions": []
+    ]
   }
 }

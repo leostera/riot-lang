@@ -56,7 +56,7 @@ When modelling the fields below, don't model them blindly, but consider meaningf
 Remember to document the CST types and constructors with examples so its easy to know what each one represents.
 
 - [x] Split Item.t into StructureItem.t and SignatureItem.t to make those enums/variants less likely to be mixed up
-- [ ] Remove the convenience views from  type implementation and type interface, since the ordering in which these let bindings and expressions occur in the source tree is relevant so they can't be interweaved. If someone wants to find the let bindings or val signatures, etc, they have to iterate over the items (SignatureITem.t or StructureItem.t)
+- [x] Remove the convenience views from  type implementation and type interface, since the ordering in which these let bindings and expressions occur in the source tree is relevant so they can't be interweaved. If someone wants to find the let bindings or val signatures, etc, they have to iterate over the items (SignatureITem.t or StructureItem.t)
 
 #### Completely Absent Today
 

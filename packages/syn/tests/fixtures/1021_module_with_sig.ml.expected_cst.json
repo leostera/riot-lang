@@ -104,68 +104,6 @@
           "is_recursive": false
         }
       }
-    ],
-    "let_bindings": [
-      {
-        "syntax_node": {
-          "kind": "LET_BINDING",
-          "span": {
-            "start": 24,
-            "end": 34
-          }
-        },
-        "attributes": [],
-        "binding_pattern": {
-          "tag": "identifier",
-          "syntax_node": {
-            "kind": "IDENT_PATTERN",
-            "span": {
-              "start": 28,
-              "end": 29
-            }
-          },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 28,
-              "end": 29
-            }
-          }
-        },
-        "binding_name": {
-          "kind": "IDENT_EXPR",
-          "text": "x",
-          "span": {
-            "start": 28,
-            "end": 29
-          }
-        },
-        "parameters": [],
-        "value": {
-          "tag": "literal",
-          "literal": {
-            "tag": "int",
-            "syntax_node": {
-              "kind": "INT_LITERAL",
-              "span": {
-                "start": 32,
-                "end": 34
-              }
-            },
-            "literal_token": {
-              "kind": "INT_LITERAL",
-              "text": "42",
-              "span": {
-                "start": 32,
-                "end": 34
-              }
-            }
-          }
-        },
-        "is_recursive": false
-      }
-    ],
-    "expressions": []
+    ]
   }
 }
