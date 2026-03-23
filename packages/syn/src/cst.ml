@@ -982,11 +982,19 @@ and while_expression = {
   body : expression;
 }
 
+and for_direction =
+  | To of {
+      direction_token : Token.t;
+    }
+  | Downto of {
+      direction_token : Token.t;
+    }
+
 and for_expression = {
   syntax_node : syntax_node;
   iterator_token : Token.t;
   start_expr : expression;
-  direction_token : Token.t;
+  direction : for_direction;
   end_expr : expression;
   body : expression;
 }

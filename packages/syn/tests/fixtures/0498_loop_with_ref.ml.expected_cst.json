@@ -95,12 +95,15 @@
                   }
                 }
               },
-              "direction_token": {
-                "kind": "IDENT_EXPR",
-                "text": "to",
-                "span": {
-                  "start": 20,
-                  "end": 22
+              "direction": {
+                "tag": "to",
+                "token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "to",
+                  "span": {
+                    "start": 20,
+                    "end": 22
+                  }
                 }
               },
               "end_expr": {
@@ -405,12 +408,15 @@
                 }
               }
             },
-            "direction_token": {
-              "kind": "IDENT_EXPR",
-              "text": "to",
-              "span": {
-                "start": 20,
-                "end": 22
+            "direction": {
+              "tag": "to",
+              "token": {
+                "kind": "IDENT_EXPR",
+                "text": "to",
+                "span": {
+                  "start": 20,
+                  "end": 22
+                }
               }
             },
             "end_expr": {
@@ -678,12 +684,15 @@
               }
             }
           },
-          "direction_token": {
-            "kind": "IDENT_EXPR",
-            "text": "to",
-            "span": {
-              "start": 20,
-              "end": 22
+          "direction": {
+            "tag": "to",
+            "token": {
+              "kind": "IDENT_EXPR",
+              "text": "to",
+              "span": {
+                "start": 20,
+                "end": 22
+              }
             }
           },
           "end_expr": {
@@ -938,12 +947,15 @@
             }
           }
         },
-        "direction_token": {
-          "kind": "IDENT_EXPR",
-          "text": "to",
-          "span": {
-            "start": 20,
-            "end": 22
+        "direction": {
+          "tag": "to",
+          "token": {
+            "kind": "IDENT_EXPR",
+            "text": "to",
+            "span": {
+              "start": 20,
+              "end": 22
+            }
           }
         },
         "end_expr": {

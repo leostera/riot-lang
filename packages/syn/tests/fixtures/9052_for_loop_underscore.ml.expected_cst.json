@@ -74,12 +74,15 @@
                 }
               }
             },
-            "direction_token": {
-              "kind": "IDENT_EXPR",
-              "text": "to",
-              "span": {
-                "start": 70,
-                "end": 72
+            "direction": {
+              "tag": "to",
+              "token": {
+                "kind": "IDENT_EXPR",
+                "text": "to",
+                "span": {
+                  "start": 70,
+                  "end": 72
+                }
               }
             },
             "end_expr": {
@@ -233,12 +236,15 @@
                 }
               }
             },
-            "direction_token": {
-              "kind": "IDENT_EXPR",
-              "text": "downto",
-              "span": {
-                "start": 156,
-                "end": 162
+            "direction": {
+              "tag": "downto",
+              "token": {
+                "kind": "IDENT_EXPR",
+                "text": "downto",
+                "span": {
+                  "start": 156,
+                  "end": 162
+                }
               }
             },
             "end_expr": {
@@ -369,12 +375,15 @@
             }
           }
         },
-        "direction_token": {
-          "kind": "IDENT_EXPR",
-          "text": "to",
-          "span": {
-            "start": 70,
-            "end": 72
+        "direction": {
+          "tag": "to",
+          "token": {
+            "kind": "IDENT_EXPR",
+            "text": "to",
+            "span": {
+              "start": 70,
+              "end": 72
+            }
           }
         },
         "end_expr": {
@@ -652,12 +661,15 @@
             }
           }
         },
-        "direction_token": {
-          "kind": "IDENT_EXPR",
-          "text": "downto",
-          "span": {
-            "start": 156,
-            "end": 162
+        "direction": {
+          "tag": "downto",
+          "token": {
+            "kind": "IDENT_EXPR",
+            "text": "downto",
+            "span": {
+              "start": 156,
+              "end": 162
+            }
           }
         },
         "end_expr": {

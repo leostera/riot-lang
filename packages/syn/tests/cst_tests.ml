@@ -4489,7 +4489,7 @@ let tests =
                 Syn.Cst.Expression.For
                   {
                     iterator_token;
-                    direction_token;
+                    direction = Syn.Cst.Downto { direction_token };
                     body = Syn.Cst.Expression.Apply _;
                     _;
                   };
@@ -4502,6 +4502,31 @@ let tests =
               ~actual:(Syn.Cst.Token.text direction_token);
             Ok ()
         | _ -> Error "expected for expression");
+    Test.case "cst for expressions distinguish ascending direction" (fun () ->
+        let source = "let x = for i = 0 to 1 do f i done\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.For
+                  {
+                    direction = Syn.Cst.To { direction_token };
+                    body = Syn.Cst.Expression.Apply _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"to"
+              ~actual:(Syn.Cst.Token.text direction_token);
+            Ok ()
+        | _ -> Error "expected ascending for expression");
   ]
 
 let () =

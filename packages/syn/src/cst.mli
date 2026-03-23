@@ -1842,15 +1842,38 @@ and while_expression = {
   body : expression;
 }
 
+(** The iteration direction of a `for` loop.
+
+    This keeps the written keyword while also distinguishing ascending and
+    descending loops structurally.
+
+    Examples:
+
+    ```ocaml,norun
+    for i = 0 to 10 do print_int i done
+    for i = 10 downto 0 do print_int i done
+    ```
+*)
+and for_direction =
+  | To of {
+      direction_token : Token.t;
+    }
+      (** An ascending loop written with `to`. *)
+  | Downto of {
+      direction_token : Token.t;
+    }
+      (** A descending loop written with `downto`. *)
+
 (** Payload for `Expression.For`.
 
-    `direction_token` preserves whether the loop used `to` or `downto`.
+    `direction` distinguishes `to` and `downto` structurally while preserving
+    the original keyword token.
 *)
 and for_expression = {
   syntax_node : syntax_node;
   iterator_token : Token.t;
   start_expr : expression;
-  direction_token : Token.t;
+  direction : for_direction;
   end_expr : expression;
   body : expression;
 }

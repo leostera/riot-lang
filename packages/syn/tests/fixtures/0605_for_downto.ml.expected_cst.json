@@ -86,12 +86,15 @@
                 }
               }
             },
-            "direction_token": {
-              "kind": "IDENT_EXPR",
-              "text": "downto",
-              "span": {
-                "start": 21,
-                "end": 27
+            "direction": {
+              "tag": "downto",
+              "token": {
+                "kind": "IDENT_EXPR",
+                "text": "downto",
+                "span": {
+                  "start": 21,
+                  "end": 27
+                }
               }
             },
             "end_expr": {
@@ -264,12 +267,15 @@
               }
             }
           },
-          "direction_token": {
-            "kind": "IDENT_EXPR",
-            "text": "downto",
-            "span": {
-              "start": 21,
-              "end": 27
+          "direction": {
+            "tag": "downto",
+            "token": {
+              "kind": "IDENT_EXPR",
+              "text": "downto",
+              "span": {
+                "start": 21,
+                "end": 27
+              }
             }
           },
           "end_expr": {
@@ -405,12 +411,15 @@
             }
           }
         },
-        "direction_token": {
-          "kind": "IDENT_EXPR",
-          "text": "downto",
-          "span": {
-            "start": 21,
-            "end": 27
+        "direction": {
+          "tag": "downto",
+          "token": {
+            "kind": "IDENT_EXPR",
+            "text": "downto",
+            "span": {
+              "start": 21,
+              "end": 27
+            }
           }
         },
         "end_expr": {

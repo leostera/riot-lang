@@ -2162,20 +2162,32 @@ and expression_from_node node =
       | _ -> unsupported_expression node)
   | Syntax_kind.FOR_EXPR -> (
       let non_trivia_tokens = direct_non_trivia_tokens node in
-      let direction_token =
+      let direction =
         non_trivia_tokens
         |> List.find_opt (fun syntax_token ->
                let text = Ceibo.Red.SyntaxToken.text syntax_token in
                String.equal text "to" || String.equal text "downto")
+        |> Option.map (fun direction_syntax_token ->
+               let direction_token = token direction_syntax_token in
+               match Ceibo.Red.SyntaxToken.text direction_syntax_token with
+               | "to" ->
+                   Cst.To { direction_token }
+               | "downto" ->
+                   Cst.Downto { direction_token }
+               | _ ->
+                   bail
+                     ~message:
+                       "expected for-loop direction token during Ceibo -> CST lifting"
+                     ~syntax_node:node ~context:[ "expression.for"; "direction" ])
       in
-      match direct_non_trivia_nodes node, non_trivia_tokens, direction_token with
-      | start_node :: end_node :: body_node :: _, _for_kw :: iterator_syntax_token :: _, Some direction_syntax_token ->
+      match direct_non_trivia_nodes node, non_trivia_tokens, direction with
+      | start_node :: end_node :: body_node :: _, _for_kw :: iterator_syntax_token :: _, Some direction ->
           Cst.Expression.For
             {
               syntax_node = node;
               iterator_token = token iterator_syntax_token;
               start_expr = expression_from_node start_node;
-              direction_token = token direction_syntax_token;
+              direction;
               end_expr = expression_from_node end_node;
               body = expression_from_node body_node;
             }

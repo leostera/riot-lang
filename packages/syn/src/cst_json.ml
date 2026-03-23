@@ -818,6 +818,20 @@ and binding_operator_binding_to_json
       ("bound_value", expression_to_json bound_value);
     ]
 
+and for_direction_to_json = function
+  | Cst.To { direction_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "to");
+          ("token", token_to_json direction_token);
+        ]
+  | Cst.Downto { direction_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "downto");
+          ("token", token_to_json direction_token);
+        ]
+
 and expression_to_json = function
   | Cst.Expression.Path { syntax_node; path } ->
       Json.Object
@@ -924,14 +938,14 @@ and expression_to_json = function
           ("body", expression_to_json body);
         ]
   | Cst.Expression.For
-      { syntax_node; iterator_token; start_expr; direction_token; end_expr; body } ->
+      { syntax_node; iterator_token; start_expr; direction; end_expr; body } ->
       Json.Object
         [
           ("tag", Json.String "for");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("iterator_token", token_to_json iterator_token);
           ("start_expr", expression_to_json start_expr);
-          ("direction_token", token_to_json direction_token);
+          ("direction", for_direction_to_json direction);
           ("end_expr", expression_to_json end_expr);
           ("body", expression_to_json body);
         ]

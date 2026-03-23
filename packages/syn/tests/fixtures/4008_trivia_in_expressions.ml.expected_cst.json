@@ -828,12 +828,15 @@
                 }
               }
             },
-            "direction_token": {
-              "kind": "IDENT_EXPR",
-              "text": "to",
-              "span": {
-                "start": 726,
-                "end": 728
+            "direction": {
+              "tag": "to",
+              "token": {
+                "kind": "IDENT_EXPR",
+                "text": "to",
+                "span": {
+                  "start": 726,
+                  "end": 728
+                }
               }
             },
             "end_expr": {
@@ -2854,12 +2857,15 @@
             }
           }
         },
-        "direction_token": {
-          "kind": "IDENT_EXPR",
-          "text": "to",
-          "span": {
-            "start": 726,
-            "end": 728
+        "direction": {
+          "tag": "to",
+          "token": {
+            "kind": "IDENT_EXPR",
+            "text": "to",
+            "span": {
+              "start": 726,
+              "end": 728
+            }
           }
         },
         "end_expr": {
