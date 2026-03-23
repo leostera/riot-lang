@@ -49,6 +49,29 @@
           },
           "parameters": [
             {
+              "tag": "locally_abstract",
+              "syntax_node": {
+                "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+                "span": {
+                  "start": 10,
+                  "end": 18
+                }
+              },
+              "binders": [
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 16,
+                      "end": 17
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "tag": "positional",
               "syntax_node": {
                 "kind": "FIRST_CLASS_MODULE_PATTERN",
@@ -206,6 +229,29 @@
           }
         },
         "parameters": [
+          {
+            "tag": "locally_abstract",
+            "syntax_node": {
+              "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+              "span": {
+                "start": 10,
+                "end": 18
+              }
+            },
+            "binders": [
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 16,
+                    "end": 17
+                  }
+                }
+              }
+            ]
+          },
           {
             "tag": "positional",
             "syntax_node": {

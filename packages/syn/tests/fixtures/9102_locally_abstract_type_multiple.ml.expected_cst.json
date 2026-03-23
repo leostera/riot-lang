@@ -49,6 +49,40 @@
           },
           "parameters": [
             {
+              "tag": "locally_abstract",
+              "syntax_node": {
+                "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+                "span": {
+                  "start": 34,
+                  "end": 44
+                }
+              },
+              "binders": [
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 40,
+                      "end": 41
+                    }
+                  }
+                },
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "span": {
+                      "start": 42,
+                      "end": 43
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "tag": "positional",
               "syntax_node": {
                 "kind": "TYPED_PATTERN",
@@ -195,6 +229,51 @@
             }
           },
           "parameters": [
+            {
+              "tag": "locally_abstract",
+              "syntax_node": {
+                "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+                "span": {
+                  "start": 114,
+                  "end": 126
+                }
+              },
+              "binders": [
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 120,
+                      "end": 121
+                    }
+                  }
+                },
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "span": {
+                      "start": 122,
+                      "end": 123
+                    }
+                  }
+                },
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "c",
+                    "span": {
+                      "start": 124,
+                      "end": 125
+                    }
+                  }
+                }
+              ]
+            },
             {
               "tag": "positional",
               "syntax_node": {
@@ -401,6 +480,62 @@
             }
           },
           "parameters": [
+            {
+              "tag": "locally_abstract",
+              "syntax_node": {
+                "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+                "span": {
+                  "start": 216,
+                  "end": 230
+                }
+              },
+              "binders": [
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 222,
+                      "end": 223
+                    }
+                  }
+                },
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "span": {
+                      "start": 224,
+                      "end": 225
+                    }
+                  }
+                },
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "c",
+                    "span": {
+                      "start": 226,
+                      "end": 227
+                    }
+                  }
+                },
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "d",
+                    "span": {
+                      "start": 228,
+                      "end": 229
+                    }
+                  }
+                }
+              ]
+            },
             {
               "tag": "positional",
               "syntax_node": {
@@ -650,6 +785,40 @@
         },
         "parameters": [
           {
+            "tag": "locally_abstract",
+            "syntax_node": {
+              "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+              "span": {
+                "start": 34,
+                "end": 44
+              }
+            },
+            "binders": [
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 40,
+                    "end": 41
+                  }
+                }
+              },
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "b",
+                  "span": {
+                    "start": 42,
+                    "end": 43
+                  }
+                }
+              }
+            ]
+          },
+          {
             "tag": "positional",
             "syntax_node": {
               "kind": "TYPED_PATTERN",
@@ -793,6 +962,51 @@
           }
         },
         "parameters": [
+          {
+            "tag": "locally_abstract",
+            "syntax_node": {
+              "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+              "span": {
+                "start": 114,
+                "end": 126
+              }
+            },
+            "binders": [
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 120,
+                    "end": 121
+                  }
+                }
+              },
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "b",
+                  "span": {
+                    "start": 122,
+                    "end": 123
+                  }
+                }
+              },
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "c",
+                  "span": {
+                    "start": 124,
+                    "end": 125
+                  }
+                }
+              }
+            ]
+          },
           {
             "tag": "positional",
             "syntax_node": {
@@ -996,6 +1210,62 @@
           }
         },
         "parameters": [
+          {
+            "tag": "locally_abstract",
+            "syntax_node": {
+              "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+              "span": {
+                "start": 216,
+                "end": 230
+              }
+            },
+            "binders": [
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 222,
+                    "end": 223
+                  }
+                }
+              },
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "b",
+                  "span": {
+                    "start": 224,
+                    "end": 225
+                  }
+                }
+              },
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "c",
+                  "span": {
+                    "start": 226,
+                    "end": 227
+                  }
+                }
+              },
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "d",
+                  "span": {
+                    "start": 228,
+                    "end": 229
+                  }
+                }
+              }
+            ]
+          },
           {
             "tag": "positional",
             "syntax_node": {

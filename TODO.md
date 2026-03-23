@@ -1,5 +1,14 @@
 # TODO
 
+This file is _yours_. Keep it up to date after every big change.
+
+## How You Work
+
+1. Read this file from top to bottom and pick the next unchecked item that is unblocked.
+2. Work until its completed.
+3. Mark a task complete in this document only after the relevant verification has passed.
+4. DON'T FORGET TO GIT COMMIT AFTER EVERY SLICE!
+
 ## TASKS
 
 - [ ] Go over the OCaml Structure Parity Checklist below and check all the boxes
@@ -7,9 +16,8 @@
 - [ ] Work on refactoring the existing lints
 - [ ] Work on implementing the remaining lints
 
-## Working Loop
+## Verification Commands
 
-0. Read this file from top to bottom and pick the next unchecked item that is unblocked.
 1. Rebuild `tusk` when build-system, parser, or lint-runtime changes affect the binary:
    - `timeout 240 tusk build tusk-cli`
 2. Use the narrowest verification command that matches the change:
@@ -20,13 +28,10 @@
    - `timeout 180 tusk test tusk-fix:runner_tests`
 4. After a CST syntax-family slice lands, optionally refreshing the fixture corpus if necessary:
    - `timeout 900 python3 packages/syn/tests/test_runner.py cst --refresh-clean`
+4. When making changes to the parser in general call:
+   - `timeout 900 python3 packages/syn/tests/test_runner.py all`
 5. When smoke-checking lint output, prefer the auto-rebuilding path:
    - `timeout 180 tusk run tusk -- fix --check --limit 10 <file>`
-7. Mark a task complete in this document only after the relevant verification has passed.
-8. Commit often, with one logical slice per commit.
-
-## Verification Commands
-
 - `tusk build tusk-cli`
 - `tusk build syn`
 - `tusk build tusk-fix`
@@ -61,19 +66,12 @@
 
 ### OCaml Structure Parity Checklist
 
+When modelling the fields below, don't model them blindly, but consider meaningful groupings. For ex. instead of ExprString ExprInt ExprFloat we can group them by Expression.Literal(lit) where lit is its own literal enum with String | Int | Float | etc. Similarly, use good judgement to group similar things together.
+
+Remember to document the CST types and constructors with examples so its easy to know what each one represents.
+
 #### Completely Absent Today
 
-- [ ] Patterns:
-  - [x] type-constraint patterns
-  - [ ] effect patterns
-  - [x] locally opened patterns
-- [ ] Expressions:
-  - [ ] instance-variable assignment expressions
-  - [ ] structure-item expressions
-  - [ ] polymorphic expressions
-  - [ ] locally abstract type expressions
-  - [ ] let-operator expressions
-  - [ ] unreachable expressions
 - [ ] Core types:
   - [x] wildcard types
   - [x] type variable references
@@ -81,16 +79,27 @@
   - [x] tuple types
   - [x] constructor-applied types
   - [x] object types
-  - [ ] class types in type positions
+  - [x] class types in type positions
   - [x] aliased types
   - [x] polyvariant types
-  - [ ] universally quantified types
-  - [ ] package types
-  - [ ] locally opened types
+  - [x] universally quantified types
+  - [x] package types
+  - [x] locally opened types
   - [x] extension types
-  - [ ] package-type payloads
+  - [x] package-type payloads
   - [ ] row fields
   - [x] object fields
+- [ ] Patterns:
+  - [x] type-constraint patterns
+  - [x] effect patterns
+  - [x] locally opened patterns
+- [ ] Expressions:
+  - [x] instance-variable assignment expressions
+  - [ ] structure-item expressions
+  - [ ] polymorphic expressions
+  - [x] locally abstract type expressions
+  - [ ] let-operator expressions
+  - [ ] unreachable expressions
 - [ ] Structure items:
   - [ ] type-extension items
   - [ ] recursive-module items

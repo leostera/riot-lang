@@ -49,6 +49,29 @@
           },
           "parameters": [
             {
+              "tag": "locally_abstract",
+              "syntax_node": {
+                "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+                "span": {
+                  "start": 42,
+                  "end": 50
+                }
+              },
+              "binders": [
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 48,
+                      "end": 49
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "tag": "positional",
               "syntax_node": {
                 "kind": "TYPED_PATTERN",
@@ -137,6 +160,29 @@
           },
           "parameters": [
             {
+              "tag": "locally_abstract",
+              "syntax_node": {
+                "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+                "span": {
+                  "start": 107,
+                  "end": 115
+                }
+              },
+              "binders": [
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 113,
+                      "end": 114
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "tag": "positional",
               "syntax_node": {
                 "kind": "TYPED_PATTERN",
@@ -217,6 +263,29 @@
             }
           },
           "parameters": [
+            {
+              "tag": "locally_abstract",
+              "syntax_node": {
+                "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+                "span": {
+                  "start": 187,
+                  "end": 195
+                }
+              },
+              "binders": [
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 193,
+                      "end": 194
+                    }
+                  }
+                }
+              ]
+            },
             {
               "tag": "positional",
               "syntax_node": {
@@ -365,6 +434,29 @@
         },
         "parameters": [
           {
+            "tag": "locally_abstract",
+            "syntax_node": {
+              "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+              "span": {
+                "start": 42,
+                "end": 50
+              }
+            },
+            "binders": [
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 48,
+                    "end": 49
+                  }
+                }
+              }
+            ]
+          },
+          {
             "tag": "positional",
             "syntax_node": {
               "kind": "TYPED_PATTERN",
@@ -450,6 +542,29 @@
         },
         "parameters": [
           {
+            "tag": "locally_abstract",
+            "syntax_node": {
+              "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+              "span": {
+                "start": 107,
+                "end": 115
+              }
+            },
+            "binders": [
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 113,
+                    "end": 114
+                  }
+                }
+              }
+            ]
+          },
+          {
             "tag": "positional",
             "syntax_node": {
               "kind": "TYPED_PATTERN",
@@ -527,6 +642,29 @@
           }
         },
         "parameters": [
+          {
+            "tag": "locally_abstract",
+            "syntax_node": {
+              "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+              "span": {
+                "start": 187,
+                "end": 195
+              }
+            },
+            "binders": [
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 193,
+                    "end": 194
+                  }
+                }
+              }
+            ]
+          },
           {
             "tag": "positional",
             "syntax_node": {

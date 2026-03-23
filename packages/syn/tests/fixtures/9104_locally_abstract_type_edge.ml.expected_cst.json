@@ -49,6 +49,29 @@
           },
           "parameters": [
             {
+              "tag": "locally_abstract",
+              "syntax_node": {
+                "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+                "span": {
+                  "start": 45,
+                  "end": 53
+                }
+              },
+              "binders": [
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 51,
+                      "end": 52
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "tag": "labeled",
               "syntax_node": {
                 "kind": "LABELED_PARAM",
@@ -155,6 +178,29 @@
             }
           },
           "parameters": [
+            {
+              "tag": "locally_abstract",
+              "syntax_node": {
+                "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+                "span": {
+                  "start": 113,
+                  "end": 121
+                }
+              },
+              "binders": [
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 119,
+                      "end": 120
+                    }
+                  }
+                }
+              ]
+            },
             {
               "tag": "optional",
               "syntax_node": {
@@ -263,6 +309,40 @@
             }
           },
           "parameters": [
+            {
+              "tag": "locally_abstract",
+              "syntax_node": {
+                "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+                "span": {
+                  "start": 177,
+                  "end": 189
+                }
+              },
+              "binders": [
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 183,
+                      "end": 184
+                    }
+                  }
+                },
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "acc",
+                    "span": {
+                      "start": 185,
+                      "end": 188
+                    }
+                  }
+                }
+              ]
+            },
             {
               "tag": "positional",
               "syntax_node": {
@@ -735,6 +815,40 @@
           },
           "parameters": [
             {
+              "tag": "locally_abstract",
+              "syntax_node": {
+                "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+                "span": {
+                  "start": 358,
+                  "end": 375
+                }
+              },
+              "binders": [
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "item",
+                    "span": {
+                      "start": 364,
+                      "end": 368
+                    }
+                  }
+                },
+                {
+                  "tag": "bare",
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "state",
+                    "span": {
+                      "start": 369,
+                      "end": 374
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "tag": "positional",
               "syntax_node": {
                 "kind": "TYPED_PATTERN",
@@ -841,6 +955,29 @@
         },
         "parameters": [
           {
+            "tag": "locally_abstract",
+            "syntax_node": {
+              "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+              "span": {
+                "start": 45,
+                "end": 53
+              }
+            },
+            "binders": [
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 51,
+                    "end": 52
+                  }
+                }
+              }
+            ]
+          },
+          {
             "tag": "labeled",
             "syntax_node": {
               "kind": "LABELED_PARAM",
@@ -944,6 +1081,29 @@
           }
         },
         "parameters": [
+          {
+            "tag": "locally_abstract",
+            "syntax_node": {
+              "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+              "span": {
+                "start": 113,
+                "end": 121
+              }
+            },
+            "binders": [
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 119,
+                    "end": 120
+                  }
+                }
+              }
+            ]
+          },
           {
             "tag": "optional",
             "syntax_node": {
@@ -1049,6 +1209,40 @@
           }
         },
         "parameters": [
+          {
+            "tag": "locally_abstract",
+            "syntax_node": {
+              "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+              "span": {
+                "start": 177,
+                "end": 189
+              }
+            },
+            "binders": [
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 183,
+                    "end": 184
+                  }
+                }
+              },
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "acc",
+                  "span": {
+                    "start": 185,
+                    "end": 188
+                  }
+                }
+              }
+            ]
+          },
           {
             "tag": "positional",
             "syntax_node": {
@@ -1517,6 +1711,40 @@
           }
         },
         "parameters": [
+          {
+            "tag": "locally_abstract",
+            "syntax_node": {
+              "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+              "span": {
+                "start": 358,
+                "end": 375
+              }
+            },
+            "binders": [
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "item",
+                  "span": {
+                    "start": 364,
+                    "end": 368
+                  }
+                }
+              },
+              {
+                "tag": "bare",
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "state",
+                  "span": {
+                    "start": 369,
+                    "end": 374
+                  }
+                }
+              }
+            ]
+          },
           {
             "tag": "positional",
             "syntax_node": {

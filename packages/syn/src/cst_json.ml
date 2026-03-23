@@ -81,6 +81,21 @@ and poly_variant_tag_to_json ({ syntax_node; tag_name; payload_type } : Cst.poly
       ("payload_type", option_to_json core_type_to_json payload_type);
     ]
 
+and type_binder_to_json = function
+  | Cst.TypeBinder.Quoted { syntax_node; name_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "quoted");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("name_token", token_to_json name_token);
+        ]
+  | Cst.TypeBinder.Bare { name_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "bare");
+          ("name_token", token_to_json name_token);
+        ]
+
 and core_type_to_json = function
   | Cst.CoreType.Wildcard { syntax_node; wildcard_token } ->
       Json.Object
@@ -102,6 +117,15 @@ and core_type_to_json = function
           ("tag", Json.String "constr");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("constructor_path", ident_to_json constructor_path);
+          ("arguments", Json.Array (List.map core_type_to_json arguments));
+        ]
+  | Cst.CoreType.Class { syntax_node; hash_token; class_path; arguments } ->
+      Json.Object
+        [
+          ("tag", Json.String "class");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("hash_token", token_to_json hash_token);
+          ("class_path", ident_to_json class_path);
           ("arguments", Json.Array (List.map core_type_to_json arguments));
         ]
   | Cst.CoreType.Alias { syntax_node; type_; name_token } ->
@@ -126,6 +150,14 @@ and core_type_to_json = function
           ("tag", Json.String "extension");
           ("extension", extension_to_json extension);
         ]
+  | Cst.CoreType.Poly { syntax_node; binders; body } ->
+      Json.Object
+        [
+          ("tag", Json.String "poly");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("binders", Json.Array (List.map type_binder_to_json binders));
+          ("body", core_type_to_json body);
+        ]
   | Cst.CoreType.Arrow { syntax_node; parameter_type; result_type } ->
       Json.Object
         [
@@ -147,6 +179,14 @@ and core_type_to_json = function
           ("tag", Json.String "parenthesized");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("inner", core_type_to_json inner);
+        ]
+  | Cst.CoreType.LocalOpen { syntax_node; module_path; type_ } ->
+      Json.Object
+        [
+          ("tag", Json.String "local_open");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("module_path", ident_to_json module_path);
+          ("type", core_type_to_json type_);
         ]
   | Cst.CoreType.PolyVariant { syntax_node; tags } ->
       Json.Object
@@ -515,6 +555,22 @@ and pattern_to_json = function
           ("pattern", pattern_to_json pattern);
           ("type", core_type_to_json type_);
         ]
+  | Cst.Pattern.Effect { syntax_node; effect_pattern; continuation } ->
+      Json.Object
+        [
+          ("tag", Json.String "effect");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("effect", pattern_to_json effect_pattern);
+          ("continuation", pattern_to_json continuation);
+        ]
+  | Cst.Pattern.LocalOpen { syntax_node; module_path; pattern } ->
+      Json.Object
+        [
+          ("tag", Json.String "local_open");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("module_path", ident_to_json module_path);
+          ("pattern", pattern_to_json pattern);
+        ]
   | Cst.Pattern.Parenthesized { syntax_node; inner } ->
       Json.Object
         [
@@ -557,11 +613,12 @@ and parameter_to_json = function
           ("binding_name_token", option_to_json token_to_json binding_name_token);
           ("has_default", Json.Bool has_default);
         ]
-  | Cst.Parameter.LocallyAbstract syntax_node ->
+  | Cst.Parameter.LocallyAbstract { syntax_node; binders } ->
       Json.Object
         [
           ("tag", Json.String "locally_abstract");
           ("syntax_node", syntax_node_to_json syntax_node);
+          ("binders", Json.Array (List.map type_binder_to_json binders));
         ]
 
 and literal_to_json = function
@@ -851,6 +908,16 @@ and expression_to_json = function
           ("tag", Json.String "object_update");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("fields", Json.Array (List.map record_expression_field_to_json fields));
+        ]
+  | Cst.Expression.InstanceVariableAssign
+      { syntax_node; name_token; operator_token; value } ->
+      Json.Object
+        [
+          ("tag", Json.String "instance_variable_assign");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("name_token", token_to_json name_token);
+          ("operator_token", token_to_json operator_token);
+          ("value", expression_to_json value);
         ]
   | Cst.Expression.Assign { syntax_node; target; operator_token; value } ->
       Json.Object

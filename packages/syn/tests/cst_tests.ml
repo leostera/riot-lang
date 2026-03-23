@@ -234,6 +234,125 @@ let tests =
               ~actual:(Syn.Cst.Token.text name_token);
             Ok ()
         | _ -> Error "expected first item to be a value declaration");
+    Test.case "cst value declarations lift explicit polymorphic core types"
+      (fun () ->
+        let result = parse_mli "val id : 'a 'b. 'a -> 'b -> 'a\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ValueDeclaration
+            {
+              type_ =
+                Syn.Cst.CoreType.Poly
+                  {
+                    binders;
+                    body =
+                      Syn.Cst.CoreType.Arrow
+                        {
+                          result_type = Syn.Cst.CoreType.Arrow _;
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            let binder_text =
+              binders |> List.map Syn.Cst.TypeBinder.text
+            in
+            let quoted =
+              binders |> List.map Syn.Cst.TypeBinder.is_quoted
+            in
+            Test.assert_equal ~expected:[ "'a"; "'b" ] ~actual:binder_text;
+            Test.assert_equal ~expected:[ true; true ] ~actual:quoted;
+            Ok ()
+        | _ -> Error "expected explicitly polymorphic value declaration");
+    Test.case "cst value declarations preserve package core types"
+      (fun () ->
+        let result =
+          parse_mli "val driver : (module Driver with type config = int)\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ValueDeclaration
+            {
+              type_ =
+                Syn.Cst.CoreType.FirstClassModule
+                  {
+                    module_type =
+                      Syn.Cst.ModuleType.With
+                        {
+                          base = Syn.Cst.ModuleType.Path base_path;
+                          constraints;
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "Driver")
+              ~actual:(Syn.Cst.ModulePath.name base_path);
+            Test.assert_equal ~expected:1 ~actual:(List.length constraints);
+            Ok ()
+        | _ -> Error "expected package core type");
+    Test.case "cst value declarations preserve locally opened core types"
+      (fun () ->
+        let result =
+          parse_mli "val decode : Outer.Inner.(request -> response)\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ValueDeclaration
+            {
+              type_ =
+                Syn.Cst.CoreType.LocalOpen
+                  {
+                    module_path =
+                      Syn.Cst.ModulePath.Qualified
+                        {
+                          prefix =
+                            Syn.Cst.ModulePath.Ident { name_token = outer_module; _ };
+                          name_token = inner_module;
+                          _;
+                        };
+                    type_ =
+                      Syn.Cst.CoreType.Arrow
+                        {
+                          parameter_type =
+                            Syn.Cst.CoreType.Constr
+                              { constructor_path = parameter_path; _ };
+                          result_type =
+                            Syn.Cst.CoreType.Constr
+                              { constructor_path = result_path; _ };
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Outer"
+              ~actual:(Syn.Cst.Token.text outer_module);
+            Test.assert_equal ~expected:"Inner"
+              ~actual:(Syn.Cst.Token.text inner_module);
+            Test.assert_equal ~expected:(Some "request")
+              ~actual:(Syn.Cst.Ident.name parameter_path);
+            Test.assert_equal ~expected:(Some "response")
+              ~actual:(Syn.Cst.Ident.name result_path);
+            Ok ()
+        | _ -> Error "expected local-open core type");
     Test.case "cst external declarations preserve primitive names" (fun () ->
         let result =
           parse_ml
@@ -418,6 +537,71 @@ let tests =
             Test.assert_equal ~expected:1 ~actual:(List.length constraints);
             Ok ()
         | _ -> Error "expected first-class module type definition");
+    Test.case "cst type declarations distinguish class types from constructors"
+      (fun () ->
+        let result =
+          parse_ml
+            "type bare = #list\n\
+             type applied = int #list\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.TypeDeclaration
+            {
+              type_definition =
+                Syn.Cst.TypeDefinition.Alias
+                  {
+                    manifest =
+                      Syn.Cst.CoreType.Class
+                        {
+                          hash_token;
+                          class_path = bare_path;
+                          arguments = [];
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: Syn.Cst.Item.TypeDeclaration
+               {
+                 type_definition =
+                   Syn.Cst.TypeDefinition.Alias
+                     {
+                       manifest =
+                         Syn.Cst.CoreType.Class
+                           {
+                             class_path = applied_path;
+                             arguments =
+                               [
+                                 Syn.Cst.CoreType.Constr
+                                   {
+                                     constructor_path = applied_argument;
+                                     arguments = [];
+                                     _;
+                                   };
+                               ];
+                             _;
+                           };
+                       _;
+                     };
+                 _;
+               }
+             :: _ ->
+            Test.assert_equal ~expected:"#"
+              ~actual:(Syn.Cst.Token.text hash_token);
+            Test.assert_equal ~expected:(Some "list")
+              ~actual:(Syn.Cst.Ident.name bare_path);
+            Test.assert_equal ~expected:(Some "list")
+              ~actual:(Syn.Cst.Ident.name applied_path);
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name applied_argument);
+            Ok ()
+        | _ -> Error "expected class-type aliases");
     Test.case "cst open statements preserve open! structurally" (fun () ->
         let result = parse_ml "open! Std.List\n" in
         let cst =
@@ -478,6 +662,30 @@ let tests =
               ~actual:names;
             Ok ()
         | None -> Error "expected render binding parameters");
+    Test.case "cst let bindings preserve locally abstract type parameters"
+      (fun () ->
+        let source = "let id (type a b) value = value\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.let_bindings cst with
+        | binding :: _ -> (
+            match Syn.Cst.LetBinding.parameters binding with
+            | Syn.Cst.Parameter.LocallyAbstract { binders; _ } :: _ ->
+                let binder_text =
+                  binders |> List.map Syn.Cst.TypeBinder.text
+                in
+                let quoted =
+                  binders |> List.map Syn.Cst.TypeBinder.is_quoted
+                in
+                Test.assert_equal ~expected:[ "a"; "b" ] ~actual:binder_text;
+                Test.assert_equal ~expected:[ false; false ] ~actual:quoted;
+                Ok ()
+            | _ -> Error "expected leading locally abstract type parameter")
+        | [] -> Error "expected let binding");
     Test.case "cst let bindings preserve recursive markers" (fun () ->
         let source = "let rec loop x = loop x\n" in
         let result = parse_ml source in
@@ -799,6 +1007,74 @@ let tests =
               ~actual:(Syn.Cst.Token.text name_token);
             Ok ()
         | _ -> Error "expected first item to be a let binding with a try expression");
+    Test.case "cst try expressions expose effect handlers structurally" (fun () ->
+        let source =
+          "let render thunk = try thunk () with | effect (Yield x), k -> continue k x\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Try
+                  {
+                    cases =
+                      [
+                        {
+                          pattern =
+                            Syn.Cst.Pattern.Effect
+                              {
+                                effect_pattern =
+                                  Syn.Cst.Pattern.Parenthesized
+                                    {
+                                      inner =
+                                        Syn.Cst.Pattern.Constructor
+                                          {
+                                            constructor_path =
+                                              Syn.Cst.Ident.Ident
+                                                {
+                                                  name_token = effect_name;
+                                                  _;
+                                                };
+                                            arguments =
+                                              [
+                                                Syn.Cst.Pattern.Identifier
+                                                  {
+                                                    name_token = effect_value;
+                                                    _;
+                                                  };
+                                              ];
+                                            _;
+                                          };
+                                      _;
+                                    };
+                                continuation =
+                                  Syn.Cst.Pattern.Identifier
+                                    { name_token = continuation; _ };
+                                _;
+                              };
+                          body = Syn.Cst.Expression.Apply _;
+                          _;
+                        };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Yield"
+              ~actual:(Syn.Cst.Token.text effect_name);
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text effect_value);
+            Test.assert_equal ~expected:"k"
+              ~actual:(Syn.Cst.Token.text continuation);
+            Ok ()
+        | _ -> Error "expected first item to be a let binding with an effect handler");
     Test.case "cst source files collect recognized expressions recursively" (fun () ->
         let source = "let changed = (left <> right)\n" in
         let result = parse_ml source in
@@ -975,6 +1251,70 @@ let tests =
               ~actual:(Syn.Cst.Token.text module_name);
             Ok ()
         | _ -> Error "expected prefix local open expression");
+    Test.case "cst local open patterns preserve module paths and wrapped patterns"
+      (fun () ->
+        let source =
+          "let unwrap = function\n| Outer.Inner.(Some x) -> x\n| Outer.Inner.(None) -> 0\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Function
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.LocalOpen
+                            {
+                              module_path =
+                                Syn.Cst.ModulePath.Qualified
+                                  {
+                                    prefix =
+                                      Syn.Cst.ModulePath.Ident
+                                        { name_token = outer_module; _ };
+                                    name_token = inner_module;
+                                    _;
+                                  };
+                              pattern =
+                                Syn.Cst.Pattern.Constructor
+                                  {
+                                    constructor_path =
+                                      Syn.Cst.Ident.Ident
+                                        { name_token = constructor_name; _ };
+                                    arguments =
+                                      [
+                                        Syn.Cst.Pattern.Identifier
+                                          { name_token = binding_name; _ };
+                                      ];
+                                    _;
+                                  };
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Outer"
+              ~actual:(Syn.Cst.Token.text outer_module);
+            Test.assert_equal ~expected:"Inner"
+              ~actual:(Syn.Cst.Token.text inner_module);
+            Test.assert_equal ~expected:"Some"
+              ~actual:(Syn.Cst.Token.text constructor_name);
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text binding_name);
+            Ok ()
+        | _ -> Error "expected local open pattern");
     Test.case "cst first-class module expressions preserve module and type nodes"
       (fun () ->
         let source = "let x = (module M : S)\n" in
@@ -1514,6 +1854,54 @@ let tests =
               ~actual:(Syn.Cst.Token.text operator_token);
             Ok ()
         | _ -> Error "expected assign(index(...)) expression");
+    Test.case "cst object methods preserve instance-variable assignments"
+      (fun () ->
+        let source =
+          "let counter =\n  object\n    val mutable count = 0\n    method set next = count <- next\n  end\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Object
+                  {
+                    members =
+                      [
+                        Syn.Cst.Value _;
+                        Syn.Cst.Method
+                          {
+                            body =
+                              Some
+                                (Syn.Cst.Expression.InstanceVariableAssign
+                                  {
+                                    name_token;
+                                    operator_token;
+                                    value =
+                                      Syn.Cst.Expression.Path { path = value_path; _ };
+                                    _;
+                                  });
+                            _;
+                          };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"count"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:"<-"
+              ~actual:(Syn.Cst.Token.text operator_token);
+            Test.assert_equal ~expected:(Some "next")
+              ~actual:(Syn.Cst.ModulePath.name value_path);
+            Ok ()
+        | _ -> Error "expected object method instance-variable assignment");
     Test.case "cst record patterns preserve field punning and nested patterns"
       (fun () ->
         let source = "let x = match r with { user = { id }; name } -> id\n" in

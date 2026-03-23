@@ -238,8 +238,10 @@ let is_type_syntax_kind = function
   | Syntax_kind.TYPE_ARROW
   | Syntax_kind.TYPE_PAREN
   | Syntax_kind.TYPE_POLY_VARIANT
+  | Syntax_kind.POLY_TYPE
   | Syntax_kind.FIRST_CLASS_MODULE_TYPE
   | Syntax_kind.OBJECT_TYPE
+  | Syntax_kind.LOCAL_OPEN_TYPE
   | Syntax_kind.ATTRIBUTE_EXPR
   | Syntax_kind.EXTENSION_EXPR ->
       true
@@ -314,6 +316,7 @@ let is_pattern_syntax_kind = function
   | Syntax_kind.UNIT_LITERAL
   | Syntax_kind.POLY_VARIANT_PATTERN
   | Syntax_kind.POLY_VARIANT_TYPE_PATTERN
+  | Syntax_kind.EFFECT_PATTERN
   | Syntax_kind.CONSTRUCTOR_PATTERN
   | Syntax_kind.TUPLE_PATTERN
   | Syntax_kind.LIST_PATTERN
@@ -407,7 +410,8 @@ let is_parameter_like_kind = function
   | Syntax_kind.FIRST_CLASS_MODULE_PATTERN
   | Syntax_kind.LABELED_PARAM
   | Syntax_kind.OPTIONAL_PARAM
-  | Syntax_kind.OPTIONAL_PARAM_DEFAULT ->
+  | Syntax_kind.OPTIONAL_PARAM_DEFAULT
+  | Syntax_kind.LOCALLY_ABSTRACT_TYPE_PARAM ->
       true
   | _ -> false
 
@@ -452,6 +456,14 @@ let rec simple_pattern_name_token node =
   | Syntax_kind.PAREN_PATTERN
   | Syntax_kind.LAZY_PATTERN ->
       (match direct_non_trivia_nodes node |> List.find_opt (fun _ -> true) with
+      | Some child -> simple_pattern_name_token child
+      | None -> None)
+  | Syntax_kind.LOCAL_OPEN_PATTERN -> (
+      match
+        direct_non_trivia_nodes node
+        |> List.find_opt (fun child ->
+               is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+      with
       | Some child -> simple_pattern_name_token child
       | None -> None)
   | Syntax_kind.AS_PATTERN ->
@@ -534,6 +546,46 @@ let first_ident_token_in_subtree node =
   in
   go_node node
 
+let quoted_type_binder_from_node node =
+  match first_ident_token_in_subtree node with
+  | Some name_token ->
+      Cst.TypeBinder.Quoted { syntax_node = node; name_token }
+  | None ->
+      bail ~message:"expected quantified type binder name during Ceibo -> CST lifting"
+        ~syntax_node:node ~context:[ "type_binder.quoted" ]
+
+let bare_type_binders_from_tokens syntax_tokens =
+  let rec collect started acc = function
+    | [] ->
+        List.rev acc
+    | syntax_token :: rest ->
+        let text = Ceibo.Red.SyntaxToken.text syntax_token in
+        if started then
+          if String.equal text "." then
+            List.rev acc
+          else if is_identifier_like_text text then
+            collect true
+              (Cst.TypeBinder.Bare { name_token = token syntax_token } :: acc)
+              rest
+          else
+            collect true acc rest
+        else if String.equal text "type" then
+          collect true acc rest
+        else
+          collect false acc rest
+  in
+  collect false [] syntax_tokens
+
+let locally_abstract_type_parameter_from_node node =
+  let binders = bare_type_binders_from_tokens (direct_non_trivia_tokens node) in
+  if List.length binders = 0 then
+    bail
+      ~message:
+        "expected locally abstract type binders during Ceibo -> CST lifting"
+      ~syntax_node:node ~context:[ "parameter.locally_abstract" ]
+  else
+    { Cst.syntax_node = node; binders }
+
 let parameter_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.LABELED_PARAM -> (
@@ -568,8 +620,9 @@ let parameter_from_node node =
               has_default = true;
             }
       | None -> unsupported_parameter node)
-  | Syntax_kind.TYPE_CONSTRAINT ->
-      Cst.Parameter.LocallyAbstract node
+  | Syntax_kind.LOCALLY_ABSTRACT_TYPE_PARAM ->
+      Cst.Parameter.LocallyAbstract
+        (locally_abstract_type_parameter_from_node node)
   | _ ->
       Cst.Parameter.Positional
         {
@@ -769,6 +822,18 @@ and core_type_from_node node =
     direct_non_trivia_nodes node
     |> List.filter can_lift_core_type_node
   in
+  let type_binders_from_poly_type_node node =
+    let quoted_binders =
+      direct_non_trivia_nodes node
+      |> List.filter (fun child ->
+             Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_VAR)
+      |> List.map quoted_type_binder_from_node
+    in
+    if List.length quoted_binders > 0 then
+      quoted_binders
+    else
+      bare_type_binders_from_tokens (direct_non_trivia_tokens node)
+  in
   let rec type_path_from_node node =
     match
       direct_non_trivia_nodes node
@@ -791,6 +856,36 @@ and core_type_from_node node =
             ~syntax_node:node ~context:[ "core_type.constr" ]
         else
           module_path_from_tokens ~syntax_node:node path_tokens
+  and class_type_path_from_node node =
+    let rec after_hash = function
+      | [] -> None
+      | syntax_token :: rest ->
+          if String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "#" then
+            Some (syntax_token, rest)
+          else
+            after_hash rest
+    in
+    match after_hash (direct_non_trivia_tokens node) with
+    | Some (hash_syntax_token, class_path_tokens)
+      when List.length class_path_tokens > 0 ->
+        (token hash_syntax_token, module_path_from_tokens ~syntax_node:node class_path_tokens)
+    | Some (_, []) ->
+        bail ~message:"expected class type path after # during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "core_type.class" ]
+    | None ->
+        bail ~message:"expected class type marker during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "core_type.class" ]
+  and local_open_core_type_from_node node =
+    match direct_non_trivia_nodes node with
+    | module_path_node :: type_node :: _ ->
+        {
+          Cst.syntax_node = node;
+          module_path = module_path_like_from_node module_path_node;
+          type_ = core_type_from_node type_node;
+        }
+    | _ ->
+        bail ~message:"expected local-open module path and body during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "core_type.local_open" ]
   and object_type_field_from_node node =
     match
       first_ident_token_in_subtree node,
@@ -892,6 +987,19 @@ and core_type_from_node node =
         | _ ->
             bail ~message:"expected a single inner type inside parenthesized type"
               ~syntax_node:node ~context:[ "core_type.parenthesized" ]
+      else if
+        non_trivia_tokens
+        |> List.exists (fun syntax_token ->
+               String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "#")
+      then
+        let hash_token, class_path = class_type_path_from_node node in
+        Cst.CoreType.Class
+          {
+            syntax_node = node;
+            hash_token;
+            class_path;
+            arguments = child_types |> List.map core_type_from_node;
+          }
       else
         Cst.CoreType.Constr
           {
@@ -938,6 +1046,32 @@ and core_type_from_node node =
             ~syntax_node:node ~context:[ "core_type.attribute" ])
   | Syntax_kind.EXTENSION_EXPR ->
       Cst.CoreType.Extension (extension_from_node node)
+  | Syntax_kind.POLY_TYPE -> (
+      let binders = type_binders_from_poly_type_node node in
+      let body_node =
+        direct_non_trivia_nodes node
+        |> List.rev
+        |> List.find_opt (fun child ->
+               can_lift_core_type_node child
+               && Ceibo.Red.SyntaxNode.kind child != Syntax_kind.TYPE_VAR)
+      in
+      match binders, body_node with
+      | _ :: _, Some body_node ->
+          Cst.CoreType.Poly
+            {
+              syntax_node = node;
+              binders;
+              body = core_type_from_node body_node;
+            }
+      | [], _ ->
+          bail
+            ~message:
+              "expected quantified type binders during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "core_type.poly" ]
+      | _, None ->
+          bail
+            ~message:"expected quantified type body during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "core_type.poly" ])
   | Syntax_kind.TYPE_ARROW -> (
       match child_type_nodes node with
       | parameter_node :: result_node :: _ ->
@@ -964,6 +1098,8 @@ and core_type_from_node node =
       | [] ->
           bail ~message:"expected inner type inside parenthesized type during Ceibo -> CST lifting"
             ~syntax_node:node ~context:[ "core_type.parenthesized" ])
+  | Syntax_kind.LOCAL_OPEN_TYPE ->
+      Cst.CoreType.LocalOpen (local_open_core_type_from_node node)
   | Syntax_kind.TYPE_POLY_VARIANT ->
       Cst.CoreType.PolyVariant
         {
@@ -1205,6 +1341,14 @@ let rec pattern_from_node node =
               type_ = core_type_from_node type_node;
             }
       | _ -> unsupported_pattern node)
+  | Syntax_kind.EFFECT_PATTERN -> (
+      match effect_pattern_from_node node with
+      | Some pattern -> Cst.Pattern.Effect pattern
+      | None -> unsupported_pattern node)
+  | Syntax_kind.LOCAL_OPEN_PATTERN -> (
+      match local_open_pattern_from_node node with
+      | Some pattern -> Cst.Pattern.LocalOpen pattern
+      | None -> unsupported_pattern node)
   | Syntax_kind.PAREN_PATTERN -> (
       match direct_non_trivia_nodes node with
       | inner_node :: _ ->
@@ -1233,6 +1377,28 @@ and record_pattern_field_from_node node =
                    is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
             |> Option.map pattern_from_node);
         }
+
+and local_open_pattern_from_node node =
+  match direct_non_trivia_nodes node with
+  | module_path_node :: pattern_node :: _ ->
+      Some
+        {
+          syntax_node = node;
+          module_path = module_path_like_from_node module_path_node;
+          pattern = pattern_from_node pattern_node;
+        }
+  | _ -> None
+
+and effect_pattern_from_node node =
+  match direct_non_trivia_nodes node with
+  | effect_node :: continuation_node :: _ ->
+      Some
+        {
+          syntax_node = node;
+          effect_pattern = pattern_from_node effect_node;
+          continuation = pattern_from_node continuation_node;
+        }
+  | _ -> None
 
 let rec apply_argument_from_node node =
   let first_nontrivia_expression_child node =
@@ -1401,7 +1567,7 @@ and expression_from_node node =
       | None -> unsupported_expression node)
   | Syntax_kind.ASSIGN_EXPR -> (
       match assign_expression_from_node node with
-      | Some expr -> Cst.Expression.Assign expr
+      | Some expr -> expr
       | None -> unsupported_expression node)
   | Syntax_kind.STRING_LITERAL -> (
       match direct_non_trivia_tokens node with
@@ -1908,13 +2074,29 @@ and index_expression_from_node node =
 and assign_expression_from_node node =
   match direct_non_trivia_nodes node, direct_non_trivia_tokens node with
   | target_node :: value_node :: _, operator_syntax_token :: _ ->
+      let operator_token = token operator_syntax_token in
       Some
-        {
-          syntax_node = node;
-          target = expression_from_node target_node;
-          operator_token = token operator_syntax_token;
-          value = expression_from_node value_node;
-        }
+        (match
+           Ceibo.Red.SyntaxNode.kind target_node,
+           direct_non_trivia_tokens target_node
+         with
+        | Syntax_kind.IDENT_EXPR, name_syntax_token :: _
+          when String.equal (Cst.Token.text operator_token) "<-" ->
+            Cst.Expression.InstanceVariableAssign
+              {
+                syntax_node = node;
+                name_token = token name_syntax_token;
+                operator_token;
+                value = expression_from_node value_node;
+              }
+        | _ ->
+            Cst.Expression.Assign
+              {
+                syntax_node = node;
+                target = expression_from_node target_node;
+                operator_token;
+                value = expression_from_node value_node;
+              })
   | _ -> None
 
 and prefix_expression_from_node node =
@@ -2905,6 +3087,8 @@ let rec collect_expressions_from_expression expr =
         |> List.concat_map (fun (field : Cst.record_expression_field) ->
                Option.to_list (field.value)
                |> List.concat_map collect_expressions_from_expression)
+    | Cst.Expression.InstanceVariableAssign { value; _ } ->
+        collect_expressions_from_expression value
     | Cst.Expression.Assign { target; value; _ } ->
         collect_expressions_from_expression target
         @ collect_expressions_from_expression value
@@ -3121,6 +3305,13 @@ let rec validate_pattern ~context = function
   | Cst.Pattern.Typed { pattern; type_; _ } ->
       validate_pattern ~context:("pattern.typed.pattern" :: context) pattern;
       validate_core_type ~context:("pattern.typed.type" :: context) type_
+  | Cst.Pattern.Effect { effect_pattern; continuation; _ } ->
+      validate_pattern ~context:("pattern.effect.effect" :: context)
+        effect_pattern;
+      validate_pattern ~context:("pattern.effect.continuation" :: context)
+        continuation
+  | Cst.Pattern.LocalOpen { pattern; _ } ->
+      validate_pattern ~context:("pattern.local_open.pattern" :: context) pattern
   | Cst.Pattern.Parenthesized { inner; _ } ->
       validate_pattern ~context:("pattern.parenthesized" :: context) inner
 
@@ -3163,6 +3354,8 @@ and validate_core_type ~context = function
   | Cst.CoreType.Var _
   | Cst.CoreType.Extension _ ->
       ()
+  | Cst.CoreType.Poly { body; _ } ->
+      validate_core_type ~context:("core_type.poly.body" :: context) body
   | Cst.CoreType.FirstClassModule { module_type; _ } ->
       validate_module_type ~context:("core_type.first_class_module" :: context)
         module_type
@@ -3171,6 +3364,13 @@ and validate_core_type ~context = function
         (fun index type_ ->
           validate_core_type
             ~context:(("core_type.constr.arg[" ^ Int.to_string index ^ "]") :: context)
+            type_)
+        arguments
+  | Cst.CoreType.Class { arguments; _ } ->
+      List.iteri
+        (fun index type_ ->
+          validate_core_type
+            ~context:(("core_type.class.arg[" ^ Int.to_string index ^ "]") :: context)
             type_)
         arguments
   | Cst.CoreType.Alias { type_; _ } ->
@@ -3190,6 +3390,8 @@ and validate_core_type ~context = function
         elements
   | Cst.CoreType.Parenthesized { inner; _ } ->
       validate_core_type ~context:("core_type.parenthesized" :: context) inner
+  | Cst.CoreType.LocalOpen { type_; _ } ->
+      validate_core_type ~context:("core_type.local_open.type" :: context) type_
   | Cst.CoreType.PolyVariant { tags; _ } ->
       List.iteri
         (fun index tag ->
@@ -3322,6 +3524,10 @@ and validate_expression ~context = function
                  :: context))
             field.value)
         fields
+  | Cst.Expression.InstanceVariableAssign { value; _ } ->
+      validate_expression
+        ~context:("expression.instance_variable_assign.value" :: context)
+        value
   | Cst.Expression.Assign { target; value; _ } ->
       validate_expression ~context:("expression.assign.target" :: context) target;
       validate_expression ~context:("expression.assign.value" :: context) value

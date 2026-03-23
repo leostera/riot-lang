@@ -70,6 +70,15 @@ type object_type_field = {
   field_type : core_type;
 }
 
+and type_binder =
+  | Quoted of {
+      syntax_node : syntax_node;
+      name_token : Token.t;
+    }
+  | Bare of {
+      name_token : Token.t;
+    }
+
 and record_type_field = {
   syntax_node : syntax_node;
   field_name : Token.t;
@@ -96,6 +105,12 @@ and functor_parameter = {
   module_type : module_type;
 }
 
+and local_open_core_type = {
+  syntax_node : syntax_node;
+  module_path : Ident.t;
+  type_ : core_type;
+}
+
 and core_type =
   | Wildcard of {
       syntax_node : syntax_node;
@@ -110,6 +125,12 @@ and core_type =
       constructor_path : Ident.t;
       arguments : core_type list;
     }
+  | Class of {
+      syntax_node : syntax_node;
+      hash_token : Token.t;
+      class_path : Ident.t;
+      arguments : core_type list;
+    }
   | Alias of {
       syntax_node : syntax_node;
       type_ : core_type;
@@ -121,6 +142,11 @@ and core_type =
       attribute : attribute;
     }
   | Extension of extension
+  | Poly of {
+      syntax_node : syntax_node;
+      binders : type_binder list;
+      body : core_type;
+    }
   | Arrow of {
       syntax_node : syntax_node;
       parameter_type : core_type;
@@ -134,6 +160,7 @@ and core_type =
       syntax_node : syntax_node;
       inner : core_type;
     }
+  | LocalOpen of local_open_core_type
   | PolyVariant of {
       syntax_node : syntax_node;
       tags : poly_variant_tag list;
@@ -197,6 +224,12 @@ module CoreType = struct
         constructor_path : Ident.t;
         arguments : core_type list;
       }
+    | Class of {
+        syntax_node : syntax_node;
+        hash_token : Token.t;
+        class_path : Ident.t;
+        arguments : core_type list;
+      }
     | Alias of {
         syntax_node : syntax_node;
         type_ : core_type;
@@ -208,6 +241,11 @@ module CoreType = struct
         attribute : attribute;
       }
     | Extension of extension
+    | Poly of {
+        syntax_node : syntax_node;
+        binders : type_binder list;
+        body : core_type;
+      }
     | Arrow of {
         syntax_node : syntax_node;
         parameter_type : core_type;
@@ -221,6 +259,7 @@ module CoreType = struct
         syntax_node : syntax_node;
         inner : core_type;
       }
+    | LocalOpen of local_open_core_type
     | PolyVariant of {
         syntax_node : syntax_node;
         tags : poly_variant_tag list;
@@ -242,17 +281,20 @@ module CoreType = struct
     | Wildcard { syntax_node; _ }
     | Var { syntax_node; _ }
     | Constr { syntax_node; _ }
+    | Class { syntax_node; _ }
     | Alias { syntax_node; _ }
     | Attribute { syntax_node; _ }
     | Extension { syntax_node; _ }
+    | Poly { syntax_node; _ }
     | Arrow { syntax_node; _ }
     | Tuple { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
+    | LocalOpen { syntax_node; _ }
     | PolyVariant { syntax_node; _ }
     | Record { syntax_node; _ }
     | FirstClassModule { syntax_node; _ }
-      | Object { syntax_node; _ } ->
-          syntax_node
+    | Object { syntax_node; _ } ->
+        syntax_node
 end
 
 module ModuleTypeConstraint = struct
@@ -342,6 +384,35 @@ module PatternLiteral = struct
     | Unit of { syntax_node : syntax_node }
 end
 
+module TypeBinder = struct
+  type t = type_binder =
+    | Quoted of {
+        syntax_node : syntax_node;
+        name_token : Token.t;
+      }
+    | Bare of {
+        name_token : Token.t;
+      }
+
+  let name_token = function
+    | Quoted { name_token; _ } | Bare { name_token } ->
+        name_token
+
+  let name binder = Token.text (name_token binder)
+
+  let text = function
+    | Quoted { name_token; _ } ->
+        "'" ^ Token.text name_token
+    | Bare { name_token } ->
+        Token.text name_token
+
+  let is_quoted = function
+    | Quoted _ ->
+        true
+    | Bare _ ->
+        false
+end
+
 type pattern_literal = PatternLiteral.t
 
 type pattern =
@@ -366,6 +437,8 @@ type pattern =
   | Or of or_pattern
   | Alias of alias_pattern
   | Typed of typed_pattern
+  | Effect of effect_pattern
+  | LocalOpen of local_open_pattern
   | Parenthesized of parenthesized_pattern
 
 and identifier_pattern = {
@@ -476,6 +549,18 @@ and typed_pattern = {
   type_ : core_type;
 }
 
+and effect_pattern = {
+  syntax_node : syntax_node;
+  effect_pattern : pattern;
+  continuation : pattern;
+}
+
+and local_open_pattern = {
+  syntax_node : syntax_node;
+  module_path : ModulePath.t;
+  pattern : pattern;
+}
+
 and parenthesized_pattern = {
   syntax_node : syntax_node;
   inner : pattern;
@@ -499,30 +584,36 @@ type optional_parameter = {
   has_default : bool;
 }
 
+type locally_abstract_type_parameter = {
+  syntax_node : syntax_node;
+  binders : type_binder list;
+}
+
 type parameter =
   | Positional of positional_parameter
   | Labeled of labeled_parameter
   | Optional of optional_parameter
-  | LocallyAbstract of syntax_node
+  | LocallyAbstract of locally_abstract_type_parameter
 
 module Parameter = struct
   type t = parameter =
     | Positional of positional_parameter
     | Labeled of labeled_parameter
     | Optional of optional_parameter
-    | LocallyAbstract of syntax_node
+    | LocallyAbstract of locally_abstract_type_parameter
 
   let syntax_node = function
     | Positional param -> param.syntax_node
     | Labeled param -> param.syntax_node
     | Optional param -> param.syntax_node
-    | LocallyAbstract node -> node
+    | LocallyAbstract param -> param.syntax_node
 
   let name_token = function
     | Positional param -> param.name_token
     | Labeled param -> Some param.label_token
     | Optional param -> Some param.label_token
-    | LocallyAbstract _ -> None
+    | LocallyAbstract _ ->
+        None
 
   let name param =
     match name_token param with
@@ -531,11 +622,13 @@ module Parameter = struct
 
   let is_named = function
     | Labeled _ | Optional _ -> true
-    | Positional _ | LocallyAbstract _ -> false
+    | Positional _ | LocallyAbstract _ ->
+        false
 
   let has_default = function
     | Optional param -> param.has_default
-    | Positional _ | Labeled _ | LocallyAbstract _ -> false
+    | Positional _ | Labeled _ | LocallyAbstract _ ->
+        false
 end
 
 module Literal = struct
@@ -592,6 +685,7 @@ type expression =
   | FieldAccess of field_access_expression
   | Index of index_expression
   | ObjectUpdate of object_update_expression
+  | InstanceVariableAssign of instance_variable_assign_expression
   | Assign of assign_expression
   | Infix of infix_expression
   | Typed of typed_expression
@@ -770,6 +864,13 @@ and index_expression = {
 and object_update_expression = {
   syntax_node : syntax_node;
   fields : record_expression_field list;
+}
+
+and instance_variable_assign_expression = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  operator_token : Token.t;
+  value : expression;
 }
 
 and assign_expression = {
@@ -963,6 +1064,7 @@ module Expression = struct
     | FieldAccess of field_access_expression
     | Index of index_expression
     | ObjectUpdate of object_update_expression
+    | InstanceVariableAssign of instance_variable_assign_expression
     | Assign of assign_expression
     | Infix of infix_expression
     | Typed of typed_expression
@@ -1011,6 +1113,7 @@ module Expression = struct
     | FieldAccess expr -> expr.syntax_node
     | Index expr -> expr.syntax_node
     | ObjectUpdate expr -> expr.syntax_node
+    | InstanceVariableAssign expr -> expr.syntax_node
     | Assign expr -> expr.syntax_node
     | Infix expr -> expr.syntax_node
     | Typed expr -> expr.syntax_node
@@ -1099,6 +1202,8 @@ module Pattern = struct
     | Or of or_pattern
     | Alias of alias_pattern
     | Typed of typed_pattern
+    | Effect of effect_pattern
+    | LocalOpen of local_open_pattern
     | Parenthesized of parenthesized_pattern
 
   let syntax_node = function
@@ -1129,6 +1234,8 @@ module Pattern = struct
     | Or pattern -> pattern.syntax_node
     | Alias pattern -> pattern.syntax_node
     | Typed pattern -> pattern.syntax_node
+    | Effect pattern -> pattern.syntax_node
+    | LocalOpen pattern -> pattern.syntax_node
     | Parenthesized pattern -> pattern.syntax_node
 end
 

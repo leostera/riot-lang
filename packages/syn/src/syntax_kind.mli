@@ -124,6 +124,7 @@ type t =
   | POLY_VARIANT_PATTERN
       (** Polymorphic variant pattern: `` `Tag ``, `` `Tag pattern `` *)
   | POLY_VARIANT_TYPE_PATTERN  (** Polymorphic variant type pattern: `#type` *)
+  | EFFECT_PATTERN  (** Effect handler pattern: `effect p, k` *)
   | LOCAL_OPEN_PATTERN  (** Local module open pattern: `Module.(pattern)` *)
   | OPERATOR_PATTERN  (** Operator pattern: `( + )`, `( let* )`, `( mod )` *)
   | FIRST_CLASS_MODULE_PATTERN  (** First-class module pattern: `(module M)` or `(module M : S)` *)
@@ -146,6 +147,7 @@ type t =
   | TYPE_RECORD_FIELD  (** Record field in type def: `field: int` *)
   | OBJECT_TYPE  (** Object type: `< m : int; n : string >` *)
   | OBJECT_TYPE_FIELD  (** Object type field: `m : int` *)
+  | LOCAL_OPEN_TYPE  (** Local module open type: `Module.(t)` *)
   | TYPE_CONSTRAINT  (** Type constraint: `constraint 'a = int` *)
   | POLY_TYPE  (** Polymorphic type with explicit quantifiers: `'a 'b. int -> 'a -> 'b` *)
   | MODULE_TYPE_EXPR  (** Module type expression: `S with type t = int` *)
