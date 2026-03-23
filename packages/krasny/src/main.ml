@@ -14,6 +14,15 @@ let handle_format file =
       let result = parse_file ~file ~source in
       print (Krasny.format result)
 
+let handle_syntax_hash file =
+  match Fs.read (Path.v file) with
+  | Error _err ->
+      Log.error ("Error reading file: " ^ file);
+      exit 1
+  | Ok source ->
+      let result = parse_file ~file ~source in
+      print (Krasny.syntax_hash result)
+
 let () =
   let cmd =
     let open ArgParser in
@@ -27,6 +36,14 @@ let () =
                 [
                   positional "FILE"
                   |> help "OCaml source file to format"
+                  |> required true;
+                ];
+           command "syntax-hash"
+           |> about "Compute a whitespace-insensitive concrete syntax hash"
+           |> args
+                [
+                  positional "FILE"
+                  |> help "OCaml source file to hash"
                   |> required true;
                 ];
          ]
@@ -44,6 +61,12 @@ let () =
             |> Option.expect ~msg:"FILE required"
           in
           handle_format file
+      | Some ("syntax-hash", sub_matches) ->
+          let file =
+            ArgParser.get_one sub_matches "FILE"
+            |> Option.expect ~msg:"FILE required"
+          in
+          handle_syntax_hash file
       | _ ->
           ArgParser.print_help cmd;
           exit 1)
