@@ -3668,10 +3668,29 @@ let record_field_from_node node =
            })
 
 let variant_constructor_from_node node =
+  let constructor_payload_signature payload_type =
+    let body =
+      match payload_type with
+      | Cst.CoreType.Poly { body; _ } -> body
+      | _ -> payload_type
+    in
+    let rec collect_parameters acc = function
+      | Cst.CoreType.Arrow { parameter_type; result_type; _ } ->
+          collect_parameters (parameter_type :: acc) result_type
+      | result_type ->
+          (List.rev acc, result_type)
+    in
+    collect_parameters [] body
+  in
   match direct_non_trivia_nodes node with
   | first_child :: _ -> (
       match direct_non_trivia_tokens first_child with
       | constructor_name :: _ ->
+          let is_gadt_constructor =
+            direct_non_trivia_tokens node
+            |> List.exists (fun syntax_token ->
+                   String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":")
+          in
           let lifted_payload_type =
             direct_non_trivia_nodes node
             |> List.find_opt (fun child ->
@@ -3713,6 +3732,29 @@ let variant_constructor_from_node node =
                   Some
                     (Cst.ConstructorArguments.Tuple
                        (List.map core_type_from_node type_nodes))
+            else if is_gadt_constructor then
+              (match lifted_payload_type with
+              | Some payload_type ->
+                  let parameter_types, _result_type =
+                    constructor_payload_signature payload_type
+                  in
+                  if List.length parameter_types = 0 then
+                    None
+                  else
+                    Some (Cst.ConstructorArguments.Tuple parameter_types)
+              | None ->
+                  None)
+            else
+              None
+          in
+          let lifted_result_type =
+            if is_gadt_constructor then
+              lifted_payload_type
+              |> Option.map (fun payload_type ->
+                     let _parameter_types, result_type =
+                       constructor_payload_signature payload_type
+                     in
+                     result_type)
             else
               None
           in
@@ -3723,6 +3765,7 @@ let variant_constructor_from_node node =
                 constructor_name = token constructor_name;
                 arguments = lifted_arguments;
                 payload_type = lifted_payload_type;
+                result_type = lifted_result_type;
               }
       | [] -> None)
   | [] -> None
@@ -5342,7 +5385,14 @@ let validate_type_definition ~context = function
                  (("type_definition.variant.constructor[" ^ Int.to_string index
                   ^ "].payload")
                  :: context))
-            (Cst.VariantConstructor.payload_type constructor))
+            (Cst.VariantConstructor.payload_type constructor);
+          Option.iter
+            (validate_core_type
+               ~context:
+                 (("type_definition.variant.constructor[" ^ Int.to_string index
+                  ^ "].result")
+                 :: context))
+            (Cst.VariantConstructor.result_type constructor))
         constructors
   | Cst.TypeDefinition.PolyVariant poly_variant ->
       validate_poly_variant ~context:("type_definition.poly_variant" :: context)
@@ -5383,7 +5433,14 @@ let validate_item ~context = function
                  (("item.type_extension.constructor[" ^ Int.to_string index
                   ^ "].payload")
                  :: context))
-            (Cst.VariantConstructor.payload_type constructor))
+            (Cst.VariantConstructor.payload_type constructor);
+          Option.iter
+            (validate_core_type
+               ~context:
+                 (("item.type_extension.constructor[" ^ Int.to_string index
+                  ^ "].result")
+                 :: context))
+            (Cst.VariantConstructor.result_type constructor))
         constructors
   | Cst.Item.LetBinding { binding_pattern; value; _ } ->
       validate_pattern ~context:("item.let_binding.pattern" :: context)

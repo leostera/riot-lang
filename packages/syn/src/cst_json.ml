@@ -1290,6 +1290,10 @@ let variant_constructor_to_json constr =
     Cst.VariantConstructor.arguments constr
     |> Option.map constructor_arguments_to_json
   in
+  let result_type =
+    Cst.VariantConstructor.result_type constr
+    |> Option.map core_type_to_json
+  in
   Json.Object
     ([
        ("syntax_node", syntax_node_to_json (Cst.VariantConstructor.syntax_node constr));
@@ -1303,7 +1307,11 @@ let variant_constructor_to_json constr =
     @
     [ ( "payload_type",
         option_to_json core_type_to_json (Cst.VariantConstructor.payload_type constr) );
-    ])
+    ]
+    @
+    (match result_type with
+    | Some result_type -> [ ("result_type", result_type) ]
+    | None -> []))
 
 let type_constraint_to_json ({ syntax_node; left; right } : Cst.type_constraint) =
   Json.Object

@@ -1749,12 +1749,14 @@ module VariantConstructor = struct
     constructor_name : Token.t;
     arguments : ConstructorArguments.t option;
     payload_type : core_type option;
+    result_type : core_type option;
   }
 
   let syntax_node constr = constr.syntax_node
   let constructor_name_token constr = constr.constructor_name
   let arguments constr = constr.arguments
   let payload_type constr = constr.payload_type
+  let result_type constr = constr.result_type
   let name constr = Token.text constr.constructor_name
 end
 

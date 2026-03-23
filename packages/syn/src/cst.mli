@@ -2832,10 +2832,18 @@ module RecordField : sig
   val attributes : t -> attribute list
 end
 
-(** Structured argument forms for regular variant constructors.
+(** Structured argument forms for variant constructors.
 
-    These correspond to the `of ...` payload on constructors such as
-    `Pair of int * string` and `Person of { name : string }`.
+    These correspond to the `of ...` payload on ordinary constructors and the
+    arrow-parameter portion of GADT-style constructors.
+
+    Examples:
+
+    ```ocaml,norun
+    type t = Pair of int * string
+    type t = Person of { name : string }
+    type _ expr = Val : 'a -> 'a expr
+    ```
 *)
 module ConstructorArguments : sig
   type t =
@@ -2860,7 +2868,14 @@ module ConstructorArguments : sig
         *)
 end
 
-(** A constructor inside a regular variant type definition.
+(** A constructor inside a variant type definition or type extension.
+
+    Ordinary constructors fill `arguments` from their `of ...` payload and keep
+    `result_type = None`.
+
+    GADT-style constructors fill `payload_type` with the full signature to the
+    right of `:`, derive `arguments` from the arrow parameter portion, and
+    expose the final return type via `result_type`.
 
     Examples:
 
@@ -2868,6 +2883,8 @@ end
     type t = A | B of int
     type t = Pair of int * string
     type t = Person of { name : string; age : int }
+    type _ expr = Int : int expr
+    type _ expr = Val : 'a -> 'a expr
     ```
 *)
 module VariantConstructor : sig
@@ -2876,12 +2893,14 @@ module VariantConstructor : sig
     constructor_name : Token.t;
     arguments : ConstructorArguments.t option;
     payload_type : core_type option;
+    result_type : core_type option;
   }
 
   val syntax_node : t -> syntax_node
   val constructor_name_token : t -> Token.t
   val arguments : t -> ConstructorArguments.t option
   val payload_type : t -> core_type option
+  val result_type : t -> core_type option
   val name : t -> string
 end
 
@@ -3007,8 +3026,11 @@ module TypeDefinition : sig
         (** A record type definition such as
             `type t = { name : string; mutable count : int }`. *)
     | Variant of VariantConstructor.t list
-        (** A regular algebraic variant definition such as
-            `type t = A | B of int`. *)
+        (** A variant definition whose constructors are lifted structurally.
+
+            This includes ordinary constructors like `type t = A | B of int`
+            and GADT-style constructors like `type _ expr = Int : int expr`.
+        *)
     | PolyVariant of PolyVariant.t
         (** A polymorphic variant definition such as
             `type t = [ `A | `B of int ]` or
@@ -3019,8 +3041,8 @@ module TypeDefinition : sig
             given a dedicated public constructor.
 
             This is where consumers should expect richer shapes such as
-            unsupported `private` or GADT-style definitions to remain
-            accessible only through the raw `syntax_node`.
+            unsupported `private` definitions to remain accessible only through
+            the raw `syntax_node`.
         *)
 end
 

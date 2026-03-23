@@ -183,7 +183,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] variance/injectivity on parameters
   - [x] record label declarations
   - [x] constructor argument lists
-  - [ ] constructor result types / GADT constructors
+  - [x] constructor result types / GADT constructors
 - [ ] Attributes and extensions are still token shells rather than structured payloads
 - [~] Attributes and extensions now preserve sigils, names, and payload anchors, but their payloads are not yet fully typed
 - [~] Includes, opens, and with-constraints are still thinner than they should be
@@ -216,7 +216,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] parameter variance/injectivity is missing
   - [ ] `type_kind` detail is still compressed
   - [x] record fields only store names + mutability, not field types and attrs
-  - [ ] variant constructors still do not expose result types / attrs
+  - [~] variant constructors now expose result types, but constructor attributes are still missing
   - [x] polyvariant tags only store names, not payload types or closedness
 - [ ] Structure items:
   - [ ] implementation and interface currently share the same `Item.t`, so signature structure is lossy

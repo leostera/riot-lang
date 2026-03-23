@@ -408,6 +408,84 @@ let tests =
                 Ok ()
             | _ -> Error "expected variant type definition")
         | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst GADT constructors expose argument and result structure"
+      (fun () ->
+        let result =
+          parse_ml
+            "type _ expr = Int : int expr | Val : 'a -> 'a expr\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+            match Syn.Cst.TypeDeclaration.type_definition decl with
+            | Syn.Cst.TypeDefinition.Variant [ int_constr; val_constr ] ->
+                Test.assert_equal ~expected:None
+                  ~actual:(Syn.Cst.VariantConstructor.arguments int_constr);
+                (match Syn.Cst.VariantConstructor.result_type int_constr with
+                | Some
+                    (Syn.Cst.CoreType.Constr { constructor_path; arguments = [ _ ]; _ }) ->
+                    Test.assert_equal ~expected:(Some "expr")
+                      ~actual:(Syn.Cst.Ident.name constructor_path)
+                | _ ->
+                    raise
+                      (Failure
+                         "expected Int GADT constructor to expose its result type"));
+                (match Syn.Cst.VariantConstructor.arguments val_constr with
+                | Some (Syn.Cst.ConstructorArguments.Tuple [ Syn.Cst.CoreType.Var _ ]) ->
+                    ()
+                | _ ->
+                    raise
+                      (Failure
+                         "expected Val GADT constructor to expose its arrow parameter"));
+                (match Syn.Cst.VariantConstructor.result_type val_constr with
+                | Some
+                    (Syn.Cst.CoreType.Constr
+                      {
+                        constructor_path;
+                        arguments = [ Syn.Cst.CoreType.Var { name_token; _ } ];
+                        _;
+                      }) ->
+                    Test.assert_equal ~expected:(Some "expr")
+                      ~actual:(Syn.Cst.Ident.name constructor_path);
+                    Test.assert_equal ~expected:"a"
+                      ~actual:(Syn.Cst.Token.text name_token);
+                    Ok ()
+                | _ ->
+                    Error
+                      "expected Val GADT constructor to expose its result type")
+            | _ -> Error "expected variant type definition")
+        | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst type extensions expose GADT constructor result types"
+      (fun () ->
+        let result =
+          parse_ml "type _ Effect.t += Yield : unit Effect.t\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.TypeExtension decl :: _ -> (
+            match Syn.Cst.TypeExtension.constructors decl with
+            | [ yield ] ->
+                Test.assert_equal ~expected:None
+                  ~actual:(Syn.Cst.VariantConstructor.arguments yield);
+                (match Syn.Cst.VariantConstructor.result_type yield with
+                | Some
+                    (Syn.Cst.CoreType.Constr { constructor_path; arguments = [ _ ]; _ }) ->
+                    Test.assert_equal ~expected:(Some "t")
+                      ~actual:(Syn.Cst.Ident.name constructor_path);
+                    Ok ()
+                | _ ->
+                    Error
+                      "expected extension constructor to expose its result type")
+            | _ -> Error "expected one type-extension constructor")
+        | _ -> Error "expected type extension item");
     Test.case "cst type declarations expose polyvariant tags structurally" (fun () ->
         let result =
           parse_ml
