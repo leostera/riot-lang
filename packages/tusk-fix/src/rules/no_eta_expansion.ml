@@ -25,7 +25,18 @@ Examples:
   Better:  compare
 |}
 
-let rec child_expressions = function
+let rec child_expressions_of_function_body = function
+  | Syn.Cst.Expression expression ->
+      [ expression ]
+  | Syn.Cst.Cases { cases; _ } ->
+      cases
+      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+             (match case.guard with
+             | Some guard -> [ guard ]
+             | None -> [])
+             @ [ case.body ])
+
+and child_expressions = function
   | Syn.Cst.Expression.Path _
   | Syn.Cst.Expression.Literal _ ->
       []
@@ -41,14 +52,9 @@ let rec child_expressions = function
   | Syn.Cst.Expression.Infix expr ->
       [ Syn.Cst.InfixExpression.left expr; Syn.Cst.InfixExpression.right expr ]
   | Syn.Cst.Expression.Fun expr ->
-      [ expr.body ]
+      child_expressions_of_function_body expr.body
   | Syn.Cst.Expression.Function expr ->
-      expr.cases
-      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
-             (match case.guard with
-             | Some guard -> [ guard ]
-             | None -> [])
-             @ [ case.body ])
+      child_expressions_of_function_body expr.body
   | Syn.Cst.Expression.Let expr ->
       [ expr.bound_value; expr.body ]
   | Syn.Cst.Expression.Match expr ->
@@ -136,9 +142,13 @@ let should_flag_fun (expr : Syn.Cst.fun_expression) =
   match positional_parameter_names expr.parameters with
   | None | Some [] -> false
   | Some parameter_names -> (
-      let callee, arguments = flatten_apply expr.body in
-      parameter_arguments_match parameter_names arguments
-      && not (expression_mentions_any_name parameter_names callee))
+      match expr.body with
+      | Syn.Cst.Cases _ ->
+          false
+      | Syn.Cst.Expression body ->
+          let callee, arguments = flatten_apply body in
+          parameter_arguments_match parameter_names arguments
+          && not (expression_mentions_any_name parameter_names callee))
 
 let make_diagnostic (expr : Syn.Cst.fun_expression) =
   Diagnostic.make ~severity:Warning

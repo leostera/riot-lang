@@ -1320,16 +1320,22 @@ and local_open_expression = {
   via_let_open : bool;
 }
 
-and fun_expression = {
-  syntax_node : syntax_node;
-  parameters : Parameter.t list;
-  body : expression;
-}
-
-and function_expression = {
+and function_case_body = {
   syntax_node : syntax_node;
   cases : match_case list;
 }
+
+and function_body =
+  | Expression of expression
+  | Cases of function_case_body
+
+and function_expression = {
+  syntax_node : syntax_node;
+  parameters : Parameter.t list;
+  body : function_body;
+}
+
+and fun_expression = function_expression
 
 and let_binding = {
   syntax_node : syntax_node;

@@ -25,7 +25,20 @@ hello world!
 |}
 |explain}
 
-let rec string_literal_chain_size = function
+let rec string_literal_chain_size_in_function_body = function
+  | Syn.Cst.Expression expression ->
+      string_literal_chain_size expression
+  | Syn.Cst.Cases { cases; _ } ->
+      cases
+      |> List.find_map (fun (case : Syn.Cst.match_case) ->
+             match case.guard with
+             | Some guard -> (
+                 match string_literal_chain_size guard with
+                 | Some _ as size -> size
+                 | None -> string_literal_chain_size case.body)
+             | None -> string_literal_chain_size case.body)
+
+and string_literal_chain_size = function
   | Syn.Cst.Expression.Path _ -> None
   | Syn.Cst.Expression.Literal (Syn.Cst.Literal.String _) -> Some 1
   | Syn.Cst.Expression.Literal _
@@ -34,16 +47,9 @@ let rec string_literal_chain_size = function
   | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
       string_literal_chain_size receiver
   | Syn.Cst.Expression.Fun expr ->
-      string_literal_chain_size expr.body
+      string_literal_chain_size_in_function_body expr.body
   | Syn.Cst.Expression.Function expr ->
-      expr.cases
-      |> List.find_map (fun (case : Syn.Cst.match_case) ->
-             match case.guard with
-             | Some guard -> (
-                 match string_literal_chain_size guard with
-                 | Some _ as size -> size
-                 | None -> string_literal_chain_size case.body)
-             | None -> string_literal_chain_size case.body)
+      string_literal_chain_size_in_function_body expr.body
   | Syn.Cst.Expression.Parenthesized expr ->
       string_literal_chain_size expr.inner
   | Syn.Cst.Expression.Infix expr

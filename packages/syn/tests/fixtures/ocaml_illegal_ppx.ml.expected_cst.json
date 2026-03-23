@@ -7133,26 +7133,19 @@
                     }
                   ],
                   "body": {
-                    "tag": "record",
-                    "syntax_node": {
-                      "kind": "RECORD_UPDATE_EXPR",
-                      "span": {
-                        "start": 1942,
-                        "end": 2003
-                      }
-                    },
-                    "shape": "update",
-                    "base": {
-                      "tag": "path",
+                    "tag": "expression",
+                    "expression": {
+                      "tag": "record",
                       "syntax_node": {
-                        "kind": "RECORD_FIELD",
+                        "kind": "RECORD_UPDATE_EXPR",
                         "span": {
-                          "start": 1944,
-                          "end": 1950
+                          "start": 1942,
+                          "end": 2003
                         }
                       },
-                      "path": {
-                        "tag": "ident",
+                      "shape": "update",
+                      "base": {
+                        "tag": "path",
                         "syntax_node": {
                           "kind": "RECORD_FIELD",
                           "span": {
@@ -7160,27 +7153,27 @@
                             "end": 1950
                           }
                         },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "super",
-                          "span": {
-                            "start": 1944,
-                            "end": 1949
+                        "path": {
+                          "tag": "ident",
+                          "syntax_node": {
+                            "kind": "RECORD_FIELD",
+                            "span": {
+                              "start": 1944,
+                              "end": 1950
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "super",
+                            "span": {
+                              "start": 1944,
+                              "end": 1949
+                            }
                           }
                         }
-                      }
-                    },
-                    "fields": [
-                      {
-                        "syntax_node": {
-                          "kind": "RECORD_FIELD",
-                          "span": {
-                            "start": 1955,
-                            "end": 1959
-                          }
-                        },
-                        "field_path": {
-                          "tag": "ident",
+                      },
+                      "fields": [
+                        {
                           "syntax_node": {
                             "kind": "RECORD_FIELD",
                             "span": {
@@ -7188,27 +7181,27 @@
                               "end": 1959
                             }
                           },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "expr",
-                            "span": {
-                              "start": 1955,
-                              "end": 1959
+                          "field_path": {
+                            "tag": "ident",
+                            "syntax_node": {
+                              "kind": "RECORD_FIELD",
+                              "span": {
+                                "start": 1955,
+                                "end": 1959
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "expr",
+                              "span": {
+                                "start": 1955,
+                                "end": 1959
+                              }
                             }
-                          }
+                          },
+                          "value": null
                         },
-                        "value": null
-                      },
-                      {
-                        "syntax_node": {
-                          "kind": "RECORD_FIELD",
-                          "span": {
-                            "start": 1961,
-                            "end": 1964
-                          }
-                        },
-                        "field_path": {
-                          "tag": "ident",
+                        {
                           "syntax_node": {
                             "kind": "RECORD_FIELD",
                             "span": {
@@ -7216,27 +7209,27 @@
                               "end": 1964
                             }
                           },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "pat",
-                            "span": {
-                              "start": 1961,
-                              "end": 1964
+                          "field_path": {
+                            "tag": "ident",
+                            "syntax_node": {
+                              "kind": "RECORD_FIELD",
+                              "span": {
+                                "start": 1961,
+                                "end": 1964
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "pat",
+                              "span": {
+                                "start": 1961,
+                                "end": 1964
+                              }
                             }
-                          }
+                          },
+                          "value": null
                         },
-                        "value": null
-                      },
-                      {
-                        "syntax_node": {
-                          "kind": "RECORD_FIELD",
-                          "span": {
-                            "start": 1966,
-                            "end": 1980
-                          }
-                        },
-                        "field_path": {
-                          "tag": "ident",
+                        {
                           "syntax_node": {
                             "kind": "RECORD_FIELD",
                             "span": {
@@ -7244,27 +7237,27 @@
                               "end": 1980
                             }
                           },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "structure_item",
-                            "span": {
-                              "start": 1966,
-                              "end": 1980
+                          "field_path": {
+                            "tag": "ident",
+                            "syntax_node": {
+                              "kind": "RECORD_FIELD",
+                              "span": {
+                                "start": 1966,
+                                "end": 1980
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "structure_item",
+                              "span": {
+                                "start": 1966,
+                                "end": 1980
+                              }
                             }
-                          }
+                          },
+                          "value": null
                         },
-                        "value": null
-                      },
-                      {
-                        "syntax_node": {
-                          "kind": "RECORD_FIELD",
-                          "span": {
-                            "start": 1982,
-                            "end": 1996
-                          }
-                        },
-                        "field_path": {
-                          "tag": "ident",
+                        {
                           "syntax_node": {
                             "kind": "RECORD_FIELD",
                             "span": {
@@ -7272,27 +7265,27 @@
                               "end": 1996
                             }
                           },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "signature_item",
-                            "span": {
-                              "start": 1982,
-                              "end": 1996
+                          "field_path": {
+                            "tag": "ident",
+                            "syntax_node": {
+                              "kind": "RECORD_FIELD",
+                              "span": {
+                                "start": 1982,
+                                "end": 1996
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "signature_item",
+                              "span": {
+                                "start": 1982,
+                                "end": 1996
+                              }
                             }
-                          }
+                          },
+                          "value": null
                         },
-                        "value": null
-                      },
-                      {
-                        "syntax_node": {
-                          "kind": "RECORD_FIELD",
-                          "span": {
-                            "start": 1998,
-                            "end": 2002
-                          }
-                        },
-                        "field_path": {
-                          "tag": "ident",
+                        {
                           "syntax_node": {
                             "kind": "RECORD_FIELD",
                             "span": {
@@ -7300,18 +7293,28 @@
                               "end": 2002
                             }
                           },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "typ",
-                            "span": {
-                              "start": 1998,
-                              "end": 2001
+                          "field_path": {
+                            "tag": "ident",
+                            "syntax_node": {
+                              "kind": "RECORD_FIELD",
+                              "span": {
+                                "start": 1998,
+                                "end": 2002
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "typ",
+                              "span": {
+                                "start": 1998,
+                                "end": 2001
+                              }
                             }
-                          }
-                        },
-                        "value": null
-                      }
-                    ]
+                          },
+                          "value": null
+                        }
+                      ]
+                    }
                   }
                 }
               }

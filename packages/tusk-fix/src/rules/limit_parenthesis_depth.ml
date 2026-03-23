@@ -42,7 +42,20 @@ let rec parenthesis_chain_depth = function
       1 + parenthesis_chain_depth expr.inner
   | _ -> 0
 
-let rec diagnostics_for_expression ~inside_parenthesized_chain = function
+let rec diagnostics_for_function_body ~inside_parenthesized_chain = function
+  | Syn.Cst.Expression expression ->
+      diagnostics_for_expression ~inside_parenthesized_chain expression
+  | Syn.Cst.Cases { cases; _ } ->
+      cases
+      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+             (match case.guard with
+             | Some guard ->
+                 diagnostics_for_expression ~inside_parenthesized_chain guard
+             | None -> [])
+             @ diagnostics_for_expression ~inside_parenthesized_chain
+                 case.body)
+
+and diagnostics_for_expression ~inside_parenthesized_chain = function
   | Syn.Cst.Expression.Path _
   | Syn.Cst.Expression.Literal _ ->
       []
@@ -65,16 +78,9 @@ let rec diagnostics_for_expression ~inside_parenthesized_chain = function
       @ diagnostics_for_expression ~inside_parenthesized_chain
           (Syn.Cst.InfixExpression.right expr)
   | Syn.Cst.Expression.Fun expr ->
-      expr.body |> diagnostics_for_expression ~inside_parenthesized_chain
+      diagnostics_for_function_body ~inside_parenthesized_chain expr.body
   | Syn.Cst.Expression.Function expr ->
-      expr.cases
-      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
-             (match case.guard with
-             | Some guard ->
-                 diagnostics_for_expression ~inside_parenthesized_chain guard
-             | None -> [])
-             @ diagnostics_for_expression ~inside_parenthesized_chain
-                 case.body)
+      diagnostics_for_function_body ~inside_parenthesized_chain expr.body
   | Syn.Cst.Expression.Let expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
         expr.bound_value

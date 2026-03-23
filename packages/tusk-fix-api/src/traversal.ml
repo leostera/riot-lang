@@ -213,9 +213,9 @@ and let_bindings_of_expression expr =
   | Syn.Cst.Expression.LocalOpen { body; _ } ->
       let_bindings_of_expression body
   | Syn.Cst.Expression.Fun { body; _ } ->
-      let_bindings_of_expression body
-  | Syn.Cst.Expression.Function { cases; _ } ->
-      cases |> List.concat_map let_bindings_of_match_case
+      let_bindings_of_function_body body
+  | Syn.Cst.Expression.Function { body; _ } ->
+      let_bindings_of_function_body body
   | Syn.Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
       let_bindings_of_expression binding.bound_value
       @
@@ -240,6 +240,12 @@ and let_bindings_of_expression expr =
       (Option.to_list else_branch |> List.concat_map let_bindings_of_expression)
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
       let_bindings_of_expression inner
+
+and let_bindings_of_function_body = function
+  | Syn.Cst.Expression expression ->
+      let_bindings_of_expression expression
+  | Syn.Cst.Cases { cases; _ } ->
+      cases |> List.concat_map let_bindings_of_match_case
 
 and let_bindings_of_apply_argument = function
   | Syn.Cst.Positional argument ->
@@ -419,9 +425,9 @@ let rec expressions_of_expression expr =
     | Syn.Cst.Expression.LocalOpen { body; _ } ->
         expressions_of_expression body
     | Syn.Cst.Expression.Fun { body; _ } ->
-        expressions_of_expression body
-    | Syn.Cst.Expression.Function { cases; _ } ->
-        cases |> List.concat_map expressions_of_match_case
+        expressions_of_function_body body
+    | Syn.Cst.Expression.Function { body; _ } ->
+        expressions_of_function_body body
     | Syn.Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
         expressions_of_expression binding.bound_value
         @
@@ -448,6 +454,12 @@ let rec expressions_of_expression expr =
         expressions_of_expression inner
   in
   expr :: nested
+
+and expressions_of_function_body = function
+  | Syn.Cst.Expression expression ->
+      expressions_of_expression expression
+  | Syn.Cst.Cases { cases; _ } ->
+      cases |> List.concat_map expressions_of_match_case
 
 and expressions_of_apply_argument = function
   | Syn.Cst.Positional argument ->

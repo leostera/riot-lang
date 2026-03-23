@@ -194,7 +194,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] constructor expressions are likely flattened into `Path` or `Apply`
   - [x] field assignment expressions are only approximated via `Assign (FieldAccess ...)`
   - [x] object override expressions are only approximated via `ObjectUpdate`
-  - [ ] function expressions only store cases, not the richer parameter/type structure
+  - [x] function expressions only store cases, not the richer parameter/type structure
   - [x] `for` loops store a direction token instead of a typed direction flag
   - [ ] record expressions only keep syntax-level field paths and optional values
   - [ ] packed first-class module expressions are still mostly raw syntax

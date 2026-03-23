@@ -1271,14 +1271,15 @@ and expression_to_json = function
           ("tag", Json.String "fun");
           ("syntax_node", syntax_node_to_json syntax_node);
           ("parameters", Json.Array (List.map parameter_to_json parameters));
-          ("body", expression_to_json body);
+          ("body", function_body_to_json body);
         ]
-  | Cst.Expression.Function { syntax_node; cases } ->
+  | Cst.Expression.Function { syntax_node; parameters; body } ->
       Json.Object
         [
           ("tag", Json.String "function");
           ("syntax_node", syntax_node_to_json syntax_node);
-          ("cases", Json.Array (List.map match_case_to_json cases));
+          ("parameters", Json.Array (List.map parameter_to_json parameters));
+          ("body", function_body_to_json body);
         ]
   | Cst.Expression.LetOperator { syntax_node; binding; and_bindings; body } ->
       Json.Object
@@ -1373,6 +1374,27 @@ and object_override_field_to_json field =
       ("field_name", token_to_json field.field_name);
       ("value", option_to_json expression_to_json field.value);
     ]
+
+and function_case_body_to_json ({ syntax_node; cases } : Cst.function_case_body) =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json syntax_node);
+      ("cases", Json.Array (List.map match_case_to_json cases));
+    ]
+
+and function_body_to_json = function
+  | Cst.Expression body ->
+      Json.Object
+        [
+          ("tag", Json.String "expression");
+          ("expression", expression_to_json body);
+        ]
+  | Cst.Cases cases ->
+      Json.Object
+        [
+          ("tag", Json.String "cases");
+          ("cases_body", function_case_body_to_json cases);
+        ]
 
 and match_case_to_json { syntax_node; pattern; guard; body } =
   Json.Object

@@ -37,7 +37,18 @@ Examples:
 
 let max_nested_match_depth = 3
 
-let rec child_expressions = function
+let rec child_expressions_of_function_body = function
+  | Syn.Cst.Expression expression ->
+      [ expression ]
+  | Syn.Cst.Cases { cases; _ } ->
+      cases
+      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
+             (match case.guard with
+             | Some guard -> [ guard ]
+             | None -> [])
+             @ [ case.body ])
+
+and child_expressions = function
   | Syn.Cst.Expression.Path _
   | Syn.Cst.Expression.Literal _ ->
       []
@@ -53,14 +64,9 @@ let rec child_expressions = function
   | Syn.Cst.Expression.Infix expr ->
       [ Syn.Cst.InfixExpression.left expr; Syn.Cst.InfixExpression.right expr ]
   | Syn.Cst.Expression.Fun expr ->
-      [ expr.body ]
+      child_expressions_of_function_body expr.body
   | Syn.Cst.Expression.Function expr ->
-      expr.cases
-      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
-             (match case.guard with
-             | Some guard -> [ guard ]
-             | None -> [])
-             @ [ case.body ])
+      child_expressions_of_function_body expr.body
   | Syn.Cst.Expression.Let expr ->
       [ expr.bound_value; expr.body ]
   | Syn.Cst.Expression.Match expr ->

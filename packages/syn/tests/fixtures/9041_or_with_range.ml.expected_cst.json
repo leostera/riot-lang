@@ -57,306 +57,319 @@
                 "end": 213
               }
             },
-            "cases": [
-              {
+            "parameters": [],
+            "body": {
+              "tag": "cases",
+              "cases_body": {
                 "syntax_node": {
-                  "kind": "MATCH_CASE",
+                  "kind": "FUNCTION_EXPR",
                   "span": {
-                    "start": 68,
-                    "end": 89
+                    "start": 55,
+                    "end": 213
                   }
                 },
-                "pattern": {
-                  "tag": "range",
-                  "syntax_node": {
-                    "kind": "RANGE_PATTERN",
-                    "span": {
-                      "start": 68,
-                      "end": 78
-                    }
-                  },
-                  "lower": {
-                    "tag": "char",
+                "cases": [
+                  {
                     "syntax_node": {
-                      "kind": "RANGE_PATTERN",
+                      "kind": "MATCH_CASE",
                       "span": {
                         "start": 68,
-                        "end": 78
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "CHAR_LITERAL",
-                      "text": "'0'",
-                      "span": {
-                        "start": 68,
-                        "end": 71
-                      }
-                    },
-                    "contents": "0"
-                  },
-                  "upper": {
-                    "tag": "char",
-                    "syntax_node": {
-                      "kind": "RANGE_PATTERN",
-                      "span": {
-                        "start": 68,
-                        "end": 78
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "CHAR_LITERAL",
-                      "text": "'9'",
-                      "span": {
-                        "start": 75,
-                        "end": 78
-                      }
-                    },
-                    "contents": "9"
-                  }
-                },
-                "guard": null,
-                "body": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "string",
-                    "syntax_node": {
-                      "kind": "STRING_LITERAL",
-                      "span": {
-                        "start": 82,
                         "end": 89
                       }
                     },
-                    "literal_token": {
-                      "kind": "STRING_LITERAL",
-                      "text": "\"digit\"",
-                      "span": {
-                        "start": 82,
-                        "end": 89
+                    "pattern": {
+                      "tag": "range",
+                      "syntax_node": {
+                        "kind": "RANGE_PATTERN",
+                        "span": {
+                          "start": 68,
+                          "end": 78
+                        }
+                      },
+                      "lower": {
+                        "tag": "char",
+                        "syntax_node": {
+                          "kind": "RANGE_PATTERN",
+                          "span": {
+                            "start": 68,
+                            "end": 78
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "CHAR_LITERAL",
+                          "text": "'0'",
+                          "span": {
+                            "start": 68,
+                            "end": 71
+                          }
+                        },
+                        "contents": "0"
+                      },
+                      "upper": {
+                        "tag": "char",
+                        "syntax_node": {
+                          "kind": "RANGE_PATTERN",
+                          "span": {
+                            "start": 68,
+                            "end": 78
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "CHAR_LITERAL",
+                          "text": "'9'",
+                          "span": {
+                            "start": 75,
+                            "end": 78
+                          }
+                        },
+                        "contents": "9"
                       }
                     },
-                    "delimiter": {
-                      "tag": "double_quote"
-                    },
-                    "contents": "digit",
-                    "terminated": true
-                  }
-                }
-              },
-              {
-                "syntax_node": {
-                  "kind": "MATCH_CASE",
-                  "span": {
-                    "start": 92,
-                    "end": 119
-                  }
-                },
-                "pattern": {
-                  "tag": "range",
-                  "syntax_node": {
-                    "kind": "RANGE_PATTERN",
-                    "span": {
-                      "start": 94,
-                      "end": 104
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "string",
+                        "syntax_node": {
+                          "kind": "STRING_LITERAL",
+                          "span": {
+                            "start": 82,
+                            "end": 89
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "STRING_LITERAL",
+                          "text": "\"digit\"",
+                          "span": {
+                            "start": 82,
+                            "end": 89
+                          }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "digit",
+                        "terminated": true
+                      }
                     }
                   },
-                  "lower": {
-                    "tag": "char",
+                  {
                     "syntax_node": {
-                      "kind": "RANGE_PATTERN",
+                      "kind": "MATCH_CASE",
                       "span": {
-                        "start": 94,
-                        "end": 104
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "CHAR_LITERAL",
-                      "text": "'a'",
-                      "span": {
-                        "start": 94,
-                        "end": 97
-                      }
-                    },
-                    "contents": "a"
-                  },
-                  "upper": {
-                    "tag": "char",
-                    "syntax_node": {
-                      "kind": "RANGE_PATTERN",
-                      "span": {
-                        "start": 94,
-                        "end": 104
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "CHAR_LITERAL",
-                      "text": "'z'",
-                      "span": {
-                        "start": 101,
-                        "end": 104
-                      }
-                    },
-                    "contents": "z"
-                  }
-                },
-                "guard": null,
-                "body": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "string",
-                    "syntax_node": {
-                      "kind": "STRING_LITERAL",
-                      "span": {
-                        "start": 108,
+                        "start": 92,
                         "end": 119
                       }
                     },
-                    "literal_token": {
-                      "kind": "STRING_LITERAL",
-                      "text": "\"lowercase\"",
-                      "span": {
-                        "start": 108,
-                        "end": 119
+                    "pattern": {
+                      "tag": "range",
+                      "syntax_node": {
+                        "kind": "RANGE_PATTERN",
+                        "span": {
+                          "start": 94,
+                          "end": 104
+                        }
+                      },
+                      "lower": {
+                        "tag": "char",
+                        "syntax_node": {
+                          "kind": "RANGE_PATTERN",
+                          "span": {
+                            "start": 94,
+                            "end": 104
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "CHAR_LITERAL",
+                          "text": "'a'",
+                          "span": {
+                            "start": 94,
+                            "end": 97
+                          }
+                        },
+                        "contents": "a"
+                      },
+                      "upper": {
+                        "tag": "char",
+                        "syntax_node": {
+                          "kind": "RANGE_PATTERN",
+                          "span": {
+                            "start": 94,
+                            "end": 104
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "CHAR_LITERAL",
+                          "text": "'z'",
+                          "span": {
+                            "start": 101,
+                            "end": 104
+                          }
+                        },
+                        "contents": "z"
                       }
                     },
-                    "delimiter": {
-                      "tag": "double_quote"
-                    },
-                    "contents": "lowercase",
-                    "terminated": true
-                  }
-                }
-              },
-              {
-                "syntax_node": {
-                  "kind": "MATCH_CASE",
-                  "span": {
-                    "start": 122,
-                    "end": 149
-                  }
-                },
-                "pattern": {
-                  "tag": "range",
-                  "syntax_node": {
-                    "kind": "RANGE_PATTERN",
-                    "span": {
-                      "start": 124,
-                      "end": 134
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "string",
+                        "syntax_node": {
+                          "kind": "STRING_LITERAL",
+                          "span": {
+                            "start": 108,
+                            "end": 119
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "STRING_LITERAL",
+                          "text": "\"lowercase\"",
+                          "span": {
+                            "start": 108,
+                            "end": 119
+                          }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "lowercase",
+                        "terminated": true
+                      }
                     }
                   },
-                  "lower": {
-                    "tag": "char",
+                  {
                     "syntax_node": {
-                      "kind": "RANGE_PATTERN",
+                      "kind": "MATCH_CASE",
                       "span": {
-                        "start": 124,
-                        "end": 134
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "CHAR_LITERAL",
-                      "text": "'A'",
-                      "span": {
-                        "start": 124,
-                        "end": 127
-                      }
-                    },
-                    "contents": "A"
-                  },
-                  "upper": {
-                    "tag": "char",
-                    "syntax_node": {
-                      "kind": "RANGE_PATTERN",
-                      "span": {
-                        "start": 124,
-                        "end": 134
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "CHAR_LITERAL",
-                      "text": "'Z'",
-                      "span": {
-                        "start": 131,
-                        "end": 134
-                      }
-                    },
-                    "contents": "Z"
-                  }
-                },
-                "guard": null,
-                "body": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "string",
-                    "syntax_node": {
-                      "kind": "STRING_LITERAL",
-                      "span": {
-                        "start": 138,
+                        "start": 122,
                         "end": 149
                       }
                     },
-                    "literal_token": {
-                      "kind": "STRING_LITERAL",
-                      "text": "\"uppercase\"",
-                      "span": {
-                        "start": 138,
-                        "end": 149
+                    "pattern": {
+                      "tag": "range",
+                      "syntax_node": {
+                        "kind": "RANGE_PATTERN",
+                        "span": {
+                          "start": 124,
+                          "end": 134
+                        }
+                      },
+                      "lower": {
+                        "tag": "char",
+                        "syntax_node": {
+                          "kind": "RANGE_PATTERN",
+                          "span": {
+                            "start": 124,
+                            "end": 134
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "CHAR_LITERAL",
+                          "text": "'A'",
+                          "span": {
+                            "start": 124,
+                            "end": 127
+                          }
+                        },
+                        "contents": "A"
+                      },
+                      "upper": {
+                        "tag": "char",
+                        "syntax_node": {
+                          "kind": "RANGE_PATTERN",
+                          "span": {
+                            "start": 124,
+                            "end": 134
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "CHAR_LITERAL",
+                          "text": "'Z'",
+                          "span": {
+                            "start": 131,
+                            "end": 134
+                          }
+                        },
+                        "contents": "Z"
                       }
                     },
-                    "delimiter": {
-                      "tag": "double_quote"
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "string",
+                        "syntax_node": {
+                          "kind": "STRING_LITERAL",
+                          "span": {
+                            "start": 138,
+                            "end": 149
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "STRING_LITERAL",
+                          "text": "\"uppercase\"",
+                          "span": {
+                            "start": 138,
+                            "end": 149
+                          }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "uppercase",
+                        "terminated": true
+                      }
+                    }
+                  },
+                  {
+                    "syntax_node": {
+                      "kind": "MATCH_CASE",
+                      "span": {
+                        "start": 152,
+                        "end": 166
+                      }
                     },
-                    "contents": "uppercase",
-                    "terminated": true
-                  }
-                }
-              },
-              {
-                "syntax_node": {
-                  "kind": "MATCH_CASE",
-                  "span": {
-                    "start": 152,
-                    "end": 166
-                  }
-                },
-                "pattern": {
-                  "tag": "wildcard",
-                  "syntax_node": {
-                    "kind": "WILDCARD_PATTERN",
-                    "span": {
-                      "start": 154,
-                      "end": 155
+                    "pattern": {
+                      "tag": "wildcard",
+                      "syntax_node": {
+                        "kind": "WILDCARD_PATTERN",
+                        "span": {
+                          "start": 154,
+                          "end": 155
+                        }
+                      }
+                    },
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "string",
+                        "syntax_node": {
+                          "kind": "STRING_LITERAL",
+                          "span": {
+                            "start": 159,
+                            "end": 166
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "STRING_LITERAL",
+                          "text": "\"other\"",
+                          "span": {
+                            "start": 159,
+                            "end": 166
+                          }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "other",
+                        "terminated": true
+                      }
                     }
                   }
-                },
-                "guard": null,
-                "body": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "string",
-                    "syntax_node": {
-                      "kind": "STRING_LITERAL",
-                      "span": {
-                        "start": 159,
-                        "end": 166
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "STRING_LITERAL",
-                      "text": "\"other\"",
-                      "span": {
-                        "start": 159,
-                        "end": 166
-                      }
-                    },
-                    "delimiter": {
-                      "tag": "double_quote"
-                    },
-                    "contents": "other",
-                    "terminated": true
-                  }
-                }
+                ]
               }
-            ]
+            }
           },
           "is_recursive": false
         }
@@ -408,200 +421,213 @@
                 "end": 319
               }
             },
-            "cases": [
-              {
+            "parameters": [],
+            "body": {
+              "tag": "cases",
+              "cases_body": {
                 "syntax_node": {
-                  "kind": "MATCH_CASE",
+                  "kind": "FUNCTION_EXPR",
                   "span": {
-                    "start": 244,
-                    "end": 274
+                    "start": 235,
+                    "end": 319
                   }
                 },
-                "pattern": {
-                  "tag": "or",
-                  "syntax_node": {
-                    "kind": "OR_PATTERN",
-                    "span": {
-                      "start": 244,
-                      "end": 267
-                    }
-                  },
-                  "alternatives": [
-                    {
-                      "tag": "literal",
+                "cases": [
+                  {
+                    "syntax_node": {
+                      "kind": "MATCH_CASE",
+                      "span": {
+                        "start": 244,
+                        "end": 274
+                      }
+                    },
+                    "pattern": {
+                      "tag": "or",
                       "syntax_node": {
-                        "kind": "CHAR_LITERAL",
+                        "kind": "OR_PATTERN",
                         "span": {
                           "start": 244,
-                          "end": 247
+                          "end": 267
                         }
                       },
-                      "literal": {
-                        "tag": "char",
-                        "syntax_node": {
-                          "kind": "CHAR_LITERAL",
-                          "span": {
-                            "start": 244,
-                            "end": 247
+                      "alternatives": [
+                        {
+                          "tag": "literal",
+                          "syntax_node": {
+                            "kind": "CHAR_LITERAL",
+                            "span": {
+                              "start": 244,
+                              "end": 247
+                            }
+                          },
+                          "literal": {
+                            "tag": "char",
+                            "syntax_node": {
+                              "kind": "CHAR_LITERAL",
+                              "span": {
+                                "start": 244,
+                                "end": 247
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "CHAR_LITERAL",
+                              "text": "'-'",
+                              "span": {
+                                "start": 244,
+                                "end": 247
+                              }
+                            },
+                            "contents": "-"
                           }
                         },
-                        "literal_token": {
-                          "kind": "CHAR_LITERAL",
-                          "text": "'-'",
-                          "span": {
-                            "start": 244,
-                            "end": 247
+                        {
+                          "tag": "literal",
+                          "syntax_node": {
+                            "kind": "CHAR_LITERAL",
+                            "span": {
+                              "start": 250,
+                              "end": 253
+                            }
+                          },
+                          "literal": {
+                            "tag": "char",
+                            "syntax_node": {
+                              "kind": "CHAR_LITERAL",
+                              "span": {
+                                "start": 250,
+                                "end": 253
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "CHAR_LITERAL",
+                              "text": "'+'",
+                              "span": {
+                                "start": 250,
+                                "end": 253
+                              }
+                            },
+                            "contents": "+"
                           }
                         },
-                        "contents": "-"
-                      }
+                        {
+                          "tag": "range",
+                          "syntax_node": {
+                            "kind": "RANGE_PATTERN",
+                            "span": {
+                              "start": 256,
+                              "end": 266
+                            }
+                          },
+                          "lower": {
+                            "tag": "char",
+                            "syntax_node": {
+                              "kind": "RANGE_PATTERN",
+                              "span": {
+                                "start": 256,
+                                "end": 266
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "CHAR_LITERAL",
+                              "text": "'0'",
+                              "span": {
+                                "start": 256,
+                                "end": 259
+                              }
+                            },
+                            "contents": "0"
+                          },
+                          "upper": {
+                            "tag": "char",
+                            "syntax_node": {
+                              "kind": "RANGE_PATTERN",
+                              "span": {
+                                "start": 256,
+                                "end": 266
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "CHAR_LITERAL",
+                              "text": "'9'",
+                              "span": {
+                                "start": 263,
+                                "end": 266
+                              }
+                            },
+                            "contents": "9"
+                          }
+                        }
+                      ]
                     },
-                    {
+                    "guard": null,
+                    "body": {
                       "tag": "literal",
-                      "syntax_node": {
-                        "kind": "CHAR_LITERAL",
-                        "span": {
-                          "start": 250,
-                          "end": 253
-                        }
-                      },
                       "literal": {
-                        "tag": "char",
+                        "tag": "bool",
                         "syntax_node": {
-                          "kind": "CHAR_LITERAL",
+                          "kind": "BOOL_LITERAL",
                           "span": {
-                            "start": 250,
-                            "end": 253
+                            "start": 270,
+                            "end": 274
                           }
                         },
                         "literal_token": {
-                          "kind": "CHAR_LITERAL",
-                          "text": "'+'",
+                          "kind": "BOOL_LITERAL",
+                          "text": "true",
                           "span": {
-                            "start": 250,
-                            "end": 253
+                            "start": 270,
+                            "end": 274
                           }
                         },
-                        "contents": "+"
+                        "value": true
+                      }
+                    }
+                  },
+                  {
+                    "syntax_node": {
+                      "kind": "MATCH_CASE",
+                      "span": {
+                        "start": 275,
+                        "end": 287
                       }
                     },
-                    {
-                      "tag": "range",
+                    "pattern": {
+                      "tag": "wildcard",
                       "syntax_node": {
-                        "kind": "RANGE_PATTERN",
+                        "kind": "WILDCARD_PATTERN",
                         "span": {
-                          "start": 256,
-                          "end": 266
+                          "start": 277,
+                          "end": 278
                         }
-                      },
-                      "lower": {
-                        "tag": "char",
+                      }
+                    },
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "bool",
                         "syntax_node": {
-                          "kind": "RANGE_PATTERN",
+                          "kind": "BOOL_LITERAL",
                           "span": {
-                            "start": 256,
-                            "end": 266
+                            "start": 282,
+                            "end": 287
                           }
                         },
                         "literal_token": {
-                          "kind": "CHAR_LITERAL",
-                          "text": "'0'",
+                          "kind": "BOOL_LITERAL",
+                          "text": "false",
                           "span": {
-                            "start": 256,
-                            "end": 259
+                            "start": 282,
+                            "end": 287
                           }
                         },
-                        "contents": "0"
-                      },
-                      "upper": {
-                        "tag": "char",
-                        "syntax_node": {
-                          "kind": "RANGE_PATTERN",
-                          "span": {
-                            "start": 256,
-                            "end": 266
-                          }
-                        },
-                        "literal_token": {
-                          "kind": "CHAR_LITERAL",
-                          "text": "'9'",
-                          "span": {
-                            "start": 263,
-                            "end": 266
-                          }
-                        },
-                        "contents": "9"
+                        "value": false
                       }
                     }
-                  ]
-                },
-                "guard": null,
-                "body": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "bool",
-                    "syntax_node": {
-                      "kind": "BOOL_LITERAL",
-                      "span": {
-                        "start": 270,
-                        "end": 274
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "BOOL_LITERAL",
-                      "text": "true",
-                      "span": {
-                        "start": 270,
-                        "end": 274
-                      }
-                    },
-                    "value": true
                   }
-                }
-              },
-              {
-                "syntax_node": {
-                  "kind": "MATCH_CASE",
-                  "span": {
-                    "start": 275,
-                    "end": 287
-                  }
-                },
-                "pattern": {
-                  "tag": "wildcard",
-                  "syntax_node": {
-                    "kind": "WILDCARD_PATTERN",
-                    "span": {
-                      "start": 277,
-                      "end": 278
-                    }
-                  }
-                },
-                "guard": null,
-                "body": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "bool",
-                    "syntax_node": {
-                      "kind": "BOOL_LITERAL",
-                      "span": {
-                        "start": 282,
-                        "end": 287
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "BOOL_LITERAL",
-                      "text": "false",
-                      "span": {
-                        "start": 282,
-                        "end": 287
-                      }
-                    },
-                    "value": false
-                  }
-                }
+                ]
               }
-            ]
+            }
           },
           "is_recursive": false
         }
@@ -653,387 +679,400 @@
                 "end": 442
               }
             },
-            "cases": [
-              {
+            "parameters": [],
+            "body": {
+              "tag": "cases",
+              "cases_body": {
                 "syntax_node": {
-                  "kind": "MATCH_CASE",
+                  "kind": "FUNCTION_EXPR",
                   "span": {
-                    "start": 354,
-                    "end": 389
+                    "start": 341,
+                    "end": 442
                   }
                 },
-                "pattern": {
-                  "tag": "constructor",
-                  "syntax_node": {
-                    "kind": "CONSTRUCTOR_PATTERN",
-                    "span": {
-                      "start": 354,
-                      "end": 377
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
+                "cases": [
+                  {
                     "syntax_node": {
-                      "kind": "CONSTRUCTOR_PATTERN",
+                      "kind": "MATCH_CASE",
                       "span": {
                         "start": 354,
-                        "end": 377
+                        "end": 389
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Some",
-                      "span": {
-                        "start": 354,
-                        "end": 358
-                      }
-                    }
-                  },
-                  "existentials": null,
-                  "arguments": [
-                    {
-                      "tag": "parenthesized",
+                    "pattern": {
+                      "tag": "constructor",
                       "syntax_node": {
-                        "kind": "PAREN_PATTERN",
+                        "kind": "CONSTRUCTOR_PATTERN",
                         "span": {
-                          "start": 359,
+                          "start": 354,
                           "end": 377
                         }
                       },
-                      "inner": {
-                        "tag": "or",
+                      "constructor_path": {
+                        "tag": "ident",
                         "syntax_node": {
-                          "kind": "OR_PATTERN",
+                          "kind": "CONSTRUCTOR_PATTERN",
                           "span": {
-                            "start": 360,
-                            "end": 376
+                            "start": 354,
+                            "end": 377
                           }
                         },
-                        "alternatives": [
-                          {
-                            "tag": "literal",
-                            "syntax_node": {
-                              "kind": "CHAR_LITERAL",
-                              "span": {
-                                "start": 360,
-                                "end": 363
-                              }
-                            },
-                            "literal": {
-                              "tag": "char",
-                              "syntax_node": {
-                                "kind": "CHAR_LITERAL",
-                                "span": {
-                                  "start": 360,
-                                  "end": 363
-                                }
-                              },
-                              "literal_token": {
-                                "kind": "CHAR_LITERAL",
-                                "text": "'-'",
-                                "span": {
-                                  "start": 360,
-                                  "end": 363
-                                }
-                              },
-                              "contents": "-"
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "Some",
+                          "span": {
+                            "start": 354,
+                            "end": 358
+                          }
+                        }
+                      },
+                      "existentials": null,
+                      "arguments": [
+                        {
+                          "tag": "parenthesized",
+                          "syntax_node": {
+                            "kind": "PAREN_PATTERN",
+                            "span": {
+                              "start": 359,
+                              "end": 377
                             }
                           },
-                          {
-                            "tag": "range",
+                          "inner": {
+                            "tag": "or",
                             "syntax_node": {
-                              "kind": "RANGE_PATTERN",
+                              "kind": "OR_PATTERN",
                               "span": {
-                                "start": 366,
+                                "start": 360,
                                 "end": 376
                               }
                             },
-                            "lower": {
-                              "tag": "char",
-                              "syntax_node": {
-                                "kind": "RANGE_PATTERN",
-                                "span": {
-                                  "start": 366,
-                                  "end": 376
+                            "alternatives": [
+                              {
+                                "tag": "literal",
+                                "syntax_node": {
+                                  "kind": "CHAR_LITERAL",
+                                  "span": {
+                                    "start": 360,
+                                    "end": 363
+                                  }
+                                },
+                                "literal": {
+                                  "tag": "char",
+                                  "syntax_node": {
+                                    "kind": "CHAR_LITERAL",
+                                    "span": {
+                                      "start": 360,
+                                      "end": 363
+                                    }
+                                  },
+                                  "literal_token": {
+                                    "kind": "CHAR_LITERAL",
+                                    "text": "'-'",
+                                    "span": {
+                                      "start": 360,
+                                      "end": 363
+                                    }
+                                  },
+                                  "contents": "-"
                                 }
                               },
-                              "literal_token": {
-                                "kind": "CHAR_LITERAL",
-                                "text": "'0'",
-                                "span": {
-                                  "start": 366,
-                                  "end": 369
+                              {
+                                "tag": "range",
+                                "syntax_node": {
+                                  "kind": "RANGE_PATTERN",
+                                  "span": {
+                                    "start": 366,
+                                    "end": 376
+                                  }
+                                },
+                                "lower": {
+                                  "tag": "char",
+                                  "syntax_node": {
+                                    "kind": "RANGE_PATTERN",
+                                    "span": {
+                                      "start": 366,
+                                      "end": 376
+                                    }
+                                  },
+                                  "literal_token": {
+                                    "kind": "CHAR_LITERAL",
+                                    "text": "'0'",
+                                    "span": {
+                                      "start": 366,
+                                      "end": 369
+                                    }
+                                  },
+                                  "contents": "0"
+                                },
+                                "upper": {
+                                  "tag": "char",
+                                  "syntax_node": {
+                                    "kind": "RANGE_PATTERN",
+                                    "span": {
+                                      "start": 366,
+                                      "end": 376
+                                    }
+                                  },
+                                  "literal_token": {
+                                    "kind": "CHAR_LITERAL",
+                                    "text": "'9'",
+                                    "span": {
+                                      "start": 373,
+                                      "end": 376
+                                    }
+                                  },
+                                  "contents": "9"
                                 }
-                              },
-                              "contents": "0"
-                            },
-                            "upper": {
-                              "tag": "char",
-                              "syntax_node": {
-                                "kind": "RANGE_PATTERN",
-                                "span": {
-                                  "start": 366,
-                                  "end": 376
-                                }
-                              },
-                              "literal_token": {
-                                "kind": "CHAR_LITERAL",
-                                "text": "'9'",
-                                "span": {
-                                  "start": 373,
-                                  "end": 376
-                                }
-                              },
-                              "contents": "9"
-                            }
+                              }
+                            ]
                           }
-                        ]
-                      }
-                    }
-                  ]
-                },
-                "guard": null,
-                "body": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "string",
-                    "syntax_node": {
-                      "kind": "STRING_LITERAL",
-                      "span": {
-                        "start": 381,
-                        "end": 389
-                      }
+                        }
+                      ]
                     },
-                    "literal_token": {
-                      "kind": "STRING_LITERAL",
-                      "text": "\"number\"",
-                      "span": {
-                        "start": 381,
-                        "end": 389
-                      }
-                    },
-                    "delimiter": {
-                      "tag": "double_quote"
-                    },
-                    "contents": "number",
-                    "terminated": true
-                  }
-                }
-              },
-              {
-                "syntax_node": {
-                  "kind": "MATCH_CASE",
-                  "span": {
-                    "start": 392,
-                    "end": 423
-                  }
-                },
-                "pattern": {
-                  "tag": "constructor",
-                  "syntax_node": {
-                    "kind": "CONSTRUCTOR_PATTERN",
-                    "span": {
-                      "start": 394,
-                      "end": 411
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "CONSTRUCTOR_PATTERN",
-                      "span": {
-                        "start": 394,
-                        "end": 411
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Some",
-                      "span": {
-                        "start": 394,
-                        "end": 398
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "string",
+                        "syntax_node": {
+                          "kind": "STRING_LITERAL",
+                          "span": {
+                            "start": 381,
+                            "end": 389
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "STRING_LITERAL",
+                          "text": "\"number\"",
+                          "span": {
+                            "start": 381,
+                            "end": 389
+                          }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "number",
+                        "terminated": true
                       }
                     }
                   },
-                  "existentials": null,
-                  "arguments": [
-                    {
-                      "tag": "parenthesized",
+                  {
+                    "syntax_node": {
+                      "kind": "MATCH_CASE",
+                      "span": {
+                        "start": 392,
+                        "end": 423
+                      }
+                    },
+                    "pattern": {
+                      "tag": "constructor",
                       "syntax_node": {
-                        "kind": "PAREN_PATTERN",
+                        "kind": "CONSTRUCTOR_PATTERN",
                         "span": {
-                          "start": 399,
+                          "start": 394,
                           "end": 411
                         }
                       },
-                      "inner": {
-                        "tag": "or",
+                      "constructor_path": {
+                        "tag": "ident",
                         "syntax_node": {
-                          "kind": "OR_PATTERN",
+                          "kind": "CONSTRUCTOR_PATTERN",
                           "span": {
-                            "start": 400,
-                            "end": 410
+                            "start": 394,
+                            "end": 411
                           }
                         },
-                        "alternatives": [
-                          {
-                            "tag": "literal",
-                            "syntax_node": {
-                              "kind": "CHAR_LITERAL",
-                              "span": {
-                                "start": 400,
-                                "end": 403
-                              }
-                            },
-                            "literal": {
-                              "tag": "char",
-                              "syntax_node": {
-                                "kind": "CHAR_LITERAL",
-                                "span": {
-                                  "start": 400,
-                                  "end": 403
-                                }
-                              },
-                              "literal_token": {
-                                "kind": "CHAR_LITERAL",
-                                "text": "'\"'",
-                                "span": {
-                                  "start": 400,
-                                  "end": 403
-                                }
-                              },
-                              "contents": "\""
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "Some",
+                          "span": {
+                            "start": 394,
+                            "end": 398
+                          }
+                        }
+                      },
+                      "existentials": null,
+                      "arguments": [
+                        {
+                          "tag": "parenthesized",
+                          "syntax_node": {
+                            "kind": "PAREN_PATTERN",
+                            "span": {
+                              "start": 399,
+                              "end": 411
                             }
                           },
-                          {
-                            "tag": "literal",
+                          "inner": {
+                            "tag": "or",
                             "syntax_node": {
-                              "kind": "CHAR_LITERAL",
+                              "kind": "OR_PATTERN",
                               "span": {
-                                "start": 406,
+                                "start": 400,
                                 "end": 410
                               }
                             },
-                            "literal": {
-                              "tag": "char",
-                              "syntax_node": {
-                                "kind": "CHAR_LITERAL",
-                                "span": {
-                                  "start": 406,
-                                  "end": 410
+                            "alternatives": [
+                              {
+                                "tag": "literal",
+                                "syntax_node": {
+                                  "kind": "CHAR_LITERAL",
+                                  "span": {
+                                    "start": 400,
+                                    "end": 403
+                                  }
+                                },
+                                "literal": {
+                                  "tag": "char",
+                                  "syntax_node": {
+                                    "kind": "CHAR_LITERAL",
+                                    "span": {
+                                      "start": 400,
+                                      "end": 403
+                                    }
+                                  },
+                                  "literal_token": {
+                                    "kind": "CHAR_LITERAL",
+                                    "text": "'\"'",
+                                    "span": {
+                                      "start": 400,
+                                      "end": 403
+                                    }
+                                  },
+                                  "contents": "\""
                                 }
                               },
-                              "literal_token": {
-                                "kind": "CHAR_LITERAL",
-                                "text": "'\\''",
-                                "span": {
-                                  "start": 406,
-                                  "end": 410
+                              {
+                                "tag": "literal",
+                                "syntax_node": {
+                                  "kind": "CHAR_LITERAL",
+                                  "span": {
+                                    "start": 406,
+                                    "end": 410
+                                  }
+                                },
+                                "literal": {
+                                  "tag": "char",
+                                  "syntax_node": {
+                                    "kind": "CHAR_LITERAL",
+                                    "span": {
+                                      "start": 406,
+                                      "end": 410
+                                    }
+                                  },
+                                  "literal_token": {
+                                    "kind": "CHAR_LITERAL",
+                                    "text": "'\\''",
+                                    "span": {
+                                      "start": 406,
+                                      "end": 410
+                                    }
+                                  },
+                                  "contents": "\\'"
                                 }
-                              },
-                              "contents": "\\'"
-                            }
+                              }
+                            ]
                           }
-                        ]
-                      }
-                    }
-                  ]
-                },
-                "guard": null,
-                "body": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "string",
-                    "syntax_node": {
-                      "kind": "STRING_LITERAL",
-                      "span": {
-                        "start": 415,
-                        "end": 423
-                      }
+                        }
+                      ]
                     },
-                    "literal_token": {
-                      "kind": "STRING_LITERAL",
-                      "text": "\"string\"",
-                      "span": {
-                        "start": 415,
-                        "end": 423
-                      }
-                    },
-                    "delimiter": {
-                      "tag": "double_quote"
-                    },
-                    "contents": "string",
-                    "terminated": true
-                  }
-                }
-              },
-              {
-                "syntax_node": {
-                  "kind": "MATCH_CASE",
-                  "span": {
-                    "start": 426,
-                    "end": 441
-                  }
-                },
-                "pattern": {
-                  "tag": "constructor",
-                  "syntax_node": {
-                    "kind": "CONSTRUCTOR_PATTERN",
-                    "span": {
-                      "start": 428,
-                      "end": 433
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "CONSTRUCTOR_PATTERN",
-                      "span": {
-                        "start": 428,
-                        "end": 433
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "None",
-                      "span": {
-                        "start": 428,
-                        "end": 432
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "string",
+                        "syntax_node": {
+                          "kind": "STRING_LITERAL",
+                          "span": {
+                            "start": 415,
+                            "end": 423
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "STRING_LITERAL",
+                          "text": "\"string\"",
+                          "span": {
+                            "start": 415,
+                            "end": 423
+                          }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "string",
+                        "terminated": true
                       }
                     }
                   },
-                  "existentials": null,
-                  "arguments": []
-                },
-                "guard": null,
-                "body": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "string",
+                  {
                     "syntax_node": {
-                      "kind": "STRING_LITERAL",
+                      "kind": "MATCH_CASE",
                       "span": {
-                        "start": 436,
+                        "start": 426,
                         "end": 441
                       }
                     },
-                    "literal_token": {
-                      "kind": "STRING_LITERAL",
-                      "text": "\"eof\"",
-                      "span": {
-                        "start": 436,
-                        "end": 441
+                    "pattern": {
+                      "tag": "constructor",
+                      "syntax_node": {
+                        "kind": "CONSTRUCTOR_PATTERN",
+                        "span": {
+                          "start": 428,
+                          "end": 433
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "CONSTRUCTOR_PATTERN",
+                          "span": {
+                            "start": 428,
+                            "end": 433
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "None",
+                          "span": {
+                            "start": 428,
+                            "end": 432
+                          }
+                        }
+                      },
+                      "existentials": null,
+                      "arguments": []
+                    },
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "string",
+                        "syntax_node": {
+                          "kind": "STRING_LITERAL",
+                          "span": {
+                            "start": 436,
+                            "end": 441
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "STRING_LITERAL",
+                          "text": "\"eof\"",
+                          "span": {
+                            "start": 436,
+                            "end": 441
+                          }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "eof",
+                        "terminated": true
                       }
-                    },
-                    "delimiter": {
-                      "tag": "double_quote"
-                    },
-                    "contents": "eof",
-                    "terminated": true
+                    }
                   }
-                }
+                ]
               }
-            ]
+            }
           },
           "is_recursive": false
         }

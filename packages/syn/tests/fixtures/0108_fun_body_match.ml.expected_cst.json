@@ -78,25 +78,18 @@
               }
             ],
             "body": {
-              "tag": "match",
-              "syntax_node": {
-                "kind": "MATCH_EXPR",
-                "span": {
-                  "start": 17,
-                  "end": 57
-                }
-              },
-              "scrutinee": {
-                "tag": "path",
+              "tag": "expression",
+              "expression": {
+                "tag": "match",
                 "syntax_node": {
-                  "kind": "IDENT_EXPR",
+                  "kind": "MATCH_EXPR",
                   "span": {
-                    "start": 23,
-                    "end": 24
+                    "start": 17,
+                    "end": 57
                   }
                 },
-                "path": {
-                  "tag": "ident",
+                "scrutinee": {
+                  "tag": "path",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -104,132 +97,142 @@
                       "end": 24
                     }
                   },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "x",
-                    "span": {
-                      "start": 23,
-                      "end": 24
-                    }
-                  }
-                }
-              },
-              "cases": [
-                {
-                  "syntax_node": {
-                    "kind": "MATCH_CASE",
-                    "span": {
-                      "start": 30,
-                      "end": 41
-                    }
-                  },
-                  "pattern": {
-                    "tag": "literal",
+                  "path": {
+                    "tag": "ident",
                     "syntax_node": {
-                      "kind": "INT_LITERAL",
+                      "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 30,
-                        "end": 31
+                        "start": 23,
+                        "end": 24
                       }
                     },
-                    "literal": {
-                      "tag": "int",
-                      "syntax_node": {
-                        "kind": "INT_LITERAL",
-                        "span": {
-                          "start": 30,
-                          "end": 31
-                        }
-                      },
-                      "literal_token": {
-                        "kind": "INT_LITERAL",
-                        "text": "0",
-                        "span": {
-                          "start": 30,
-                          "end": 31
-                        }
-                      },
-                      "base": "decimal",
-                      "prefix": null,
-                      "digits": "0",
-                      "suffix": null
-                    }
-                  },
-                  "guard": null,
-                  "body": {
-                    "tag": "literal",
-                    "literal": {
-                      "tag": "string",
-                      "syntax_node": {
-                        "kind": "STRING_LITERAL",
-                        "span": {
-                          "start": 35,
-                          "end": 41
-                        }
-                      },
-                      "literal_token": {
-                        "kind": "STRING_LITERAL",
-                        "text": "\"zero\"",
-                        "span": {
-                          "start": 35,
-                          "end": 41
-                        }
-                      },
-                      "delimiter": {
-                        "tag": "double_quote"
-                      },
-                      "contents": "zero",
-                      "terminated": true
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 23,
+                        "end": 24
+                      }
                     }
                   }
                 },
-                {
-                  "syntax_node": {
-                    "kind": "MATCH_CASE",
-                    "span": {
-                      "start": 42,
-                      "end": 56
-                    }
-                  },
-                  "pattern": {
-                    "tag": "wildcard",
+                "cases": [
+                  {
                     "syntax_node": {
-                      "kind": "WILDCARD_PATTERN",
+                      "kind": "MATCH_CASE",
                       "span": {
-                        "start": 44,
-                        "end": 45
+                        "start": 30,
+                        "end": 41
+                      }
+                    },
+                    "pattern": {
+                      "tag": "literal",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 30,
+                          "end": 31
+                        }
+                      },
+                      "literal": {
+                        "tag": "int",
+                        "syntax_node": {
+                          "kind": "INT_LITERAL",
+                          "span": {
+                            "start": 30,
+                            "end": 31
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "INT_LITERAL",
+                          "text": "0",
+                          "span": {
+                            "start": 30,
+                            "end": 31
+                          }
+                        },
+                        "base": "decimal",
+                        "prefix": null,
+                        "digits": "0",
+                        "suffix": null
+                      }
+                    },
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "string",
+                        "syntax_node": {
+                          "kind": "STRING_LITERAL",
+                          "span": {
+                            "start": 35,
+                            "end": 41
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "STRING_LITERAL",
+                          "text": "\"zero\"",
+                          "span": {
+                            "start": 35,
+                            "end": 41
+                          }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "zero",
+                        "terminated": true
                       }
                     }
                   },
-                  "guard": null,
-                  "body": {
-                    "tag": "literal",
-                    "literal": {
-                      "tag": "string",
+                  {
+                    "syntax_node": {
+                      "kind": "MATCH_CASE",
+                      "span": {
+                        "start": 42,
+                        "end": 56
+                      }
+                    },
+                    "pattern": {
+                      "tag": "wildcard",
                       "syntax_node": {
-                        "kind": "STRING_LITERAL",
+                        "kind": "WILDCARD_PATTERN",
                         "span": {
-                          "start": 49,
-                          "end": 56
+                          "start": 44,
+                          "end": 45
                         }
-                      },
-                      "literal_token": {
-                        "kind": "STRING_LITERAL",
-                        "text": "\"other\"",
-                        "span": {
-                          "start": 49,
-                          "end": 56
-                        }
-                      },
-                      "delimiter": {
-                        "tag": "double_quote"
-                      },
-                      "contents": "other",
-                      "terminated": true
+                      }
+                    },
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "string",
+                        "syntax_node": {
+                          "kind": "STRING_LITERAL",
+                          "span": {
+                            "start": 49,
+                            "end": 56
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "STRING_LITERAL",
+                          "text": "\"other\"",
+                          "span": {
+                            "start": 49,
+                            "end": 56
+                          }
+                        },
+                        "delimiter": {
+                          "tag": "double_quote"
+                        },
+                        "contents": "other",
+                        "terminated": true
+                      }
                     }
                   }
-                }
-              ]
+                ]
+              }
             }
           },
           "is_recursive": false

@@ -942,43 +942,36 @@
                                 }
                               ],
                               "body": {
-                                "tag": "apply",
-                                "syntax_node": {
-                                  "kind": "APPLY_EXPR",
-                                  "span": {
-                                    "start": 589,
-                                    "end": 613
-                                  }
-                                },
-                                "callee": {
+                                "tag": "expression",
+                                "expression": {
                                   "tag": "apply",
                                   "syntax_node": {
                                     "kind": "APPLY_EXPR",
                                     "span": {
                                       "start": 589,
-                                      "end": 607
+                                      "end": 613
                                     }
                                   },
                                   "callee": {
-                                    "tag": "field_access",
+                                    "tag": "apply",
                                     "syntax_node": {
-                                      "kind": "FIELD_ACCESS_EXPR",
+                                      "kind": "APPLY_EXPR",
                                       "span": {
                                         "start": 589,
-                                        "end": 604
+                                        "end": 607
                                       }
                                     },
-                                    "receiver": {
-                                      "tag": "path",
+                                    "callee": {
+                                      "tag": "field_access",
                                       "syntax_node": {
-                                        "kind": "IDENT_EXPR",
+                                        "kind": "FIELD_ACCESS_EXPR",
                                         "span": {
                                           "start": 589,
-                                          "end": 595
+                                          "end": 604
                                         }
                                       },
-                                      "path": {
-                                        "tag": "ident",
+                                      "receiver": {
+                                        "tag": "path",
                                         "syntax_node": {
                                           "kind": "IDENT_EXPR",
                                           "span": {
@@ -986,83 +979,93 @@
                                             "end": 595
                                           }
                                         },
-                                        "name_token": {
-                                          "kind": "IDENT_EXPR",
-                                          "text": "Format",
-                                          "span": {
-                                            "start": 589,
-                                            "end": 595
+                                        "path": {
+                                          "tag": "ident",
+                                          "syntax_node": {
+                                            "kind": "IDENT_EXPR",
+                                            "span": {
+                                              "start": 589,
+                                              "end": 595
+                                            }
+                                          },
+                                          "name_token": {
+                                            "kind": "IDENT_EXPR",
+                                            "text": "Format",
+                                            "span": {
+                                              "start": 589,
+                                              "end": 595
+                                            }
                                           }
+                                        }
+                                      },
+                                      "field_name": {
+                                        "kind": "IDENT_EXPR",
+                                        "text": "fprintf",
+                                        "span": {
+                                          "start": 596,
+                                          "end": 603
                                         }
                                       }
                                     },
-                                    "field_name": {
-                                      "kind": "IDENT_EXPR",
-                                      "text": "fprintf",
-                                      "span": {
-                                        "start": 596,
-                                        "end": 603
+                                    "argument": {
+                                      "tag": "positional",
+                                      "value": {
+                                        "tag": "path",
+                                        "syntax_node": {
+                                          "kind": "IDENT_EXPR",
+                                          "span": {
+                                            "start": 604,
+                                            "end": 607
+                                          }
+                                        },
+                                        "path": {
+                                          "tag": "ident",
+                                          "syntax_node": {
+                                            "kind": "IDENT_EXPR",
+                                            "span": {
+                                              "start": 604,
+                                              "end": 607
+                                            }
+                                          },
+                                          "name_token": {
+                                            "kind": "IDENT_EXPR",
+                                            "text": "ppf",
+                                            "span": {
+                                              "start": 604,
+                                              "end": 607
+                                            }
+                                          }
+                                        }
                                       }
                                     }
                                   },
                                   "argument": {
                                     "tag": "positional",
                                     "value": {
-                                      "tag": "path",
-                                      "syntax_node": {
-                                        "kind": "IDENT_EXPR",
-                                        "span": {
-                                          "start": 604,
-                                          "end": 607
-                                        }
-                                      },
-                                      "path": {
-                                        "tag": "ident",
+                                      "tag": "literal",
+                                      "literal": {
+                                        "tag": "string",
                                         "syntax_node": {
-                                          "kind": "IDENT_EXPR",
+                                          "kind": "STRING_LITERAL",
                                           "span": {
-                                            "start": 604,
-                                            "end": 607
+                                            "start": 608,
+                                            "end": 613
                                           }
                                         },
-                                        "name_token": {
-                                          "kind": "IDENT_EXPR",
-                                          "text": "ppf",
+                                        "literal_token": {
+                                          "kind": "STRING_LITERAL",
+                                          "text": "\";@ \"",
                                           "span": {
-                                            "start": 604,
-                                            "end": 607
+                                            "start": 608,
+                                            "end": 613
                                           }
-                                        }
+                                        },
+                                        "delimiter": {
+                                          "tag": "double_quote"
+                                        },
+                                        "contents": ";@ ",
+                                        "terminated": true
                                       }
-                                    }
-                                  }
-                                },
-                                "argument": {
-                                  "tag": "positional",
-                                  "value": {
-                                    "tag": "literal",
-                                    "literal": {
-                                      "tag": "string",
-                                      "syntax_node": {
-                                        "kind": "STRING_LITERAL",
-                                        "span": {
-                                          "start": 608,
-                                          "end": 613
-                                        }
-                                      },
-                                      "literal_token": {
-                                        "kind": "STRING_LITERAL",
-                                        "text": "\";@ \"",
-                                        "span": {
-                                          "start": 608,
-                                          "end": 613
-                                        }
-                                      },
-                                      "delimiter": {
-                                        "tag": "double_quote"
-                                      },
-                                      "contents": ";@ ",
-                                      "terminated": true
                                     }
                                   }
                                 }

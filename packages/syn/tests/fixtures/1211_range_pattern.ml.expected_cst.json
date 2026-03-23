@@ -57,130 +57,143 @@
                 "end": 62
               }
             },
-            "cases": [
-              {
+            "parameters": [],
+            "body": {
+              "tag": "cases",
+              "cases_body": {
                 "syntax_node": {
-                  "kind": "MATCH_CASE",
+                  "kind": "FUNCTION_EXPR",
                   "span": {
-                    "start": 28,
-                    "end": 46
+                    "start": 15,
+                    "end": 62
                   }
                 },
-                "pattern": {
-                  "tag": "range",
-                  "syntax_node": {
-                    "kind": "RANGE_PATTERN",
-                    "span": {
-                      "start": 28,
-                      "end": 38
-                    }
-                  },
-                  "lower": {
-                    "tag": "char",
+                "cases": [
+                  {
                     "syntax_node": {
-                      "kind": "RANGE_PATTERN",
+                      "kind": "MATCH_CASE",
                       "span": {
                         "start": 28,
-                        "end": 38
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "CHAR_LITERAL",
-                      "text": "'a'",
-                      "span": {
-                        "start": 28,
-                        "end": 31
-                      }
-                    },
-                    "contents": "a"
-                  },
-                  "upper": {
-                    "tag": "char",
-                    "syntax_node": {
-                      "kind": "RANGE_PATTERN",
-                      "span": {
-                        "start": 28,
-                        "end": 38
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "CHAR_LITERAL",
-                      "text": "'z'",
-                      "span": {
-                        "start": 35,
-                        "end": 38
-                      }
-                    },
-                    "contents": "z"
-                  }
-                },
-                "guard": null,
-                "body": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "bool",
-                    "syntax_node": {
-                      "kind": "BOOL_LITERAL",
-                      "span": {
-                        "start": 42,
                         "end": 46
                       }
                     },
-                    "literal_token": {
-                      "kind": "BOOL_LITERAL",
-                      "text": "true",
-                      "span": {
-                        "start": 42,
-                        "end": 46
+                    "pattern": {
+                      "tag": "range",
+                      "syntax_node": {
+                        "kind": "RANGE_PATTERN",
+                        "span": {
+                          "start": 28,
+                          "end": 38
+                        }
+                      },
+                      "lower": {
+                        "tag": "char",
+                        "syntax_node": {
+                          "kind": "RANGE_PATTERN",
+                          "span": {
+                            "start": 28,
+                            "end": 38
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "CHAR_LITERAL",
+                          "text": "'a'",
+                          "span": {
+                            "start": 28,
+                            "end": 31
+                          }
+                        },
+                        "contents": "a"
+                      },
+                      "upper": {
+                        "tag": "char",
+                        "syntax_node": {
+                          "kind": "RANGE_PATTERN",
+                          "span": {
+                            "start": 28,
+                            "end": 38
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "CHAR_LITERAL",
+                          "text": "'z'",
+                          "span": {
+                            "start": 35,
+                            "end": 38
+                          }
+                        },
+                        "contents": "z"
                       }
                     },
-                    "value": true
-                  }
-                }
-              },
-              {
-                "syntax_node": {
-                  "kind": "MATCH_CASE",
-                  "span": {
-                    "start": 49,
-                    "end": 61
-                  }
-                },
-                "pattern": {
-                  "tag": "wildcard",
-                  "syntax_node": {
-                    "kind": "WILDCARD_PATTERN",
-                    "span": {
-                      "start": 51,
-                      "end": 52
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "bool",
+                        "syntax_node": {
+                          "kind": "BOOL_LITERAL",
+                          "span": {
+                            "start": 42,
+                            "end": 46
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "BOOL_LITERAL",
+                          "text": "true",
+                          "span": {
+                            "start": 42,
+                            "end": 46
+                          }
+                        },
+                        "value": true
+                      }
+                    }
+                  },
+                  {
+                    "syntax_node": {
+                      "kind": "MATCH_CASE",
+                      "span": {
+                        "start": 49,
+                        "end": 61
+                      }
+                    },
+                    "pattern": {
+                      "tag": "wildcard",
+                      "syntax_node": {
+                        "kind": "WILDCARD_PATTERN",
+                        "span": {
+                          "start": 51,
+                          "end": 52
+                        }
+                      }
+                    },
+                    "guard": null,
+                    "body": {
+                      "tag": "literal",
+                      "literal": {
+                        "tag": "bool",
+                        "syntax_node": {
+                          "kind": "BOOL_LITERAL",
+                          "span": {
+                            "start": 56,
+                            "end": 61
+                          }
+                        },
+                        "literal_token": {
+                          "kind": "BOOL_LITERAL",
+                          "text": "false",
+                          "span": {
+                            "start": 56,
+                            "end": 61
+                          }
+                        },
+                        "value": false
+                      }
                     }
                   }
-                },
-                "guard": null,
-                "body": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "bool",
-                    "syntax_node": {
-                      "kind": "BOOL_LITERAL",
-                      "span": {
-                        "start": 56,
-                        "end": 61
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "BOOL_LITERAL",
-                      "text": "false",
-                      "span": {
-                        "start": 56,
-                        "end": 61
-                      }
-                    },
-                    "value": false
-                  }
-                }
+                ]
               }
-            ]
+            }
           },
           "is_recursive": false
         }

@@ -71,28 +71,31 @@
               }
             ],
             "body": {
-              "tag": "literal",
-              "literal": {
-                "tag": "int",
-                "syntax_node": {
-                  "kind": "INT_LITERAL",
-                  "span": {
-                    "start": 18,
-                    "end": 20
-                  }
-                },
-                "literal_token": {
-                  "kind": "INT_LITERAL",
-                  "text": "42",
-                  "span": {
-                    "start": 18,
-                    "end": 20
-                  }
-                },
-                "base": "decimal",
-                "prefix": null,
-                "digits": "42",
-                "suffix": null
+              "tag": "expression",
+              "expression": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 18,
+                      "end": 20
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "42",
+                    "span": {
+                      "start": 18,
+                      "end": 20
+                    }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "42",
+                  "suffix": null
+                }
               }
             }
           },

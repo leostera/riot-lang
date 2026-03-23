@@ -1986,9 +1986,11 @@ type expression =
           Covered forms include `M.(expr)` and `let open M in expr`.
       *)
   | Fun of fun_expression
-      (** A `fun` expression with explicit parameters. *)
+      (** A `fun` expression with explicit parameters and either a direct body
+          expression or a nested `function`-style case body. *)
   | Function of function_expression
-      (** A `function` expression made of match cases. *)
+      (** A `function` expression. This preserves the case body explicitly and
+          keeps the payload shape aligned with `Expression.Fun`. *)
   | LetOperator of let_operator_expression
       (** A binding-operator expression such as
           `let* x = expr in body` or
@@ -2519,25 +2521,54 @@ and local_open_expression = {
   via_let_open : bool;
 }
 
-(** Payload for `Expression.Fun`.
+(** A `function`-style case body.
 
-    Covers `fun` expressions with explicit parameter lists, such as
-    `fun x ~label ?opt -> body`.
+    This mirrors the case-bearing branch of the stock parsetree's
+    `Pfunction_cases`.
+
+    Example:
+
+    ```ocaml,norun
+    function
+    | Some value -> value
+    | None -> default
+    ```
 *)
-and fun_expression = {
-  syntax_node : syntax_node;
-  parameters : Parameter.t list;
-  body : expression;
-}
-
-(** Payload for `Expression.Function`.
-
-    Covers `function` expressions whose body is a list of cases.
-*)
-and function_expression = {
+and function_case_body = {
   syntax_node : syntax_node;
   cases : match_case list;
 }
+
+(** The body of a function-like expression.
+
+    `Expression body` covers forms such as `fun x -> x + 1`, while
+    `Cases body` covers forms such as `fun x -> function | Some y -> y`
+    or a bare `function | ...`.
+*)
+and function_body =
+  | Expression of expression
+      (** A direct expression body, such as `fun x -> x + 1`. *)
+  | Cases of function_case_body
+      (** A case list body introduced by `function`, such as
+          `fun x -> function | Some y -> y`. *)
+
+(** Shared payload for `Expression.Fun` and `Expression.Function`.
+
+    This keeps parameter structure and the distinction between direct
+    expression bodies and `function`-style case bodies explicit.
+*)
+and function_expression = {
+  syntax_node : syntax_node;
+  parameters : Parameter.t list;
+  body : function_body;
+}
+
+(** Payload for `Expression.Fun`.
+
+    Covers `fun` expressions with explicit parameter lists, such as
+    `fun x ~label ?opt -> body` or `fun x -> function | Some y -> y`.
+*)
+and fun_expression = function_expression
 
 (** A single `let` binding.
 

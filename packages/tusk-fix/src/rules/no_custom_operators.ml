@@ -83,14 +83,9 @@ let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
       diagnostics_for_expression receiver
   | Syn.Cst.Expression.Fun expr ->
-      diagnostics_for_expression expr.body
+      diagnostics_for_function_body expr.body
   | Syn.Cst.Expression.Function expr ->
-      expr.cases
-      |> List.concat_map (fun (case : Syn.Cst.match_case) ->
-             (match case.guard with
-             | Some guard -> diagnostics_for_expression guard
-             | None -> [])
-             @ diagnostics_for_expression case.body)
+      diagnostics_for_function_body expr.body
   | Syn.Cst.Expression.Parenthesized expr ->
       diagnostics_for_expression expr.inner
   | Syn.Cst.Expression.Let expr ->
@@ -132,6 +127,18 @@ let rec diagnostics_for_expression = function
         nested
   | _ ->
       []
+
+and diagnostics_for_function_body = function
+  | Syn.Cst.Expression expression ->
+      diagnostics_for_expression expression
+  | Syn.Cst.Cases { cases; _ } ->
+      cases |> List.concat_map diagnostics_for_match_case
+
+and diagnostics_for_match_case (case : Syn.Cst.match_case) =
+  (match case.guard with
+  | Some guard -> diagnostics_for_expression guard
+  | None -> [])
+  @ diagnostics_for_expression case.body
 
 let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with

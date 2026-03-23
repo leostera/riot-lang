@@ -3467,26 +3467,44 @@ and let_module_expression_from_node node =
 
 and fun_expression_from_node node =
   match List.rev (direct_non_trivia_nodes node) with
-  | body_node :: rev_param_nodes ->
+  | body_node :: rev_prefix_nodes ->
+      let prefix_nodes = List.rev rev_prefix_nodes in
       Some
         {
           syntax_node = node;
           parameters =
-            rev_param_nodes
-            |> List.rev
+            prefix_nodes
+            |> List.filter (fun child ->
+                   is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
             |> List.map parameter_from_node;
-          body = expression_from_node body_node;
+          body = function_body_from_node body_node;
         }
   | [] -> None
 
+and function_case_body_from_node node =
+  {
+    Cst.syntax_node = node;
+    cases =
+      direct_non_trivia_nodes node
+      |> List.filter (fun child ->
+             Ceibo.Red.SyntaxNode.kind child = Syntax_kind.MATCH_CASE)
+      |> List.filter_map match_case_from_node;
+  }
+
+and function_body_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.FUNCTION_EXPR ->
+      Cst.Cases (function_case_body_from_node node)
+  | _ ->
+      Cst.Expression (expression_from_node node)
+
 and function_expression_from_node node =
-  let match_cases =
-    direct_non_trivia_nodes node
-    |> List.filter (fun child ->
-           Ceibo.Red.SyntaxNode.kind child = Syntax_kind.MATCH_CASE)
-    |> List.filter_map match_case_from_node
-  in
-  Some { Cst.syntax_node = node; cases = match_cases }
+  Some
+    {
+      Cst.syntax_node = node;
+      parameters = [];
+      body = Cst.Cases (function_case_body_from_node node);
+    }
 
 and let_operator_expression_from_node node =
   let operator_pairs = binding_operator_pairs_from_tokens node in
@@ -5473,7 +5491,13 @@ let annotation_payload_from_shell_lift shell_node =
         (match direct_non_trivia_nodes root with
         | let_binding_node :: _ -> (
             match let_binding_from_node ~is_recursive_binding:false let_binding_node with
-            | Some { value = Cst.Expression.Function { cases = case :: _; _ }; _ } ->
+            | Some
+                {
+                  value =
+                    Cst.Expression.Function
+                      { body = Cst.Cases { cases = case :: _; _ }; _ };
+                  _;
+                } ->
                 Some
                   (Cst.Payload.Pattern
                      {
@@ -5926,6 +5950,18 @@ and validate_object_member ~context = function
         (validate_expression ~context:("object_member.initializer.body" :: context))
         body
 
+and validate_function_body ~context = function
+  | Cst.Expression expression ->
+      validate_expression ~context:("function_body.expression" :: context)
+        expression
+  | Cst.Cases { cases; _ } ->
+      List.iteri
+        (fun index case ->
+          validate_match_case
+            ~context:(("function_body.case[" ^ Int.to_string index ^ "]") :: context)
+            case)
+        cases
+
 and validate_expression ~context = function
   | Cst.Expression.Path _ | Cst.Expression.Operator _ | Cst.Expression.Literal _
   | Cst.Expression.Unreachable _ | Cst.Expression.Attribute _
@@ -6077,14 +6113,17 @@ and validate_expression ~context = function
             ~context:(("expression.fun.parameter[" ^ Int.to_string index ^ "]") :: context)
             parameter)
         parameters;
-      validate_expression ~context:("expression.fun.body" :: context) body
-  | Cst.Expression.Function { cases; _ } ->
+      validate_function_body ~context:("expression.fun.body" :: context) body
+  | Cst.Expression.Function { parameters; body; _ } ->
       List.iteri
-        (fun index case ->
-          validate_match_case
-            ~context:(("expression.function.case[" ^ Int.to_string index ^ "]") :: context)
-            case)
-        cases
+        (fun index parameter ->
+          validate_parameter
+            ~context:
+              (("expression.function.parameter[" ^ Int.to_string index ^ "]")
+              :: context)
+            parameter)
+        parameters;
+      validate_function_body ~context:("expression.function.body" :: context) body
   | Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
       validate_pattern ~context:("expression.let_operator.binding.pattern" :: context)
         binding.binding_pattern;
