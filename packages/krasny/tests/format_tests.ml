@@ -62,6 +62,25 @@ let tests =
         in
         Test.assert_equal ~expected:"let x = 1\n\nlet y = (-2.5)\n" ~actual;
         Ok ());
+    Test.case "format expands nested let-in bindings across lines" (fun () ->
+        let source = "let x =\n  let y = 1 in let z = 2 in y + z\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"nested let expressions should format"
+        in
+        Test.assert_equal
+          ~expected:"let x =\n  let y = 1 in\n  let z = 2 in\n  y + z\n"
+          ~actual;
+        Ok ());
+    Test.case "format rewrites single-case function expressions into fun"
+      (fun () ->
+        let source = "let f = function x, y -> x + y\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"single-case function expressions should format"
+        in
+        Test.assert_equal ~expected:"let f = fun (x, y) -> x + y\n" ~actual;
+        Ok ());
     Test.case "format preserves syntax hash for selected codebase files"
       (fun () ->
         List.iter assert_roundtrip_hash workspace_files;

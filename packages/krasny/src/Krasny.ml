@@ -16,6 +16,8 @@ let source_of_syntax_node (node : Syn.Cst.syntax_node) =
 let source_of_token token = Syn.Cst.Token.text token
 let source_of_ident ident = Syn.Cst.Ident.segments ident |> List.map source_of_token |> String.concat "."
 let source_of_result (result : Syn.Parser.parse_result) = result.source
+let source_of_pattern pattern = source_of_syntax_node (Syn.Cst.Pattern.syntax_node pattern) |> String.trim
+let source_of_parameter parameter = source_of_syntax_node (Syn.Cst.Parameter.syntax_node parameter) |> String.trim
 
 let has_comment_like_trivia (result : Syn.Parser.parse_result) =
   let rec loop = function
@@ -70,32 +72,143 @@ let render_literal = function
       Some (if literal.value then "true" else "false")
   | Syn.Cst.Literal.Unit _ -> Some "()"
 
-let rec render_expression = function
-  | Syn.Cst.Expression.Literal literal -> render_literal literal
-  | Syn.Cst.Expression.Path { path; _ } -> Some (source_of_ident path)
-  | Syn.Cst.Expression.Parenthesized { inner; _ } -> render_expression inner
-  | Syn.Cst.Expression.Prefix { operator_token; operand = Literal literal; _ } ->
-      render_literal literal
-      |> Option.map (fun rendered -> "(" ^ source_of_token operator_token ^ rendered ^ ")")
-  | _ -> None
+let indent_string n = String.make n ' '
 
-let rec render_pattern = function
-  | Syn.Cst.Pattern.Identifier { name_token; _ } -> Some (source_of_token name_token)
-  | Syn.Cst.Pattern.Parenthesized { inner; _ } -> render_pattern inner
-  | _ -> None
+let needs_fun_parameter_parens =
+  let open Syn.Cst.Pattern in
+  function
+  | Tuple _ | Or _ | Alias _ | Typed _ | Cons _ | Effect _ ->
+      true
+  | Identifier _ | Wildcard _ | Literal _ | Extension _ | Lazy _ | Exception _
+  | Range _ | Operator _ | FirstClassModule _ | PolyVariant _
+  | PolyVariantInherit _ | Constructor _ | List _ | Array _ | Record _
+  | LocalOpen _ | Parenthesized _ ->
+      false
+
+let render_fun_parameter_pattern pattern =
+  let rendered =
+    match pattern with
+    | Syn.Cst.Pattern.Parenthesized { inner; _ } -> source_of_pattern inner
+    | _ -> source_of_pattern pattern
+  in
+  if needs_fun_parameter_parens pattern then
+    "(" ^ rendered ^ ")"
+  else rendered
+
+let render_binding ~indent ~keyword binding_pattern value =
+  let prefix = indent_string indent in
+  if String.contains value "\n" then
+    prefix ^ keyword ^ binding_pattern ^ " =\n" ^ value
+  else prefix ^ keyword ^ binding_pattern ^ " = " ^ value
+
+let rec render_expression ~indent = function
+  | Syn.Cst.Expression.Literal literal ->
+      render_literal literal
+      |> Option.expect ~msg:"literal rendering should always succeed"
+  | Syn.Cst.Expression.Path { path; _ } ->
+      source_of_ident path
+  | Syn.Cst.Expression.Parenthesized { inner = Function function_; _ } ->
+      "(" ^ render_function_expression ~indent:0 function_ ^ ")"
+  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
+      render_expression ~indent inner
+  | Syn.Cst.Expression.Prefix { operator_token; operand = Literal literal; _ } ->
+      let rendered =
+        render_literal literal |> Option.expect ~msg:"literal rendering should always succeed"
+      in
+      "(" ^ source_of_token operator_token ^ rendered ^ ")"
+  | Syn.Cst.Expression.Let let_ ->
+      render_let_expression ~indent let_
+  | Syn.Cst.Expression.Fun fun_ ->
+      render_fun_expression ~indent fun_
+  | Syn.Cst.Expression.Function function_ ->
+      render_function_expression ~indent function_
+  | Syn.Cst.Expression.Apply apply ->
+      render_apply_expression ~indent apply
+  | expression ->
+      source_of_syntax_node (Syn.Cst.Expression.syntax_node expression)
+
+and render_let_expression ~indent
+    ({ syntax_node; binding_pattern; bound_value; and_bindings; body; is_recursive; _ } :
+      Syn.Cst.let_expression) =
+  if List.length and_bindings > 0 then
+    source_of_syntax_node syntax_node
+  else
+    let current =
+      render_binding ~indent
+        ~keyword:(if is_recursive then "let rec " else "let ")
+        (source_of_pattern binding_pattern)
+        (render_expression ~indent:(indent + 2) bound_value)
+    in
+    let rendered_body = render_expression ~indent body in
+    let rendered_body =
+      if String.contains rendered_body "\n" then
+        rendered_body
+      else indent_string indent ^ rendered_body
+    in
+    current ^ " in\n" ^ rendered_body
+
+and render_fun_expression ~indent
+    ({ syntax_node; parameters; body; attributes } : Syn.Cst.fun_expression) =
+  if List.length attributes > 0 then
+    source_of_syntax_node syntax_node
+  else
+    let rec collect parameters = function
+      | Syn.Cst.Expression (Syn.Cst.Expression.Fun nested) ->
+          collect (parameters @ nested.parameters) nested.body
+      | body ->
+          (parameters, body)
+    in
+    let parameters, body = collect parameters body in
+    let rendered_parameters =
+      parameters |> List.map source_of_parameter |> String.concat " "
+    in
+    match body with
+    | Syn.Cst.Expression expression ->
+        let rendered_body = render_expression ~indent:(indent + 2) expression in
+        if String.contains rendered_body "\n" then
+          "fun " ^ rendered_parameters ^ " ->\n" ^ rendered_body
+        else "fun " ^ rendered_parameters ^ " -> " ^ rendered_body
+    | Syn.Cst.Cases case_body ->
+        source_of_syntax_node case_body.syntax_node
+
+and render_function_expression ~indent
+    ({ syntax_node; cases; _ } : Syn.Cst.function_expression) =
+  match cases with
+  | [ case ] when case.guard = None ->
+      "fun " ^ render_fun_parameter_pattern case.pattern ^ " -> "
+      ^ render_expression ~indent case.body
+  | _ ->
+      source_of_syntax_node syntax_node
+
+and render_apply_expression ~indent
+    ({ syntax_node; callee; argument; _ } : Syn.Cst.apply_expression) =
+  match argument with
+  | Syn.Cst.Positional argument ->
+      let rendered_callee =
+        match callee with
+        | Syn.Cst.Expression.Parenthesized { inner; _ } ->
+            "(" ^ render_expression ~indent:0 inner ^ ")"
+        | _ ->
+            render_expression ~indent:0 callee
+      in
+      let rendered_argument = render_expression ~indent:0 argument in
+      if String.contains rendered_callee "\n"
+         || String.contains rendered_argument "\n"
+      then
+        source_of_syntax_node syntax_node
+      else rendered_callee ^ " " ^ rendered_argument
+  | Syn.Cst.Labeled _ | Syn.Cst.Optional _ ->
+      source_of_syntax_node syntax_node
 
 let render_let_binding (binding : Syn.Cst.LetBinding.t) =
   if List.length binding.attributes > 0 || List.length binding.parameters > 0 then
     None
   else
-    match (render_pattern binding.binding_pattern, render_expression binding.value) with
-    | Some binding_pattern, Some value ->
-        Some
-          ("let "
-          ^ if binding.is_recursive then "rec " else ""
-          ^ binding_pattern ^ " = " ^ value)
-    | _ ->
-        None
+    Some
+      (render_binding ~indent:0
+         ~keyword:(if binding.is_recursive then "let rec " else "let ")
+         (source_of_pattern binding.binding_pattern)
+         (render_expression ~indent:2 binding.value))
 
 let render_structure_item = function
   | Syn.Cst.StructureItem.LetBinding binding -> render_let_binding binding
