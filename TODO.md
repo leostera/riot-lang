@@ -51,6 +51,10 @@ doing framework work instead of rule work. The cleanup goal here is:
 
 ### Syn.Cst
 
+- initial slice landed:
+  - parsing now returns Ceibo trees plus diagnostics without an attached CST
+  - `Syn.build_cst` performs the explicit faithful lift step
+  - `tusk-fix` now skips rule execution when CST construction fails
 - [ ] Give every named construct a canonical site:
   - [ ] `LetBinding.name_site`
   - [ ] `TypeDeclaration.name_site`
@@ -71,26 +75,15 @@ doing framework work instead of rule work. The cleanup goal here is:
   - [ ] `SourceFile.Interface { items; ... }`
 - [ ] Keep top-level item families split between structure and signature surfaces instead of pushing rules through optional `structure_items` / `signature_items`
 
-### Syn.Traversal
+### Syn.Visit
 
 - initial slice landed:
-  - `Syn.Traversal.children_of_expression`
-  - `Syn.Traversal.fold_expression`
-  - `Syn.Traversal.children_of_core_type`
-  - `Syn.Traversal.fold_core_type`
-- [ ] Add generated or shared child traversal helpers for recursive families:
-  - [ ] `Traversal.children_of_expression`
-  - [ ] `Traversal.children_of_pattern`
-  - [ ] `Traversal.children_of_core_type`
-  - [ ] `Traversal.children_of_module_expression`
-  - [ ] `Traversal.children_of_module_type`
-- [ ] Add shared folds/iters so rules stop hand-rolling visitors:
-  - [ ] `Traversal.fold_expression`
-  - [ ] `Traversal.exists_expression`
-  - [ ] `Traversal.fold_pattern`
-  - [ ] `Traversal.fold_core_type`
-  - [ ] `Traversal.iter_expression`
-- [ ] Standardize traversal over function bodies, match cases, and declaration payloads so rules do not need bespoke recursion just to recurse consistently
+  - explicit `visit_*` hooks
+  - explicit reentrant walker
+  - `walker.descend_*` helpers for standard child traversal
+- [ ] Expand visitor coverage so all major CST node families are visitable
+- [ ] Standardize descent over function bodies, match cases, and declaration payloads so rules do not need bespoke recursion just to recurse consistently
+- [ ] Keep `visit.mli` thoroughly documented with examples and the visitor-vs-walker distinction
 
 ### Syn.Matchers
 
@@ -152,20 +145,18 @@ Target split:
 
 - `Syn.Cst`: faithful typed structure and canonical sites/spans
 - `Syn.Matchers`: small shared shape helpers like unwrap/flatten/extract
-- `Syn.Traversal`: generated or hand-written children/iter/fold helpers
+- `Syn.Visit`: explicit visitor hooks plus reentrant descent helpers
 - `Tusk_fix.Rule_query`: rule-friendly entrypoints over CST roots and common declaration families
 
 Rough signatures:
 
 ```ocaml
-module Syn.Traversal : sig
-  val fold_expression :
-    ('acc -> Syn.Cst.Expression.t -> 'acc) -> 'acc -> Syn.Cst.Expression.t -> 'acc
+module Syn.Visit : sig
+  type 'ctx walker
+  type 'ctx visitor
 
-  val fold_core_type :
-    ('acc -> Syn.Cst.CoreType.t -> 'acc) -> 'acc -> Syn.Cst.CoreType.t -> 'acc
-
-  val children_of_expression : Syn.Cst.Expression.t -> Syn.Cst.Expression.t list
+  val default : 'ctx visitor
+  val source_file : 'ctx visitor -> 'ctx -> Syn.Cst.SourceFile.t -> 'ctx
 end
 
 module Syn.Matchers.Expression : sig

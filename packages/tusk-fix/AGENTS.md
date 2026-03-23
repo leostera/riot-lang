@@ -13,7 +13,8 @@
 7. Explain text belongs with the rule definition. `tusk-fix-api` should carry rule ids, descriptions, and explanation types, not a built-in diagnostic-code registry.
 8. `--explain` works on rule ids. Keep the CLI surfaces user-facing and consistent about package-qualified ids like `riot:snake-case-type-names`.
 9. `--list-rules` is rule-oriented and `--list-diagnostics` is diagnostic-oriented; today they are both keyed by rule id because each built-in rule emits one diagnostic kind.
-10. Prefer `Rule_query` and `Syn.Visit`/`Syn.Traversal` over hand-written `match ctx.cst` boilerplate or bespoke recursive descent inside individual rules.
+10. Prefer `Rule_query` and `Syn.Visit` over hand-written `match ctx.cst` boilerplate or bespoke recursive descent inside individual rules.
+11. Do not run rules on parse results alone; build a typed CST first and skip lint execution when `Syn.build_cst` fails.
 
 ## Validate
 

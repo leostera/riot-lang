@@ -33,44 +33,89 @@ intermediate transformation was deleted while the cleanup never happened.
 
 let explanations () = [ explanation ]
 
-let rec unwrap_parens = function
+let text_of_syntax_node syntax_node =
+  let parts = ref [] in
+  Syn.Ceibo.Red.SyntaxNode.preorder syntax_node (function
+    | Syn.Ceibo.Red.Token token ->
+        parts := Syn.Ceibo.Red.SyntaxToken.text token :: !parts
+    | Syn.Ceibo.Red.Node _ ->
+        ());
+  !parts |> List.rev |> String.concat ""
+
+let rec unwrap_expression = function
   | Syn.Cst.Expression.Parenthesized expr ->
-      unwrap_parens expr.inner
-  | expr -> expr
+      unwrap_expression expr.inner
+  | expr ->
+      expr
+
+let rec flatten_apply expr =
+  match unwrap_expression expr with
+  | Syn.Cst.Expression.Apply { callee; argument; _ } ->
+      let head, arguments = flatten_apply callee in
+      (head, arguments @ [ argument ])
+  | _ ->
+      (unwrap_expression expr, [])
 
 let path_text path =
   Syn.Cst.Ident.segments path
   |> List.map Syn.Cst.Token.text
   |> String.concat "."
 
-let ends_with_list_rev path =
-  let segments =
-    Syn.Cst.Ident.segments path |> List.map Syn.Cst.Token.text
-  in
-  match List.rev segments with
-  | "rev" :: "List" :: _ -> true
-  | _ -> false
+let rec expression_name expr =
+  match unwrap_expression expr with
+  | Syn.Cst.Expression.Path { path; _ } ->
+      Some (path_text path)
+  | Syn.Cst.Expression.FieldAccess { receiver; field_name; _ } -> (
+      match expression_name receiver with
+      | Some receiver_name ->
+          Some (receiver_name ^ "." ^ Syn.Cst.Token.text field_name)
+      | None ->
+          None)
+  | _ ->
+      None
 
-let is_list_rev = function
-  | Syn.Cst.Expression.Path expr ->
-      ends_with_list_rev expr.path
-  | _ -> false
+let path_matches ~expected expr =
+  match expression_name expr with
+  | Some actual ->
+      String.equal actual expected
+  | None ->
+      false
 
 let expression_of_apply_argument = function
   | Syn.Cst.Positional expr -> Some expr
   | Syn.Cst.Labeled { value; _ } | Syn.Cst.Optional { value; _ } ->
       value
 
-let diagnostic_for_expression = function
-  | Syn.Cst.Expression.Apply outer
-    when is_list_rev (unwrap_parens outer.callee) -> (
-        match
-          outer.argument |> expression_of_apply_argument
-          |> Option.map unwrap_parens
-        with
-        | Some (Syn.Cst.Expression.Apply inner)
-          when is_list_rev (unwrap_parens inner.callee)
-            ->
+let positional_arguments arguments =
+  arguments
+  |> List.filter_map expression_of_apply_argument
+
+let make_fix ~(outer : Syn.Cst.Expression.t) ~(replacement : Syn.Cst.Expression.t) =
+  let replacement_text =
+    replacement |> Syn.Cst.Expression.syntax_node |> text_of_syntax_node
+  in
+  Api.Fix.make
+    ~title:"Replace List.rev (List.rev xs) with xs"
+    ~edits:
+      [
+        Api.Fix.make_text_edit
+          ~span:(outer |> Syn.Cst.Expression.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
+          ~new_text:replacement_text;
+      ]
+
+let diagnostic_for_expression expr =
+  let outer_head, outer_arguments = flatten_apply expr in
+  if not (path_matches ~expected:"List.rev" outer_head) then
+    None
+  else
+    match positional_arguments outer_arguments with
+    | [ inner_argument ] ->
+        let inner_head, inner_arguments = flatten_apply inner_argument in
+        if not (path_matches ~expected:"List.rev" inner_head) then
+          None
+        else
+          (match positional_arguments inner_arguments with
+          | [ replacement ] ->
               Some
                 (Api.Diagnostic.make ~severity:Warning
                    ~kind:
@@ -79,31 +124,36 @@ let diagnostic_for_expression = function
                           rule_id = explanation.Api.Explanation.rule_id;
                           message = explanation.Api.Explanation.message;
                         })
-                   ~span:(outer.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
+                   ~span:
+                     (expr |> Syn.Cst.Expression.syntax_node
+                    |> Syn.Ceibo.Red.SyntaxNode.span)
                    ~suggestion:
-                     ("Replace " ^ path_text
-                        (match unwrap_parens outer.callee with
-                        | Syn.Cst.Expression.Path expr ->
-                            expr.path
-                        | _ -> panic "expected path expression")
-                    ^ " (" ^ path_text
-                        (match unwrap_parens inner.callee with
-                        | Syn.Cst.Expression.Path expr ->
-                            expr.path
-                        | _ -> panic "expected path expression")
-                    ^ " xs) with xs or keep only one rev if order matters.")
-                   ())
-        | _ -> None)
-  | _ -> None
+                     "Replace List.rev (List.rev xs) with xs or keep only one rev if order matters."
+                   ~fix:(make_fix ~outer:expr ~replacement) ())
+          | _ ->
+              None)
+    | _ ->
+        None
 
 let check_tree (ctx : Api.Rule.context) _red_root =
   match ctx.cst with
   | None -> []
-  | Some source_file ->
-      Syn.Cst.SourceFile.structure_items source_file
-      |> Option.unwrap_or ~default:[]
-      |> List.concat_map Api.Traversal.expressions_of_structure_item
-      |> List.filter_map diagnostic_for_expression
+  | Some cst_file ->
+      Syn.Visit.(source_file
+        {
+          default with
+          visit_expression =
+            (fun diagnostics walk expression ->
+              let diagnostics =
+                match diagnostic_for_expression expression with
+                | Some diagnostic -> diagnostic :: diagnostics
+                | None -> diagnostics
+              in
+              walk.descend_expression diagnostics expression);
+        }
+        [] cst_file
+    )
+      |> List.rev
 
 let rule () =
   Api.Rule.make ~id:package_rule_id

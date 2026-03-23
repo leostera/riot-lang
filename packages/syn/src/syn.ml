@@ -10,28 +10,31 @@ module Diagnostic = Diagnostic
 module Parser = Parser
 module DiagnosticReporter = Diagnostic_reporter
 module Cst = Cst
-module Traversal = Traversal
 module Visit = Visit
 module CstBuilder = Cst_builder
 module CstJson = Cst_json
 
+type build_cst_error =
+  | Parse_diagnostics of Diagnostic.t list
+  | Cst_builder_error of CstBuilder.error
+
 let tokenize source = Lexer.tokenize source
 
-let attach_cst ~kind result =
-  if List.length result.Parser.diagnostics = 0 then
-    match CstBuilder.create_from_ceibo ~kind result.tree with
-    | Ok cst -> { result with Parser.cst = Some cst }
-    | Error _ -> { result with Parser.cst = None }
+let build_cst (result : Parser.parse_result) =
+  if List.length result.Parser.diagnostics > 0 then
+    Error (Parse_diagnostics result.Parser.diagnostics)
   else
-    { result with Parser.cst = None }
+    match CstBuilder.create_from_ceibo ~kind:result.Parser.kind result.tree with
+    | Ok cst -> Ok cst
+    | Error err -> Error (Cst_builder_error err)
 
 let parse_interface source =
   let tokens = Lexer.tokenize source in
-  Parser.parse_interface ~source tokens |> attach_cst ~kind:`Interface
+  Parser.parse_interface ~source tokens
 
 let parse_implementation source =
   let tokens = Lexer.tokenize source in
-  Parser.parse_implementation ~source tokens |> attach_cst ~kind:`Implementation
+  Parser.parse_implementation ~source tokens
 
 let parse ~filename source =
   match Path.extension filename with

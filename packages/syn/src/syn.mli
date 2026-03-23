@@ -106,9 +106,6 @@ module Cst : module type of Cst
 
     `Cst` is only produced for parse results without diagnostics. *)
 
-module Traversal : module type of Traversal
-(** Mechanical child/fold helpers over the typed CST. *)
-
 module Visit : module type of Visit
 (** Defaultable visitor-style traversal over the typed CST. *)
 
@@ -120,6 +117,11 @@ module CstJson : module type of Cst_json
 
 module Parser : module type of Parser
 (** OCaml parser that produces Ceibo trees. *)
+
+type build_cst_error =
+  | Parse_diagnostics of Diagnostic.t list
+  | Cst_builder_error of CstBuilder.error
+(** Why a typed CST could not be constructed from a parse result. *)
 
 (** # High-Level API *)
 
@@ -162,3 +164,18 @@ val parse : filename:Std.Path.t -> string -> Parser.parse_result
     (* Or create a red view for positioned traversal *) let root =
     Ceibo.Red.new_root result.tree in let span = Ceibo.Red.SyntaxNode.span root
     in Printf.printf "Covers: %s\n" (Ceibo.Span.to_string span) ``` *)
+
+val build_cst : Parser.parse_result -> (Cst.source_file, build_cst_error) result
+(** `build_cst result` lifts a diagnostics-free Ceibo parse result into the
+    typed CST.
+
+    Parsing and CST construction are separate steps so callers that only need
+    the lossless Ceibo tree do not pay the typed lift by default.
+
+    Returns:
+    - `Ok cst` when parsing produced no diagnostics and the faithful lift
+      succeeded
+    - `Error (Parse_diagnostics diags)` when parse recovery was needed
+    - `Error (Cst_builder_error err)` when the current CST lift does not cover
+      the parsed syntax
+*)

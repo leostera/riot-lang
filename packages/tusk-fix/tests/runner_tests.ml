@@ -2180,12 +2180,16 @@ let render x y z =
           Syn.parse_implementation
             "let render x = let y = x + 1 in y; y\n"
         in
+        let cst =
+          Syn.build_cst result
+          |> Result.expect ~msg:"expected typed CST for diagnostics-free parse"
+        in
         let expressions =
           Tusk_fix.Rule_query.expressions
             Tusk_fix.Rule.
               {
                 file_path = "sample.ml";
-                cst = result.cst;
+                cst = Some cst;
               }
         in
         Test.assert_true (List.length expressions >= 5);
@@ -2195,12 +2199,16 @@ let render x y z =
           Syn.parse_implementation
             "let render x = x\nlet other y = let z = y in z\n"
         in
+        let cst =
+          Syn.build_cst result
+          |> Result.expect ~msg:"expected typed CST for diagnostics-free parse"
+        in
         let bindings =
           Tusk_fix.Rule_query.let_bindings
             Tusk_fix.Rule.
               {
                 file_path = "sample.ml";
-                cst = result.cst;
+                cst = Some cst;
               }
         in
         Test.assert_equal ~expected:[ "render"; "other" ]
@@ -2215,12 +2223,20 @@ let render x y z =
           Syn.parse_interface
             "type service\nval render : int -> int\n"
         in
+        let implementation_cst =
+          Syn.build_cst implementation
+          |> Result.expect ~msg:"expected typed CST for diagnostics-free parse"
+        in
+        let interface_cst =
+          Syn.build_cst interface
+          |> Result.expect ~msg:"expected typed CST for diagnostics-free parse"
+        in
         let implementation_types =
           Tusk_fix.Rule_query.type_declarations
             Tusk_fix.Rule.
               {
                 file_path = "sample.ml";
-                cst = implementation.cst;
+                cst = Some implementation_cst;
               }
           |> List.map (fun declaration ->
                  Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration))
@@ -2230,7 +2246,7 @@ let render x y z =
             Tusk_fix.Rule.
               {
                 file_path = "sample.mli";
-                cst = interface.cst;
+                cst = Some interface_cst;
               }
           |> List.map (fun declaration ->
                  Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration))

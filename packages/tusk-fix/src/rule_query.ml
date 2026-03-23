@@ -18,43 +18,44 @@ let expressions (ctx : Rule.context) =
   match ctx.cst with
   | None ->
       []
-  | Some source_file ->
+  | Some cst_file ->
       Syn.Visit.source_file
         {
           Syn.Visit.default with
-          enter_expression =
-            (fun expressions expression ->
-              Syn.Visit.Continue (expression :: expressions));
+          visit_expression =
+            (fun expressions walk expression ->
+              walk.descend_expression (expression :: expressions) expression);
         }
-        [] source_file
+        [] cst_file
       |> List.rev
 
 let let_bindings (ctx : Rule.context) =
   match ctx.cst with
   | None ->
       []
-  | Some source_file ->
+  | Some cst_file ->
       Syn.Visit.source_file
         {
           Syn.Visit.default with
-          enter_let_binding =
-            (fun bindings binding ->
-              Syn.Visit.Continue (binding :: bindings));
+          visit_let_binding =
+            (fun bindings walk binding ->
+              walk.descend_let_binding (binding :: bindings) binding);
         }
-        [] source_file
+        [] cst_file
       |> List.rev
 
 let type_declarations (ctx : Rule.context) =
   match ctx.cst with
   | None ->
       []
-  | Some source_file ->
+  | Some cst_file ->
       Syn.Visit.source_file
         {
           Syn.Visit.default with
-          enter_type_declaration =
-            (fun declarations declaration ->
-              Syn.Visit.Continue (declaration :: declarations));
+          visit_type_declaration =
+            (fun declarations walk declaration ->
+              walk.descend_type_declaration (declaration :: declarations)
+                declaration);
         }
-        [] source_file
+        [] cst_file
       |> List.rev

@@ -37,15 +37,18 @@ type fix = {
     Edits must not overlap.
     
     Example:
-    {[
-      {
-        title = "Replace Hashtbl with Std.Collections.HashMap";
-        edits = [
-          { span = { start = 10; end_ = 17 }; 
-            new_text = "Std.Collections.HashMap" }
-        ]
-      }
-    ]}
+
+    ```ocaml
+    {
+      title = "Replace Hashtbl with Std.Collections.HashMap";
+      edits = [
+        { 
+          span = { start = 10; end_ = 17 }; 
+          new_text = "Std.Collections.HashMap" 
+        }
+      ]
+    }
+    ```
 *)
 
 val make_text_edit : span:Syn.Ceibo.Span.t -> new_text:string -> text_edit
