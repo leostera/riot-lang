@@ -367,6 +367,15 @@ and module_expression_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("callee", module_expression_to_json callee);
         ]
+  | Cst.ModuleExpression.Constraint
+      { syntax_node; module_expression; module_type } ->
+      Json.Object
+        [
+          ("tag", Json.String "constraint");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("module_expression", module_expression_to_json module_expression);
+          ("module_type", module_type_to_json module_type);
+        ]
   | Cst.ModuleExpression.Unpack { syntax_node; expression; module_type } ->
       Json.Object
         [

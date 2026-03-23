@@ -47,23 +47,50 @@
             }
           },
           "module_expression": {
-            "tag": "structure",
+            "tag": "constraint",
             "syntax_node": {
-              "kind": "STRUCT_EXPR",
+              "kind": "MODULE_DECL",
               "span": {
-                "start": 124,
+                "start": 23,
                 "end": 245
               }
             },
-            "item_syntax_nodes": [
-              {
-                "kind": "CLASS_DECL",
+            "module_expression": {
+              "tag": "structure",
+              "syntax_node": {
+                "kind": "STRUCT_EXPR",
                 "span": {
-                  "start": 133,
-                  "end": 242
+                  "start": 124,
+                  "end": 245
+                }
+              },
+              "item_syntax_nodes": [
+                {
+                  "kind": "CLASS_DECL",
+                  "span": {
+                    "start": 133,
+                    "end": 242
+                  }
+                }
+              ]
+            },
+            "module_type": {
+              "tag": "signature",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 34,
+                  "end": 121
+                }
+              },
+              "signature_syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 34,
+                  "end": 121
                 }
               }
-            ]
+            }
           },
           "is_destructive_substitution": false,
           "is_recursive": false
@@ -253,23 +280,50 @@
             }
           },
           "module_expression": {
-            "tag": "structure",
+            "tag": "constraint",
             "syntax_node": {
-              "kind": "STRUCT_EXPR",
+              "kind": "MODULE_DECL",
               "span": {
-                "start": 443,
+                "start": 403,
                 "end": 475
               }
             },
-            "item_syntax_nodes": [
-              {
-                "kind": "TYPE_DECL",
+            "module_expression": {
+              "tag": "structure",
+              "syntax_node": {
+                "kind": "STRUCT_EXPR",
                 "span": {
-                  "start": 452,
-                  "end": 472
+                  "start": 443,
+                  "end": 475
+                }
+              },
+              "item_syntax_nodes": [
+                {
+                  "kind": "TYPE_DECL",
+                  "span": {
+                    "start": 452,
+                    "end": 472
+                  }
+                }
+              ]
+            },
+            "module_type": {
+              "tag": "signature",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 414,
+                  "end": 440
+                }
+              },
+              "signature_syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 414,
+                  "end": 440
                 }
               }
-            ]
+            }
           },
           "is_destructive_substitution": false,
           "is_recursive": false

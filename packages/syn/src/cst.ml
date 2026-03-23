@@ -1199,6 +1199,11 @@ and module_expression =
       syntax_node : syntax_node;
       callee : module_expression;
     }
+  | Constraint of {
+      syntax_node : syntax_node;
+      module_expression : module_expression;
+      module_type : module_type;
+    }
   | Unpack of {
       syntax_node : syntax_node;
       expression : expression;
@@ -1337,6 +1342,11 @@ module ModuleExpression = struct
         syntax_node : syntax_node;
         callee : module_expression;
       }
+    | Constraint of {
+        syntax_node : syntax_node;
+        module_expression : module_expression;
+        module_type : module_type;
+      }
     | Unpack of {
         syntax_node : syntax_node;
         expression : expression;
@@ -1359,6 +1369,7 @@ module ModuleExpression = struct
     | Functor { syntax_node; _ }
     | Apply { syntax_node; _ }
     | ApplyUnit { syntax_node; _ }
+    | Constraint { syntax_node; _ }
     | Unpack { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
     | Attribute { syntax_node; _ } ->

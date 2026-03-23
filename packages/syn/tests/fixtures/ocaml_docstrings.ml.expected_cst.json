@@ -47,72 +47,99 @@
             }
           },
           "module_expression": {
-            "tag": "structure",
+            "tag": "constraint",
             "syntax_node": {
-              "kind": "STRUCT_EXPR",
+              "kind": "MODULE_DECL",
               "span": {
-                "start": 3578,
+                "start": 265,
                 "end": 5363
               }
             },
-            "item_syntax_nodes": [
-              {
-                "kind": "LET_BINDING",
+            "module_expression": {
+              "tag": "structure",
+              "syntax_node": {
+                "kind": "STRUCT_EXPR",
                 "span": {
-                  "start": 3624,
-                  "end": 3641
+                  "start": 3578,
+                  "end": 5363
                 }
               },
-              {
-                "kind": "EXCEPTION_DECL",
+              "item_syntax_nodes": [
+                {
+                  "kind": "LET_BINDING",
+                  "span": {
+                    "start": 3624,
+                    "end": 3641
+                  }
+                },
+                {
+                  "kind": "EXCEPTION_DECL",
+                  "span": {
+                    "start": 3924,
+                    "end": 4007
+                  }
+                },
+                {
+                  "kind": "TYPE_DECL",
+                  "span": {
+                    "start": 4007,
+                    "end": 4172
+                  }
+                },
+                {
+                  "kind": "TYPE_DECL",
+                  "span": {
+                    "start": 4172,
+                    "end": 4334
+                  }
+                },
+                {
+                  "kind": "CLASS_DECL",
+                  "span": {
+                    "start": 4334,
+                    "end": 4834
+                  }
+                },
+                {
+                  "kind": "CLASS_TYPE_DECL",
+                  "span": {
+                    "start": 4834,
+                    "end": 5099
+                  }
+                },
+                {
+                  "kind": "MODULE_DECL",
+                  "span": {
+                    "start": 5099,
+                    "end": 5202
+                  }
+                },
+                {
+                  "kind": "MODULE_TYPE_DECL",
+                  "span": {
+                    "start": 5259,
+                    "end": 5360
+                  }
+                }
+              ]
+            },
+            "module_type": {
+              "tag": "signature",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 3924,
-                  "end": 4007
+                  "start": 281,
+                  "end": 3575
                 }
               },
-              {
-                "kind": "TYPE_DECL",
+              "signature_syntax_node": {
+                "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 4007,
-                  "end": 4172
-                }
-              },
-              {
-                "kind": "TYPE_DECL",
-                "span": {
-                  "start": 4172,
-                  "end": 4334
-                }
-              },
-              {
-                "kind": "CLASS_DECL",
-                "span": {
-                  "start": 4334,
-                  "end": 4834
-                }
-              },
-              {
-                "kind": "CLASS_TYPE_DECL",
-                "span": {
-                  "start": 4834,
-                  "end": 5099
-                }
-              },
-              {
-                "kind": "MODULE_DECL",
-                "span": {
-                  "start": 5099,
-                  "end": 5202
-                }
-              },
-              {
-                "kind": "MODULE_TYPE_DECL",
-                "span": {
-                  "start": 5259,
-                  "end": 5360
+                  "start": 281,
+                  "end": 3575
                 }
               }
-            ]
+            }
           },
           "is_destructive_substitution": false,
           "is_recursive": false

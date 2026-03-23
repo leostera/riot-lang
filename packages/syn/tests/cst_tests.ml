@@ -327,6 +327,60 @@ let tests =
             Ok ()
         | _ ->
             Error "expected module declaration with structure module expression");
+    Test.case "cst module declarations preserve constrained module expressions"
+      (fun () ->
+        let result =
+          parse_ml "module M : S with type t = int = struct type t = int end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleDeclaration
+            {
+              module_type =
+                Some
+                  (Syn.Cst.ModuleType.With
+                    {
+                      base = Syn.Cst.ModuleType.Path outer_base;
+                      constraints = [ outer_constraint ];
+                      _;
+                    });
+              module_expression =
+                Some
+                  (Syn.Cst.ModuleExpression.Constraint
+                    {
+                      module_expression =
+                        Syn.Cst.ModuleExpression.Structure { item_syntax_nodes = [ item_node ]; _ };
+                      module_type =
+                        Syn.Cst.ModuleType.With
+                          {
+                            base = Syn.Cst.ModuleType.Path inner_base;
+                            constraints = [ inner_constraint ];
+                            _;
+                          };
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "S")
+              ~actual:(Syn.Cst.Ident.name outer_base);
+            Test.assert_equal ~expected:(Some "S")
+              ~actual:(Syn.Cst.Ident.name inner_base);
+            Test.assert_equal ~expected:"t"
+              ~actual:(Syn.Cst.Token.text outer_constraint.type_name);
+            Test.assert_equal ~expected:"t"
+              ~actual:(Syn.Cst.Token.text inner_constraint.type_name);
+            Test.assert_equal ~expected:"TYPE_DECL"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind item_node));
+            Ok ()
+        | _ ->
+            Error "expected constrained module declaration");
     Test.case "cst module declarations preserve identifier module expressions"
       (fun () ->
         let result = parse_ml "module Alias = Source\n" in
@@ -2441,7 +2495,14 @@ let tests =
                 Syn.Cst.Expression.FirstClassModule
                   {
                     module_expression =
-                      Syn.Cst.ModuleExpression.Path module_path;
+                      Syn.Cst.ModuleExpression.Constraint
+                        {
+                          module_expression =
+                            Syn.Cst.ModuleExpression.Path module_path;
+                          module_type =
+                            Syn.Cst.ModuleType.Path constrained_type_path;
+                          _;
+                        };
                     module_type = Some (Syn.Cst.ModuleType.Path module_type_path);
                     _;
                   };
@@ -2450,6 +2511,8 @@ let tests =
           :: _ ->
             Test.assert_equal ~expected:(Some "M")
               ~actual:(Syn.Cst.ModulePath.name module_path);
+            Test.assert_equal ~expected:(Some "S")
+              ~actual:(Syn.Cst.ModulePath.name constrained_type_path);
             Test.assert_equal ~expected:(Some "S")
               ~actual:(Syn.Cst.ModulePath.name module_type_path);
             Ok ()
@@ -2469,19 +2532,38 @@ let tests =
                 Syn.Cst.Expression.FirstClassModule
                   {
                     module_expression =
-                      Syn.Cst.ModuleExpression.Path
-                        (Syn.Cst.ModulePath.Qualified
-                          {
-                            prefix =
-                              Syn.Cst.ModulePath.Qualified
+                      Syn.Cst.ModuleExpression.Constraint
+                        {
+                          module_expression =
+                            Syn.Cst.ModuleExpression.Path
+                              (Syn.Cst.ModulePath.Qualified
                                 {
-                                  prefix = Syn.Cst.ModulePath.Ident { name_token = root; _ };
-                                  name_token = mid;
+                                  prefix =
+                                    Syn.Cst.ModulePath.Qualified
+                                      {
+                                        prefix = Syn.Cst.ModulePath.Ident { name_token = root; _ };
+                                        name_token = mid;
+                                        _;
+                                      };
+                                  name_token = leaf;
                                   _;
-                                };
-                            name_token = leaf;
-                            _;
-                          });
+                                });
+                          module_type =
+                            Syn.Cst.ModuleType.Path
+                              (Syn.Cst.ModulePath.Qualified
+                                {
+                                  prefix =
+                                    Syn.Cst.ModulePath.Qualified
+                                      {
+                                        prefix = Syn.Cst.ModulePath.Ident { name_token = constrained_type_root; _ };
+                                        name_token = constrained_type_mid;
+                                        _;
+                                      };
+                                  name_token = constrained_type_leaf;
+                                  _;
+                                });
+                          _;
+                        };
                     module_type =
                       Some
                         (Syn.Cst.ModuleType.Path
@@ -2506,6 +2588,12 @@ let tests =
             Test.assert_equal ~expected:"Net" ~actual:(Syn.Cst.Token.text mid);
             Test.assert_equal ~expected:"TcpClient"
               ~actual:(Syn.Cst.Token.text leaf);
+            Test.assert_equal ~expected:"Std"
+              ~actual:(Syn.Cst.Token.text constrained_type_root);
+            Test.assert_equal ~expected:"Net"
+              ~actual:(Syn.Cst.Token.text constrained_type_mid);
+            Test.assert_equal ~expected:"Transport"
+              ~actual:(Syn.Cst.Token.text constrained_type_leaf);
             Test.assert_equal ~expected:"Std" ~actual:(Syn.Cst.Token.text type_root);
             Test.assert_equal ~expected:"Net" ~actual:(Syn.Cst.Token.text type_mid);
             Test.assert_equal ~expected:"Transport"

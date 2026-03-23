@@ -58,24 +58,114 @@
               }
             },
             "module_expression": {
-              "tag": "path",
-              "path": {
-                "tag": "ident",
-                "syntax_node": {
-                  "kind": "MODULE_PATH",
-                  "span": {
-                    "start": 16,
-                    "end": 18
-                  }
-                },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "M",
-                  "span": {
-                    "start": 16,
-                    "end": 17
+              "tag": "constraint",
+              "syntax_node": {
+                "kind": "FIRST_CLASS_MODULE_EXPR",
+                "span": {
+                  "start": 8,
+                  "end": 40
+                }
+              },
+              "module_expression": {
+                "tag": "path",
+                "path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "MODULE_PATH",
+                    "span": {
+                      "start": 16,
+                      "end": 18
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "M",
+                    "span": {
+                      "start": 16,
+                      "end": 17
+                    }
                   }
                 }
+              },
+              "module_type": {
+                "tag": "with",
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_EXPR",
+                  "span": {
+                    "start": 20,
+                    "end": 39
+                  }
+                },
+                "base": {
+                  "tag": "path",
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "MODULE_TYPE_PATH",
+                      "span": {
+                        "start": 20,
+                        "end": 22
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "S",
+                      "span": {
+                        "start": 20,
+                        "end": 21
+                      }
+                    }
+                  }
+                },
+                "constraints": [
+                  {
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTRAINT",
+                      "span": {
+                        "start": 27,
+                        "end": 39
+                      }
+                    },
+                    "type_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 32,
+                        "end": 33
+                      }
+                    },
+                    "replacement_type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 36,
+                          "end": 39
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 36,
+                            "end": 39
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 36,
+                            "end": 39
+                          }
+                        }
+                      },
+                      "arguments": []
+                    },
+                    "is_destructive": false
+                  }
+                ]
               }
             },
             "module_type": {
@@ -210,6 +300,220 @@
             }
           },
           "module_expression": {
+            "tag": "constraint",
+            "syntax_node": {
+              "kind": "FIRST_CLASS_MODULE_EXPR",
+              "span": {
+                "start": 8,
+                "end": 40
+              }
+            },
+            "module_expression": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_PATH",
+                  "span": {
+                    "start": 16,
+                    "end": 18
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "M",
+                  "span": {
+                    "start": 16,
+                    "end": 17
+                  }
+                }
+              }
+            },
+            "module_type": {
+              "tag": "with",
+              "syntax_node": {
+                "kind": "MODULE_TYPE_EXPR",
+                "span": {
+                  "start": 20,
+                  "end": 39
+                }
+              },
+              "base": {
+                "tag": "path",
+                "path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 20,
+                      "end": 22
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "S",
+                    "span": {
+                      "start": 20,
+                      "end": 21
+                    }
+                  }
+                }
+              },
+              "constraints": [
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTRAINT",
+                    "span": {
+                      "start": 27,
+                      "end": 39
+                    }
+                  },
+                  "type_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "span": {
+                      "start": 32,
+                      "end": 33
+                    }
+                  },
+                  "replacement_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 36,
+                        "end": 39
+                      }
+                    },
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 36,
+                          "end": 39
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 36,
+                          "end": 39
+                        }
+                      }
+                    },
+                    "arguments": []
+                  },
+                  "is_destructive": false
+                }
+              ]
+            }
+          },
+          "module_type": {
+            "tag": "with",
+            "syntax_node": {
+              "kind": "MODULE_TYPE_EXPR",
+              "span": {
+                "start": 20,
+                "end": 39
+              }
+            },
+            "base": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 20,
+                    "end": 22
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "S",
+                  "span": {
+                    "start": 20,
+                    "end": 21
+                  }
+                }
+              }
+            },
+            "constraints": [
+              {
+                "syntax_node": {
+                  "kind": "TYPE_CONSTRAINT",
+                  "span": {
+                    "start": 27,
+                    "end": 39
+                  }
+                },
+                "type_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "t",
+                  "span": {
+                    "start": 32,
+                    "end": 33
+                  }
+                },
+                "replacement_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 36,
+                      "end": 39
+                    }
+                  },
+                  "constructor_path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 36,
+                        "end": 39
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "int",
+                      "span": {
+                        "start": 36,
+                        "end": 39
+                      }
+                    }
+                  },
+                  "arguments": []
+                },
+                "is_destructive": false
+              }
+            ]
+          }
+        },
+        "is_recursive": false
+      }
+    ],
+    "expressions": [
+      {
+        "tag": "first_class_module",
+        "syntax_node": {
+          "kind": "FIRST_CLASS_MODULE_EXPR",
+          "span": {
+            "start": 8,
+            "end": 40
+          }
+        },
+        "module_expression": {
+          "tag": "constraint",
+          "syntax_node": {
+            "kind": "FIRST_CLASS_MODULE_EXPR",
+            "span": {
+              "start": 8,
+              "end": 40
+            }
+          },
+          "module_expression": {
             "tag": "path",
             "path": {
               "tag": "ident",
@@ -309,40 +613,6 @@
                 "is_destructive": false
               }
             ]
-          }
-        },
-        "is_recursive": false
-      }
-    ],
-    "expressions": [
-      {
-        "tag": "first_class_module",
-        "syntax_node": {
-          "kind": "FIRST_CLASS_MODULE_EXPR",
-          "span": {
-            "start": 8,
-            "end": 40
-          }
-        },
-        "module_expression": {
-          "tag": "path",
-          "path": {
-            "tag": "ident",
-            "syntax_node": {
-              "kind": "MODULE_PATH",
-              "span": {
-                "start": 16,
-                "end": 18
-              }
-            },
-            "name_token": {
-              "kind": "IDENT_EXPR",
-              "text": "M",
-              "span": {
-                "start": 16,
-                "end": 17
-              }
-            }
           }
         },
         "module_type": {

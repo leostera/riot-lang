@@ -51,30 +51,61 @@
             }
           },
           "module_expression": {
-            "tag": "structure",
+            "tag": "constraint",
             "syntax_node": {
-              "kind": "STRUCT_EXPR",
+              "kind": "MODULE_DECL",
               "span": {
-                "start": 15,
+                "start": 0,
                 "end": 61
               }
             },
-            "item_syntax_nodes": [
-              {
-                "kind": "TYPE_DECL",
+            "module_expression": {
+              "tag": "structure",
+              "syntax_node": {
+                "kind": "STRUCT_EXPR",
                 "span": {
-                  "start": 24,
-                  "end": 40
+                  "start": 15,
+                  "end": 61
                 }
               },
-              {
-                "kind": "LET_BINDING",
-                "span": {
-                  "start": 40,
-                  "end": 57
+              "item_syntax_nodes": [
+                {
+                  "kind": "TYPE_DECL",
+                  "span": {
+                    "start": 24,
+                    "end": 40
+                  }
+                },
+                {
+                  "kind": "LET_BINDING",
+                  "span": {
+                    "start": 40,
+                    "end": 57
+                  }
+                }
+              ]
+            },
+            "module_type": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 11,
+                    "end": 13
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "S",
+                  "span": {
+                    "start": 11,
+                    "end": 12
+                  }
                 }
               }
-            ]
+            }
           },
           "is_destructive_substitution": false,
           "is_recursive": false

@@ -47,23 +47,50 @@
             }
           },
           "module_expression": {
-            "tag": "structure",
+            "tag": "constraint",
             "syntax_node": {
-              "kind": "STRUCT_EXPR",
+              "kind": "MODULE_DECL",
               "span": {
-                "start": 35,
+                "start": 0,
                 "end": 58
               }
             },
-            "item_syntax_nodes": [
-              {
-                "kind": "LET_BINDING",
+            "module_expression": {
+              "tag": "structure",
+              "syntax_node": {
+                "kind": "STRUCT_EXPR",
                 "span": {
-                  "start": 44,
-                  "end": 54
+                  "start": 35,
+                  "end": 58
+                }
+              },
+              "item_syntax_nodes": [
+                {
+                  "kind": "LET_BINDING",
+                  "span": {
+                    "start": 44,
+                    "end": 54
+                  }
+                }
+              ]
+            },
+            "module_type": {
+              "tag": "signature",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 11,
+                  "end": 32
+                }
+              },
+              "signature_syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 11,
+                  "end": 32
                 }
               }
-            ]
+            }
           },
           "is_destructive_substitution": false,
           "is_recursive": false

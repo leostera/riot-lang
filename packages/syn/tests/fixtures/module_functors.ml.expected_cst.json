@@ -644,23 +644,54 @@
             }
           },
           "module_expression": {
-            "tag": "structure",
+            "tag": "constraint",
             "syntax_node": {
-              "kind": "STRUCT_EXPR",
+              "kind": "MODULE_DECL",
               "span": {
-                "start": 365,
+                "start": 342,
                 "end": 390
               }
             },
-            "item_syntax_nodes": [
-              {
-                "kind": "TYPE_DECL",
+            "module_expression": {
+              "tag": "structure",
+              "syntax_node": {
+                "kind": "STRUCT_EXPR",
                 "span": {
-                  "start": 374,
-                  "end": 387
+                  "start": 365,
+                  "end": 390
+                }
+              },
+              "item_syntax_nodes": [
+                {
+                  "kind": "TYPE_DECL",
+                  "span": {
+                    "start": 374,
+                    "end": 387
+                  }
+                }
+              ]
+            },
+            "module_type": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 361,
+                    "end": 363
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "T",
+                  "span": {
+                    "start": 361,
+                    "end": 362
+                  }
                 }
               }
-            ]
+            }
           },
           "is_destructive_substitution": false,
           "is_recursive": false

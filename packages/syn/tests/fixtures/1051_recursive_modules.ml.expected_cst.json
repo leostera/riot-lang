@@ -56,23 +56,50 @@
                 }
               },
               "module_expression": {
-                "tag": "structure",
+                "tag": "constraint",
                 "syntax_node": {
-                  "kind": "STRUCT_EXPR",
+                  "kind": "MODULE_DECL",
                   "span": {
-                    "start": 39,
+                    "start": 0,
                     "end": 63
                   }
                 },
-                "item_syntax_nodes": [
-                  {
-                    "kind": "LET_BINDING",
+                "module_expression": {
+                  "tag": "structure",
+                  "syntax_node": {
+                    "kind": "STRUCT_EXPR",
                     "span": {
-                      "start": 48,
-                      "end": 60
+                      "start": 39,
+                      "end": 63
+                    }
+                  },
+                  "item_syntax_nodes": [
+                    {
+                      "kind": "LET_BINDING",
+                      "span": {
+                        "start": 48,
+                        "end": 60
+                      }
+                    }
+                  ]
+                },
+                "module_type": {
+                  "tag": "signature",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 15,
+                      "end": 36
+                    }
+                  },
+                  "signature_syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 15,
+                      "end": 36
                     }
                   }
-                ]
+                }
               },
               "is_destructive_substitution": false,
               "is_recursive": true
@@ -112,23 +139,50 @@
                 }
               },
               "module_expression": {
-                "tag": "structure",
+                "tag": "constraint",
                 "syntax_node": {
-                  "kind": "STRUCT_EXPR",
+                  "kind": "MODULE_DECL",
                   "span": {
-                    "start": 96,
+                    "start": 68,
                     "end": 118
                   }
                 },
-                "item_syntax_nodes": [
-                  {
-                    "kind": "LET_BINDING",
+                "module_expression": {
+                  "tag": "structure",
+                  "syntax_node": {
+                    "kind": "STRUCT_EXPR",
                     "span": {
-                      "start": 105,
-                      "end": 114
+                      "start": 96,
+                      "end": 118
+                    }
+                  },
+                  "item_syntax_nodes": [
+                    {
+                      "kind": "LET_BINDING",
+                      "span": {
+                        "start": 105,
+                        "end": 114
+                      }
+                    }
+                  ]
+                },
+                "module_type": {
+                  "tag": "signature",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 72,
+                      "end": 93
+                    }
+                  },
+                  "signature_syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 72,
+                      "end": 93
                     }
                   }
-                ]
+                }
               },
               "is_destructive_substitution": false,
               "is_recursive": true

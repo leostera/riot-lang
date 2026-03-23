@@ -127,7 +127,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] functor expressions
   - [x] functor application expressions
   - [x] unit functor application expressions
-  - [ ] constrained module expressions
+  - [x] constrained module expressions
   - [x] unpacked first-class modules
   - [x] module extensions
 - [ ] Module types:

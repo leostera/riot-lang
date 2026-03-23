@@ -3092,22 +3092,53 @@
                 }
               },
               "module_expression": {
-                "tag": "path",
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "MODULE_PATH",
-                    "span": {
-                      "start": 1905,
-                      "end": 1907
+                "tag": "constraint",
+                "syntax_node": {
+                  "kind": "MODULE_DECL",
+                  "span": {
+                    "start": 1875,
+                    "end": 1907
+                  }
+                },
+                "module_expression": {
+                  "tag": "path",
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "MODULE_PATH",
+                      "span": {
+                        "start": 1905,
+                        "end": 1907
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "M",
+                      "span": {
+                        "start": 1905,
+                        "end": 1906
+                      }
                     }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "M",
-                    "span": {
-                      "start": 1905,
-                      "end": 1906
+                  }
+                },
+                "module_type": {
+                  "tag": "path",
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "MODULE_TYPE_PATH",
+                      "span": {
+                        "start": 1901,
+                        "end": 1903
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "S",
+                      "span": {
+                        "start": 1901,
+                        "end": 1902
+                      }
                     }
                   }
                 }
@@ -3154,22 +3185,53 @@
                 }
               },
               "module_expression": {
-                "tag": "path",
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "MODULE_PATH",
-                    "span": {
-                      "start": 1926,
-                      "end": 1929
+                "tag": "constraint",
+                "syntax_node": {
+                  "kind": "MODULE_DECL",
+                  "span": {
+                    "start": 1911,
+                    "end": 1929
+                  }
+                },
+                "module_expression": {
+                  "tag": "path",
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "MODULE_PATH",
+                      "span": {
+                        "start": 1926,
+                        "end": 1929
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "M",
+                      "span": {
+                        "start": 1926,
+                        "end": 1927
+                      }
                     }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "M",
-                    "span": {
-                      "start": 1926,
-                      "end": 1927
+                  }
+                },
+                "module_type": {
+                  "tag": "path",
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "MODULE_TYPE_PATH",
+                      "span": {
+                        "start": 1922,
+                        "end": 1924
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "S",
+                      "span": {
+                        "start": 1922,
+                        "end": 1923
+                      }
                     }
                   }
                 }

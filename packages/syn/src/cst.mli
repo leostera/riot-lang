@@ -2214,6 +2214,25 @@ and module_expression =
           module application and generative application with an empty unit
           argument list.
       *)
+  | Constraint of {
+      syntax_node : syntax_node;
+      module_expression : module_expression;
+      module_type : module_type;
+    }
+      (** A module expression constrained by a module type.
+
+          Examples:
+
+          ```ocaml,norun
+          module M : S = struct end
+          (module Impl : S)
+          ```
+
+          Declaration-site constraints such as `module M : S = ...` are
+          reconstructed from the enclosing declaration node, because the
+          successful `Ceibo` parse stores the ascription there instead of on a
+          dedicated module-expression node.
+      *)
   | Unpack of {
       syntax_node : syntax_node;
       expression : expression;
@@ -2324,6 +2343,11 @@ module ModuleExpression : sig
     | ApplyUnit of {
         syntax_node : syntax_node;
         callee : module_expression;
+      }
+    | Constraint of {
+        syntax_node : syntax_node;
+        module_expression : module_expression;
+        module_type : module_type;
       }
     | Unpack of {
         syntax_node : syntax_node;
