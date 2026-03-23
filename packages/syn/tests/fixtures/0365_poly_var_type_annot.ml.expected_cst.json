@@ -85,24 +85,38 @@
                   "end": 25
                 }
               },
-              "tags": [
+              "kind": {
+                "tag": "lower_bound",
+                "marker_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ">",
+                  "span": {
+                    "start": 17,
+                    "end": 18
+                  }
+                }
+              },
+              "fields": [
                 {
-                  "syntax_node": {
-                    "kind": "POLY_VARIANT_TAG",
-                    "span": {
-                      "start": 19,
-                      "end": 24
-                    }
-                  },
-                  "tag_name": {
-                    "kind": "IDENT_EXPR",
-                    "text": "Red",
-                    "span": {
-                      "start": 20,
-                      "end": 23
-                    }
-                  },
-                  "payload_type": null
+                  "tag": "tag",
+                  "field": {
+                    "syntax_node": {
+                      "kind": "POLY_VARIANT_TAG",
+                      "span": {
+                        "start": 19,
+                        "end": 24
+                      }
+                    },
+                    "tag_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Red",
+                      "span": {
+                        "start": 20,
+                        "end": 23
+                      }
+                    },
+                    "payload_type": null
+                  }
                 }
               ]
             }
@@ -185,24 +199,38 @@
                 "end": 25
               }
             },
-            "tags": [
+            "kind": {
+              "tag": "lower_bound",
+              "marker_token": {
+                "kind": "IDENT_EXPR",
+                "text": ">",
+                "span": {
+                  "start": 17,
+                  "end": 18
+                }
+              }
+            },
+            "fields": [
               {
-                "syntax_node": {
-                  "kind": "POLY_VARIANT_TAG",
-                  "span": {
-                    "start": 19,
-                    "end": 24
-                  }
-                },
-                "tag_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "Red",
-                  "span": {
-                    "start": 20,
-                    "end": 23
-                  }
-                },
-                "payload_type": null
+                "tag": "tag",
+                "field": {
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_TAG",
+                    "span": {
+                      "start": 19,
+                      "end": 24
+                    }
+                  },
+                  "tag_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Red",
+                    "span": {
+                      "start": 20,
+                      "end": 23
+                    }
+                  },
+                  "payload_type": null
+                }
               }
             ]
           }
@@ -248,24 +276,38 @@
               "end": 25
             }
           },
-          "tags": [
+          "kind": {
+            "tag": "lower_bound",
+            "marker_token": {
+              "kind": "IDENT_EXPR",
+              "text": ">",
+              "span": {
+                "start": 17,
+                "end": 18
+              }
+            }
+          },
+          "fields": [
             {
-              "syntax_node": {
-                "kind": "POLY_VARIANT_TAG",
-                "span": {
-                  "start": 19,
-                  "end": 24
-                }
-              },
-              "tag_name": {
-                "kind": "IDENT_EXPR",
-                "text": "Red",
-                "span": {
-                  "start": 20,
-                  "end": 23
-                }
-              },
-              "payload_type": null
+              "tag": "tag",
+              "field": {
+                "syntax_node": {
+                  "kind": "POLY_VARIANT_TAG",
+                  "span": {
+                    "start": 19,
+                    "end": 24
+                  }
+                },
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Red",
+                  "span": {
+                    "start": 20,
+                    "end": 23
+                  }
+                },
+                "payload_type": null
+              }
             }
           ]
         }

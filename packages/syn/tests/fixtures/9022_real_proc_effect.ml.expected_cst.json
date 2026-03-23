@@ -219,59 +219,68 @@
                                 "end": 93
                               }
                             },
-                            "tags": [
+                            "kind": {
+                              "tag": "exact"
+                            },
+                            "fields": [
                               {
-                                "syntax_node": {
-                                  "kind": "POLY_VARIANT_TAG",
-                                  "span": {
-                                    "start": 71,
-                                    "end": 86
-                                  }
-                                },
-                                "tag_name": {
-                                  "kind": "IDENT_EXPR",
-                                  "text": "select",
-                                  "span": {
-                                    "start": 72,
-                                    "end": 78
-                                  }
-                                },
-                                "payload_type": {
-                                  "tag": "var",
+                                "tag": "tag",
+                                "field": {
                                   "syntax_node": {
-                                    "kind": "TYPE_VAR",
+                                    "kind": "POLY_VARIANT_TAG",
                                     "span": {
-                                      "start": 82,
+                                      "start": 71,
                                       "end": 86
                                     }
                                   },
-                                  "name_token": {
+                                  "tag_name": {
                                     "kind": "IDENT_EXPR",
-                                    "text": "msg",
+                                    "text": "select",
                                     "span": {
-                                      "start": 83,
-                                      "end": 86
+                                      "start": 72,
+                                      "end": 78
+                                    }
+                                  },
+                                  "payload_type": {
+                                    "tag": "var",
+                                    "syntax_node": {
+                                      "kind": "TYPE_VAR",
+                                      "span": {
+                                        "start": 82,
+                                        "end": 86
+                                      }
+                                    },
+                                    "name_token": {
+                                      "kind": "IDENT_EXPR",
+                                      "text": "msg",
+                                      "span": {
+                                        "start": 83,
+                                        "end": 86
+                                      }
                                     }
                                   }
                                 }
                               },
                               {
-                                "syntax_node": {
-                                  "kind": "POLY_VARIANT_TAG",
-                                  "span": {
-                                    "start": 86,
-                                    "end": 92
-                                  }
-                                },
-                                "tag_name": {
-                                  "kind": "IDENT_EXPR",
-                                  "text": "skip",
-                                  "span": {
-                                    "start": 87,
-                                    "end": 91
-                                  }
-                                },
-                                "payload_type": null
+                                "tag": "tag",
+                                "field": {
+                                  "syntax_node": {
+                                    "kind": "POLY_VARIANT_TAG",
+                                    "span": {
+                                      "start": 86,
+                                      "end": 92
+                                    }
+                                  },
+                                  "tag_name": {
+                                    "kind": "IDENT_EXPR",
+                                    "text": "skip",
+                                    "span": {
+                                      "start": 87,
+                                      "end": 91
+                                    }
+                                  },
+                                  "payload_type": null
+                                }
                               }
                             ]
                           }

@@ -92,6 +92,28 @@ and poly_variant_tag = {
   payload_type : core_type option;
 }
 
+and poly_variant_bound =
+  | Exact
+  | UpperBound of {
+      marker_token : Token.t;
+    }
+  | LowerBound of {
+      marker_token : Token.t;
+    }
+
+and row_field =
+  | Tag of poly_variant_tag
+  | Inherit of {
+      syntax_node : syntax_node;
+      type_ : core_type;
+    }
+
+and poly_variant = {
+  syntax_node : syntax_node;
+  kind : poly_variant_bound;
+  fields : row_field list;
+}
+
 and module_type_constraint = {
   syntax_node : syntax_node;
   type_name : Token.t;
@@ -161,10 +183,7 @@ and core_type =
       inner : core_type;
     }
   | LocalOpen of local_open_core_type
-  | PolyVariant of {
-      syntax_node : syntax_node;
-      tags : poly_variant_tag list;
-    }
+  | PolyVariant of poly_variant
   | Record of {
       syntax_node : syntax_node;
       fields : record_type_field list;
@@ -260,10 +279,7 @@ module CoreType = struct
         inner : core_type;
       }
     | LocalOpen of local_open_core_type
-    | PolyVariant of {
-        syntax_node : syntax_node;
-        tags : poly_variant_tag list;
-      }
+    | PolyVariant of poly_variant
     | Record of {
         syntax_node : syntax_node;
         fields : record_type_field list;
@@ -290,11 +306,12 @@ module CoreType = struct
     | Tuple { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
     | LocalOpen { syntax_node; _ }
-    | PolyVariant { syntax_node; _ }
     | Record { syntax_node; _ }
     | FirstClassModule { syntax_node; _ }
     | Object { syntax_node; _ } ->
         syntax_node
+    | PolyVariant poly_variant ->
+        poly_variant.syntax_node
 end
 
 module ModuleTypeConstraint = struct
@@ -1337,6 +1354,61 @@ module PolyVariantTag = struct
   let name tag = Token.text tag.tag_name
 end
 
+module PolyVariantBound = struct
+  type t = poly_variant_bound =
+    | Exact
+    | UpperBound of {
+        marker_token : Token.t;
+      }
+    | LowerBound of {
+        marker_token : Token.t;
+      }
+
+  let marker_token = function
+    | Exact -> None
+    | UpperBound { marker_token } | LowerBound { marker_token } ->
+        Some marker_token
+end
+
+module RowField = struct
+  type t = row_field =
+    | Tag of poly_variant_tag
+    | Inherit of {
+        syntax_node : syntax_node;
+        type_ : core_type;
+      }
+
+  let syntax_node = function
+    | Tag tag -> tag.syntax_node
+    | Inherit { syntax_node; _ } -> syntax_node
+
+  let tag = function
+    | Tag tag -> Some tag
+    | Inherit _ -> None
+
+  let inherited_type = function
+    | Tag _ -> None
+    | Inherit { type_; _ } -> Some type_
+end
+
+module PolyVariant = struct
+  type t = poly_variant = {
+    syntax_node : syntax_node;
+    kind : poly_variant_bound;
+    fields : row_field list;
+  }
+
+  let syntax_node poly_variant = poly_variant.syntax_node
+  let kind poly_variant = poly_variant.kind
+  let fields poly_variant = poly_variant.fields
+
+  let tags poly_variant =
+    poly_variant.fields
+    |> List.filter_map (function
+         | RowField.Tag tag -> Some tag
+         | RowField.Inherit _ -> None)
+end
+
 module TypeDefinition = struct
   type t =
     | Abstract
@@ -1357,7 +1429,7 @@ module TypeDefinition = struct
       }
     | Record of RecordField.t list
     | Variant of VariantConstructor.t list
-    | PolyVariant of PolyVariantTag.t list
+    | PolyVariant of PolyVariant.t
     | Other of syntax_node
 end
 

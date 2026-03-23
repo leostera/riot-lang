@@ -81,6 +81,37 @@ and poly_variant_tag_to_json ({ syntax_node; tag_name; payload_type } : Cst.poly
       ("payload_type", option_to_json core_type_to_json payload_type);
     ]
 
+and poly_variant_bound_to_json = function
+  | Cst.PolyVariantBound.Exact ->
+      Json.Object [ ("tag", Json.String "exact") ]
+  | Cst.PolyVariantBound.UpperBound { marker_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "upper_bound");
+          ("marker_token", token_to_json marker_token);
+        ]
+  | Cst.PolyVariantBound.LowerBound { marker_token } ->
+      Json.Object
+        [
+          ("tag", Json.String "lower_bound");
+          ("marker_token", token_to_json marker_token);
+        ]
+
+and row_field_to_json = function
+  | Cst.RowField.Tag tag ->
+      Json.Object
+        [
+          ("tag", Json.String "tag");
+          ("field", poly_variant_tag_to_json tag);
+        ]
+  | Cst.RowField.Inherit { syntax_node; type_ } ->
+      Json.Object
+        [
+          ("tag", Json.String "inherit");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("type", core_type_to_json type_);
+        ]
+
 and type_binder_to_json = function
   | Cst.TypeBinder.Quoted { syntax_node; name_token } ->
       Json.Object
@@ -188,12 +219,13 @@ and core_type_to_json = function
           ("module_path", ident_to_json module_path);
           ("type", core_type_to_json type_);
         ]
-  | Cst.CoreType.PolyVariant { syntax_node; tags } ->
+  | Cst.CoreType.PolyVariant poly_variant ->
       Json.Object
         [
           ("tag", Json.String "poly_variant");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("tags", Json.Array (List.map poly_variant_tag_to_json tags));
+          ("syntax_node", syntax_node_to_json (Cst.PolyVariant.syntax_node poly_variant));
+          ("kind", poly_variant_bound_to_json (Cst.PolyVariant.kind poly_variant));
+          ("fields", Json.Array (List.map row_field_to_json (Cst.PolyVariant.fields poly_variant)));
         ]
   | Cst.CoreType.Record { syntax_node; fields } ->
       Json.Object
@@ -1205,11 +1237,13 @@ let type_definition_to_json = function
           ( "constructors",
             Json.Array (List.map variant_constructor_to_json constructors) );
         ]
-  | Cst.TypeDefinition.PolyVariant tags ->
+  | Cst.TypeDefinition.PolyVariant poly_variant ->
       Json.Object
         [
           ("tag", Json.String "poly_variant");
-          ("tags", Json.Array (List.map poly_variant_tag_to_json tags));
+          ("syntax_node", syntax_node_to_json (Cst.PolyVariant.syntax_node poly_variant));
+          ("kind", poly_variant_bound_to_json (Cst.PolyVariant.kind poly_variant));
+          ("fields", Json.Array (List.map row_field_to_json (Cst.PolyVariant.fields poly_variant)));
         ]
   | Cst.TypeDefinition.Other syntax_node ->
       Json.Object

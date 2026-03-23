@@ -232,6 +232,70 @@ and poly_variant_tag = {
   payload_type : core_type option;
 }
 
+(** The bound marker on a polymorphic variant type.
+
+    Examples:
+
+    ```ocaml,norun
+    [ `A | `B ]
+    [< `A | `B ]
+    [> `A | `B ]
+    ```
+*)
+and poly_variant_bound =
+  | Exact
+      (** An exact row with no explicit bound marker.
+
+          Example: `[ `A | `B ]`.
+      *)
+  | UpperBound of {
+      marker_token : Token.t;
+    }
+      (** An upper-bounded row introduced with `<`.
+
+          Example: `[< `A | `B ]`.
+      *)
+  | LowerBound of {
+      marker_token : Token.t;
+    }
+      (** A lower-bounded row introduced with `>`.
+
+          Example: `[> `A | `B ]`.
+      *)
+
+(** A row field inside a polymorphic variant type.
+
+    This covers both concrete tags and inherited rows.
+
+    Examples:
+
+    ```ocaml,norun
+    [ `Ok of int | `Error of string ]
+    [ color | `Yellow ]
+    ```
+*)
+and row_field =
+  | Tag of poly_variant_tag
+      (** A concrete tag row such as `` `Ok of int ``. *)
+  | Inherit of {
+      syntax_node : syntax_node;
+      type_ : core_type;
+    }
+      (** An inherited row type such as `color` in
+          `[ color | `Yellow ]`.
+      *)
+
+(** A full polymorphic variant row.
+
+    The row keeps the surrounding syntax node, the bound marker, and the row
+    fields in source order.
+*)
+and poly_variant = {
+  syntax_node : syntax_node;
+  kind : poly_variant_bound;
+  fields : row_field list;
+}
+
 (** A `with type` constraint attached to a module type.
 
     Both ordinary equality constraints and destructive substitutions are covered
@@ -423,10 +487,7 @@ and core_type =
           M.(t list)
           ```
       *)
-  | PolyVariant of {
-      syntax_node : syntax_node;
-      tags : poly_variant_tag list;
-    }
+  | PolyVariant of poly_variant
       (** A polymorphic variant type.
 
           Examples:
@@ -434,6 +495,8 @@ and core_type =
           ```ocaml,norun
           [ `Ok of int | `Error of string ]
           [ `Tick | `Tock ]
+          [ color | `Yellow ]
+          [> `Ready | `Pending ]
           ```
       *)
   | Record of {
@@ -604,10 +667,7 @@ module CoreType : sig
         inner : core_type;
       }
     | LocalOpen of local_open_core_type
-    | PolyVariant of {
-        syntax_node : syntax_node;
-        tags : poly_variant_tag list;
-      }
+    | PolyVariant of poly_variant
     | Record of {
         syntax_node : syntax_node;
         fields : record_type_field list;
@@ -2145,6 +2205,52 @@ module PolyVariantTag : sig
   val name : t -> string
 end
 
+(** Helper view over `poly_variant_bound`. *)
+module PolyVariantBound : sig
+  type t = poly_variant_bound =
+    | Exact
+    | UpperBound of {
+        marker_token : Token.t;
+      }
+    | LowerBound of {
+        marker_token : Token.t;
+      }
+
+  val marker_token : t -> Token.t option
+end
+
+(** Helper view over `row_field`.
+
+    This distinguishes explicit variant tags from inherited rows such as
+    `color` in `[ color | `Yellow ]`.
+*)
+module RowField : sig
+  type t = row_field =
+    | Tag of poly_variant_tag
+    | Inherit of {
+        syntax_node : syntax_node;
+        type_ : core_type;
+      }
+
+  val syntax_node : t -> syntax_node
+  val tag : t -> PolyVariantTag.t option
+  val inherited_type : t -> core_type option
+end
+
+(** Helper view over `poly_variant`. *)
+module PolyVariant : sig
+  type t = poly_variant = {
+    syntax_node : syntax_node;
+    kind : poly_variant_bound;
+    fields : row_field list;
+  }
+
+  val syntax_node : t -> syntax_node
+  val kind : t -> PolyVariantBound.t
+  val fields : t -> RowField.t list
+  val tags : t -> PolyVariantTag.t list
+end
+
 (** The right-hand side of a `type` declaration.
 
     This is intentionally a broad summary layer over the successful parse. The
@@ -2205,9 +2311,11 @@ module TypeDefinition : sig
     | Variant of VariantConstructor.t list
         (** A regular algebraic variant definition such as
             `type t = A | B of int`. *)
-    | PolyVariant of PolyVariantTag.t list
+    | PolyVariant of PolyVariant.t
         (** A polymorphic variant definition such as
-            `type t = [ `A | `B of int ]`. *)
+            `type t = [ `A | `B of int ]` or
+            `type t = [ color | `Yellow ]`.
+        *)
     | Other of syntax_node
         (** A successfully parsed type definition whose exact grammar is not yet
             given a dedicated public constructor.

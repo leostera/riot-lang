@@ -57,8 +57,8 @@ let make_diagnostic token =
     ()
 
 let diagnostics_for_decl = function
-  | Syn.Cst.TypeDeclaration.{ type_definition = Syn.Cst.TypeDefinition.PolyVariant tags; _ } ->
-      tags
+  | Syn.Cst.TypeDeclaration.{ type_definition = Syn.Cst.TypeDefinition.PolyVariant poly_variant; _ } ->
+      Syn.Cst.PolyVariant.tags poly_variant
       |> List.filter_map (fun tag ->
              let name = Syn.Cst.PolyVariantTag.name tag in
              if should_flag_tag_name name then

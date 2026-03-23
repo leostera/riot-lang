@@ -405,52 +405,64 @@
                   "end": 1045
                 }
               },
-              "tags": [
+              "kind": {
+                "tag": "exact"
+              },
+              "fields": [
                 {
-                  "syntax_node": {
-                    "kind": "POLY_VARIANT_TAG",
-                    "span": {
-                      "start": 1024,
-                      "end": 1044
-                    }
-                  },
-                  "tag_name": {
-                    "kind": "IDENT_EXPR",
-                    "text": "\\#let",
-                    "span": {
-                      "start": 1025,
-                      "end": 1030
-                    }
-                  },
-                  "payload_type": {
-                    "tag": "poly_variant",
+                  "tag": "tag",
+                  "field": {
                     "syntax_node": {
-                      "kind": "TYPE_POLY_VARIANT",
+                      "kind": "POLY_VARIANT_TAG",
                       "span": {
-                        "start": 1034,
+                        "start": 1024,
                         "end": 1044
                       }
                     },
-                    "tags": [
-                      {
-                        "syntax_node": {
-                          "kind": "POLY_VARIANT_TAG",
-                          "span": {
-                            "start": 1036,
-                            "end": 1043
-                          }
-                        },
-                        "tag_name": {
-                          "kind": "IDENT_EXPR",
-                          "text": "\\#and",
-                          "span": {
-                            "start": 1037,
-                            "end": 1042
-                          }
-                        },
-                        "payload_type": null
+                    "tag_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "\\#let",
+                      "span": {
+                        "start": 1025,
+                        "end": 1030
                       }
-                    ]
+                    },
+                    "payload_type": {
+                      "tag": "poly_variant",
+                      "syntax_node": {
+                        "kind": "TYPE_POLY_VARIANT",
+                        "span": {
+                          "start": 1034,
+                          "end": 1044
+                        }
+                      },
+                      "kind": {
+                        "tag": "exact"
+                      },
+                      "fields": [
+                        {
+                          "tag": "tag",
+                          "field": {
+                            "syntax_node": {
+                              "kind": "POLY_VARIANT_TAG",
+                              "span": {
+                                "start": 1036,
+                                "end": 1043
+                              }
+                            },
+                            "tag_name": {
+                              "kind": "IDENT_EXPR",
+                              "text": "\\#and",
+                              "span": {
+                                "start": 1037,
+                                "end": 1042
+                              }
+                            },
+                            "payload_type": null
+                          }
+                        }
+                      ]
+                    }
                   }
                 }
               ]
@@ -3096,52 +3108,64 @@
                 "end": 1045
               }
             },
-            "tags": [
+            "kind": {
+              "tag": "exact"
+            },
+            "fields": [
               {
-                "syntax_node": {
-                  "kind": "POLY_VARIANT_TAG",
-                  "span": {
-                    "start": 1024,
-                    "end": 1044
-                  }
-                },
-                "tag_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "\\#let",
-                  "span": {
-                    "start": 1025,
-                    "end": 1030
-                  }
-                },
-                "payload_type": {
-                  "tag": "poly_variant",
+                "tag": "tag",
+                "field": {
                   "syntax_node": {
-                    "kind": "TYPE_POLY_VARIANT",
+                    "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 1034,
+                      "start": 1024,
                       "end": 1044
                     }
                   },
-                  "tags": [
-                    {
-                      "syntax_node": {
-                        "kind": "POLY_VARIANT_TAG",
-                        "span": {
-                          "start": 1036,
-                          "end": 1043
-                        }
-                      },
-                      "tag_name": {
-                        "kind": "IDENT_EXPR",
-                        "text": "\\#and",
-                        "span": {
-                          "start": 1037,
-                          "end": 1042
-                        }
-                      },
-                      "payload_type": null
+                  "tag_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "\\#let",
+                    "span": {
+                      "start": 1025,
+                      "end": 1030
                     }
-                  ]
+                  },
+                  "payload_type": {
+                    "tag": "poly_variant",
+                    "syntax_node": {
+                      "kind": "TYPE_POLY_VARIANT",
+                      "span": {
+                        "start": 1034,
+                        "end": 1044
+                      }
+                    },
+                    "kind": {
+                      "tag": "exact"
+                    },
+                    "fields": [
+                      {
+                        "tag": "tag",
+                        "field": {
+                          "syntax_node": {
+                            "kind": "POLY_VARIANT_TAG",
+                            "span": {
+                              "start": 1036,
+                              "end": 1043
+                            }
+                          },
+                          "tag_name": {
+                            "kind": "IDENT_EXPR",
+                            "text": "\\#and",
+                            "span": {
+                              "start": 1037,
+                              "end": 1042
+                            }
+                          },
+                          "payload_type": null
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             ]
@@ -4674,52 +4698,64 @@
               "end": 1045
             }
           },
-          "tags": [
+          "kind": {
+            "tag": "exact"
+          },
+          "fields": [
             {
-              "syntax_node": {
-                "kind": "POLY_VARIANT_TAG",
-                "span": {
-                  "start": 1024,
-                  "end": 1044
-                }
-              },
-              "tag_name": {
-                "kind": "IDENT_EXPR",
-                "text": "\\#let",
-                "span": {
-                  "start": 1025,
-                  "end": 1030
-                }
-              },
-              "payload_type": {
-                "tag": "poly_variant",
+              "tag": "tag",
+              "field": {
                 "syntax_node": {
-                  "kind": "TYPE_POLY_VARIANT",
+                  "kind": "POLY_VARIANT_TAG",
                   "span": {
-                    "start": 1034,
+                    "start": 1024,
                     "end": 1044
                   }
                 },
-                "tags": [
-                  {
-                    "syntax_node": {
-                      "kind": "POLY_VARIANT_TAG",
-                      "span": {
-                        "start": 1036,
-                        "end": 1043
-                      }
-                    },
-                    "tag_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "\\#and",
-                      "span": {
-                        "start": 1037,
-                        "end": 1042
-                      }
-                    },
-                    "payload_type": null
+                "tag_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "\\#let",
+                  "span": {
+                    "start": 1025,
+                    "end": 1030
                   }
-                ]
+                },
+                "payload_type": {
+                  "tag": "poly_variant",
+                  "syntax_node": {
+                    "kind": "TYPE_POLY_VARIANT",
+                    "span": {
+                      "start": 1034,
+                      "end": 1044
+                    }
+                  },
+                  "kind": {
+                    "tag": "exact"
+                  },
+                  "fields": [
+                    {
+                      "tag": "tag",
+                      "field": {
+                        "syntax_node": {
+                          "kind": "POLY_VARIANT_TAG",
+                          "span": {
+                            "start": 1036,
+                            "end": 1043
+                          }
+                        },
+                        "tag_name": {
+                          "kind": "IDENT_EXPR",
+                          "text": "\\#and",
+                          "span": {
+                            "start": 1037,
+                            "end": 1042
+                          }
+                        },
+                        "payload_type": null
+                      }
+                    }
+                  ]
+                }
               }
             }
           ]

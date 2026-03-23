@@ -444,52 +444,58 @@
           "type_params": [],
           "type_definition": {
             "tag": "poly_variant",
-            "tags": [
+            "syntax_node": {
+              "kind": "TYPE_POLY_VARIANT",
+              "span": {
+                "start": 495,
+                "end": 553
+              }
+            },
+            "kind": {
+              "tag": "exact"
+            },
+            "fields": [
               {
-                "syntax_node": {
-                  "kind": "POLY_VARIANT_TAG",
-                  "span": {
-                    "start": 500,
-                    "end": 515
-                  }
-                },
-                "tag_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "A",
-                  "span": {
-                    "start": 501,
-                    "end": 502
-                  }
-                },
-                "payload_type": null
+                "tag": "tag",
+                "field": {
+                  "syntax_node": {
+                    "kind": "POLY_VARIANT_TAG",
+                    "span": {
+                      "start": 500,
+                      "end": 515
+                    }
+                  },
+                  "tag_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "A",
+                    "span": {
+                      "start": 501,
+                      "end": 502
+                    }
+                  },
+                  "payload_type": null
+                }
               },
               {
-                "syntax_node": {
-                  "kind": "POLY_VARIANT_TAG",
-                  "span": {
-                    "start": 515,
-                    "end": 552
-                  }
-                },
-                "tag_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "B",
-                  "span": {
-                    "start": 516,
-                    "end": 517
-                  }
-                },
-                "payload_type": {
-                  "tag": "constr",
+                "tag": "tag",
+                "field": {
                   "syntax_node": {
-                    "kind": "TYPE_CONSTR",
+                    "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 548,
+                      "start": 515,
                       "end": 552
                     }
                   },
-                  "constructor_path": {
-                    "tag": "ident",
+                  "tag_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "B",
+                    "span": {
+                      "start": 516,
+                      "end": 517
+                    }
+                  },
+                  "payload_type": {
+                    "tag": "constr",
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
@@ -497,16 +503,26 @@
                         "end": 552
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "int",
-                      "span": {
-                        "start": 548,
-                        "end": 551
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 548,
+                          "end": 552
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 548,
+                          "end": 551
+                        }
                       }
-                    }
-                  },
-                  "arguments": []
+                    },
+                    "arguments": []
+                  }
                 }
               }
             ]

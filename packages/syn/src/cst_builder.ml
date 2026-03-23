@@ -866,12 +866,13 @@ and core_type_from_node node =
             after_hash rest
     in
     match after_hash (direct_non_trivia_tokens node) with
-    | Some (hash_syntax_token, class_path_tokens)
-      when List.length class_path_tokens > 0 ->
-        (token hash_syntax_token, module_path_from_tokens ~syntax_node:node class_path_tokens)
-    | Some (_, []) ->
-        bail ~message:"expected class type path after # during Ceibo -> CST lifting"
-          ~syntax_node:node ~context:[ "core_type.class" ]
+    | Some (hash_syntax_token, class_path_tokens) ->
+        if List.length class_path_tokens > 0 then
+          ( token hash_syntax_token,
+            module_path_from_tokens ~syntax_node:node class_path_tokens )
+        else
+          bail ~message:"expected class type path after # during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "core_type.class" ]
     | None ->
         bail ~message:"expected class type marker during Ceibo -> CST lifting"
           ~syntax_node:node ~context:[ "core_type.class" ]
@@ -953,6 +954,37 @@ and core_type_from_node node =
     | [] ->
         bail ~message:"expected poly-variant tag token during Ceibo -> CST lifting"
           ~syntax_node:node ~context:[ "core_type.poly_variant_tag" ]
+  and poly_variant_bound_from_node node =
+    match direct_non_trivia_tokens node with
+    | _open_bracket :: marker_token :: _
+      when String.equal (Ceibo.Red.SyntaxToken.text marker_token) "<" ->
+        Cst.PolyVariantBound.UpperBound { marker_token = token marker_token }
+    | _open_bracket :: marker_token :: _
+      when String.equal (Ceibo.Red.SyntaxToken.text marker_token) ">" ->
+        Cst.PolyVariantBound.LowerBound { marker_token = token marker_token }
+    | _ ->
+        Cst.PolyVariantBound.Exact
+  and row_field_from_node node =
+    match Ceibo.Red.SyntaxNode.kind node with
+    | Syntax_kind.POLY_VARIANT_TAG ->
+        Cst.RowField.Tag (poly_variant_tag_from_node node)
+    | _ when can_lift_core_type_node node ->
+        Cst.RowField.Inherit
+          { syntax_node = node; type_ = core_type_from_node node }
+    | _ ->
+        bail ~message:"expected polymorphic variant row field during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "core_type.poly_variant.row_field" ]
+  and poly_variant_from_node node =
+    {
+      Cst.syntax_node = node;
+      kind = poly_variant_bound_from_node node;
+      fields =
+        direct_non_trivia_nodes node
+        |> List.filter (fun child ->
+               let kind = Ceibo.Red.SyntaxNode.kind child in
+               kind = Syntax_kind.POLY_VARIANT_TAG || can_lift_core_type_node child)
+        |> List.map row_field_from_node;
+    }
   in
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.TYPE_VAR -> (
@@ -1101,15 +1133,7 @@ and core_type_from_node node =
   | Syntax_kind.LOCAL_OPEN_TYPE ->
       Cst.CoreType.LocalOpen (local_open_core_type_from_node node)
   | Syntax_kind.TYPE_POLY_VARIANT ->
-      Cst.CoreType.PolyVariant
-        {
-          syntax_node = node;
-          tags =
-            direct_non_trivia_nodes node
-            |> List.filter (fun child ->
-                   Ceibo.Red.SyntaxNode.kind child = Syntax_kind.POLY_VARIANT_TAG)
-            |> List.map poly_variant_tag_from_node;
-        }
+      Cst.CoreType.PolyVariant (poly_variant_from_node node)
   | Syntax_kind.TYPE_RECORD ->
       Cst.CoreType.Record
         {
@@ -2513,28 +2537,62 @@ let variant_constructor_from_node node =
 let poly_variant_tag_from_node node =
   match direct_non_trivia_tokens node with
   | _backtick :: tag_name :: _ ->
-      Some
-        Cst.PolyVariantTag.
-          {
-            syntax_node = node;
-            tag_name = token tag_name;
-            payload_type =
-              (direct_non_trivia_nodes node
-              |> List.find_opt can_lift_core_type_node
-              |> Option.map core_type_from_node);
-          }
+      Cst.PolyVariantTag.
+        {
+          syntax_node = node;
+          tag_name = token tag_name;
+          payload_type =
+            (direct_non_trivia_nodes node
+            |> List.find_opt can_lift_core_type_node
+            |> Option.map core_type_from_node);
+        }
   | tag_name :: _ ->
-      Some
-        Cst.PolyVariantTag.
-          {
-            syntax_node = node;
-            tag_name = token tag_name;
-            payload_type =
-              (direct_non_trivia_nodes node
-              |> List.find_opt can_lift_core_type_node
-              |> Option.map core_type_from_node);
-          }
-  | [] -> None
+      Cst.PolyVariantTag.
+        {
+          syntax_node = node;
+          tag_name = token tag_name;
+          payload_type =
+            (direct_non_trivia_nodes node
+            |> List.find_opt can_lift_core_type_node
+            |> Option.map core_type_from_node);
+        }
+  | [] ->
+      bail ~message:"expected poly-variant tag token during Ceibo -> CST lifting"
+        ~syntax_node:node ~context:[ "type_definition.poly_variant_tag" ]
+
+let poly_variant_bound_from_node node =
+  match direct_non_trivia_tokens node with
+  | _open_bracket :: marker_token :: _
+    when String.equal (Ceibo.Red.SyntaxToken.text marker_token) "<" ->
+      Cst.PolyVariantBound.UpperBound { marker_token = token marker_token }
+  | _open_bracket :: marker_token :: _
+    when String.equal (Ceibo.Red.SyntaxToken.text marker_token) ">" ->
+      Cst.PolyVariantBound.LowerBound { marker_token = token marker_token }
+  | _ ->
+      Cst.PolyVariantBound.Exact
+
+let row_field_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.POLY_VARIANT_TAG ->
+      Cst.RowField.Tag (poly_variant_tag_from_node node)
+  | _ when can_lift_core_type_node node ->
+      Cst.RowField.Inherit
+        { syntax_node = node; type_ = core_type_from_node node }
+  | _ ->
+      bail ~message:"expected polymorphic variant row field during Ceibo -> CST lifting"
+        ~syntax_node:node ~context:[ "type_definition.poly_variant.row_field" ]
+
+let poly_variant_from_node node =
+  {
+    Cst.syntax_node = node;
+    kind = poly_variant_bound_from_node node;
+    fields =
+      direct_non_trivia_nodes node
+      |> List.filter (fun child ->
+             let kind = Ceibo.Red.SyntaxNode.kind child in
+             kind = Syntax_kind.POLY_VARIANT_TAG || can_lift_core_type_node child)
+      |> List.map row_field_from_node;
+  }
 
 let type_declaration_name_path node =
   let is_name_node child =
@@ -2585,13 +2643,7 @@ let type_definition_from_node node =
                  Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_POLY_VARIANT)
         with
         | Some poly_variant_node ->
-            let tags =
-              direct_non_trivia_nodes poly_variant_node
-              |> List.filter (fun child ->
-                     Ceibo.Red.SyntaxNode.kind child = Syntax_kind.POLY_VARIANT_TAG)
-              |> List.filter_map poly_variant_tag_from_node
-            in
-            Cst.TypeDefinition.PolyVariant tags
+            Cst.TypeDefinition.PolyVariant (poly_variant_from_node poly_variant_node)
         | None ->
             let remaining_nodes =
               direct_children
@@ -3392,16 +3444,9 @@ and validate_core_type ~context = function
       validate_core_type ~context:("core_type.parenthesized" :: context) inner
   | Cst.CoreType.LocalOpen { type_; _ } ->
       validate_core_type ~context:("core_type.local_open.type" :: context) type_
-  | Cst.CoreType.PolyVariant { tags; _ } ->
-      List.iteri
-        (fun index tag ->
-          Option.iter
-            (validate_core_type
-               ~context:
-                 (("core_type.poly_variant.tag[" ^ Int.to_string index ^ "].payload")
-                 :: context))
-            (Cst.PolyVariantTag.payload_type tag))
-        tags
+  | Cst.CoreType.PolyVariant poly_variant ->
+      validate_poly_variant ~context:("core_type.poly_variant" :: context)
+        poly_variant
   | Cst.CoreType.Record { fields; _ } ->
       List.iteri
         (fun index ({ field_type; _ } : Cst.record_type_field) ->
@@ -3418,6 +3463,22 @@ and validate_core_type ~context = function
               (("core_type.object.field[" ^ Int.to_string index ^ "].type") :: context)
             field_type)
         fields
+
+and validate_row_field ~context index = function
+  | Cst.RowField.Tag tag ->
+      Option.iter
+        (validate_core_type
+           ~context:
+             (("row_field[" ^ Int.to_string index ^ "].tag.payload") :: context))
+        (Cst.PolyVariantTag.payload_type tag)
+  | Cst.RowField.Inherit { type_; _ } ->
+      validate_core_type
+        ~context:(("row_field[" ^ Int.to_string index ^ "].inherit") :: context)
+        type_
+
+and validate_poly_variant ~context poly_variant =
+  Cst.PolyVariant.fields poly_variant
+  |> List.iteri (validate_row_field ~context)
 
 and validate_apply_argument ~context = function
   | Cst.Positional expr ->
@@ -3680,17 +3741,9 @@ let validate_type_definition ~context = function
                  :: context))
             (Cst.VariantConstructor.payload_type constructor))
         constructors
-  | Cst.TypeDefinition.PolyVariant tags ->
-      List.iteri
-        (fun index tag ->
-          Option.iter
-            (validate_core_type
-               ~context:
-                 (("type_definition.poly_variant.tag[" ^ Int.to_string index
-                  ^ "].payload")
-                 :: context))
-            (Cst.PolyVariantTag.payload_type tag))
-        tags
+  | Cst.TypeDefinition.PolyVariant poly_variant ->
+      validate_poly_variant ~context:("type_definition.poly_variant" :: context)
+        poly_variant
   | Cst.TypeDefinition.Other syntax_node ->
       bail ~message:"unsupported type definition shape during Ceibo -> CST lifting"
         ~syntax_node ~context

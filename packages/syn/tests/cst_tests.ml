@@ -139,15 +139,58 @@ let tests =
         match items with
         | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
-            | Syn.Cst.TypeDefinition.PolyVariant tags ->
+            | Syn.Cst.TypeDefinition.PolyVariant poly_variant ->
                 let names =
-                  tags |> List.map Syn.Cst.PolyVariantTag.name
+                  Syn.Cst.PolyVariant.tags poly_variant
+                  |> List.map Syn.Cst.PolyVariantTag.name
                 in
                 Test.assert_equal ~expected:[ "guest_user"; "RegisteredUser" ]
                   ~actual:names;
                 Ok ()
             | _ -> Error "expected polyvariant type definition")
         | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst polyvariant rows preserve inherited fields and bounds"
+      (fun () ->
+        let result =
+          parse_mli "val cast : [> base | `Ready ] -> unit\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ValueDeclaration
+            {
+              type_ =
+                Syn.Cst.CoreType.Arrow
+                  {
+                    parameter_type = Syn.Cst.CoreType.PolyVariant poly_variant;
+                    result_type = Syn.Cst.CoreType.Constr _;
+                    _;
+                  };
+              _;
+            }
+          :: _ -> (
+            let fields = Syn.Cst.PolyVariant.fields poly_variant in
+            match Syn.Cst.PolyVariant.kind poly_variant, fields with
+            | Syn.Cst.PolyVariantBound.LowerBound _, [
+                Syn.Cst.RowField.Inherit
+                  { type_ = Syn.Cst.CoreType.Constr { constructor_path; _ }; _ };
+                Syn.Cst.RowField.Tag tag;
+              ] ->
+                let inherited_name =
+                  match Syn.Cst.Ident.name constructor_path with
+                  | Some name -> name
+                  | None -> ""
+                in
+                Test.assert_equal ~expected:"base" ~actual:inherited_name;
+                Test.assert_equal ~expected:"Ready"
+                  ~actual:(Syn.Cst.PolyVariantTag.name tag);
+                Ok ()
+            | _ ->
+                Error "expected lower-bounded polyvariant row with inherited type")
+        | _ -> Error "expected first item to be a value declaration");
     Test.case "cst let bindings expose function binding names" (fun () ->
         let result = parse_ml "let userProfile x = x\n" in
         let cst =
