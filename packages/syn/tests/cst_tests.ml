@@ -704,6 +704,25 @@ let tests =
             Ok ()
         | _ ->
             Error "expected module type declaration with identifier body");
+    Test.case
+      "cst interface module type declarations preserve identifier module type bodies"
+      (fun () ->
+        let result = parse_mli "module type Alias = Source\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleTypeDeclaration
+            { module_type = Some (Syn.Cst.ModuleType.Path path); _ }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "Source")
+              ~actual:(Syn.Cst.Ident.name path);
+            Ok ()
+        | _ ->
+            Error
+              "expected interface module type declaration with identifier body");
     Test.case "cst module type declarations preserve signature module type bodies"
       (fun () ->
         let result = parse_ml "module type S = sig val x : int end\n" in

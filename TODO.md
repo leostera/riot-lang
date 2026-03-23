@@ -137,7 +137,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] with-constraint module types
   - [x] module-type-of expressions
   - [x] module type extensions
-  - [ ] module type aliases
+  - [x] module type aliases
 - [ ] Class expressions:
   - [ ] class constructor references
   - [ ] class structure bodies
