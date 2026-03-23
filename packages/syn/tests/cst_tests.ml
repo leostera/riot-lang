@@ -584,6 +584,94 @@ let tests =
             Ok ()
         | _ ->
             Error "expected first item to be an interface module type declaration");
+    Test.case "cst module type declarations preserve identifier module type bodies"
+      (fun () ->
+        let result = parse_ml "module type Alias = Source\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleTypeDeclaration
+            { module_type = Some (Syn.Cst.ModuleType.Path path); _ }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "Source")
+              ~actual:(Syn.Cst.Ident.name path);
+            Ok ()
+        | _ ->
+            Error "expected module type declaration with identifier body");
+    Test.case "cst module type declarations preserve signature module type bodies"
+      (fun () ->
+        let result = parse_ml "module type S = sig val x : int end\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleTypeDeclaration
+            { module_type = Some (Syn.Cst.ModuleType.Signature _); _ }
+          :: _ ->
+            Ok ()
+        | _ ->
+            Error "expected module type declaration with signature body");
+    Test.case "cst module type declarations preserve with-constraint bodies"
+      (fun () ->
+        let result =
+          parse_ml "module type S = Driver with type config = int\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleTypeDeclaration
+            {
+              module_type =
+                Some
+                  (Syn.Cst.ModuleType.With
+                    {
+                      base = Syn.Cst.ModuleType.Path base_path;
+                      constraints = [ constraint_ ];
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "Driver")
+              ~actual:(Syn.Cst.Ident.name base_path);
+            Test.assert_equal ~expected:"config"
+              ~actual:(Syn.Cst.Token.text constraint_.type_name);
+            Ok ()
+        | _ ->
+            Error "expected module type declaration with constrained body");
+    Test.case "cst module type declarations preserve module-type-of bodies"
+      (fun () ->
+        let result =
+          parse_ml "module type S = module type of Stdlib.Array\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleTypeDeclaration
+            {
+              module_type =
+                Some
+                  (Syn.Cst.ModuleType.TypeOf
+                    { module_path = Syn.Cst.ModulePath.Qualified { name_token; _ }; _ });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Array"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Ok ()
+        | _ ->
+            Error "expected module type declaration with module-type-of body");
     Test.case "cst interface module type substitutions preserve substitution flags"
       (fun () ->
         let result = parse_mli "module type Alias := Source\n" in
@@ -2148,7 +2236,7 @@ let tests =
               ~actual:(Syn.Cst.Token.text type_leaf);
             Ok ()
         | _ -> Error "expected qualified first-class module path");
-    Test.case "cst module type declarations expose typed module type bodies"
+    Test.case "cst module type declarations preserve functor module type bodies"
       (fun () ->
         let result =
           parse_ml "module type F = functor (X : S) -> T\n"
