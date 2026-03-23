@@ -124,7 +124,43 @@
                     }
                   }
                 },
-                "value": null
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                },
+                "value": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "RECORD_FIELD",
+                    "span": {
+                      "start": 19,
+                      "end": 20
+                    }
+                  },
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD",
+                      "span": {
+                        "start": 19,
+                        "end": 20
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 19,
+                        "end": 20
+                      }
+                    }
+                  }
+                },
+                "source": "punned"
               },
               {
                 "syntax_node": {
@@ -152,7 +188,43 @@
                     }
                   }
                 },
-                "value": null
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 22,
+                    "end": 23
+                  }
+                },
+                "value": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "RECORD_FIELD",
+                    "span": {
+                      "start": 22,
+                      "end": 24
+                    }
+                  },
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD",
+                      "span": {
+                        "start": 22,
+                        "end": 24
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "y",
+                      "span": {
+                        "start": 22,
+                        "end": 23
+                      }
+                    }
+                  }
+                },
+                "source": "punned"
               }
             ]
           },

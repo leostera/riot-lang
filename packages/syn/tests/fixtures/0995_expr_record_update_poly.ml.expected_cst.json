@@ -113,6 +113,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "value",
+                  "span": {
+                    "start": 22,
+                    "end": 27
+                  }
+                },
                 "value": {
                   "tag": "path",
                   "syntax_node": {
@@ -140,7 +148,8 @@
                       }
                     }
                   }
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

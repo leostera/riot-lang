@@ -779,6 +779,10 @@ and record_pattern_closedness_to_json = function
           ("wildcard_token", token_to_json wildcard_token);
         ]
 
+and record_expression_field_source_to_json = function
+  | Cst.Explicit -> Json.String "explicit"
+  | Cst.Punned -> Json.String "punned"
+
 and parameter_to_json = function
   | Cst.Parameter.Positional { syntax_node; name_token } ->
       Json.Object
@@ -1364,7 +1368,9 @@ and record_expression_field_to_json field =
     [
       ("syntax_node", syntax_node_to_json field.syntax_node);
       ("field_path", ident_to_json field.field_path);
-      ("value", option_to_json expression_to_json field.value);
+      ("field_name", token_to_json field.field_name);
+      ("value", expression_to_json field.value);
+      ("source", record_expression_field_source_to_json field.source);
     ]
 
 and object_override_field_to_json field =

@@ -1290,6 +1290,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "\\#mutable",
+                    "span": {
+                      "start": 1610,
+                      "end": 1619
+                    }
+                  },
                   "value": {
                     "tag": "path",
                     "syntax_node": {
@@ -1317,7 +1325,8 @@
                         }
                       }
                     }
-                  }
+                  },
+                  "source": "explicit"
                 }
               ]
             },
@@ -2940,6 +2949,14 @@
                         }
                       }
                     },
+                    "field_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "\\#true",
+                      "span": {
+                        "start": 3039,
+                        "end": 3045
+                      }
+                    },
                     "value": {
                       "tag": "literal",
                       "literal": {
@@ -2964,7 +2981,8 @@
                         "digits": "0",
                         "suffix": null
                       }
-                    }
+                    },
+                    "source": "explicit"
                   }
                 ]
               },

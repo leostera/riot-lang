@@ -112,6 +112,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 59,
+                      "end": 60
+                    }
+                  },
                   "value": {
                     "tag": "literal",
                     "literal": {
@@ -136,7 +144,8 @@
                       "digits": "1",
                       "suffix": null
                     }
-                  }
+                  },
+                  "source": "explicit"
                 },
                 {
                   "syntax_node": {
@@ -164,6 +173,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "span": {
+                      "start": 66,
+                      "end": 67
+                    }
+                  },
                   "value": {
                     "tag": "literal",
                     "literal": {
@@ -188,7 +205,8 @@
                       "digits": "2",
                       "suffix": null
                     }
-                  }
+                  },
+                  "source": "explicit"
                 }
               ]
             },
@@ -299,6 +317,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "stdin",
+                    "span": {
+                      "start": 98,
+                      "end": 103
+                    }
+                  },
                   "value": {
                     "tag": "poly_variant",
                     "syntax_node": {
@@ -317,7 +343,8 @@
                       }
                     },
                     "payload": null
-                  }
+                  },
+                  "source": "explicit"
                 },
                 {
                   "syntax_node": {
@@ -345,6 +372,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "stdout",
+                    "span": {
+                      "start": 113,
+                      "end": 119
+                    }
+                  },
                   "value": {
                     "tag": "poly_variant",
                     "syntax_node": {
@@ -363,7 +398,8 @@
                       }
                     },
                     "payload": null
-                  }
+                  },
+                  "source": "explicit"
                 },
                 {
                   "syntax_node": {
@@ -391,6 +427,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "stderr",
+                    "span": {
+                      "start": 129,
+                      "end": 135
+                    }
+                  },
                   "value": {
                     "tag": "poly_variant",
                     "syntax_node": {
@@ -409,7 +453,8 @@
                       }
                     },
                     "payload": null
-                  }
+                  },
+                  "source": "explicit"
                 }
               ]
             },

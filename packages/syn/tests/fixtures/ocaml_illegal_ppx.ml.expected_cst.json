@@ -7199,7 +7199,43 @@
                               }
                             }
                           },
-                          "value": null
+                          "field_name": {
+                            "kind": "IDENT_EXPR",
+                            "text": "expr",
+                            "span": {
+                              "start": 1955,
+                              "end": 1959
+                            }
+                          },
+                          "value": {
+                            "tag": "path",
+                            "syntax_node": {
+                              "kind": "RECORD_FIELD",
+                              "span": {
+                                "start": 1955,
+                                "end": 1959
+                              }
+                            },
+                            "path": {
+                              "tag": "ident",
+                              "syntax_node": {
+                                "kind": "RECORD_FIELD",
+                                "span": {
+                                  "start": 1955,
+                                  "end": 1959
+                                }
+                              },
+                              "name_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": "expr",
+                                "span": {
+                                  "start": 1955,
+                                  "end": 1959
+                                }
+                              }
+                            }
+                          },
+                          "source": "punned"
                         },
                         {
                           "syntax_node": {
@@ -7227,7 +7263,43 @@
                               }
                             }
                           },
-                          "value": null
+                          "field_name": {
+                            "kind": "IDENT_EXPR",
+                            "text": "pat",
+                            "span": {
+                              "start": 1961,
+                              "end": 1964
+                            }
+                          },
+                          "value": {
+                            "tag": "path",
+                            "syntax_node": {
+                              "kind": "RECORD_FIELD",
+                              "span": {
+                                "start": 1961,
+                                "end": 1964
+                              }
+                            },
+                            "path": {
+                              "tag": "ident",
+                              "syntax_node": {
+                                "kind": "RECORD_FIELD",
+                                "span": {
+                                  "start": 1961,
+                                  "end": 1964
+                                }
+                              },
+                              "name_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": "pat",
+                                "span": {
+                                  "start": 1961,
+                                  "end": 1964
+                                }
+                              }
+                            }
+                          },
+                          "source": "punned"
                         },
                         {
                           "syntax_node": {
@@ -7255,7 +7327,43 @@
                               }
                             }
                           },
-                          "value": null
+                          "field_name": {
+                            "kind": "IDENT_EXPR",
+                            "text": "structure_item",
+                            "span": {
+                              "start": 1966,
+                              "end": 1980
+                            }
+                          },
+                          "value": {
+                            "tag": "path",
+                            "syntax_node": {
+                              "kind": "RECORD_FIELD",
+                              "span": {
+                                "start": 1966,
+                                "end": 1980
+                              }
+                            },
+                            "path": {
+                              "tag": "ident",
+                              "syntax_node": {
+                                "kind": "RECORD_FIELD",
+                                "span": {
+                                  "start": 1966,
+                                  "end": 1980
+                                }
+                              },
+                              "name_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": "structure_item",
+                                "span": {
+                                  "start": 1966,
+                                  "end": 1980
+                                }
+                              }
+                            }
+                          },
+                          "source": "punned"
                         },
                         {
                           "syntax_node": {
@@ -7283,7 +7391,43 @@
                               }
                             }
                           },
-                          "value": null
+                          "field_name": {
+                            "kind": "IDENT_EXPR",
+                            "text": "signature_item",
+                            "span": {
+                              "start": 1982,
+                              "end": 1996
+                            }
+                          },
+                          "value": {
+                            "tag": "path",
+                            "syntax_node": {
+                              "kind": "RECORD_FIELD",
+                              "span": {
+                                "start": 1982,
+                                "end": 1996
+                              }
+                            },
+                            "path": {
+                              "tag": "ident",
+                              "syntax_node": {
+                                "kind": "RECORD_FIELD",
+                                "span": {
+                                  "start": 1982,
+                                  "end": 1996
+                                }
+                              },
+                              "name_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": "signature_item",
+                                "span": {
+                                  "start": 1982,
+                                  "end": 1996
+                                }
+                              }
+                            }
+                          },
+                          "source": "punned"
                         },
                         {
                           "syntax_node": {
@@ -7311,7 +7455,43 @@
                               }
                             }
                           },
-                          "value": null
+                          "field_name": {
+                            "kind": "IDENT_EXPR",
+                            "text": "typ",
+                            "span": {
+                              "start": 1998,
+                              "end": 2001
+                            }
+                          },
+                          "value": {
+                            "tag": "path",
+                            "syntax_node": {
+                              "kind": "RECORD_FIELD",
+                              "span": {
+                                "start": 1998,
+                                "end": 2002
+                              }
+                            },
+                            "path": {
+                              "tag": "ident",
+                              "syntax_node": {
+                                "kind": "RECORD_FIELD",
+                                "span": {
+                                  "start": 1998,
+                                  "end": 2002
+                                }
+                              },
+                              "name_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": "typ",
+                                "span": {
+                                  "start": 1998,
+                                  "end": 2001
+                                }
+                              }
+                            }
+                          },
+                          "source": "punned"
                         }
                       ]
                     }

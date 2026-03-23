@@ -85,6 +85,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "pos",
+                  "span": {
+                    "start": 10,
+                    "end": 13
+                  }
+                },
                 "value": {
                   "tag": "record",
                   "syntax_node": {
@@ -122,6 +130,14 @@
                           }
                         }
                       },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "x",
+                        "span": {
+                          "start": 18,
+                          "end": 19
+                        }
+                      },
                       "value": {
                         "tag": "literal",
                         "literal": {
@@ -146,7 +162,8 @@
                           "digits": "1",
                           "suffix": null
                         }
-                      }
+                      },
+                      "source": "explicit"
                     },
                     {
                       "syntax_node": {
@@ -174,6 +191,14 @@
                           }
                         }
                       },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "y",
+                        "span": {
+                          "start": 25,
+                          "end": 26
+                        }
+                      },
                       "value": {
                         "tag": "literal",
                         "literal": {
@@ -198,10 +223,12 @@
                           "digits": "2",
                           "suffix": null
                         }
-                      }
+                      },
+                      "source": "explicit"
                     }
                   ]
-                }
+                },
+                "source": "explicit"
               },
               {
                 "syntax_node": {
@@ -229,6 +256,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "name",
+                  "span": {
+                    "start": 34,
+                    "end": 38
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -254,7 +289,8 @@
                     "contents": "point",
                     "terminated": true
                   }
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

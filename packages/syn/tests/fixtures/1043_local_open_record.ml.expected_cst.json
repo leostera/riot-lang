@@ -112,6 +112,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "field",
+                    "span": {
+                      "start": 12,
+                      "end": 17
+                    }
+                  },
                   "value": {
                     "tag": "literal",
                     "literal": {
@@ -136,7 +144,8 @@
                       "digits": "42",
                       "suffix": null
                     }
-                  }
+                  },
+                  "source": "explicit"
                 }
               ]
             },

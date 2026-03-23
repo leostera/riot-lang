@@ -85,6 +85,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "contents",
+                  "span": {
+                    "start": 10,
+                    "end": 18
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -109,7 +117,8 @@
                     "digits": "5",
                     "suffix": null
                   }
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

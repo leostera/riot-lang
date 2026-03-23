@@ -113,6 +113,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 18,
+                    "end": 19
+                  }
+                },
                 "value": {
                   "tag": "infix",
                   "syntax_node": {
@@ -201,7 +209,8 @@
                       "suffix": null
                     }
                   }
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

@@ -85,6 +85,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "items",
+                  "span": {
+                    "start": 10,
+                    "end": 15
+                  }
+                },
                 "value": {
                   "tag": "list",
                   "syntax_node": {
@@ -171,7 +179,8 @@
                       }
                     }
                   ]
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

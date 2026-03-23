@@ -169,6 +169,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 32,
+                    "end": 33
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -193,7 +201,8 @@
                     "digits": "1",
                     "suffix": null
                   }
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

@@ -3330,14 +3330,23 @@ and record_field_value_from_node node =
 
 and record_expression_field_from_node node =
   let lifted_field_path = record_field_path_from_node node in
-  match Cst.Ident.segments lifted_field_path with
-  | [] -> None
-  | _ ->
+  match Cst.Ident.last_segment lifted_field_path with
+  | None -> None
+  | Some field_name ->
+      let value, source =
+        match record_field_value_from_node node with
+        | Some value -> (value, Cst.Explicit)
+        | None ->
+            ( Cst.Expression.Path { syntax_node = node; path = lifted_field_path },
+              Cst.Punned )
+      in
       Some
         (({
             Cst.syntax_node = node;
             field_path = lifted_field_path;
-            value = record_field_value_from_node node;
+            field_name;
+            value;
+            source;
           }
           : Cst.record_expression_field))
 
@@ -3357,7 +3366,7 @@ and record_update_expression_from_node node =
         match Ceibo.Red.SyntaxNode.kind base_node with
         | Syntax_kind.RECORD_FIELD -> (
             match record_expression_field_from_node base_node with
-            | Some { field_path; value = None; _ } ->
+            | Some { field_path; source = Cst.Punned; _ } ->
                 Some
                   (Cst.Expression.Path
                      { syntax_node = base_node; path = field_path })
@@ -6086,22 +6095,20 @@ and validate_expression ~context = function
   | Cst.Expression.Record (Cst.RecordExpression.Literal { fields; _ }) ->
       List.iteri
         (fun index (field : Cst.record_expression_field) ->
-          Option.iter
-            (validate_expression
-               ~context:
-                 (("expression.record.field[" ^ Int.to_string index ^ "].value")
-                 :: context))
+          validate_expression
+            ~context:
+              (("expression.record.field[" ^ Int.to_string index ^ "].value")
+              :: context)
             field.value)
         fields
   | Cst.Expression.Record (Cst.RecordExpression.Update { base; fields; _ }) ->
       validate_expression ~context:("expression.record.base" :: context) base;
       List.iteri
         (fun index (field : Cst.record_expression_field) ->
-          Option.iter
-            (validate_expression
-               ~context:
-                 (("expression.record.field[" ^ Int.to_string index ^ "].value")
-                 :: context))
+          validate_expression
+            ~context:
+              (("expression.record.field[" ^ Int.to_string index ^ "].value")
+              :: context)
             field.value)
         fields
   | Cst.Expression.LocalOpen { body; _ } ->

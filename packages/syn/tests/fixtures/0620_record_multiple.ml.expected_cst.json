@@ -85,6 +85,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "name",
+                  "span": {
+                    "start": 10,
+                    "end": 14
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -110,7 +118,8 @@
                     "contents": "Bob",
                     "terminated": true
                   }
-                }
+                },
+                "source": "explicit"
               },
               {
                 "syntax_node": {
@@ -138,6 +147,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "age",
+                  "span": {
+                    "start": 24,
+                    "end": 27
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -162,7 +179,8 @@
                     "digits": "30",
                     "suffix": null
                   }
-                }
+                },
+                "source": "explicit"
               },
               {
                 "syntax_node": {
@@ -190,6 +208,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "active",
+                  "span": {
+                    "start": 34,
+                    "end": 40
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -211,7 +237,8 @@
                     },
                     "value": true
                   }
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

@@ -85,6 +85,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 10,
+                    "end": 11
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -109,7 +117,8 @@
                     "digits": "1",
                     "suffix": null
                   }
-                }
+                },
+                "source": "explicit"
               },
               {
                 "syntax_node": {
@@ -137,6 +146,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "b",
+                  "span": {
+                    "start": 17,
+                    "end": 18
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -162,7 +179,8 @@
                     "contents": "test",
                     "terminated": true
                   }
-                }
+                },
+                "source": "explicit"
               },
               {
                 "syntax_node": {
@@ -190,6 +208,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "c",
+                  "span": {
+                    "start": 29,
+                    "end": 30
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -211,7 +237,8 @@
                     },
                     "value": true
                   }
-                }
+                },
+                "source": "explicit"
               },
               {
                 "syntax_node": {
@@ -237,6 +264,14 @@
                       "start": 39,
                       "end": 40
                     }
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "d",
+                  "span": {
+                    "start": 39,
+                    "end": 40
                   }
                 },
                 "value": {
@@ -325,7 +360,8 @@
                       }
                     }
                   ]
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

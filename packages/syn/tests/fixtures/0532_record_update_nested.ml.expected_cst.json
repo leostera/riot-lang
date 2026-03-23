@@ -113,6 +113,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 17,
+                    "end": 18
+                  }
+                },
                 "value": {
                   "tag": "record",
                   "syntax_node": {
@@ -204,6 +212,14 @@
                           }
                         }
                       },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "b",
+                        "span": {
+                          "start": 32,
+                          "end": 33
+                        }
+                      },
                       "value": {
                         "tag": "literal",
                         "literal": {
@@ -228,10 +244,12 @@
                           "digits": "1",
                           "suffix": null
                         }
-                      }
+                      },
+                      "source": "explicit"
                     }
                   ]
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

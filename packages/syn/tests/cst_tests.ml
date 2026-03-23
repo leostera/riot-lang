@@ -4737,8 +4737,20 @@ let tests =
                     {
                       fields =
                         [
-                          { field_path = first; value = Some (Syn.Cst.Expression.Literal _); _ };
-                          { field_path = second; value = Some (Syn.Cst.Expression.Literal _); _ };
+                          {
+                            field_path = first;
+                            field_name = first_name;
+                            value = Syn.Cst.Expression.Literal _;
+                            source = Syn.Cst.Explicit;
+                            _;
+                          };
+                          {
+                            field_path = second;
+                            field_name = second_name;
+                            value = Syn.Cst.Expression.Literal _;
+                            source = Syn.Cst.Explicit;
+                            _;
+                          };
                         ];
                       _;
                     });
@@ -4749,8 +4761,64 @@ let tests =
               ~actual:(Syn.Cst.ModulePath.name first);
             Test.assert_equal ~expected:(Some "y")
               ~actual:(Syn.Cst.ModulePath.name second);
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text first_name);
+            Test.assert_equal ~expected:"y"
+              ~actual:(Syn.Cst.Token.text second_name);
             Ok ()
         | _ -> Error "expected literal record expression");
+    Test.case "cst record expressions preserve punning as explicit path values"
+      (fun () ->
+        let source = "let make ~x ~y = { x; y }\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Record
+                  (Syn.Cst.RecordExpression.Literal
+                    {
+                      fields =
+                        [
+                          {
+                            field_path = first;
+                            field_name = first_name;
+                            value = Syn.Cst.Expression.Path { path = first_value; _ };
+                            source = Syn.Cst.Punned;
+                            _;
+                          };
+                          {
+                            field_path = second;
+                            field_name = second_name;
+                            value = Syn.Cst.Expression.Path { path = second_value; _ };
+                            source = Syn.Cst.Punned;
+                            _;
+                          };
+                        ];
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "x")
+              ~actual:(Syn.Cst.ModulePath.name first);
+            Test.assert_equal ~expected:(Some "y")
+              ~actual:(Syn.Cst.ModulePath.name second);
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text first_name);
+            Test.assert_equal ~expected:"y"
+              ~actual:(Syn.Cst.Token.text second_name);
+            Test.assert_equal ~expected:(Some "x")
+              ~actual:(Syn.Cst.ModulePath.name first_value);
+            Test.assert_equal ~expected:(Some "y")
+              ~actual:(Syn.Cst.ModulePath.name second_value);
+            Ok ()
+        | _ -> Error "expected punned record expression");
     Test.case "cst record update expressions preserve base and updated fields"
       (fun () ->
         let source = "let point = { point with x = 3 }\n" in
@@ -4768,7 +4836,16 @@ let tests =
                   (Syn.Cst.RecordExpression.Update
                     {
                       base = Syn.Cst.Expression.Path { path = base_path; _ };
-                      fields = [ { field_path; value = Some (Syn.Cst.Expression.Literal _); _ } ];
+                      fields =
+                        [
+                          {
+                            field_path;
+                            field_name;
+                            value = Syn.Cst.Expression.Literal _;
+                            source = Syn.Cst.Explicit;
+                            _;
+                          };
+                        ];
                       _;
                     });
               _;
@@ -4778,6 +4855,8 @@ let tests =
               ~actual:(Syn.Cst.ModulePath.name base_path);
             Test.assert_equal ~expected:(Some "x")
               ~actual:(Syn.Cst.ModulePath.name field_path);
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text field_name);
             Ok ()
         | _ -> Error "expected update record expression");
     Test.case "cst object override expressions preserve instance variables"

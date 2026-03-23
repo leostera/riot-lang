@@ -1301,10 +1301,16 @@ and record_update_expression = {
   fields : record_expression_field list;
 }
 
+and record_expression_field_source =
+  | Explicit
+  | Punned
+
 and record_expression_field = {
   syntax_node : syntax_node;
   field_path : Ident.t;
-  value : expression option;
+  field_name : Token.t;
+  value : expression;
+  source : record_expression_field_source;
 }
 
 and object_override_field = {

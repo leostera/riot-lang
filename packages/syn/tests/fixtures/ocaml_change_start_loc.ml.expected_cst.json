@@ -112,6 +112,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "pos_fname",
+                    "span": {
+                      "start": 206,
+                      "end": 215
+                    }
+                  },
                   "value": {
                     "tag": "literal",
                     "literal": {
@@ -137,7 +145,8 @@
                       "contents": "------should not appear------",
                       "terminated": true
                     }
-                  }
+                  },
+                  "source": "explicit"
                 },
                 {
                   "syntax_node": {
@@ -165,6 +174,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "pos_lnum",
+                    "span": {
+                      "start": 257,
+                      "end": 265
+                    }
+                  },
                   "value": {
                     "tag": "literal",
                     "literal": {
@@ -189,7 +206,8 @@
                       "digits": "100",
                       "suffix": null
                     }
-                  }
+                  },
+                  "source": "explicit"
                 },
                 {
                   "syntax_node": {
@@ -217,6 +235,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "pos_bol",
+                    "span": {
+                      "start": 279,
+                      "end": 286
+                    }
+                  },
                   "value": {
                     "tag": "literal",
                     "literal": {
@@ -241,7 +267,8 @@
                       "digits": "1000",
                       "suffix": null
                     }
-                  }
+                  },
+                  "source": "explicit"
                 },
                 {
                   "syntax_node": {
@@ -269,6 +296,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "pos_cnum",
+                    "span": {
+                      "start": 301,
+                      "end": 309
+                    }
+                  },
                   "value": {
                     "tag": "literal",
                     "literal": {
@@ -293,7 +328,8 @@
                       "digits": "1010",
                       "suffix": null
                     }
-                  }
+                  },
+                  "source": "explicit"
                 }
               ]
             },
@@ -532,6 +568,14 @@
                         }
                       }
                     },
+                    "field_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "pos_fname",
+                      "span": {
+                        "start": 556,
+                        "end": 565
+                      }
+                    },
                     "value": {
                       "tag": "field_access",
                       "syntax_node": {
@@ -595,7 +639,8 @@
                           "end": 595
                         }
                       }
-                    }
+                    },
+                    "source": "explicit"
                   }
                 ]
               }

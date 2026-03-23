@@ -85,6 +85,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "name",
+                  "span": {
+                    "start": 10,
+                    "end": 14
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -110,7 +118,8 @@
                     "contents": "Alice",
                     "terminated": true
                   }
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

@@ -123,6 +123,14 @@
                       }
                     }
                   },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 23,
+                      "end": 24
+                    }
+                  },
                   "value": {
                     "tag": "literal",
                     "literal": {
@@ -147,7 +155,8 @@
                       "digits": "1",
                       "suffix": null
                     }
-                  }
+                  },
+                  "source": "explicit"
                 }
               ]
             },
@@ -178,6 +187,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "b",
+                  "span": {
+                    "start": 36,
+                    "end": 37
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -202,7 +219,8 @@
                     "digits": "2",
                     "suffix": null
                   }
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

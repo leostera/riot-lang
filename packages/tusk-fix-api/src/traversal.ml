@@ -203,13 +203,13 @@ and let_bindings_of_expression expr =
   | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) ->
       fields
       |> List.concat_map (fun (field : Syn.Cst.record_expression_field) ->
-             Option.to_list field.value |> List.concat_map let_bindings_of_expression)
+             let_bindings_of_expression field.value)
   | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) ->
       let_bindings_of_expression base
       @
       (fields
       |> List.concat_map (fun (field : Syn.Cst.record_expression_field) ->
-             Option.to_list field.value |> List.concat_map let_bindings_of_expression))
+             let_bindings_of_expression field.value))
   | Syn.Cst.Expression.LocalOpen { body; _ } ->
       let_bindings_of_expression body
   | Syn.Cst.Expression.Fun { body; _ } ->
@@ -415,13 +415,13 @@ let rec expressions_of_expression expr =
     | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) ->
         fields
         |> List.concat_map (fun (field : Syn.Cst.record_expression_field) ->
-               Option.to_list field.value |> List.concat_map expressions_of_expression)
+               expressions_of_expression field.value)
     | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) ->
         expressions_of_expression base
         @
         (fields
         |> List.concat_map (fun (field : Syn.Cst.record_expression_field) ->
-               Option.to_list field.value |> List.concat_map expressions_of_expression))
+               expressions_of_expression field.value))
     | Syn.Cst.Expression.LocalOpen { body; _ } ->
         expressions_of_expression body
     | Syn.Cst.Expression.Fun { body; _ } ->

@@ -134,6 +134,14 @@
                         }
                       }
                     },
+                    "field_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 21,
+                        "end": 22
+                      }
+                    },
                     "value": {
                       "tag": "path",
                       "syntax_node": {
@@ -161,7 +169,8 @@
                           }
                         }
                       }
-                    }
+                    },
+                    "source": "explicit"
                   },
                   {
                     "syntax_node": {
@@ -187,6 +196,14 @@
                           "start": 28,
                           "end": 29
                         }
+                      }
+                    },
+                    "field_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "y",
+                      "span": {
+                        "start": 28,
+                        "end": 29
                       }
                     },
                     "value": {
@@ -216,7 +233,8 @@
                           }
                         }
                       }
-                    }
+                    },
+                    "source": "explicit"
                   }
                 ]
               }

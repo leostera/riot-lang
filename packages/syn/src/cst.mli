@@ -2485,14 +2485,28 @@ and record_update_expression = {
   fields : record_expression_field list;
 }
 
+(** Whether a record field used `=` or shorthand punning syntax. *)
+and record_expression_field_source =
+  | Explicit
+      (** A field written with `=` such as `{ x = 1 }`. *)
+  | Punned
+      (** A field written in shorthand form such as `{ x }`. *)
+
 (** A single field inside a record literal or record update.
 
-    When `value` is `None`, the source used punning syntax such as `{ field }`.
+    `field_path` mirrors the label stored by the stock parsetree's
+    `Pexp_record` branch, while `field_name` exposes the last path segment
+    directly for consumers that only care about the field itself.
+
+    `value` is always present. Shorthand source such as `{ field }` is lifted to
+    an explicit `Expression.Path` and marked with `source = Punned`.
 *)
 and record_expression_field = {
   syntax_node : syntax_node;
   field_path : Ident.t;
-  value : expression option;
+  field_name : Token.t;
+  value : expression;
+  source : record_expression_field_source;
 }
 
 (** A single field inside an object override expression.

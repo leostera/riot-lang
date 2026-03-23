@@ -113,6 +113,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -137,7 +145,8 @@
                     "digits": "3",
                     "suffix": null
                   }
-                }
+                },
+                "source": "explicit"
               },
               {
                 "syntax_node": {
@@ -165,6 +174,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 28,
+                    "end": 29
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -189,7 +206,8 @@
                     "digits": "4",
                     "suffix": null
                   }
-                }
+                },
+                "source": "explicit"
               }
             ]
           },

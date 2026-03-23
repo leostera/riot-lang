@@ -113,6 +113,14 @@
                     }
                   }
                 },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "age",
+                  "span": {
+                    "start": 22,
+                    "end": 25
+                  }
+                },
                 "value": {
                   "tag": "literal",
                   "literal": {
@@ -137,7 +145,8 @@
                     "digits": "31",
                     "suffix": null
                   }
-                }
+                },
+                "source": "explicit"
               }
             ]
           },
