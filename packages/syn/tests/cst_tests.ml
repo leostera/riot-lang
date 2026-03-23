@@ -3884,6 +3884,56 @@ let tests =
               ~actual:(Syn.Cst.Token.text binding_name);
             Ok ()
         | _ -> Error "expected local open pattern");
+    Test.case "cst first-class module patterns preserve anonymous unpack binders"
+      (fun () ->
+        let source =
+          "let ignore_typed packed = let (module _ : S) = packed in ()\n\
+           let ignore_plain packed = let (module _) = packed in ()\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match top_level_let_bindings cst with
+        | { value =
+              Syn.Cst.Expression.Let
+                {
+                  binding_pattern =
+                    Syn.Cst.Pattern.FirstClassModule
+                      {
+                        binding = Syn.Cst.Anonymous { wildcard_token = typed_wildcard };
+                        module_type = Some (Syn.Cst.ModuleType.Path typed_module_type);
+                        _;
+                      };
+                  _;
+                };
+            _;
+          }
+          :: { value =
+                 Syn.Cst.Expression.Let
+                   {
+                     binding_pattern =
+                       Syn.Cst.Pattern.FirstClassModule
+                         {
+                           binding = Syn.Cst.Anonymous { wildcard_token = plain_wildcard };
+                           module_type = None;
+                           _;
+                         };
+                     _;
+                   };
+               _;
+             }
+          :: _ ->
+            Test.assert_equal ~expected:"_"
+              ~actual:(Syn.Cst.Token.text typed_wildcard);
+            Test.assert_equal ~expected:"_"
+              ~actual:(Syn.Cst.Token.text plain_wildcard);
+            Test.assert_equal ~expected:(Some "S")
+              ~actual:(Syn.Cst.ModulePath.name typed_module_type);
+            Ok ()
+        | _ -> Error "expected anonymous first-class module patterns");
     Test.case "cst first-class module expressions preserve module and type nodes"
       (fun () ->
         let source = "let x = (module M : S)\n" in

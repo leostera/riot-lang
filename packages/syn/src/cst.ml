@@ -770,9 +770,17 @@ and operator_pattern = {
   operator_tokens : Token.t list;
 }
 
+and first_class_module_pattern_binding =
+  | Named of {
+      name_token : Token.t;
+    }
+  | Anonymous of {
+      wildcard_token : Token.t;
+    }
+
 and first_class_module_pattern = {
   syntax_node : syntax_node;
-  name_token : Token.t;
+  binding : first_class_module_pattern_binding;
   module_type : module_type option;
 }
 

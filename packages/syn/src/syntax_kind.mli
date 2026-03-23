@@ -128,7 +128,7 @@ type t =
   | EFFECT_PATTERN  (** Effect handler pattern: `effect p, k` *)
   | LOCAL_OPEN_PATTERN  (** Local module open pattern: `Module.(pattern)` *)
   | OPERATOR_PATTERN  (** Operator pattern: `( + )`, `( let* )`, `( mod )` *)
-  | FIRST_CLASS_MODULE_PATTERN  (** First-class module pattern: `(module M)` or `(module M : S)` *)
+  | FIRST_CLASS_MODULE_PATTERN  (** First-class module pattern: `(module M)`, `(module _)`, `(module M : S)`, or `(module _ : S)` *)
   (* ===================================================================== *)
   (* TYPE EXPRESSIONS *)
   (* ===================================================================== *)

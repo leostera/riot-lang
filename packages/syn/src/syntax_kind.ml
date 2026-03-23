@@ -96,7 +96,7 @@ type t =
   | EFFECT_PATTERN (* effect p, k *)
   | LOCAL_OPEN_PATTERN (* Module.(pattern) *)
   | OPERATOR_PATTERN (* ( + ), ( let* ), ( mod ) *)
-  | FIRST_CLASS_MODULE_PATTERN (* (module M) or (module M : S) *)
+  | FIRST_CLASS_MODULE_PATTERN (* (module M), (module _), (module M : S), or (module _ : S) *)
   (* ========================================================================= *)
   (* TYPE EXPRESSIONS *)
   (* ========================================================================= *)

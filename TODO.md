@@ -188,7 +188,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] polyvariant patterns are simplified to tag + optional payload
   - [x] literal patterns lose delimiter/suffix detail and exact constant structure
   - [x] interval patterns store two tokens instead of parsed constants
-  - [ ] first-class-module patterns are still thinner than the stock unpack form
+  - [x] first-class-module patterns are still thinner than the stock unpack form
   - [ ] Pattern attributes are represented as wrapper nodes instead of orthogonal metadata
 - [ ] Expressions:
   - [ ] constructor expressions are likely flattened into `Path` or `Apply`

@@ -1,0 +1,299 @@
+{
+  "status": "ok",
+  "cst": {
+    "kind": "implementation",
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 143
+      }
+    },
+    "items": [
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 18,
+              "end": 81
+            }
+          },
+          "attributes": [],
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 22,
+                "end": 34
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "ignore_typed",
+              "span": {
+                "start": 22,
+                "end": 34
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "ignore_typed",
+            "span": {
+              "start": 22,
+              "end": 34
+            }
+          },
+          "parameters": [
+            {
+              "tag": "positional",
+              "syntax_node": {
+                "kind": "IDENT_PATTERN",
+                "span": {
+                  "start": 36,
+                  "end": 42
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "packed",
+                "span": {
+                  "start": 36,
+                  "end": 42
+                }
+              }
+            }
+          ],
+          "value": {
+            "tag": "let",
+            "syntax_node": {
+              "kind": "LET_EXPR",
+              "span": {
+                "start": 46,
+                "end": 81
+              }
+            },
+            "binding_pattern": {
+              "tag": "first_class_module",
+              "syntax_node": {
+                "kind": "FIRST_CLASS_MODULE_PATTERN",
+                "span": {
+                  "start": 50,
+                  "end": 64
+                }
+              },
+              "module_type": {
+                "tag": "path",
+                "path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 62,
+                      "end": 63
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "S",
+                    "span": {
+                      "start": 62,
+                      "end": 63
+                    }
+                  }
+                }
+              },
+              "wildcard_token": {
+                "kind": "WILDCARD_PATTERN",
+                "text": "_",
+                "span": {
+                  "start": 58,
+                  "end": 59
+                }
+              }
+            },
+            "bound_value": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 67,
+                  "end": 73
+                }
+              },
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 67,
+                    "end": 73
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "packed",
+                  "span": {
+                    "start": 67,
+                    "end": 73
+                  }
+                }
+              }
+            },
+            "and_bindings": [],
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "unit",
+                "syntax_node": {
+                  "kind": "UNIT_LITERAL",
+                  "span": {
+                    "start": 79,
+                    "end": 81
+                  }
+                }
+              }
+            },
+            "is_recursive": false
+          },
+          "is_recursive": false
+        }
+      },
+      {
+        "tag": "let_binding",
+        "item": {
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 83,
+              "end": 142
+            }
+          },
+          "attributes": [],
+          "binding_pattern": {
+            "tag": "identifier",
+            "syntax_node": {
+              "kind": "IDENT_PATTERN",
+              "span": {
+                "start": 87,
+                "end": 99
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "ignore_plain",
+              "span": {
+                "start": 87,
+                "end": 99
+              }
+            }
+          },
+          "binding_name": {
+            "kind": "IDENT_EXPR",
+            "text": "ignore_plain",
+            "span": {
+              "start": 87,
+              "end": 99
+            }
+          },
+          "parameters": [
+            {
+              "tag": "positional",
+              "syntax_node": {
+                "kind": "IDENT_PATTERN",
+                "span": {
+                  "start": 101,
+                  "end": 107
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "packed",
+                "span": {
+                  "start": 101,
+                  "end": 107
+                }
+              }
+            }
+          ],
+          "value": {
+            "tag": "let",
+            "syntax_node": {
+              "kind": "LET_EXPR",
+              "span": {
+                "start": 111,
+                "end": 142
+              }
+            },
+            "binding_pattern": {
+              "tag": "first_class_module",
+              "syntax_node": {
+                "kind": "FIRST_CLASS_MODULE_PATTERN",
+                "span": {
+                  "start": 115,
+                  "end": 125
+                }
+              },
+              "module_type": null,
+              "wildcard_token": {
+                "kind": "WILDCARD_PATTERN",
+                "text": "_",
+                "span": {
+                  "start": 123,
+                  "end": 124
+                }
+              }
+            },
+            "bound_value": {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 128,
+                  "end": 134
+                }
+              },
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 128,
+                    "end": 134
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "packed",
+                  "span": {
+                    "start": 128,
+                    "end": 134
+                  }
+                }
+              }
+            },
+            "and_bindings": [],
+            "body": {
+              "tag": "literal",
+              "literal": {
+                "tag": "unit",
+                "syntax_node": {
+                  "kind": "UNIT_LITERAL",
+                  "span": {
+                    "start": 140,
+                    "end": 142
+                  }
+                }
+              }
+            },
+            "is_recursive": false
+          },
+          "is_recursive": false
+        }
+      }
+    ]
+  }
+}

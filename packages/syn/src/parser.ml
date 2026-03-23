@@ -2816,15 +2816,16 @@ and parse_paren_pattern parser =
   (* Check for operator pattern: ( + ), ( let* ), etc. *)
   else if is_operator_token (peek_kind parser) then
     parse_operator_pattern parser open_paren trivia_after_open
-  (* Check for first-class module pattern: (module M) or (module M : S) *)
+  (* Check for first-class module pattern:
+     (module M), (module _), (module M : S), or (module _ : S) *)
   else if peek_kind parser = Token.Keyword Keyword.Module then
     let module_kw = consume parser in
     let trivia_after_module = consume_trivia parser in
     
-    (* Expect module identifier (uppercase) *)
+    (* Expect module identifier (uppercase) or wildcard binder *)
     let module_ident = 
       match peek_kind parser with
-      | Token.Ident _ -> 
+      | Token.Ident _ | Token.Underscore ->
           let ident = consume parser in
           make_token parser ident
       | _ ->

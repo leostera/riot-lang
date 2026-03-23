@@ -583,14 +583,21 @@ and pattern_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("operator_tokens", Json.Array (List.map token_to_json operator_tokens));
         ]
-  | Cst.Pattern.FirstClassModule { syntax_node; name_token; module_type } ->
+  | Cst.Pattern.FirstClassModule { syntax_node; binding; module_type } ->
+      let binding_fields =
+        match binding with
+        | Cst.Named { name_token } ->
+            [ ("name_token", token_to_json name_token) ]
+        | Cst.Anonymous { wildcard_token } ->
+            [ ("wildcard_token", token_to_json wildcard_token) ]
+      in
       Json.Object
-        [
-          ("tag", Json.String "first_class_module");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("name_token", token_to_json name_token);
-          ("module_type", option_to_json module_type_to_json module_type);
-        ]
+        ([
+           ("tag", Json.String "first_class_module");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("module_type", option_to_json module_type_to_json module_type);
+         ]
+        @ binding_fields)
   | Cst.Pattern.Literal literal ->
       Json.Object
         [

@@ -2165,11 +2165,15 @@ let rec pattern_from_node node =
         { syntax_node = node; operator_tokens = operator_tokens_from_node node }
   | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> (
       match direct_non_trivia_tokens node with
-      | _lparen :: _module_kw :: name_syntax_token :: _ ->
+      | _lparen :: _module_kw :: binding_syntax_token :: _ ->
           Cst.Pattern.FirstClassModule
             {
               syntax_node = node;
-              name_token = token name_syntax_token;
+              binding =
+                if String.equal (Ceibo.Red.SyntaxToken.text binding_syntax_token) "_" then
+                  Cst.Anonymous { wildcard_token = token binding_syntax_token }
+                else
+                  Cst.Named { name_token = token binding_syntax_token };
               module_type =
                 (direct_non_trivia_nodes node
                  |> List.find_opt (fun child ->

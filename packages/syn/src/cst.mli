@@ -1491,11 +1491,27 @@ and operator_pattern = {
 
 (** Payload for `Pattern.FirstClassModule`.
 
-    This covers patterns of the form `(module Name)` and `(module Name : S)`.
+    This preserves whether the unpack binds a named module or uses `_` to
+    discard it.
+*)
+and first_class_module_pattern_binding =
+  | Named of {
+      name_token : Token.t;
+    }
+      (** A named unpack binding such as `M` in `(module M : S)`. *)
+  | Anonymous of {
+      wildcard_token : Token.t;
+    }
+      (** An anonymous unpack binding such as `_` in `(module _ : S)`. *)
+
+(** Payload for `Pattern.FirstClassModule`.
+
+    This covers patterns of the form `(module M)`, `(module _)`,
+    `(module M : S)`, and `(module _ : S)`.
 *)
 and first_class_module_pattern = {
   syntax_node : syntax_node;
-  name_token : Token.t;
+  binding : first_class_module_pattern_binding;
   module_type : module_type option;
 }
 
