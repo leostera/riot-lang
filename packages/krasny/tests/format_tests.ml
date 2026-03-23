@@ -83,6 +83,18 @@ let tests =
             "let arithmetic = 1 + (2 * 3)\n\nlet comparisons = 1 < 2 && 2 < 3\n\nlet logic = (true && false) || true\n"
           ~actual;
         Ok ());
+    Test.case "format keeps if expressions stable" (fun () ->
+        let source =
+          "let choose = if a && b then 1 else 0\nlet guard = if true then ()\n"
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"if expressions should format"
+        in
+        Test.assert_equal
+          ~expected:"let choose = if a && b then 1 else 0\n\nlet guard = if true then ()\n"
+          ~actual;
+        Ok ());
     Test.case "format expands nested let-in bindings across lines" (fun () ->
         let source = "let x =\n  let y = 1 in let z = 2 in y + z\n" in
         let actual =

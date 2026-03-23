@@ -39,6 +39,16 @@
 0053_and_chain.ml
 0054_or_chain.ml
 0055_mixed_logic.ml
+0071_if_then_else_simple.ml
+0072_if_condition_expr.ml
+0073_if_nested.ml
+0074_if_complex_branches.ml
+0075_if_paren_condition.ml
+0076_if_multiline.ml
+0077_if_no_else.ml
+0078_if_function_call.ml
+0079_if_string_result.ml
+0080_if_bool_result.ml
 0089_let_in_multiline.ml
 0106_fun_nested.ml
 0108_fun_body_match.ml

@@ -181,6 +181,8 @@ let rec render_expression ~indent = function
       render_function_expression ~indent function_
   | Syn.Cst.Expression.Match match_ ->
       render_match_expression ~indent ~keyword_trailing_space:true match_
+  | Syn.Cst.Expression.If if_ ->
+      render_if_expression ~indent if_
   | Syn.Cst.Expression.Apply apply ->
       render_apply_expression ~indent apply
   | expression ->
@@ -322,6 +324,16 @@ and render_match_expression ~indent ~keyword_trailing_space
   indent_string indent ^ "match " ^ render_expression ~indent:0 scrutinee
   ^ (if keyword_trailing_space then " with \n" else " with\n")
   ^ (multiline_cases ~case_indent:indent ~or_indent:indent cases |> String.concat "\n")
+
+and render_if_expression ~indent:_ ({ condition; then_branch; else_branch; _ } : Syn.Cst.if_expression) =
+  let rendered_condition = render_expression ~indent:0 condition in
+  let rendered_then = render_expression ~indent:0 then_branch in
+  match else_branch with
+  | None ->
+      "if " ^ rendered_condition ^ " then " ^ rendered_then
+  | Some else_branch ->
+      let rendered_else = render_expression ~indent:0 else_branch in
+      "if " ^ rendered_condition ^ " then " ^ rendered_then ^ " else " ^ rendered_else
 
 and render_apply_expression ~indent
     ({ syntax_node; callee; argument; _ } : Syn.Cst.apply_expression) =
