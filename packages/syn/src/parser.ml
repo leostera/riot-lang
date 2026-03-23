@@ -4253,6 +4253,20 @@ and parse_object_expr parser =
           (acc
           @ [ Ceibo.Green.Node member ]
           @ tokens_to_green parser trivia)
+    | Token.OpenDelim Token.Bracket when is_extension_start parser ->
+        let member = parse_extension parser in
+        let trivia = consume_trivia parser in
+        parse_members
+          (acc
+          @ [ Ceibo.Green.Node member ]
+          @ tokens_to_green parser trivia)
+    | Token.OpenDelim Token.Brace when is_brace_extension_start parser ->
+        let member = parse_extension parser in
+        let trivia = consume_trivia parser in
+        parse_members
+          (acc
+          @ [ Ceibo.Green.Node member ]
+          @ tokens_to_green parser trivia)
     | Token.Keyword Keyword.Initializer ->
         let member = parse_object_initializer parser in
         let trivia = consume_trivia parser in

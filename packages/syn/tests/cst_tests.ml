@@ -1093,6 +1093,51 @@ let tests =
               ~actual:(Syn.Cst.Token.text constraint_attribute.sigil_token);
             Ok ()
         | _ -> Error "expected structured class type signature");
+    Test.case "cst class type signatures preserve extension fields" (fun () ->
+        let result =
+          parse_ml
+            "class type ct = object\n\
+             \  [%%foo]\n\
+             \  method run : int\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassTypeDeclaration
+            {
+              class_type_body =
+                Syn.Cst.ClassType.Signature
+                  {
+                    fields =
+                      [
+                        Syn.Cst.ClassTypeField.Extension extension;
+                        Syn.Cst.ClassTypeField.Method
+                          {
+                            name_token;
+                            type_ =
+                              Syn.Cst.CoreType.Constr { constructor_path; _ };
+                            _;
+                          };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"%"
+              ~actual:(Syn.Cst.Token.text extension.sigil_token);
+            Test.assert_equal ~expected:(Some "foo")
+              ~actual:(Syn.Cst.Ident.name extension.name);
+            Test.assert_equal ~expected:"run"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name constructor_path);
+            Ok ()
+        | _ -> Error "expected class type extension field");
     Test.case "cst value declarations preserve names and type nodes" (fun () ->
         let result = parse_mli "val create : name:string -> person\n" in
         let cst =
@@ -3100,6 +3145,50 @@ let tests =
               ~actual:(Syn.Cst.ModulePath.name value_path);
             Ok ()
         | _ -> Error "expected object method instance-variable assignment");
+    Test.case "cst object expressions preserve extension members" (fun () ->
+        let source =
+          "let value =\n  object\n    [%%foo]\n    method run = 1\n  end\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Object
+                  {
+                    members =
+                      [
+                        Syn.Cst.Extension extension;
+                        Syn.Cst.Method
+                          {
+                            name_token;
+                            body =
+                              Some
+                                (Syn.Cst.Expression.Literal
+                                  (Syn.Cst.Literal.Int { literal_token; _ }));
+                            _;
+                          };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"%"
+              ~actual:(Syn.Cst.Token.text extension.sigil_token);
+            Test.assert_equal ~expected:(Some "foo")
+              ~actual:(Syn.Cst.Ident.name extension.name);
+            Test.assert_equal ~expected:"run"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:"1"
+              ~actual:(Syn.Cst.Token.text literal_token);
+            Ok ()
+        | _ -> Error "expected object extension member");
     Test.case "cst record patterns preserve field punning and nested patterns"
       (fun () ->
         let source = "let x = match r with { user = { id }; name } -> id\n" in

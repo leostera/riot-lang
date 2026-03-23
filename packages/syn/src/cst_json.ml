@@ -791,6 +791,12 @@ and object_member_to_json = function
           ("attributes", Json.Array (List.map attribute_to_json attributes));
           ("expression", expression_to_json expression);
         ]
+  | Cst.Extension extension ->
+      Json.Object
+        [
+          ("tag", Json.String "extension");
+          ("extension", extension_to_json extension);
+        ]
   | Cst.Initializer { syntax_node; body } ->
       Json.Object
         [

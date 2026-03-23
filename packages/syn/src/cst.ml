@@ -873,6 +873,7 @@ and object_member =
   | Method of object_method
   | Value of object_value
   | Inherit of object_inherit
+  | Extension of extension
   | Initializer of object_initializer
 
 and object_method = {

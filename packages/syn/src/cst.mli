@@ -1645,6 +1645,11 @@ and object_member =
       (** A `val` declaration inside `object ... end`. *)
   | Inherit of object_inherit
       (** An `inherit expr` member. *)
+  | Extension of extension
+      (** A PPX extension member inside `object ... end`.
+
+          Example: `[%%foo]`.
+      *)
   | Initializer of object_initializer
       (** An `initializer expr` member. *)
 

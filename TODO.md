@@ -163,7 +163,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] method declarations in class types
   - [x] class type constraints
   - [x] class-type-field attributes
-  - [ ] class-type-field extensions
+  - [x] class-type-field extensions
 
 #### Present But Opaque
 

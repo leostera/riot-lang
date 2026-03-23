@@ -2404,6 +2404,8 @@ and object_expression_from_node node =
             match object_inherit_from_node child with
             | Some member -> lift_members (Cst.Inherit member :: acc) rest
             | None -> None)
+        | Syntax_kind.EXTENSION_EXPR ->
+            lift_members (Cst.Extension (extension_from_node child) :: acc) rest
         | Syntax_kind.IDENT_EXPR -> (
             match object_initializer_from_node child with
             | Some member -> lift_members (Cst.Initializer member :: acc) rest
@@ -3667,6 +3669,8 @@ let rec collect_expressions_from_expression expr =
                  Option.to_list value |> List.concat_map collect_expressions_from_expression
              | Cst.Inherit { expression; _ } ->
                  collect_expressions_from_expression expression
+             | Cst.Extension _ ->
+                 []
              | Cst.Initializer { body; _ } ->
                  Option.to_list body |> List.concat_map collect_expressions_from_expression)
     | Cst.Expression.PolyVariant { payload; _ } ->
@@ -4157,6 +4161,8 @@ and validate_object_member ~context = function
   | Cst.Inherit { expression; _ } ->
       validate_expression ~context:("object_member.inherit.expression" :: context)
         expression
+  | Cst.Extension _ ->
+      ()
   | Cst.Initializer { body; _ } ->
       Option.iter
         (validate_expression ~context:("object_member.initializer.body" :: context))
