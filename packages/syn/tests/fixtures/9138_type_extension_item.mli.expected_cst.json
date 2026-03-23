@@ -1,7 +1,7 @@
 {
   "status": "ok",
   "cst": {
-    "kind": "implementation",
+    "kind": "interface",
     "syntax_node": {
       "kind": "SOURCE_FILE",
       "span": {

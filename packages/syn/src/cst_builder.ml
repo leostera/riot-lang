@@ -2762,6 +2762,13 @@ let type_declaration_name_path node =
              bail ~message:"expected type declaration name path during Ceibo -> CST lifting"
                ~syntax_node:child ~context:[ "type_declaration"; "name" ])
 
+let is_type_extension_node node =
+  Ceibo.Red.SyntaxNode.kind node = Syntax_kind.TYPE_DECL
+  &&
+  (direct_non_trivia_tokens node
+  |> List.exists (fun syntax_token ->
+         String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "+"))
+
 let type_definition_from_node node =
   if Ceibo.Red.SyntaxNode.kind node = Syntax_kind.TYPE_EXTENSIBLE then
     Cst.TypeDefinition.Extensible { syntax_node = node }
@@ -2877,6 +2884,34 @@ let type_declaration_from_node node =
               }
       | None -> None)
   | None -> None
+
+let type_extension_from_node node =
+  let extension_type_params =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child ->
+           Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_PARAM)
+    |> List.map type_parameter_from_node
+  in
+  let extension_constructors =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child ->
+           Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_VARIANT_CONSTR)
+    |> List.filter_map variant_constructor_from_node
+  in
+  match type_declaration_name_path node with
+  | Some extension_type_name when List.length extension_constructors > 0 -> (
+      match Cst.Ident.last_segment extension_type_name with
+      | Some _ ->
+          Some
+            Cst.TypeExtension.
+              {
+                syntax_node = node;
+                type_name = extension_type_name;
+                type_params = extension_type_params;
+                constructors = extension_constructors;
+              }
+      | None -> None)
+  | _ -> None
 
 let let_binding_from_node ~is_recursive_binding node =
   let is_recursive_binding =
@@ -3379,7 +3414,8 @@ and collect_expressions_from_match_case { guard; body; _ } =
   @ collect_expressions_from_expression body
 
 let collect_expressions_from_item = function
-  | Cst.Item.TypeDeclaration _ | Cst.Item.ModuleDeclaration _
+  | Cst.Item.TypeDeclaration _ | Cst.Item.TypeExtension _
+  | Cst.Item.ModuleDeclaration _
   | Cst.Item.ModuleTypeDeclaration _ | Cst.Item.OpenStatement _
   | Cst.Item.ValueDeclaration _ | Cst.Item.ExternalDeclaration _
   | Cst.Item.IncludeStatement _ | Cst.Item.ExceptionDeclaration _
@@ -3396,9 +3432,14 @@ let collect_expressions_from_item = function
 let rec items_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.TYPE_DECL -> (
-      match type_declaration_from_node node with
-      | Some decl -> [ Cst.Item.TypeDeclaration decl ]
-      | None -> unsupported_item node)
+      if is_type_extension_node node then
+        match type_extension_from_node node with
+        | Some decl -> [ Cst.Item.TypeExtension decl ]
+        | None -> unsupported_item node
+      else
+        match type_declaration_from_node node with
+        | Some decl -> [ Cst.Item.TypeDeclaration decl ]
+        | None -> unsupported_item node)
   | Syntax_kind.TYPE_MUTUAL_DECL ->
       direct_non_trivia_nodes node |> List.concat_map items_from_node
   | Syntax_kind.LET_BINDING -> (
@@ -3955,6 +3996,17 @@ let validate_item ~context = function
   | Cst.Item.TypeDeclaration { type_definition; _ } ->
       validate_type_definition ~context:("item.type_declaration" :: context)
         type_definition
+  | Cst.Item.TypeExtension { constructors; _ } ->
+      List.iteri
+        (fun index constructor ->
+          Option.iter
+            (validate_core_type
+               ~context:
+                 (("item.type_extension.constructor[" ^ Int.to_string index
+                  ^ "].payload")
+                 :: context))
+            (Cst.VariantConstructor.payload_type constructor))
+        constructors
   | Cst.Item.LetBinding { binding_pattern; value; _ } ->
       validate_pattern ~context:("item.let_binding.pattern" :: context)
         binding_pattern;

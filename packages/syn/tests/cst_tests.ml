@@ -39,7 +39,7 @@ let tests =
         Test.assert_true (List.length result.diagnostics > 0);
         Test.assert_true (Option.is_none result.cst);
         Ok ());
-    Test.case "cst type declarations keep last module-path segment as name" (fun () ->
+    Test.case "cst type extensions keep last module-path segment as name" (fun () ->
         let result = parse_ml "type Message.t += Added\n" in
         let cst =
           expect_some result.cst
@@ -48,11 +48,27 @@ let tests =
         in
         let items = Syn.Cst.SourceFile.items cst in
         match items with
-        | Syn.Cst.Item.TypeDeclaration decl :: _ ->
+        | Syn.Cst.Item.TypeExtension decl :: _ ->
             Test.assert_equal ~expected:"t"
-              ~actual:(Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token decl));
+              ~actual:(Syn.Cst.Token.text (Syn.Cst.TypeExtension.name_token decl));
             Ok ()
-        | _ -> Error "expected first item to be a type declaration");
+        | _ -> Error "expected first item to be a type extension");
+    Test.case "cst type extensions are preserved in interfaces" (fun () ->
+        let result = parse_mli "type Message.t += Added\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.TypeExtension decl :: _ ->
+            let constructors =
+              Syn.Cst.TypeExtension.constructors decl
+              |> List.map Syn.Cst.VariantConstructor.name
+            in
+            Test.assert_equal ~expected:[ "Added" ] ~actual:constructors;
+            Ok ()
+        | _ -> Error "expected first item to be a type extension");
     Test.case "cst type declarations expose direct type parameters" (fun () ->
         let result =
           parse_ml "type ('a, 'error) resultish = int\n"

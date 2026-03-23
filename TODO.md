@@ -101,14 +101,14 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] let-operator expressions
   - [x] unreachable expressions
 - [ ] Structure items:
-  - [ ] type-extension items
+  - [x] type-extension items
   - [ ] recursive-module items
   - [x] standalone attribute items
   - [x] standalone extension items
 - [ ] Signature items:
   - [ ] type declarations in interfaces
   - [ ] type substitutions in interfaces
-  - [ ] type extensions in interfaces
+  - [x] type extensions in interfaces
   - [ ] exception declarations in interfaces
   - [ ] module declarations in interfaces
   - [ ] module substitutions in interfaces

@@ -1486,6 +1486,25 @@ module TypeDeclaration = struct
     | None -> panic "TypeDeclaration.name_token: missing type name token"
 end
 
+module TypeExtension = struct
+  type t = {
+    syntax_node : syntax_node;
+    type_name : Ident.t;
+    type_params : TypeParameter.t list;
+    constructors : VariantConstructor.t list;
+  }
+
+  let syntax_node decl = decl.syntax_node
+  let type_name decl = decl.type_name
+  let type_params decl = decl.type_params
+  let constructors decl = decl.constructors
+
+  let name_token decl =
+    match Ident.last_segment decl.type_name with
+    | Some token -> token
+    | None -> panic "TypeExtension.name_token: missing type name token"
+end
+
 module LetBinding = struct
   type t = let_binding = {
     syntax_node : syntax_node;
@@ -1604,6 +1623,7 @@ type include_statement = {
 module Item = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
+    | TypeExtension of TypeExtension.t
     | LetBinding of LetBinding.t
     | Expression of Expression.t
     | Attribute of attribute
@@ -1620,6 +1640,7 @@ module Item = struct
 
   let syntax_node = function
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
+    | TypeExtension decl -> TypeExtension.syntax_node decl
     | LetBinding binding -> LetBinding.syntax_node binding
     | Expression expr -> Expression.syntax_node expr
     | Attribute attribute -> attribute.syntax_node

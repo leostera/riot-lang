@@ -1300,6 +1300,21 @@ let type_declaration_to_json decl =
         type_definition_to_json (Cst.TypeDeclaration.type_definition decl) );
     ]
 
+let type_extension_to_json decl =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json (Cst.TypeExtension.syntax_node decl));
+      ("type_name", ident_to_json (Cst.TypeExtension.type_name decl));
+      ( "type_params",
+        Json.Array
+          (List.map type_parameter_to_json (Cst.TypeExtension.type_params decl))
+      );
+      ( "constructors",
+        Json.Array
+          (List.map variant_constructor_to_json
+             (Cst.TypeExtension.constructors decl)) );
+    ]
+
 let module_declaration_to_json decl =
   Json.Object
     [
@@ -1403,6 +1418,12 @@ let item_to_json = function
         [
           ("tag", Json.String "type_declaration");
           ("item", type_declaration_to_json decl);
+        ]
+  | Cst.Item.TypeExtension decl ->
+      Json.Object
+        [
+          ("tag", Json.String "type_extension");
+          ("item", type_extension_to_json decl);
         ]
   | Cst.Item.LetBinding binding ->
       Json.Object

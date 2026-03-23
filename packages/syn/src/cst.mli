@@ -2367,12 +2367,12 @@ module TypeDefinition : sig
     | Extensible of {
         syntax_node : syntax_node;
       }
-        (** An extensible type declaration introduced with `+=`.
+        (** An extensible variant declaration introduced with `= ..`.
 
             Example:
 
             ```ocaml,norun
-            type _ Effect.t += Yield : unit Effect.t
+            type t = ..
             ```
         *)
     | FirstClassModule of {
@@ -2430,6 +2430,30 @@ module TypeDeclaration : sig
   val type_name : t -> Ident.t
   val type_params : t -> TypeParameter.t list
   val type_definition : t -> TypeDefinition.t
+  val name_token : t -> Token.t
+end
+
+(** A `type ... += ...` extension item.
+
+    Examples:
+
+    ```ocaml,norun
+    type _ Effect.t += Yield : unit Effect.t
+    type message += Ack
+    ```
+*)
+module TypeExtension : sig
+  type t = {
+    syntax_node : syntax_node;
+    type_name : Ident.t;
+    type_params : TypeParameter.t list;
+    constructors : VariantConstructor.t list;
+  }
+
+  val syntax_node : t -> syntax_node
+  val type_name : t -> Ident.t
+  val type_params : t -> TypeParameter.t list
+  val constructors : t -> VariantConstructor.t list
   val name_token : t -> Token.t
 end
 
@@ -2604,6 +2628,8 @@ module Item : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
         (** A `type` declaration item. *)
+    | TypeExtension of TypeExtension.t
+        (** A `type ... += ...` extension item. *)
     | LetBinding of LetBinding.t
         (** A `let` or `let rec` item. *)
     | Expression of Expression.t
