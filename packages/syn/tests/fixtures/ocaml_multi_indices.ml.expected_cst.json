@@ -117,7 +117,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 75,
+                  "end": 148
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -416,7 +428,19 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": {
+                    "tag": "structure",
+                    "item_syntax_nodes": [
+                      {
+                        "kind": "APPLY_EXPR",
+                        "span": {
+                          "start": 205,
+                          "end": 403
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -1366,7 +1390,19 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": {
+                      "tag": "structure",
+                      "item_syntax_nodes": [
+                        {
+                          "kind": "APPLY_EXPR",
+                          "span": {
+                            "start": 682,
+                            "end": 1052
+                          }
+                        }
+                      ]
+                    }
                   }
                 }
               }
@@ -1639,7 +1675,19 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": {
+                    "tag": "structure",
+                    "item_syntax_nodes": [
+                      {
+                        "kind": "APPLY_EXPR",
+                        "span": {
+                          "start": 1109,
+                          "end": 1307
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -1984,7 +2032,19 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": {
+                    "tag": "structure",
+                    "item_syntax_nodes": [
+                      {
+                        "kind": "APPLY_EXPR",
+                        "span": {
+                          "start": 1380,
+                          "end": 1528
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -2162,7 +2222,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 1558,
+                    "end": 1606
+                  }
+                }
+              ]
+            }
           }
         }
       },
@@ -2336,7 +2408,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 1635,
+                    "end": 1683
+                  }
+                }
+              ]
+            }
           }
         }
       },
@@ -2510,7 +2594,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 1712,
+                    "end": 1760
+                  }
+                }
+              ]
+            }
           }
         }
       },
@@ -2782,7 +2878,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 1804,
+                  "end": 1886
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -2893,7 +3001,19 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": {
+                    "tag": "structure",
+                    "item_syntax_nodes": [
+                      {
+                        "kind": "APPLY_EXPR",
+                        "span": {
+                          "start": 1913,
+                          "end": 1989
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -3190,7 +3310,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 2042,
+                  "end": 2143
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -3415,7 +3547,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 2208,
+                  "end": 2326
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -3682,7 +3826,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 2550,
+                  "end": 3205
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -3873,7 +4029,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 3239,
+                    "end": 3291
+                  }
+                }
+              ]
+            }
           }
         }
       },
@@ -4065,7 +4233,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 3324,
+                    "end": 3376
+                  }
+                }
+              ]
+            }
           }
         }
       },
@@ -4412,7 +4592,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 3437,
+                  "end": 3526
+                }
+              }
+            ]
+          }
         }
       }
     ],
@@ -4752,7 +4944,19 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": {
+                  "tag": "structure",
+                  "item_syntax_nodes": [
+                    {
+                      "kind": "APPLY_EXPR",
+                      "span": {
+                        "start": 1380,
+                        "end": 1528
+                      }
+                    }
+                  ]
+                }
               }
             }
           }
@@ -4928,7 +5132,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 205,
+                      "end": 403
+                    }
+                  }
+                ]
+              }
             }
           }
         }
@@ -5043,7 +5259,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 205,
+                  "end": 403
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -5822,7 +6050,19 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": {
+                  "tag": "structure",
+                  "item_syntax_nodes": [
+                    {
+                      "kind": "APPLY_EXPR",
+                      "span": {
+                        "start": 682,
+                        "end": 1052
+                      }
+                    }
+                  ]
+                }
               }
             }
           }
@@ -9054,7 +9294,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 682,
+                      "end": 1052
+                    }
+                  }
+                ]
+              }
             }
           }
         }
@@ -9440,7 +9692,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 682,
+                  "end": 1052
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -9610,7 +9874,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 1109,
+                      "end": 1307
+                    }
+                  }
+                ]
+              }
             }
           }
         }
@@ -9725,7 +10001,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 1109,
+                  "end": 1307
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -10027,7 +10315,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 1380,
+                      "end": 1528
+                    }
+                  }
+                ]
+              }
             }
           }
         }
@@ -10949,7 +11249,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 1380,
+                  "end": 1528
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -11350,7 +11662,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 1558,
+                  "end": 1606
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -11751,7 +12075,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 1635,
+                  "end": 1683
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -12152,7 +12488,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 1712,
+                  "end": 1760
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -13025,7 +13373,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 1913,
+                      "end": 1989
+                    }
+                  }
+                ]
+              }
             }
           }
         }
@@ -13086,7 +13446,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 1913,
+                  "end": 1989
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -15365,7 +15737,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 3239,
+                  "end": 3291
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -15848,7 +16232,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 3324,
+                  "end": 3376
+                }
+              }
+            ]
+          }
         }
       },
       {

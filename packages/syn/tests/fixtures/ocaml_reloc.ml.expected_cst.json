@@ -989,7 +989,19 @@
                             }
                           }
                         },
-                        "payload_syntax_node": null
+                        "payload_syntax_node": null,
+                        "payload": {
+                          "tag": "structure",
+                          "item_syntax_nodes": [
+                            {
+                              "kind": "APPLY_EXPR",
+                              "span": {
+                                "start": 554,
+                                "end": 749
+                              }
+                            }
+                          ]
+                        }
                       }
                     }
                   }
@@ -1982,7 +1994,19 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null
+                      "payload_syntax_node": null,
+                      "payload": {
+                        "tag": "structure",
+                        "item_syntax_nodes": [
+                          {
+                            "kind": "APPLY_EXPR",
+                            "span": {
+                              "start": 554,
+                              "end": 749
+                            }
+                          }
+                        ]
+                      }
                     }
                   }
                 }
@@ -3865,7 +3889,19 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": {
+                      "tag": "structure",
+                      "item_syntax_nodes": [
+                        {
+                          "kind": "APPLY_EXPR",
+                          "span": {
+                            "start": 554,
+                            "end": 749
+                          }
+                        }
+                      ]
+                    }
                   }
                 }
               }
@@ -4789,7 +4825,19 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": {
+                    "tag": "structure",
+                    "item_syntax_nodes": [
+                      {
+                        "kind": "APPLY_EXPR",
+                        "span": {
+                          "start": 554,
+                          "end": 749
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -6022,7 +6070,19 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": {
+                  "tag": "structure",
+                  "item_syntax_nodes": [
+                    {
+                      "kind": "APPLY_EXPR",
+                      "span": {
+                        "start": 554,
+                        "end": 749
+                      }
+                    }
+                  ]
+                }
               }
             }
           }
@@ -8088,7 +8148,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 554,
+                      "end": 749
+                    }
+                  }
+                ]
+              }
             }
           }
         }
@@ -8916,7 +8988,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 554,
+                  "end": 749
+                }
+              }
+            ]
+          }
         }
       }
     ]

@@ -119,8 +119,11 @@ module ModulePath = Ident
 
     This covers item, type, pattern, expression, and module-language attributes.
     The `sigil_token` preserves whether the attribute was introduced with a
-    single `@`, double `@@`, or floating `@@@`-style sigil, while
-    `payload_syntax_node` keeps the raw payload when one was present.
+    single `@`, double `@@`, or floating `@@@`-style sigil.
+
+    `payload_syntax_node` keeps the attachment anchor when the parser wrapped
+    another syntax node around the attribute shell, while `payload` exposes the
+    structured payload parsed from the shell itself.
 
     Examples:
 
@@ -135,14 +138,17 @@ type attribute = {
   sigil_token : Token.t;
   name : Ident.t;
   payload_syntax_node : syntax_node option;
+  payload : payload option;
 }
 
 (** A PPX extension node.
 
     Extensions appear in whatever grammar position admits `[%name ...]`,
-    `[%%name ...]`, or similar extension forms. The payload is intentionally
-    retained as a raw syntax node so tooling can inspect the exact embedded
-    grammar accepted by the parser.
+    `[%%name ...]`, or similar extension forms.
+
+    `payload_syntax_node` keeps the surrounding syntax node when the extension
+    was wrapped around an already-parsed payload anchor, while `payload`
+    exposes the shell payload as a structured tree.
 
     Examples:
 
@@ -151,11 +157,48 @@ type attribute = {
     [%foo: int]
     ```
 *)
-type extension = {
+and extension = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   name : Ident.t;
   payload_syntax_node : syntax_node option;
+  payload : payload option;
+}
+
+(** Structured payloads attached to attributes and extensions.
+
+    This mirrors the main OCaml payload families without forcing every payload
+    body into a fully typed item tree yet. Unmarked structure and signature
+    payloads currently preserve their lifted top-level item anchors via
+    `item_syntax_nodes`; `Type` payloads expose typed CST nodes directly; and
+    `Pattern` payloads currently preserve the lifted pattern and guard anchors.
+*)
+and payload =
+  | Structure of {
+      item_syntax_nodes : syntax_node list;
+    }
+      (** A structure-style payload such as the body of `[%foo let x = 1]`
+          or `[@foo "message"]`. *)
+  | Signature of {
+      item_syntax_nodes : syntax_node list;
+    }
+      (** A signature-style payload such as the body of
+          `[%%foo val x : int]`. *)
+  | Type of core_type
+      (** A type payload introduced by `:`.
+
+          Example: `[%foo: int -> string]`.
+      *)
+  | Pattern of pattern_payload
+      (** A pattern payload introduced by `?`.
+
+          Example: `[%foo? Some x when x > 0]`.
+      *)
+
+(** A pattern payload with its optional `when` guard. *)
+and pattern_payload = {
+  pattern_syntax_node : syntax_node;
+  guard_syntax_node : syntax_node option;
 }
 
 (** A field inside an object type.
@@ -168,7 +211,7 @@ type extension = {
     < next : int; close : unit -> unit >
     ```
 *)
-type object_type_field = {
+and object_type_field = {
   syntax_node : syntax_node;
   field_name : Token.t;
   field_type : core_type;
@@ -3473,6 +3516,35 @@ type include_statement = {
   syntax_node : syntax_node;
   target : include_target;
 }
+
+(** Helper view over `pattern_payload`. *)
+module PatternPayload : sig
+  type t = pattern_payload = {
+    pattern_syntax_node : syntax_node;
+    guard_syntax_node : syntax_node option;
+  }
+
+  val pattern_syntax_node : t -> syntax_node
+  val guard_syntax_node : t -> syntax_node option
+end
+
+(** Helper view over annotation payloads. *)
+module Payload : sig
+  type t = payload =
+    | Structure of {
+        item_syntax_nodes : syntax_node list;
+      }
+    | Signature of {
+        item_syntax_nodes : syntax_node list;
+      }
+    | Type of core_type
+    | Pattern of pattern_payload
+
+  val item_syntax_nodes : t -> syntax_node list option
+  val core_type : t -> core_type option
+  val pattern_syntax_node : t -> syntax_node option
+  val guard_syntax_node : t -> syntax_node option
+end
 
 (** Top-level items collected from a source file. *)
 module Item : sig

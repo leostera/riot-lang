@@ -2423,9 +2423,15 @@ let tests =
             Test.assert_equal ~expected:(Some "toplevel_eval")
               ~actual:(Syn.Cst.Ident.name extension.name);
             Test.assert_equal ~expected:None ~actual:extension.payload_syntax_node;
-            Test.assert_equal ~expected:0
-              ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
-            Ok ()
+            (match extension.payload with
+            | Some (Syn.Cst.Payload.Structure { item_syntax_nodes }) ->
+                Test.assert_equal ~expected:1
+                  ~actual:(List.length item_syntax_nodes);
+                Test.assert_equal ~expected:0
+                  ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
+                Ok ()
+            | _ ->
+                Error "expected structure payload for standalone extension item")
         | _ ->
             Error "expected first item to be an extension item");
     Test.case "cst interfaces distinguish standalone attribute items" (fun () ->
@@ -2460,6 +2466,31 @@ let tests =
             Ok ()
         | _ ->
             Error "expected first item to be an interface extension item");
+    Test.case "cst interface extension payloads fall back to signature items"
+      (fun () ->
+        let result = parse_mli "[%%signature_item val x : int]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let payload_nodes =
+          Syn.Cst.SourceFile.items cst
+          |> List.filter_map (function
+               | Syn.Cst.Item.Extension
+                   {
+                     payload = Some (Syn.Cst.Payload.Structure { item_syntax_nodes });
+                     _;
+                   } ->
+                   Some item_syntax_nodes
+               | _ ->
+                   None)
+        in
+        match payload_nodes with
+        | _ :: _ ->
+            Ok ()
+        | [] ->
+            Error "expected interface extension payload");
     Test.case "cst attributed types keep attribute names and payload nodes" (fun () ->
         let result = parse_ml "type t = int [@foo]\n" in
         let cst =
@@ -2481,8 +2512,80 @@ let tests =
             Test.assert_equal ~expected:(Some "foo")
               ~actual:(Syn.Cst.Ident.name attribute.name);
             Test.assert_equal ~expected:None ~actual:attribute.payload_syntax_node;
+            Test.assert_equal ~expected:None ~actual:attribute.payload;
             Ok ()
         | _ -> Error "expected attributed type alias");
+    Test.case "cst expression attributes lift structure payloads and anchors"
+      (fun () ->
+        let result = parse_ml "let _ = value [@foo 1 + 2]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Apply
+                  {
+                    argument =
+                      Syn.Cst.Positional
+                        (Syn.Cst.Expression.Attribute
+                          {
+                            payload_syntax_node = None;
+                            payload =
+                              Some
+                                (Syn.Cst.Payload.Structure
+                                  { item_syntax_nodes = item_node :: _ });
+                            _;
+                          });
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"INFIX_EXPR"
+              ~actual:(SyntaxKind.to_string (Ceibo.Red.SyntaxNode.kind item_node));
+            Ok ()
+        | _ ->
+            Error "expected expression attribute with structure payload");
+    Test.case "cst extensions lift typed `:` payloads" (fun () ->
+        let result = parse_ml "let _ = [%foo: int -> string]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Extension
+                  {
+                    payload =
+                      Some
+                        (Syn.Cst.Payload.Type
+                          (Syn.Cst.CoreType.Arrow
+                            {
+                              parameter_type =
+                                Syn.Cst.CoreType.Constr { constructor_path = left; _ };
+                              result_type =
+                                Syn.Cst.CoreType.Constr { constructor_path = right; _ };
+                              _;
+                            }));
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name left);
+            Test.assert_equal ~expected:(Some "string")
+              ~actual:(Syn.Cst.Ident.name right);
+            Ok ()
+        | _ ->
+            Error "expected typed extension payload");
     Test.case "cst exception declarations preserve declared names" (fun () ->
         let result = parse_ml "exception Not_found\n" in
         let cst =

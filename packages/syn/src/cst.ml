@@ -55,16 +55,33 @@ type attribute = {
   sigil_token : Token.t;
   name : Ident.t;
   payload_syntax_node : syntax_node option;
+  payload : payload option;
 }
 
-type extension = {
+and extension = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   name : Ident.t;
   payload_syntax_node : syntax_node option;
+  payload : payload option;
 }
 
-type object_type_field = {
+and payload =
+  | Structure of {
+      item_syntax_nodes : syntax_node list;
+    }
+  | Signature of {
+      item_syntax_nodes : syntax_node list;
+    }
+  | Type of core_type
+  | Pattern of pattern_payload
+
+and pattern_payload = {
+  pattern_syntax_node : syntax_node;
+  guard_syntax_node : syntax_node option;
+}
+
+and object_type_field = {
   syntax_node : syntax_node;
   field_name : Token.t;
   field_type : core_type;
@@ -1716,6 +1733,16 @@ module Pattern = struct
     | Parenthesized pattern -> pattern.syntax_node
 end
 
+module PatternPayload = struct
+  type t = pattern_payload = {
+    pattern_syntax_node : syntax_node;
+    guard_syntax_node : syntax_node option;
+  }
+
+  let pattern_syntax_node payload = payload.pattern_syntax_node
+  let guard_syntax_node payload = payload.guard_syntax_node
+end
+
 module InfixExpression = struct
   type t = infix_expression = {
     syntax_node : syntax_node;
@@ -1739,6 +1766,39 @@ module RecordExpression = struct
   let syntax_node = function
     | Literal expr -> expr.syntax_node
     | Update expr -> expr.syntax_node
+end
+
+module Payload = struct
+  type t = payload =
+    | Structure of {
+        item_syntax_nodes : syntax_node list;
+      }
+    | Signature of {
+        item_syntax_nodes : syntax_node list;
+      }
+    | Type of core_type
+    | Pattern of pattern_payload
+
+  let item_syntax_nodes = function
+    | Structure { item_syntax_nodes } | Signature { item_syntax_nodes } ->
+        Some item_syntax_nodes
+    | Type _ | Pattern _ ->
+        None
+
+  let core_type = function
+    | Type type_ -> Some type_
+    | Structure _ | Signature _ | Pattern _ ->
+        None
+
+  let pattern_syntax_node = function
+    | Pattern payload -> Some payload.pattern_syntax_node
+    | Structure _ | Signature _ | Type _ ->
+        None
+
+  let guard_syntax_node = function
+    | Pattern payload -> payload.guard_syntax_node
+    | Structure _ | Signature _ | Type _ ->
+        None
 end
 
 module TypeVariable = struct

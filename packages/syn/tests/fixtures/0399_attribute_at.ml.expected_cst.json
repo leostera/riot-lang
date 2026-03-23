@@ -123,7 +123,8 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": null
                 }
               }
             }
@@ -244,7 +245,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           }
@@ -328,7 +330,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           }
         }
@@ -397,7 +400,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       }
     ]

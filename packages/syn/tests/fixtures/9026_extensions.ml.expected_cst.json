@@ -84,7 +84,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 43,
+                      "end": 45
+                    }
+                  }
+                ]
+              }
             }
           },
           "is_recursive": false
@@ -164,7 +176,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "TUPLE_EXPR",
+                    "span": {
+                      "start": 64,
+                      "end": 72
+                    }
+                  }
+                ]
+              }
             }
           },
           "is_recursive": false
@@ -253,7 +277,19 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": {
+                  "tag": "structure",
+                  "item_syntax_nodes": [
+                    {
+                      "kind": "STRING_LITERAL",
+                      "span": {
+                        "start": 91,
+                        "end": 108
+                      }
+                    }
+                  ]
+                }
               }
             },
             "argument": {
@@ -294,7 +330,19 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": {
+                    "tag": "structure",
+                    "item_syntax_nodes": [
+                      {
+                        "kind": "APPLY_EXPR",
+                        "span": {
+                          "start": 114,
+                          "end": 151
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -376,7 +424,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "INT_LITERAL",
+                  "span": {
+                    "start": 43,
+                    "end": 45
+                  }
+                }
+              ]
+            }
           }
         },
         "is_recursive": false
@@ -453,7 +513,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "TUPLE_EXPR",
+                  "span": {
+                    "start": 64,
+                    "end": 72
+                  }
+                }
+              ]
+            }
           }
         },
         "is_recursive": false
@@ -539,7 +611,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 91,
+                      "end": 108
+                    }
+                  }
+                ]
+              }
             }
           },
           "argument": {
@@ -580,7 +664,19 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": {
+                  "tag": "structure",
+                  "item_syntax_nodes": [
+                    {
+                      "kind": "APPLY_EXPR",
+                      "span": {
+                        "start": 114,
+                        "end": 151
+                      }
+                    }
+                  ]
+                }
               }
             }
           }
@@ -625,7 +721,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 43,
+                  "end": 45
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -664,7 +772,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "TUPLE_EXPR",
+                "span": {
+                  "start": 64,
+                  "end": 72
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -712,7 +832,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 91,
+                    "end": 108
+                  }
+                }
+              ]
+            }
           }
         },
         "argument": {
@@ -753,7 +885,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 114,
+                      "end": 151
+                    }
+                  }
+                ]
+              }
             }
           }
         }
@@ -794,7 +938,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "STRING_LITERAL",
+                "span": {
+                  "start": 91,
+                  "end": 108
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -833,7 +989,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 114,
+                  "end": 151
+                }
+              }
+            ]
+          }
         }
       }
     ]

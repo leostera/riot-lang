@@ -1,4 +1,5 @@
 open Std
+open Std.Sync
 open Std.Collections
 
 type error = {
@@ -72,6 +73,13 @@ let direct_non_trivia_tokens node =
          when not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)) ->
            Some tok
        | _ -> None)
+
+let direct_tokens node =
+  Ceibo.Red.SyntaxNode.children node
+  |> Array.to_list
+  |> List.filter_map (function
+       | Ceibo.Red.Token tok -> Some tok
+       | Ceibo.Red.Node _ -> None)
 
 let module_path_from_tokens ~syntax_node syntax_tokens =
   let rec skip_to_name = function
@@ -217,6 +225,47 @@ let annotation_name_from_tokens ~syntax_node ~sigils syntax_tokens =
   in
   module_path_from_tokens ~syntax_node name_tokens
 
+type raw_annotation_payload_kind =
+  | Unmarked
+  | TypePayload
+  | PatternPayload
+
+type raw_annotation_payload = {
+  kind : raw_annotation_payload_kind;
+  text : string;
+  start_offset : int;
+}
+
+let parse_implementation_fragment source =
+  let tokens = Lexer.tokenize source in
+  Parser.parse_implementation ~source tokens
+
+let parse_interface_fragment source =
+  let tokens = Lexer.tokenize source in
+  Parser.parse_interface ~source tokens
+
+let make_padded_fragment ~start_offset text =
+  String.make start_offset ' ' ^ text
+
+let make_wrapped_fragment ~prefix ~suffix ~start_offset text =
+  let padding = Int.max 0 (start_offset - String.length prefix) in
+  String.make padding ' ' ^ prefix ^ text ^ suffix
+
+let payload_text_from_tokens all_tokens ~start_offset ~end_offset =
+  all_tokens
+  |> List.filter (fun syntax_token ->
+         let span = Ceibo.Red.SyntaxToken.span syntax_token in
+         span.start >= start_offset && span.end_ <= end_offset)
+  |> List.map Ceibo.Red.SyntaxToken.text
+  |> String.concat ""
+
+let annotation_payload_from_shell_impl :
+    (Cst.syntax_node -> Cst.payload option) Cell.t =
+  Cell.create (fun _ -> None)
+
+let annotation_payload_from_shell shell_node =
+  (Cell.get annotation_payload_from_shell_impl) shell_node
+
 let attribute_from_node node : Cst.attribute =
   let shell_node, payload_syntax_node =
     annotation_shell_and_payload ~annotation_kind:Syntax_kind.ATTRIBUTE_EXPR
@@ -238,6 +287,7 @@ let attribute_from_node node : Cst.attribute =
           annotation_name_from_tokens ~syntax_node:shell_node
             ~sigils:[ "@"; "@@"; "@@@" ] shell_tokens;
         payload_syntax_node;
+        payload = annotation_payload_from_shell shell_node;
       }
   | None ->
       bail ~message:"expected attribute sigil during Ceibo -> CST lifting"
@@ -264,6 +314,7 @@ let extension_from_node node : Cst.extension =
           annotation_name_from_tokens ~syntax_node:shell_node
             ~sigils:[ "%"; "%%"; "%%%" ] shell_tokens;
         payload_syntax_node;
+        payload = annotation_payload_from_shell shell_node;
       }
   | None ->
       bail ~message:"expected extension sigil during Ceibo -> CST lifting"
@@ -4867,6 +4918,184 @@ let rec items_from_node node =
           [ Cst.Item.Expression (expression_from_node node) ]))
   | _ -> (
       [ Cst.Item.Expression (expression_from_node node) ])
+
+let raw_annotation_payload_from_shell shell_node =
+  let all_tokens = direct_tokens shell_node in
+  let shell_tokens = direct_non_trivia_tokens shell_node in
+  let shell_close_offset =
+    match List.rev all_tokens with
+    | close_token :: _ ->
+        (Ceibo.Red.SyntaxToken.span close_token).start
+    | [] ->
+        Ceibo.Red.SyntaxNode.span shell_node |> fun span -> span.end_
+  in
+  let payload_non_trivia_tokens =
+    let rec skip_name = function
+      | dot_token :: _name_token :: rest
+        when String.equal (Ceibo.Red.SyntaxToken.text dot_token) "." ->
+          skip_name rest
+      | rest ->
+          rest
+    in
+    match shell_tokens with
+    | _open_token :: _sigil_token :: _name_token :: rest -> (
+        let rest = skip_name rest in
+        match List.rev rest with
+        | close_token :: payload_rev
+          when String.equal (Ceibo.Red.SyntaxToken.text close_token) "]"
+               || String.equal (Ceibo.Red.SyntaxToken.text close_token) "}" ->
+            List.rev payload_rev
+        | _ ->
+            rest)
+    | _ ->
+        []
+  in
+  match payload_non_trivia_tokens with
+  | [] ->
+      None
+  | marker_token :: rest
+    when String.equal (Ceibo.Red.SyntaxToken.text marker_token) ":" -> (
+      match rest with
+      | first_content_token :: _ ->
+          Some
+            {
+              kind = TypePayload;
+              text =
+                payload_text_from_tokens all_tokens
+                  ~start_offset:(Ceibo.Red.SyntaxToken.span first_content_token).start
+                  ~end_offset:shell_close_offset;
+              start_offset =
+                (Ceibo.Red.SyntaxToken.span first_content_token).start;
+            }
+      | [] ->
+          None)
+  | marker_token :: rest
+    when String.equal (Ceibo.Red.SyntaxToken.text marker_token) "?" -> (
+      match rest with
+      | first_content_token :: _ ->
+          Some
+            {
+              kind = PatternPayload;
+              text =
+                payload_text_from_tokens all_tokens
+                  ~start_offset:(Ceibo.Red.SyntaxToken.span first_content_token).start
+                  ~end_offset:shell_close_offset;
+              start_offset =
+                (Ceibo.Red.SyntaxToken.span first_content_token).start;
+            }
+      | [] ->
+          None)
+  | first_payload_token :: _ ->
+      Some
+        {
+          kind = Unmarked;
+          text =
+            payload_text_from_tokens all_tokens
+              ~start_offset:(Ceibo.Red.SyntaxToken.span first_payload_token).start
+              ~end_offset:shell_close_offset;
+          start_offset = (Ceibo.Red.SyntaxToken.span first_payload_token).start;
+        }
+
+let item_syntax_nodes_from_parse_result result =
+  if List.length result.Parser.diagnostics > 0 then
+    None
+  else
+    let root = Ceibo.Red.new_root result.tree in
+    try
+      Some
+        (direct_non_trivia_nodes root
+        |> List.concat_map items_from_node
+        |> List.map Cst.Item.syntax_node)
+    with
+    | Bail _ ->
+        None
+
+let annotation_payload_from_shell_lift shell_node =
+  let structure_payload raw_payload =
+    let source =
+      make_padded_fragment ~start_offset:raw_payload.start_offset raw_payload.text
+    in
+    parse_implementation_fragment source
+    |> item_syntax_nodes_from_parse_result
+    |> Option.map (fun item_syntax_nodes ->
+           Cst.Payload.Structure { item_syntax_nodes })
+  in
+  let signature_payload raw_payload =
+    let source =
+      make_padded_fragment ~start_offset:raw_payload.start_offset raw_payload.text
+    in
+    parse_interface_fragment source
+    |> item_syntax_nodes_from_parse_result
+    |> Option.map (fun item_syntax_nodes ->
+           Cst.Payload.Signature { item_syntax_nodes })
+  in
+  let type_payload raw_payload =
+    let source =
+      make_wrapped_fragment ~prefix:"type t = " ~suffix:"\n"
+        ~start_offset:raw_payload.start_offset raw_payload.text
+    in
+    match parse_implementation_fragment source with
+    | { diagnostics = []; tree; _ } ->
+        let root = Ceibo.Red.new_root tree in
+        (match direct_non_trivia_nodes root with
+        | type_decl_node :: _ -> (
+            match type_declaration_from_node type_decl_node with
+            | Some
+                {
+                  type_definition =
+                    Cst.TypeDefinition.Alias { manifest; _ };
+                  _;
+                } ->
+                Some (Cst.Payload.Type manifest)
+            | _ ->
+                None)
+        | [] ->
+            None)
+    | _ ->
+        None
+  in
+  let pattern_payload raw_payload =
+    let source =
+      make_wrapped_fragment ~prefix:"let p = function | " ~suffix:" -> ()\n"
+        ~start_offset:raw_payload.start_offset raw_payload.text
+    in
+    match parse_implementation_fragment source with
+    | { diagnostics = []; tree; _ } ->
+        let root = Ceibo.Red.new_root tree in
+        (match direct_non_trivia_nodes root with
+        | let_binding_node :: _ -> (
+            match let_binding_from_node ~is_recursive_binding:false let_binding_node with
+            | Some { value = Cst.Expression.Function { cases = case :: _; _ }; _ } ->
+                Some
+                  (Cst.Payload.Pattern
+                     {
+                       pattern_syntax_node = Cst.Pattern.syntax_node case.pattern;
+                       guard_syntax_node =
+                         Option.map Cst.Expression.syntax_node case.guard;
+                     })
+            | _ ->
+                None)
+        | [] ->
+            None)
+    | _ ->
+        None
+  in
+  match raw_annotation_payload_from_shell shell_node with
+  | Some ({ kind = TypePayload; _ } as raw_payload) ->
+      type_payload raw_payload
+  | Some ({ kind = PatternPayload; _ } as raw_payload) ->
+      pattern_payload raw_payload
+  | Some ({ kind = Unmarked; _ } as raw_payload) -> (
+      match structure_payload raw_payload with
+      | Some payload ->
+          Some payload
+      | None ->
+          signature_payload raw_payload)
+  | None ->
+      None
+
+let () =
+  Cell.set annotation_payload_from_shell_impl annotation_payload_from_shell_lift
 
 let build_source_file_body tree =
   let root = Ceibo.Red.new_root tree in

@@ -46,7 +46,26 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 156,
+                  "end": 159
+                }
+              },
+              {
+                "kind": "LET_EXPR",
+                "span": {
+                  "start": 160,
+                  "end": 174
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -96,7 +115,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "INFIX_EXPR",
+                    "span": {
+                      "start": 187,
+                      "end": 192
+                    }
+                  }
+                ]
+              }
             }
           },
           "binding_name": null,
@@ -155,7 +186,19 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": {
+                    "tag": "structure",
+                    "item_syntax_nodes": [
+                      {
+                        "kind": "STRING_LITERAL",
+                        "span": {
+                          "start": 219,
+                          "end": 224
+                        }
+                      }
+                    ]
+                  }
                 }
               },
               "argument": {
@@ -196,7 +239,26 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": {
+                      "tag": "structure",
+                      "item_syntax_nodes": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 230,
+                            "end": 233
+                          }
+                        },
+                        {
+                          "kind": "MODULE_DECL",
+                          "span": {
+                            "start": 234,
+                            "end": 251
+                          }
+                        }
+                      ]
+                    }
                   }
                 }
               }
@@ -263,7 +325,19 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": {
+                  "tag": "structure",
+                  "item_syntax_nodes": [
+                    {
+                      "kind": "FIELD_ACCESS_EXPR",
+                      "span": {
+                        "start": 202,
+                        "end": 209
+                      }
+                    }
+                  ]
+                }
               }
             }
           },
@@ -317,7 +391,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "LET_BINDING",
+                    "span": {
+                      "start": 264,
+                      "end": 275
+                    }
+                  }
+                ]
+              }
             }
           },
           "binding_name": null,
@@ -376,7 +462,19 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": {
+                    "tag": "structure",
+                    "item_syntax_nodes": [
+                      {
+                        "kind": "CLASS_DECL",
+                        "span": {
+                          "start": 305,
+                          "end": 325
+                        }
+                      }
+                    ]
+                  }
                 }
               },
               "argument": {
@@ -417,7 +515,8 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": null
                   }
                 }
               }
@@ -458,7 +557,19 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": {
+                  "tag": "structure",
+                  "item_syntax_nodes": [
+                    {
+                      "kind": "TYPE_DECL",
+                      "span": {
+                        "start": 285,
+                        "end": 295
+                      }
+                    }
+                  ]
+                }
               }
             }
           },
@@ -512,7 +623,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           },
           "binding_name": null,
@@ -580,7 +692,8 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": null
                   }
                 },
                 "argument": {
@@ -621,7 +734,8 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null
+                      "payload_syntax_node": null,
+                      "payload": null
                     }
                   }
                 }
@@ -664,7 +778,8 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": null
                   }
                 }
               }
@@ -705,7 +820,79 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": {
+                  "tag": "type",
+                  "type": {
+                    "tag": "arrow",
+                    "syntax_node": {
+                      "kind": "TYPE_ARROW",
+                      "span": {
+                        "start": 376,
+                        "end": 383
+                      }
+                    },
+                    "label": null,
+                    "parameter_type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 376,
+                          "end": 378
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 376,
+                            "end": 378
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "t",
+                          "span": {
+                            "start": 376,
+                            "end": 377
+                          }
+                        }
+                      },
+                      "arguments": []
+                    },
+                    "result_type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 381,
+                          "end": 383
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 381,
+                            "end": 383
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "t",
+                          "span": {
+                            "start": 381,
+                            "end": 382
+                          }
+                        }
+                      },
+                      "arguments": []
+                    }
+                  }
+                }
               }
             }
           },
@@ -759,7 +946,20 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "pattern",
+                "payload": {
+                  "pattern_syntax_node": {
+                    "kind": "OR_PATTERN",
+                    "span": {
+                      "start": 458,
+                      "end": 472
+                    }
+                  },
+                  "guard_syntax_node": null
+                }
+              }
             }
           },
           "binding_name": null,
@@ -818,7 +1018,20 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": {
+                    "tag": "pattern",
+                    "payload": {
+                      "pattern_syntax_node": {
+                        "kind": "RECORD_PATTERN",
+                        "span": {
+                          "start": 497,
+                          "end": 502
+                        }
+                      },
+                      "guard_syntax_node": null
+                    }
+                  }
                 }
               },
               "argument": {
@@ -859,7 +1072,8 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": null
                   }
                 }
               }
@@ -900,7 +1114,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           },
@@ -954,7 +1169,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           },
           "binding_name": null,
@@ -1004,7 +1220,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             },
             "type": {
@@ -1043,7 +1260,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           },
@@ -1107,7 +1325,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "STRING_LITERAL",
+                    "span": {
+                      "start": 219,
+                      "end": 224
+                    }
+                  }
+                ]
+              }
             }
           },
           "argument": {
@@ -1148,7 +1378,26 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": {
+                  "tag": "structure",
+                  "item_syntax_nodes": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 230,
+                        "end": 233
+                      }
+                    },
+                    {
+                      "kind": "MODULE_DECL",
+                      "span": {
+                        "start": 234,
+                        "end": 251
+                      }
+                    }
+                  ]
+                }
               }
             }
           }
@@ -1215,7 +1464,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "FIELD_ACCESS_EXPR",
+                  "span": {
+                    "start": 202,
+                    "end": 209
+                  }
+                }
+              ]
+            }
           }
         }
       },
@@ -1264,7 +1525,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 219,
+                    "end": 224
+                  }
+                }
+              ]
+            }
           }
         },
         "argument": {
@@ -1305,7 +1578,26 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 230,
+                      "end": 233
+                    }
+                  },
+                  {
+                    "kind": "MODULE_DECL",
+                    "span": {
+                      "start": 234,
+                      "end": 251
+                    }
+                  }
+                ]
+              }
             }
           }
         }
@@ -1346,7 +1638,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "STRING_LITERAL",
+                "span": {
+                  "start": 219,
+                  "end": 224
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -1385,7 +1689,26 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 230,
+                  "end": 233
+                }
+              },
+              {
+                "kind": "MODULE_DECL",
+                "span": {
+                  "start": 234,
+                  "end": 251
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -1442,7 +1765,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "CLASS_DECL",
+                    "span": {
+                      "start": 305,
+                      "end": 325
+                    }
+                  }
+                ]
+              }
             }
           },
           "argument": {
@@ -1483,7 +1818,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           }
@@ -1524,7 +1860,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "TYPE_DECL",
+                  "span": {
+                    "start": 285,
+                    "end": 295
+                  }
+                }
+              ]
+            }
           }
         }
       },
@@ -1573,7 +1921,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "CLASS_DECL",
+                  "span": {
+                    "start": 305,
+                    "end": 325
+                  }
+                }
+              ]
+            }
           }
         },
         "argument": {
@@ -1614,7 +1974,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           }
         }
@@ -1655,7 +2016,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "CLASS_DECL",
+                "span": {
+                  "start": 305,
+                  "end": 325
+                }
+              }
+            ]
+          }
         }
       },
       {
@@ -1694,7 +2067,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {
@@ -1760,7 +2134,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             },
             "argument": {
@@ -1801,7 +2176,8 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": null
                 }
               }
             }
@@ -1844,7 +2220,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           }
@@ -1885,7 +2262,79 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "type",
+              "type": {
+                "tag": "arrow",
+                "syntax_node": {
+                  "kind": "TYPE_ARROW",
+                  "span": {
+                    "start": 376,
+                    "end": 383
+                  }
+                },
+                "label": null,
+                "parameter_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 376,
+                      "end": 378
+                    }
+                  },
+                  "constructor_path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 376,
+                        "end": 378
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 376,
+                        "end": 377
+                      }
+                    }
+                  },
+                  "arguments": []
+                },
+                "result_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 381,
+                      "end": 383
+                    }
+                  },
+                  "constructor_path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 381,
+                        "end": 383
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 381,
+                        "end": 382
+                      }
+                    }
+                  },
+                  "arguments": []
+                }
+              }
+            }
           }
         }
       },
@@ -1943,7 +2392,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           },
           "argument": {
@@ -1984,7 +2434,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           }
@@ -2027,7 +2478,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           }
         }
@@ -2077,7 +2529,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         },
         "argument": {
@@ -2118,7 +2571,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           }
         }
@@ -2159,7 +2613,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {
@@ -2198,7 +2653,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {
@@ -2237,7 +2693,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {
@@ -2294,7 +2751,20 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "pattern",
+                "payload": {
+                  "pattern_syntax_node": {
+                    "kind": "RECORD_PATTERN",
+                    "span": {
+                      "start": 497,
+                      "end": 502
+                    }
+                  },
+                  "guard_syntax_node": null
+                }
+              }
             }
           },
           "argument": {
@@ -2335,7 +2805,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           }
@@ -2376,7 +2847,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         }
       },
@@ -2425,7 +2897,20 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "pattern",
+              "payload": {
+                "pattern_syntax_node": {
+                  "kind": "RECORD_PATTERN",
+                  "span": {
+                    "start": 497,
+                    "end": 502
+                  }
+                },
+                "guard_syntax_node": null
+              }
+            }
           }
         },
         "argument": {
@@ -2466,7 +2951,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           }
         }
@@ -2507,7 +2993,20 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "pattern",
+            "payload": {
+              "pattern_syntax_node": {
+                "kind": "RECORD_PATTERN",
+                "span": {
+                  "start": 497,
+                  "end": 502
+                }
+              },
+              "guard_syntax_node": null
+            }
+          }
         }
       },
       {
@@ -2546,7 +3045,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {
@@ -2594,7 +3094,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         },
         "type": {
@@ -2633,7 +3134,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         }
       },
@@ -2673,7 +3175,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       }
     ]

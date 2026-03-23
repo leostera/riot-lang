@@ -169,7 +169,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] record label declarations
   - [x] constructor argument lists
   - [x] constructor result types / GADT constructors
-- [ ] Attributes and extensions are still token shells rather than structured payloads
+- [x] Attributes and extensions are still token shells rather than structured payloads
 - [~] Attributes and extensions now preserve sigils, names, and payload anchors, but their payloads are not yet fully typed
 - [x] Includes, opens, and with-constraints are still thinner than they should be
   - [x] include statements now carry typed module-expression/module-type targets

@@ -84,7 +84,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 94,
+                  "end": 185
+                }
+              }
+            ]
+          }
         }
       }
     ],

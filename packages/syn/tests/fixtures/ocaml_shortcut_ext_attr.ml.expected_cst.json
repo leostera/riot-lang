@@ -128,7 +128,8 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": null
                   }
                 ],
                 "binding_pattern": {
@@ -514,7 +515,8 @@
                             }
                           }
                         },
-                        "payload_syntax_node": null
+                        "payload_syntax_node": null,
+                        "payload": null
                       }
                     },
                     {
@@ -603,7 +605,8 @@
                             }
                           }
                         },
-                        "payload_syntax_node": null
+                        "payload_syntax_node": null,
+                        "payload": null
                       }
                     },
                     {
@@ -678,7 +681,8 @@
                             "start": 941,
                             "end": 943
                           }
-                        }
+                        },
+                        "payload": null
                       }
                     },
                     {
@@ -767,7 +771,8 @@
                             }
                           }
                         },
-                        "payload_syntax_node": null
+                        "payload_syntax_node": null,
+                        "payload": null
                       }
                     },
                     {
@@ -856,7 +861,8 @@
                             }
                           }
                         },
-                        "payload_syntax_node": null
+                        "payload_syntax_node": null,
+                        "payload": null
                       }
                     },
                     {
@@ -931,7 +937,8 @@
                             "start": 1030,
                             "end": 1032
                           }
-                        }
+                        },
+                        "payload": null
                       }
                     },
                     {
@@ -1020,7 +1027,8 @@
                             }
                           }
                         },
-                        "payload_syntax_node": null
+                        "payload_syntax_node": null,
+                        "payload": null
                       }
                     },
                     {
@@ -1104,7 +1112,8 @@
                             }
                           }
                         },
-                        "payload_syntax_node": null
+                        "payload_syntax_node": null,
+                        "payload": null
                       }
                     }
                   ]
@@ -1147,7 +1156,8 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null
+                      "payload_syntax_node": null,
+                      "payload": null
                     }
                   }
                 }
@@ -1269,7 +1279,8 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": null
                   }
                 },
                 {
@@ -1369,7 +1380,8 @@
                         "start": 1197,
                         "end": 1199
                       }
-                    }
+                    },
+                    "payload": null
                   }
                 },
                 {
@@ -1469,7 +1481,8 @@
                         "start": 1225,
                         "end": 1227
                       }
-                    }
+                    },
+                    "payload": null
                   }
                 },
                 {
@@ -1569,7 +1582,8 @@
                         "start": 1248,
                         "end": 1250
                       }
-                    }
+                    },
+                    "payload": null
                   }
                 },
                 {
@@ -1669,7 +1683,8 @@
                         "start": 1279,
                         "end": 1281
                       }
-                    }
+                    },
+                    "payload": null
                   }
                 },
                 {
@@ -1789,7 +1804,8 @@
                         "start": 1306,
                         "end": 1309
                       }
-                    }
+                    },
+                    "payload": null
                   }
                 }
               ]
@@ -1828,7 +1844,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           }
         }
@@ -1907,7 +1924,98 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": {
+                  "tag": "type",
+                  "type": {
+                    "tag": "parenthesized",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 1367,
+                        "end": 1385
+                      }
+                    },
+                    "inner": {
+                      "tag": "attribute",
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 1368,
+                          "end": 1384
+                        }
+                      },
+                      "type": {
+                        "tag": "first_class_module",
+                        "syntax_node": {
+                          "kind": "FIRST_CLASS_MODULE_TYPE",
+                          "span": {
+                            "start": 1368,
+                            "end": 1378
+                          }
+                        },
+                        "module_type": {
+                          "tag": "path",
+                          "path": {
+                            "tag": "ident",
+                            "syntax_node": {
+                              "kind": "MODULE_TYPE_PATH",
+                              "span": {
+                                "start": 1376,
+                                "end": 1377
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "M",
+                              "span": {
+                                "start": 1376,
+                                "end": 1377
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "attribute": {
+                        "syntax_node": {
+                          "kind": "ATTRIBUTE_EXPR",
+                          "span": {
+                            "start": 1378,
+                            "end": 1384
+                          }
+                        },
+                        "sigil_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "@",
+                          "span": {
+                            "start": 1379,
+                            "end": 1380
+                          }
+                        },
+                        "name": {
+                          "tag": "ident",
+                          "syntax_node": {
+                            "kind": "ATTRIBUTE_EXPR",
+                            "span": {
+                              "start": 1378,
+                              "end": 1384
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "foo",
+                            "span": {
+                              "start": 1380,
+                              "end": 1383
+                            }
+                          }
+                        },
+                        "payload_syntax_node": null,
+                        "payload": null
+                      }
+                    }
+                  }
+                }
               }
             }
           },
@@ -2093,7 +2201,8 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": null
                   }
                 },
                 "argument": {
@@ -2150,7 +2259,8 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": null
                   }
                 }
               }
@@ -2334,7 +2444,8 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null
+                      "payload_syntax_node": null,
+                      "payload": null
                     }
                   }
                 }
@@ -2399,7 +2510,8 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": null
                 }
               }
             }
@@ -2452,7 +2564,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           ],
           "binding_pattern": {
@@ -2551,7 +2664,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           ],
           "binding_pattern": {
@@ -3478,7 +3592,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         ],
         "binding_pattern": {
@@ -3633,7 +3748,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         ],
         "binding_pattern": {
@@ -3729,7 +3845,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         ],
         "binding_pattern": {
@@ -3883,7 +4000,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             ],
             "binding_pattern": {
@@ -4632,7 +4750,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {

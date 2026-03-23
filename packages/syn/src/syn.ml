@@ -15,13 +15,21 @@ module CstJson = Cst_json
 
 let tokenize source = Lexer.tokenize source
 
+let attach_cst ~kind result =
+  if List.length result.Parser.diagnostics = 0 then
+    match CstBuilder.create_from_ceibo ~kind result.tree with
+    | Ok cst -> { result with Parser.cst = Some cst }
+    | Error _ -> { result with Parser.cst = None }
+  else
+    { result with Parser.cst = None }
+
 let parse_interface source =
   let tokens = Lexer.tokenize source in
-  Parser.parse_interface ~source tokens
+  Parser.parse_interface ~source tokens |> attach_cst ~kind:`Interface
 
 let parse_implementation source =
   let tokens = Lexer.tokenize source in
-  Parser.parse_implementation ~source tokens
+  Parser.parse_implementation ~source tokens |> attach_cst ~kind:`Implementation
 
 let parse ~filename source =
   match Path.extension filename with

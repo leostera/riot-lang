@@ -612,7 +612,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           ],
           "binding_pattern": {
@@ -1561,7 +1562,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         ],
         "binding_pattern": {

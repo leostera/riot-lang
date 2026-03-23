@@ -10616,14 +10616,8 @@ and parse ~cst_kind ~parse_item ~source ~tokens =
   let tree = make_node Syntax_kind.SOURCE_FILE children in
 
   let diagnostics = List.rev (Cell.get parser.diagnostics) |> dedupe_diagnostics in
-  let cst =
-    if List.length diagnostics = 0 then
-      match Cst_builder.create_from_ceibo ~kind:cst_kind tree with
-      | Ok cst -> Some cst
-      | Error _ -> None
-    else None
-  in
-  { tree; cst; diagnostics }
+  let _ = cst_kind in
+  { tree; cst = None; diagnostics }
 
 (** Parse interface file (.mli) *)
 let parse_interface ~source tokens =

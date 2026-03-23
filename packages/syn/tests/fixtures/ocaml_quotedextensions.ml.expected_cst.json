@@ -92,7 +92,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             },
             "argument": {
@@ -159,7 +160,8 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": null
                 }
               }
             }
@@ -228,7 +230,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           }
@@ -345,7 +348,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           },
           "binding_name": null,
@@ -421,7 +425,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             },
             "type": {
@@ -486,7 +491,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           },
@@ -566,7 +572,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           },
           "binding_name": null,
@@ -642,7 +649,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             },
             "type": {
@@ -707,7 +715,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           },
@@ -787,7 +796,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           },
           "binding_name": null,
@@ -872,7 +882,8 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null
+                  "payload_syntax_node": null,
+                  "payload": null
                 }
               },
               "argument": {
@@ -939,7 +950,8 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null
+                    "payload_syntax_node": null,
+                    "payload": null
                   }
                 }
               }
@@ -1006,7 +1018,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           },
@@ -1096,7 +1109,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           },
           "argument": {
@@ -1163,7 +1177,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           }
@@ -1232,7 +1247,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           }
         }
@@ -1308,7 +1324,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         },
         "argument": {
@@ -1375,7 +1392,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           }
         }
@@ -1442,7 +1460,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {
@@ -1507,7 +1526,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {
@@ -1572,7 +1592,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {
@@ -1646,7 +1667,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         },
         "type": {
@@ -1711,7 +1733,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         }
       },
@@ -1777,7 +1800,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {
@@ -1851,7 +1875,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         },
         "type": {
@@ -1916,7 +1941,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         }
       },
@@ -1982,7 +2008,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {
@@ -2065,7 +2092,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           },
           "argument": {
@@ -2132,7 +2160,8 @@
                     }
                   }
                 },
-                "payload_syntax_node": null
+                "payload_syntax_node": null,
+                "payload": null
               }
             }
           }
@@ -2199,7 +2228,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         }
       },
@@ -2274,7 +2304,8 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": null
           }
         },
         "argument": {
@@ -2341,7 +2372,8 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": null
             }
           }
         }
@@ -2408,7 +2440,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       },
       {
@@ -2473,7 +2506,8 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": null
         }
       }
     ]

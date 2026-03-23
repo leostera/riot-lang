@@ -84,7 +84,19 @@
                   }
                 }
               },
-              "payload_syntax_node": null
+              "payload_syntax_node": null,
+              "payload": {
+                "tag": "structure",
+                "item_syntax_nodes": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 14,
+                      "end": 18
+                    }
+                  }
+                ]
+              }
             }
           },
           "is_recursive": false
@@ -164,7 +176,19 @@
                 }
               }
             },
-            "payload_syntax_node": null
+            "payload_syntax_node": null,
+            "payload": {
+              "tag": "structure",
+              "item_syntax_nodes": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 14,
+                    "end": 18
+                  }
+                }
+              ]
+            }
           }
         },
         "is_recursive": false
@@ -207,7 +231,19 @@
               }
             }
           },
-          "payload_syntax_node": null
+          "payload_syntax_node": null,
+          "payload": {
+            "tag": "structure",
+            "item_syntax_nodes": [
+              {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 14,
+                  "end": 18
+                }
+              }
+            ]
+          }
         }
       }
     ]
