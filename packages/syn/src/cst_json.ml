@@ -62,15 +62,17 @@ let rec object_type_field_to_json
     ]
 
 and record_type_field_to_json
-    ({ syntax_node; field_name; field_type; is_mutable } : Cst.record_type_field)
+    ({ syntax_node; field_name; field_type; is_mutable; attributes } : Cst.record_type_field)
     =
+  let attributes = List.map attribute_to_json attributes in
   Json.Object
-    [
-      ("syntax_node", syntax_node_to_json syntax_node);
-      ("field_name", token_to_json field_name);
-      ("field_type", core_type_to_json field_type);
-      ("is_mutable", Json.Bool is_mutable);
-    ]
+    ([
+       ("syntax_node", syntax_node_to_json syntax_node);
+       ("field_name", token_to_json field_name);
+       ("field_type", core_type_to_json field_type);
+       ("is_mutable", Json.Bool is_mutable);
+     ]
+    @ if attributes = [] then [] else [ ("attributes", Json.Array attributes) ])
 
 and poly_variant_tag_to_json ({ syntax_node; tag_name; payload_type } : Cst.poly_variant_tag)
     =
@@ -1257,13 +1259,17 @@ let type_parameter_to_json type_parameter =
     ]
 
 let record_field_to_json field =
+  let attributes =
+    Cst.RecordField.attributes field |> List.map attribute_to_json
+  in
   Json.Object
-    [
-      ("syntax_node", syntax_node_to_json (Cst.RecordField.syntax_node field));
-      ("field_name", token_to_json (Cst.RecordField.field_name_token field));
-      ("field_type", core_type_to_json (Cst.RecordField.field_type field));
-      ("is_mutable", Json.Bool (Cst.RecordField.is_mutable field));
-    ]
+    ([
+       ("syntax_node", syntax_node_to_json (Cst.RecordField.syntax_node field));
+       ("field_name", token_to_json (Cst.RecordField.field_name_token field));
+       ("field_type", core_type_to_json (Cst.RecordField.field_type field));
+       ("is_mutable", Json.Bool (Cst.RecordField.is_mutable field));
+     ]
+    @ if attributes = [] then [] else [ ("attributes", Json.Array attributes) ])
 
 let variant_constructor_to_json constr =
   Json.Object

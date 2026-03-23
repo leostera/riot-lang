@@ -329,6 +329,27 @@ let rec can_lift_core_type_node node =
   | kind ->
       is_type_syntax_kind kind
 
+let rec peel_outer_type_attributes node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.ATTRIBUTE_EXPR -> (
+      match direct_non_trivia_nodes node with
+      | first_child :: rest -> (
+          match
+            List.find_opt can_lift_core_type_node (first_child :: rest),
+            List.find_opt (fun child ->
+                Ceibo.Red.SyntaxNode.kind child = Syntax_kind.ATTRIBUTE_EXPR)
+              rest
+          with
+          | Some payload_node, Some attribute_node ->
+              let payload_node, attributes = peel_outer_type_attributes payload_node in
+              (payload_node, attributes @ [ attribute_from_node attribute_node ])
+          | _ ->
+              (node, []))
+      | [] ->
+          (node, []))
+  | _ ->
+      (node, [])
+
 let rec can_lift_module_type_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.MODULE_TYPE_PATH
@@ -1331,17 +1352,22 @@ and core_type_from_node node =
       | first :: _ -> String.equal (Ceibo.Red.SyntaxToken.text first) "mutable"
       | [] -> false
     in
-    match
-      field_name,
+    let field_type_node =
       direct_non_trivia_nodes node
       |> List.find_opt can_lift_core_type_node
+    in
+    match
+      field_name,
+      field_type_node
     with
     | Some field_name, Some field_type_node ->
+        let field_type_node, attributes = peel_outer_type_attributes field_type_node in
         {
           Cst.syntax_node = node;
           field_name;
           field_type = core_type_from_node field_type_node;
           is_mutable = mutable_field;
+          attributes;
         }
     | _ ->
         bail ~message:"expected record type field name and type during Ceibo -> CST lifting"
@@ -3615,21 +3641,30 @@ let record_field_from_node node =
                String.equal (Ceibo.Red.SyntaxToken.text first) "mutable"
            | [] -> false
          in
+         let field_type_node =
+           direct_non_trivia_nodes node
+           |> List.find_opt can_lift_core_type_node
+         in
+         let lifted_field_type, lifted_attributes =
+           match field_type_node with
+           | Some field_type_node ->
+               let field_type_node, attributes =
+                 peel_outer_type_attributes field_type_node
+               in
+               (core_type_from_node field_type_node, attributes)
+           | None ->
+               bail
+                 ~message:
+                   "expected record field type during Ceibo -> CST lifting"
+                 ~syntax_node:node ~context:[ "type_definition.record_field" ]
+         in
          Cst.RecordField.
            {
              syntax_node = node;
-              field_name = field_name;
-              field_type =
-                (direct_non_trivia_nodes node
-                |> List.find_opt can_lift_core_type_node
-                |> function
-                | Some field_type_node -> core_type_from_node field_type_node
-                | None ->
-                    bail
-                      ~message:
-                        "expected record field type during Ceibo -> CST lifting"
-                      ~syntax_node:node ~context:[ "type_definition.record_field" ]);
+             field_name;
+             field_type = lifted_field_type;
              is_mutable = mutable_field;
+             attributes = lifted_attributes;
            })
 
 let variant_constructor_from_node node =

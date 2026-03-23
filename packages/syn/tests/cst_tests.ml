@@ -260,6 +260,62 @@ let tests =
                 Ok ()
             | _ -> Error "expected record type definition")
         | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst record fields separate field attributes from field types"
+      (fun () ->
+        let result =
+          parse_ml
+            "type user = { name : int [@deprecated]; code : (string [@boxed]) }\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+            match Syn.Cst.TypeDeclaration.type_definition decl with
+            | Syn.Cst.TypeDefinition.Record [ name_field; code_field ] ->
+                let attribute_name ({ name; _ } : Syn.Cst.attribute) =
+                  Syn.Cst.Ident.name name
+                in
+                let attribute_names field =
+                  Syn.Cst.RecordField.attributes field
+                  |> List.filter_map attribute_name
+                in
+                Test.assert_equal ~expected:[ "deprecated" ]
+                  ~actual:(attribute_names name_field);
+                Test.assert_equal ~expected:[] ~actual:(attribute_names code_field);
+                (match Syn.Cst.RecordField.field_type name_field with
+                | Syn.Cst.CoreType.Constr { constructor_path; _ } ->
+                    Test.assert_equal ~expected:(Some "int")
+                      ~actual:(Syn.Cst.Ident.name constructor_path)
+                | _ ->
+                    raise
+                      (Failure
+                         "expected attributed record field type to unwrap to int"));
+                (match Syn.Cst.RecordField.field_type code_field with
+                | Syn.Cst.CoreType.Parenthesized
+                    {
+                      inner =
+                        Syn.Cst.CoreType.Attribute
+                          {
+                            attribute;
+                            type_ = Syn.Cst.CoreType.Constr { constructor_path; _ };
+                            _;
+                          };
+                      _;
+                    } ->
+                    Test.assert_equal ~expected:(Some "boxed")
+                      ~actual:(attribute_name attribute);
+                    Test.assert_equal ~expected:(Some "string")
+                      ~actual:(Syn.Cst.Ident.name constructor_path);
+                    Ok ()
+                | _ ->
+                    Error
+                      "expected parenthesized type attribute to remain on the field type")
+            | _ -> Error "expected record type definition")
+        | _ -> Error "expected first item to be a type declaration");
     Test.case "cst type declarations expose variant constructors structurally" (fun () ->
         let result =
           parse_ml

@@ -202,12 +202,14 @@ and type_binder =
 (** A field inside a record type.
 
     This covers immutable and mutable record fields declared between `{` and
-    `}`.
+    `}`. Field-level attributes such as `[@deprecated]` are attached here,
+    while attributes nested inside parentheses remain part of `field_type`.
 
     Examples:
 
     ```ocaml,norun
     { name : string; mutable count : int }
+    { count : int [@deprecated] }
     ```
 *)
 and record_type_field = {
@@ -215,6 +217,7 @@ and record_type_field = {
   field_name : Token.t;
   field_type : core_type;
   is_mutable : bool;
+  attributes : attribute list;
 }
 
 (** A tag inside a polymorphic variant type.
@@ -2809,7 +2812,8 @@ end
 
 (** A field inside a record type definition.
 
-    Covers entries such as `name : string` and `mutable count : int`.
+    Covers entries such as `name : string`, `mutable count : int`, and
+    `count : int [@deprecated]`.
 *)
 module RecordField : sig
   type t = {
@@ -2817,6 +2821,7 @@ module RecordField : sig
     field_name : Token.t;
     field_type : core_type;
     is_mutable : bool;
+    attributes : attribute list;
   }
 
   val syntax_node : t -> syntax_node
@@ -2824,6 +2829,7 @@ module RecordField : sig
   val field_type : t -> core_type
   val name : t -> string
   val is_mutable : t -> bool
+  val attributes : t -> attribute list
 end
 
 (** A constructor inside a regular variant type definition.

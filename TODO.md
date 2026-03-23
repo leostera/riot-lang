@@ -181,7 +181,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] manifest/core type of aliases
   - [x] constraints
   - [x] variance/injectivity on parameters
-  - [ ] record label declarations
+  - [x] record label declarations
   - [ ] constructor argument lists
   - [ ] constructor result types / GADT constructors
 - [ ] Attributes and extensions are still token shells rather than structured payloads
@@ -215,7 +215,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [ ] `private_flag` is missing
   - [x] parameter variance/injectivity is missing
   - [ ] `type_kind` detail is still compressed
-  - [ ] record fields only store names + mutability, not field types and attrs
+  - [x] record fields only store names + mutability, not field types and attrs
   - [ ] variant constructors only store names, not arguments/results/attrs
   - [x] polyvariant tags only store names, not payload types or closedness
 - [ ] Structure items:

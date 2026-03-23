@@ -84,6 +84,7 @@ and record_type_field = {
   field_name : Token.t;
   field_type : core_type;
   is_mutable : bool;
+  attributes : attribute list;
 }
 
 and poly_variant_tag = {
@@ -1725,6 +1726,7 @@ module RecordField = struct
     field_name : Token.t;
     field_type : core_type;
     is_mutable : bool;
+    attributes : attribute list;
   }
 
   let syntax_node field = field.syntax_node
@@ -1732,6 +1734,7 @@ module RecordField = struct
   let field_type field = field.field_type
   let name field = Token.text field.field_name
   let is_mutable field = field.is_mutable
+  let attributes field = field.attributes
 end
 
 module VariantConstructor = struct
