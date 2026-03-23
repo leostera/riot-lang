@@ -1895,7 +1895,6 @@ module TypeDefinition = struct
     | Record of RecordField.t list
     | Variant of VariantConstructor.t list
     | PolyVariant of PolyVariant.t
-    | Other of syntax_node
 end
 
 module TypeDeclaration = struct

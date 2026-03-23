@@ -3995,7 +3995,10 @@ let type_definition_from_node node =
                   Cst.TypeDefinition.Alias
                     { syntax_node = first; manifest = core_type_from_node first }
                 else
-                  Cst.TypeDefinition.Other first)
+                  bail
+                    ~message:
+                      "unsupported type definition shape during Ceibo -> CST lifting"
+                    ~syntax_node:first ~context:[ "type_definition" ])
 
 let type_declaration_from_node node =
   let lifted_type_params =
@@ -5524,9 +5527,6 @@ let validate_type_definition ~context = function
   | Cst.TypeDefinition.PolyVariant poly_variant ->
       validate_poly_variant ~context:("type_definition.poly_variant" :: context)
         poly_variant
-  | Cst.TypeDefinition.Other syntax_node ->
-      bail ~message:"unsupported type definition shape during Ceibo -> CST lifting"
-        ~syntax_node ~context
 
 let validate_type_constraint ~context ({ left; right; _ } : Cst.type_constraint) =
   validate_core_type ~context:("type_constraint.left" :: context) left;

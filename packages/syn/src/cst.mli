@@ -3072,8 +3072,7 @@ end
 (** The right-hand side of a `type` declaration.
 
     This is intentionally a broad summary layer over the successful parse. The
-    most common declaration shapes are modeled directly. `Other` is reserved
-    for declaration bodies that still do not have a dedicated public lift.
+    most common declaration shapes are modeled directly. 
 *)
 module TypeDefinition : sig
   type t =
@@ -3137,13 +3136,6 @@ module TypeDefinition : sig
         (** A polymorphic variant definition such as
             `type t = [ `A | `B of int ]` or
             `type t = [ color | `Yellow ]`.
-        *)
-    | Other of syntax_node
-        (** A successfully parsed type definition whose exact grammar is not yet
-            given a dedicated public constructor.
-
-            The original syntax node is still preserved so callers can inspect
-            unlifted details while parity work continues.
         *)
 end
 

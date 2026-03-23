@@ -56,7 +56,8 @@ let rec case_pattern_kind = function
   | Syn.Cst.Pattern.PolyVariantInherit _ | Syn.Cst.Pattern.Constructor _
   | Syn.Cst.Pattern.Tuple _ | Syn.Cst.Pattern.List _ | Syn.Cst.Pattern.Array _
   | Syn.Cst.Pattern.Record _ | Syn.Cst.Pattern.Cons _ | Syn.Cst.Pattern.Or _
-  | Syn.Cst.Pattern.Alias _ | Syn.Cst.Pattern.Typed _ ->
+  | Syn.Cst.Pattern.Alias _ | Syn.Cst.Pattern.Typed _
+  | Syn.Cst.Pattern.Effect _ | Syn.Cst.Pattern.LocalOpen _ ->
       OtherPattern
 
 let suggestion_for_match (expr : Syn.Cst.match_expression) =

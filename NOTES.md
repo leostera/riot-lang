@@ -31,4 +31,3 @@ some use cases for the macro rfd:
   and voila that does all the plumbing for you
 
 * package_name! module_name! function_name! loc! file! - and other context-level things that can be injected
-

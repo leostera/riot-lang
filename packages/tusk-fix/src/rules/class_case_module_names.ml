@@ -86,17 +86,23 @@ let diagnostic_for_module_type_decl decl =
   else
     None
 
+let diagnostics_for_recursive_module_decl decl =
+  Syn.Cst.RecursiveModuleDeclaration.declarations decl
+  |> List.filter_map diagnostic_for_module_decl
+
 let check_tree (ctx : Rule.context) _red_root =
   match ctx.cst with
   | None -> []
   | Some source_file ->
       Syn.Cst.SourceFile.items source_file
-      |> List.filter_map (function
+      |> List.concat_map (function
            | Syn.Cst.Item.ModuleDeclaration decl ->
-               diagnostic_for_module_decl decl
+               Option.to_list (diagnostic_for_module_decl decl)
+           | Syn.Cst.Item.RecursiveModuleDeclaration decl ->
+               diagnostics_for_recursive_module_decl decl
            | Syn.Cst.Item.ModuleTypeDeclaration decl ->
-               diagnostic_for_module_type_decl decl
-           | _ -> None)
+               Option.to_list (diagnostic_for_module_type_decl decl)
+           | _ -> [])
 
 let make () =
   Rule.make ~id:rule_id ~code:rule_code ~name:rule_name

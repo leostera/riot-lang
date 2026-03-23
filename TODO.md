@@ -42,29 +42,14 @@ This file is _yours_. Keep it up to date after every big change.
 - `./tusk fix --list-diagnostics`
 - `tusk run tusk -- fix --check --limit 10 <file>`
 
-## Syn.Cst Fidelity
+## Things to Keep in Mind
 
-- [ ] Keep moving `Syn.Cst` toward a faithful `Ceibo -> Cst` lift driven by the fixture corpus
-- [ ] Prefer adding real CST node shapes over convenience projections when a fixture fails
-- [ ] Keep [packages/syn/src/cst.ml](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/src/cst.ml) focused on types, [packages/syn/src/cst_builder.ml](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/src/cst_builder.ml) focused on lifting, and [packages/syn/src/cst_json.ml](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/src/cst_json.ml) focused on snapshot serialization
-- [~] Keep shrinking redundant record-accessor modules from `Syn.Cst`; family-level helpers may stay temporarily, but plain public records should be accessed directly
-- [ ] Replace coarse `*_syntax_node` placeholders with typed CST where possible:
-  - [ ] core types
-  - [~] module types
-  - [x] class type bodies
-  - [ ] signature-item internals
-- [x] Replace flattened identifier/path segments with a recursive `Ident` CST
-- [x] Make successful CST creation rule out public `Unknown` shapes by construction rather than by validation convention
-- [ ] Add a stronger fixture/checklist pass for syntax that the stock parsetree distinguishes sharply
-- [ ] Next parity slices:
-  - [x] standalone attribute and extension items
-  - [x] typed module-type tree
-  - [x] typed module-expression tree
-  - [~] attributed expressions and attributed items as faithful wrappers instead of token shells
-    - [x] attribute and extension nodes now preserve sigil, qualified name, and payload anchors
-    - [ ] expression/item/type wrappers still need typed payload structure instead of bare annotation nodes
+- Keep moving `Syn.Cst` toward a faithful `Ceibo -> Cst` lift driven by the fixture corpus
+- Prefer adding real CST node shapes over convenience projections when a fixture fails
+- Keep [packages/syn/src/cst.ml] focused on types, [packages/syn/src/cst_builder.ml] focused on lifting, and [packages/syn/src/cst_json.ml] focused on snapshot serialization
+- Keep shrinking redundant record-accessor modules from `Syn.Cst`; family-level helpers may stay temporarily, but plain public records should be accessed directly
 
-### OCaml Structure Parity Checklist
+## OCaml Structure Parity Checklist
 
 When modelling the fields below, don't model them blindly, but consider meaningful groupings. For ex. instead of ExprString ExprInt ExprFloat we can group them by Expression.Literal(lit) where lit is its own literal enum with String | Int | Float | etc. Similarly, use good judgement to group similar things together.
 
@@ -176,7 +161,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] `TypeDefinition.Alias`
   - [x] `TypeDefinition.Object`
   - [x] `TypeDefinition.FirstClassModule`
-  - [x] `TypeDefinition.Other`
+  - [x] public `TypeDefinition.Other` has been removed
 - [ ] Type declarations still do not expose typed structure for:
   - [x] manifest/core type of aliases
   - [x] constraints

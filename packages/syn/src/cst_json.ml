@@ -1418,12 +1418,6 @@ let type_definition_to_json = function
           ("kind", poly_variant_bound_to_json (Cst.PolyVariant.kind poly_variant));
           ("fields", Json.Array (List.map row_field_to_json (Cst.PolyVariant.fields poly_variant)));
         ]
-  | Cst.TypeDefinition.Other syntax_node ->
-      Json.Object
-        [
-          ("tag", Json.String "other");
-          ("syntax_node", syntax_node_to_json syntax_node);
-        ]
 
 let type_declaration_to_json decl =
   let constraints =
