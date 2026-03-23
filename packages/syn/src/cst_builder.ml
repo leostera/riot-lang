@@ -3954,50 +3954,48 @@ let type_definition_from_node node =
             | [] -> Cst.TypeDefinition.Abstract
             | first :: _ ->
                 let kind = Ceibo.Red.SyntaxNode.kind first in
-        if kind = Syntax_kind.TYPE_EXTENSIBLE then
-          Cst.TypeDefinition.Extensible { syntax_node = first }
-        else if kind = Syntax_kind.TYPE_CONSTR || kind = Syntax_kind.TYPE_ARROW
-           || kind = Syntax_kind.TYPE_TUPLE || kind = Syntax_kind.TYPE_VAR
-           || kind = Syntax_kind.TYPE_ALIAS || kind = Syntax_kind.TYPE_PAREN
-           || kind = Syntax_kind.ATTRIBUTE_EXPR
-           || kind = Syntax_kind.EXTENSION_EXPR
-        then
-          Cst.TypeDefinition.Alias
-            { syntax_node = first; manifest = core_type_from_node first }
-        else if kind = Syntax_kind.OBJECT_TYPE then
-          Cst.TypeDefinition.Object
-            {
-              syntax_node = first;
-              fields =
-                direct_non_trivia_nodes first
-                |> List.filter (fun child ->
-                       Ceibo.Red.SyntaxNode.kind child = Syntax_kind.OBJECT_TYPE_FIELD)
-                |> List.map (fun field_node ->
-                       match
-                         first_ident_token_in_subtree field_node,
-                         direct_non_trivia_nodes field_node
-                         |> List.find_opt can_lift_core_type_node
-                       with
-                       | Some field_name, Some field_type_node ->
-                           {
-                             Cst.syntax_node = field_node;
-                             field_name;
-                             field_type = core_type_from_node field_type_node;
-                           }
-                       | _ ->
-                           bail
-                             ~message:
-                               "expected object type field name and type during Ceibo -> CST lifting"
-                             ~syntax_node:field_node
-                             ~context:[ "type_definition.object_field" ]);
-            }
-        else if kind = Syntax_kind.FIRST_CLASS_MODULE_TYPE then
-          Cst.TypeDefinition.FirstClassModule
-            {
-              syntax_node = first;
-              module_type = module_type_from_first_class_module_type_node first;
-            }
-        else Cst.TypeDefinition.Other first)
+                if kind = Syntax_kind.TYPE_EXTENSIBLE then
+                  Cst.TypeDefinition.Extensible { syntax_node = first }
+                else if kind = Syntax_kind.OBJECT_TYPE then
+                  Cst.TypeDefinition.Object
+                    {
+                      syntax_node = first;
+                      fields =
+                        direct_non_trivia_nodes first
+                        |> List.filter (fun child ->
+                               Ceibo.Red.SyntaxNode.kind child
+                               = Syntax_kind.OBJECT_TYPE_FIELD)
+                        |> List.map (fun field_node ->
+                               match
+                                 first_ident_token_in_subtree field_node,
+                                 direct_non_trivia_nodes field_node
+                                 |> List.find_opt can_lift_core_type_node
+                               with
+                               | Some field_name, Some field_type_node ->
+                                   {
+                                     Cst.syntax_node = field_node;
+                                     field_name;
+                                     field_type = core_type_from_node field_type_node;
+                                   }
+                               | _ ->
+                                   bail
+                                     ~message:
+                                       "expected object type field name and type during Ceibo -> CST lifting"
+                                     ~syntax_node:field_node
+                                     ~context:[ "type_definition.object_field" ]);
+                    }
+                else if kind = Syntax_kind.FIRST_CLASS_MODULE_TYPE then
+                  Cst.TypeDefinition.FirstClassModule
+                    {
+                      syntax_node = first;
+                      module_type =
+                        module_type_from_first_class_module_type_node first;
+                    }
+                else if can_lift_core_type_node first then
+                  Cst.TypeDefinition.Alias
+                    { syntax_node = first; manifest = core_type_from_node first }
+                else
+                  Cst.TypeDefinition.Other first)
 
 let type_declaration_from_node node =
   let lifted_type_params =

@@ -3072,8 +3072,8 @@ end
 (** The right-hand side of a `type` declaration.
 
     This is intentionally a broad summary layer over the successful parse. The
-    most common declaration shapes are modeled directly, while rarer or more
-    complex forms fall back to `Other`.
+    most common declaration shapes are modeled directly. `Other` is reserved
+    for declaration bodies that still do not have a dedicated public lift.
 *)
 module TypeDefinition : sig
   type t =
@@ -3097,6 +3097,7 @@ module TypeDefinition : sig
             ```ocaml,norun
             type t = int
             type 'a t = 'a list
+            type t = Outer.Inner.(request -> response)
             ```
         *)
     | Extensible of {
