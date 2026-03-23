@@ -145,7 +145,9 @@ let can_start_module_expr parser =
   | Token.Keyword Keyword.Functor
   | Token.OpenDelim Token.StructEnd
   | Token.OpenDelim Token.SigEnd
-  | Token.OpenDelim Token.Paren ->
+  | Token.OpenDelim Token.Paren
+  | Token.OpenDelim Token.Bracket
+  | Token.OpenDelim Token.Brace ->
       true
   | Token.Ident name -> ident_starts_uppercase name
   | _ -> false
@@ -155,7 +157,9 @@ let can_start_module_type_expr parser =
   | Token.Keyword Keyword.Functor
   | Token.OpenDelim Token.SigEnd
   | Token.Keyword Keyword.Module
-  | Token.OpenDelim Token.Paren ->
+  | Token.OpenDelim Token.Paren
+  | Token.OpenDelim Token.Bracket
+  | Token.OpenDelim Token.Brace ->
       true
   | Token.Ident name -> ident_starts_uppercase name
   | _ -> false
@@ -9093,6 +9097,10 @@ and parse_module_type_expr parser =
   (* Check for "module type of" first *)
   let base =
     match peek_kind parser with
+    | Token.OpenDelim Token.Bracket when is_extension_start parser ->
+        parse_extension parser
+    | Token.OpenDelim Token.Brace when is_brace_extension_start parser ->
+        parse_extension parser
     | Token.Keyword Keyword.Module ->
         (* Check if this is "module type of" *)
         let saved_pos = position parser in
@@ -9370,6 +9378,10 @@ and parse_module_expr parser =
   (* Parse base module expression *)
   let base =
     match peek_kind parser with
+    | Token.OpenDelim Token.Bracket when is_extension_start parser ->
+        parse_extension parser
+    | Token.OpenDelim Token.Brace when is_brace_extension_start parser ->
+        parse_extension parser
     | Token.Keyword Keyword.Functor ->
         let functor_kw = consume parser in
         let trivia_after_functor = consume_trivia parser in
@@ -9570,7 +9582,7 @@ and parse_module_expr parser =
 
   let base = attach_postfix_attributes parser base in
   
-  (* Parse functor applications: M(X)(Y)(Z) *)
+  (* Parse functor applications: M(X)(Y)(Z) and generative applications M() *)
   let rec parse_applications expr =
     (* Only consume trivia speculatively if we might see an application *)
     let saved_pos = Token_cursor.position parser.cursor in
@@ -9579,24 +9591,32 @@ and parse_module_expr parser =
     if peek_kind parser = Token.OpenDelim Token.Paren then
       let lparen = consume parser in
       let trivia_after_lparen = consume_trivia parser in
-      let arg = parse_module_expr parser in
-      let trivia_before_rparen = consume_trivia parser in
-      let rparen =
-        expect parser (Token.CloseDelim Token.Paren) (fun found ->
-            Diagnostic.unclosed_delimiter ~opener:")" ~found
-              ~text:(token_text parser found)
-              ~span:(expected_span parser))
-      in
-      
       let app =
-        make_node Syntax_kind.MODULE_APPLICATION
-          (tokens_to_green parser trivia
-          @ [ Ceibo.Green.Node expr ]
-          @ [ make_token parser lparen ]
-          @ tokens_to_green parser trivia_after_lparen
-          @ [ Ceibo.Green.Node arg ]
-          @ tokens_to_green parser trivia_before_rparen
-          @ [ make_token parser rparen ])
+        if peek_kind parser = Token.CloseDelim Token.Paren then
+          let rparen = consume parser in
+          make_node Syntax_kind.MODULE_UNIT_APPLICATION
+            (tokens_to_green parser trivia
+            @ [ Ceibo.Green.Node expr ]
+            @ [ make_token parser lparen ]
+            @ tokens_to_green parser trivia_after_lparen
+            @ [ make_token parser rparen ])
+        else
+          let arg = parse_module_expr parser in
+          let trivia_before_rparen = consume_trivia parser in
+          let rparen =
+            expect parser (Token.CloseDelim Token.Paren) (fun found ->
+                Diagnostic.unclosed_delimiter ~opener:")" ~found
+                  ~text:(token_text parser found)
+                  ~span:(expected_span parser))
+          in
+          make_node Syntax_kind.MODULE_APPLICATION
+            (tokens_to_green parser trivia
+            @ [ Ceibo.Green.Node expr ]
+            @ [ make_token parser lparen ]
+            @ tokens_to_green parser trivia_after_lparen
+            @ [ Ceibo.Green.Node arg ]
+            @ tokens_to_green parser trivia_before_rparen
+            @ [ make_token parser rparen ])
       in
       parse_applications app
     else (

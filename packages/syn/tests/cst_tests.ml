@@ -416,6 +416,55 @@ let tests =
             Ok ()
         | _ ->
             Error "expected module declaration with functor application");
+    Test.case "cst module declarations preserve unit functor applications"
+      (fun () ->
+        let result = parse_ml "module M = F()\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleDeclaration
+            {
+              module_expression =
+                Some
+                  (Syn.Cst.ModuleExpression.ApplyUnit
+                    {
+                      callee = Syn.Cst.ModuleExpression.Path functor_path;
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "F")
+              ~actual:(Syn.Cst.Ident.name functor_path);
+            Ok ()
+        | _ ->
+            Error "expected module declaration with unit functor application");
+    Test.case "cst module declarations preserve extension module expressions"
+      (fun () ->
+        let result = parse_ml "module M = [%driver]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleDeclaration
+            {
+              module_expression =
+                Some (Syn.Cst.ModuleExpression.Extension extension);
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"%"
+              ~actual:(Syn.Cst.Token.text extension.sigil_token);
+            Test.assert_equal ~expected:(Some "driver")
+              ~actual:(Syn.Cst.Ident.name extension.name);
+            Ok ()
+        | _ ->
+            Error "expected module declaration with extension module expression");
     Test.case "cst module declarations preserve unpacked first-class modules"
       (fun () ->
         let result = parse_ml "module M = (val packed : S)\n" in
@@ -672,6 +721,28 @@ let tests =
             Ok ()
         | _ ->
             Error "expected module type declaration with module-type-of body");
+    Test.case "cst module type declarations preserve extension module type bodies"
+      (fun () ->
+        let result = parse_ml "module type S = [%sig_ext]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleTypeDeclaration
+            {
+              module_type = Some (Syn.Cst.ModuleType.Extension extension);
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"%"
+              ~actual:(Syn.Cst.Token.text extension.sigil_token);
+            Test.assert_equal ~expected:(Some "sig_ext")
+              ~actual:(Syn.Cst.Ident.name extension.name);
+            Ok ()
+        | _ ->
+            Error "expected module type declaration with extension body");
     Test.case "cst interface module type substitutions preserve substitution flags"
       (fun () ->
         let result = parse_mli "module type Alias := Source\n" in

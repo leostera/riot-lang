@@ -1,0 +1,72 @@
+{
+  "status": "ok",
+  "cst": {
+    "kind": "implementation",
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 15
+      }
+    },
+    "items": [
+      {
+        "tag": "module_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "MODULE_DECL",
+            "span": {
+              "start": 0,
+              "end": 14
+            }
+          },
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 7,
+              "end": 8
+            }
+          },
+          "functor_parameters": [],
+          "module_type": null,
+          "module_expression": {
+            "tag": "apply_unit",
+            "syntax_node": {
+              "kind": "MODULE_UNIT_APPLICATION",
+              "span": {
+                "start": 11,
+                "end": 14
+              }
+            },
+            "callee": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 11,
+                    "end": 12
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "F",
+                  "span": {
+                    "start": 11,
+                    "end": 12
+                  }
+                }
+              }
+            }
+          },
+          "is_destructive_substitution": false,
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": []
+  }
+}

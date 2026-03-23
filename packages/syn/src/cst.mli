@@ -18,7 +18,7 @@ open Std
     - `core_type` for core types such as `'a list`, `int -> string`, or
       `(module S with type t = int)`
     - `module_type` and `module_expression` for module-language syntax such as
-      `sig ... end`, `functor (X : S) -> T`, or `F(X)`
+      `sig ... end`, `functor (X : S) -> T`, `F(X)`, or `F()`
     - `Item.t` and `SourceFile.t` for file-level structure
 
     Some public nodes deliberately retain raw `syntax_node`s for subgrammars
@@ -1981,8 +1981,8 @@ and parenthesized_expression = {
 (** Module expression syntax.
 
     These nodes cover the term-level side of the module language, including
-    `struct ... end`, functors, functor application, and unpacking
-    first-class modules with `val`.
+    `struct ... end`, functors, functor application, extension nodes such as
+    `[%ext]`, and unpacking first-class modules with `val`.
 *)
 and module_expression =
   | Path of Ident.t
@@ -2011,6 +2011,16 @@ and module_expression =
       argument : module_expression;
     }
       (** A functor application such as `F(X)` or `F(X)(Y)`. *)
+  | ApplyUnit of {
+      syntax_node : syntax_node;
+      callee : module_expression;
+    }
+      (** A unit functor application such as `F()` or `F()()`.
+
+          This preserves the stock parsetree distinction between ordinary
+          module application and generative application with an empty unit
+          argument list.
+      *)
   | Unpack of {
       syntax_node : syntax_node;
       expression : expression;
@@ -2036,6 +2046,11 @@ and module_expression =
       attribute : attribute;
     }
       (** A module expression with an attached attribute. *)
+  | Extension of extension
+      (** A PPX extension parsed in module-expression position.
+
+          Example: `[%driver]`.
+      *)
 
 (** Namespace view over `expression`.
 
@@ -2113,6 +2128,10 @@ module ModuleExpression : sig
         callee : module_expression;
         argument : module_expression;
       }
+    | ApplyUnit of {
+        syntax_node : syntax_node;
+        callee : module_expression;
+      }
     | Unpack of {
         syntax_node : syntax_node;
         expression : expression;
@@ -2127,6 +2146,7 @@ module ModuleExpression : sig
         module_expression : module_expression;
         attribute : attribute;
       }
+    | Extension of extension
 
   val syntax_node : t -> syntax_node
 end

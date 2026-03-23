@@ -126,17 +126,17 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] structure module bodies
   - [x] functor expressions
   - [x] functor application expressions
-  - [ ] unit functor application expressions
+  - [x] unit functor application expressions
   - [ ] constrained module expressions
   - [x] unpacked first-class modules
-  - [ ] module extensions
+  - [x] module extensions
 - [ ] Module types:
   - [x] module type identifiers
   - [x] signature module types
   - [x] functor module types
   - [x] with-constraint module types
   - [x] module-type-of expressions
-  - [ ] module type extensions
+  - [x] module type extensions
   - [ ] module type aliases
 - [ ] Class expressions:
   - [ ] class constructor references

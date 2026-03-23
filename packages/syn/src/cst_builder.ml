@@ -279,6 +279,8 @@ let rec can_lift_module_expression_node node =
   | Syntax_kind.MODULE_PATH
   | Syntax_kind.STRUCT_EXPR
   | Syntax_kind.MODULE_APPLICATION
+  | Syntax_kind.MODULE_UNIT_APPLICATION
+  | Syntax_kind.EXTENSION_EXPR
   | Syntax_kind.FIRST_CLASS_MODULE_EXPR ->
       true
   | Syntax_kind.FUNCTOR_TYPE -> (
@@ -1567,6 +1569,16 @@ and module_expression_from_node node =
             }
       | _ ->
           unsupported_module_expression node)
+  | Syntax_kind.MODULE_UNIT_APPLICATION -> (
+      match direct_non_trivia_nodes node with
+      | callee_node :: _ ->
+          Cst.ModuleExpression.ApplyUnit
+            {
+              syntax_node = node;
+              callee = module_expression_from_node callee_node;
+            }
+      | _ ->
+          unsupported_module_expression node)
   | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> (
       match non_paren_tokens node, direct_non_trivia_nodes node with
       | val_kw :: _, expression_node :: _
@@ -1607,6 +1619,8 @@ and module_expression_from_node node =
               unsupported_module_expression node)
       | [] ->
           unsupported_module_expression node)
+  | Syntax_kind.EXTENSION_EXPR ->
+      Cst.ModuleExpression.Extension (extension_from_node node)
   | _ ->
       unsupported_module_expression node
 

@@ -360,6 +360,13 @@ and module_expression_to_json = function
           ("callee", module_expression_to_json callee);
           ("argument", module_expression_to_json argument);
         ]
+  | Cst.ModuleExpression.ApplyUnit { syntax_node; callee } ->
+      Json.Object
+        [
+          ("tag", Json.String "apply_unit");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("callee", module_expression_to_json callee);
+        ]
   | Cst.ModuleExpression.Unpack { syntax_node; expression; module_type } ->
       Json.Object
         [
@@ -382,6 +389,12 @@ and module_expression_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("module_expression", module_expression_to_json module_expression);
           ("attribute", attribute_to_json attribute);
+        ]
+  | Cst.ModuleExpression.Extension extension ->
+      Json.Object
+        [
+          ("tag", Json.String "extension");
+          ("extension", extension_to_json extension);
         ]
 
 and exception_declaration_to_json (decl : Cst.exception_declaration) =

@@ -125,6 +125,7 @@ type t =
   | FUNCTOR_PARAM (* (X : S) in functor declaration *)
   | FUNCTOR_TYPE (* functor (X : S) -> T *)
   | MODULE_APPLICATION (* M(X) functor application *)
+  | MODULE_UNIT_APPLICATION (* M() unit functor application *)
   (* ========================================================================= *)
   (* TOP-LEVEL DECLARATIONS *)
   (* ========================================================================= *)
@@ -271,6 +272,7 @@ let to_string = function
   | FUNCTOR_PARAM -> "FUNCTOR_PARAM"
   | FUNCTOR_TYPE -> "FUNCTOR_TYPE"
   | MODULE_APPLICATION -> "MODULE_APPLICATION"
+  | MODULE_UNIT_APPLICATION -> "MODULE_UNIT_APPLICATION"
   | LET_BINDING -> "LET_BINDING"
   | LET_REC_BINDING -> "LET_REC_BINDING"
   | LET_MUTUAL_DECL -> "LET_MUTUAL_DECL"
@@ -404,6 +406,7 @@ let from_string = function
   | "FUNCTOR_PARAM" -> Some FUNCTOR_PARAM
   | "FUNCTOR_TYPE" -> Some FUNCTOR_TYPE
   | "MODULE_APPLICATION" -> Some MODULE_APPLICATION
+  | "MODULE_UNIT_APPLICATION" -> Some MODULE_UNIT_APPLICATION
   | "LET_BINDING" -> Some LET_BINDING
   | "LET_REC_BINDING" -> Some LET_REC_BINDING
   | "LET_MUTUAL_DECL" -> Some LET_MUTUAL_DECL

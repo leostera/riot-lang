@@ -157,6 +157,7 @@ type t =
   | FUNCTOR_PARAM  (** Functor parameter: `(X : S)` *)
   | FUNCTOR_TYPE  (** Functor type: `functor (X : S) -> T` *)
   | MODULE_APPLICATION  (** Module application: `M(X)` *)
+  | MODULE_UNIT_APPLICATION  (** Unit functor application: `M()` *)
   (* ===================================================================== *)
   (* TOP-LEVEL DECLARATIONS *)
   (* ===================================================================== *)

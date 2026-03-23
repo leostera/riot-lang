@@ -1071,6 +1071,10 @@ and module_expression =
       callee : module_expression;
       argument : module_expression;
     }
+  | ApplyUnit of {
+      syntax_node : syntax_node;
+      callee : module_expression;
+    }
   | Unpack of {
       syntax_node : syntax_node;
       expression : expression;
@@ -1085,6 +1089,7 @@ and module_expression =
       module_expression : module_expression;
       attribute : attribute;
     }
+  | Extension of extension
 
 module Expression = struct
   type t = expression =
@@ -1204,6 +1209,10 @@ module ModuleExpression = struct
         callee : module_expression;
         argument : module_expression;
       }
+    | ApplyUnit of {
+        syntax_node : syntax_node;
+        callee : module_expression;
+      }
     | Unpack of {
         syntax_node : syntax_node;
         expression : expression;
@@ -1218,16 +1227,20 @@ module ModuleExpression = struct
         module_expression : module_expression;
         attribute : attribute;
       }
+    | Extension of extension
 
   let syntax_node = function
     | Path path -> Ident.syntax_node path
     | Structure { syntax_node; _ }
     | Functor { syntax_node; _ }
     | Apply { syntax_node; _ }
+    | ApplyUnit { syntax_node; _ }
     | Unpack { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
     | Attribute { syntax_node; _ } ->
         syntax_node
+    | Extension extension ->
+        extension.syntax_node
 end
 
 module Pattern = struct
