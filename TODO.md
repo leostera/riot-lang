@@ -13,6 +13,7 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [x] Go over the OCaml Structure Parity Checklist below and check all the boxes
 - [x] Work on refactoring the existing lints
+- [x] Refactor linting explanations to be in-depth with examples and not a structured "why | better | worse" garbage. Also explanations dont' need a title, its enough with the rule-id and the body 
 - [ ] Work on implementing the remaining lints
 - [ ] Work on fixing the broken tests
 
@@ -36,26 +37,26 @@ This file is _yours_. Keep it up to date after every big change.
 ## tusk-fix Cleanup
 
 - [x] Simplify built-in and package rule metadata to `id`, short description, and long explanation
-- [ ] Remove the runner_tests.ml code_id by refacotring the tests to pass in a `~rule` instead of `~code` and refactoring the assertions too
-- [ ] Keep explanations example-driven rather than structured as "why this rule exists"
-- [ ] Group built-in lints by category, similar to Clippy
+- [x] Remove the runner_tests.ml code_id by refacotring the tests to pass in a `~rule` instead of `~code` and refactoring the assertions too
+- [x] Keep explanations example-driven rather than structured as "why this rule exists"
 
 ## Next Built-in Lints
 
 - [x] Prefer named closed polymorphic variants over inline closed polymorphic variants like ``[ `a | `b ] list``
 - [x] Warn on bool positional parameters in functions; suggest a named parameter or an enum
-- [ ] Warn on tuples that should be records:
-  - [ ] more than 3 elements of the same type
-  - [ ] more than 4 elements of any type
-- [ ] Prefer scoped module qualification syntax over inline qualified field syntax:
-  - [ ] `let open Foo in [...]` -> prefer `Foo.[...]` unless there are multiple stacked local opens
-  - [ ] `Module.{ field = value }` over `{ Module.field = value }`
-- [ ] If a module has a single type definition, prefer it be called `t`
+- [x] Warn on tuples that should be records:
+  - [x] more than 3 elements of the same type
+  - [x] more than 4 elements of any type
+- [x] Prefer scoped module qualification syntax over inline qualified field syntax:
+  - [x] `let open Foo in [...]` -> prefer `Foo.[...]` unless there are multiple stacked local opens
+  - [x] `Module.{ field = value }` over `{ Module.field = value }`
+- [x] If a module has a single type definition, prefer it be called `t`
 - [x] If a module has a public record type and accessor functions like
   - [x] `.mli`: `type t = { field : string }`
   - [x] `.mli`: `val field : t -> string`
   - [x] then suggest making the type opaque
-- [ ] Add a style rule encouraging record destructuring in function parameters for internal helpers like JSON serializers, so new fields are harder to ignore accidentally
+- [x] Add a style rule encouraging record destructuring in function parameters for internal helpers like JSON serializers, so new fields are harder to ignore accidentally
+  - covers both `let f record = let { a; b; _ } = record in ...` and repeated `record.field` helper bodies
 
 ## Package Rules
 
@@ -64,8 +65,8 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Package names should be `kebab-case`
 - [ ] Package names should start with a letter
 - [ ] Package names should not have trailing dashes or underscores
-- [ ] Subdirectories and file names should be in `snake_case`
-- [ ] Warn about modules without `.mli` files
+- [x] Subdirectories and file names should be in `snake_case`
+- [x] Warn about modules without `.mli` files
 
 ### Miniriot
 
@@ -75,7 +76,7 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [x] `std:prefer-bang-equal-inequality`
 - [x] `std:no-double-list-rev`
-- [ ] `ignore (List.map f xs)` / `ignore (Iter.map f iter)` should prefer the corresponding iterator form
+- [x] `ignore (List.map f xs)` / `ignore (Iter.map f iter)` should prefer the corresponding iterator form
 - [ ] `List.length x == 0` / `List.length x > 0` should prefer `List.is_empty`
 - [ ] Constants like `3.14` should prefer `Std.Math.PI`
 - [ ] Prefer combinators over manual matches:
