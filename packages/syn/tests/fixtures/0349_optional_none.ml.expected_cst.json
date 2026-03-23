@@ -103,7 +103,7 @@
                 }
               },
               "value": {
-                "tag": "path",
+                "tag": "constructor",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -111,7 +111,7 @@
                     "end": 17
                   }
                 },
-                "path": {
+                "constructor_path": {
                   "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
@@ -128,7 +128,8 @@
                       "end": 17
                     }
                   }
-                }
+                },
+                "payload": null
               }
             }
           },

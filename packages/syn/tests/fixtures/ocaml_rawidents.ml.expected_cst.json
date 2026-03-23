@@ -2236,7 +2236,7 @@
                 }
               },
               "collection": {
-                "tag": "path",
+                "tag": "constructor",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -2244,7 +2244,7 @@
                     "end": 2438
                   }
                 },
-                "path": {
+                "constructor_path": {
                   "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
@@ -2261,7 +2261,8 @@
                       "end": 2438
                     }
                   }
-                }
+                },
+                "payload": null
               },
               "index": {
                 "tag": "literal",

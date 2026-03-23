@@ -3357,10 +3357,10 @@ let tests =
                          binding_pattern =
                            Syn.Cst.Pattern.Identifier
                              { name_token = binding_name; _ };
-                         bound_value = Syn.Cst.Expression.Apply _;
+                         bound_value = Syn.Cst.Expression.Constructor _;
                        };
                      and_bindings = [];
-                     body = Syn.Cst.Expression.Apply _;
+                     body = Syn.Cst.Expression.Constructor _;
                      _;
                    })
                :: _ ->
@@ -3396,7 +3396,7 @@ let tests =
                              binding_pattern =
                                Syn.Cst.Pattern.Identifier
                                  { name_token = left_name; _ };
-                             bound_value = Syn.Cst.Expression.Apply _;
+                             bound_value = Syn.Cst.Expression.Constructor _;
                            };
                          and_bindings =
                            [
@@ -3406,10 +3406,10 @@ let tests =
                                binding_pattern =
                                  Syn.Cst.Pattern.Identifier
                                    { name_token = right_name; _ };
-                               bound_value = Syn.Cst.Expression.Apply _;
+                               bound_value = Syn.Cst.Expression.Constructor _;
                              };
                            ];
-                         body = Syn.Cst.Expression.Apply _;
+                         body = Syn.Cst.Expression.Constructor _;
                          _;
                        })
                :: _ ->
@@ -3699,6 +3699,52 @@ let tests =
                 | _ -> Error "expected field access callee")
             | _ -> Error "expected apply expression value")
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst constructor expressions preserve bare and applied forms"
+      (fun () ->
+        let source =
+          "let some = Some 42\n\
+           let none = None\n\
+           let err = Result.Error message\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match top_level_let_bindings cst with
+        | some_binding :: none_binding :: err_binding :: _ -> (
+            match
+              ( Syn.Cst.LetBinding.value some_binding,
+                Syn.Cst.LetBinding.value none_binding,
+                Syn.Cst.LetBinding.value err_binding )
+            with
+            | ( Syn.Cst.Expression.Constructor
+                  { constructor_path = some_path; payload = Some payload; _ },
+                Syn.Cst.Expression.Constructor
+                  { constructor_path = none_path; payload = None; _ },
+                Syn.Cst.Expression.Constructor
+                  { constructor_path = err_path; payload = Some err_payload; _ }
+              ) ->
+                Test.assert_equal ~expected:(Some "Some")
+                  ~actual:(Syn.Cst.ModulePath.name some_path);
+                Test.assert_equal ~expected:(Some "None")
+                  ~actual:(Syn.Cst.ModulePath.name none_path);
+                Test.assert_equal ~expected:(Some "Error")
+                  ~actual:(Syn.Cst.ModulePath.name err_path);
+                (match payload with
+                | Syn.Cst.Expression.Literal (Syn.Cst.Literal.Int _) -> (
+                    match err_payload with
+                    | Syn.Cst.Expression.Path { path; _ } ->
+                        Test.assert_equal ~expected:(Some "message")
+                          ~actual:(Syn.Cst.ModulePath.name path);
+                        Ok ()
+                    | _ ->
+                        Error
+                          "expected qualified constructor payload to remain path")
+                | _ -> Error "expected constructor payload to remain literal")
+            | _ -> Error "expected constructor-shaped expression values")
+        | _ -> Error "expected three let bindings");
     Test.case "cst apply expressions preserve labeled arguments structurally"
       (fun () ->
         let source = "let x = f ~y:1\n" in

@@ -191,7 +191,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] first-class-module patterns are still thinner than the stock unpack form
   - [ ] Pattern attributes are represented as wrapper nodes instead of orthogonal metadata
 - [ ] Expressions:
-  - [ ] constructor expressions are likely flattened into `Path` or `Apply`
+  - [x] constructor expressions are likely flattened into `Path` or `Apply`
   - [x] field assignment expressions are only approximated via `Assign (FieldAccess ...)`
   - [ ] object override expressions are only approximated via `ObjectUpdate`
   - [ ] function expressions only store cases, not the richer parameter/type structure

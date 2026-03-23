@@ -67,7 +67,7 @@
                 }
               },
               "receiver": {
-                "tag": "field_access",
+                "tag": "path",
                 "syntax_node": {
                   "kind": "FIELD_ACCESS_EXPR",
                   "span": {
@@ -75,25 +75,25 @@
                     "end": 13
                   }
                 },
-                "receiver": {
-                  "tag": "field_access",
+                "path": {
+                  "tag": "qualified",
                   "syntax_node": {
                     "kind": "FIELD_ACCESS_EXPR",
                     "span": {
                       "start": 8,
-                      "end": 11
+                      "end": 13
                     }
                   },
-                  "receiver": {
-                    "tag": "path",
+                  "prefix": {
+                    "tag": "qualified",
                     "syntax_node": {
-                      "kind": "IDENT_EXPR",
+                      "kind": "FIELD_ACCESS_EXPR",
                       "span": {
                         "start": 8,
-                        "end": 9
+                        "end": 11
                       }
                     },
-                    "path": {
+                    "prefix": {
                       "tag": "ident",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
@@ -110,23 +110,39 @@
                           "end": 9
                         }
                       }
+                    },
+                    "dot_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 9,
+                        "end": 10
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "B",
+                      "span": {
+                        "start": 10,
+                        "end": 11
+                      }
                     }
                   },
-                  "field_name": {
+                  "dot_token": {
                     "kind": "IDENT_EXPR",
-                    "text": "B",
+                    "text": ".",
                     "span": {
-                      "start": 10,
-                      "end": 11
+                      "start": 11,
+                      "end": 12
                     }
-                  }
-                },
-                "field_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "C",
-                  "span": {
-                    "start": 12,
-                    "end": 13
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "C",
+                    "span": {
+                      "start": 12,
+                      "end": 13
+                    }
                   }
                 }
               },

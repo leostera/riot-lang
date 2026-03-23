@@ -408,7 +408,7 @@
                 },
                 "guard": null,
                 "body": {
-                  "tag": "apply",
+                  "tag": "constructor",
                   "syntax_node": {
                     "kind": "APPLY_EXPR",
                     "span": {
@@ -416,8 +416,8 @@
                       "end": 108
                     }
                   },
-                  "callee": {
-                    "tag": "path",
+                  "constructor_path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -425,37 +425,24 @@
                         "end": 105
                       }
                     },
-                    "path": {
-                      "tag": "ident",
-                      "syntax_node": {
-                        "kind": "IDENT_EXPR",
-                        "span": {
-                          "start": 101,
-                          "end": 105
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "Some",
-                        "span": {
-                          "start": 101,
-                          "end": 105
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Some",
+                      "span": {
+                        "start": 101,
+                        "end": 105
                       }
                     }
                   },
-                  "argument": {
-                    "tag": "positional",
-                    "value": {
-                      "tag": "literal",
-                      "literal": {
-                        "tag": "unit",
-                        "syntax_node": {
-                          "kind": "UNIT_LITERAL",
-                          "span": {
-                            "start": 106,
-                            "end": 108
-                          }
+                  "payload": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "unit",
+                      "syntax_node": {
+                        "kind": "UNIT_LITERAL",
+                        "span": {
+                          "start": 106,
+                          "end": 108
                         }
                       }
                     }
@@ -482,7 +469,7 @@
                 },
                 "guard": null,
                 "body": {
-                  "tag": "path",
+                  "tag": "constructor",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -490,7 +477,7 @@
                       "end": 122
                     }
                   },
-                  "path": {
+                  "constructor_path": {
                     "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
@@ -507,7 +494,8 @@
                         "end": 122
                       }
                     }
-                  }
+                  },
+                  "payload": null
                 }
               }
             ]

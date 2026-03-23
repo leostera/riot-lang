@@ -202,7 +202,7 @@
                 }
               },
               "bound_value": {
-                "tag": "apply",
+                "tag": "constructor",
                 "syntax_node": {
                   "kind": "APPLY_EXPR",
                   "span": {
@@ -210,8 +210,8 @@
                     "end": 74
                   }
                 },
-                "callee": {
-                  "tag": "path",
+                "constructor_path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -219,29 +219,26 @@
                       "end": 72
                     }
                   },
-                  "path": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "IDENT_EXPR",
-                      "span": {
-                        "start": 70,
-                        "end": 72
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Ok",
-                      "span": {
-                        "start": 70,
-                        "end": 72
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Ok",
+                    "span": {
+                      "start": 70,
+                      "end": 72
                     }
                   }
                 },
-                "argument": {
-                  "tag": "positional",
-                  "value": {
-                    "tag": "path",
+                "payload": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 73,
+                      "end": 74
+                    }
+                  },
+                  "path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -249,22 +246,12 @@
                         "end": 74
                       }
                     },
-                    "path": {
-                      "tag": "ident",
-                      "syntax_node": {
-                        "kind": "IDENT_EXPR",
-                        "span": {
-                          "start": 73,
-                          "end": 74
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "x",
-                        "span": {
-                          "start": 73,
-                          "end": 74
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 73,
+                        "end": 74
                       }
                     }
                   }

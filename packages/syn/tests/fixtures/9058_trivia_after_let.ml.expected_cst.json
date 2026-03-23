@@ -330,7 +330,7 @@
                 "argument": {
                   "tag": "positional",
                   "value": {
-                    "tag": "field_access",
+                    "tag": "constructor",
                     "syntax_node": {
                       "kind": "FIELD_ACCESS_EXPR",
                       "span": {
@@ -338,16 +338,16 @@
                         "end": 84
                       }
                     },
-                    "receiver": {
-                      "tag": "path",
+                    "constructor_path": {
+                      "tag": "qualified",
                       "syntax_node": {
-                        "kind": "IDENT_EXPR",
+                        "kind": "FIELD_ACCESS_EXPR",
                         "span": {
                           "start": 67,
-                          "end": 71
+                          "end": 84
                         }
                       },
-                      "path": {
+                      "prefix": {
                         "tag": "ident",
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
@@ -364,16 +364,25 @@
                             "end": 71
                           }
                         }
+                      },
+                      "dot_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "span": {
+                          "start": 71,
+                          "end": 72
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "TCP_NODELAY",
+                        "span": {
+                          "start": 72,
+                          "end": 83
+                        }
                       }
                     },
-                    "field_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "TCP_NODELAY",
-                      "span": {
-                        "start": 72,
-                        "end": 83
-                      }
-                    }
+                    "payload": null
                   }
                 }
               },

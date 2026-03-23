@@ -58,7 +58,7 @@
               }
             },
             "expression": {
-              "tag": "apply",
+              "tag": "constructor",
               "syntax_node": {
                 "kind": "APPLY_EXPR",
                 "span": {
@@ -66,8 +66,8 @@
                   "end": 18
                 }
               },
-              "callee": {
-                "tag": "path",
+              "constructor_path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -75,51 +75,38 @@
                     "end": 15
                   }
                 },
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "IDENT_EXPR",
-                    "span": {
-                      "start": 11,
-                      "end": 15
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "Some",
-                    "span": {
-                      "start": 11,
-                      "end": 15
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Some",
+                  "span": {
+                    "start": 11,
+                    "end": 15
                   }
                 }
               },
-              "argument": {
-                "tag": "positional",
-                "value": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "int",
-                    "syntax_node": {
-                      "kind": "INT_LITERAL",
-                      "span": {
-                        "start": 16,
-                        "end": 18
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "INT_LITERAL",
-                      "text": "42",
-                      "span": {
-                        "start": 16,
-                        "end": 18
-                      }
-                    },
-                    "base": "decimal",
-                    "prefix": null,
-                    "digits": "42",
-                    "suffix": null
-                  }
+              "payload": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 16,
+                      "end": 18
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "42",
+                    "span": {
+                      "start": 16,
+                      "end": 18
+                    }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "42",
+                  "suffix": null
                 }
               }
             },

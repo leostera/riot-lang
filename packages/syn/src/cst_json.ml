@@ -949,6 +949,14 @@ and expression_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("path", ident_to_json path);
         ]
+  | Cst.Expression.Constructor { syntax_node; constructor_path; payload } ->
+      Json.Object
+        [
+          ("tag", Json.String "constructor");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("constructor_path", ident_to_json constructor_path);
+          ("payload", option_to_json expression_to_json payload);
+        ]
   | Cst.Expression.Operator { syntax_node; operator_tokens } ->
       Json.Object
         [

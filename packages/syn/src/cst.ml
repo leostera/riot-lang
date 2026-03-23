@@ -966,6 +966,7 @@ type exception_declaration = {
 
 type expression =
   | Path of path_expression
+  | Constructor of constructor_expression
   | Operator of operator_expression
   | Literal of literal
   | Unreachable of unreachable_expression
@@ -1012,6 +1013,12 @@ type expression =
 and path_expression = {
   syntax_node : syntax_node;
   path : Ident.t;
+}
+
+and constructor_expression = {
+  syntax_node : syntax_node;
+  constructor_path : Ident.t;
+  payload : expression option;
 }
 
 and operator_expression = {
@@ -1510,6 +1517,7 @@ and module_expression =
 module Expression = struct
   type t = expression =
     | Path of path_expression
+    | Constructor of constructor_expression
     | Operator of operator_expression
     | Literal of literal
     | Unreachable of unreachable_expression
@@ -1555,6 +1563,7 @@ module Expression = struct
 
   let syntax_node = function
     | Path expr -> expr.syntax_node
+    | Constructor expr -> expr.syntax_node
     | Operator expr -> expr.syntax_node
     | Literal literal ->
         Constant.syntax_node literal

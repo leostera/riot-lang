@@ -49,7 +49,7 @@
           },
           "parameters": [],
           "value": {
-            "tag": "field_access",
+            "tag": "constructor",
             "syntax_node": {
               "kind": "FIELD_ACCESS_EXPR",
               "span": {
@@ -57,16 +57,16 @@
                 "end": 20
               }
             },
-            "receiver": {
-              "tag": "path",
+            "constructor_path": {
+              "tag": "qualified",
               "syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "FIELD_ACCESS_EXPR",
                 "span": {
                   "start": 8,
-                  "end": 14
+                  "end": 20
                 }
               },
-              "path": {
+              "prefix": {
                 "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
@@ -83,16 +83,25 @@
                     "end": 14
                   }
                 }
+              },
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 14,
+                  "end": 15
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "Some",
+                "span": {
+                  "start": 15,
+                  "end": 19
+                }
               }
             },
-            "field_name": {
-              "kind": "IDENT_EXPR",
-              "text": "Some",
-              "span": {
-                "start": 15,
-                "end": 19
-              }
-            }
+            "payload": null
           },
           "is_recursive": false
         }

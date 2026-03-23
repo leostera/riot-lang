@@ -1831,8 +1831,15 @@ type exception_declaration = {
 *)
 type expression =
   | Path of path_expression
-      (** A value or constructor path used as an expression, such as `x`,
-          `M.value`, or `List.map`. *)
+      (** A value path used as an expression, such as `x`, `M.value`, or
+          `List.map`. *)
+  | Constructor of constructor_expression
+      (** A constructor expression such as `None`, `Some value`, or
+          `Result.Error message`.
+
+          This mirrors the parsetree's `Pexp_construct` shape: the constructor
+          path is preserved directly and the payload remains optional.
+      *)
   | Operator of operator_expression
       (** An operator identifier used as an expression, such as `(+)` or `(@@)`. *)
   | Literal of literal
@@ -1968,6 +1975,18 @@ type expression =
 and path_expression = {
   syntax_node : syntax_node;
   path : Ident.t;
+}
+
+(** Payload for `Expression.Constructor`.
+
+    Constant constructors such as `None` and applied constructors such as
+    `Some 42` share this shape. Tupled payloads remain structured under the
+    nested `payload` expression, for example as `Expression.Tuple`.
+*)
+and constructor_expression = {
+  syntax_node : syntax_node;
+  constructor_path : Ident.t;
+  payload : expression option;
 }
 
 (** Payload for `Expression.Operator`.
@@ -2894,6 +2913,7 @@ and module_expression =
 module Expression : sig
   type t = expression =
     | Path of path_expression
+    | Constructor of constructor_expression
     | Operator of operator_expression
     | Literal of literal
     | Unreachable of unreachable_expression

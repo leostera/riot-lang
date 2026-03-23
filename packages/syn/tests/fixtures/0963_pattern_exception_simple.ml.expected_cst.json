@@ -155,7 +155,7 @@
                 },
                 "guard": null,
                 "body": {
-                  "tag": "path",
+                  "tag": "constructor",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -163,7 +163,7 @@
                       "end": 50
                     }
                   },
-                  "path": {
+                  "constructor_path": {
                     "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
@@ -180,7 +180,8 @@
                         "end": 50
                       }
                     }
-                  }
+                  },
+                  "payload": null
                 }
               },
               {
@@ -211,7 +212,7 @@
                 },
                 "guard": null,
                 "body": {
-                  "tag": "apply",
+                  "tag": "constructor",
                   "syntax_node": {
                     "kind": "APPLY_EXPR",
                     "span": {
@@ -219,8 +220,8 @@
                       "end": 64
                     }
                   },
-                  "callee": {
-                    "tag": "path",
+                  "constructor_path": {
+                    "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
@@ -228,29 +229,26 @@
                         "end": 62
                       }
                     },
-                    "path": {
-                      "tag": "ident",
-                      "syntax_node": {
-                        "kind": "IDENT_EXPR",
-                        "span": {
-                          "start": 58,
-                          "end": 62
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "Some",
-                        "span": {
-                          "start": 58,
-                          "end": 62
-                        }
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Some",
+                      "span": {
+                        "start": 58,
+                        "end": 62
                       }
                     }
                   },
-                  "argument": {
-                    "tag": "positional",
-                    "value": {
-                      "tag": "path",
+                  "payload": {
+                    "tag": "path",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 63,
+                        "end": 64
+                      }
+                    },
+                    "path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
@@ -258,22 +256,12 @@
                           "end": 64
                         }
                       },
-                      "path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "IDENT_EXPR",
-                          "span": {
-                            "start": 63,
-                            "end": 64
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "y",
-                          "span": {
-                            "start": 63,
-                            "end": 64
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "y",
+                        "span": {
+                          "start": 63,
+                          "end": 64
                         }
                       }
                     }

@@ -211,6 +211,8 @@ and binding_sites_of_expression expr =
   | Syn.Cst.Expression.Extension _
   | Syn.Cst.Expression.New _ ->
       []
+  | Syn.Cst.Expression.Constructor { payload; _ } ->
+      Option.to_list payload |> List.concat_map binding_sites_of_expression
   | Syn.Cst.Expression.Object { members; _ } ->
       members |> List.concat_map binding_sites_of_object_member
   | Syn.Cst.Expression.PolyVariant { payload; _ } ->

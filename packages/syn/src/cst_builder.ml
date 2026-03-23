@@ -454,6 +454,61 @@ let type_constructor_path_from_node node =
       else
         module_path_from_tokens ~syntax_node:node path_tokens
 
+let token_starts_with_uppercase token =
+  let text = Cst.Token.text token in
+  let len = String.length text in
+  len > 0 &&
+  let first = String.get text 0 in
+  first >= 'A' && first <= 'Z'
+
+let is_constructor_path (path : Cst.Ident.t) =
+  match Cst.Ident.last_segment path with
+  | Some segment -> token_starts_with_uppercase segment
+  | None -> false
+
+let rec module_like_path_from_expression_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.IDENT_EXPR ->
+      let path = ident_path_from_node node in
+      if is_constructor_path path then
+        Some path
+      else
+        None
+  | Syntax_kind.MODULE_PATH ->
+      let path = module_path_from_node node in
+      if is_constructor_path path then
+        Some path
+      else
+        None
+  | Syntax_kind.FIELD_ACCESS_EXPR -> (
+      match
+        direct_non_trivia_nodes node,
+        List.rev (direct_non_trivia_tokens node)
+      with
+      | receiver_node :: _, name_syntax_token :: dot_syntax_token :: _
+        when token_starts_with_uppercase (token name_syntax_token) -> (
+          match module_like_path_from_expression_node receiver_node with
+          | Some prefix ->
+              Some
+                (Cst.Ident.Qualified
+                   {
+                     syntax_node = node;
+                     prefix;
+                     dot_token = token dot_syntax_token;
+                     name_token = token name_syntax_token;
+                   })
+          | None ->
+              None)
+      | _ ->
+          None)
+  | _ ->
+      None
+
+let constructor_path_from_expression_node node =
+  match module_like_path_from_expression_node node with
+  | Some path when is_constructor_path path -> Some path
+  | Some _ | None -> None
+
 let annotation_shell_and_payload ~annotation_kind ~sigils node =
   let direct_tokens = direct_non_trivia_tokens node in
   let has_sigil tokens =
@@ -2497,12 +2552,28 @@ and expression_from_node node =
     | [] -> None
   in
   match Ceibo.Red.SyntaxNode.kind node with
-  | Syntax_kind.IDENT_EXPR ->
-      Cst.Expression.Path
-        { syntax_node = node; path = ident_path_from_node node }
-  | Syntax_kind.MODULE_PATH ->
-      Cst.Expression.Path
-        { syntax_node = node; path = module_path_from_node node }
+  | Syntax_kind.IDENT_EXPR -> (
+      let path = ident_path_from_node node in
+      if is_constructor_path path then
+        Cst.Expression.Constructor
+          {
+            syntax_node = node;
+            constructor_path = path;
+            payload = None;
+          }
+      else
+        Cst.Expression.Path { syntax_node = node; path })
+  | Syntax_kind.MODULE_PATH -> (
+      let path = module_path_from_node node in
+      if is_constructor_path path then
+        Cst.Expression.Constructor
+          {
+            syntax_node = node;
+            constructor_path = path;
+            payload = None;
+          }
+      else
+        Cst.Expression.Path { syntax_node = node; path })
   | Syntax_kind.OPERATOR_PATTERN ->
       Cst.Expression.Operator
         { syntax_node = node; operator_tokens = operator_tokens_from_node node }
@@ -2531,9 +2602,18 @@ and expression_from_node node =
       | Some expr -> Cst.Expression.New expr
       | None -> unsupported_expression node)
   | Syntax_kind.FIELD_ACCESS_EXPR -> (
-      match field_access_expression_from_node node with
-      | Some expr -> expr
-      | None -> unsupported_expression node)
+      match constructor_path_from_expression_node node with
+      | Some constructor_path ->
+          Cst.Expression.Constructor
+            {
+              syntax_node = node;
+              constructor_path;
+              payload = None;
+            }
+      | None -> (
+          match field_access_expression_from_node node with
+          | Some expr -> expr
+          | None -> unsupported_expression node))
   | Syntax_kind.ARRAY_INDEX_EXPR -> (
       match index_expression_from_node node with
       | Some expr -> Cst.Expression.Index expr
@@ -2613,13 +2693,25 @@ and expression_from_node node =
       | _ -> unsupported_expression node)
   | Syntax_kind.APPLY_EXPR -> (
       match direct_non_trivia_nodes node with
-      | callee_node :: argument_node :: _ ->
-          Cst.Expression.Apply
-            {
-              syntax_node = node;
-              callee = expression_from_node callee_node;
-              argument = apply_argument_from_node argument_node;
-            }
+      | callee_node :: argument_node :: _ -> (
+          match
+            constructor_path_from_expression_node callee_node,
+            apply_argument_from_node argument_node
+          with
+          | Some constructor_path, Cst.Positional payload ->
+              Cst.Expression.Constructor
+                {
+                  syntax_node = node;
+                  constructor_path;
+                  payload = Some payload;
+                }
+          | _ ->
+              Cst.Expression.Apply
+                {
+                  syntax_node = node;
+                  callee = expression_from_node callee_node;
+                  argument = apply_argument_from_node argument_node;
+                })
       | _ -> unsupported_expression node)
   | Syntax_kind.POLY_VARIANT_EXPR -> (
       match poly_variant_tag_token node with
@@ -3013,11 +3105,18 @@ and object_update_expression_from_node node =
 and field_access_expression_from_node node =
   match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
   | receiver_node :: _, field_token :: _ ->
+      let receiver =
+        match module_like_path_from_expression_node receiver_node with
+        | Some path ->
+            Cst.Expression.Path { syntax_node = receiver_node; path }
+        | None ->
+            expression_from_node receiver_node
+      in
       Some
         (Cst.Expression.FieldAccess
            {
              syntax_node = node;
-             receiver = expression_from_node receiver_node;
+             receiver;
              field_name = token field_token;
            })
   | _ -> None
@@ -5720,6 +5819,10 @@ and validate_expression ~context = function
   | Cst.Expression.Unreachable _ | Cst.Expression.Attribute _
   | Cst.Expression.Extension _ ->
       ()
+  | Cst.Expression.Constructor { payload; _ } ->
+      Option.iter
+        (validate_expression ~context:("expression.constructor.payload" :: context))
+        payload
   | Cst.Expression.FirstClassModule { module_expression; module_type; _ } ->
       validate_module_expression
         ~context:("expression.first_class_module.expression" :: context)

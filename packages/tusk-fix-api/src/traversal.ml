@@ -142,6 +142,8 @@ and let_bindings_of_expression expr =
   | Syn.Cst.Expression.Extension _
   | Syn.Cst.Expression.New _ ->
       []
+  | Syn.Cst.Expression.Constructor { payload; _ } ->
+      Option.to_list payload |> List.concat_map let_bindings_of_expression
   | Syn.Cst.Expression.Object { members; _ } ->
       members |> List.concat_map let_bindings_of_object_member
   | Syn.Cst.Expression.PolyVariant { payload; _ } ->
@@ -336,6 +338,8 @@ let rec expressions_of_expression expr =
     | Syn.Cst.Expression.Extension _
     | Syn.Cst.Expression.New _ ->
         []
+    | Syn.Cst.Expression.Constructor { payload; _ } ->
+        Option.to_list payload |> List.concat_map expressions_of_expression
     | Syn.Cst.Expression.Object { members; _ } ->
         members
         |> List.concat_map (function

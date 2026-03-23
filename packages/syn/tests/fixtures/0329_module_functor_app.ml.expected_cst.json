@@ -49,7 +49,7 @@
           },
           "parameters": [],
           "value": {
-            "tag": "apply",
+            "tag": "constructor",
             "syntax_node": {
               "kind": "APPLY_EXPR",
               "span": {
@@ -57,8 +57,8 @@
                 "end": 23
               }
             },
-            "callee": {
-              "tag": "field_access",
+            "constructor_path": {
+              "tag": "qualified",
               "syntax_node": {
                 "kind": "FIELD_ACCESS_EXPR",
                 "span": {
@@ -66,8 +66,8 @@
                   "end": 17
                 }
               },
-              "receiver": {
-                "tag": "path",
+              "prefix": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -75,26 +75,24 @@
                     "end": 11
                   }
                 },
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "IDENT_EXPR",
-                    "span": {
-                      "start": 8,
-                      "end": 11
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "Set",
-                    "span": {
-                      "start": 8,
-                      "end": 11
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Set",
+                  "span": {
+                    "start": 8,
+                    "end": 11
                   }
                 }
               },
-              "field_name": {
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 11,
+                  "end": 12
+                }
+              },
+              "name_token": {
                 "kind": "IDENT_EXPR",
                 "text": "Make",
                 "span": {
@@ -103,10 +101,17 @@
                 }
               }
             },
-            "argument": {
-              "tag": "positional",
-              "value": {
-                "tag": "path",
+            "payload": {
+              "tag": "constructor",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 17,
+                  "end": 23
+                }
+              },
+              "constructor_path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -114,25 +119,16 @@
                     "end": 23
                   }
                 },
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "IDENT_EXPR",
-                    "span": {
-                      "start": 17,
-                      "end": 23
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "String",
-                    "span": {
-                      "start": 17,
-                      "end": 23
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "String",
+                  "span": {
+                    "start": 17,
+                    "end": 23
                   }
                 }
-              }
+              },
+              "payload": null
             }
           },
           "is_recursive": false

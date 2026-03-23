@@ -206,7 +206,7 @@
                       }
                     },
                     "inner": {
-                      "tag": "apply",
+                      "tag": "constructor",
                       "syntax_node": {
                         "kind": "APPLY_EXPR",
                         "span": {
@@ -214,8 +214,8 @@
                           "end": 65
                         }
                       },
-                      "callee": {
-                        "tag": "path",
+                      "constructor_path": {
+                        "tag": "ident",
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
@@ -223,52 +223,39 @@
                             "end": 54
                           }
                         },
-                        "path": {
-                          "tag": "ident",
-                          "syntax_node": {
-                            "kind": "IDENT_EXPR",
-                            "span": {
-                              "start": 38,
-                              "end": 54
-                            }
-                          },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "Invalid_argument",
-                            "span": {
-                              "start": 38,
-                              "end": 54
-                            }
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "Invalid_argument",
+                          "span": {
+                            "start": 38,
+                            "end": 54
                           }
                         }
                       },
-                      "argument": {
-                        "tag": "positional",
-                        "value": {
-                          "tag": "literal",
-                          "literal": {
-                            "tag": "string",
-                            "syntax_node": {
-                              "kind": "STRING_LITERAL",
-                              "span": {
-                                "start": 55,
-                                "end": 65
-                              }
-                            },
-                            "literal_token": {
-                              "kind": "STRING_LITERAL",
-                              "text": "\"negative\"",
-                              "span": {
-                                "start": 55,
-                                "end": 65
-                              }
-                            },
-                            "delimiter": {
-                              "tag": "double_quote"
-                            },
-                            "contents": "negative",
-                            "terminated": true
-                          }
+                      "payload": {
+                        "tag": "literal",
+                        "literal": {
+                          "tag": "string",
+                          "syntax_node": {
+                            "kind": "STRING_LITERAL",
+                            "span": {
+                              "start": 55,
+                              "end": 65
+                            }
+                          },
+                          "literal_token": {
+                            "kind": "STRING_LITERAL",
+                            "text": "\"negative\"",
+                            "span": {
+                              "start": 55,
+                              "end": 65
+                            }
+                          },
+                          "delimiter": {
+                            "tag": "double_quote"
+                          },
+                          "contents": "negative",
+                          "terminated": true
                         }
                       }
                     }

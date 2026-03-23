@@ -250,7 +250,7 @@
                 },
                 "guard": null,
                 "body": {
-                  "tag": "path",
+                  "tag": "constructor",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -258,7 +258,7 @@
                       "end": 58
                     }
                   },
-                  "path": {
+                  "constructor_path": {
                     "tag": "ident",
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
@@ -275,7 +275,8 @@
                         "end": 58
                       }
                     }
-                  }
+                  },
+                  "payload": null
                 }
               }
             ]

@@ -111,7 +111,7 @@
               ]
             },
             "body": {
-              "tag": "apply",
+              "tag": "constructor",
               "syntax_node": {
                 "kind": "APPLY_EXPR",
                 "span": {
@@ -119,8 +119,8 @@
                   "end": 185
                 }
               },
-              "callee": {
-                "tag": "field_access",
+              "constructor_path": {
+                "tag": "qualified",
                 "syntax_node": {
                   "kind": "FIELD_ACCESS_EXPR",
                   "span": {
@@ -128,8 +128,8 @@
                     "end": 181
                   }
                 },
-                "receiver": {
-                  "tag": "path",
+                "prefix": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -137,26 +137,24 @@
                       "end": 172
                     }
                   },
-                  "path": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "IDENT_EXPR",
-                      "span": {
-                        "start": 167,
-                        "end": 172
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Types",
-                      "span": {
-                        "start": 167,
-                        "end": 172
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Types",
+                    "span": {
+                      "start": 167,
+                      "end": 172
                     }
                   }
                 },
-                "field_name": {
+                "dot_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 172,
+                    "end": 173
+                  }
+                },
+                "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "Success",
                   "span": {
@@ -165,10 +163,17 @@
                   }
                 }
               },
-              "argument": {
-                "tag": "positional",
-                "value": {
-                  "tag": "path",
+              "payload": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 181,
+                    "end": 185
+                  }
+                },
+                "path": {
+                  "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -176,22 +181,12 @@
                       "end": 185
                     }
                   },
-                  "path": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "IDENT_EXPR",
-                      "span": {
-                        "start": 181,
-                        "end": 185
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "data",
-                      "span": {
-                        "start": 181,
-                        "end": 185
-                      }
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "data",
+                    "span": {
+                      "start": 181,
+                      "end": 185
                     }
                   }
                 }

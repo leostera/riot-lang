@@ -58,7 +58,7 @@
               }
             },
             "receiver": {
-              "tag": "field_access",
+              "tag": "path",
               "syntax_node": {
                 "kind": "FIELD_ACCESS_EXPR",
                 "span": {
@@ -66,16 +66,16 @@
                   "end": 16
                 }
               },
-              "receiver": {
-                "tag": "path",
+              "path": {
+                "tag": "qualified",
                 "syntax_node": {
-                  "kind": "IDENT_EXPR",
+                  "kind": "FIELD_ACCESS_EXPR",
                   "span": {
                     "start": 8,
-                    "end": 11
+                    "end": 16
                   }
                 },
-                "path": {
+                "prefix": {
                   "tag": "ident",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
@@ -92,14 +92,22 @@
                       "end": 11
                     }
                   }
-                }
-              },
-              "field_name": {
-                "kind": "IDENT_EXPR",
-                "text": "List",
-                "span": {
-                  "start": 12,
-                  "end": 16
+                },
+                "dot_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 11,
+                    "end": 12
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "List",
+                  "span": {
+                    "start": 12,
+                    "end": 16
+                  }
                 }
               }
             },

@@ -49,7 +49,7 @@
           },
           "parameters": [],
           "value": {
-            "tag": "path",
+            "tag": "constructor",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -57,7 +57,7 @@
                 "end": 16
               }
             },
-            "path": {
+            "constructor_path": {
               "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
@@ -74,7 +74,8 @@
                   "end": 16
                 }
               }
-            }
+            },
+            "payload": null
           },
           "is_recursive": false
         }
