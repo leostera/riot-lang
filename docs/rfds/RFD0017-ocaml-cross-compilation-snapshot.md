@@ -30,6 +30,17 @@ At a high level, the fork currently provides:
 - MinGW Windows target scripts
 - an exploratory MSVC design document rather than an implemented MSVC pipeline
 
+At a high level, Riot/Tusk currently provides:
+
+- workspace-level `toolchain.targets` configuration in `ocaml-toolchain.toml`
+- `tusk build --target ...` target selection and single-target execution
+- host and target-specific toolchain installation under `~/.tusk/toolchains/`
+- build-context propagation of cross-compilation target metadata into the
+  planner and executor
+- partial consumption of cross target metadata, with stronger support for
+  target-specific OCaml toolchains than for fully configured C toolchain
+  plumbing
+
 This RFD is a snapshot, not a proposal. It exists to make the current shape of
 the fork explicit before Riot integrates it more deeply into its own bootstrap,
 toolchain, and CI flows.
@@ -146,12 +157,41 @@ cross-compilation implementation itself.
 In current terms:
 
 - `vendor/ocaml` is the compiler source and scripted build surface
-- Riot bootstrap/toolchain code can be taught to prefer that vendored source
+- Riot bootstrap/toolchain code can prefer that vendored source for host
+  toolchains
 - Riot does not yet have a fully settled end-to-end workflow that exercises all
   of the fork's target combinations from this repository alone
 
 That distinction matters: the compiler fork already contains a lot of behavior,
 but Riot has not yet fully absorbed it into its own steady-state workflows.
+
+### What Tusk itself can do today
+
+On the Riot side, the current cross-compilation entrypoint is `tusk build`
+with target selection.
+
+The current user-facing pieces are:
+
+- `ocaml-toolchain.toml` can declare `toolchain.targets = [...]`
+- `tusk build --target <pattern>` can resolve a configured target
+- `tusk build --all-targets` exists at the CLI surface, but the build command
+  still rejects multiple matched targets and asks the user to pick one
+- `tusk toolchain` can inspect and install configured toolchains
+
+The important current behavior is:
+
+- host builds default to the current host triple
+- a single explicit target triple can be selected for a build invocation
+- the local session/server stack passes that target through to the build
+  context
+- the planner uses that build context for target-specific profile overrides and
+  sysroot-aware C compile/link flags
+
+The important current limitation is:
+
+- Riot currently supports one build target per build invocation, even though
+  the configuration format and some CLI surface area already anticipate
+  multiple configured targets
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -258,7 +298,134 @@ So the correct snapshot wording is:
 - MinGW Windows targeting is partially scripted
 - MSVC cross-compilation remains a design investigation
 
-## 5. Fork-local CI exists, but is intentionally disabled in the fork
+## 5. Tusk has a real cross-compilation surface, but it is still partial
+
+The Riot repository already contains a real target-aware toolchain and build
+surface.
+
+The current pieces are:
+
+- `packages/tusk-model/src/toolchain_config.ml`
+- `packages/tusk-toolchain/src/tusk_toolchain.ml`
+- `packages/tusk-toolchain/src/cross_compiling_toolchain.ml`
+- `packages/tusk-cli/src/build.ml`
+- `packages/tusk-server/src/build_server.ml`
+- `packages/tusk-model/src/target.ml`
+- `packages/tusk-model/src/build_ctx.ml`
+- `packages/tusk-planner/src/action_graph.ml`
+
+### 5.1 Workspace configuration
+
+`ocaml-toolchain.toml` can currently declare:
+
+- `toolchain.version`
+- `toolchain.source`
+- `toolchain.targets`
+
+The `targets` list is the current Riot-side source of truth for which target
+triples the workspace intends to support.
+
+If `targets` is empty, Riot currently behaves as host-only by default.
+
+### 5.2 CLI target selection
+
+`tusk build` currently exposes:
+
+- `-x`, `--target`
+- `--all-targets`
+
+But the current command implementation only executes one target per invocation.
+If target resolution matches more than one configured target, the CLI prints
+the matched list and exits instead of building them all.
+
+So the durable snapshot is:
+
+- target selection is implemented
+- multi-target execution is not implemented yet
+
+### 5.3 Toolchain acquisition
+
+`Tusk_toolchain.init_for_target` currently behaves like this:
+
+- if `target = host`, it prefers a native host toolchain
+- if `./vendor/ocaml/compiler` exists, Riot can symlink that as the local host
+  toolchain
+- otherwise Riot downloads a prebuilt host toolchain tarball from
+  `cdn.riot.ml`
+- if `target != host`, Riot downloads a prebuilt cross toolchain tarball from
+  `cdn.riot.ml`
+
+This means Riot currently distinguishes two very different stories:
+
+- vendored compiler source is currently part of the native host bootstrap path
+- cross-target toolchains are currently treated as prebuilt downloadable
+  artifacts, not as compiler installs built on demand from `vendor/ocaml`
+
+That is an important current boundary.
+
+### 5.4 Build context propagation
+
+When `tusk build` selects a non-host target:
+
+- `packages/tusk-server/src/build_server.ml` parses the target triple
+- it constructs `Tusk_model.Target.Cross`
+- it asks `CrossCompilingToolchain.detect` to discover:
+  - `sysroot`
+  - `bin_dir`
+  - `bin_prefix`
+- it stores that information in the build context
+- it initializes a target-specific OCaml toolchain for that build
+
+So Riot does have a real target-aware build context, not merely a target label
+passed to logging.
+
+### 5.5 What the planner and executor consume today
+
+The current planner/executor stack uses target information in a narrower way
+than the model suggests.
+
+Today the clearest implemented uses are:
+
+- selecting the OCaml toolchain binaries for the target
+- looking up target-specific `profile` overrides by target platform name
+- adding `--sysroot=...` to C compilation actions when a sysroot was detected
+- adding `--sysroot=...` and target-derived linker flags to executable linking
+
+The current weaker area is:
+
+- Riot records `bin_dir` and `bin_prefix` for cross C toolchains, but the
+  action graph/executor path is still much more clearly wired around `sysroot`
+  and profile/linker flags than around a fully explicit prefixed C toolchain
+  command path
+
+So the current Riot snapshot should be described as:
+
+- target-aware OCaml toolchain selection: implemented
+- target-aware build context propagation: implemented
+- sysroot-aware C compile/link flag injection: implemented
+- full end-to-end prefixed cross C toolchain plumbing: not yet clearly complete
+
+## 6. Riot's current cross-compilation story is a hybrid
+
+Putting the fork and Riot together, the current state is:
+
+- the vendored compiler fork owns the heavy cross-compilation implementation
+- Riot can already select targets and request target-specific OCaml toolchains
+- Riot can already thread target metadata into build planning
+- Riot still relies on prebuilt cross toolchain artifacts for actual target
+  toolchain installation
+- Riot does not yet build cross toolchains from `vendor/ocaml` as part of the
+  normal `tusk build` story
+
+That means Riot's current cross-compilation story should be understood as a
+hybrid:
+
+- source-driven for the vendored native compiler/bootstrap path
+- artifact-driven for current target toolchain consumption
+- not yet a fully unified "Riot builds all host and cross compilers from
+  source on demand" system
+
+## 7. Fork-local CI exists, but is intentionally disabled in the fork
 
 The cross-compilation commit moves several workflow files out of the active
 `.github/workflows` directory into `.github/workflows-disabled/`.
@@ -272,7 +439,7 @@ This is important for Riot because it implies:
 - Riot should not assume the fork is already self-testing every target in its
   own GitHub Actions configuration
 
-## 6. Current Riot integration boundary
+## 8. Current Riot integration boundary
 
 At the moment, Riot should treat the vendored compiler fork as:
 
