@@ -3021,10 +3021,16 @@ let module_declaration_from_node node =
               ~syntax_node:node ~context:[ "item"; "module_declaration" ]
       in
       let direct_children = direct_non_trivia_nodes node in
+      let destructive_substitution =
+        direct_non_trivia_tokens node
+        |> List.exists (fun syntax_token ->
+               String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":=")
+      in
       let has_equals =
         direct_non_trivia_tokens node
         |> List.exists (fun syntax_token ->
-               String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "=")
+               let text = Ceibo.Red.SyntaxToken.text syntax_token in
+               String.equal text "=" || String.equal text ":=")
       in
       let lifted_module_expression =
         if has_equals then
@@ -3068,6 +3074,7 @@ let module_declaration_from_node node =
               |> List.map functor_parameter_from_node;
             module_type = lifted_module_type;
             module_expression = lifted_module_expression;
+            is_destructive_substitution = destructive_substitution;
             is_recursive = is_recursive_declaration;
           })
   | _ -> None
@@ -3099,6 +3106,11 @@ let recursive_module_declaration_from_nodes ~group_syntax_node module_decl_nodes
 let module_type_declaration_from_node node =
   match direct_non_trivia_tokens node with
   | _module_kw :: _type_kw :: module_type_name :: _ ->
+      let destructive_substitution =
+        direct_non_trivia_tokens node
+        |> List.exists (fun syntax_token ->
+               String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":=")
+      in
       Some
         Cst.ModuleTypeDeclaration.
           {
@@ -3109,10 +3121,16 @@ let module_type_declaration_from_node node =
               |> List.rev
               |> List.find_opt can_lift_module_type_node
               |> Option.map module_type_from_node);
+            is_destructive_substitution = destructive_substitution;
           }
   | _ -> None
 
 let class_declaration_from_node node =
+  let has_colon_body =
+    direct_non_trivia_tokens node
+    |> List.exists (fun syntax_token ->
+           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":")
+  in
   let children =
     direct_non_trivia_nodes node
     |> List.filter (fun child ->
@@ -3137,6 +3155,7 @@ let class_declaration_from_node node =
               class_type_syntax_node =
                 (match List.rev rev_prefix with
                 | class_type_syntax_node :: _ -> Some class_type_syntax_node
+                | [] when has_colon_body -> Some class_body_node
                 | [] -> None);
               class_body = expression_from_node class_body_node;
             }

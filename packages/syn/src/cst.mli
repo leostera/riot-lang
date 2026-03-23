@@ -2493,12 +2493,14 @@ end
 
     This covers plain `module` items and the individual bindings nested under a
     recursive module item. `is_recursive` reports whether the binding belongs to
-    a `module rec` group.
+    a `module rec` group, while `is_destructive_substitution` distinguishes
+    interface substitutions such as `module Name := Path`.
 
     Examples:
 
     ```ocaml,norun
     module M = N
+    module Alias := Stdlib.List
     module F (X : S) : T = struct end
     ```
 *)
@@ -2509,6 +2511,7 @@ module ModuleDeclaration : sig
     functor_parameters : functor_parameter list;
     module_type : module_type option;
     module_expression : module_expression option;
+    is_destructive_substitution : bool;
     is_recursive : bool;
   }
 
@@ -2517,6 +2520,8 @@ module ModuleDeclaration : sig
   val functor_parameters : t -> functor_parameter list
   val module_type : t -> module_type option
   val module_expression : t -> module_expression option
+  (** `true` for destructive substitutions such as `module Alias := M`. *)
+  val is_destructive_substitution : t -> bool
   val is_recursive : t -> bool
   val name : t -> string
 end
@@ -2550,6 +2555,7 @@ end
     ```ocaml,norun
     module type S
     module type S = sig type t end
+    module type Alias := Source
     ```
 *)
 module ModuleTypeDeclaration : sig
@@ -2557,11 +2563,14 @@ module ModuleTypeDeclaration : sig
     syntax_node : syntax_node;
     module_type_name : Token.t;
     module_type : module_type option;
+    is_destructive_substitution : bool;
   }
 
   val syntax_node : t -> syntax_node
   val module_type_name_token : t -> Token.t
   val module_type : t -> module_type option
+  (** `true` for destructive substitutions such as `module type Alias := S`. *)
+  val is_destructive_substitution : t -> bool
   val name : t -> string
 end
 
@@ -2615,7 +2624,10 @@ type external_declaration = {
 (** A `class` declaration item.
 
     The public CST exposes the declared name, type parameters, optional raw
-    class-type annotation node, and the class body expression.
+    class-type annotation node, and the class body expression. Signature-only
+    declarations such as `class c : object ... end` currently reuse the parsed
+    trailing node for both `class_type_syntax_node` and `class_body`, because
+    the parser still routes class-type bodies through the expression grammar.
 *)
 type class_declaration = {
   syntax_node : syntax_node;

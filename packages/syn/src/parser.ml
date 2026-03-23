@@ -8731,11 +8731,15 @@ and parse_module_type_decl parser =
   in
   let trivia_after_name = consume_trivia parser in
   
-  (* Expect = *)
+  (* Expect = or := *)
   let eq =
-    expect parser Token.Eq (fun found ->
-        Diagnostic.missing_let_binding_equals ~found ~text:(token_text parser found)
-          ~span:(expected_span parser))
+    match peek_kind parser with
+    | Token.Eq | Token.ColonEq ->
+        consume parser
+    | _ ->
+        expect parser Token.Eq (fun found ->
+            Diagnostic.missing_let_binding_equals ~found
+              ~text:(token_text parser found) ~span:(expected_span parser))
   in
   let trivia_after_eq = consume_trivia parser in
   
@@ -8885,7 +8889,7 @@ and parse_module_decl parser =
 
   (* Check for optional = (in .mli files, module declarations can end with just : sig) *)
   let module_expr_parts =
-    if peek_kind parser = Token.Eq then
+    if peek_kind parser = Token.Eq || peek_kind parser = Token.ColonEq then
       let eq = consume parser in
       let trivia_after_eq = consume_trivia parser in
       let module_expr = parse_module_expr parser in
@@ -8963,7 +8967,7 @@ and parse_module_decl parser =
           else None
         in
         let module_expr_parts2 =
-          if peek_kind parser = Token.Eq then
+          if peek_kind parser = Token.Eq || peek_kind parser = Token.ColonEq then
             let eq = consume parser in
             let trivia_after_eq = consume_trivia parser in
             let module_expr = parse_module_expr parser in

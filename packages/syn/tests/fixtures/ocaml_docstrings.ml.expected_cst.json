@@ -114,6 +114,7 @@
               }
             ]
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -202,6 +203,7 @@
               }
             ]
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -290,6 +292,7 @@
               }
             ]
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -378,6 +381,7 @@
               }
             ]
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -466,6 +470,7 @@
               }
             ]
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -554,6 +559,7 @@
               }
             ]
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -642,6 +648,7 @@
               }
             ]
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -730,6 +737,7 @@
               }
             ]
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -818,6 +826,7 @@
               }
             ]
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -899,6 +908,7 @@
               }
             ]
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -980,6 +990,7 @@
               }
             ]
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -1053,6 +1064,7 @@
             },
             "item_syntax_nodes": []
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -1126,6 +1138,7 @@
             },
             "item_syntax_nodes": []
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -1199,6 +1212,7 @@
             },
             "item_syntax_nodes": []
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -1272,6 +1286,7 @@
             },
             "item_syntax_nodes": []
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -1345,6 +1360,7 @@
             },
             "item_syntax_nodes": []
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -1418,6 +1434,7 @@
             },
             "item_syntax_nodes": []
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -1491,6 +1508,7 @@
             },
             "item_syntax_nodes": []
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -1564,6 +1582,7 @@
             },
             "item_syntax_nodes": []
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -1637,6 +1656,7 @@
             },
             "item_syntax_nodes": []
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -2367,7 +2387,8 @@
                 "end": 17415
               }
             }
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {

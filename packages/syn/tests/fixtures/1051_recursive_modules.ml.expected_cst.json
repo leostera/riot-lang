@@ -74,6 +74,7 @@
                   }
                 ]
               },
+              "is_destructive_substitution": false,
               "is_recursive": true
             },
             {
@@ -129,6 +130,7 @@
                   }
                 ]
               },
+              "is_destructive_substitution": false,
               "is_recursive": true
             }
           ]

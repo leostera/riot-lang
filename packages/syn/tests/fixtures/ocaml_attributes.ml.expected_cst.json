@@ -730,6 +730,7 @@
               "payload_syntax_node": null
             }
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -813,7 +814,8 @@
               },
               "payload_syntax_node": null
             }
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {
@@ -850,7 +852,8 @@
                 "end": 629
               }
             }
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {
@@ -960,6 +963,7 @@
               }
             }
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -1139,6 +1143,7 @@
               }
             }
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },

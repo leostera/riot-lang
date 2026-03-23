@@ -503,7 +503,8 @@
                 "end": 289
               }
             }
-          }
+          },
+          "is_destructive_substitution": false
         }
       },
       {

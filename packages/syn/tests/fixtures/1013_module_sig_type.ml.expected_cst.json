@@ -44,7 +44,8 @@
                 "end": 32
               }
             }
-          }
+          },
+          "is_destructive_substitution": false
         }
       }
     ],

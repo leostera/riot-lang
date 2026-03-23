@@ -105,22 +105,22 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] recursive-module items
   - [x] standalone attribute items
   - [x] standalone extension items
-- [ ] Signature items:
+- [x] Signature items:
   - [x] type declarations in interfaces
   - [x] type substitutions in interfaces
   - [x] type extensions in interfaces
-  - [ ] exception declarations in interfaces
-  - [ ] module declarations in interfaces
-  - [ ] module substitutions in interfaces
-  - [ ] recursive modules in interfaces
-  - [ ] module type declarations in interfaces
-  - [ ] module type substitutions in interfaces
-  - [ ] open statements in interfaces
-  - [ ] include statements in interfaces
-  - [ ] class declarations in interfaces
-  - [ ] class type declarations in interfaces
-  - [ ] standalone attribute items in interfaces
-  - [ ] standalone extension items in interfaces
+  - [x] exception declarations in interfaces
+  - [x] module declarations in interfaces
+  - [x] module substitutions in interfaces
+  - [x] recursive modules in interfaces
+  - [x] module type declarations in interfaces
+  - [x] module type substitutions in interfaces
+  - [x] open statements in interfaces
+  - [x] include statements in interfaces
+  - [x] class declarations in interfaces
+  - [x] class type declarations in interfaces
+  - [x] standalone attribute items in interfaces
+  - [x] standalone extension items in interfaces
 - [ ] Module expressions:
   - [ ] module identifiers
   - [ ] structure module bodies

@@ -41,6 +41,7 @@
             },
             "item_syntax_nodes": []
           },
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       }

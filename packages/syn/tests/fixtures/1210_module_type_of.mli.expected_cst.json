@@ -58,6 +58,7 @@
             }
           },
           "module_expression": null,
+          "is_destructive_substitution": false,
           "is_recursive": false
         }
       }

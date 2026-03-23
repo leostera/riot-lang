@@ -349,6 +349,80 @@ let tests =
             Ok ()
         | _ ->
             Error "expected first item to be a recursive module declaration");
+    Test.case "cst interface module declarations preserve signature-only bindings"
+      (fun () ->
+        let result = parse_mli "module M : sig val x : int end\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleDeclaration
+            {
+              module_name;
+              module_type = Some (Syn.Cst.ModuleType.Signature _);
+              module_expression = None;
+              is_recursive = false;
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"M"
+              ~actual:(Syn.Cst.Token.text module_name);
+            Ok ()
+        | _ -> Error "expected first item to be an interface module declaration");
+    Test.case "cst interface module substitutions preserve substitution flags"
+      (fun () ->
+        let result = parse_mli "module Alias := Std.List\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleDeclaration decl :: _ -> (
+            match Syn.Cst.ModuleDeclaration.module_expression decl with
+            | Some (Syn.Cst.ModuleExpression.Path path) ->
+                Test.assert_equal ~expected:"Alias"
+                  ~actual:(Syn.Cst.ModuleDeclaration.name decl);
+                Test.assert_true
+                  (Syn.Cst.ModuleDeclaration.is_destructive_substitution decl);
+                Test.assert_equal ~expected:(Some "List")
+                  ~actual:(Syn.Cst.Ident.name path);
+                Ok ()
+            | _ -> Error "expected module substitution path")
+        | _ -> Error "expected first item to be a module declaration");
+    Test.case "cst interface recursive modules preserve grouped signatures"
+      (fun () ->
+        let result =
+          parse_mli
+            "module rec A : sig val x : int end\nand B : sig val y : int end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.RecursiveModuleDeclaration decl :: _ ->
+            let declarations =
+              Syn.Cst.RecursiveModuleDeclaration.declarations decl
+            in
+            let names =
+              declarations |> List.map Syn.Cst.ModuleDeclaration.name
+            in
+            let signature_only =
+              declarations
+              |> List.map (fun declaration ->
+                     Option.is_some (Syn.Cst.ModuleDeclaration.module_type declaration)
+                     && Option.is_none
+                          (Syn.Cst.ModuleDeclaration.module_expression declaration))
+            in
+            Test.assert_equal ~expected:[ "A"; "B" ] ~actual:names;
+            Test.assert_equal ~expected:[ true; true ] ~actual:signature_only;
+            Ok ()
+        | _ ->
+            Error "expected first item to be a recursive module declaration");
     Test.case "cst module type declarations expose declared names" (fun () ->
         let result = parse_ml "module type Foo_bar = sig end\n" in
         let cst =
@@ -363,6 +437,113 @@ let tests =
               ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
             Ok ()
         | _ -> Error "expected first item to be a module type declaration");
+    Test.case "cst interface module type declarations expose declared names"
+      (fun () ->
+        let result = parse_mli "module type Foo_bar = sig end\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.ModuleTypeDeclaration decl :: _ ->
+            Test.assert_equal ~expected:"Foo_bar"
+              ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
+            Ok ()
+        | _ ->
+            Error "expected first item to be an interface module type declaration");
+    Test.case "cst interface module type substitutions preserve substitution flags"
+      (fun () ->
+        let result = parse_mli "module type Alias := Source\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleTypeDeclaration decl :: _ -> (
+            match Syn.Cst.ModuleTypeDeclaration.module_type decl with
+            | Some (Syn.Cst.ModuleType.Path path) ->
+                Test.assert_equal ~expected:"Alias"
+                  ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
+                Test.assert_true
+                  (Syn.Cst.ModuleTypeDeclaration.is_destructive_substitution decl);
+                Test.assert_equal ~expected:(Some "Source")
+                  ~actual:(Syn.Cst.Ident.name path);
+                Ok ()
+            | _ -> Error "expected module type substitution path")
+        | _ ->
+            Error "expected first item to be an interface module type declaration");
+    Test.case "cst interface class declarations preserve class-type anchors"
+      (fun () ->
+        let result =
+          parse_mli "class c : object method x : int end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassDeclaration
+            {
+              class_name;
+              class_type_syntax_node = Some class_type_syntax_node;
+              class_body =
+                Syn.Cst.Expression.Object
+                  {
+                    members =
+                      [
+                        Syn.Cst.Method
+                          {
+                            name_token;
+                            body = None;
+                            type_ =
+                              Some
+                                (Syn.Cst.CoreType.Constr { constructor_path; _ });
+                            _;
+                          };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"c"
+              ~actual:(Syn.Cst.Token.text class_name);
+            Test.assert_equal ~expected:"OBJECT_EXPR"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind class_type_syntax_node));
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name constructor_path);
+            Ok ()
+        | _ -> Error "expected interface class declaration");
+    Test.case "cst interface class type declarations preserve raw bodies"
+      (fun () ->
+        let result =
+          parse_mli "class type ct = object method x : int end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassTypeDeclaration
+            { class_type_name; class_type_body_syntax_node; _ }
+          :: _ ->
+            Test.assert_equal ~expected:"ct"
+              ~actual:(Syn.Cst.Token.text class_type_name);
+            Test.assert_equal ~expected:"OBJECT_EXPR"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind class_type_body_syntax_node));
+            Ok ()
+        | _ -> Error "expected interface class type declaration");
     Test.case "cst value declarations preserve names and type nodes" (fun () ->
         let result = parse_mli "val create : name:string -> person\n" in
         let cst =
@@ -613,6 +794,38 @@ let tests =
             Ok ()
         | _ ->
             Error "expected first item to be an extension item");
+    Test.case "cst interfaces distinguish standalone attribute items" (fun () ->
+        let result = parse_mli "[@@@attr]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.Attribute attribute :: _ ->
+            Test.assert_equal ~expected:(Some "attr")
+              ~actual:(Syn.Cst.Ident.name attribute.name);
+            Test.assert_equal ~expected:0
+              ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
+            Ok ()
+        | _ ->
+            Error "expected first item to be an interface attribute item");
+    Test.case "cst interfaces distinguish standalone extension items" (fun () ->
+        let result = parse_mli "[%%signature_item]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.Extension extension :: _ ->
+            Test.assert_equal ~expected:(Some "signature_item")
+              ~actual:(Syn.Cst.Ident.name extension.name);
+            Test.assert_equal ~expected:0
+              ~actual:(List.length (Syn.Cst.SourceFile.expressions cst));
+            Ok ()
+        | _ ->
+            Error "expected first item to be an interface extension item");
     Test.case "cst attributed types keep attribute names and payload nodes" (fun () ->
         let result = parse_ml "type t = int [@foo]\n" in
         let cst =
@@ -649,6 +862,21 @@ let tests =
               ~actual:(Syn.Cst.Token.text name_token);
             Ok ()
         | _ -> Error "expected first item to be an exception declaration");
+    Test.case "cst interface exception declarations preserve declared names"
+      (fun () ->
+        let result = parse_mli "exception Not_found\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ExceptionDeclaration { name_token; _ } :: _ ->
+            Test.assert_equal ~expected:"Not_found"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Ok ()
+        | _ ->
+            Error "expected first item to be an interface exception declaration");
     Test.case "cst type declarations preserve first-class module type definitions"
       (fun () ->
         let result =
@@ -766,6 +994,24 @@ let tests =
                 |> Syn.Cst.ModulePath.name);
             Ok ()
         | _ -> Error "expected first item to be an open statement");
+    Test.case "cst interface open statements preserve open! structurally"
+      (fun () ->
+        let result = parse_mli "open! Std.List\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.OpenStatement stmt :: _ ->
+            Test.assert_true (Syn.Cst.OpenStatement.has_bang stmt);
+            Test.assert_equal ~expected:(Some "List")
+              ~actual:
+                (Syn.Cst.OpenStatement.module_path stmt
+                |> Syn.Cst.ModulePath.name);
+            Ok ()
+        | _ ->
+            Error "expected first item to be an interface open statement");
     Test.case "cst source files collect let bindings recursively" (fun () ->
         let source =
           "let top_level = 1\nlet render x = let local_value = x in local_value\n"

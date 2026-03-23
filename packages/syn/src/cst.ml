@@ -1547,6 +1547,7 @@ module ModuleDeclaration = struct
     functor_parameters : functor_parameter list;
     module_type : module_type option;
     module_expression : module_expression option;
+    is_destructive_substitution : bool;
     is_recursive : bool;
   }
 
@@ -1555,6 +1556,7 @@ module ModuleDeclaration = struct
   let functor_parameters decl = decl.functor_parameters
   let module_type decl = decl.module_type
   let module_expression decl = decl.module_expression
+  let is_destructive_substitution decl = decl.is_destructive_substitution
   let is_recursive decl = decl.is_recursive
   let name decl = Token.text decl.module_name
 end
@@ -1574,11 +1576,13 @@ module ModuleTypeDeclaration = struct
     syntax_node : syntax_node;
     module_type_name : Token.t;
     module_type : module_type option;
+    is_destructive_substitution : bool;
   }
 
   let syntax_node decl = decl.syntax_node
   let module_type_name_token decl = decl.module_type_name
   let module_type decl = decl.module_type
+  let is_destructive_substitution decl = decl.is_destructive_substitution
   let name decl = Token.text decl.module_type_name
 end
 

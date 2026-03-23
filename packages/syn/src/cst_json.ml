@@ -1331,6 +1331,8 @@ let module_declaration_to_json decl =
       ( "module_expression",
         option_to_json module_expression_to_json
           (Cst.ModuleDeclaration.module_expression decl) );
+      ( "is_destructive_substitution",
+        Json.Bool (Cst.ModuleDeclaration.is_destructive_substitution decl) );
       ("is_recursive", Json.Bool (Cst.ModuleDeclaration.is_recursive decl));
     ]
 
@@ -1353,6 +1355,8 @@ let module_type_declaration_to_json decl =
         token_to_json (Cst.ModuleTypeDeclaration.module_type_name_token decl) );
       ( "module_type",
         option_to_json module_type_to_json (Cst.ModuleTypeDeclaration.module_type decl) );
+      ( "is_destructive_substitution",
+        Json.Bool (Cst.ModuleTypeDeclaration.is_destructive_substitution decl) );
     ]
 
 let open_statement_to_json stmt =
