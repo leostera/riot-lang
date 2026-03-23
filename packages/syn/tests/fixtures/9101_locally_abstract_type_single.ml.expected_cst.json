@@ -91,16 +91,16 @@
             }
           ],
           "value": {
-            "tag": "path",
+            "tag": "typed",
             "syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "LET_BINDING",
               "span": {
-                "start": 65,
+                "start": 35,
                 "end": 66
               }
             },
-            "path": {
-              "tag": "ident",
+            "expression": {
+              "tag": "path",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
@@ -108,14 +108,53 @@
                   "end": 66
                 }
               },
-              "name_token": {
-                "kind": "IDENT_EXPR",
-                "text": "x",
-                "span": {
-                  "start": 65,
-                  "end": 66
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 65,
+                    "end": 66
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 65,
+                    "end": 66
+                  }
                 }
               }
+            },
+            "type": {
+              "tag": "constr",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 61,
+                  "end": 63
+                }
+              },
+              "constructor_path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 61,
+                    "end": 63
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 61,
+                    "end": 62
+                  }
+                }
+              },
+              "arguments": []
             }
           },
           "is_recursive": false
@@ -202,24 +241,63 @@
             }
           ],
           "value": {
-            "tag": "literal",
-            "literal": {
-              "tag": "string",
-              "syntax_node": {
-                "kind": "STRING_LITERAL",
-                "span": {
-                  "start": 138,
-                  "end": 145
-                }
-              },
-              "literal_token": {
-                "kind": "STRING_LITERAL",
-                "text": "\"value\"",
-                "span": {
-                  "start": 138,
-                  "end": 145
+            "tag": "typed",
+            "syntax_node": {
+              "kind": "LET_BINDING",
+              "span": {
+                "start": 95,
+                "end": 145
+              }
+            },
+            "expression": {
+              "tag": "literal",
+              "literal": {
+                "tag": "string",
+                "syntax_node": {
+                  "kind": "STRING_LITERAL",
+                  "span": {
+                    "start": 138,
+                    "end": 145
+                  }
+                },
+                "literal_token": {
+                  "kind": "STRING_LITERAL",
+                  "text": "\"value\"",
+                  "span": {
+                    "start": 138,
+                    "end": 145
+                  }
                 }
               }
+            },
+            "type": {
+              "tag": "constr",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 126,
+                  "end": 133
+                }
+              },
+              "constructor_path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 126,
+                    "end": 133
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "string",
+                  "span": {
+                    "start": 126,
+                    "end": 132
+                  }
+                }
+              },
+              "arguments": []
             }
           },
           "is_recursive": false
@@ -476,16 +554,16 @@
           }
         ],
         "value": {
-          "tag": "path",
+          "tag": "typed",
           "syntax_node": {
-            "kind": "IDENT_EXPR",
+            "kind": "LET_BINDING",
             "span": {
-              "start": 65,
+              "start": 35,
               "end": 66
             }
           },
-          "path": {
-            "tag": "ident",
+          "expression": {
+            "tag": "path",
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
@@ -493,14 +571,53 @@
                 "end": 66
               }
             },
-            "name_token": {
-              "kind": "IDENT_EXPR",
-              "text": "x",
-              "span": {
-                "start": 65,
-                "end": 66
+            "path": {
+              "tag": "ident",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 65,
+                  "end": 66
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 65,
+                  "end": 66
+                }
               }
             }
+          },
+          "type": {
+            "tag": "constr",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 61,
+                "end": 63
+              }
+            },
+            "constructor_path": {
+              "tag": "ident",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 61,
+                  "end": 63
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "span": {
+                  "start": 61,
+                  "end": 62
+                }
+              }
+            },
+            "arguments": []
           }
         },
         "is_recursive": false
@@ -584,24 +701,63 @@
           }
         ],
         "value": {
-          "tag": "literal",
-          "literal": {
-            "tag": "string",
-            "syntax_node": {
-              "kind": "STRING_LITERAL",
-              "span": {
-                "start": 138,
-                "end": 145
-              }
-            },
-            "literal_token": {
-              "kind": "STRING_LITERAL",
-              "text": "\"value\"",
-              "span": {
-                "start": 138,
-                "end": 145
+          "tag": "typed",
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 95,
+              "end": 145
+            }
+          },
+          "expression": {
+            "tag": "literal",
+            "literal": {
+              "tag": "string",
+              "syntax_node": {
+                "kind": "STRING_LITERAL",
+                "span": {
+                  "start": 138,
+                  "end": 145
+                }
+              },
+              "literal_token": {
+                "kind": "STRING_LITERAL",
+                "text": "\"value\"",
+                "span": {
+                  "start": 138,
+                  "end": 145
+                }
               }
             }
+          },
+          "type": {
+            "tag": "constr",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 126,
+                "end": 133
+              }
+            },
+            "constructor_path": {
+              "tag": "ident",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 126,
+                  "end": 133
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "string",
+                "span": {
+                  "start": 126,
+                  "end": 132
+                }
+              }
+            },
+            "arguments": []
           }
         },
         "is_recursive": false
@@ -776,6 +932,73 @@
     ],
     "expressions": [
       {
+        "tag": "typed",
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 35,
+            "end": 66
+          }
+        },
+        "expression": {
+          "tag": "path",
+          "syntax_node": {
+            "kind": "IDENT_EXPR",
+            "span": {
+              "start": 65,
+              "end": 66
+            }
+          },
+          "path": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "IDENT_EXPR",
+              "span": {
+                "start": 65,
+                "end": 66
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "x",
+              "span": {
+                "start": 65,
+                "end": 66
+              }
+            }
+          }
+        },
+        "type": {
+          "tag": "constr",
+          "syntax_node": {
+            "kind": "TYPE_CONSTR",
+            "span": {
+              "start": 61,
+              "end": 63
+            }
+          },
+          "constructor_path": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 61,
+                "end": 63
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "a",
+              "span": {
+                "start": 61,
+                "end": 62
+              }
+            }
+          },
+          "arguments": []
+        }
+      },
+      {
         "tag": "path",
         "syntax_node": {
           "kind": "IDENT_EXPR",
@@ -801,6 +1024,66 @@
               "end": 66
             }
           }
+        }
+      },
+      {
+        "tag": "typed",
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 95,
+            "end": 145
+          }
+        },
+        "expression": {
+          "tag": "literal",
+          "literal": {
+            "tag": "string",
+            "syntax_node": {
+              "kind": "STRING_LITERAL",
+              "span": {
+                "start": 138,
+                "end": 145
+              }
+            },
+            "literal_token": {
+              "kind": "STRING_LITERAL",
+              "text": "\"value\"",
+              "span": {
+                "start": 138,
+                "end": 145
+              }
+            }
+          }
+        },
+        "type": {
+          "tag": "constr",
+          "syntax_node": {
+            "kind": "TYPE_CONSTR",
+            "span": {
+              "start": 126,
+              "end": 133
+            }
+          },
+          "constructor_path": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 126,
+                "end": 133
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "string",
+              "span": {
+                "start": 126,
+                "end": 132
+              }
+            }
+          },
+          "arguments": []
         }
       },
       {

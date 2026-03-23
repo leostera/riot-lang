@@ -706,6 +706,7 @@ type expression =
   | Assign of assign_expression
   | Infix of infix_expression
   | Typed of typed_expression
+  | Polymorphic of polymorphic_expression
   | Coerce of coerce_expression
   | Sequence of sequence_expression
   | Tuple of tuple_expression
@@ -911,6 +912,12 @@ and typed_expression = {
   type_ : core_type;
 }
 
+and polymorphic_expression = {
+  syntax_node : syntax_node;
+  expression : expression;
+  type_ : core_type;
+}
+
 and coerce_expression = {
   syntax_node : syntax_node;
   expression : expression;
@@ -1100,6 +1107,7 @@ module Expression = struct
     | Assign of assign_expression
     | Infix of infix_expression
     | Typed of typed_expression
+    | Polymorphic of polymorphic_expression
     | Coerce of coerce_expression
     | Sequence of sequence_expression
     | Tuple of tuple_expression
@@ -1150,6 +1158,7 @@ module Expression = struct
     | Assign expr -> expr.syntax_node
     | Infix expr -> expr.syntax_node
     | Typed expr -> expr.syntax_node
+    | Polymorphic expr -> expr.syntax_node
     | Coerce expr -> expr.syntax_node
     | Sequence expr -> expr.syntax_node
     | Tuple expr -> expr.syntax_node

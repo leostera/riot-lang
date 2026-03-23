@@ -98,24 +98,63 @@
         },
         "parameters": [],
         "value": {
-          "tag": "literal",
-          "literal": {
-            "tag": "int",
-            "syntax_node": {
-              "kind": "INT_LITERAL",
-              "span": {
-                "start": 48,
-                "end": 50
-              }
-            },
-            "literal_token": {
-              "kind": "INT_LITERAL",
-              "text": "42",
-              "span": {
-                "start": 48,
-                "end": 50
+          "tag": "typed",
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 36,
+              "end": 50
+            }
+          },
+          "expression": {
+            "tag": "literal",
+            "literal": {
+              "tag": "int",
+              "syntax_node": {
+                "kind": "INT_LITERAL",
+                "span": {
+                  "start": 48,
+                  "end": 50
+                }
+              },
+              "literal_token": {
+                "kind": "INT_LITERAL",
+                "text": "42",
+                "span": {
+                  "start": 48,
+                  "end": 50
+                }
               }
             }
+          },
+          "type": {
+            "tag": "constr",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 44,
+                "end": 46
+              }
+            },
+            "constructor_path": {
+              "tag": "ident",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 44,
+                  "end": 46
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "span": {
+                  "start": 44,
+                  "end": 45
+                }
+              }
+            },
+            "arguments": []
           }
         },
         "is_recursive": false

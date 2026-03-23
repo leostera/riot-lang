@@ -742,6 +742,69 @@ let tests =
             Test.assert_true (Syn.Cst.LetBinding.is_recursive binding);
             Ok ()
         | [] -> Error "expected recursive let binding");
+    Test.case "cst let binding annotations wrap bound values as typed expressions"
+      (fun () ->
+        let source = "let render : user_t -> user_t = fun value -> value\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Typed
+                  {
+                    expression = Syn.Cst.Expression.Fun _;
+                    type_ = Syn.Cst.CoreType.Arrow _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Ok ()
+        | _ -> Error "expected typed let-binding value");
+    Test.case "cst let binding annotations preserve explicit polymorphism"
+      (fun () ->
+        let source = "let id : 'a. 'a -> 'a = fun x -> x\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Polymorphic
+                  {
+                    expression =
+                      Syn.Cst.Expression.Fun
+                        {
+                          body = Syn.Cst.Expression.Path { path; _ };
+                          _;
+                        };
+                    type_ = Syn.Cst.CoreType.Poly { binders; _ };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            let binder_text =
+              binders |> List.map Syn.Cst.TypeBinder.text
+            in
+            let quoted =
+              binders |> List.map Syn.Cst.TypeBinder.is_quoted
+            in
+            Test.assert_equal ~expected:[ "'a" ] ~actual:binder_text;
+            Test.assert_equal ~expected:[ true ] ~actual:quoted;
+            Test.assert_equal ~expected:(Some "x")
+              ~actual:(Syn.Cst.ModulePath.name path);
+            Ok ()
+        | _ -> Error "expected polymorphic let-binding value");
     Test.case "cst let bindings expose infix string concatenation values" (fun () ->
         let source = "let banner = \"a\" ^ \"b\" ^ \"c\"\n" in
         let result = parse_ml source in

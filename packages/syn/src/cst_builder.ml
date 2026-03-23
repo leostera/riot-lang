@@ -1504,6 +1504,29 @@ let rec apply_argument_from_node node =
       | _ -> unsupported_expression node)
   | _ -> Cst.Positional (expression_from_node node)
 
+(* Let-binding annotations do not have dedicated expression nodes, so the CST
+   reconstructs typed/polymorphic wrappers around the bound value. *)
+and expression_with_type_annotation ~syntax_node ~expression type_node =
+  let type_ = core_type_from_node type_node in
+  match type_ with
+  | Cst.CoreType.Poly { binders; _ }
+    when List.exists Cst.TypeBinder.is_quoted binders ->
+      Cst.Expression.Polymorphic { syntax_node; expression; type_ }
+  | _ ->
+      Cst.Expression.Typed { syntax_node; expression; type_ }
+
+and binding_type_annotation_node prefix_nodes =
+  prefix_nodes |> List.find_opt can_lift_core_type_node
+
+and binding_value_from_prefix ~binding_syntax_node ~prefix_nodes ~value_node =
+  let value = expression_from_node value_node in
+  match binding_type_annotation_node prefix_nodes with
+  | Some type_node ->
+      expression_with_type_annotation ~syntax_node:binding_syntax_node
+        ~expression:value type_node
+  | None ->
+      value
+
 and module_expression_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.IDENT_EXPR ->
@@ -1816,12 +1839,8 @@ and expression_from_node node =
   | Syntax_kind.TYPED_EXPR -> (
       match direct_non_trivia_nodes node with
       | expr_node :: type_node :: _ ->
-          Cst.Expression.Typed
-            {
-              syntax_node = node;
-              expression = expression_from_node expr_node;
-              type_ = core_type_from_node type_node;
-            }
+          expression_with_type_annotation ~syntax_node:node
+            ~expression:(expression_from_node expr_node) type_node
       | _ -> unsupported_expression node)
   | Syntax_kind.COERCE_EXPR -> (
       match direct_non_trivia_nodes node with
@@ -2432,7 +2451,7 @@ and let_expression_from_node ~is_recursive_binding node =
       (`Value
         ( is_recursive_binding,
           binding_pattern_node,
-          _parameter_nodes,
+          prefix_nodes,
           bound_value_node,
           and_binding_nodes,
           body_node )) ->
@@ -2450,6 +2469,7 @@ and let_expression_from_node ~is_recursive_binding node =
         | nested_binding_pattern_node :: rest -> (
             match List.rev rest with
             | value_node :: rev_param_nodes ->
+                let prefix_nodes = List.rev rev_param_nodes in
                 Some
                   Cst.LetBinding.
                     {
@@ -2459,12 +2479,13 @@ and let_expression_from_node ~is_recursive_binding node =
                       binding_name =
                         simple_pattern_name_token nested_binding_pattern_node;
                       parameters =
-                        rev_param_nodes
-                        |> List.rev
+                        prefix_nodes
                         |> List.filter (fun child ->
                                is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
                         |> List.map parameter_from_node;
-                      value = expression_from_node value_node;
+                      value =
+                        binding_value_from_prefix ~binding_syntax_node:node
+                          ~prefix_nodes:prefix_nodes ~value_node:value_node;
                       is_recursive = is_recursive_binding;
                     }
             | [] -> None)
@@ -2474,7 +2495,9 @@ and let_expression_from_node ~is_recursive_binding node =
         {
           syntax_node = node;
           binding_pattern = pattern_from_node binding_pattern_node;
-          bound_value = expression_from_node bound_value_node;
+          bound_value =
+            binding_value_from_prefix ~binding_syntax_node:node
+              ~prefix_nodes:prefix_nodes ~value_node:bound_value_node;
           and_bindings =
             and_binding_nodes
             |> List.filter_map lift_and_binding;
@@ -2869,6 +2892,7 @@ let let_binding_from_node ~is_recursive_binding node =
   | binding_pattern_node :: rest -> (
       match List.rev rest with
       | value_node :: rev_param_nodes ->
+          let prefix_nodes = List.rev rev_param_nodes in
           Some
             Cst.LetBinding.
               {
@@ -2877,12 +2901,13 @@ let let_binding_from_node ~is_recursive_binding node =
                 binding_pattern = pattern_from_node binding_pattern_node;
                 binding_name = simple_pattern_name_token binding_pattern_node;
                 parameters =
-                  rev_param_nodes
-                  |> List.rev
+                  prefix_nodes
                   |> List.filter (fun child ->
                          is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
                   |> List.map parameter_from_node;
-                value = expression_from_node value_node;
+                value =
+                  binding_value_from_prefix ~binding_syntax_node:node
+                    ~prefix_nodes:prefix_nodes ~value_node:value_node;
                 is_recursive = is_recursive_binding;
               }
       | [] -> None)
@@ -2903,7 +2928,7 @@ let let_expression_binding_from_node ~is_recursive_binding node =
       (`Value
         ( is_recursive_binding,
           binding_pattern_node,
-          rev_param_nodes,
+          prefix_nodes,
           bound_value_node,
           _and_binding_nodes,
           _body_node )) ->
@@ -2915,11 +2940,13 @@ let let_expression_binding_from_node ~is_recursive_binding node =
                 binding_pattern = pattern_from_node binding_pattern_node;
                 binding_name = simple_pattern_name_token binding_pattern_node;
                 parameters =
-                  rev_param_nodes
+                  prefix_nodes
                   |> List.filter (fun child ->
                          is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
                   |> List.map parameter_from_node;
-                value = expression_from_node bound_value_node;
+                value =
+                  binding_value_from_prefix ~binding_syntax_node:node
+                    ~prefix_nodes:prefix_nodes ~value_node:bound_value_node;
                 is_recursive = is_recursive_binding;
               }
   | _ -> None
@@ -3279,7 +3306,8 @@ let rec collect_expressions_from_expression expr =
     | Cst.Expression.Infix { left; right; _ } ->
         collect_expressions_from_expression left
         @ collect_expressions_from_expression right
-    | Cst.Expression.Typed { expression; _ } ->
+    | Cst.Expression.Typed { expression; _ }
+    | Cst.Expression.Polymorphic { expression; _ } ->
         collect_expressions_from_expression expression
     | Cst.Expression.Coerce { expression; _ } ->
         collect_expressions_from_expression expression
@@ -3737,6 +3765,11 @@ and validate_expression ~context = function
       validate_expression ~context:("expression.typed.expression" :: context)
         expression;
       validate_core_type ~context:("expression.typed.type" :: context) type_
+  | Cst.Expression.Polymorphic { expression; type_; _ } ->
+      validate_expression ~context:("expression.polymorphic.expression" :: context)
+        expression;
+      validate_core_type ~context:("expression.polymorphic.type" :: context)
+        type_
   | Cst.Expression.Coerce { expression; from_type; to_type; _ } ->
       validate_expression ~context:("expression.coerce.expression" :: context)
         expression;

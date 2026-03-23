@@ -1351,7 +1351,20 @@ type expression =
   | Infix of infix_expression
       (** An infix operator expression such as `a + b` or `x |> f`. *)
   | Typed of typed_expression
-      (** A type-constrained expression such as `(expr : t)`. *)
+      (** A type-constrained expression such as `(expr : t)` or
+          `let value : t = expr`.
+
+          When lifted from a binding annotation, `syntax_node` is the enclosing
+          `let` binding because the parser does not currently emit a dedicated
+          annotation expression node.
+      *)
+  | Polymorphic of polymorphic_expression
+      (** An explicitly polymorphic binding annotation such as
+          `let id : 'a. 'a -> 'a = fun x -> x`.
+
+          This is reconstructed from the surrounding binding or typed
+          expression syntax when the annotated type is a quoted `CoreType.Poly`.
+      *)
   | Coerce of coerce_expression
       (** A coercion expression such as `(expr :> t)` or `(expr : s :> t)`. *)
   | Sequence of sequence_expression
@@ -1697,9 +1710,26 @@ and infix_expression = {
 
 (** Payload for `Expression.Typed`.
 
-    Covers `(expr : t)`.
+    Covers `(expr : t)` and reconstructed binding annotations such as
+    `let value : t = expr`.
 *)
 and typed_expression = {
+  syntax_node : syntax_node;
+  expression : expression;
+  type_ : core_type;
+}
+
+(** Payload for `Expression.Polymorphic`.
+
+    Covers explicit quoted polymorphic constraints such as:
+
+    ```ocaml,norun
+    let id : 'a. 'a -> 'a = fun x -> x
+    ```
+
+    The `type_` payload is expected to be a `CoreType.Poly`.
+*)
+and polymorphic_expression = {
   syntax_node : syntax_node;
   expression : expression;
   type_ : core_type;
@@ -2025,6 +2055,7 @@ module Expression : sig
     | Assign of assign_expression
     | Infix of infix_expression
     | Typed of typed_expression
+    | Polymorphic of polymorphic_expression
     | Coerce of coerce_expression
     | Sequence of sequence_expression
     | Tuple of tuple_expression

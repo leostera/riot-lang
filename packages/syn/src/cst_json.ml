@@ -988,6 +988,14 @@ and expression_to_json = function
           ("expression", expression_to_json expression);
           ("type", core_type_to_json type_);
         ]
+  | Cst.Expression.Polymorphic { syntax_node; expression; type_ } ->
+      Json.Object
+        [
+          ("tag", Json.String "polymorphic");
+          ("syntax_node", syntax_node_to_json syntax_node);
+          ("expression", expression_to_json expression);
+          ("type", core_type_to_json type_);
+        ]
   | Cst.Expression.Coerce
       { syntax_node; expression; from_type; to_type } ->
       Json.Object

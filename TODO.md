@@ -96,7 +96,7 @@ Remember to document the CST types and constructors with examples so its easy to
 - [ ] Expressions:
   - [x] instance-variable assignment expressions
   - [x] structure-item expressions
-  - [ ] polymorphic expressions
+  - [x] polymorphic expressions
   - [x] locally abstract type expressions
   - [x] let-operator expressions
   - [ ] unreachable expressions

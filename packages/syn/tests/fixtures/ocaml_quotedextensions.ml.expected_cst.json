@@ -350,25 +350,17 @@
           "binding_name": null,
           "parameters": [],
           "value": {
-            "tag": "extension",
-            "extension": {
-              "syntax_node": {
-                "kind": "EXTENSION_EXPR",
-                "span": {
-                  "start": 441,
-                  "end": 463
-                }
-              },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 442,
-                  "end": 443
-                }
-              },
-              "name": {
-                "tag": "qualified",
+            "tag": "typed",
+            "syntax_node": {
+              "kind": "LET_BINDING",
+              "span": {
+                "start": 387,
+                "end": 463
+              }
+            },
+            "expression": {
+              "tag": "extension",
+              "extension": {
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
@@ -376,8 +368,16 @@
                     "end": 463
                   }
                 },
-                "prefix": {
-                  "tag": "ident",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 442,
+                    "end": 443
+                  }
+                },
+                "name": {
+                  "tag": "qualified",
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
@@ -385,33 +385,108 @@
                       "end": 463
                     }
                   },
+                  "prefix": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
+                      "span": {
+                        "start": 441,
+                        "end": 463
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "{",
+                      "span": {
+                        "start": 441,
+                        "end": 442
+                      }
+                    }
+                  },
+                  "dot_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 444,
+                      "end": 445
+                    }
+                  },
                   "name_token": {
                     "kind": "IDENT_EXPR",
-                    "text": "{",
+                    "text": "foo",
                     "span": {
-                      "start": 441,
-                      "end": 442
+                      "start": 445,
+                      "end": 448
                     }
                   }
                 },
-                "dot_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": ".",
+                "payload_syntax_node": null
+              }
+            },
+            "type": {
+              "tag": "extension",
+              "extension": {
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 444,
-                    "end": 445
+                    "start": 416,
+                    "end": 438
                   }
                 },
-                "name_token": {
+                "sigil_token": {
                   "kind": "IDENT_EXPR",
-                  "text": "foo",
+                  "text": "%",
                   "span": {
-                    "start": 445,
-                    "end": 448
+                    "start": 417,
+                    "end": 418
                   }
-                }
-              },
-              "payload_syntax_node": null
+                },
+                "name": {
+                  "tag": "qualified",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
+                    "span": {
+                      "start": 416,
+                      "end": 438
+                    }
+                  },
+                  "prefix": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
+                      "span": {
+                        "start": 416,
+                        "end": 438
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "{",
+                      "span": {
+                        "start": 416,
+                        "end": 417
+                      }
+                    }
+                  },
+                  "dot_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 419,
+                      "end": 420
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "foo",
+                    "span": {
+                      "start": 420,
+                      "end": 423
+                    }
+                  }
+                },
+                "payload_syntax_node": null
+              }
             }
           },
           "is_recursive": false
@@ -496,25 +571,17 @@
           "binding_name": null,
           "parameters": [],
           "value": {
-            "tag": "extension",
-            "extension": {
-              "syntax_node": {
-                "kind": "EXTENSION_EXPR",
-                "span": {
-                  "start": 539,
-                  "end": 570
-                }
-              },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 540,
-                  "end": 541
-                }
-              },
-              "name": {
-                "tag": "qualified",
+            "tag": "typed",
+            "syntax_node": {
+              "kind": "LET_BINDING",
+              "span": {
+                "start": 465,
+                "end": 570
+              }
+            },
+            "expression": {
+              "tag": "extension",
+              "extension": {
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
@@ -522,8 +589,16 @@
                     "end": 570
                   }
                 },
-                "prefix": {
-                  "tag": "ident",
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 540,
+                    "end": 541
+                  }
+                },
+                "name": {
+                  "tag": "qualified",
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
@@ -531,33 +606,108 @@
                       "end": 570
                     }
                   },
+                  "prefix": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
+                      "span": {
+                        "start": 539,
+                        "end": 570
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "{",
+                      "span": {
+                        "start": 539,
+                        "end": 540
+                      }
+                    }
+                  },
+                  "dot_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 542,
+                      "end": 543
+                    }
+                  },
                   "name_token": {
                     "kind": "IDENT_EXPR",
-                    "text": "{",
+                    "text": "foo",
                     "span": {
-                      "start": 539,
-                      "end": 540
+                      "start": 543,
+                      "end": 546
                     }
                   }
                 },
-                "dot_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": ".",
+                "payload_syntax_node": null
+              }
+            },
+            "type": {
+              "tag": "extension",
+              "extension": {
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 542,
-                    "end": 543
+                    "start": 503,
+                    "end": 534
                   }
                 },
-                "name_token": {
+                "sigil_token": {
                   "kind": "IDENT_EXPR",
-                  "text": "foo",
+                  "text": "%",
                   "span": {
-                    "start": 543,
-                    "end": 546
+                    "start": 504,
+                    "end": 505
                   }
-                }
-              },
-              "payload_syntax_node": null
+                },
+                "name": {
+                  "tag": "qualified",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
+                    "span": {
+                      "start": 503,
+                      "end": 534
+                    }
+                  },
+                  "prefix": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
+                      "span": {
+                        "start": 503,
+                        "end": 534
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "{",
+                      "span": {
+                        "start": 503,
+                        "end": 504
+                      }
+                    }
+                  },
+                  "dot_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 506,
+                      "end": 507
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "foo",
+                    "span": {
+                      "start": 507,
+                      "end": 510
+                    }
+                  }
+                },
+                "payload_syntax_node": null
+              }
             }
           },
           "is_recursive": false
@@ -642,34 +792,26 @@
           "binding_name": null,
           "parameters": [],
           "value": {
-            "tag": "apply",
+            "tag": "typed",
             "syntax_node": {
-              "kind": "APPLY_EXPR",
+              "kind": "LET_BINDING",
               "span": {
-                "start": 636,
+                "start": 572,
                 "end": 718
               }
             },
-            "callee": {
-              "tag": "extension",
-              "extension": {
-                "syntax_node": {
-                  "kind": "EXTENSION_EXPR",
-                  "span": {
-                    "start": 636,
-                    "end": 662
-                  }
-                },
-                "sigil_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 637,
-                    "end": 638
-                  }
-                },
-                "name": {
-                  "tag": "qualified",
+            "expression": {
+              "tag": "apply",
+              "syntax_node": {
+                "kind": "APPLY_EXPR",
+                "span": {
+                  "start": 636,
+                  "end": 718
+                }
+              },
+              "callee": {
+                "tag": "extension",
+                "extension": {
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
@@ -677,62 +819,12 @@
                       "end": 662
                     }
                   },
-                  "prefix": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "EXTENSION_EXPR",
-                      "span": {
-                        "start": 636,
-                        "end": 662
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "{",
-                      "span": {
-                        "start": 636,
-                        "end": 637
-                      }
-                    }
-                  },
-                  "dot_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": ".",
-                    "span": {
-                      "start": 639,
-                      "end": 640
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "foo",
-                    "span": {
-                      "start": 640,
-                      "end": 643
-                    }
-                  }
-                },
-                "payload_syntax_node": null
-              }
-            },
-            "argument": {
-              "tag": "positional",
-              "value": {
-                "tag": "extension",
-                "extension": {
-                  "syntax_node": {
-                    "kind": "EXTENSION_EXPR",
-                    "span": {
-                      "start": 680,
-                      "end": 718
-                    }
-                  },
                   "sigil_token": {
                     "kind": "IDENT_EXPR",
                     "text": "%",
                     "span": {
-                      "start": 681,
-                      "end": 682
+                      "start": 637,
+                      "end": 638
                     }
                   },
                   "name": {
@@ -740,8 +832,8 @@
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
-                        "start": 680,
-                        "end": 718
+                        "start": 636,
+                        "end": 662
                       }
                     },
                     "prefix": {
@@ -749,16 +841,16 @@
                       "syntax_node": {
                         "kind": "EXTENSION_EXPR",
                         "span": {
-                          "start": 680,
-                          "end": 718
+                          "start": 636,
+                          "end": 662
                         }
                       },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "{",
                         "span": {
-                          "start": 680,
-                          "end": 681
+                          "start": 636,
+                          "end": 637
                         }
                       }
                     },
@@ -766,21 +858,154 @@
                       "kind": "IDENT_EXPR",
                       "text": ".",
                       "span": {
-                        "start": 684,
-                        "end": 685
+                        "start": 639,
+                        "end": 640
                       }
                     },
                     "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "foo",
                       "span": {
-                        "start": 685,
-                        "end": 688
+                        "start": 640,
+                        "end": 643
                       }
                     }
                   },
                   "payload_syntax_node": null
                 }
+              },
+              "argument": {
+                "tag": "positional",
+                "value": {
+                  "tag": "extension",
+                  "extension": {
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
+                      "span": {
+                        "start": 680,
+                        "end": 718
+                      }
+                    },
+                    "sigil_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 681,
+                        "end": 682
+                      }
+                    },
+                    "name": {
+                      "tag": "qualified",
+                      "syntax_node": {
+                        "kind": "EXTENSION_EXPR",
+                        "span": {
+                          "start": 680,
+                          "end": 718
+                        }
+                      },
+                      "prefix": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "EXTENSION_EXPR",
+                          "span": {
+                            "start": 680,
+                            "end": 718
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "{",
+                          "span": {
+                            "start": 680,
+                            "end": 681
+                          }
+                        }
+                      },
+                      "dot_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "span": {
+                          "start": 684,
+                          "end": 685
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "foo",
+                        "span": {
+                          "start": 685,
+                          "end": 688
+                        }
+                      }
+                    },
+                    "payload_syntax_node": null
+                  }
+                }
+              }
+            },
+            "type": {
+              "tag": "extension",
+              "extension": {
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
+                  "span": {
+                    "start": 605,
+                    "end": 631
+                  }
+                },
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 606,
+                    "end": 607
+                  }
+                },
+                "name": {
+                  "tag": "qualified",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
+                    "span": {
+                      "start": 605,
+                      "end": 631
+                    }
+                  },
+                  "prefix": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
+                      "span": {
+                        "start": 605,
+                        "end": 631
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "{",
+                      "span": {
+                        "start": 605,
+                        "end": 606
+                      }
+                    }
+                  },
+                  "dot_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 608,
+                      "end": 609
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "foo",
+                    "span": {
+                      "start": 609,
+                      "end": 612
+                    }
+                  }
+                },
+                "payload_syntax_node": null
               }
             }
           },
@@ -1350,6 +1575,146 @@
         }
       },
       {
+        "tag": "typed",
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 387,
+            "end": 463
+          }
+        },
+        "expression": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 441,
+                "end": 463
+              }
+            },
+            "sigil_token": {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 442,
+                "end": 443
+              }
+            },
+            "name": {
+              "tag": "qualified",
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 441,
+                  "end": 463
+                }
+              },
+              "prefix": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
+                  "span": {
+                    "start": 441,
+                    "end": 463
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "{",
+                  "span": {
+                    "start": 441,
+                    "end": 442
+                  }
+                }
+              },
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 444,
+                  "end": 445
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "foo",
+                "span": {
+                  "start": 445,
+                  "end": 448
+                }
+              }
+            },
+            "payload_syntax_node": null
+          }
+        },
+        "type": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 416,
+                "end": 438
+              }
+            },
+            "sigil_token": {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 417,
+                "end": 418
+              }
+            },
+            "name": {
+              "tag": "qualified",
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 416,
+                  "end": 438
+                }
+              },
+              "prefix": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
+                  "span": {
+                    "start": 416,
+                    "end": 438
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "{",
+                  "span": {
+                    "start": 416,
+                    "end": 417
+                  }
+                }
+              },
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 419,
+                  "end": 420
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "foo",
+                "span": {
+                  "start": 420,
+                  "end": 423
+                }
+              }
+            },
+            "payload_syntax_node": null
+          }
+        }
+      },
+      {
         "tag": "extension",
         "extension": {
           "syntax_node": {
@@ -1415,6 +1780,146 @@
         }
       },
       {
+        "tag": "typed",
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 465,
+            "end": 570
+          }
+        },
+        "expression": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 539,
+                "end": 570
+              }
+            },
+            "sigil_token": {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 540,
+                "end": 541
+              }
+            },
+            "name": {
+              "tag": "qualified",
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 539,
+                  "end": 570
+                }
+              },
+              "prefix": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
+                  "span": {
+                    "start": 539,
+                    "end": 570
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "{",
+                  "span": {
+                    "start": 539,
+                    "end": 540
+                  }
+                }
+              },
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 542,
+                  "end": 543
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "foo",
+                "span": {
+                  "start": 543,
+                  "end": 546
+                }
+              }
+            },
+            "payload_syntax_node": null
+          }
+        },
+        "type": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 503,
+                "end": 534
+              }
+            },
+            "sigil_token": {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 504,
+                "end": 505
+              }
+            },
+            "name": {
+              "tag": "qualified",
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 503,
+                  "end": 534
+                }
+              },
+              "prefix": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
+                  "span": {
+                    "start": 503,
+                    "end": 534
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "{",
+                  "span": {
+                    "start": 503,
+                    "end": 504
+                  }
+                }
+              },
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 506,
+                  "end": 507
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "foo",
+                "span": {
+                  "start": 507,
+                  "end": 510
+                }
+              }
+            },
+            "payload_syntax_node": null
+          }
+        }
+      },
+      {
         "tag": "extension",
         "extension": {
           "syntax_node": {
@@ -1477,6 +1982,224 @@
             }
           },
           "payload_syntax_node": null
+        }
+      },
+      {
+        "tag": "typed",
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 572,
+            "end": 718
+          }
+        },
+        "expression": {
+          "tag": "apply",
+          "syntax_node": {
+            "kind": "APPLY_EXPR",
+            "span": {
+              "start": 636,
+              "end": 718
+            }
+          },
+          "callee": {
+            "tag": "extension",
+            "extension": {
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 636,
+                  "end": 662
+                }
+              },
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "span": {
+                  "start": 637,
+                  "end": 638
+                }
+              },
+              "name": {
+                "tag": "qualified",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
+                  "span": {
+                    "start": 636,
+                    "end": 662
+                  }
+                },
+                "prefix": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
+                    "span": {
+                      "start": 636,
+                      "end": 662
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "{",
+                    "span": {
+                      "start": 636,
+                      "end": 637
+                    }
+                  }
+                },
+                "dot_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 639,
+                    "end": 640
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "foo",
+                  "span": {
+                    "start": 640,
+                    "end": 643
+                  }
+                }
+              },
+              "payload_syntax_node": null
+            }
+          },
+          "argument": {
+            "tag": "positional",
+            "value": {
+              "tag": "extension",
+              "extension": {
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
+                  "span": {
+                    "start": 680,
+                    "end": 718
+                  }
+                },
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 681,
+                    "end": 682
+                  }
+                },
+                "name": {
+                  "tag": "qualified",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
+                    "span": {
+                      "start": 680,
+                      "end": 718
+                    }
+                  },
+                  "prefix": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
+                      "span": {
+                        "start": 680,
+                        "end": 718
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "{",
+                      "span": {
+                        "start": 680,
+                        "end": 681
+                      }
+                    }
+                  },
+                  "dot_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 684,
+                      "end": 685
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "foo",
+                    "span": {
+                      "start": 685,
+                      "end": 688
+                    }
+                  }
+                },
+                "payload_syntax_node": null
+              }
+            }
+          }
+        },
+        "type": {
+          "tag": "extension",
+          "extension": {
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 605,
+                "end": 631
+              }
+            },
+            "sigil_token": {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 606,
+                "end": 607
+              }
+            },
+            "name": {
+              "tag": "qualified",
+              "syntax_node": {
+                "kind": "EXTENSION_EXPR",
+                "span": {
+                  "start": 605,
+                  "end": 631
+                }
+              },
+              "prefix": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "EXTENSION_EXPR",
+                  "span": {
+                    "start": 605,
+                    "end": 631
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "{",
+                  "span": {
+                    "start": 605,
+                    "end": 606
+                  }
+                }
+              },
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 608,
+                  "end": 609
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "foo",
+                "span": {
+                  "start": 609,
+                  "end": 612
+                }
+              }
+            },
+            "payload_syntax_node": null
+          }
         }
       },
       {

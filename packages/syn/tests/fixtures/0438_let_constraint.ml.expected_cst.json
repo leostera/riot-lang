@@ -49,6 +49,200 @@
           },
           "parameters": [],
           "value": {
+            "tag": "polymorphic",
+            "syntax_node": {
+              "kind": "LET_BINDING",
+              "span": {
+                "start": 0,
+                "end": 33
+              }
+            },
+            "expression": {
+              "tag": "fun",
+              "syntax_node": {
+                "kind": "FUN_EXPR",
+                "span": {
+                  "start": 23,
+                  "end": 33
+                }
+              },
+              "parameters": [
+                {
+                  "tag": "positional",
+                  "syntax_node": {
+                    "kind": "IDENT_PATTERN",
+                    "span": {
+                      "start": 27,
+                      "end": 28
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "y",
+                    "span": {
+                      "start": 27,
+                      "end": 28
+                    }
+                  }
+                }
+              ],
+              "body": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 32,
+                    "end": 33
+                  }
+                },
+                "path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 32,
+                      "end": 33
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "y",
+                    "span": {
+                      "start": 32,
+                      "end": 33
+                    }
+                  }
+                }
+              }
+            },
+            "type": {
+              "tag": "poly",
+              "syntax_node": {
+                "kind": "POLY_TYPE",
+                "span": {
+                  "start": 8,
+                  "end": 20
+                }
+              },
+              "binders": [
+                {
+                  "tag": "quoted",
+                  "syntax_node": {
+                    "kind": "TYPE_VAR",
+                    "span": {
+                      "start": 8,
+                      "end": 10
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 9,
+                      "end": 10
+                    }
+                  }
+                }
+              ],
+              "body": {
+                "tag": "arrow",
+                "syntax_node": {
+                  "kind": "TYPE_ARROW",
+                  "span": {
+                    "start": 12,
+                    "end": 20
+                  }
+                },
+                "parameter_type": {
+                  "tag": "var",
+                  "syntax_node": {
+                    "kind": "TYPE_VAR",
+                    "span": {
+                      "start": 12,
+                      "end": 14
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 13,
+                      "end": 14
+                    }
+                  }
+                },
+                "result_type": {
+                  "tag": "var",
+                  "syntax_node": {
+                    "kind": "TYPE_VAR",
+                    "span": {
+                      "start": 18,
+                      "end": 20
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "span": {
+                      "start": 19,
+                      "end": 20
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "is_recursive": false
+        }
+      }
+    ],
+    "let_bindings": [
+      {
+        "syntax_node": {
+          "kind": "LET_BINDING",
+          "span": {
+            "start": 0,
+            "end": 33
+          }
+        },
+        "attributes": [],
+        "binding_pattern": {
+          "tag": "identifier",
+          "syntax_node": {
+            "kind": "IDENT_PATTERN",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "name_token": {
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          }
+        },
+        "binding_name": {
+          "kind": "IDENT_EXPR",
+          "text": "x",
+          "span": {
+            "start": 4,
+            "end": 5
+          }
+        },
+        "parameters": [],
+        "value": {
+          "tag": "polymorphic",
+          "syntax_node": {
+            "kind": "LET_BINDING",
+            "span": {
+              "start": 0,
+              "end": 33
+            }
+          },
+          "expression": {
             "tag": "fun",
             "syntax_node": {
               "kind": "FUN_EXPR",
@@ -106,12 +300,89 @@
               }
             }
           },
-          "is_recursive": false
-        }
+          "type": {
+            "tag": "poly",
+            "syntax_node": {
+              "kind": "POLY_TYPE",
+              "span": {
+                "start": 8,
+                "end": 20
+              }
+            },
+            "binders": [
+              {
+                "tag": "quoted",
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 8,
+                    "end": 10
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 9,
+                    "end": 10
+                  }
+                }
+              }
+            ],
+            "body": {
+              "tag": "arrow",
+              "syntax_node": {
+                "kind": "TYPE_ARROW",
+                "span": {
+                  "start": 12,
+                  "end": 20
+                }
+              },
+              "parameter_type": {
+                "tag": "var",
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 12,
+                    "end": 14
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 13,
+                    "end": 14
+                  }
+                }
+              },
+              "result_type": {
+                "tag": "var",
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 18,
+                    "end": 20
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                }
+              }
+            }
+          }
+        },
+        "is_recursive": false
       }
     ],
-    "let_bindings": [
+    "expressions": [
       {
+        "tag": "polymorphic",
         "syntax_node": {
           "kind": "LET_BINDING",
           "span": {
@@ -119,35 +390,7 @@
             "end": 33
           }
         },
-        "attributes": [],
-        "binding_pattern": {
-          "tag": "identifier",
-          "syntax_node": {
-            "kind": "IDENT_PATTERN",
-            "span": {
-              "start": 4,
-              "end": 5
-            }
-          },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 4,
-              "end": 5
-            }
-          }
-        },
-        "binding_name": {
-          "kind": "IDENT_EXPR",
-          "text": "x",
-          "span": {
-            "start": 4,
-            "end": 5
-          }
-        },
-        "parameters": [],
-        "value": {
+        "expression": {
           "tag": "fun",
           "syntax_node": {
             "kind": "FUN_EXPR",
@@ -205,10 +448,83 @@
             }
           }
         },
-        "is_recursive": false
-      }
-    ],
-    "expressions": [
+        "type": {
+          "tag": "poly",
+          "syntax_node": {
+            "kind": "POLY_TYPE",
+            "span": {
+              "start": 8,
+              "end": 20
+            }
+          },
+          "binders": [
+            {
+              "tag": "quoted",
+              "syntax_node": {
+                "kind": "TYPE_VAR",
+                "span": {
+                  "start": 8,
+                  "end": 10
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "span": {
+                  "start": 9,
+                  "end": 10
+                }
+              }
+            }
+          ],
+          "body": {
+            "tag": "arrow",
+            "syntax_node": {
+              "kind": "TYPE_ARROW",
+              "span": {
+                "start": 12,
+                "end": 20
+              }
+            },
+            "parameter_type": {
+              "tag": "var",
+              "syntax_node": {
+                "kind": "TYPE_VAR",
+                "span": {
+                  "start": 12,
+                  "end": 14
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "span": {
+                  "start": 13,
+                  "end": 14
+                }
+              }
+            },
+            "result_type": {
+              "tag": "var",
+              "syntax_node": {
+                "kind": "TYPE_VAR",
+                "span": {
+                  "start": 18,
+                  "end": 20
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "span": {
+                  "start": 19,
+                  "end": 20
+                }
+              }
+            }
+          }
+        }
+      },
       {
         "tag": "fun",
         "syntax_node": {
