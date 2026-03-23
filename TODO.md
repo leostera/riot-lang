@@ -32,7 +32,7 @@ This file is _yours_. Keep it up to date after every big change.
 - [x] Seed `krasny` formatter fixtures from `packages/syn/tests/fixtures`
 - [x] Add a focused round-trip syntax-hash invariant test for selected real codebase files
 - [x] Add a dedicated round-trip syntax-hash corpus runner over selected repo files
-- current green corpus: `9` repo files across `krasny`, `syn`, `std`, and `tusk-fix`
+- current green corpus: `11` repo files across `krasny`, `syn`, `std`, and `tusk-fix`
 - [ ] Add a `krasny` expectation suite for formatted output, separate from the current lossless-token baseline
 - bootstrap status: `krasny` builds, focused tests pass, the expectation harness runs against the full seeded corpus (`858` passing / `337` failing), and the current formatter is still a lossless token renderer
 

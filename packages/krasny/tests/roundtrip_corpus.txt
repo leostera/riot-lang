@@ -4,6 +4,8 @@ packages/krasny/src/main.ml
 packages/syn/src/syntax_kind.ml
 packages/syn/src/syntax_kind.mli
 packages/syn/src/syn.mli
+packages/syn/src/cst.ml
+packages/syn/src/cst_builder.ml
 packages/std/src/path.mli
 packages/std/src/string.mli
 packages/tusk-fix/src/cli.ml
