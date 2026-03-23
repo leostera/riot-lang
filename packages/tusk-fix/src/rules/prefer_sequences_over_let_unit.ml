@@ -25,7 +25,7 @@ Examples:
 |}
 
 let rec is_unit_pattern = function
-  | Syn.Cst.Pattern.Literal (Syn.Cst.PatternLiteral.Unit _) -> true
+  | Syn.Cst.Pattern.Literal { literal = Syn.Cst.PatternLiteral.Unit _; _ } -> true
   | Syn.Cst.Pattern.Parenthesized { inner; _ } -> is_unit_pattern inner
   | Syn.Cst.Pattern.Identifier _ | Syn.Cst.Pattern.Wildcard _
   | Syn.Cst.Pattern.Literal _ ->

@@ -81,6 +81,13 @@
           "attributes": [],
           "binding_pattern": {
             "tag": "extension",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 181,
+                "end": 193
+              }
+            },
             "extension": {
               "syntax_node": {
                 "kind": "EXTENSION_EXPR",
@@ -357,6 +364,13 @@
           "attributes": [],
           "binding_pattern": {
             "tag": "extension",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 258,
+                "end": 276
+              }
+            },
             "extension": {
               "syntax_node": {
                 "kind": "EXTENSION_EXPR",
@@ -589,6 +603,13 @@
           "attributes": [],
           "binding_pattern": {
             "tag": "extension",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 350,
+                "end": 366
+              }
+            },
             "extension": {
               "syntax_node": {
                 "kind": "EXTENSION_EXPR",
@@ -912,6 +933,13 @@
           "attributes": [],
           "binding_pattern": {
             "tag": "extension",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 451,
+                "end": 472
+              }
+            },
             "extension": {
               "syntax_node": {
                 "kind": "EXTENSION_EXPR",
@@ -1135,6 +1163,13 @@
           "attributes": [],
           "binding_pattern": {
             "tag": "extension",
+            "syntax_node": {
+              "kind": "EXTENSION_EXPR",
+              "span": {
+                "start": 537,
+                "end": 570
+              }
+            },
             "extension": {
               "syntax_node": {
                 "kind": "EXTENSION_EXPR",

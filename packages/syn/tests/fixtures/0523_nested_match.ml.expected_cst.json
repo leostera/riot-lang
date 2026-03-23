@@ -201,6 +201,13 @@
                         },
                         "pattern": {
                           "tag": "literal",
+                          "syntax_node": {
+                            "kind": "INT_LITERAL",
+                            "span": {
+                              "start": 52,
+                              "end": 53
+                            }
+                          },
                           "literal": {
                             "tag": "int",
                             "syntax_node": {

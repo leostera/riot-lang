@@ -2042,6 +2042,30 @@ let rec pattern_from_node node =
            is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
     |> List.map pattern_from_node
   in
+  let rec peel_outer_pattern_attributes node =
+    match Ceibo.Red.SyntaxNode.kind node with
+    | Syntax_kind.ATTRIBUTE_EXPR -> (
+        match direct_non_trivia_nodes node with
+        | first_child :: rest -> (
+            match
+              List.find_opt
+                (fun child ->
+                  is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+                (first_child :: rest),
+              List.find_opt is_attribute_node rest
+            with
+            | Some payload_node, Some attribute_node ->
+                let payload_node, attributes =
+                  peel_outer_pattern_attributes payload_node
+                in
+                (payload_node, attributes @ [ attribute_from_node attribute_node ])
+            | _ ->
+                (node, []))
+        | [] ->
+            (node, []))
+    | _ ->
+        (node, [])
+  in
   let poly_variant_tag_token node =
     match direct_non_trivia_tokens node with
     | _backtick :: tag_syntax_token :: _ -> Some (token tag_syntax_token)
@@ -2098,6 +2122,7 @@ let rec pattern_from_node node =
             Cst.syntax_node = node;
             elements = List.rev acc;
             open_tail = None;
+            attributes = [];
           }
       | Ceibo.Red.Token syntax_token :: rest
         when is_trivia (Ceibo.Red.SyntaxToken.kind syntax_token) ->
@@ -2128,11 +2153,8 @@ let rec pattern_from_node node =
             {
               Cst.syntax_node = node;
               elements = List.rev acc;
-              open_tail =
-                Some
-                  {
-                    dotdot_token = token syntax_token;
-                  };
+              open_tail = Some { dotdot_token = token syntax_token };
+              attributes = [];
             }
           else if String.equal text "(" || String.equal text ")" then
             loop rest saw_tilde pending_label awaiting_payload acc
@@ -2164,183 +2186,259 @@ let rec pattern_from_node node =
     Ceibo.Red.SyntaxNode.children node |> Array.to_list |> fun children ->
     loop children false None false []
   in
-  match Ceibo.Red.SyntaxNode.kind node with
-  | Syntax_kind.IDENT_PATTERN -> (
-      match direct_non_trivia_tokens node with
-      | first :: _ ->
-          Cst.Pattern.Identifier { syntax_node = node; name_token = token first }
-      | [] -> unsupported_pattern node)
-  | Syntax_kind.WILDCARD_PATTERN ->
-      Cst.Pattern.Wildcard { syntax_node = node }
-  | Syntax_kind.ATTRIBUTE_EXPR -> (
-      match direct_non_trivia_nodes node with
-      | pattern_node :: rest -> (
-          match List.find_opt is_attribute_node rest with
-          | Some attribute_node ->
-          Cst.Pattern.Attribute
-                {
-                  syntax_node = node;
-                  pattern = pattern_from_node pattern_node;
-                  attribute = attribute_from_node attribute_node;
-                }
-          | None -> unsupported_pattern node)
-      | [] -> unsupported_pattern node)
-  | Syntax_kind.EXTENSION_EXPR ->
-      Cst.Pattern.Extension (extension_from_node node)
-  | Syntax_kind.LAZY_PATTERN -> (
-      match direct_non_trivia_nodes node with
-      | inner_node :: _ ->
-          Cst.Pattern.Lazy
-            {
-              syntax_node = node;
-              pattern = pattern_from_node inner_node;
-            }
-      | _ -> unsupported_pattern node)
-  | Syntax_kind.EXCEPTION_PATTERN -> (
-      match direct_non_trivia_nodes node with
-      | inner_node :: _ ->
-          Cst.Pattern.Exception
-            {
-              syntax_node = node;
-              pattern = pattern_from_node inner_node;
-            }
-      | _ -> unsupported_pattern node)
-  | Syntax_kind.RANGE_PATTERN -> (
-      match direct_non_trivia_tokens node with
-      | lower_syntax_token :: _range_syntax_token :: upper_syntax_token :: _ ->
-          Cst.Pattern.Range
-            {
-              syntax_node = node;
-              lower = constant_from_syntax_token ~syntax_node:node lower_syntax_token;
-              upper = constant_from_syntax_token ~syntax_node:node upper_syntax_token;
-            }
-      | _ -> unsupported_pattern node)
-  | Syntax_kind.OPERATOR_PATTERN ->
-      Cst.Pattern.Operator
-        { syntax_node = node; operator_tokens = operator_tokens_from_node node }
-  | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> (
-      match direct_non_trivia_tokens node with
-      | _lparen :: _module_kw :: binding_syntax_token :: _ ->
-          Cst.Pattern.FirstClassModule
-            {
-              syntax_node = node;
-              binding =
-                if String.equal (Ceibo.Red.SyntaxToken.text binding_syntax_token) "_" then
-                  Cst.Anonymous { wildcard_token = token binding_syntax_token }
-                else
-                  Cst.Named { name_token = token binding_syntax_token };
-              module_type =
-                (direct_non_trivia_nodes node
-                 |> List.find_opt (fun child ->
-                        can_lift_module_type_node child)
-                 |> Option.map module_type_from_node);
-            }
-      | _ -> unsupported_pattern node)
-  | Syntax_kind.STRING_LITERAL | Syntax_kind.INT_LITERAL
-  | Syntax_kind.FLOAT_LITERAL | Syntax_kind.CHAR_LITERAL
-  | Syntax_kind.BOOL_LITERAL | Syntax_kind.UNIT_LITERAL ->
-      Cst.Pattern.Literal (constant_from_node node)
-  | Syntax_kind.POLY_VARIANT_PATTERN -> (
-      match poly_variant_tag_token node with
-      | Some tag_token ->
-          Cst.Pattern.PolyVariant
-            {
-              syntax_node = node;
-              tag_token;
-              payload =
-                (direct_non_trivia_nodes node
-                |> List.find_opt (fun child ->
-                       is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
-                |> Option.map pattern_from_node);
-            }
-      | None -> unsupported_pattern node)
-  | Syntax_kind.POLY_VARIANT_TYPE_PATTERN ->
-      Cst.Pattern.PolyVariantInherit
-        { syntax_node = node; type_path = module_path_like_from_node node }
-  | Syntax_kind.CONSTRUCTOR_PATTERN ->
-      Cst.Pattern.Constructor
-        {
-          syntax_node = node;
-          constructor_path = module_path_from_node node;
-          existentials = constructor_pattern_existentials_from_children node;
-          arguments = pattern_children node;
-        }
-  | Syntax_kind.TUPLE_PATTERN ->
-      Cst.Pattern.Tuple (tuple_pattern_from_node node)
-  | Syntax_kind.LIST_PATTERN ->
-      Cst.Pattern.List { syntax_node = node; elements = pattern_children node }
-  | Syntax_kind.ARRAY_PATTERN ->
-      Cst.Pattern.Array { syntax_node = node; elements = pattern_children node }
-  | Syntax_kind.RECORD_PATTERN ->
-      let closedness =
-        match
-          direct_non_trivia_tokens node
-          |> List.find_opt (fun syntax_token ->
-                 String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "_")
-        with
-        | Some wildcard_token ->
-            Cst.Open { wildcard_token = token wildcard_token }
-        | None ->
-            Cst.Closed
-      in
-      Cst.Pattern.Record
-        {
-          syntax_node = node;
-          fields =
-            direct_non_trivia_nodes node
-            |> List.filter (fun child ->
-                   Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD_PATTERN)
-            |> List.filter_map record_pattern_field_from_node;
-          closedness;
-        }
-  | Syntax_kind.CONS_PATTERN -> (
-      match direct_non_trivia_nodes node with
-      | head_node :: tail_node :: _ ->
-          Cst.Pattern.Cons
-            {
-              syntax_node = node;
-              head = pattern_from_node head_node;
-              tail = pattern_from_node tail_node;
-            }
-      | _ -> unsupported_pattern node)
-  | Syntax_kind.OR_PATTERN ->
-      Cst.Pattern.Or
-        { syntax_node = node; alternatives = pattern_children node }
-  | Syntax_kind.AS_PATTERN -> (
-      match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
-      | pattern_node :: _, name_syntax_token :: _ ->
-          Cst.Pattern.Alias
-            {
-              syntax_node = node;
-              pattern = pattern_from_node pattern_node;
-              name_token = token name_syntax_token;
-            }
-      | _ -> unsupported_pattern node)
-  | Syntax_kind.TYPED_PATTERN -> (
-      match direct_non_trivia_nodes node with
-      | pattern_node :: type_node :: _ ->
-          Cst.Pattern.Typed
-            {
-              syntax_node = node;
-              pattern = pattern_from_node pattern_node;
-              type_ = core_type_from_node type_node;
-            }
-      | _ -> unsupported_pattern node)
-  | Syntax_kind.EFFECT_PATTERN -> (
-      match effect_pattern_from_node node with
-      | Some pattern -> Cst.Pattern.Effect pattern
-      | None -> unsupported_pattern node)
-  | Syntax_kind.LOCAL_OPEN_PATTERN -> (
-      match local_open_pattern_from_node node with
-      | Some pattern -> Cst.Pattern.LocalOpen pattern
-      | None -> unsupported_pattern node)
-  | Syntax_kind.PAREN_PATTERN -> (
-      match direct_non_trivia_nodes node with
-      | inner_node :: _ ->
-          Cst.Pattern.Parenthesized
-            { syntax_node = node; inner = pattern_from_node inner_node }
-      | [] -> unsupported_pattern node)
-  | _ -> unsupported_pattern node
+  let pattern_with_attributes pattern attributes =
+    match attributes with
+    | [] ->
+        pattern
+    | _ ->
+        let append existing = existing @ attributes in
+        match pattern with
+        | Cst.Pattern.Identifier pattern ->
+            Cst.Pattern.Identifier { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Wildcard pattern ->
+            Cst.Pattern.Wildcard { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Extension pattern ->
+            Cst.Pattern.Extension { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Literal pattern ->
+            Cst.Pattern.Literal { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Lazy pattern ->
+            Cst.Pattern.Lazy { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Exception pattern ->
+            Cst.Pattern.Exception { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Range pattern ->
+            Cst.Pattern.Range { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Operator pattern ->
+            Cst.Pattern.Operator { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.FirstClassModule pattern ->
+            Cst.Pattern.FirstClassModule
+              { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.PolyVariant pattern ->
+            Cst.Pattern.PolyVariant { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.PolyVariantInherit pattern ->
+            Cst.Pattern.PolyVariantInherit
+              { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Constructor pattern ->
+            Cst.Pattern.Constructor { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Tuple pattern ->
+            Cst.Pattern.Tuple { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.List pattern ->
+            Cst.Pattern.List { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Array pattern ->
+            Cst.Pattern.Array { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Record pattern ->
+            Cst.Pattern.Record { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Cons pattern ->
+            Cst.Pattern.Cons { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Or pattern ->
+            Cst.Pattern.Or { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Alias pattern ->
+            Cst.Pattern.Alias { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Typed pattern ->
+            Cst.Pattern.Typed { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Effect pattern ->
+            Cst.Pattern.Effect { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.LocalOpen pattern ->
+            Cst.Pattern.LocalOpen { pattern with attributes = append pattern.attributes }
+        | Cst.Pattern.Parenthesized pattern ->
+            Cst.Pattern.Parenthesized
+              { pattern with attributes = append pattern.attributes }
+  in
+  let node, attributes = peel_outer_pattern_attributes node in
+  let pattern =
+    match Ceibo.Red.SyntaxNode.kind node with
+    | Syntax_kind.IDENT_PATTERN -> (
+        match direct_non_trivia_tokens node with
+        | first :: _ ->
+            Cst.Pattern.Identifier
+              { syntax_node = node; name_token = token first; attributes = [] }
+        | [] -> unsupported_pattern node)
+    | Syntax_kind.WILDCARD_PATTERN ->
+        Cst.Pattern.Wildcard { syntax_node = node; attributes = [] }
+    | Syntax_kind.ATTRIBUTE_EXPR ->
+        unsupported_pattern node
+    | Syntax_kind.EXTENSION_EXPR ->
+        Cst.Pattern.Extension
+          { syntax_node = node; extension = extension_from_node node; attributes = [] }
+    | Syntax_kind.LAZY_PATTERN -> (
+        match direct_non_trivia_nodes node with
+        | inner_node :: _ ->
+            Cst.Pattern.Lazy
+              {
+                syntax_node = node;
+                pattern = pattern_from_node inner_node;
+                attributes = [];
+              }
+        | _ -> unsupported_pattern node)
+    | Syntax_kind.EXCEPTION_PATTERN -> (
+        match direct_non_trivia_nodes node with
+        | inner_node :: _ ->
+            Cst.Pattern.Exception
+              {
+                syntax_node = node;
+                pattern = pattern_from_node inner_node;
+                attributes = [];
+              }
+        | _ -> unsupported_pattern node)
+    | Syntax_kind.RANGE_PATTERN -> (
+        match direct_non_trivia_tokens node with
+        | lower_syntax_token :: _range_syntax_token :: upper_syntax_token :: _ ->
+            Cst.Pattern.Range
+              {
+                syntax_node = node;
+                lower = constant_from_syntax_token ~syntax_node:node lower_syntax_token;
+                upper = constant_from_syntax_token ~syntax_node:node upper_syntax_token;
+                attributes = [];
+              }
+        | _ -> unsupported_pattern node)
+    | Syntax_kind.OPERATOR_PATTERN ->
+        Cst.Pattern.Operator
+          {
+            syntax_node = node;
+            operator_tokens = operator_tokens_from_node node;
+            attributes = [];
+          }
+    | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> (
+        match direct_non_trivia_tokens node with
+        | _lparen :: _module_kw :: binding_syntax_token :: _ ->
+            Cst.Pattern.FirstClassModule
+              {
+                syntax_node = node;
+                binding =
+                  if String.equal (Ceibo.Red.SyntaxToken.text binding_syntax_token) "_" then
+                    Cst.Anonymous { wildcard_token = token binding_syntax_token }
+                  else
+                    Cst.Named { name_token = token binding_syntax_token };
+                module_type =
+                  (direct_non_trivia_nodes node
+                   |> List.find_opt can_lift_module_type_node
+                   |> Option.map module_type_from_node);
+                attributes = [];
+              }
+        | _ -> unsupported_pattern node)
+    | Syntax_kind.STRING_LITERAL | Syntax_kind.INT_LITERAL
+    | Syntax_kind.FLOAT_LITERAL | Syntax_kind.CHAR_LITERAL
+    | Syntax_kind.BOOL_LITERAL | Syntax_kind.UNIT_LITERAL ->
+        Cst.Pattern.Literal
+          { syntax_node = node; literal = constant_from_node node; attributes = [] }
+    | Syntax_kind.POLY_VARIANT_PATTERN -> (
+        match poly_variant_tag_token node with
+        | Some tag_token ->
+            Cst.Pattern.PolyVariant
+              {
+                syntax_node = node;
+                tag_token;
+                payload =
+                  (direct_non_trivia_nodes node
+                  |> List.find_opt (fun child ->
+                         is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+                  |> Option.map pattern_from_node);
+                attributes = [];
+              }
+        | None -> unsupported_pattern node)
+    | Syntax_kind.POLY_VARIANT_TYPE_PATTERN ->
+        Cst.Pattern.PolyVariantInherit
+          {
+            syntax_node = node;
+            type_path = module_path_like_from_node node;
+            attributes = [];
+          }
+    | Syntax_kind.CONSTRUCTOR_PATTERN ->
+        Cst.Pattern.Constructor
+          {
+            syntax_node = node;
+            constructor_path = module_path_from_node node;
+            existentials = constructor_pattern_existentials_from_children node;
+            arguments = pattern_children node;
+            attributes = [];
+          }
+    | Syntax_kind.TUPLE_PATTERN ->
+        Cst.Pattern.Tuple (tuple_pattern_from_node node)
+    | Syntax_kind.LIST_PATTERN ->
+        Cst.Pattern.List
+          { syntax_node = node; elements = pattern_children node; attributes = [] }
+    | Syntax_kind.ARRAY_PATTERN ->
+        Cst.Pattern.Array
+          { syntax_node = node; elements = pattern_children node; attributes = [] }
+    | Syntax_kind.RECORD_PATTERN ->
+        let closedness =
+          match
+            direct_non_trivia_tokens node
+            |> List.find_opt (fun syntax_token ->
+                   String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "_")
+          with
+          | Some wildcard_token ->
+              Cst.Open { wildcard_token = token wildcard_token }
+          | None ->
+              Cst.Closed
+        in
+        Cst.Pattern.Record
+          {
+            syntax_node = node;
+            fields =
+              direct_non_trivia_nodes node
+              |> List.filter (fun child ->
+                     Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD_PATTERN)
+              |> List.filter_map record_pattern_field_from_node;
+            closedness;
+            attributes = [];
+          }
+    | Syntax_kind.CONS_PATTERN -> (
+        match direct_non_trivia_nodes node with
+        | head_node :: tail_node :: _ ->
+            Cst.Pattern.Cons
+              {
+                syntax_node = node;
+                head = pattern_from_node head_node;
+                tail = pattern_from_node tail_node;
+                attributes = [];
+              }
+        | _ -> unsupported_pattern node)
+    | Syntax_kind.OR_PATTERN ->
+        Cst.Pattern.Or
+          { syntax_node = node; alternatives = pattern_children node; attributes = [] }
+    | Syntax_kind.AS_PATTERN -> (
+        match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
+        | pattern_node :: _, name_syntax_token :: _ ->
+            Cst.Pattern.Alias
+              {
+                syntax_node = node;
+                pattern = pattern_from_node pattern_node;
+                name_token = token name_syntax_token;
+                attributes = [];
+              }
+        | _ -> unsupported_pattern node)
+    | Syntax_kind.TYPED_PATTERN -> (
+        match direct_non_trivia_nodes node with
+        | pattern_node :: type_node :: _ ->
+            Cst.Pattern.Typed
+              {
+                syntax_node = node;
+                pattern = pattern_from_node pattern_node;
+                type_ = core_type_from_node type_node;
+                attributes = [];
+              }
+        | _ -> unsupported_pattern node)
+    | Syntax_kind.EFFECT_PATTERN -> (
+        match effect_pattern_from_node node with
+        | Some pattern -> Cst.Pattern.Effect pattern
+        | None -> unsupported_pattern node)
+    | Syntax_kind.LOCAL_OPEN_PATTERN -> (
+        match local_open_pattern_from_node node with
+        | Some pattern -> Cst.Pattern.LocalOpen pattern
+        | None -> unsupported_pattern node)
+    | Syntax_kind.PAREN_PATTERN -> (
+        match direct_non_trivia_nodes node with
+        | inner_node :: _ ->
+            Cst.Pattern.Parenthesized
+              {
+                syntax_node = node;
+                inner = pattern_from_node inner_node;
+                attributes = [];
+              }
+        | [] -> unsupported_pattern node)
+    | _ -> unsupported_pattern node
+  in
+  pattern_with_attributes pattern attributes
 
 and record_pattern_field_from_node node =
   let lifted_field_path =
@@ -2371,6 +2469,7 @@ and local_open_pattern_from_node node =
           syntax_node = node;
           module_path = module_path_like_from_node module_path_node;
           pattern = pattern_from_node pattern_node;
+          attributes = [];
         }
   | _ -> None
 
@@ -2382,6 +2481,7 @@ and effect_pattern_from_node node =
           syntax_node = node;
           effect_pattern = pattern_from_node effect_node;
           continuation = pattern_from_node continuation_node;
+          attributes = [];
         }
   | _ -> None
 
@@ -5403,8 +5503,6 @@ let rec validate_pattern ~context = function
   | Cst.Pattern.Identifier _ | Cst.Pattern.Wildcard _ | Cst.Pattern.Literal _
   | Cst.Pattern.Extension _ ->
       ()
-  | Cst.Pattern.Attribute { pattern; _ } ->
-      validate_pattern ~context:("pattern.attribute.pattern" :: context) pattern
   | Cst.Pattern.Lazy { pattern; _ } ->
       validate_pattern ~context:("pattern.lazy" :: context) pattern
   | Cst.Pattern.Exception { pattern; _ } ->

@@ -871,14 +871,6 @@ and class_type_field =
           Example: `[%%foo]`.
       *)
 
-(** Namespace view over `core_type`.
-
-    This is useful when you want constructor names under `CoreType`, for
-    example `CoreType.Arrow` or `CoreType.Record`.
-
-    The constructors mirror `core_type` exactly, so the grammar coverage and
-    examples documented on `core_type` apply here unchanged.
-*)
 (** Core type syntax.
 
     This covers the type grammar that appears in annotations, manifests,
@@ -1179,19 +1171,30 @@ end
 *)
 type string_delimiter =
   | DoubleQuote
+      (** An ordinary double-quoted string such as `"hello"`. *)
   | Quoted of { marker : string }
+      (** A quoted string such as `{sql|select 1|sql}`.
+
+          `marker` stores the identifier between `{` and `|`.
+      *)
 
 (** The numeric base of an integer literal. *)
 type integer_base =
   | Decimal
+      (** Base-10 digits, such as `42` or `1_000`. *)
   | Hexadecimal
+      (** Base-16 digits, introduced with `0x` or `0X`. *)
   | Octal
+      (** Base-8 digits, introduced with `0o` or `0O`. *)
   | Binary
+      (** Base-2 digits, introduced with `0b` or `0B`. *)
 
 (** The explicit sign written in a float exponent. *)
 type exponent_sign =
   | Positive
+      (** A `+` exponent sign, as in `1.0e+5`. *)
   | Negative
+      (** A `-` exponent sign, as in `1.0e-5`. *)
 
 (** A string literal with delimiter and body details preserved.
 
@@ -1338,17 +1341,12 @@ type pattern =
       (** A binding-name pattern such as `x`, `value`, or `state`. *)
   | Wildcard of wildcard_pattern
       (** A wildcard pattern written as `_`. *)
-  | Attribute of attributed_pattern
-      (** A pattern with an attached attribute.
-
-          Example: `p [@foo]`.
-      *)
-  | Extension of extension
+  | Extension of extension_pattern
       (** A PPX extension parsed in pattern position.
 
           Example: `[%foo? p]`.
       *)
-  | Literal of pattern_literal
+  | Literal of literal_pattern
       (** A literal pattern such as `"hello"`, `true`, `2112`, or `()`. *)
   | Lazy of lazy_pattern
       (** A lazy pattern.
@@ -1429,17 +1427,7 @@ type pattern =
 and identifier_pattern = {
   syntax_node : syntax_node;
   name_token : Token.t;
-}
-
-(** Payload for `Pattern.Attribute`.
-
-    The nested `pattern` is the attributed payload, and `attribute` is the
-    trailing attribute node attached to it.
-*)
-and attributed_pattern = {
-  syntax_node : syntax_node;
-  pattern : pattern;
-  attribute : attribute;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Wildcard`.
@@ -1448,6 +1436,30 @@ and attributed_pattern = {
 *)
 and wildcard_pattern = {
   syntax_node : syntax_node;
+  attributes : attribute list;
+}
+
+(** Payload for `Pattern.Literal`.
+
+    This keeps literal patterns like `1`, `"x"`, and `()` in the pattern tree
+    while attaching outer `[@attr]` metadata orthogonally.
+*)
+and literal_pattern = {
+  syntax_node : syntax_node;
+  literal : pattern_literal;
+  attributes : attribute list;
+}
+
+(** Payload for `Pattern.Extension`.
+
+    The nested `extension` preserves the `[%foo? ...]` payload, while
+    `attributes` keeps any trailing pattern attributes such as
+    `([%foo? p] [@bar])`.
+*)
+and extension_pattern = {
+  syntax_node : syntax_node;
+  extension : extension;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Lazy`.
@@ -1457,6 +1469,7 @@ and wildcard_pattern = {
 and lazy_pattern = {
   syntax_node : syntax_node;
   pattern : pattern;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Exception`.
@@ -1466,6 +1479,7 @@ and lazy_pattern = {
 and exception_pattern = {
   syntax_node : syntax_node;
   pattern : pattern;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Range`.
@@ -1477,6 +1491,7 @@ and range_pattern = {
   syntax_node : syntax_node;
   lower : pattern_literal;
   upper : pattern_literal;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Operator`.
@@ -1487,6 +1502,7 @@ and range_pattern = {
 and operator_pattern = {
   syntax_node : syntax_node;
   operator_tokens : Token.t list;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.FirstClassModule`.
@@ -1513,6 +1529,7 @@ and first_class_module_pattern = {
   syntax_node : syntax_node;
   binding : first_class_module_pattern_binding;
   module_type : module_type option;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.PolyVariant`.
@@ -1527,6 +1544,7 @@ and poly_variant_pattern = {
   syntax_node : syntax_node;
   tag_token : Token.t;
   payload : pattern option;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.PolyVariantInherit`.
@@ -1537,6 +1555,7 @@ and poly_variant_pattern = {
 and poly_variant_inherit_pattern = {
   syntax_node : syntax_node;
   type_path : Ident.t;
+  attributes : attribute list;
 }
 
 (** Existential binders introduced by a constructor pattern.
@@ -1560,6 +1579,7 @@ and constructor_pattern = {
   constructor_path : Ident.t;
   existentials : constructor_pattern_existentials option;
   arguments : pattern list;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Tuple`.
@@ -1570,6 +1590,7 @@ and tuple_pattern = {
   syntax_node : syntax_node;
   elements : tuple_pattern_element list;
   open_tail : tuple_pattern_open_tail option;
+  attributes : attribute list;
 }
 
 (** One element inside a tuple pattern.
@@ -1599,6 +1620,7 @@ and tuple_pattern_open_tail = {
 and list_pattern = {
   syntax_node : syntax_node;
   elements : pattern list;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Array`.
@@ -1608,6 +1630,7 @@ and list_pattern = {
 and array_pattern = {
   syntax_node : syntax_node;
   elements : pattern list;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Record`.
@@ -1620,6 +1643,7 @@ and record_pattern = {
   syntax_node : syntax_node;
   fields : record_pattern_field list;
   closedness : record_pattern_closedness;
+  attributes : attribute list;
 }
 
 (** Whether a record pattern is closed or explicitly open.
@@ -1659,6 +1683,7 @@ and cons_pattern = {
   syntax_node : syntax_node;
   head : pattern;
   tail : pattern;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Or`.
@@ -1668,6 +1693,7 @@ and cons_pattern = {
 and or_pattern = {
   syntax_node : syntax_node;
   alternatives : pattern list;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Alias`.
@@ -1678,6 +1704,7 @@ and alias_pattern = {
   syntax_node : syntax_node;
   pattern : pattern;
   name_token : Token.t;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Typed`.
@@ -1688,6 +1715,7 @@ and typed_pattern = {
   syntax_node : syntax_node;
   pattern : pattern;
   type_ : core_type;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Effect`.
@@ -1699,6 +1727,7 @@ and effect_pattern = {
   syntax_node : syntax_node;
   effect_pattern : pattern;
   continuation : pattern;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.LocalOpen`.
@@ -1709,12 +1738,14 @@ and local_open_pattern = {
   syntax_node : syntax_node;
   module_path : ModulePath.t;
   pattern : pattern;
+  attributes : attribute list;
 }
 
 (** Payload for `Pattern.Parenthesized`. *)
 and parenthesized_pattern = {
   syntax_node : syntax_node;
   inner : pattern;
+  attributes : attribute list;
 }
 
 (** A positional function parameter.
@@ -3090,9 +3121,8 @@ module Pattern : sig
   type t = pattern =
     | Identifier of identifier_pattern
     | Wildcard of wildcard_pattern
-    | Attribute of attributed_pattern
-    | Extension of extension
-    | Literal of pattern_literal
+    | Extension of extension_pattern
+    | Literal of literal_pattern
     | Lazy of lazy_pattern
     | Exception of exception_pattern
     | Range of range_pattern
@@ -3114,6 +3144,7 @@ module Pattern : sig
     | Parenthesized of parenthesized_pattern
 
   val syntax_node : t -> syntax_node
+  val attributes : t -> attribute list
 end
 
 (** Helper view over `infix_expression`.
@@ -3675,6 +3706,9 @@ end
 
 (** A `val` declaration item.
 
+    `name_token` preserves the declared value name exactly as written, including
+    operator names such as `( + )`. `type_` is the lifted declaration type.
+
     Examples:
 
     ```ocaml,norun
@@ -3689,6 +3723,9 @@ type value_declaration = {
 }
 
 (** An `external` declaration item.
+
+    `primitive_name_tokens` preserves primitive names in source order, so
+    declarations with bytecode/native pairs remain distinguishable.
 
     Example:
 
@@ -3708,6 +3745,14 @@ type external_declaration = {
     `class_type` is present for signature-style declarations such as
     `class c : object ... end`. `class_body` is present for implementation
     bindings such as `class c = object ... end`.
+
+    Declaration-site class items keep their optional signature-like type and
+    optional implementation body separate so both
+
+    - `class c : object ... end`
+    - `class c = object ... end`
+
+    can be represented without flattening one form into the other.
 *)
 type class_declaration = {
   syntax_node : syntax_node;
@@ -3718,6 +3763,9 @@ type class_declaration = {
 }
 
 (** A `class type` declaration item.
+
+    `class_type_body` is always present because class-type declarations are
+    definition forms rather than forward declarations.
 
     Example:
 
@@ -3732,14 +3780,22 @@ type class_type_declaration = {
   class_type_body : class_type;
 }
 
-(** The payload of an `include` item. *)
+(** The payload of an `include` item.
+
+    Implementations include module expressions such as `include M` or
+    `include F(X)`, while signatures include module types such as `include S`.
+*)
 type include_target =
   | ModuleExpression of module_expression
       (** An included module expression such as `include M` or `include F(X)`. *)
   | ModuleType of module_type
       (** An included module type such as `include S` inside a signature. *)
 
-(** An `include` item. *)
+(** An `include` item.
+
+    This keeps the include target in its native grammar family instead of
+    collapsing implementation and interface includes to a shared raw path.
+*)
 type include_statement = {
   syntax_node : syntax_node;
   target : include_target;

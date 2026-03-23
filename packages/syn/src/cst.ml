@@ -711,9 +711,8 @@ type pattern_literal = PatternLiteral.t
 type pattern =
   | Identifier of identifier_pattern
   | Wildcard of wildcard_pattern
-  | Attribute of attributed_pattern
-  | Extension of extension
-  | Literal of pattern_literal
+  | Extension of extension_pattern
+  | Literal of literal_pattern
   | Lazy of lazy_pattern
   | Exception of exception_pattern
   | Range of range_pattern
@@ -737,37 +736,49 @@ type pattern =
 and identifier_pattern = {
   syntax_node : syntax_node;
   name_token : Token.t;
-}
-
-and attributed_pattern = {
-  syntax_node : syntax_node;
-  pattern : pattern;
-  attribute : attribute;
+  attributes : attribute list;
 }
 
 and wildcard_pattern = {
   syntax_node : syntax_node;
+  attributes : attribute list;
+}
+
+and literal_pattern = {
+  syntax_node : syntax_node;
+  literal : pattern_literal;
+  attributes : attribute list;
+}
+
+and extension_pattern = {
+  syntax_node : syntax_node;
+  extension : extension;
+  attributes : attribute list;
 }
 
 and lazy_pattern = {
   syntax_node : syntax_node;
   pattern : pattern;
+  attributes : attribute list;
 }
 
 and exception_pattern = {
   syntax_node : syntax_node;
   pattern : pattern;
+  attributes : attribute list;
 }
 
 and range_pattern = {
   syntax_node : syntax_node;
   lower : pattern_literal;
   upper : pattern_literal;
+  attributes : attribute list;
 }
 
 and operator_pattern = {
   syntax_node : syntax_node;
   operator_tokens : Token.t list;
+  attributes : attribute list;
 }
 
 and first_class_module_pattern_binding =
@@ -782,17 +793,20 @@ and first_class_module_pattern = {
   syntax_node : syntax_node;
   binding : first_class_module_pattern_binding;
   module_type : module_type option;
+  attributes : attribute list;
 }
 
 and poly_variant_pattern = {
   syntax_node : syntax_node;
   tag_token : Token.t;
   payload : pattern option;
+  attributes : attribute list;
 }
 
 and poly_variant_inherit_pattern = {
   syntax_node : syntax_node;
   type_path : Ident.t;
+  attributes : attribute list;
 }
 
 and constructor_pattern_existentials = {
@@ -805,12 +819,14 @@ and constructor_pattern = {
   constructor_path : Ident.t;
   existentials : constructor_pattern_existentials option;
   arguments : pattern list;
+  attributes : attribute list;
 }
 
 and tuple_pattern = {
   syntax_node : syntax_node;
   elements : tuple_pattern_element list;
   open_tail : tuple_pattern_open_tail option;
+  attributes : attribute list;
 }
 
 and tuple_pattern_element = {
@@ -825,17 +841,20 @@ and tuple_pattern_open_tail = {
 and list_pattern = {
   syntax_node : syntax_node;
   elements : pattern list;
+  attributes : attribute list;
 }
 
 and array_pattern = {
   syntax_node : syntax_node;
   elements : pattern list;
+  attributes : attribute list;
 }
 
 and record_pattern = {
   syntax_node : syntax_node;
   fields : record_pattern_field list;
   closedness : record_pattern_closedness;
+  attributes : attribute list;
 }
 
 and record_pattern_closedness =
@@ -854,40 +873,47 @@ and cons_pattern = {
   syntax_node : syntax_node;
   head : pattern;
   tail : pattern;
+  attributes : attribute list;
 }
 
 and or_pattern = {
   syntax_node : syntax_node;
   alternatives : pattern list;
+  attributes : attribute list;
 }
 
 and alias_pattern = {
   syntax_node : syntax_node;
   pattern : pattern;
   name_token : Token.t;
+  attributes : attribute list;
 }
 
 and typed_pattern = {
   syntax_node : syntax_node;
   pattern : pattern;
   type_ : core_type;
+  attributes : attribute list;
 }
 
 and effect_pattern = {
   syntax_node : syntax_node;
   effect_pattern : pattern;
   continuation : pattern;
+  attributes : attribute list;
 }
 
 and local_open_pattern = {
   syntax_node : syntax_node;
   module_path : ModulePath.t;
   pattern : pattern;
+  attributes : attribute list;
 }
 
 and parenthesized_pattern = {
   syntax_node : syntax_node;
   inner : pattern;
+  attributes : attribute list;
 }
 
 type positional_parameter = {
@@ -1742,9 +1768,8 @@ module Pattern = struct
   type t = pattern =
     | Identifier of identifier_pattern
     | Wildcard of wildcard_pattern
-    | Attribute of attributed_pattern
-    | Extension of extension
-    | Literal of pattern_literal
+    | Extension of extension_pattern
+    | Literal of literal_pattern
     | Lazy of lazy_pattern
     | Exception of exception_pattern
     | Range of range_pattern
@@ -1768,10 +1793,8 @@ module Pattern = struct
   let syntax_node = function
     | Identifier pattern -> pattern.syntax_node
     | Wildcard pattern -> pattern.syntax_node
-    | Attribute pattern -> pattern.syntax_node
-    | Extension extension -> extension.syntax_node
-    | Literal literal ->
-        Constant.syntax_node literal
+    | Extension pattern -> pattern.syntax_node
+    | Literal pattern -> pattern.syntax_node
     | Lazy pattern -> pattern.syntax_node
     | Exception pattern -> pattern.syntax_node
     | Range pattern -> pattern.syntax_node
@@ -1791,6 +1814,31 @@ module Pattern = struct
     | Effect pattern -> pattern.syntax_node
     | LocalOpen pattern -> pattern.syntax_node
     | Parenthesized pattern -> pattern.syntax_node
+
+  let attributes = function
+    | Identifier pattern -> pattern.attributes
+    | Wildcard pattern -> pattern.attributes
+    | Extension pattern -> pattern.attributes
+    | Literal pattern -> pattern.attributes
+    | Lazy pattern -> pattern.attributes
+    | Exception pattern -> pattern.attributes
+    | Range pattern -> pattern.attributes
+    | Operator pattern -> pattern.attributes
+    | FirstClassModule pattern -> pattern.attributes
+    | PolyVariant pattern -> pattern.attributes
+    | PolyVariantInherit pattern -> pattern.attributes
+    | Constructor pattern -> pattern.attributes
+    | Tuple pattern -> pattern.attributes
+    | List pattern -> pattern.attributes
+    | Array pattern -> pattern.attributes
+    | Record pattern -> pattern.attributes
+    | Cons pattern -> pattern.attributes
+    | Or pattern -> pattern.attributes
+    | Alias pattern -> pattern.attributes
+    | Typed pattern -> pattern.attributes
+    | Effect pattern -> pattern.attributes
+    | LocalOpen pattern -> pattern.attributes
+    | Parenthesized pattern -> pattern.attributes
 end
 
 module PatternPayload = struct

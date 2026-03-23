@@ -78,6 +78,13 @@
                   "alternatives": [
                     {
                       "tag": "literal",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 17,
+                          "end": 18
+                        }
+                      },
                       "literal": {
                         "tag": "int",
                         "syntax_node": {
@@ -103,6 +110,13 @@
                     },
                     {
                       "tag": "literal",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 21,
+                          "end": 22
+                        }
+                      },
                       "literal": {
                         "tag": "int",
                         "syntax_node": {
@@ -128,6 +142,13 @@
                     },
                     {
                       "tag": "literal",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 25,
+                          "end": 26
+                        }
+                      },
                       "literal": {
                         "tag": "int",
                         "syntax_node": {

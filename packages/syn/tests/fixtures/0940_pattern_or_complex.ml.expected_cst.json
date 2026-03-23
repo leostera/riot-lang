@@ -173,6 +173,13 @@
                             "alternatives": [
                               {
                                 "tag": "literal",
+                                "syntax_node": {
+                                  "kind": "INT_LITERAL",
+                                  "span": {
+                                    "start": 27,
+                                    "end": 28
+                                  }
+                                },
                                 "literal": {
                                   "tag": "int",
                                   "syntax_node": {
@@ -198,6 +205,13 @@
                               },
                               {
                                 "tag": "literal",
+                                "syntax_node": {
+                                  "kind": "INT_LITERAL",
+                                  "span": {
+                                    "start": 31,
+                                    "end": 32
+                                  }
+                                },
                                 "literal": {
                                   "tag": "int",
                                   "syntax_node": {
@@ -257,6 +271,13 @@
                       "arguments": [
                         {
                           "tag": "literal",
+                          "syntax_node": {
+                            "kind": "STRING_LITERAL",
+                            "span": {
+                              "start": 42,
+                              "end": 49
+                            }
+                          },
                           "literal": {
                             "tag": "string",
                             "syntax_node": {

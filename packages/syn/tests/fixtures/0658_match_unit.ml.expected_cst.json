@@ -96,6 +96,13 @@
                 },
                 "pattern": {
                   "tag": "literal",
+                  "syntax_node": {
+                    "kind": "UNIT_LITERAL",
+                    "span": {
+                      "start": 21,
+                      "end": 23
+                    }
+                  },
                   "literal": {
                     "tag": "unit",
                     "syntax_node": {

@@ -429,6 +429,13 @@
                   "alternatives": [
                     {
                       "tag": "literal",
+                      "syntax_node": {
+                        "kind": "CHAR_LITERAL",
+                        "span": {
+                          "start": 244,
+                          "end": 247
+                        }
+                      },
                       "literal": {
                         "tag": "char",
                         "syntax_node": {
@@ -451,6 +458,13 @@
                     },
                     {
                       "tag": "literal",
+                      "syntax_node": {
+                        "kind": "CHAR_LITERAL",
+                        "span": {
+                          "start": 250,
+                          "end": 253
+                        }
+                      },
                       "literal": {
                         "tag": "char",
                         "syntax_node": {
@@ -698,6 +712,13 @@
                         "alternatives": [
                           {
                             "tag": "literal",
+                            "syntax_node": {
+                              "kind": "CHAR_LITERAL",
+                              "span": {
+                                "start": 360,
+                                "end": 363
+                              }
+                            },
                             "literal": {
                               "tag": "char",
                               "syntax_node": {
@@ -857,6 +878,13 @@
                         "alternatives": [
                           {
                             "tag": "literal",
+                            "syntax_node": {
+                              "kind": "CHAR_LITERAL",
+                              "span": {
+                                "start": 400,
+                                "end": 403
+                              }
+                            },
                             "literal": {
                               "tag": "char",
                               "syntax_node": {
@@ -879,6 +907,13 @@
                           },
                           {
                             "tag": "literal",
+                            "syntax_node": {
+                              "kind": "CHAR_LITERAL",
+                              "span": {
+                                "start": 406,
+                                "end": 410
+                              }
+                            },
                             "literal": {
                               "tag": "char",
                               "syntax_node": {

@@ -2531,6 +2531,35 @@ let tests =
             Test.assert_equal ~expected:None ~actual:attribute.payload;
             Ok ()
         | _ -> Error "expected attributed type alias");
+    Test.case "cst pattern attributes attach orthogonally to the lifted pattern"
+      (fun () ->
+        let result = parse_ml "let (x [@foo]) = value\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              binding_pattern = Syn.Cst.Pattern.Parenthesized { inner; _ };
+              _;
+            }
+          :: _ -> (
+            match inner with
+            | Syn.Cst.Pattern.Identifier { name_token; _ } ->
+                let attributes = Syn.Cst.Pattern.attributes inner in
+                Test.assert_equal ~expected:"x" ~actual:(Syn.Cst.Token.text name_token);
+                Test.assert_equal ~expected:1 ~actual:(List.length attributes);
+                Test.assert_equal ~expected:[ Some "foo" ]
+                  ~actual:
+                    (attributes
+                    |> List.map (fun ({ name; _ } : Syn.Cst.attribute) ->
+                           Syn.Cst.Ident.name name));
+                Ok ()
+            | _ ->
+                Error "expected parenthesized identifier pattern")
+        | _ -> Error "expected let binding with parenthesized pattern");
     Test.case "cst expression attributes lift structure payloads and anchors"
       (fun () ->
         let result = parse_ml "let _ = value [@foo 1 + 2]\n" in
@@ -3442,7 +3471,8 @@ let tests =
                 Syn.Cst.Expression.Let
                   {
                     binding_pattern =
-                      Syn.Cst.Pattern.Literal (Syn.Cst.PatternLiteral.Unit _);
+                      Syn.Cst.Pattern.Literal
+                        { literal = Syn.Cst.PatternLiteral.Unit _; _ };
                     body = Syn.Cst.Expression.Apply _;
                     _;
                   };
@@ -3515,16 +3545,24 @@ let tests =
                         {
                           pattern =
                             Syn.Cst.Pattern.Literal
-                              (Syn.Cst.PatternLiteral.Bool
-                                 { literal_token = first; _ });
+                              {
+                                literal =
+                                  Syn.Cst.PatternLiteral.Bool
+                                    { literal_token = first; _ };
+                                _;
+                              };
                           body = _;
                           _;
                         };
                         {
                           pattern =
                             Syn.Cst.Pattern.Literal
-                              (Syn.Cst.PatternLiteral.Bool
-                                 { literal_token = second; _ });
+                              {
+                                literal =
+                                  Syn.Cst.PatternLiteral.Bool
+                                    { literal_token = second; _ };
+                                _;
+                              };
                           body = _;
                           _;
                         };
@@ -4929,7 +4967,7 @@ let tests =
                                 elements =
                                   [
                                     Syn.Cst.Pattern.Literal
-                                      (Syn.Cst.PatternLiteral.Int _);
+                                      { literal = Syn.Cst.PatternLiteral.Int _; _ };
                                     Syn.Cst.Pattern.Identifier { name_token; _ };
                                   ];
                                 _;

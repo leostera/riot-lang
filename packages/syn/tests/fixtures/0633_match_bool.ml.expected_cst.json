@@ -96,6 +96,13 @@
                 },
                 "pattern": {
                   "tag": "literal",
+                  "syntax_node": {
+                    "kind": "BOOL_LITERAL",
+                    "span": {
+                      "start": 21,
+                      "end": 25
+                    }
+                  },
                   "literal": {
                     "tag": "bool",
                     "syntax_node": {
@@ -153,6 +160,13 @@
                 },
                 "pattern": {
                   "tag": "literal",
+                  "syntax_node": {
+                    "kind": "BOOL_LITERAL",
+                    "span": {
+                      "start": 33,
+                      "end": 38
+                    }
+                  },
                   "literal": {
                     "tag": "bool",
                     "syntax_node": {

@@ -3302,6 +3302,13 @@
                                   },
                                   "pattern": {
                                     "tag": "literal",
+                                    "syntax_node": {
+                                      "kind": "STRING_LITERAL",
+                                      "span": {
+                                        "start": 806,
+                                        "end": 813
+                                      }
+                                    },
                                     "literal": {
                                       "tag": "string",
                                       "syntax_node": {
@@ -3547,6 +3554,13 @@
                                   },
                                   "pattern": {
                                     "tag": "literal",
+                                    "syntax_node": {
+                                      "kind": "STRING_LITERAL",
+                                      "span": {
+                                        "start": 872,
+                                        "end": 880
+                                      }
+                                    },
                                     "literal": {
                                       "tag": "string",
                                       "syntax_node": {
@@ -3792,6 +3806,13 @@
                                   },
                                   "pattern": {
                                     "tag": "literal",
+                                    "syntax_node": {
+                                      "kind": "STRING_LITERAL",
+                                      "span": {
+                                        "start": 946,
+                                        "end": 955
+                                      }
+                                    },
                                     "literal": {
                                       "tag": "string",
                                       "syntax_node": {
@@ -4551,6 +4572,13 @@
                                   },
                                   "pattern": {
                                     "tag": "literal",
+                                    "syntax_node": {
+                                      "kind": "STRING_LITERAL",
+                                      "span": {
+                                        "start": 1145,
+                                        "end": 1173
+                                      }
+                                    },
                                     "literal": {
                                       "tag": "string",
                                       "syntax_node": {
@@ -5098,6 +5126,13 @@
                                   },
                                   "pattern": {
                                     "tag": "literal",
+                                    "syntax_node": {
+                                      "kind": "STRING_LITERAL",
+                                      "span": {
+                                        "start": 1318,
+                                        "end": 1337
+                                      }
+                                    },
                                     "literal": {
                                       "tag": "string",
                                       "syntax_node": {
@@ -5692,6 +5727,13 @@
                                           },
                                           "pattern": {
                                             "tag": "literal",
+                                            "syntax_node": {
+                                              "kind": "STRING_LITERAL",
+                                              "span": {
+                                                "start": 1511,
+                                                "end": 1522
+                                              }
+                                            },
                                             "literal": {
                                               "tag": "string",
                                               "syntax_node": {
@@ -6002,6 +6044,13 @@
                                           },
                                           "pattern": {
                                             "tag": "literal",
+                                            "syntax_node": {
+                                              "kind": "STRING_LITERAL",
+                                              "span": {
+                                                "start": 1599,
+                                                "end": 1611
+                                              }
+                                            },
                                             "literal": {
                                               "tag": "string",
                                               "syntax_node": {
@@ -6596,6 +6645,13 @@
                                           },
                                           "pattern": {
                                             "tag": "literal",
+                                            "syntax_node": {
+                                              "kind": "STRING_LITERAL",
+                                              "span": {
+                                                "start": 1793,
+                                                "end": 1806
+                                              }
+                                            },
                                             "literal": {
                                               "tag": "string",
                                               "syntax_node": {
@@ -6929,6 +6985,13 @@
           "attributes": [],
           "binding_pattern": {
             "tag": "literal",
+            "syntax_node": {
+              "kind": "UNIT_LITERAL",
+              "span": {
+                "start": 1894,
+                "end": 1896
+              }
+            },
             "literal": {
               "tag": "unit",
               "syntax_node": {

@@ -125,6 +125,13 @@
                   "alternatives": [
                     {
                       "tag": "literal",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 23,
+                          "end": 24
+                        }
+                      },
                       "literal": {
                         "tag": "int",
                         "syntax_node": {
@@ -150,6 +157,13 @@
                     },
                     {
                       "tag": "literal",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 27,
+                          "end": 28
+                        }
+                      },
                       "literal": {
                         "tag": "int",
                         "syntax_node": {

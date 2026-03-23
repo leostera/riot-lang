@@ -181,7 +181,7 @@ Remember to document the CST types and constructors with examples so its easy to
 
 #### Present But Lossy
 
-- [ ] Patterns:
+- [x] Patterns:
   - [x] tuple patterns are missing labelled elements and open tuple `...` structure
   - [x] record patterns are missing open-vs-closed structure
   - [x] constructor patterns are missing existential type variables
@@ -189,7 +189,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] literal patterns lose delimiter/suffix detail and exact constant structure
   - [x] interval patterns store two tokens instead of parsed constants
   - [x] first-class-module patterns are still thinner than the stock unpack form
-  - [ ] Pattern attributes are represented as wrapper nodes instead of orthogonal metadata
+  - [x] Pattern attributes are represented as wrapper nodes instead of orthogonal metadata
 - [ ] Expressions:
   - [x] constructor expressions are likely flattened into `Path` or `Apply`
   - [x] field assignment expressions are only approximated via `Assign (FieldAccess ...)`

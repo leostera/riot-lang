@@ -526,64 +526,79 @@ and exception_declaration_to_json (decl : Cst.exception_declaration) =
 and pattern_literal_to_json literal =
   constant_to_json literal
 
+and pattern_attribute_fields attributes =
+  match attributes with
+  | [] ->
+      []
+  | _ ->
+      [ ("attributes", Json.Array (List.map attribute_to_json attributes)) ]
+
 and pattern_to_json = function
-  | Cst.Pattern.Identifier { syntax_node; name_token } ->
+  | Cst.Pattern.Identifier { syntax_node; name_token; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "identifier");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("name_token", token_to_json name_token);
-        ]
-  | Cst.Pattern.Wildcard { syntax_node } ->
+        ([
+           ("tag", Json.String "identifier");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("name_token", token_to_json name_token);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Wildcard { syntax_node; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "wildcard");
-          ("syntax_node", syntax_node_to_json syntax_node);
-        ]
-  | Cst.Pattern.Attribute { syntax_node; pattern; attribute } ->
+        ([
+           ("tag", Json.String "wildcard");
+           ("syntax_node", syntax_node_to_json syntax_node);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Extension { syntax_node; extension; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "attribute");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("pattern", pattern_to_json pattern);
-          ("attribute", attribute_to_json attribute);
-        ]
-  | Cst.Pattern.Extension extension ->
+        ([
+           ("tag", Json.String "extension");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("extension", extension_to_json extension);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Literal { syntax_node; literal; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "extension");
-          ("extension", extension_to_json extension);
-        ]
-  | Cst.Pattern.Lazy { syntax_node; pattern } ->
+        ([
+           ("tag", Json.String "literal");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("literal", pattern_literal_to_json literal);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Lazy { syntax_node; pattern; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "lazy");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("pattern", pattern_to_json pattern);
-        ]
-  | Cst.Pattern.Exception { syntax_node; pattern } ->
+        ([
+           ("tag", Json.String "lazy");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("pattern", pattern_to_json pattern);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Exception { syntax_node; pattern; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "exception");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("pattern", pattern_to_json pattern);
-        ]
-  | Cst.Pattern.Range { syntax_node; lower; upper } ->
+        ([
+           ("tag", Json.String "exception");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("pattern", pattern_to_json pattern);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Range { syntax_node; lower; upper; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "range");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("lower", pattern_literal_to_json lower);
-          ("upper", pattern_literal_to_json upper);
-        ]
-  | Cst.Pattern.Operator { syntax_node; operator_tokens } ->
+        ([
+           ("tag", Json.String "range");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("lower", pattern_literal_to_json lower);
+           ("upper", pattern_literal_to_json upper);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Operator { syntax_node; operator_tokens; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "operator");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("operator_tokens", Json.Array (List.map token_to_json operator_tokens));
-        ]
-  | Cst.Pattern.FirstClassModule { syntax_node; binding; module_type } ->
+        ([
+           ("tag", Json.String "operator");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("operator_tokens", Json.Array (List.map token_to_json operator_tokens));
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.FirstClassModule { syntax_node; binding; module_type; attributes } ->
       let binding_fields =
         match binding with
         | Cst.Named { name_token } ->
@@ -597,125 +612,134 @@ and pattern_to_json = function
            ("syntax_node", syntax_node_to_json syntax_node);
            ("module_type", option_to_json module_type_to_json module_type);
          ]
-        @ binding_fields)
-  | Cst.Pattern.Literal literal ->
+        @ binding_fields @ pattern_attribute_fields attributes)
+  | Cst.Pattern.PolyVariant { syntax_node; tag_token; payload; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "literal");
-          ("literal", pattern_literal_to_json literal);
-        ]
-  | Cst.Pattern.PolyVariant { syntax_node; tag_token; payload } ->
+        ([
+           ("tag", Json.String "poly_variant");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("tag_token", token_to_json tag_token);
+           ("payload", option_to_json pattern_to_json payload);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.PolyVariantInherit { syntax_node; type_path; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "poly_variant");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("tag_token", token_to_json tag_token);
-          ("payload", option_to_json pattern_to_json payload);
-        ]
-  | Cst.Pattern.PolyVariantInherit { syntax_node; type_path } ->
-      Json.Object
-        [
-          ("tag", Json.String "poly_variant_inherit");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("type_path", ident_to_json type_path);
-        ]
+        ([
+           ("tag", Json.String "poly_variant_inherit");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("type_path", ident_to_json type_path);
+         ]
+        @ pattern_attribute_fields attributes)
   | Cst.Pattern.Constructor
-      { syntax_node; constructor_path; existentials; arguments } ->
+      { syntax_node; constructor_path; existentials; arguments; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "constructor");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("constructor_path", ident_to_json constructor_path);
-          ( "existentials",
-            option_to_json
-              constructor_pattern_existentials_to_json
-              existentials );
-          ("arguments", Json.Array (List.map pattern_to_json arguments));
-        ]
-  | Cst.Pattern.Tuple { syntax_node; elements; open_tail } ->
+        ([
+           ("tag", Json.String "constructor");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("constructor_path", ident_to_json constructor_path);
+           ( "existentials",
+             option_to_json
+               constructor_pattern_existentials_to_json
+               existentials );
+           ("arguments", Json.Array (List.map pattern_to_json arguments));
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Tuple { syntax_node; elements; open_tail; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "tuple");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("elements", Json.Array (List.map tuple_pattern_element_to_json elements));
-          ("open_tail", option_to_json tuple_pattern_open_tail_to_json open_tail);
-        ]
-  | Cst.Pattern.List { syntax_node; elements } ->
+        ([
+           ("tag", Json.String "tuple");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("elements", Json.Array (List.map tuple_pattern_element_to_json elements));
+           ("open_tail", option_to_json tuple_pattern_open_tail_to_json open_tail);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.List { syntax_node; elements; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "list");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("elements", Json.Array (List.map pattern_to_json elements));
-        ]
-  | Cst.Pattern.Array { syntax_node; elements } ->
+        ([
+           ("tag", Json.String "list");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("elements", Json.Array (List.map pattern_to_json elements));
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Array { syntax_node; elements; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "array");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("elements", Json.Array (List.map pattern_to_json elements));
-        ]
-  | Cst.Pattern.Record { syntax_node; fields; closedness } ->
+        ([
+           ("tag", Json.String "array");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("elements", Json.Array (List.map pattern_to_json elements));
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Record { syntax_node; fields; closedness; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "record");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("fields", Json.Array (List.map record_pattern_field_to_json fields));
-          ("closedness", record_pattern_closedness_to_json closedness);
-        ]
-  | Cst.Pattern.Cons { syntax_node; head; tail } ->
+        ([
+           ("tag", Json.String "record");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("fields", Json.Array (List.map record_pattern_field_to_json fields));
+           ("closedness", record_pattern_closedness_to_json closedness);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Cons { syntax_node; head; tail; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "cons");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("head", pattern_to_json head);
-          ("tail", pattern_to_json tail);
-        ]
-  | Cst.Pattern.Or { syntax_node; alternatives } ->
+        ([
+           ("tag", Json.String "cons");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("head", pattern_to_json head);
+           ("tail", pattern_to_json tail);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Or { syntax_node; alternatives; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "or");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("alternatives", Json.Array (List.map pattern_to_json alternatives));
-        ]
-  | Cst.Pattern.Alias { syntax_node; pattern; name_token } ->
+        ([
+           ("tag", Json.String "or");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("alternatives", Json.Array (List.map pattern_to_json alternatives));
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Alias { syntax_node; pattern; name_token; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "alias");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("pattern", pattern_to_json pattern);
-          ("name_token", token_to_json name_token);
-        ]
-  | Cst.Pattern.Typed { syntax_node; pattern; type_ } ->
+        ([
+           ("tag", Json.String "alias");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("pattern", pattern_to_json pattern);
+           ("name_token", token_to_json name_token);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Typed { syntax_node; pattern; type_; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "typed");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("pattern", pattern_to_json pattern);
-          ("type", core_type_to_json type_);
-        ]
-  | Cst.Pattern.Effect { syntax_node; effect_pattern; continuation } ->
+        ([
+           ("tag", Json.String "typed");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("pattern", pattern_to_json pattern);
+           ("type", core_type_to_json type_);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Effect
+      { syntax_node; effect_pattern; continuation; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "effect");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("effect", pattern_to_json effect_pattern);
-          ("continuation", pattern_to_json continuation);
-        ]
-  | Cst.Pattern.LocalOpen { syntax_node; module_path; pattern } ->
+        ([
+           ("tag", Json.String "effect");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("effect", pattern_to_json effect_pattern);
+           ("continuation", pattern_to_json continuation);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.LocalOpen { syntax_node; module_path; pattern; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "local_open");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("module_path", ident_to_json module_path);
-          ("pattern", pattern_to_json pattern);
-        ]
-  | Cst.Pattern.Parenthesized { syntax_node; inner } ->
+        ([
+           ("tag", Json.String "local_open");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("module_path", ident_to_json module_path);
+           ("pattern", pattern_to_json pattern);
+         ]
+        @ pattern_attribute_fields attributes)
+  | Cst.Pattern.Parenthesized { syntax_node; inner; attributes } ->
       Json.Object
-        [
-          ("tag", Json.String "parenthesized");
-          ("syntax_node", syntax_node_to_json syntax_node);
-          ("inner", pattern_to_json inner);
-        ]
+        ([
+           ("tag", Json.String "parenthesized");
+           ("syntax_node", syntax_node_to_json syntax_node);
+           ("inner", pattern_to_json inner);
+         ]
+        @ pattern_attribute_fields attributes)
 
 and constructor_pattern_existentials_to_json
     ({ syntax_node; binders } : Cst.constructor_pattern_existentials) =

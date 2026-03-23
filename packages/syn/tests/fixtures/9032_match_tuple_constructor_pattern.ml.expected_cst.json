@@ -324,6 +324,13 @@
                         "arguments": [
                           {
                             "tag": "literal",
+                            "syntax_node": {
+                              "kind": "BOOL_LITERAL",
+                              "span": {
+                                "start": 84,
+                                "end": 88
+                              }
+                            },
                             "literal": {
                               "tag": "bool",
                               "syntax_node": {
@@ -380,6 +387,13 @@
                         "arguments": [
                           {
                             "tag": "literal",
+                            "syntax_node": {
+                              "kind": "BOOL_LITERAL",
+                              "span": {
+                                "start": 93,
+                                "end": 97
+                              }
+                            },
                             "literal": {
                               "tag": "bool",
                               "syntax_node": {

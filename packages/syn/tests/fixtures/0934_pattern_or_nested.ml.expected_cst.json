@@ -146,6 +146,13 @@
                           "alternatives": [
                             {
                               "tag": "literal",
+                              "syntax_node": {
+                                "kind": "INT_LITERAL",
+                                "span": {
+                                  "start": 24,
+                                  "end": 25
+                                }
+                              },
                               "literal": {
                                 "tag": "int",
                                 "syntax_node": {
@@ -171,6 +178,13 @@
                             },
                             {
                               "tag": "literal",
+                              "syntax_node": {
+                                "kind": "INT_LITERAL",
+                                "span": {
+                                  "start": 28,
+                                  "end": 29
+                                }
+                              },
                               "literal": {
                                 "tag": "int",
                                 "syntax_node": {
@@ -221,6 +235,13 @@
                           "alternatives": [
                             {
                               "tag": "literal",
+                              "syntax_node": {
+                                "kind": "INT_LITERAL",
+                                "span": {
+                                  "start": 33,
+                                  "end": 34
+                                }
+                              },
                               "literal": {
                                 "tag": "int",
                                 "syntax_node": {
@@ -246,6 +267,13 @@
                             },
                             {
                               "tag": "literal",
+                              "syntax_node": {
+                                "kind": "INT_LITERAL",
+                                "span": {
+                                  "start": 37,
+                                  "end": 38
+                                }
+                              },
                               "literal": {
                                 "tag": "int",
                                 "syntax_node": {

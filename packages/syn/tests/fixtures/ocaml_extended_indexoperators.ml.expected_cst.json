@@ -1146,6 +1146,13 @@
           "attributes": [],
           "binding_pattern": {
             "tag": "literal",
+            "syntax_node": {
+              "kind": "UNIT_LITERAL",
+              "span": {
+                "start": 1061,
+                "end": 1063
+              }
+            },
             "literal": {
               "tag": "unit",
               "syntax_node": {

@@ -313,6 +313,13 @@
                 },
                 "pattern": {
                   "tag": "literal",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 154,
+                      "end": 160
+                    }
+                  },
                   "literal": {
                     "tag": "int",
                     "syntax_node": {
@@ -374,6 +381,13 @@
                 },
                 "pattern": {
                   "tag": "literal",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 175,
+                      "end": 181
+                    }
+                  },
                   "literal": {
                     "tag": "int",
                     "syntax_node": {
@@ -435,6 +449,13 @@
                 },
                 "pattern": {
                   "tag": "literal",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 196,
+                      "end": 202
+                    }
+                  },
                   "literal": {
                     "tag": "int",
                     "syntax_node": {
@@ -496,6 +517,13 @@
                 },
                 "pattern": {
                   "tag": "literal",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 218,
+                      "end": 224
+                    }
+                  },
                   "literal": {
                     "tag": "int",
                     "syntax_node": {

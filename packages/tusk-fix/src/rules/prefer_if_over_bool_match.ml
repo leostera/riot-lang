@@ -40,7 +40,8 @@ let rec is_unit_expression = function
   | _ -> false
 
 let rec case_pattern_kind = function
-  | Syn.Cst.Pattern.Literal (Syn.Cst.PatternLiteral.Bool { literal_token; _ }) ->
+  | Syn.Cst.Pattern.Literal
+      { literal = Syn.Cst.PatternLiteral.Bool { literal_token; _ }; _ } ->
       if String.equal (Syn.Cst.Token.text literal_token) "true" then
         TruePattern
       else
@@ -49,7 +50,7 @@ let rec case_pattern_kind = function
   | Syn.Cst.Pattern.Parenthesized { inner; _ } -> case_pattern_kind inner
   | Syn.Cst.Pattern.Identifier _ | Syn.Cst.Pattern.Literal _ ->
       OtherPattern
-  | Syn.Cst.Pattern.Attribute _ | Syn.Cst.Pattern.Extension _
+  | Syn.Cst.Pattern.Extension _
   | Syn.Cst.Pattern.Lazy _ | Syn.Cst.Pattern.Exception _
   | Syn.Cst.Pattern.Range _ | Syn.Cst.Pattern.Operator _
   | Syn.Cst.Pattern.FirstClassModule _ | Syn.Cst.Pattern.PolyVariant _

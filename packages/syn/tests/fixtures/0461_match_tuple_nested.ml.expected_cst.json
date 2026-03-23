@@ -208,6 +208,13 @@
                       "label_token": null,
                       "pattern": {
                         "tag": "literal",
+                        "syntax_node": {
+                          "kind": "INT_LITERAL",
+                          "span": {
+                            "start": 31,
+                            "end": 32
+                          }
+                        },
                         "literal": {
                           "tag": "int",
                           "syntax_node": {
@@ -257,6 +264,13 @@
                               "label_token": null,
                               "pattern": {
                                 "tag": "literal",
+                                "syntax_node": {
+                                  "kind": "INT_LITERAL",
+                                  "span": {
+                                    "start": 35,
+                                    "end": 36
+                                  }
+                                },
                                 "literal": {
                                   "tag": "int",
                                   "syntax_node": {
@@ -285,6 +299,13 @@
                               "label_token": null,
                               "pattern": {
                                 "tag": "literal",
+                                "syntax_node": {
+                                  "kind": "INT_LITERAL",
+                                  "span": {
+                                    "start": 38,
+                                    "end": 39
+                                  }
+                                },
                                 "literal": {
                                   "tag": "int",
                                   "syntax_node": {

@@ -112,7 +112,6 @@ let rec binding_name_token_from_pattern = function
       Some name_token
   | Syn.Cst.Pattern.Alias { name_token; _ } ->
       Some name_token
-  | Syn.Cst.Pattern.Attribute { pattern; _ }
   | Syn.Cst.Pattern.Typed { pattern; _ }
   | Syn.Cst.Pattern.Parenthesized { inner = pattern; _ } ->
       binding_name_token_from_pattern pattern

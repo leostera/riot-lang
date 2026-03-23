@@ -379,6 +379,13 @@
                 },
                 "pattern": {
                   "tag": "literal",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 159,
+                      "end": 165
+                    }
+                  },
                   "literal": {
                     "tag": "int",
                     "syntax_node": {
@@ -440,6 +447,13 @@
                 },
                 "pattern": {
                   "tag": "literal",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 178,
+                      "end": 184
+                    }
+                  },
                   "literal": {
                     "tag": "int",
                     "syntax_node": {
@@ -501,6 +515,13 @@
                 },
                 "pattern": {
                   "tag": "literal",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 197,
+                      "end": 203
+                    }
+                  },
                   "literal": {
                     "tag": "int",
                     "syntax_node": {

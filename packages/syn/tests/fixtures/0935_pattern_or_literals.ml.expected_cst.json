@@ -125,6 +125,13 @@
                   "alternatives": [
                     {
                       "tag": "literal",
+                      "syntax_node": {
+                        "kind": "STRING_LITERAL",
+                        "span": {
+                          "start": 23,
+                          "end": 26
+                        }
+                      },
                       "literal": {
                         "tag": "string",
                         "syntax_node": {
@@ -151,6 +158,13 @@
                     },
                     {
                       "tag": "literal",
+                      "syntax_node": {
+                        "kind": "STRING_LITERAL",
+                        "span": {
+                          "start": 29,
+                          "end": 32
+                        }
+                      },
                       "literal": {
                         "tag": "string",
                         "syntax_node": {
@@ -177,6 +191,13 @@
                     },
                     {
                       "tag": "literal",
+                      "syntax_node": {
+                        "kind": "STRING_LITERAL",
+                        "span": {
+                          "start": 35,
+                          "end": 38
+                        }
+                      },
                       "literal": {
                         "tag": "string",
                         "syntax_node": {

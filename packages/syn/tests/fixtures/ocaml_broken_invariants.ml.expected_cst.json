@@ -322,6 +322,13 @@
                 },
                 "pattern": {
                   "tag": "extension",
+                  "syntax_node": {
+                    "kind": "EXTENSION_EXPR",
+                    "span": {
+                      "start": 181,
+                      "end": 210
+                    }
+                  },
                   "extension": {
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",

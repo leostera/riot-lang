@@ -23,6 +23,13 @@
           "attributes": [],
           "binding_pattern": {
             "tag": "literal",
+            "syntax_node": {
+              "kind": "UNIT_LITERAL",
+              "span": {
+                "start": 53,
+                "end": 55
+              }
+            },
             "literal": {
               "tag": "unit",
               "syntax_node": {
@@ -198,6 +205,13 @@
           "attributes": [],
           "binding_pattern": {
             "tag": "literal",
+            "syntax_node": {
+              "kind": "UNIT_LITERAL",
+              "span": {
+                "start": 138,
+                "end": 140
+              }
+            },
             "literal": {
               "tag": "unit",
               "syntax_node": {
