@@ -32,122 +32,143 @@
             },
             "elements": [
               {
-                "tag": "parenthesized",
-                "syntax_node": {
-                  "kind": "PAREN_PATTERN",
-                  "span": {
-                    "start": 4,
-                    "end": 10
-                  }
-                },
-                "inner": {
-                  "tag": "tuple",
+                "label_token": null,
+                "pattern": {
+                  "tag": "parenthesized",
                   "syntax_node": {
-                    "kind": "TUPLE_PATTERN",
+                    "kind": "PAREN_PATTERN",
                     "span": {
-                      "start": 5,
-                      "end": 9
+                      "start": 4,
+                      "end": 10
                     }
                   },
-                  "elements": [
-                    {
-                      "tag": "identifier",
-                      "syntax_node": {
-                        "kind": "IDENT_PATTERN",
-                        "span": {
-                          "start": 5,
-                          "end": 6
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 5,
-                          "end": 6
-                        }
+                  "inner": {
+                    "tag": "tuple",
+                    "syntax_node": {
+                      "kind": "TUPLE_PATTERN",
+                      "span": {
+                        "start": 5,
+                        "end": 9
                       }
                     },
-                    {
-                      "tag": "identifier",
-                      "syntax_node": {
-                        "kind": "IDENT_PATTERN",
-                        "span": {
-                          "start": 8,
-                          "end": 9
+                    "elements": [
+                      {
+                        "label_token": null,
+                        "pattern": {
+                          "tag": "identifier",
+                          "syntax_node": {
+                            "kind": "IDENT_PATTERN",
+                            "span": {
+                              "start": 5,
+                              "end": 6
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "a",
+                            "span": {
+                              "start": 5,
+                              "end": 6
+                            }
+                          }
                         }
                       },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "b",
-                        "span": {
-                          "start": 8,
-                          "end": 9
+                      {
+                        "label_token": null,
+                        "pattern": {
+                          "tag": "identifier",
+                          "syntax_node": {
+                            "kind": "IDENT_PATTERN",
+                            "span": {
+                              "start": 8,
+                              "end": 9
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "b",
+                            "span": {
+                              "start": 8,
+                              "end": 9
+                            }
+                          }
                         }
                       }
-                    }
-                  ]
+                    ],
+                    "open_tail": null
+                  }
                 }
               },
               {
-                "tag": "parenthesized",
-                "syntax_node": {
-                  "kind": "PAREN_PATTERN",
-                  "span": {
-                    "start": 12,
-                    "end": 18
-                  }
-                },
-                "inner": {
-                  "tag": "tuple",
+                "label_token": null,
+                "pattern": {
+                  "tag": "parenthesized",
                   "syntax_node": {
-                    "kind": "TUPLE_PATTERN",
+                    "kind": "PAREN_PATTERN",
                     "span": {
-                      "start": 13,
-                      "end": 17
+                      "start": 12,
+                      "end": 18
                     }
                   },
-                  "elements": [
-                    {
-                      "tag": "identifier",
-                      "syntax_node": {
-                        "kind": "IDENT_PATTERN",
-                        "span": {
-                          "start": 13,
-                          "end": 14
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "c",
-                        "span": {
-                          "start": 13,
-                          "end": 14
-                        }
+                  "inner": {
+                    "tag": "tuple",
+                    "syntax_node": {
+                      "kind": "TUPLE_PATTERN",
+                      "span": {
+                        "start": 13,
+                        "end": 17
                       }
                     },
-                    {
-                      "tag": "identifier",
-                      "syntax_node": {
-                        "kind": "IDENT_PATTERN",
-                        "span": {
-                          "start": 16,
-                          "end": 17
+                    "elements": [
+                      {
+                        "label_token": null,
+                        "pattern": {
+                          "tag": "identifier",
+                          "syntax_node": {
+                            "kind": "IDENT_PATTERN",
+                            "span": {
+                              "start": 13,
+                              "end": 14
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "c",
+                            "span": {
+                              "start": 13,
+                              "end": 14
+                            }
+                          }
                         }
                       },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "d",
-                        "span": {
-                          "start": 16,
-                          "end": 17
+                      {
+                        "label_token": null,
+                        "pattern": {
+                          "tag": "identifier",
+                          "syntax_node": {
+                            "kind": "IDENT_PATTERN",
+                            "span": {
+                              "start": 16,
+                              "end": 17
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "d",
+                            "span": {
+                              "start": 16,
+                              "end": 17
+                            }
+                          }
                         }
                       }
-                    }
-                  ]
+                    ],
+                    "open_tail": null
+                  }
                 }
               }
-            ]
+            ],
+            "open_tail": null
           },
           "binding_name": null,
           "parameters": [],

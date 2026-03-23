@@ -292,16 +292,9 @@
                   },
                   "elements": [
                     {
-                      "tag": "constructor",
-                      "syntax_node": {
-                        "kind": "CONSTRUCTOR_PATTERN",
-                        "span": {
-                          "start": 81,
-                          "end": 88
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
+                      "label_token": null,
+                      "pattern": {
+                        "tag": "constructor",
                         "syntax_node": {
                           "kind": "CONSTRUCTOR_PATTERN",
                           "span": {
@@ -309,50 +302,53 @@
                             "end": 88
                           }
                         },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "Ok",
-                          "span": {
-                            "start": 81,
-                            "end": 83
+                        "constructor_path": {
+                          "tag": "ident",
+                          "syntax_node": {
+                            "kind": "CONSTRUCTOR_PATTERN",
+                            "span": {
+                              "start": 81,
+                              "end": 88
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "Ok",
+                            "span": {
+                              "start": 81,
+                              "end": 83
+                            }
                           }
-                        }
-                      },
-                      "arguments": [
-                        {
-                          "tag": "literal",
-                          "literal": {
-                            "tag": "bool",
-                            "syntax_node": {
-                              "kind": "BOOL_LITERAL",
-                              "span": {
-                                "start": 84,
-                                "end": 88
-                              }
-                            },
-                            "literal_token": {
-                              "kind": "BOOL_LITERAL",
-                              "text": "true",
-                              "span": {
-                                "start": 84,
-                                "end": 88
+                        },
+                        "arguments": [
+                          {
+                            "tag": "literal",
+                            "literal": {
+                              "tag": "bool",
+                              "syntax_node": {
+                                "kind": "BOOL_LITERAL",
+                                "span": {
+                                  "start": 84,
+                                  "end": 88
+                                }
+                              },
+                              "literal_token": {
+                                "kind": "BOOL_LITERAL",
+                                "text": "true",
+                                "span": {
+                                  "start": 84,
+                                  "end": 88
+                                }
                               }
                             }
                           }
-                        }
-                      ]
+                        ]
+                      }
                     },
                     {
-                      "tag": "constructor",
-                      "syntax_node": {
-                        "kind": "CONSTRUCTOR_PATTERN",
-                        "span": {
-                          "start": 90,
-                          "end": 97
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
+                      "label_token": null,
+                      "pattern": {
+                        "tag": "constructor",
                         "syntax_node": {
                           "kind": "CONSTRUCTOR_PATTERN",
                           "span": {
@@ -360,40 +356,51 @@
                             "end": 97
                           }
                         },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "Ok",
-                          "span": {
-                            "start": 90,
-                            "end": 92
+                        "constructor_path": {
+                          "tag": "ident",
+                          "syntax_node": {
+                            "kind": "CONSTRUCTOR_PATTERN",
+                            "span": {
+                              "start": 90,
+                              "end": 97
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "Ok",
+                            "span": {
+                              "start": 90,
+                              "end": 92
+                            }
                           }
-                        }
-                      },
-                      "arguments": [
-                        {
-                          "tag": "literal",
-                          "literal": {
-                            "tag": "bool",
-                            "syntax_node": {
-                              "kind": "BOOL_LITERAL",
-                              "span": {
-                                "start": 93,
-                                "end": 97
-                              }
-                            },
-                            "literal_token": {
-                              "kind": "BOOL_LITERAL",
-                              "text": "true",
-                              "span": {
-                                "start": 93,
-                                "end": 97
+                        },
+                        "arguments": [
+                          {
+                            "tag": "literal",
+                            "literal": {
+                              "tag": "bool",
+                              "syntax_node": {
+                                "kind": "BOOL_LITERAL",
+                                "span": {
+                                  "start": 93,
+                                  "end": 97
+                                }
+                              },
+                              "literal_token": {
+                                "kind": "BOOL_LITERAL",
+                                "text": "true",
+                                "span": {
+                                  "start": 93,
+                                  "end": 97
+                                }
                               }
                             }
                           }
-                        }
-                      ]
+                        ]
+                      }
                     }
-                  ]
+                  ],
+                  "open_tail": null
                 },
                 "guard": null,
                 "body": {
@@ -786,16 +793,9 @@
                 },
                 "elements": [
                   {
-                    "tag": "constructor",
-                    "syntax_node": {
-                      "kind": "CONSTRUCTOR_PATTERN",
-                      "span": {
-                        "start": 81,
-                        "end": 88
-                      }
-                    },
-                    "constructor_path": {
-                      "tag": "ident",
+                    "label_token": null,
+                    "pattern": {
+                      "tag": "constructor",
                       "syntax_node": {
                         "kind": "CONSTRUCTOR_PATTERN",
                         "span": {
@@ -803,50 +803,53 @@
                           "end": 88
                         }
                       },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "Ok",
-                        "span": {
-                          "start": 81,
-                          "end": 83
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "CONSTRUCTOR_PATTERN",
+                          "span": {
+                            "start": 81,
+                            "end": 88
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "Ok",
+                          "span": {
+                            "start": 81,
+                            "end": 83
+                          }
                         }
-                      }
-                    },
-                    "arguments": [
-                      {
-                        "tag": "literal",
-                        "literal": {
-                          "tag": "bool",
-                          "syntax_node": {
-                            "kind": "BOOL_LITERAL",
-                            "span": {
-                              "start": 84,
-                              "end": 88
-                            }
-                          },
-                          "literal_token": {
-                            "kind": "BOOL_LITERAL",
-                            "text": "true",
-                            "span": {
-                              "start": 84,
-                              "end": 88
+                      },
+                      "arguments": [
+                        {
+                          "tag": "literal",
+                          "literal": {
+                            "tag": "bool",
+                            "syntax_node": {
+                              "kind": "BOOL_LITERAL",
+                              "span": {
+                                "start": 84,
+                                "end": 88
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "BOOL_LITERAL",
+                              "text": "true",
+                              "span": {
+                                "start": 84,
+                                "end": 88
+                              }
                             }
                           }
                         }
-                      }
-                    ]
+                      ]
+                    }
                   },
                   {
-                    "tag": "constructor",
-                    "syntax_node": {
-                      "kind": "CONSTRUCTOR_PATTERN",
-                      "span": {
-                        "start": 90,
-                        "end": 97
-                      }
-                    },
-                    "constructor_path": {
-                      "tag": "ident",
+                    "label_token": null,
+                    "pattern": {
+                      "tag": "constructor",
                       "syntax_node": {
                         "kind": "CONSTRUCTOR_PATTERN",
                         "span": {
@@ -854,40 +857,51 @@
                           "end": 97
                         }
                       },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "Ok",
-                        "span": {
-                          "start": 90,
-                          "end": 92
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "CONSTRUCTOR_PATTERN",
+                          "span": {
+                            "start": 90,
+                            "end": 97
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "Ok",
+                          "span": {
+                            "start": 90,
+                            "end": 92
+                          }
                         }
-                      }
-                    },
-                    "arguments": [
-                      {
-                        "tag": "literal",
-                        "literal": {
-                          "tag": "bool",
-                          "syntax_node": {
-                            "kind": "BOOL_LITERAL",
-                            "span": {
-                              "start": 93,
-                              "end": 97
-                            }
-                          },
-                          "literal_token": {
-                            "kind": "BOOL_LITERAL",
-                            "text": "true",
-                            "span": {
-                              "start": 93,
-                              "end": 97
+                      },
+                      "arguments": [
+                        {
+                          "tag": "literal",
+                          "literal": {
+                            "tag": "bool",
+                            "syntax_node": {
+                              "kind": "BOOL_LITERAL",
+                              "span": {
+                                "start": 93,
+                                "end": 97
+                              }
+                            },
+                            "literal_token": {
+                              "kind": "BOOL_LITERAL",
+                              "text": "true",
+                              "span": {
+                                "start": 93,
+                                "end": 97
+                              }
                             }
                           }
                         }
-                      }
-                    ]
+                      ]
+                    }
                   }
-                ]
+                ],
+                "open_tail": null
               },
               "guard": null,
               "body": {
@@ -1224,16 +1238,9 @@
               },
               "elements": [
                 {
-                  "tag": "constructor",
-                  "syntax_node": {
-                    "kind": "CONSTRUCTOR_PATTERN",
-                    "span": {
-                      "start": 81,
-                      "end": 88
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
+                  "label_token": null,
+                  "pattern": {
+                    "tag": "constructor",
                     "syntax_node": {
                       "kind": "CONSTRUCTOR_PATTERN",
                       "span": {
@@ -1241,50 +1248,53 @@
                         "end": 88
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Ok",
-                      "span": {
-                        "start": 81,
-                        "end": 83
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "CONSTRUCTOR_PATTERN",
+                        "span": {
+                          "start": 81,
+                          "end": 88
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "Ok",
+                        "span": {
+                          "start": 81,
+                          "end": 83
+                        }
                       }
-                    }
-                  },
-                  "arguments": [
-                    {
-                      "tag": "literal",
-                      "literal": {
-                        "tag": "bool",
-                        "syntax_node": {
-                          "kind": "BOOL_LITERAL",
-                          "span": {
-                            "start": 84,
-                            "end": 88
-                          }
-                        },
-                        "literal_token": {
-                          "kind": "BOOL_LITERAL",
-                          "text": "true",
-                          "span": {
-                            "start": 84,
-                            "end": 88
+                    },
+                    "arguments": [
+                      {
+                        "tag": "literal",
+                        "literal": {
+                          "tag": "bool",
+                          "syntax_node": {
+                            "kind": "BOOL_LITERAL",
+                            "span": {
+                              "start": 84,
+                              "end": 88
+                            }
+                          },
+                          "literal_token": {
+                            "kind": "BOOL_LITERAL",
+                            "text": "true",
+                            "span": {
+                              "start": 84,
+                              "end": 88
+                            }
                           }
                         }
                       }
-                    }
-                  ]
+                    ]
+                  }
                 },
                 {
-                  "tag": "constructor",
-                  "syntax_node": {
-                    "kind": "CONSTRUCTOR_PATTERN",
-                    "span": {
-                      "start": 90,
-                      "end": 97
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
+                  "label_token": null,
+                  "pattern": {
+                    "tag": "constructor",
                     "syntax_node": {
                       "kind": "CONSTRUCTOR_PATTERN",
                       "span": {
@@ -1292,40 +1302,51 @@
                         "end": 97
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Ok",
-                      "span": {
-                        "start": 90,
-                        "end": 92
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "CONSTRUCTOR_PATTERN",
+                        "span": {
+                          "start": 90,
+                          "end": 97
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "Ok",
+                        "span": {
+                          "start": 90,
+                          "end": 92
+                        }
                       }
-                    }
-                  },
-                  "arguments": [
-                    {
-                      "tag": "literal",
-                      "literal": {
-                        "tag": "bool",
-                        "syntax_node": {
-                          "kind": "BOOL_LITERAL",
-                          "span": {
-                            "start": 93,
-                            "end": 97
-                          }
-                        },
-                        "literal_token": {
-                          "kind": "BOOL_LITERAL",
-                          "text": "true",
-                          "span": {
-                            "start": 93,
-                            "end": 97
+                    },
+                    "arguments": [
+                      {
+                        "tag": "literal",
+                        "literal": {
+                          "tag": "bool",
+                          "syntax_node": {
+                            "kind": "BOOL_LITERAL",
+                            "span": {
+                              "start": 93,
+                              "end": 97
+                            }
+                          },
+                          "literal_token": {
+                            "kind": "BOOL_LITERAL",
+                            "text": "true",
+                            "span": {
+                              "start": 93,
+                              "end": 97
+                            }
                           }
                         }
                       }
-                    }
-                  ]
+                    ]
+                  }
                 }
-              ]
+              ],
+              "open_tail": null
             },
             "guard": null,
             "body": {

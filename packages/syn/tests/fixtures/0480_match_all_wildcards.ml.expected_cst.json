@@ -211,26 +211,22 @@
                   },
                   "elements": [
                     {
-                      "tag": "wildcard",
-                      "syntax_node": {
-                        "kind": "WILDCARD_PATTERN",
-                        "span": {
-                          "start": 32,
-                          "end": 33
+                      "label_token": null,
+                      "pattern": {
+                        "tag": "wildcard",
+                        "syntax_node": {
+                          "kind": "WILDCARD_PATTERN",
+                          "span": {
+                            "start": 32,
+                            "end": 33
+                          }
                         }
                       }
                     },
                     {
-                      "tag": "constructor",
-                      "syntax_node": {
-                        "kind": "CONSTRUCTOR_PATTERN",
-                        "span": {
-                          "start": 35,
-                          "end": 41
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
+                      "label_token": null,
+                      "pattern": {
+                        "tag": "constructor",
                         "syntax_node": {
                           "kind": "CONSTRUCTOR_PATTERN",
                           "span": {
@@ -238,57 +234,74 @@
                             "end": 41
                           }
                         },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "Some",
-                          "span": {
-                            "start": 35,
-                            "end": 39
-                          }
-                        }
-                      },
-                      "arguments": [
-                        {
-                          "tag": "identifier",
+                        "constructor_path": {
+                          "tag": "ident",
                           "syntax_node": {
-                            "kind": "IDENT_PATTERN",
+                            "kind": "CONSTRUCTOR_PATTERN",
                             "span": {
-                              "start": 40,
+                              "start": 35,
                               "end": 41
                             }
                           },
                           "name_token": {
                             "kind": "IDENT_EXPR",
-                            "text": "y",
+                            "text": "Some",
                             "span": {
-                              "start": 40,
-                              "end": 41
+                              "start": 35,
+                              "end": 39
                             }
                           }
-                        }
-                      ]
+                        },
+                        "arguments": [
+                          {
+                            "tag": "identifier",
+                            "syntax_node": {
+                              "kind": "IDENT_PATTERN",
+                              "span": {
+                                "start": 40,
+                                "end": 41
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "y",
+                              "span": {
+                                "start": 40,
+                                "end": 41
+                              }
+                            }
+                          }
+                        ]
+                      }
                     },
                     {
-                      "tag": "wildcard",
-                      "syntax_node": {
-                        "kind": "WILDCARD_PATTERN",
-                        "span": {
-                          "start": 43,
-                          "end": 44
+                      "label_token": null,
+                      "pattern": {
+                        "tag": "wildcard",
+                        "syntax_node": {
+                          "kind": "WILDCARD_PATTERN",
+                          "span": {
+                            "start": 43,
+                            "end": 44
+                          }
                         }
                       }
                     },
                     {
-                      "tag": "wildcard",
-                      "syntax_node": {
-                        "kind": "WILDCARD_PATTERN",
-                        "span": {
-                          "start": 46,
-                          "end": 47
+                      "label_token": null,
+                      "pattern": {
+                        "tag": "wildcard",
+                        "syntax_node": {
+                          "kind": "WILDCARD_PATTERN",
+                          "span": {
+                            "start": 46,
+                            "end": 47
+                          }
                         }
                       }
                     }
-                  ]
+                  ],
+                  "open_tail": null
                 },
                 "guard": null,
                 "body": {
@@ -567,26 +580,22 @@
                 },
                 "elements": [
                   {
-                    "tag": "wildcard",
-                    "syntax_node": {
-                      "kind": "WILDCARD_PATTERN",
-                      "span": {
-                        "start": 32,
-                        "end": 33
+                    "label_token": null,
+                    "pattern": {
+                      "tag": "wildcard",
+                      "syntax_node": {
+                        "kind": "WILDCARD_PATTERN",
+                        "span": {
+                          "start": 32,
+                          "end": 33
+                        }
                       }
                     }
                   },
                   {
-                    "tag": "constructor",
-                    "syntax_node": {
-                      "kind": "CONSTRUCTOR_PATTERN",
-                      "span": {
-                        "start": 35,
-                        "end": 41
-                      }
-                    },
-                    "constructor_path": {
-                      "tag": "ident",
+                    "label_token": null,
+                    "pattern": {
+                      "tag": "constructor",
                       "syntax_node": {
                         "kind": "CONSTRUCTOR_PATTERN",
                         "span": {
@@ -594,57 +603,74 @@
                           "end": 41
                         }
                       },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "Some",
-                        "span": {
-                          "start": 35,
-                          "end": 39
-                        }
-                      }
-                    },
-                    "arguments": [
-                      {
-                        "tag": "identifier",
+                      "constructor_path": {
+                        "tag": "ident",
                         "syntax_node": {
-                          "kind": "IDENT_PATTERN",
+                          "kind": "CONSTRUCTOR_PATTERN",
                           "span": {
-                            "start": 40,
+                            "start": 35,
                             "end": 41
                           }
                         },
                         "name_token": {
                           "kind": "IDENT_EXPR",
-                          "text": "y",
+                          "text": "Some",
                           "span": {
-                            "start": 40,
-                            "end": 41
+                            "start": 35,
+                            "end": 39
                           }
                         }
-                      }
-                    ]
+                      },
+                      "arguments": [
+                        {
+                          "tag": "identifier",
+                          "syntax_node": {
+                            "kind": "IDENT_PATTERN",
+                            "span": {
+                              "start": 40,
+                              "end": 41
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "y",
+                            "span": {
+                              "start": 40,
+                              "end": 41
+                            }
+                          }
+                        }
+                      ]
+                    }
                   },
                   {
-                    "tag": "wildcard",
-                    "syntax_node": {
-                      "kind": "WILDCARD_PATTERN",
-                      "span": {
-                        "start": 43,
-                        "end": 44
+                    "label_token": null,
+                    "pattern": {
+                      "tag": "wildcard",
+                      "syntax_node": {
+                        "kind": "WILDCARD_PATTERN",
+                        "span": {
+                          "start": 43,
+                          "end": 44
+                        }
                       }
                     }
                   },
                   {
-                    "tag": "wildcard",
-                    "syntax_node": {
-                      "kind": "WILDCARD_PATTERN",
-                      "span": {
-                        "start": 46,
-                        "end": 47
+                    "label_token": null,
+                    "pattern": {
+                      "tag": "wildcard",
+                      "syntax_node": {
+                        "kind": "WILDCARD_PATTERN",
+                        "span": {
+                          "start": 46,
+                          "end": 47
+                        }
                       }
                     }
                   }
-                ]
+                ],
+                "open_tail": null
               },
               "guard": null,
               "body": {
@@ -886,26 +912,22 @@
               },
               "elements": [
                 {
-                  "tag": "wildcard",
-                  "syntax_node": {
-                    "kind": "WILDCARD_PATTERN",
-                    "span": {
-                      "start": 32,
-                      "end": 33
+                  "label_token": null,
+                  "pattern": {
+                    "tag": "wildcard",
+                    "syntax_node": {
+                      "kind": "WILDCARD_PATTERN",
+                      "span": {
+                        "start": 32,
+                        "end": 33
+                      }
                     }
                   }
                 },
                 {
-                  "tag": "constructor",
-                  "syntax_node": {
-                    "kind": "CONSTRUCTOR_PATTERN",
-                    "span": {
-                      "start": 35,
-                      "end": 41
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
+                  "label_token": null,
+                  "pattern": {
+                    "tag": "constructor",
                     "syntax_node": {
                       "kind": "CONSTRUCTOR_PATTERN",
                       "span": {
@@ -913,57 +935,74 @@
                         "end": 41
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Some",
-                      "span": {
-                        "start": 35,
-                        "end": 39
-                      }
-                    }
-                  },
-                  "arguments": [
-                    {
-                      "tag": "identifier",
+                    "constructor_path": {
+                      "tag": "ident",
                       "syntax_node": {
-                        "kind": "IDENT_PATTERN",
+                        "kind": "CONSTRUCTOR_PATTERN",
                         "span": {
-                          "start": 40,
+                          "start": 35,
                           "end": 41
                         }
                       },
                       "name_token": {
                         "kind": "IDENT_EXPR",
-                        "text": "y",
+                        "text": "Some",
                         "span": {
-                          "start": 40,
-                          "end": 41
+                          "start": 35,
+                          "end": 39
                         }
                       }
-                    }
-                  ]
+                    },
+                    "arguments": [
+                      {
+                        "tag": "identifier",
+                        "syntax_node": {
+                          "kind": "IDENT_PATTERN",
+                          "span": {
+                            "start": 40,
+                            "end": 41
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "y",
+                          "span": {
+                            "start": 40,
+                            "end": 41
+                          }
+                        }
+                      }
+                    ]
+                  }
                 },
                 {
-                  "tag": "wildcard",
-                  "syntax_node": {
-                    "kind": "WILDCARD_PATTERN",
-                    "span": {
-                      "start": 43,
-                      "end": 44
+                  "label_token": null,
+                  "pattern": {
+                    "tag": "wildcard",
+                    "syntax_node": {
+                      "kind": "WILDCARD_PATTERN",
+                      "span": {
+                        "start": 43,
+                        "end": 44
+                      }
                     }
                   }
                 },
                 {
-                  "tag": "wildcard",
-                  "syntax_node": {
-                    "kind": "WILDCARD_PATTERN",
-                    "span": {
-                      "start": 46,
-                      "end": 47
+                  "label_token": null,
+                  "pattern": {
+                    "tag": "wildcard",
+                    "syntax_node": {
+                      "kind": "WILDCARD_PATTERN",
+                      "span": {
+                        "start": 46,
+                        "end": 47
+                      }
                     }
                   }
                 }
-              ]
+              ],
+              "open_tail": null
             },
             "guard": null,
             "body": {

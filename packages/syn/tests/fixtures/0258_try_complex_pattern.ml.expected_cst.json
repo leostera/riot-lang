@@ -142,42 +142,49 @@
                         },
                         "elements": [
                           {
-                            "tag": "identifier",
-                            "syntax_node": {
-                              "kind": "IDENT_PATTERN",
-                              "span": {
-                                "start": 22,
-                                "end": 23
-                              }
-                            },
-                            "name_token": {
-                              "kind": "IDENT_EXPR",
-                              "text": "y",
-                              "span": {
-                                "start": 22,
-                                "end": 23
+                            "label_token": null,
+                            "pattern": {
+                              "tag": "identifier",
+                              "syntax_node": {
+                                "kind": "IDENT_PATTERN",
+                                "span": {
+                                  "start": 22,
+                                  "end": 23
+                                }
+                              },
+                              "name_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": "y",
+                                "span": {
+                                  "start": 22,
+                                  "end": 23
+                                }
                               }
                             }
                           },
                           {
-                            "tag": "identifier",
-                            "syntax_node": {
-                              "kind": "IDENT_PATTERN",
-                              "span": {
-                                "start": 25,
-                                "end": 26
-                              }
-                            },
-                            "name_token": {
-                              "kind": "IDENT_EXPR",
-                              "text": "z",
-                              "span": {
-                                "start": 25,
-                                "end": 26
+                            "label_token": null,
+                            "pattern": {
+                              "tag": "identifier",
+                              "syntax_node": {
+                                "kind": "IDENT_PATTERN",
+                                "span": {
+                                  "start": 25,
+                                  "end": 26
+                                }
+                              },
+                              "name_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": "z",
+                                "span": {
+                                  "start": 25,
+                                  "end": 26
+                                }
                               }
                             }
                           }
-                        ]
+                        ],
+                        "open_tail": null
                       }
                     }
                   ]
@@ -349,42 +356,49 @@
                       },
                       "elements": [
                         {
-                          "tag": "identifier",
-                          "syntax_node": {
-                            "kind": "IDENT_PATTERN",
-                            "span": {
-                              "start": 22,
-                              "end": 23
-                            }
-                          },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "y",
-                            "span": {
-                              "start": 22,
-                              "end": 23
+                          "label_token": null,
+                          "pattern": {
+                            "tag": "identifier",
+                            "syntax_node": {
+                              "kind": "IDENT_PATTERN",
+                              "span": {
+                                "start": 22,
+                                "end": 23
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "y",
+                              "span": {
+                                "start": 22,
+                                "end": 23
+                              }
                             }
                           }
                         },
                         {
-                          "tag": "identifier",
-                          "syntax_node": {
-                            "kind": "IDENT_PATTERN",
-                            "span": {
-                              "start": 25,
-                              "end": 26
-                            }
-                          },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "z",
-                            "span": {
-                              "start": 25,
-                              "end": 26
+                          "label_token": null,
+                          "pattern": {
+                            "tag": "identifier",
+                            "syntax_node": {
+                              "kind": "IDENT_PATTERN",
+                              "span": {
+                                "start": 25,
+                                "end": 26
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "z",
+                              "span": {
+                                "start": 25,
+                                "end": 26
+                              }
                             }
                           }
                         }
-                      ]
+                      ],
+                      "open_tail": null
                     }
                   }
                 ]
@@ -519,42 +533,49 @@
                     },
                     "elements": [
                       {
-                        "tag": "identifier",
-                        "syntax_node": {
-                          "kind": "IDENT_PATTERN",
-                          "span": {
-                            "start": 22,
-                            "end": 23
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "y",
-                          "span": {
-                            "start": 22,
-                            "end": 23
+                        "label_token": null,
+                        "pattern": {
+                          "tag": "identifier",
+                          "syntax_node": {
+                            "kind": "IDENT_PATTERN",
+                            "span": {
+                              "start": 22,
+                              "end": 23
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "y",
+                            "span": {
+                              "start": 22,
+                              "end": 23
+                            }
                           }
                         }
                       },
                       {
-                        "tag": "identifier",
-                        "syntax_node": {
-                          "kind": "IDENT_PATTERN",
-                          "span": {
-                            "start": 25,
-                            "end": 26
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "z",
-                          "span": {
-                            "start": 25,
-                            "end": 26
+                        "label_token": null,
+                        "pattern": {
+                          "tag": "identifier",
+                          "syntax_node": {
+                            "kind": "IDENT_PATTERN",
+                            "span": {
+                              "start": 25,
+                              "end": 26
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "z",
+                            "span": {
+                              "start": 25,
+                              "end": 26
+                            }
                           }
                         }
                       }
-                    ]
+                    ],
+                    "open_tail": null
                   }
                 }
               ]

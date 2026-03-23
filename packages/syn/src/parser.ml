@@ -1977,14 +1977,107 @@ and parse_or_pattern_no_tuple parser =
     Token_cursor.set_position parser.cursor saved_pos;
     first_pat)
 
+(** Parse a labeled tuple pattern element such as `~x`, `~x:pat`, or `~(x : t)`. *)
+and parse_labeled_tuple_pattern_element parser =
+  let invalid_pattern found =
+    Diagnostic.invalid_pattern ~found ~text:(token_text parser found)
+      ~span:(current_span parser)
+  in
+  let tilde =
+    expect parser Token.Tilde (fun found -> invalid_pattern found)
+  in
+  let trivia_after_tilde = consume_trivia parser in
+
+  match peek_kind parser with
+  | Token.OpenDelim Token.Paren ->
+      let open_paren = consume parser in
+      let trivia_after_open = consume_trivia parser in
+      let label =
+        parse_ident parser (fun parser found -> invalid_pattern found)
+      in
+      let label_pattern =
+        make_node Syntax_kind.IDENT_PATTERN [ make_token parser label ]
+      in
+      let trivia_after_label = consume_trivia parser in
+      let colon =
+        expect parser Token.Colon (fun found -> invalid_pattern found)
+      in
+      let trivia_after_colon = consume_trivia parser in
+      let type_expr = parse_typexpr parser in
+      let trivia_after_type = consume_trivia parser in
+      let close_paren =
+        expect parser (Token.CloseDelim Token.Paren) (fun found ->
+            Diagnostic.unclosed_delimiter ~opener:")" ~found
+              ~text:(token_text parser found)
+              ~span:(expected_span parser))
+      in
+      let typed_pattern =
+        make_node Syntax_kind.TYPED_PATTERN
+          ([ make_token parser open_paren ]
+          @ tokens_to_green parser trivia_after_open
+          @ [ Ceibo.Green.Node label_pattern ]
+          @ tokens_to_green parser trivia_after_label
+          @ [ make_token parser colon ]
+          @ tokens_to_green parser trivia_after_colon
+          @ [ Ceibo.Green.Node type_expr ]
+          @ tokens_to_green parser trivia_after_type
+          @ [ make_token parser close_paren ])
+      in
+      ( [ make_token parser tilde ]
+        @ tokens_to_green parser trivia_after_tilde
+        @ [ Ceibo.Green.Node typed_pattern ],
+        None,
+        true )
+  | _ ->
+      let label =
+        parse_ident parser (fun parser found -> invalid_pattern found)
+      in
+      let label_pattern =
+        make_node Syntax_kind.IDENT_PATTERN [ make_token parser label ]
+      in
+      let trivia_after_label = consume_trivia parser in
+
+      if peek_kind parser = Token.Colon then
+        let colon = consume parser in
+        let trivia_after_colon = consume_trivia parser in
+        let payload_pattern = parse_primary_pattern parser in
+        ( [ make_token parser tilde ]
+          @ tokens_to_green parser trivia_after_tilde
+          @ [ Ceibo.Green.Node label_pattern ]
+          @ tokens_to_green parser trivia_after_label
+          @ [ make_token parser colon ]
+          @ tokens_to_green parser trivia_after_colon
+          @ [ Ceibo.Green.Node payload_pattern ],
+          None,
+          true )
+      else
+        ( [ make_token parser tilde ]
+          @ tokens_to_green parser trivia_after_tilde
+          @ [ Ceibo.Green.Node label_pattern ]
+          @ tokens_to_green parser trivia_after_label,
+          None,
+          true )
+
+(** Parse one tuple pattern element while keeping enough information to
+    distinguish labeled tuple syntax from ordinary standalone patterns. *)
+and parse_tuple_pattern_element parser =
+  match peek_kind parser with
+  | Token.Tilde ->
+      parse_labeled_tuple_pattern_element parser
+  | _ ->
+      let pattern = parse_as_pattern parser in
+      ([ Ceibo.Green.Node pattern ], Some pattern, false)
+
 (** Parse tuple pattern without parentheses: a, b, c *)
 and parse_tuple_pattern_or_as parser =
-  let first_pat = parse_as_pattern parser in
-  
+  let first_children, first_pattern_opt, first_requires_tuple =
+    parse_tuple_pattern_element parser
+  in
+
   (* Speculatively consume trivia to check for comma *)
   let saved_pos = Token_cursor.position parser.cursor in
   let trivia_after_first = consume_trivia parser in
-  
+
   (* Check if followed by comma (tuple without parens) *)
   if peek_kind parser = Token.Comma then
     (* Parse rest of tuple elements *)
@@ -1993,27 +2086,51 @@ and parse_tuple_pattern_or_as parser =
       | Token.Comma ->
           let comma = consume parser in
           let trivia_after_comma = consume_trivia parser in
-          let pat = parse_as_pattern parser in
-          let trivia_after_pat = consume_trivia parser in
-          parse_tuple_rest
-            (tokens_to_green parser trivia_after_pat
-            @ [ Ceibo.Green.Node pat ]
-            @ tokens_to_green parser trivia_after_comma
+          if peek_kind parser = Token.DotDot then
+            let dotdot = consume parser in
+            let trivia_after_dotdot = consume_trivia parser in
+            acc
             @ [ make_token parser comma ]
-            @ acc)
-      | _ -> List.rev acc
+            @ tokens_to_green parser trivia_after_comma
+            @ [ make_token parser dotdot ]
+            @ tokens_to_green parser trivia_after_dotdot
+          else
+            let element_children, _, _ = parse_tuple_pattern_element parser in
+            let trivia_after_element = consume_trivia parser in
+            parse_tuple_rest
+              (acc
+              @ [ make_token parser comma ]
+              @ tokens_to_green parser trivia_after_comma
+              @ element_children
+              @ tokens_to_green parser trivia_after_element)
+      | _ ->
+          acc
     in
-    
+
     let rest = parse_tuple_rest [] in
-    
+
     make_node Syntax_kind.TUPLE_PATTERN
-      ([ Ceibo.Green.Node first_pat ]
+      (first_children
       @ tokens_to_green parser trivia_after_first
       @ rest)
   else (
     (* No comma - restore position to before trivia *)
     Token_cursor.set_position parser.cursor saved_pos;
-    first_pat)
+    match first_pattern_opt with
+    | Some first_pattern ->
+        first_pattern
+    | None ->
+        if first_requires_tuple then (
+          let found_tok = peek parser in
+          let diagnostic =
+            Diagnostic.invalid_pattern ~found:found_tok
+              ~text:(token_text parser found_tok)
+              ~span:(expected_span parser)
+          in
+          report_diagnostic parser diagnostic;
+          make_node Syntax_kind.ERROR [])
+        else
+          make_node Syntax_kind.ERROR [])
 
 (** Parse as-pattern: p as x *)
 and parse_as_pattern parser =
@@ -2459,6 +2576,7 @@ and can_start_pattern parser =
   | Token.Keyword Keyword.False
   | Token.Keyword Keyword.Lazy
   | Token.Keyword Keyword.Exception
+  | Token.Tilde
   | Token.Backtick ->
       true
   | _ -> false

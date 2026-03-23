@@ -183,16 +183,9 @@
                   },
                   "elements": [
                     {
-                      "tag": "constructor",
-                      "syntax_node": {
-                        "kind": "CONSTRUCTOR_PATTERN",
-                        "span": {
-                          "start": 29,
-                          "end": 35
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
+                      "label_token": null,
+                      "pattern": {
+                        "tag": "constructor",
                         "syntax_node": {
                           "kind": "CONSTRUCTOR_PATTERN",
                           "span": {
@@ -200,47 +193,50 @@
                             "end": 35
                           }
                         },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "Some",
-                          "span": {
-                            "start": 29,
-                            "end": 33
-                          }
-                        }
-                      },
-                      "arguments": [
-                        {
-                          "tag": "identifier",
+                        "constructor_path": {
+                          "tag": "ident",
                           "syntax_node": {
-                            "kind": "IDENT_PATTERN",
+                            "kind": "CONSTRUCTOR_PATTERN",
                             "span": {
-                              "start": 34,
+                              "start": 29,
                               "end": 35
                             }
                           },
                           "name_token": {
                             "kind": "IDENT_EXPR",
-                            "text": "y",
+                            "text": "Some",
                             "span": {
-                              "start": 34,
-                              "end": 35
+                              "start": 29,
+                              "end": 33
                             }
                           }
-                        }
-                      ]
+                        },
+                        "arguments": [
+                          {
+                            "tag": "identifier",
+                            "syntax_node": {
+                              "kind": "IDENT_PATTERN",
+                              "span": {
+                                "start": 34,
+                                "end": 35
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "y",
+                              "span": {
+                                "start": 34,
+                                "end": 35
+                              }
+                            }
+                          }
+                        ]
+                      }
                     },
                     {
-                      "tag": "constructor",
-                      "syntax_node": {
-                        "kind": "CONSTRUCTOR_PATTERN",
-                        "span": {
-                          "start": 37,
-                          "end": 41
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
+                      "label_token": null,
+                      "pattern": {
+                        "tag": "constructor",
                         "syntax_node": {
                           "kind": "CONSTRUCTOR_PATTERN",
                           "span": {
@@ -248,28 +244,42 @@
                             "end": 41
                           }
                         },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "None",
-                          "span": {
-                            "start": 37,
-                            "end": 41
+                        "constructor_path": {
+                          "tag": "ident",
+                          "syntax_node": {
+                            "kind": "CONSTRUCTOR_PATTERN",
+                            "span": {
+                              "start": 37,
+                              "end": 41
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "None",
+                            "span": {
+                              "start": 37,
+                              "end": 41
+                            }
                           }
-                        }
-                      },
-                      "arguments": []
+                        },
+                        "arguments": []
+                      }
                     },
                     {
-                      "tag": "wildcard",
-                      "syntax_node": {
-                        "kind": "WILDCARD_PATTERN",
-                        "span": {
-                          "start": 43,
-                          "end": 44
+                      "label_token": null,
+                      "pattern": {
+                        "tag": "wildcard",
+                        "syntax_node": {
+                          "kind": "WILDCARD_PATTERN",
+                          "span": {
+                            "start": 43,
+                            "end": 44
+                          }
                         }
                       }
                     }
-                  ]
+                  ],
+                  "open_tail": null
                 },
                 "guard": null,
                 "body": {
@@ -520,16 +530,9 @@
                 },
                 "elements": [
                   {
-                    "tag": "constructor",
-                    "syntax_node": {
-                      "kind": "CONSTRUCTOR_PATTERN",
-                      "span": {
-                        "start": 29,
-                        "end": 35
-                      }
-                    },
-                    "constructor_path": {
-                      "tag": "ident",
+                    "label_token": null,
+                    "pattern": {
+                      "tag": "constructor",
                       "syntax_node": {
                         "kind": "CONSTRUCTOR_PATTERN",
                         "span": {
@@ -537,47 +540,50 @@
                           "end": 35
                         }
                       },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "Some",
-                        "span": {
-                          "start": 29,
-                          "end": 33
-                        }
-                      }
-                    },
-                    "arguments": [
-                      {
-                        "tag": "identifier",
+                      "constructor_path": {
+                        "tag": "ident",
                         "syntax_node": {
-                          "kind": "IDENT_PATTERN",
+                          "kind": "CONSTRUCTOR_PATTERN",
                           "span": {
-                            "start": 34,
+                            "start": 29,
                             "end": 35
                           }
                         },
                         "name_token": {
                           "kind": "IDENT_EXPR",
-                          "text": "y",
+                          "text": "Some",
                           "span": {
-                            "start": 34,
-                            "end": 35
+                            "start": 29,
+                            "end": 33
                           }
                         }
-                      }
-                    ]
+                      },
+                      "arguments": [
+                        {
+                          "tag": "identifier",
+                          "syntax_node": {
+                            "kind": "IDENT_PATTERN",
+                            "span": {
+                              "start": 34,
+                              "end": 35
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "y",
+                            "span": {
+                              "start": 34,
+                              "end": 35
+                            }
+                          }
+                        }
+                      ]
+                    }
                   },
                   {
-                    "tag": "constructor",
-                    "syntax_node": {
-                      "kind": "CONSTRUCTOR_PATTERN",
-                      "span": {
-                        "start": 37,
-                        "end": 41
-                      }
-                    },
-                    "constructor_path": {
-                      "tag": "ident",
+                    "label_token": null,
+                    "pattern": {
+                      "tag": "constructor",
                       "syntax_node": {
                         "kind": "CONSTRUCTOR_PATTERN",
                         "span": {
@@ -585,28 +591,42 @@
                           "end": 41
                         }
                       },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "None",
-                        "span": {
-                          "start": 37,
-                          "end": 41
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "CONSTRUCTOR_PATTERN",
+                          "span": {
+                            "start": 37,
+                            "end": 41
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "None",
+                          "span": {
+                            "start": 37,
+                            "end": 41
+                          }
                         }
-                      }
-                    },
-                    "arguments": []
+                      },
+                      "arguments": []
+                    }
                   },
                   {
-                    "tag": "wildcard",
-                    "syntax_node": {
-                      "kind": "WILDCARD_PATTERN",
-                      "span": {
-                        "start": 43,
-                        "end": 44
+                    "label_token": null,
+                    "pattern": {
+                      "tag": "wildcard",
+                      "syntax_node": {
+                        "kind": "WILDCARD_PATTERN",
+                        "span": {
+                          "start": 43,
+                          "end": 44
+                        }
                       }
                     }
                   }
-                ]
+                ],
+                "open_tail": null
               },
               "guard": null,
               "body": {
@@ -820,16 +840,9 @@
               },
               "elements": [
                 {
-                  "tag": "constructor",
-                  "syntax_node": {
-                    "kind": "CONSTRUCTOR_PATTERN",
-                    "span": {
-                      "start": 29,
-                      "end": 35
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
+                  "label_token": null,
+                  "pattern": {
+                    "tag": "constructor",
                     "syntax_node": {
                       "kind": "CONSTRUCTOR_PATTERN",
                       "span": {
@@ -837,47 +850,50 @@
                         "end": 35
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Some",
-                      "span": {
-                        "start": 29,
-                        "end": 33
-                      }
-                    }
-                  },
-                  "arguments": [
-                    {
-                      "tag": "identifier",
+                    "constructor_path": {
+                      "tag": "ident",
                       "syntax_node": {
-                        "kind": "IDENT_PATTERN",
+                        "kind": "CONSTRUCTOR_PATTERN",
                         "span": {
-                          "start": 34,
+                          "start": 29,
                           "end": 35
                         }
                       },
                       "name_token": {
                         "kind": "IDENT_EXPR",
-                        "text": "y",
+                        "text": "Some",
                         "span": {
-                          "start": 34,
-                          "end": 35
+                          "start": 29,
+                          "end": 33
                         }
                       }
-                    }
-                  ]
+                    },
+                    "arguments": [
+                      {
+                        "tag": "identifier",
+                        "syntax_node": {
+                          "kind": "IDENT_PATTERN",
+                          "span": {
+                            "start": 34,
+                            "end": 35
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "y",
+                          "span": {
+                            "start": 34,
+                            "end": 35
+                          }
+                        }
+                      }
+                    ]
+                  }
                 },
                 {
-                  "tag": "constructor",
-                  "syntax_node": {
-                    "kind": "CONSTRUCTOR_PATTERN",
-                    "span": {
-                      "start": 37,
-                      "end": 41
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
+                  "label_token": null,
+                  "pattern": {
+                    "tag": "constructor",
                     "syntax_node": {
                       "kind": "CONSTRUCTOR_PATTERN",
                       "span": {
@@ -885,28 +901,42 @@
                         "end": 41
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "None",
-                      "span": {
-                        "start": 37,
-                        "end": 41
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "CONSTRUCTOR_PATTERN",
+                        "span": {
+                          "start": 37,
+                          "end": 41
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "None",
+                        "span": {
+                          "start": 37,
+                          "end": 41
+                        }
                       }
-                    }
-                  },
-                  "arguments": []
+                    },
+                    "arguments": []
+                  }
                 },
                 {
-                  "tag": "wildcard",
-                  "syntax_node": {
-                    "kind": "WILDCARD_PATTERN",
-                    "span": {
-                      "start": 43,
-                      "end": 44
+                  "label_token": null,
+                  "pattern": {
+                    "tag": "wildcard",
+                    "syntax_node": {
+                      "kind": "WILDCARD_PATTERN",
+                      "span": {
+                        "start": 43,
+                        "end": 44
+                      }
                     }
                   }
                 }
-              ]
+              ],
+              "open_tail": null
             },
             "guard": null,
             "body": {

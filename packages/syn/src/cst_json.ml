@@ -569,12 +569,13 @@ and pattern_to_json = function
           ("constructor_path", ident_to_json constructor_path);
           ("arguments", Json.Array (List.map pattern_to_json arguments));
         ]
-  | Cst.Pattern.Tuple { syntax_node; elements } ->
+  | Cst.Pattern.Tuple { syntax_node; elements; open_tail } ->
       Json.Object
         [
           ("tag", Json.String "tuple");
           ("syntax_node", syntax_node_to_json syntax_node);
-          ("elements", Json.Array (List.map pattern_to_json elements));
+          ("elements", Json.Array (List.map tuple_pattern_element_to_json elements));
+          ("open_tail", option_to_json tuple_pattern_open_tail_to_json open_tail);
         ]
   | Cst.Pattern.List { syntax_node; elements } ->
       Json.Object
@@ -660,6 +661,18 @@ and record_pattern_field_to_json field =
       ("field_path", ident_to_json field.field_path);
       ("pattern", option_to_json pattern_to_json field.pattern);
     ]
+
+and tuple_pattern_element_to_json ({ label_token; pattern } : Cst.tuple_pattern_element)
+    =
+  Json.Object
+    [
+      ("label_token", option_to_json token_to_json label_token);
+      ("pattern", pattern_to_json pattern);
+    ]
+
+and tuple_pattern_open_tail_to_json
+    ({ dotdot_token } : Cst.tuple_pattern_open_tail) =
+  Json.Object [ ("dotdot_token", token_to_json dotdot_token) ]
 
 and record_pattern_closedness_to_json = function
   | Cst.Closed ->

@@ -733,7 +733,17 @@ and constructor_pattern = {
 
 and tuple_pattern = {
   syntax_node : syntax_node;
-  elements : pattern list;
+  elements : tuple_pattern_element list;
+  open_tail : tuple_pattern_open_tail option;
+}
+
+and tuple_pattern_element = {
+  label_token : Token.t option;
+  pattern : pattern;
+}
+
+and tuple_pattern_open_tail = {
+  dotdot_token : Token.t;
 }
 
 and list_pattern = {

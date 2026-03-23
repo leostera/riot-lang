@@ -1692,6 +1692,122 @@ let rec pattern_from_node node =
     | tag_syntax_token :: _ -> Some (token tag_syntax_token)
     | [] -> None
   in
+  let rec tuple_pattern_label_token_from_node node =
+    match Ceibo.Red.SyntaxNode.kind node with
+    | Syntax_kind.IDENT_PATTERN -> (
+        match direct_non_trivia_tokens node with
+        | label_syntax_token :: _ ->
+            token label_syntax_token
+        | [] ->
+            unsupported_pattern node)
+    | Syntax_kind.TYPED_PATTERN -> (
+        match direct_non_trivia_nodes node with
+        | label_pattern_node :: _ ->
+            tuple_pattern_label_token_from_node label_pattern_node
+        | [] ->
+            unsupported_pattern node)
+    | _ ->
+        unsupported_pattern node
+  in
+  let tuple_pattern_from_node node =
+    let labeled_punning_element label_pattern_node =
+      {
+        Cst.label_token = Some (tuple_pattern_label_token_from_node label_pattern_node);
+        pattern = pattern_from_node label_pattern_node;
+      }
+    in
+    let labeled_payload_element label_pattern_node payload_pattern_node =
+      {
+        Cst.label_token = Some (tuple_pattern_label_token_from_node label_pattern_node);
+        pattern = pattern_from_node payload_pattern_node;
+      }
+    in
+    let unlabeled_element pattern_node =
+      {
+        Cst.label_token = None;
+        pattern = pattern_from_node pattern_node;
+      }
+    in
+    let rec loop children saw_tilde pending_label awaiting_payload acc =
+      match children with
+      | [] ->
+          let acc =
+            match pending_label, awaiting_payload with
+            | Some label_pattern_node, false ->
+                labeled_punning_element label_pattern_node :: acc
+            | _ ->
+                acc
+          in
+          {
+            Cst.syntax_node = node;
+            elements = List.rev acc;
+            open_tail = None;
+          }
+      | Ceibo.Red.Token syntax_token :: rest
+        when is_trivia (Ceibo.Red.SyntaxToken.kind syntax_token) ->
+          loop rest saw_tilde pending_label awaiting_payload acc
+      | Ceibo.Red.Token syntax_token :: rest ->
+          let text = Ceibo.Red.SyntaxToken.text syntax_token in
+          if String.equal text "~" then
+            loop rest true pending_label awaiting_payload acc
+          else if String.equal text ":" then
+            loop rest saw_tilde pending_label true acc
+          else if String.equal text "," then
+            let acc =
+              match pending_label, awaiting_payload with
+              | Some label_pattern_node, false ->
+                  labeled_punning_element label_pattern_node :: acc
+              | _ ->
+                  acc
+            in
+            loop rest false None false acc
+          else if String.equal text ".." then
+            let acc =
+              match pending_label, awaiting_payload with
+              | Some label_pattern_node, false ->
+                  labeled_punning_element label_pattern_node :: acc
+              | _ ->
+                  acc
+            in
+            {
+              Cst.syntax_node = node;
+              elements = List.rev acc;
+              open_tail =
+                Some
+                  {
+                    dotdot_token = token syntax_token;
+                  };
+            }
+          else if String.equal text "(" || String.equal text ")" then
+            loop rest saw_tilde pending_label awaiting_payload acc
+          else
+            loop rest saw_tilde pending_label awaiting_payload acc
+      | Ceibo.Red.Node child :: rest ->
+          if is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child) then
+            if awaiting_payload then
+              match pending_label with
+              | Some label_pattern_node ->
+                  loop rest false None false
+                    (labeled_payload_element label_pattern_node child :: acc)
+              | None ->
+                  loop rest false None false (unlabeled_element child :: acc)
+            else if saw_tilde then
+              loop rest false (Some child) false acc
+            else
+              let acc =
+                match pending_label with
+                | Some label_pattern_node ->
+                    labeled_punning_element label_pattern_node :: acc
+                | None ->
+                    acc
+              in
+              loop rest false None false (unlabeled_element child :: acc)
+          else
+            loop rest saw_tilde pending_label awaiting_payload acc
+    in
+    Ceibo.Red.SyntaxNode.children node |> Array.to_list |> fun children ->
+    loop children false None false []
+  in
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.IDENT_PATTERN -> (
       match direct_non_trivia_tokens node with
@@ -1837,7 +1953,7 @@ let rec pattern_from_node node =
           arguments = pattern_children node;
         }
   | Syntax_kind.TUPLE_PATTERN ->
-      Cst.Pattern.Tuple { syntax_node = node; elements = pattern_children node }
+      Cst.Pattern.Tuple (tuple_pattern_from_node node)
   | Syntax_kind.LIST_PATTERN ->
       Cst.Pattern.List { syntax_node = node; elements = pattern_children node }
   | Syntax_kind.ARRAY_PATTERN ->
@@ -5136,7 +5252,13 @@ let rec validate_pattern ~context = function
              :: context)
             argument)
         arguments
-  | Cst.Pattern.Tuple { elements; _ }
+  | Cst.Pattern.Tuple { elements; _ } ->
+      List.iteri
+        (fun index ({ Cst.pattern; _ } : Cst.tuple_pattern_element) ->
+          validate_pattern
+            ~context:(("pattern.tuple.element[" ^ Int.to_string index ^ "]") :: context)
+            pattern)
+        elements
   | Cst.Pattern.List { elements; _ }
   | Cst.Pattern.Array { elements; _ }
   | Cst.Pattern.Or { alternatives = elements; _ } ->

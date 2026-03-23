@@ -1374,11 +1374,32 @@ and constructor_pattern = {
 
 (** Payload for `Pattern.Tuple`.
 
-    Covers tuple patterns such as `(x, y)` and `(x, y, z)`.
+    Covers tuple patterns such as `(x, y)`, `(~x, y)`, and `(~x, y, ..)`.
 *)
 and tuple_pattern = {
   syntax_node : syntax_node;
-  elements : pattern list;
+  elements : tuple_pattern_element list;
+  open_tail : tuple_pattern_open_tail option;
+}
+
+(** One element inside a tuple pattern.
+
+    `label_token` is present for labeled components such as `~x` and
+    `~state:pattern`. The nested `pattern` keeps the payload pattern after the
+    label, or the implicit binder for punning forms like `~x`.
+*)
+and tuple_pattern_element = {
+  label_token : Token.t option;
+  pattern : pattern;
+}
+
+(** Explicit open tail on a tuple pattern.
+
+    This preserves the trailing `..` in open tuple patterns such as
+    `(~x, ~y, ..)`.
+*)
+and tuple_pattern_open_tail = {
+  dotdot_token : Token.t;
 }
 
 (** Payload for `Pattern.List`.

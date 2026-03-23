@@ -179,7 +179,7 @@ Remember to document the CST types and constructors with examples so its easy to
 #### Present But Lossy
 
 - [ ] Patterns:
-  - [ ] tuple patterns are missing labelled elements and open tuple `...` structure
+  - [x] tuple patterns are missing labelled elements and open tuple `...` structure
   - [x] record patterns are missing open-vs-closed structure
   - [ ] constructor patterns are missing existential type variables
   - [ ] polyvariant patterns are simplified to tag + optional payload

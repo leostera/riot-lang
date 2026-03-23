@@ -3124,9 +3124,20 @@ let tests =
                     {
                       elements =
                         [
-                          Syn.Cst.Pattern.Identifier { name_token = left_name; _ };
-                          Syn.Cst.Pattern.Identifier { name_token = right_name; _ };
+                          {
+                            pattern =
+                              Syn.Cst.Pattern.Identifier
+                                { name_token = left_name; _ };
+                            _;
+                          };
+                          {
+                            pattern =
+                              Syn.Cst.Pattern.Identifier
+                                { name_token = right_name; _ };
+                            _;
+                          };
                         ];
+                      open_tail = None;
                       _;
                     };
                 _;
@@ -3138,6 +3149,136 @@ let tests =
               ~actual:(Syn.Cst.Token.text right_name);
             Ok ()
         | _ -> Error "expected top-level let expression item");
+    Test.case "cst tuple patterns preserve labeled payloads and open tails"
+      (fun () ->
+        let source =
+          "let f value = match value with | ~state:Some x, ~rest, .. -> x | _ -> 0\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Tuple
+                            {
+                              elements =
+                                [
+                                  {
+                                    label_token = Some state_label;
+                                    pattern =
+                                      Syn.Cst.Pattern.Constructor
+                                        {
+                                          constructor_path =
+                                            Syn.Cst.Ident.Ident
+                                              { name_token = some_name; _ };
+                                          arguments =
+                                            [
+                                              Syn.Cst.Pattern.Identifier
+                                                { name_token = x_name; _ };
+                                            ];
+                                          _;
+                                        };
+                                  };
+                                  {
+                                    label_token = Some rest_label;
+                                    pattern =
+                                      Syn.Cst.Pattern.Identifier
+                                        { name_token = rest_name; _ };
+                                  };
+                                ];
+                              open_tail = Some { dotdot_token; _ };
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"state"
+              ~actual:(Syn.Cst.Token.text state_label);
+            Test.assert_equal ~expected:"Some"
+              ~actual:(Syn.Cst.Token.text some_name);
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text x_name);
+            Test.assert_equal ~expected:"rest"
+              ~actual:(Syn.Cst.Token.text rest_label);
+            Test.assert_equal ~expected:"rest"
+              ~actual:(Syn.Cst.Token.text rest_name);
+            Test.assert_equal ~expected:".."
+              ~actual:(Syn.Cst.Token.text dotdot_token);
+            Ok ()
+        | _ -> Error "expected labeled tuple pattern with open tail");
+    Test.case "cst tuple patterns preserve typed labeled punning" (fun () ->
+        let source = "let f = function | ~(x : int), y -> x | _ -> 0\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Function
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Tuple
+                            {
+                              elements =
+                                [
+                                  {
+                                    label_token = Some label_token;
+                                    pattern =
+                                      Syn.Cst.Pattern.Typed
+                                        {
+                                          pattern =
+                                            Syn.Cst.Pattern.Identifier
+                                              { name_token = x_name; _ };
+                                          _;
+                                        };
+                                  };
+                                  {
+                                    label_token = None;
+                                    pattern =
+                                      Syn.Cst.Pattern.Identifier
+                                        { name_token = y_name; _ };
+                                  };
+                                ];
+                              open_tail = None;
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text label_token);
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text x_name);
+            Test.assert_equal ~expected:"y"
+              ~actual:(Syn.Cst.Token.text y_name);
+            Ok ()
+        | _ -> Error "expected typed labeled tuple pattern");
     Test.case "cst match cases preserve unreachable expressions" (fun () ->
         let source =
           "let absurd maybe = match maybe with | Some value -> value | None -> .\n"
@@ -3994,10 +4135,18 @@ let tests =
                                           {
                                             elements =
                                               [
-                                                Syn.Cst.Pattern.Identifier
-                                                  { name_token = head_name; _ };
-                                                Syn.Cst.Pattern.Wildcard _;
+                                                {
+                                                  pattern =
+                                                    Syn.Cst.Pattern.Identifier
+                                                      { name_token = head_name; _ };
+                                                  _;
+                                                };
+                                                {
+                                                  pattern = Syn.Cst.Pattern.Wildcard _;
+                                                  _;
+                                                };
                                               ];
+                                            open_tail = None;
                                             _;
                                           };
                                       _;
@@ -4649,9 +4798,15 @@ let tests =
                                             {
                                               elements =
                                                 [
-                                                  Syn.Cst.Pattern.Identifier { name_token; _ };
+                                                  {
+                                                    pattern =
+                                                      Syn.Cst.Pattern.Identifier
+                                                        { name_token; _ };
+                                                    _;
+                                                  };
                                                   _;
                                                 ];
+                                              open_tail = None;
                                               _;
                                             };
                                         _;
