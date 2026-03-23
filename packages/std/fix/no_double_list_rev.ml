@@ -9,7 +9,6 @@ let package_rule_id = package_name ^ ":no-double-list-rev"
 let explanation =
   Api.Explanation.
     {
-      code = "std:f0006";
       rule_id = package_rule_id;
       title = "Avoid double List.rev";
       message = "List.rev (List.rev xs) cancels itself out and should be simplified.";
@@ -78,9 +77,8 @@ let diagnostic_for_expression = function
                    ~kind:
                      (Api.Diagnostic.Known
                         {
-                          code = explanation.code;
-                          rule_id = explanation.rule_id;
-                          message = explanation.message;
+                          rule_id = explanation.Api.Explanation.rule_id;
+                          message = explanation.Api.Explanation.message;
                         })
                    ~span:(outer.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
                    ~suggestion:
@@ -109,7 +107,6 @@ let check_tree (ctx : Api.Rule.context) _red_root =
       |> List.filter_map diagnostic_for_expression
 
 let rule () =
-  Api.Rule.make ~id:package_rule_id ~code:explanation.code
-    ~name:"No Double List.rev"
+  Api.Rule.make ~id:package_rule_id
     ~description:"Double List.rev calls should be simplified"
     ~explain:explanation.body ~run:check_tree ()

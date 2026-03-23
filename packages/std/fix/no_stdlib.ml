@@ -5,6 +5,8 @@ module Api = Tusk_fix_api
 
 let package_name = "std"
 let package_rule_id = package_name ^ ":no-stdlib"
+let rule_description =
+  "Detect direct Stdlib, Unix, Sys, and Pervasives usage from the Std package boundary"
 
 let unix_body =
   {|
@@ -61,62 +63,30 @@ What to do instead:
 - Replace direct Pervasives references with Std.
 |}
 
-let unix_explanation =
+let rule_explain =
+  String.concat "\n\n"
+    [
+      unix_body;
+      sys_body;
+      stdlib_body;
+      pervasives_body;
+    ]
+
+let explanation =
   Api.Explanation.
     {
-      code = "std:f0001";
       rule_id = package_rule_id;
-      title = "Direct Unix usage";
-      body = unix_body;
-      message =
-        "Direct usage of Unix is discouraged. Use package-owned Riot abstractions instead.";
+      title = "No OCaml Stdlib";
+      body = rule_explain;
+      message = rule_description;
     }
 
-let sys_explanation =
-  Api.Explanation.
-    {
-      code = "std:f0002";
-      rule_id = package_rule_id;
-      title = "Direct Sys usage";
-      body = sys_body;
-      message =
-        "Direct usage of Sys is discouraged. Use package-owned Riot abstractions instead.";
-    }
-
-let stdlib_explanation =
-  Api.Explanation.
-    {
-      code = "std:f0003";
-      rule_id = package_rule_id;
-      title = "Direct Stdlib usage";
-      body = stdlib_body;
-      message = "Direct usage of Stdlib is discouraged. Use Std instead.";
-    }
-
-let pervasives_explanation =
-  Api.Explanation.
-    {
-      code = "std:f0004";
-      rule_id = package_rule_id;
-      title = "Direct Pervasives usage";
-      body = pervasives_body;
-      message = "Direct usage of Pervasives is discouraged. Use Std instead.";
-    }
-
-let explanations () =
-  [ unix_explanation; sys_explanation; stdlib_explanation; pervasives_explanation ]
+let explanations () = [ explanation ]
 
 let forbidden_modules = [ "Stdlib"; "Pervasives"; "Unix"; "Sys" ]
 
 let replacement_for = function
   | "Stdlib" | "Pervasives" -> Some "Std"
-  | _ -> None
-
-let explanation_for_module = function
-  | "Unix" -> Some unix_explanation
-  | "Sys" -> Some sys_explanation
-  | "Stdlib" -> Some stdlib_explanation
-  | "Pervasives" -> Some pervasives_explanation
   | _ -> None
 
 let make_message text =
@@ -149,16 +119,7 @@ let make_diagnostic token =
   let suggestion = make_suggestion text in
   let fix = replacement_for text |> Option.map (make_fix token) in
   let kind =
-    match explanation_for_module text with
-    | Some entry ->
-        Api.Diagnostic.Known
-          {
-            code = entry.code;
-            rule_id = entry.rule_id;
-            message = entry.message;
-          }
-    | None ->
-        Api.Diagnostic.Generic { rule_id = package_rule_id; message = make_message text }
+    Api.Diagnostic.Known { rule_id = package_rule_id; message = make_message text }
   in
   Api.Diagnostic.make ~severity:Warning ~kind
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
@@ -238,9 +199,5 @@ let check_tree (_ctx : Api.Rule.context) red_root =
        ])
 
 let rule () =
-  Api.Rule.make ~id:package_rule_id ~name:"No OCaml Stdlib"
-    ~description:
-      "Detects direct Stdlib, Unix, Sys, and Pervasives usage from the Std package boundary"
-    ~explain:
-      "The std package should not reference Stdlib, Unix, Sys, or Pervasives directly. Use Std or boundary-owning Riot packages instead."
-    ~run:check_tree ()
+  Api.Rule.make ~id:package_rule_id ~description:rule_description
+    ~explain:rule_explain ~run:check_tree ()

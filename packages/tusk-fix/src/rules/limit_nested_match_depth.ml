@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "limit-nested-match-depth"
-let rule_name = "Limit Nested Match Depth"
-let rule_code = "F0135"
-
 let rule_description =
   "Deep towers of nested match expressions should be flattened"
-
-let rule_message =
-  "Deep towers of nested match expressions should be flattened."
 
 let rule_explain =
   {|
@@ -109,7 +103,7 @@ let rec match_chain_depth = function
 
 let make_diagnostic (expr : Syn.Cst.match_expression) depth =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
     ~suggestion:
       ("Reduce nested match depth from " ^ Int.to_string depth
@@ -146,6 +140,5 @@ let check_tree (ctx : Rule.context) _red_root =
                (Syn.Cst.LetBinding.value binding))
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

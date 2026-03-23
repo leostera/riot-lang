@@ -15,13 +15,13 @@ let command =
          flag "list-rules" |> long "list-rules"
          |> help "List all available rules in the current tusk-fix runtime";
          flag "list-diagnostics" |> long "list-diagnostics"
-         |> help "List all available diagnostic codes in the current tusk-fix runtime";
+         |> help "List all available diagnostics in the current tusk-fix runtime";
          flag "check" |> long "check"
          |> help "Check for fixable issues without modifying files";
          option "limit" |> long "limit"
          |> help "Stop after surfacing at most N diagnostics";
          option "explain" |> long "explain"
-         |> help "Explain a diagnostic code (e.g. F0001 or std:f0001)";
+         |> help "Explain a rule id (e.g. riot:snake-case-type-names or std:no-stdlib)";
          option "format" |> long "format"
          |> possible_values [ "text"; "json" ]
          |> help "Output format (text or json)";
@@ -176,12 +176,12 @@ let print_text_summary mode summary =
          ^ Int.to_string summary.changed_files ^ " files; "
          ^ Int.to_string summary.remaining_diagnostics ^ " issues remain")
 
-let explain_code code =
-  match Explanations.explain code with
+let explain_rule rule_id =
+  match Explanations.explain rule_id with
   | Some entry ->
       print (Explanations.format entry);
       Ok ()
-  | None -> Error (Failure ("Unknown tusk-fix diagnostic code: " ^ code))
+  | None -> Error (Failure ("Unknown tusk-fix rule id: " ^ rule_id))
 
 let split_rule_id rule_id =
   match String.index_opt rule_id ':' with
@@ -199,9 +199,12 @@ let compare_package_name left right =
   | true, false -> -1
   | false, true -> 1
 
-let display_rule_id rule =
-  let package_name, local_id = split_rule_id (Rule.id rule) in
+let display_rule_id_text rule_id =
+  let package_name, local_id = split_rule_id rule_id in
   package_name ^ ":" ^ local_id
+
+let display_rule_id rule =
+  display_rule_id_text (Rule.id rule)
 
 let sorted_rules () =
   Pipeline.default_rules ()
@@ -217,15 +220,9 @@ let sorted_rules () =
 let sorted_diagnostics () =
   Explanations.all ()
   |> List.sort (fun left right ->
-         let code_cmp =
-           String.compare
-             (String.lowercase_ascii left.Explanation.code)
-             (String.lowercase_ascii right.Explanation.code)
-         in
-         if code_cmp != 0 then
-           code_cmp
-         else
-           String.compare left.rule_id right.rule_id)
+         String.compare
+           (display_rule_id_text left.Explanation.rule_id)
+           (display_rule_id_text right.Explanation.rule_id))
 
 let rule_to_json rule =
   let open Data.Json in
@@ -240,9 +237,8 @@ let diagnostic_to_json entry =
   let open Data.Json in
   Object
     [
-      ("code", string entry.Explanation.code);
-      ("rule_id", string entry.rule_id);
-      ("message", string entry.message);
+      ("rule_id", string (display_rule_id_text entry.Explanation.rule_id));
+      ("message", string entry.Explanation.message);
     ]
 
 let list_rules_text rules =
@@ -269,8 +265,8 @@ let list_diagnostics_text entries =
   let bold text = "\027[1m" ^ text ^ "\027[0m" in
   entries
   |> List.map (fun entry ->
-         bold (String.lowercase_ascii entry.Explanation.code)
-         ^ " (" ^ entry.rule_id ^ ") - " ^ entry.message)
+         bold (display_rule_id_text entry.Explanation.rule_id)
+         ^ " - " ^ entry.Explanation.message)
   |> String.concat "\n"
 
 let list_rules_output ~format =
@@ -413,7 +409,7 @@ let run matches =
       with
       | true, _, _ -> list_rules format
       | false, true, _ -> list_diagnostics format
-      | false, false, Some code -> explain_code code
+      | false, false, Some code -> explain_rule code
       | false, false, None ->
           let target = resolve_target matches in
           let files =

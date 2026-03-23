@@ -2,7 +2,7 @@ open Std
 
 let builtin_entries () =
   Pipeline.builtin_rules ()
-  |> List.filter_map Rule.explanation
+  |> List.map Rule.explanation
 
 let package_entries () =
   Provider_registry.providers ()
@@ -11,7 +11,18 @@ let package_entries () =
 let all () =
   builtin_entries () @ package_entries ()
 
-let explain code =
-  all () |> List.find_opt (fun entry -> String.equal entry.Explanation.code code)
+let normalize_rule_id rule_id =
+  let riot_prefix = "riot:" in
+  if String.starts_with ~prefix:riot_prefix rule_id then
+    String.sub rule_id (String.length riot_prefix)
+      (String.length rule_id - String.length riot_prefix)
+  else
+    rule_id
+
+let explain rule_id =
+  let normalized = normalize_rule_id rule_id in
+  all ()
+  |> List.find_opt (fun entry ->
+         String.equal entry.Explanation.rule_id normalized)
 
 let format = Explanation.format

@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "ordered-argument-kinds"
-let rule_name = "Ordered Argument Kinds"
-let rule_code = "F0111"
-
 let rule_description =
   "Function parameters should be ordered as labeled, then optional, then positional"
-
-let rule_message =
-  "Order function parameters as labeled, then optional, then positional."
 
 let rule_explain =
   {|
@@ -42,7 +36,7 @@ let parameter_span parameter =
 let make_diagnostic parameter =
   let current_kind = kind_name parameter in
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(parameter_span parameter)
     ~suggestion:
       ("Move this " ^ current_kind
@@ -77,6 +71,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_binding
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

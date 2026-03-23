@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "prefer-if-over-bool-match"
-let rule_name = "Prefer If Over Bool Match"
-let rule_code = "F0132"
-
 let rule_description =
   "Matching on booleans should be written as `if` expressions"
-
-let rule_message =
-  "Replace boolean matches with `if` expressions."
 
 let rule_explain =
   {|
@@ -117,7 +111,7 @@ let should_flag_match (expr : Syn.Cst.match_expression) =
 
 let make_diagnostic (expr : Syn.Cst.match_expression) =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:(suggestion_for_match expr)
     ()
@@ -141,6 +135,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_expression
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

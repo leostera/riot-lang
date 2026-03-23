@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "no-function-shorthand"
-let rule_name = "No Function Shorthand"
-let rule_code = "F0122"
-
 let rule_description =
   "Named functions should avoid `function` shorthand and use explicit parameters instead"
-
-let rule_message =
-  "Named functions should avoid `function` shorthand and use explicit parameters instead."
 
 let rule_explain =
   {|
@@ -26,7 +20,7 @@ Examples:
 
 let make_diagnostic binding =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.LetBinding.value_syntax_node binding))
     ~suggestion:"Use explicit parameters with `let name x = ...` or `let name = fun x -> ...`"
     ()
@@ -49,6 +43,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_binding
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

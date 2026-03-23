@@ -4,7 +4,6 @@ type severity = Error | Warning | Info | Hint
 
 type kind =
   | Known of {
-      code : string;
       rule_id : string;
       message : string;
     }
@@ -36,12 +35,6 @@ let span diag = diag.span
 let rule_id = function
   | { kind = Known { rule_id; _ }; _ } -> rule_id
   | { kind = Generic { rule_id; _ }; _ } -> rule_id
-
-let code = function
-  | { kind = Known { code; _ }; _ } -> Some code
-  | { kind = Generic _; _ } -> None
-
-let code_id diag = code diag
 
 let suggestion diag = diag.suggestion
 let fix diag = diag.fix

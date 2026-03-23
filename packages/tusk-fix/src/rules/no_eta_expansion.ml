@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "no-eta-expansion"
-let rule_name = "No Eta Expansion"
-let rule_code = "F0137"
-
 let rule_description =
   "Eta-expanded functions should be replaced by the function they call"
-
-let rule_message =
-  "Eta-expanded functions should be replaced by the function they call."
 
 let rule_explain =
   {|
@@ -152,7 +146,7 @@ let should_flag_fun (expr : Syn.Cst.fun_expression) =
 
 let make_diagnostic (expr : Syn.Cst.fun_expression) =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
     ~suggestion:"Replace this eta-expanded function with the callee directly."
     ()
@@ -175,6 +169,5 @@ let check_tree (ctx : Rule.context) _red_root =
              diagnostic_for_expression (Syn.Cst.LetBinding.value binding))
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

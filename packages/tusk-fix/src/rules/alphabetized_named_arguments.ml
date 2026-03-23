@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "alphabetized-named-arguments"
-let rule_name = "Alphabetized Named Arguments"
-let rule_code = "F0113"
-
 let rule_description =
   "Labeled and optional arguments should be alphabetized within their groups"
-
-let rule_message =
-  "Keep labeled and optional arguments alphabetically sorted within their groups."
 
 let rule_explain =
   {|
@@ -31,7 +25,7 @@ let parameter_span parameter =
 let make_diagnostic ~previous_name parameter =
   let current_name = parameter_name parameter in
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(parameter_span parameter)
     ~suggestion:
       ("Place " ^ current_name ^ " before " ^ previous_name
@@ -90,6 +84,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_binding
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

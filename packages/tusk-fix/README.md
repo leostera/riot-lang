@@ -22,20 +22,18 @@ Rules can be built in or provided by workspace packages. Package-provided rules
 are fused into a generated runtime under `_build`, so `tusk-fix` does not spawn
 one subprocess per rule.
 
-## Rule ids vs diagnostic codes
+## Rule ids
 
-These are distinct concepts:
+Rules are keyed by rule id:
 
-- a **rule id** identifies the checker, for example `riot:snake-case-type-names`
-- a **diagnostic code** identifies a concrete finding, for example `f0101` or
-  `std:f0001`
+- built-in rules are shown as `riot:<id>`
+- package rules keep their package-qualified ids such as `std:no-stdlib`
 
-Many rules emit exactly one diagnostic code, but the CLI keeps the surfaces
-separate on purpose:
+The CLI exposes that same surface consistently:
 
 - `--list-rules` lists rules
-- `--list-diagnostics` lists diagnostic codes
-- `--explain CODE` explains a diagnostic code
+- `--list-diagnostics` lists the currently loaded diagnostics
+- `--explain RULE_ID` explains a rule
 
 Explain text lives with the rule definition, not in a central registry package.
 
@@ -57,9 +55,9 @@ tusk run tusk -- fix packages/tusk-fix
 tusk run tusk -- fix --list-rules
 tusk run tusk -- fix --list-diagnostics
 
-# explain a diagnostic code
-tusk run tusk -- fix --explain F0101
-tusk run tusk -- fix --explain std:f0001
+# explain a rule
+tusk run tusk -- fix --explain riot:snake-case-type-names
+tusk run tusk -- fix --explain std:no-stdlib
 ```
 
 ## Rule authoring
@@ -76,8 +74,6 @@ At a high level:
 let make () =
   Rule.make
     ~id:"snake-case-type-names"
-    ~code:"F0101"
-    ~name:"Snake-case Type Names"
     ~description:"Type names should use snake_case instead of camelCase"
     ~explain:"Prefer snake_case type names so declarations read consistently."
     ~run:(fun context red_root ->

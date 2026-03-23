@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "no-redundant-begin-end"
-let rule_name = "No Redundant Begin End"
-let rule_code = "F0139"
-
 let rule_description =
   "begin/end blocks should be replaced by ordinary grouping or removed"
-
-let rule_message =
-  "Replace begin/end blocks with ordinary grouping or remove them."
 
 let rule_explain =
   {|
@@ -40,7 +34,7 @@ let opens_with_begin ({ syntax_node; _ } : Syn.Cst.parenthesized_expression) =
 
 let make_diagnostic ({ syntax_node; _ } : Syn.Cst.parenthesized_expression) =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
     ~suggestion:"Replace begin/end with ordinary grouping or remove it entirely."
     ()
@@ -60,6 +54,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_expression
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

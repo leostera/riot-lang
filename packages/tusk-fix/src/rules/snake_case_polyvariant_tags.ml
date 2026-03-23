@@ -2,14 +2,8 @@ open Std
 open Std.Collections
 
 let rule_id = "snake-case-polyvariant-tags"
-let rule_name = "Snake Case Polyvariant Tags"
-let rule_code = "F0116"
-
 let rule_description =
   "Polymorphic variant tags should use snake_case instead of camelCase"
-
-let rule_message =
-  "Polymorphic variant tags should use snake_case instead of camelCase."
 
 let rule_explain =
   {|
@@ -51,7 +45,7 @@ let make_diagnostic token =
   let original = Syn.Ceibo.Red.SyntaxToken.text token in
   let replacement = to_snake_case original in
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
     ()
@@ -90,6 +84,5 @@ let check_tree (ctx : Rule.context) _red_root =
   | Some source_file -> diagnostics_for_items source_file
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

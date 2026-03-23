@@ -2,14 +2,8 @@ open Std
 open Std.Collections
 
 let rule_id = "no-inline-parameter-type-annotations"
-let rule_name = "No Inline Parameter Type Annotations"
-let rule_code = "F0121"
-
 let rule_description =
   "Function parameter type annotations should live in the function signature, not inline on each parameter"
-
-let rule_message =
-  "Function parameter type annotations should live in the function signature, not inline on each parameter."
 
 let rule_explain =
   {|
@@ -41,7 +35,7 @@ let parameter_has_inline_type parameter =
 
 let make_diagnostic parameter =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Parameter.syntax_node parameter))
     ~suggestion:"Move the parameter type annotation into the function signature"
     ()
@@ -62,6 +56,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_binding
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

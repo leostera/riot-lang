@@ -31,17 +31,102 @@ let with_tempdir prefix fn =
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
+let legacy_code_to_rule_id = function
+  | "F0101" -> "snake-case-type-names"
+  | "F0102" -> "descriptive-type-variables"
+  | "F0103" -> "snake-case-function-names"
+  | "F0104" -> "class-case-module-names"
+  | "F0105" -> "snake-case-variable-names"
+  | "F0106" -> "no-prime-variables"
+  | "F0110" -> "snake-case-argument-names"
+  | "F0111" -> "ordered-argument-kinds"
+  | "F0112" -> "t-first-named-arguments"
+  | "F0113" -> "alphabetized-named-arguments"
+  | "F0114" -> "snake-case-record-fields"
+  | "F0115" -> "class-case-constructors"
+  | "F0116" -> "snake-case-polyvariant-tags"
+  | "F0117" -> "avoid-single-letter-function-names"
+  | "F0118" -> "avoid-single-letter-type-names"
+  | "F0119" -> "prefer-multiline-string-literals"
+  | "F0120" -> "no-custom-operators"
+  | "F0121" -> "no-inline-parameter-type-annotations"
+  | "F0122" -> "no-function-shorthand"
+  | "F0123" -> "limit-function-parameters"
+  | "F0124" -> "limit-parenthesis-depth"
+  | "F0125" -> "no-open-bang"
+  | "F0126" -> "limit-open-statements"
+  | "F0127" -> "no-unnecessary-rec"
+  | "F0128" -> "no-redundant-else-unit"
+  | "F0129" -> "prefer-pipelines-for-nested-calls"
+  | "F0130" -> "no-boolean-comparisons-in-conditionals"
+  | "F0131" -> "prefer-sequences-over-let-unit"
+  | "F0132" -> "prefer-if-over-bool-match"
+  | "F0133" -> "no-useless-let-return"
+  | "F0134" -> "no-exn-suffix-functions"
+  | "F0135" -> "limit-nested-match-depth"
+  | "F0136" -> "no-redundant-parentheses"
+  | "F0137" -> "no-eta-expansion"
+  | "F0138" -> "no-redundant-reraise"
+  | "F0139" -> "no-redundant-begin-end"
+  | "F0140" -> "prefer-scoped-field-access"
+  | "F0141" -> "no-public-mutable-fields"
+  | rule_id -> rule_id
+
+let legacy_code_of_rule_id = function
+  | "snake-case-type-names" -> "F0101"
+  | "descriptive-type-variables" -> "F0102"
+  | "snake-case-function-names" -> "F0103"
+  | "class-case-module-names" -> "F0104"
+  | "snake-case-variable-names" -> "F0105"
+  | "no-prime-variables" -> "F0106"
+  | "snake-case-argument-names" -> "F0110"
+  | "ordered-argument-kinds" -> "F0111"
+  | "t-first-named-arguments" -> "F0112"
+  | "alphabetized-named-arguments" -> "F0113"
+  | "snake-case-record-fields" -> "F0114"
+  | "class-case-constructors" -> "F0115"
+  | "snake-case-polyvariant-tags" -> "F0116"
+  | "avoid-single-letter-function-names" -> "F0117"
+  | "avoid-single-letter-type-names" -> "F0118"
+  | "prefer-multiline-string-literals" -> "F0119"
+  | "no-custom-operators" -> "F0120"
+  | "no-inline-parameter-type-annotations" -> "F0121"
+  | "no-function-shorthand" -> "F0122"
+  | "limit-function-parameters" -> "F0123"
+  | "limit-parenthesis-depth" -> "F0124"
+  | "no-open-bang" -> "F0125"
+  | "limit-open-statements" -> "F0126"
+  | "no-unnecessary-rec" -> "F0127"
+  | "no-redundant-else-unit" -> "F0128"
+  | "prefer-pipelines-for-nested-calls" -> "F0129"
+  | "no-boolean-comparisons-in-conditionals" -> "F0130"
+  | "prefer-sequences-over-let-unit" -> "F0131"
+  | "prefer-if-over-bool-match" -> "F0132"
+  | "no-useless-let-return" -> "F0133"
+  | "no-exn-suffix-functions" -> "F0134"
+  | "limit-nested-match-depth" -> "F0135"
+  | "no-redundant-parentheses" -> "F0136"
+  | "no-eta-expansion" -> "F0137"
+  | "no-redundant-reraise" -> "F0138"
+  | "no-redundant-begin-end" -> "F0139"
+  | "prefer-scoped-field-access" -> "F0140"
+  | "no-public-mutable-fields" -> "F0141"
+  | rule_id -> rule_id
+
 let diagnostic_codes diagnostics =
   diagnostics
-  |> List.filter_map Tusk_fix.Diagnostic.code
+  |> List.map Tusk_fix.Diagnostic.rule_id
+  |> List.map legacy_code_of_rule_id
   |> List.sort String.compare
 
 let assert_explanation_contains ~code ~snippet =
-  match Tusk_fix.Explanations.explain code with
+  let rule_id = legacy_code_to_rule_id code in
+  match Tusk_fix.Explanations.explain rule_id with
   | None -> Error ("Expected explanation for " ^ code)
   | Some entry ->
-      Test.assert_equal ~expected:code ~actual:entry.code;
-      Test.assert_true (String.contains entry.body snippet);
+      Test.assert_equal ~expected:rule_id
+        ~actual:entry.Tusk_fix.Explanation.rule_id;
+      Test.assert_true (String.contains entry.Tusk_fix.Explanation.body snippet);
       Ok ()
 
 let tests =
@@ -1259,18 +1344,19 @@ let render x y z =
         in
         Test.assert_true
           (String.contains output
-             "\027[1mf0101\027[0m (snake-case-type-names) - Type names should use snake_case instead of camelCase.");
+             "\027[1mriot:snake-case-type-names\027[0m - Type names should use snake_case instead of camelCase");
         Test.assert_true
           (String.contains output
-             "\027[1mf0102\027[0m (descriptive-type-variables) - Avoid one-letter type variable names like 'a or 'b in type definitions.");
+             "\027[1mriot:descriptive-type-variables\027[0m - Type variables in type definitions should use descriptive names instead of short placeholders");
         Ok ());
     Test.case "cli list-diagnostics json output includes builtin and package diagnostics" (fun () ->
         let output =
           Tusk_fix.Cli.list_diagnostics_output ~format:Tusk_fix.Reporter.Json
         in
-        Test.assert_true (String.contains output "\"code\":\"F0101\"");
-        Test.assert_true (String.contains output "\"rule_id\":\"snake-case-type-names\"");
-        Test.assert_true (String.contains output "\"code\":\"F0102\"");
+        Test.assert_true
+          (String.contains output "\"rule_id\":\"riot:snake-case-type-names\"");
+        Test.assert_true
+          (String.contains output "\"rule_id\":\"riot:descriptive-type-variables\"");
         Ok ());
     Test.case "cli run_result stops after the requested diagnostic limit" (fun () ->
         with_tempdir "tusk_fix_limit" (fun tmpdir ->

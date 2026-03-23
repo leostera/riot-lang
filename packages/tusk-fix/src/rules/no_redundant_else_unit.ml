@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "no-redundant-else-unit"
-let rule_name = "No Redundant Else Unit"
-let rule_code = "F0128"
-
 let rule_description =
   "Else branches that only return unit should be omitted"
-
-let rule_message =
-  "Remove else () from if expressions whose else branch does nothing."
 
 let rule_explain =
   {|
@@ -32,7 +26,7 @@ let rec is_unit_expression = function
 
 let make_diagnostic (expr : Syn.Cst.if_expression) =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:"Remove else () from this if expression."
     ()
@@ -55,6 +49,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_expression
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

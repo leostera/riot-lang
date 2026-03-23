@@ -10,8 +10,9 @@
 4. `tusk fix` applies only fixes with clear package-owned replacements; ambiguous migrations stay diagnostics-only.
 5. Package-provided rules are fused into a generated runtime under `_build`; avoid designs that require one subprocess per rule or per file.
 6. Shared rule-authoring types live in `tusk-fix-api`; keep `tusk-fix` runtime/reporting helpers layered on top of that shared surface.
-7. Explain text belongs with the rule definition. `tusk-fix-api` should carry string codes and explanation types, not a built-in diagnostic-code registry.
-8. `--list-rules` is rule-oriented and `--list-diagnostics` is diagnostic-oriented; keep that distinction clear in CLI and reporting code.
+7. Explain text belongs with the rule definition. `tusk-fix-api` should carry rule ids, descriptions, and explanation types, not a built-in diagnostic-code registry.
+8. `--explain` works on rule ids. Keep the CLI surfaces user-facing and consistent about package-qualified ids like `riot:snake-case-type-names`.
+9. `--list-rules` is rule-oriented and `--list-diagnostics` is diagnostic-oriented; today they are both keyed by rule id because each built-in rule emits one diagnostic kind.
 
 ## Validate
 

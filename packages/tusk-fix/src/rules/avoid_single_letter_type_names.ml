@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "avoid-single-letter-type-names"
-let rule_name = "Avoid Single-Letter Type Names"
-let rule_code = "F0118"
-
 let rule_description =
   "Type names should be descriptive instead of using single-letter placeholders, except for t"
-
-let rule_message =
-  "Type names should be descriptive instead of using single-letter placeholders, except for t."
 
 let rule_explain =
   {|
@@ -30,7 +24,7 @@ let should_flag_type_name name =
 let make_diagnostic token =
   let original = Syn.Ceibo.Red.SyntaxToken.text token in
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:("Rename " ^ original ^ " to a descriptive type name")
     ()
@@ -64,6 +58,5 @@ let check_tree (ctx : Rule.context) _red_root =
   | Some source_file -> diagnostics_for_items source_file
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

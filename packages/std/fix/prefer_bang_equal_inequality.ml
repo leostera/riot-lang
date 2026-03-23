@@ -9,7 +9,6 @@ let package_rule_id = package_name ^ ":prefer-bang-equal-inequality"
 let explanation =
   Api.Explanation.
     {
-      code = "std:f0005";
       rule_id = package_rule_id;
       title = "Prefer != for inequality";
       message = "Use != instead of <> for inequality.";
@@ -46,9 +45,8 @@ let make_diagnostic token =
     ~kind:
       (Api.Diagnostic.Known
          {
-           code = explanation.code;
-           rule_id = explanation.rule_id;
-           message = explanation.message;
+           rule_id = explanation.Api.Explanation.rule_id;
+           message = explanation.Api.Explanation.message;
          })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:"Replace <> with !=."
@@ -72,7 +70,6 @@ let check_tree (ctx : Api.Rule.context) _red_root =
            | _ -> None)
 
 let rule () =
-  Api.Rule.make ~id:package_rule_id ~code:explanation.code
-    ~name:"Prefer != for inequality"
+  Api.Rule.make ~id:package_rule_id
     ~description:"Prefer != over <> for inequality checks"
     ~explain:explanation.body ~run:check_tree ()

@@ -2,14 +2,8 @@ open Std
 open Std.Collections
 
 let rule_id = "limit-open-statements"
-let rule_name = "Limit Open Statements"
-let rule_code = "F0126"
-
 let rule_description =
   "Prefer no more than two open statements per file"
-
-let rule_message =
-  "Too many open statements make names harder to track; prefer explicit qualification."
 
 let rule_explain =
   {|
@@ -62,7 +56,7 @@ let diagnostic_for_open_count opens =
           (Diagnostic.make ~severity:Warning
              ~kind:
                (Diagnostic.Known
-                  { code = rule_code; rule_id; message = rule_message })
+                  { rule_id; message = rule_description })
              ~span:
                (Syn.Cst.OpenStatement.syntax_node third_open
                |> Syn.Ceibo.Red.SyntaxNode.span)
@@ -80,6 +74,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> Option.to_list
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "prefer-pipelines-for-nested-calls"
-let rule_name = "Prefer Pipelines For Nested Calls"
-let rule_code = "F0129"
-
 let rule_description =
   "Deeply nested function calls should usually be written as pipelines"
-
-let rule_message =
-  "Prefer pipelines over deeply nested function calls."
 
 let rule_explain =
   {|
@@ -45,7 +39,7 @@ let threshold = 4
 
 let make_diagnostic expr =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
     ~suggestion:"Rewrite this call chain as a pipeline."
     ()
@@ -66,6 +60,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_expression
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

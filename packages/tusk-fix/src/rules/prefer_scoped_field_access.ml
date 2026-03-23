@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "prefer-scoped-field-access"
-let rule_name = "Prefer Scoped Field Access"
-let rule_code = "F0140"
-
 let rule_description =
   "Module-qualified field access should use Module.(value.field) style"
-
-let rule_message =
-  "Prefer Module.(value.field) over value.Module.field."
 
 let rule_explain =
   {|
@@ -51,7 +45,7 @@ let receiver_looks_like_record = function
 
 let make_diagnostic ({ syntax_node; _ } : Syn.Cst.field_access_expression) =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
     ~suggestion:"Prefer Module.(value.field) style for module-qualified record access."
     ()
@@ -83,6 +77,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_expression
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

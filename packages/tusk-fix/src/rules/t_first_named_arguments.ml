@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "t-first-named-arguments"
-let rule_name = "T-First Named Arguments"
-let rule_code = "F0112"
-
 let rule_description =
   "When named arguments are present, keep t as the first positional argument"
-
-let rule_message =
-  "When a function takes t with named arguments, keep t first among positional arguments."
 
 let rule_explain =
   {|
@@ -29,7 +23,7 @@ let parameter_span parameter =
 
 let make_diagnostic parameter =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(parameter_span parameter)
     ~suggestion:
       "Move t to the front of the positional arguments so the function reads as named configuration followed by the receiver"
@@ -79,6 +73,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_binding
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

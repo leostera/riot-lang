@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "no-redundant-parentheses"
-let rule_name = "No Redundant Parentheses"
-let rule_code = "F0136"
-
 let rule_description =
   "Obvious grouping parentheses should be removed"
-
-let rule_message =
-  "Obvious grouping parentheses should be removed."
 
 let rule_explain =
   {|
@@ -115,7 +109,7 @@ let is_obviously_redundant = function
 
 let make_diagnostic (expr : Syn.Cst.parenthesized_expression) =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
     ~suggestion:"Remove these redundant parentheses."
     ()
@@ -150,6 +144,5 @@ let check_tree (ctx : Rule.context) _red_root =
                (Syn.Cst.LetBinding.value binding))
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

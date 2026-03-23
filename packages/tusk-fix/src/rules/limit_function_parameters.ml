@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "limit-function-parameters"
-let rule_name = "Limit Function Parameters"
-let rule_code = "F0123"
-
 let rule_description =
   "Functions should keep parameter counts small so call sites stay readable"
-
-let rule_message =
-  "Functions should keep parameter counts small so call sites stay readable."
 
 let rule_explain =
   {|
@@ -69,7 +63,7 @@ let make_diagnostic binding counts =
       Some
         (Diagnostic.make ~severity:Warning
            ~kind:
-             (Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+             (Diagnostic.Known { rule_id; message = rule_description })
            ~span:(Syn.Cst.Token.span token)
            ~suggestion:
              ("This function has "
@@ -97,6 +91,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_binding
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

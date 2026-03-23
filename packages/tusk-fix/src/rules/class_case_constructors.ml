@@ -2,14 +2,8 @@ open Std
 open Std.Collections
 
 let rule_id = "class-case-constructors"
-let rule_name = "Class Case Constructors"
-let rule_code = "F0115"
-
 let rule_description =
   "Variant constructors should use ClassCase instead of underscores"
-
-let rule_message =
-  "Variant constructors should use ClassCase without underscores."
 
 let rule_explain =
   {|
@@ -59,13 +53,13 @@ let make_diagnostic token =
   let original = Syn.Ceibo.Red.SyntaxToken.text token in
   let replacement = to_class_case original in
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
     ()
 
 let diagnostics_for_decl = function
-  | Syn.Cst.TypeDeclaration.{ type_definition = Syn.Cst.TypeDefinition.Variant constructors; _ } ->
+  | Syn.Cst.TypeDeclaration.{ type_definition = Syn.Cst.TypeDefinition.Variant { constructors; _ }; _ } ->
       constructors
       |> List.filter_map (fun constructor ->
              let name = Syn.Cst.VariantConstructor.name constructor in
@@ -98,6 +92,5 @@ let check_tree (ctx : Rule.context) _red_root =
   | Some source_file -> diagnostics_for_items source_file
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

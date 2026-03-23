@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "no-boolean-comparisons-in-conditionals"
-let rule_name = "No Boolean Comparisons In Conditionals"
-let rule_code = "F0130"
-
 let rule_description =
   "Boolean conditions should not be compared explicitly to true or false"
-
-let rule_message =
-  "Compare booleans directly in conditionals instead of checking them against true or false."
 
 let rule_explain =
   {|
@@ -76,7 +70,7 @@ let suggestion_for_condition expr =
 
 let make_diagnostic (if_expr : Syn.Cst.if_expression) =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span if_expr.syntax_node)
     ~suggestion:(suggestion_for_condition if_expr.condition)
     ()
@@ -97,6 +91,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_expression
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

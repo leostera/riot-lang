@@ -2,14 +2,8 @@ open Std
 open Std.Collections
 
 let rule_id = "no-prime-variables"
-let rule_name = "No Prime Variables"
-let rule_code = "F0106"
-
 let rule_description =
   "Variable names should not contain apostrophes"
-
-let rule_message =
-  "Avoid apostrophes in variable names; prefer a descriptive suffix."
 
 let rule_explain =
   {|
@@ -43,7 +37,7 @@ let make_diagnostic token =
   let original = Syn.Ceibo.Red.SyntaxToken.text token in
   let replacement = replacement_for original in
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
     ()
@@ -68,6 +62,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_binding_site
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()

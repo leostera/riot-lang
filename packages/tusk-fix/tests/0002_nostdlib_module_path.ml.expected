@@ -22,7 +22,6 @@
             "end": 15
           },
           "rule_id": "std:no-stdlib",
-          "code": "std:f0001",
           "suggestion": null,
           "fix": null
         },
@@ -34,7 +33,6 @@
             "end": 76
           },
           "rule_id": "std:no-stdlib",
-          "code": "std:f0002",
           "suggestion": null,
           "fix": null
         }

@@ -1,14 +1,8 @@
 open Std
 
 let rule_id = "no-redundant-reraise"
-let rule_name = "No Redundant Reraise"
-let rule_code = "F0138"
-
 let rule_description =
   "try handlers that only re-raise the same exception should be removed"
-
-let rule_message =
-  "Remove try handlers that only re-raise the same exception."
 
 let rule_explain =
   {|
@@ -65,7 +59,7 @@ let is_redundant_reraise_case ({ pattern; guard; body; _ } : Syn.Cst.match_case)
 
 let make_diagnostic ({ syntax_node; _ } : Syn.Cst.try_expression) =
   Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { code = rule_code; rule_id; message = rule_message })
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
     ~suggestion:"Remove this try/with and use the body directly."
     ()
@@ -86,6 +80,5 @@ let check_tree (ctx : Rule.context) _red_root =
       |> List.filter_map diagnostic_for_expression
 
 let make () =
-  Rule.make ~id:rule_id ~code:rule_code ~name:rule_name
-    ~description:rule_description ~message:rule_message ~explain:rule_explain
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
     ~run:check_tree ()
