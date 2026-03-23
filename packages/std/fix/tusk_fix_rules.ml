@@ -1,8 +1,16 @@
 let name = "std"
 let rules () =
-  [ No_stdlib.rule (); Prefer_bang_equal_inequality.rule (); No_double_list_rev.rule () ]
+  [
+    No_stdlib.rule ();
+    Prefer_bang_equal_inequality.rule ();
+    No_double_list_rev.rule ();
+    Prefer_iter_over_ignored_map.rule ();
+    Prefer_list_is_empty.rule ();
+  ]
 
 let explanations () =
   No_stdlib.explanations ()
   @ Prefer_bang_equal_inequality.explanations ()
   @ No_double_list_rev.explanations ()
+  @ Prefer_iter_over_ignored_map.explanations ()
+  @ Prefer_list_is_empty.explanations ()

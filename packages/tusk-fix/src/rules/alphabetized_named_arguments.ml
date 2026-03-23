@@ -6,11 +6,17 @@ let rule_description =
 
 let rule_explain =
   {|
-Named arguments should be kept in alphabetical order within their kind groups.
+Alphabetizing named arguments is not about claiming that alphabetical order is
+semantically meaningful. It is about removing arbitrary ordering decisions from APIs so
+readers do not have to wonder whether the order carries meaning when it does not.
 
-Why this rule exists:
-- Alphabetical order removes needless bikeshedding.
-- It also makes it easier to spot missing, duplicated, or newly inserted arguments in code review.
+Once a project adopts a stable ordering, small edits become easier to review.
+Inserted parameters land in an obvious place, missing ones are easier to spot, and
+different modules stop inventing slightly different layouts for the same shape of
+function.
+
+This rule only applies within the named-argument groups. It is there to reduce
+unproductive bikeshedding and make signatures mechanically easier to scan.
 |}
 
 let parameter_name parameter =

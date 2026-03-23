@@ -214,6 +214,20 @@ let sorted_rules () =
          let package_cmp = compare_package_name left_package right_package in
          if package_cmp != 0 then
            package_cmp
+         else if String.equal left_package "riot" then
+           let left_category =
+             Pipeline.builtin_rule_category left_local
+             |> Option.unwrap_or ~default:"Other"
+           in
+           let right_category =
+             Pipeline.builtin_rule_category right_local
+             |> Option.unwrap_or ~default:"Other"
+           in
+           let category_cmp = String.compare left_category right_category in
+           if category_cmp != 0 then
+             category_cmp
+           else
+             String.compare left_local right_local
          else
            String.compare left_local right_local)
 
@@ -226,9 +240,21 @@ let sorted_diagnostics () =
 
 let rule_to_json rule =
   let open Data.Json in
+  let package_name, local_id = split_rule_id (Rule.id rule) in
   Object
     [
-      ("id", string (Rule.id rule));
+      ("id", string (display_rule_id rule));
+      ("local_id", string local_id);
+      ("package", string package_name);
+      ("category",
+       (if String.equal package_name "riot" then
+          match Pipeline.builtin_rule_category local_id with
+          | Some category ->
+              string category
+          | None ->
+              Null
+        else
+          Null));
       ("description", string (Rule.description rule));
       ("enabled", bool (Rule.enabled rule));
     ]
@@ -243,23 +269,41 @@ let diagnostic_to_json entry =
 
 let list_rules_text rules =
   let bold text = "\027[1m" ^ text ^ "\027[0m" in
-  let rec build_lines current_package acc = function
+  let rec build_lines current_package current_category acc = function
     | [] -> List.rev acc
     | rule :: rest ->
-        let package_name, _ = split_rule_id (Rule.id rule) in
-        let acc =
-          match current_package with
-          | Some current when not (String.equal current package_name) ->
-              ""
-              :: (bold (display_rule_id rule) ^ " - " ^ Rule.description rule)
-              :: acc
-          | _ ->
-              (bold (display_rule_id rule) ^ " - " ^ Rule.description rule)
-              :: acc
+        let package_name, local_id = split_rule_id (Rule.id rule) in
+        let category =
+          if String.equal package_name "riot" then
+            Pipeline.builtin_rule_category local_id
+          else
+            None
         in
-        build_lines (Some package_name) acc rest
+        let rule_line =
+          if String.equal package_name "riot" then
+            "  " ^ bold (display_rule_id rule) ^ " - " ^ Rule.description rule
+          else
+            bold (display_rule_id rule) ^ " - " ^ Rule.description rule
+        in
+        let acc =
+          match package_name, current_package, category, current_category with
+          | "riot", Some "riot", Some category_name, Some current
+            when not (String.equal category_name current) ->
+              rule_line :: ("  " ^ category_name ^ ":") :: acc
+          | "riot", Some "riot", _, _ ->
+              rule_line :: acc
+          | "riot", _, Some category_name, _ ->
+              rule_line :: ("  " ^ category_name ^ ":") :: "riot:" :: "" :: acc
+          | _, Some current, _, _ when not (String.equal current package_name) ->
+              rule_line :: (package_name ^ ":") :: "" :: acc
+          | _, Some _, _, _ ->
+              rule_line :: acc
+          | _, None, _, _ ->
+              rule_line :: (package_name ^ ":") :: acc
+        in
+        build_lines (Some package_name) category acc rest
   in
-  build_lines None [] rules |> String.concat "\n"
+  build_lines None None [] rules |> String.concat "\n"
 
 let list_diagnostics_text entries =
   let bold text = "\027[1m" ^ text ^ "\027[0m" in

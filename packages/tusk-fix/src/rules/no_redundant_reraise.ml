@@ -6,19 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Avoid `try ... with exn -> raise exn` handlers.
+A handler that catches an exception only to raise the exact same value again does not
+recover, add context, or change behavior. It merely inserts extra control flow for the
+reader to step through.
 
-These handlers do not recover, transform, or add context.
-They catch an exception only to throw the exact same value again, which leaves the surrounding code longer without changing behavior.
-If the handler does nothing but re-raise the same exception, remove the whole `try ... with` and keep the body directly.
+If the `try ... with` exists only as `with exn -> raise exn`, delete the whole wrapper
+and keep the body directly. Keep the handler only when it adds something real, such as
+logging, translation to another exception, or a genuine fallback path.
 
-Examples:
-  Avoid:   try render value with exn -> raise exn
-  Better:  render value
-
-Keep the `try ... with` only when the handler adds behavior:
-  Good:    try render value with exn -> log_error exn; raise exn
-  Good:    try render value with Not_found -> default ()
+This rule exists because the empty re-raise pattern looks like important error handling
+even when it is doing nothing at all.
 |}
 
 let rec unwrap_parens = function

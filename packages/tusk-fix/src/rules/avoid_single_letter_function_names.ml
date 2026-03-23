@@ -6,15 +6,15 @@ let rule_description =
 
 let rule_explain =
   {|
-Single-letter function names like `f` or `g` should be avoided.
+Single-letter function names tend to survive long after the code stopped being a toy.
+Once that happens, every caller has to recover the meaning of `f`, `g`, or `h` from
+surrounding context instead of from the API itself.
 
-Why this rule exists:
-- Placeholder names make call sites and stack traces harder to read.
-- Most functions end up carrying domain meaning that should be reflected in the binding name.
+This is especially painful in stack traces, grep results, and module interfaces,
+where the function name may be the only clue the reader gets.
 
-Examples:
-  Bad:    let f user = ...
-  Better: let parse_user user = ...
+Write the smallest name that still carries the job of the function.
+`parse_user`, `render_error`, and `normalize_path` all age much better than `f`.
 |}
 
 let should_flag_function_name name =

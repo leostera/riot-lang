@@ -7,15 +7,15 @@ let rule_description =
 
 let rule_explain =
   {|
-Module names should use ClassCase without underscores.
+Module names are one of the main visual cues in OCaml code. `ClassCase` tells the
+reader that an identifier names a module or constructor-sized thing, while
+`snake_case` is reserved for values and fields.
 
-Why this rule exists:
-- Mixed styles like Foo_bar are harder to scan than either FooBar or foo_bar.
-- Riot uses ClassCase for modules and snake_case for values. Mixing the two in one identifier makes the boundary blurry.
+Names like `Foo_bar` blur that boundary. They are neither normal module names nor
+normal value names, so they read like a typo every time they appear.
 
-Examples:
-  Bad:    module Foo_bar = struct ... end
-  Better: module FooBar = struct ... end
+Prefer `FooBar`, `HttpClient`, or `ParserState`. Save underscores for value-level
+identifiers.
 |}
 
 let contains_underscore text =

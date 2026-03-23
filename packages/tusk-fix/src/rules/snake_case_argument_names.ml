@@ -7,15 +7,15 @@ let rule_description =
 
 let rule_explain =
   {|
-Argument names should use snake_case.
+Arguments live at the same value level as local bindings, record fields, and ordinary
+function names. Using `snake_case` there keeps the language visually uniform.
 
-Why this rule exists:
-- Named and positional parameters should read like the rest of the value-level language.
-- camelCase arguments look like a different style system inside otherwise consistent functions.
+camelCase arguments stand out as if they were imported from a different style system.
+That visual mismatch is small in one function and surprisingly noisy across a whole
+API surface, especially for named arguments that appear at every call site.
 
-Examples:
-  Bad:    let create ~userId ~displayName = ...
-  Better: let create ~user_id ~display_name = ...
+Keep parameter names in the same `snake_case` style as the rest of the value-level
+language.
 |}
 
 let is_upper ch = ch >= 'A' && ch <= 'Z'

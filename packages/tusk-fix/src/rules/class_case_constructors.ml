@@ -7,15 +7,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Variant constructors should use ClassCase without underscores.
+Variant constructors read like named cases in a sum type, not like values.
+Using `ClassCase` keeps them visually aligned with modules and makes it easy to
+distinguish constructors from ordinary bindings.
 
-Why this rule exists:
-- Constructors read like named cases, so they should visually line up with modules rather than values.
-- Mixed styles like guest_user make sum types harder to scan.
+Mixed styles inside the same type make pattern matches harder to scan. A variant like
+`GuestUser | registered_user` forces the reader to switch naming conventions while
+reading the same type declaration.
 
-Examples:
-  Bad:    type user = | guest_user | RegisteredUser
-  Better: type user = | GuestUser | RegisteredUser
+Keep constructors boring and consistent: `GuestUser`, `RegisteredUser`, `Closed`,
+`WaitingForInput`.
 |}
 
 let contains_underscore text =

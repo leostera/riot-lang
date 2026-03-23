@@ -6,16 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Effectful `let () = ... in ...` expressions should usually be written as sequences.
+`let () = side_effect () in next ()` is usually just sequencing spelled in a heavier
+way. The unit pattern is not carrying information there; it is only forcing the reader
+to parse a `let` where a plain sequence would have said the same thing more directly.
 
-Why this rule exists:
-- `let () = side_effect () in next ()` is sequencing in disguise.
-- `side_effect (); next ()` makes the control flow obvious immediately.
-- The `let () =` form is best saved for places where the unit pattern itself matters.
+`side_effect (); next ()` makes the flow obvious immediately: do this, then do that.
+Reserve `let () = ... in ...` for the places where binding the unit result is part of
+the point, not for ordinary effect sequencing.
 
-Examples:
-  Bad:    let () = log () in flush ()
-  Better: log (); flush ()
+This rule exists because unit-binding syntax can make straightforward imperative steps
+look more abstract than they really are.
 |}
 
 let rec is_unit_pattern = function

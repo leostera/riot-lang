@@ -6,15 +6,15 @@ let rule_description =
 
 let rule_explain =
   {|
-When a function takes t alongside named arguments, keep t as the first positional argument.
+In Riot-style APIs, `t` often plays the role of the receiver or primary state value.
+When that is true, callers benefit from seeing it in the same place consistently.
 
-Why this rule exists:
-- Riot APIs often treat t as the receiver/state value.
-- Keeping t first among positional arguments makes pipeline and method-like usage more predictable.
+Keeping `t` as the first positional argument after any named arguments makes pipeline
+use and method-like reading more predictable. A function such as
+`render ~width ~height t` reads naturally as "render this `t` with these options".
 
-Examples:
-  Better: let render ~width ~height t = ...
-  Worse:  let render ~width ~height other t = ...
+If `t` is buried after other positional arguments, callers have to relearn the calling
+convention for each function instead of relying on a stable pattern.
 |}
 
 let parameter_span parameter =

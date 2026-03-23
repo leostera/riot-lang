@@ -7,15 +7,15 @@ let rule_description =
 
 let rule_explain =
   {|
-Function names should use snake_case.
+Function names are part of the ordinary value language, so they should follow the same
+`snake_case` style as local bindings and arguments. That consistency matters most in
+signatures and call sites, where readers want naming to disappear into the background.
 
-Why this rule exists:
-- Snake case is the dominant value/function naming style across Riot.
-- camelCase function names stick out immediately and make APIs feel imported rather than native.
+camelCase function names immediately draw attention to themselves because they look like
+they belong to a different ecosystem. Even when the meaning is clear, the style
+mismatch makes the API feel less native to the rest of the codebase.
 
-Examples:
-  Bad:    let parseUser input = ...
-  Better: let parse_user input = ...
+Use `snake_case` so the name communicates behavior, not a competing naming convention.
 |}
 
 let is_upper ch = ch >= 'A' && ch <= 'Z'

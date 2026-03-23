@@ -11,18 +11,17 @@ let rule_description =
 
 let rule_explain =
   {|
-Avoid positional `bool` parameters.
+Positional booleans are hard on readers because `retry true request` does not explain
+what the `true` means. Every call site has to remember whether the flag means
+"enabled", "disabled", "retry", "strict", or something else entirely.
 
-Examples:
-  Avoid:   let render (enabled : bool) user = ...
-  Better:  let render ~enabled user = ...
+The first fix is usually a named parameter. `retry ~enabled:true request` or
+`render ~enabled user` makes the call site self-explanatory. If the boolean is really
+standing in for a small state machine, a tiny enum often tells the story better than a
+flag ever could.
 
-  Avoid:   val retry : bool -> request -> response
-  Better:  val retry : enabled:bool -> request -> response
-
-If the `bool` controls a real state machine, prefer a small enum instead of a flag:
-  Better:  type retry_mode = Retry | Do_not_retry
-           val retry : retry_mode -> request -> response
+This rule fires because the ambiguity shows up at every caller, not just in the
+definition where the author already knows what the boolean means.
 |}
 
 let rec direct_non_trivia_nodes (node : Syn.Cst.syntax_node) =

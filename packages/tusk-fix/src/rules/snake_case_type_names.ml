@@ -7,17 +7,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Type names should use snake_case.
+Riot treats type names as lower-case names in the same broad family as values and
+record fields. `snake_case` keeps signatures visually calm and makes type declarations
+look like they belong to the same language as the rest of the code.
 
-Why this rule exists:
-- Riot code treats types like values and record fields: lower-case, underscore-separated names read best.
-- Mixing lower-case camelCase into type names makes signatures visually noisy.
+Lower-case camelCase names such as `userProfile` are readable, but they introduce an
+extra style distinction that readers have to notice and normalize every time they scan
+an interface.
 
-Examples:
-  Bad:    type userProfile = ...
-  Better: type user_profile = ...
-
-Keep type names boring and predictable.
+Keeping type names boring and predictable is the point. `user_profile` fades into the
+background so the meaning of the type can take center stage.
 |}
 
 let is_upper ch = ch >= 'A' && ch <= 'Z'

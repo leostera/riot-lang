@@ -16,17 +16,16 @@ let explanation =
         {|
 Prefer != instead of <> for inequality.
 
-Why this rule exists:
-- Riot code uses != as the standard inequality operator.
-- Keeping one inequality spelling makes conditionals and comparisons easier to scan.
-- It also avoids drifting back toward older OCaml operator style in the middle of Riot code.
-
-What to do instead:
-- Replace <> with !=.
-
 Examples:
-  Bad:    if left <> right then ...
-  Better: if left != right then ...
+  Instead of:
+    if left <> right then ...
+
+  write:
+    if left != right then ...
+
+Riot code uses `!=` as the standard inequality spelling. Keeping one operator
+shape across the codebase makes comparisons easier to scan and avoids drifting
+back toward older OCaml style in the middle of Riot code.
 |};
     }
 

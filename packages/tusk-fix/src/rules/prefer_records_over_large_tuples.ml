@@ -1,30 +1,70 @@
 open Std
 open Std.Collections
 
-let rule_id = "prefer-named-closed-polyvariants"
+let rule_id = "prefer-records-over-large-tuples"
 let rule_description =
-  "Closed polymorphic variants should usually be named instead of written inline"
+  "Large tuple type aliases should usually be records"
 
 let rule_explain =
   {|
-Inline closed polymorphic variants are convenient in tiny signatures, but once the same
-shape starts appearing in several places they become anonymous protocol fragments that
-every reader has to rediscover.
+Small tuples work well for compact, obviously positional data such as pairs and simple
+triples. Once the tuple gets large, or once several elements have the same type, the
+reader has to remember an implicit field order that the type does not name.
 
-Giving the closed variant a name turns it into a real part of the API. `type format =
-[ \`json | \`xml ]` is easier to reuse, easier to document, and easier to evolve than
-repeating `[ \`json | \`xml ]` throughout values and type aliases.
+At that point a record usually communicates the data model better. Field names make it
+clear what each position means, and they give the type room to evolve without forcing
+every caller to memorize or reshuffle tuple order.
 
-If the closed set of tags matters enough to appear in public types, it usually matters
-enough to deserve a proper name.
+If a type like `string * string * string * string` needs a comment to explain which
+slot is which, it has already crossed the line where a record is a better fit.
 |}
 
-let make_diagnostic syntax_node =
+let simple_type_name = function
+  | Syn.Cst.CoreType.Constr { constructor_path; arguments = []; _ } ->
+      Syn.Cst.Ident.name constructor_path
+  | Syn.Cst.CoreType.Var { name_token; _ } ->
+      Some (Syn.Cst.Token.text name_token)
+  | _ ->
+      None
+
+let should_prefer_record elements =
+  let count = List.length elements in
+  if count > 4 then
+    true
+  else if count <= 3 then
+    false
+  else
+    match elements with
+    | [] ->
+        false
+    | first :: rest -> (
+        match simple_type_name first with
+        | None ->
+            false
+        | Some first_name ->
+            List.for_all
+              (fun element ->
+                match simple_type_name element with
+                | Some name ->
+                    String.equal name first_name
+                | None ->
+                    false)
+              rest)
+
+let make_diagnostic (decl : Syn.Cst.TypeDeclaration.t) =
+  Diagnostic.make ~severity:Warning
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
+    ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node decl))
+    ~suggestion:
+      "Replace this tuple alias with a record type so each position has a stable field name."
+    ()
+
+let make_type_diagnostic syntax_node =
   Diagnostic.make ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
     ~suggestion:
-      "Introduce a named type alias for this closed polymorphic variant and use that name instead"
+      "Replace this tuple type with a record type so each position has a stable field name."
     ()
 
 let rec diagnostics_for_core_type type_ =
@@ -37,7 +77,7 @@ let rec diagnostics_for_core_type type_ =
   | Syn.Cst.CoreType.Class { arguments; _ } ->
       arguments |> List.concat_map diagnostics_for_core_type
   | Syn.Cst.CoreType.Alias { type_; _ }
-  | Syn.Cst.CoreType.Attribute { type_; _ }
+  | Syn.Cst.CoreType.Attribute { type_ ; _ }
   | Syn.Cst.CoreType.Parenthesized { inner = type_; _ }
   | Syn.Cst.CoreType.LocalOpen { type_; _ } ->
       diagnostics_for_core_type type_
@@ -46,27 +86,22 @@ let rec diagnostics_for_core_type type_ =
   | Syn.Cst.CoreType.Arrow { parameter_type; result_type; _ } ->
       diagnostics_for_core_type parameter_type
       @ diagnostics_for_core_type result_type
-  | Syn.Cst.CoreType.Tuple { elements; _ } ->
-      elements |> List.concat_map diagnostics_for_core_type
-  | Syn.Cst.CoreType.PolyVariant { syntax_node; kind; fields } ->
+  | Syn.Cst.CoreType.Tuple { syntax_node; elements } ->
       let here =
-        match kind with
-        | Syn.Cst.PolyVariantBound.Exact ->
-            [ make_diagnostic syntax_node ]
-        | Syn.Cst.PolyVariantBound.UpperBound _
-        | Syn.Cst.PolyVariantBound.LowerBound _ ->
-            []
+        if should_prefer_record elements then
+          [ make_type_diagnostic syntax_node ]
+        else
+          []
       in
-      let nested =
-        fields
-        |> List.concat_map (function
-             | Syn.Cst.RowField.Tag { payload_type; _ } ->
-                 Option.to_list payload_type
-                 |> List.concat_map diagnostics_for_core_type
-             | Syn.Cst.RowField.Inherit { type_; _ } ->
-                 diagnostics_for_core_type type_)
-      in
-      here @ nested
+      here @ (elements |> List.concat_map diagnostics_for_core_type)
+  | Syn.Cst.CoreType.PolyVariant { fields; _ } ->
+      fields
+      |> List.concat_map (function
+           | Syn.Cst.RowField.Tag { payload_type; _ } ->
+               Option.to_list payload_type
+               |> List.concat_map diagnostics_for_core_type
+           | Syn.Cst.RowField.Inherit { type_; _ } ->
+               diagnostics_for_core_type type_)
   | Syn.Cst.CoreType.Record { fields; _ } ->
       fields
       |> List.concat_map (fun (field : Syn.Cst.record_type_field) ->
@@ -123,7 +158,16 @@ let diagnostics_for_type_definition = function
       constructors |> List.concat_map diagnostics_for_variant_constructor
 
 let diagnostics_for_type_declaration decl =
-  diagnostics_for_type_definition (Syn.Cst.TypeDeclaration.type_definition decl)
+  let from_definition =
+    match Syn.Cst.TypeDeclaration.type_definition decl with
+    | Syn.Cst.TypeDefinition.Alias
+        { manifest = Syn.Cst.CoreType.Tuple { elements; _ }; _ }
+      when should_prefer_record elements ->
+        [ make_diagnostic decl ]
+    | definition ->
+        diagnostics_for_type_definition definition
+  in
+  from_definition
   @
   (Syn.Cst.TypeDeclaration.constraints decl
   |> List.concat_map (fun (constraint_ : Syn.Cst.TypeConstraint.t) ->
@@ -138,8 +182,7 @@ let diagnostics_for_external_declaration
     ({ type_; _ } : Syn.Cst.external_declaration) =
   diagnostics_for_core_type type_
 
-let diagnostics_for_items source_file =
-  match source_file with
+let diagnostics_for_source_file = function
   | Syn.Cst.Implementation { items; _ } ->
       items
       |> List.concat_map (function
@@ -161,10 +204,13 @@ let diagnostics_for_items source_file =
            | _ ->
                [])
 
+let check_tree (ctx : Rule.context) _red_root =
+  match ctx.cst with
+  | None ->
+      []
+  | Some source_file ->
+      diagnostics_for_source_file source_file
+
 let make () =
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
-    ~run:(fun ctx _red_root ->
-      match ctx.cst with
-      | None -> []
-      | Some source_file -> diagnostics_for_items source_file)
-    ()
+    ~run:check_tree ()

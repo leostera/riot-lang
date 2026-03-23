@@ -6,16 +6,17 @@ let rule_description =
 
 let rule_explain =
   {|
-Avoid public mutable record fields in `.mli` files.
+Publishing a mutable field in an interface means every caller can reach in and change
+that piece of state directly. Once that happens, the implementation can no longer
+control invariants around the update, and readers have a harder time reasoning about
+who is allowed to mutate what.
 
-Once a mutable field appears in an interface, any caller can update it behind your back.
-That makes local reasoning harder because the value can change from any code that holds the record.
-Keep mutation private inside the implementation and expose operations instead.
+Keeping the representation opaque gives the module room to enforce invariants and to
+change its internal layout later. If callers need mutation, expose operations such as
+`set_state`, `replace`, or `reset` instead of exposing the field itself.
 
-Examples:
-  Avoid:   type t = { mutable state : state }
-  Better:  type t
-           val set_state : t -> state -> unit
+The point is not to forbid mutation. It is to keep ownership of mutation inside the
+module that understands the invariants.
 |}
 
 let make_diagnostic (field : Syn.Cst.RecordField.t) =

@@ -7,30 +7,18 @@ let rule_description =
 
 let rule_explain =
   {|
-Prefer no more than two open statements per file.
+Each file-wide `open` saves a little typing, but it also hides where names come from.
+Once a file stacks several of them, readers have to keep a mental import table in
+their head before they can tell whether `Response`, `parse`, or `empty` is local or
+imported.
 
-Why this rule exists:
-- Several open statements in one file make it harder to tell where names come from.
-- They also increase the risk of shadowing or accidental API collisions.
-- Past a small number, explicit qualification is usually easier to audit than another file-wide open.
+Past a small number, the convenience stops paying for the ambiguity. The remaining
+modules are usually better referenced explicitly as `Http.Response`, `Json.decode`,
+or `Uri.of_string`. If the scope is genuinely tiny, a local open is easier to audit
+than another file-wide one.
 
-What to do instead:
-- Keep only the most valuable opens.
-- Prefer Module.value and Module.Type for everything else.
-- If the scope is small, use a narrow local open instead of a file-wide one.
-
-Examples:
-  Better:
-    open Std
-    open Http
-
-    let response = Http.Response.ok
-
-  Avoid:
-    open Std
-    open Http
-    open Json
-    open Uri
+Two well-chosen opens usually remain readable. A pile of them usually means the file
+has become too implicit.
 |}
 
 let open_statements source_file =

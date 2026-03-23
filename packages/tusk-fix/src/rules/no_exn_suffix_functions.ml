@@ -7,16 +7,17 @@ let rule_description =
 
 let rule_explain =
   {|
-Avoid naming functions with an `_exn` suffix.
+Names ending in `_exn` normalize exception-throwing control flow as part of the API.
+That makes failure behavior harder to reason about at call sites and encourages
+exceptions for situations that are often expected, such as parse failure or lookup
+failure.
 
-Names like `parse_exn` and `getenv_exn` advertise exception-throwing control flow as part of the normal API surface.
-That makes call sites harder to reason about and nudges callers toward exceptions for expected failure cases.
-Prefer `Result` or `Option` returning functions, and reserve exceptions for truly exceptional situations.
+Prefer APIs that return `Result` or `Option` and make failure explicit in the type.
+If an exceptional variant truly has to exist, it should usually be the less prominent
+entry point rather than the one that shapes the naming of the whole interface.
 
-Examples:
-  Avoid:   let parse_exn text = ...
-  Better:  let parse text = ...
-  Better:  let parse_result text = ...
+The goal here is not just naming. It is to steer APIs away from using exceptions as
+ordinary control flow.
 |}
 
 let should_flag_binding_site (site : Traversal.binding_site) =

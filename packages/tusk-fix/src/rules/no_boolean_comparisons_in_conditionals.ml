@@ -6,19 +6,17 @@ let rule_description =
 
 let rule_explain =
   {|
-Boolean conditions should not be compared explicitly to `true` or `false`.
+When the condition already has type `bool`, comparing it to `true` or `false` adds
+noise without adding information. `if is_ready then ...` says exactly what
+`if is_ready = true then ...` says, but with less punctuation between the reader and
+the real condition.
 
-Why this rule exists:
-- `if is_ready = true then ...` is noisier than `if is_ready then ...`.
-- `if is_ready = false then ...` is easier to read as `if not is_ready then ...`.
-- The shorter form makes the real condition stand out immediately.
+The same applies on the negative side. `if not is_ready then ...` is easier to read
+than `if is_ready = false then ...` because the negation is explicit instead of
+encoded as an equality test.
 
-Examples:
-  Bad:    if is_ready = true then render ()
-  Better: if is_ready then render ()
-
-  Bad:    if is_ready = false then render ()
-  Better: if not is_ready then render ()
+This rule exists to keep conditionals focused on the condition itself rather than on
+an unnecessary comparison wrapped around it.
 |}
 
 let rec unwrap_parens = function

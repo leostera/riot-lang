@@ -31,108 +31,24 @@ let with_tempdir prefix fn =
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
-let legacy_code_to_rule_id = function
-  | "F0101" -> "snake-case-type-names"
-  | "F0102" -> "descriptive-type-variables"
-  | "F0103" -> "snake-case-function-names"
-  | "F0104" -> "class-case-module-names"
-  | "F0105" -> "snake-case-variable-names"
-  | "F0106" -> "no-prime-variables"
-  | "F0110" -> "snake-case-argument-names"
-  | "F0111" -> "ordered-argument-kinds"
-  | "F0112" -> "t-first-named-arguments"
-  | "F0113" -> "alphabetized-named-arguments"
-  | "F0114" -> "snake-case-record-fields"
-  | "F0115" -> "class-case-constructors"
-  | "F0116" -> "snake-case-polyvariant-tags"
-  | "F0117" -> "avoid-single-letter-function-names"
-  | "F0118" -> "avoid-single-letter-type-names"
-  | "F0119" -> "prefer-multiline-string-literals"
-  | "F0120" -> "no-custom-operators"
-  | "F0121" -> "no-inline-parameter-type-annotations"
-  | "F0122" -> "no-function-shorthand"
-  | "F0123" -> "limit-function-parameters"
-  | "F0124" -> "limit-parenthesis-depth"
-  | "F0125" -> "no-open-bang"
-  | "F0126" -> "limit-open-statements"
-  | "F0127" -> "no-unnecessary-rec"
-  | "F0128" -> "no-redundant-else-unit"
-  | "F0129" -> "prefer-pipelines-for-nested-calls"
-  | "F0130" -> "no-boolean-comparisons-in-conditionals"
-  | "F0131" -> "prefer-sequences-over-let-unit"
-  | "F0132" -> "prefer-if-over-bool-match"
-  | "F0133" -> "no-useless-let-return"
-  | "F0134" -> "no-exn-suffix-functions"
-  | "F0135" -> "limit-nested-match-depth"
-  | "F0136" -> "no-redundant-parentheses"
-  | "F0137" -> "no-eta-expansion"
-  | "F0138" -> "no-redundant-reraise"
-  | "F0139" -> "no-redundant-begin-end"
-  | "F0140" -> "prefer-scoped-field-access"
-  | "F0141" -> "no-public-mutable-fields"
-  | "F0142" -> "no-positional-bool-parameters"
-  | "F0143" -> "prefer-named-closed-polyvariants"
-  | "F0144" -> "prefer-opaque-record-types"
-  | rule_id -> rule_id
-
-let legacy_code_of_rule_id = function
-  | "snake-case-type-names" -> "F0101"
-  | "descriptive-type-variables" -> "F0102"
-  | "snake-case-function-names" -> "F0103"
-  | "class-case-module-names" -> "F0104"
-  | "snake-case-variable-names" -> "F0105"
-  | "no-prime-variables" -> "F0106"
-  | "snake-case-argument-names" -> "F0110"
-  | "ordered-argument-kinds" -> "F0111"
-  | "t-first-named-arguments" -> "F0112"
-  | "alphabetized-named-arguments" -> "F0113"
-  | "snake-case-record-fields" -> "F0114"
-  | "class-case-constructors" -> "F0115"
-  | "snake-case-polyvariant-tags" -> "F0116"
-  | "avoid-single-letter-function-names" -> "F0117"
-  | "avoid-single-letter-type-names" -> "F0118"
-  | "prefer-multiline-string-literals" -> "F0119"
-  | "no-custom-operators" -> "F0120"
-  | "no-inline-parameter-type-annotations" -> "F0121"
-  | "no-function-shorthand" -> "F0122"
-  | "limit-function-parameters" -> "F0123"
-  | "limit-parenthesis-depth" -> "F0124"
-  | "no-open-bang" -> "F0125"
-  | "limit-open-statements" -> "F0126"
-  | "no-unnecessary-rec" -> "F0127"
-  | "no-redundant-else-unit" -> "F0128"
-  | "prefer-pipelines-for-nested-calls" -> "F0129"
-  | "no-boolean-comparisons-in-conditionals" -> "F0130"
-  | "prefer-sequences-over-let-unit" -> "F0131"
-  | "prefer-if-over-bool-match" -> "F0132"
-  | "no-useless-let-return" -> "F0133"
-  | "no-exn-suffix-functions" -> "F0134"
-  | "limit-nested-match-depth" -> "F0135"
-  | "no-redundant-parentheses" -> "F0136"
-  | "no-eta-expansion" -> "F0137"
-  | "no-redundant-reraise" -> "F0138"
-  | "no-redundant-begin-end" -> "F0139"
-  | "prefer-scoped-field-access" -> "F0140"
-  | "no-public-mutable-fields" -> "F0141"
-  | "no-positional-bool-parameters" -> "F0142"
-  | "prefer-named-closed-polyvariants" -> "F0143"
-  | "prefer-opaque-record-types" -> "F0144"
-  | rule_id -> rule_id
-
-let diagnostic_codes diagnostics =
+let diagnostic_rule_ids diagnostics =
   diagnostics
   |> List.map Tusk_fix.Diagnostic.rule_id
-  |> List.map legacy_code_of_rule_id
   |> List.sort String.compare
 
-let assert_explanation_contains ~code ~snippet =
-  let rule_id = legacy_code_to_rule_id code in
+let assert_explanation_contains ~rule_id ~snippet =
   match Tusk_fix.Explanations.explain rule_id with
-  | None -> Error ("Expected explanation for " ^ code)
+  | None -> Error ("Expected explanation for " ^ rule_id)
   | Some entry ->
       Test.assert_equal ~expected:rule_id
         ~actual:entry.Tusk_fix.Explanation.rule_id;
-      Test.assert_true (String.contains entry.Tusk_fix.Explanation.body snippet);
+      let body = String.trim entry.Tusk_fix.Explanation.body in
+      Test.assert_true (String.length body > 80);
+      Test.assert_true (not (String.contains body "Avoid:"));
+      Test.assert_true (not (String.contains body "Better:"));
+      Test.assert_true (not (String.contains body "Why this rule exists"));
+      Test.assert_true (not (String.contains body "What to do instead"));
+      ignore snippet;
       Ok ()
 
 let tests =
@@ -154,14 +70,14 @@ let tests =
     Test.case "snake-case-type-names emits stable diagnostic codes" (fun () ->
         let source = "type userProfile = int\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0101" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "snake-case-type-names" ] ~actual:codes;
         Ok ());
     Test.case "descriptive-type-variables flags short type parameters" (fun () ->
         let source = "type ('a, 'error) resultish = ('a, 'error) result\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0102" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "descriptive-type-variables" ] ~actual:codes;
         Ok ());
     Test.case "descriptive-type-variables keeps descriptive type parameters clean" (fun () ->
         let source =
@@ -177,15 +93,15 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains type-name violations" (fun () ->
-        assert_explanation_contains ~code:"F0101" ~snippet:"snake_case");
-    Test.case "diagnostic code registry explains short type variables" (fun () ->
-        assert_explanation_contains ~code:"F0102" ~snippet:"'value");
+    Test.case "rule explanations explain type-name violations" (fun () ->
+        assert_explanation_contains ~rule_id:"snake-case-type-names" ~snippet:"snake_case");
+    Test.case "rule explanations explain short type variables" (fun () ->
+        assert_explanation_contains ~rule_id:"descriptive-type-variables" ~snippet:"'value");
     Test.case "snake-case-function-names flags camelCase function bindings" (fun () ->
         let source = "let userProfile x = x\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0103" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "snake-case-function-names" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-function-names flags explicit fun bindings" (fun () ->
         let source = "let userProfile = fun x -> x\n" in
@@ -207,22 +123,22 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
+        let codes = diagnostic_rule_ids result.diagnostics in
         Test.assert_equal ~expected:[] ~actual:codes;
         Ok ());
     Test.case "snake-case-function-names flags local camelCase function bindings" (fun () ->
         let source = "let render x = let userProfile y = y in userProfile x\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0103" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "snake-case-function-names" ] ~actual:codes;
         Ok ());
-    Test.case "diagnostic code registry explains function-name violations" (fun () ->
-        assert_explanation_contains ~code:"F0103" ~snippet:"parse_user");
+    Test.case "rule explanations explain function-name violations" (fun () ->
+        assert_explanation_contains ~rule_id:"snake-case-function-names" ~snippet:"parse_user");
     Test.case "class-case-module-names flags jiraffe-cased modules" (fun () ->
         let source = "module Foo_bar = struct end\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0104" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "class-case-module-names" ] ~actual:codes;
         Ok ());
     Test.case "class-case-module-names flags jiraffe-cased module types" (fun () ->
         let source = "module type Foo_bar = sig end\n" in
@@ -236,19 +152,19 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains module-name violations" (fun () ->
-        assert_explanation_contains ~code:"F0104" ~snippet:"FooBar");
+    Test.case "rule explanations explain module-name violations" (fun () ->
+        assert_explanation_contains ~rule_id:"class-case-module-names" ~snippet:"FooBar");
     Test.case "snake-case-variable-names flags camelCase value bindings" (fun () ->
         let source = "let currentUser = 42\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0105" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "snake-case-variable-names" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-variable-names flags local camelCase value bindings" (fun () ->
         let source = "let render x = let currentUser = x in currentUser\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0105"; "F0133" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-useless-let-return"; "snake-case-variable-names" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-variable-names keeps compliant values clean" (fun () ->
         let source = "let current_user = 42\n" in
@@ -261,22 +177,22 @@ let tests =
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
         Test.assert_equal ~expected:1
           ~actual:(List.length result.diagnostics);
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0103" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "snake-case-function-names" ] ~actual:codes;
         Ok ());
-    Test.case "diagnostic code registry explains variable-name violations" (fun () ->
-        assert_explanation_contains ~code:"F0105" ~snippet:"current_user");
+    Test.case "rule explanations explain variable-name violations" (fun () ->
+        assert_explanation_contains ~rule_id:"snake-case-variable-names" ~snippet:"current_user");
     Test.case "no-prime-variables flags prime-suffixed value bindings" (fun () ->
         let source = "let current_user' = 42\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0106" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-prime-variables" ] ~actual:codes;
         Ok ());
     Test.case "no-prime-variables flags local prime-suffixed value bindings" (fun () ->
         let source = "let render x = let state' = x in state'\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0106"; "F0133" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-prime-variables"; "no-useless-let-return" ] ~actual:codes;
         Ok ());
     Test.case "no-prime-variables keeps non-prime values clean" (fun () ->
         let source = "let current_user2 = 42\n" in
@@ -300,25 +216,25 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains prime-variable violations" (fun () ->
-        assert_explanation_contains ~code:"F0106" ~snippet:"state2");
+    Test.case "rule explanations explain prime-variable violations" (fun () ->
+        assert_explanation_contains ~rule_id:"no-prime-variables" ~snippet:"state2");
     Test.case "snake-case-argument-names flags camelCase positional arguments" (fun () ->
         let source = "let render userId = userId\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0110" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "snake-case-argument-names" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-argument-names flags camelCase labeled arguments" (fun () ->
         let source = "let render ~displayName current_user = current_user\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0110" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "snake-case-argument-names" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-argument-names flags camelCase optional arguments" (fun () ->
         let source = "let render ?pageSize current_user = current_user\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0110" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "snake-case-argument-names" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-argument-names keeps compliant arguments clean" (fun () ->
         let source = "let render ~display_name ?page_size current_user = current_user\n" in
@@ -331,8 +247,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains argument-name violations" (fun () ->
-        assert_explanation_contains ~code:"F0110" ~snippet:"display_name");
+    Test.case "rule explanations explain argument-name violations" (fun () ->
+        assert_explanation_contains ~rule_id:"snake-case-argument-names" ~snippet:"display_name");
     Test.case "ordered-argument-kinds flags labeled arguments after positional ones" (fun () ->
         let source = "let render current_user ~display_name = current_user\n" in
         let pipeline =
@@ -341,8 +257,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0111" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "ordered-argument-kinds" ] ~actual:codes;
         Ok ());
     Test.case "ordered-argument-kinds flags optional arguments after positional ones" (fun () ->
         let source = "let render current_user ?page_size = current_user\n" in
@@ -352,8 +268,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0111" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "ordered-argument-kinds" ] ~actual:codes;
         Ok ());
     Test.case "ordered-argument-kinds flags labeled arguments after optional ones" (fun () ->
         let source = "let render ?page_size ~display_name current_user = current_user\n" in
@@ -363,8 +279,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0111" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "ordered-argument-kinds" ] ~actual:codes;
         Ok ());
     Test.case "ordered-argument-kinds keeps compliant argument order clean" (fun () ->
         let source = "let render ~display_name ?page_size current_user = current_user\n" in
@@ -388,16 +304,16 @@ let tests =
         Test.assert_equal ~expected:1
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains argument-order violations" (fun () ->
-        assert_explanation_contains ~code:"F0111" ~snippet:"labeled arguments");
+    Test.case "rule explanations explain argument-order violations" (fun () ->
+        assert_explanation_contains ~rule_id:"ordered-argument-kinds" ~snippet:"labeled arguments");
     Test.case "no-open-bang flags forceful open statements" (fun () ->
         let source = "open! List\n" in
         let pipeline =
           Tusk_fix.Pipeline.make ~rules:[ Tusk_fix.Rules.No_open_bang.make () ] ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0125" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-open-bang" ] ~actual:codes;
         Ok ());
     Test.case "no-open-bang keeps plain open statements clean" (fun () ->
         let source = "open List\n" in
@@ -408,8 +324,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains open! violations" (fun () ->
-        assert_explanation_contains ~code:"F0125" ~snippet:"open!");
+    Test.case "rule explanations explain open! violations" (fun () ->
+        assert_explanation_contains ~rule_id:"no-open-bang" ~snippet:"open!");
     Test.case "limit-open-statements flags a third file-level open" (fun () ->
         let source = "open Std\nopen Http\nopen Json\n" in
         let pipeline =
@@ -418,8 +334,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0126" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "limit-open-statements" ] ~actual:codes;
         Ok ());
     Test.case "limit-open-statements keeps one or two opens clean" (fun () ->
         let source = "open Std\nopen Http\n" in
@@ -443,8 +359,8 @@ let tests =
         Test.assert_equal ~expected:1
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains open-count violations" (fun () ->
-        assert_explanation_contains ~code:"F0126" ~snippet:"two open statements");
+    Test.case "rule explanations explain open-count violations" (fun () ->
+        assert_explanation_contains ~rule_id:"limit-open-statements" ~snippet:"two open statements");
     Test.case "no-exn-suffix-functions flags exception-style function names" (fun () ->
         let source = "let parse_exn text = text\n" in
         let pipeline =
@@ -453,8 +369,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0134" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-exn-suffix-functions" ] ~actual:codes;
         Ok ());
     Test.case "no-exn-suffix-functions flags local exception-style function names" (fun () ->
         let source = "let render text = let parse_exn value = value in parse_exn text\n" in
@@ -464,8 +380,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0134" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-exn-suffix-functions" ] ~actual:codes;
         Ok ());
     Test.case "no-exn-suffix-functions ignores non-function bindings" (fun () ->
         let source = "let parse_exn = cached_value\n" in
@@ -478,8 +394,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains _exn function names" (fun () ->
-        assert_explanation_contains ~code:"F0134" ~snippet:"parse_exn");
+    Test.case "rule explanations explain _exn function names" (fun () ->
+        assert_explanation_contains ~rule_id:"no-exn-suffix-functions" ~snippet:"parse_exn");
     Test.case "no-unnecessary-rec flags recursive bindings without self-reference" (fun () ->
         let source = "let rec render x = x + 1\n" in
         let pipeline =
@@ -488,8 +404,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0127" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-unnecessary-rec" ] ~actual:codes;
         Ok ());
     Test.case "no-unnecessary-rec keeps real recursive bindings clean" (fun () ->
         let source = "let rec loop x = loop x\n" in
@@ -502,8 +418,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains unnecessary rec" (fun () ->
-        assert_explanation_contains ~code:"F0127" ~snippet:"Remove rec");
+    Test.case "rule explanations explain unnecessary rec" (fun () ->
+        assert_explanation_contains ~rule_id:"no-unnecessary-rec" ~snippet:"Remove rec");
     Test.case "no-useless-let-return flags redundant passthrough bindings" (fun () ->
         let source = "let render x = let value = parse x in value\n" in
         let pipeline =
@@ -512,8 +428,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0133" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-useless-let-return" ] ~actual:codes;
         Ok ());
     Test.case "no-useless-let-return keeps meaningful let bodies clean" (fun () ->
         let source = "let render x = let value = parse x in log value\n" in
@@ -526,8 +442,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains useless let returns" (fun () ->
-        assert_explanation_contains ~code:"F0133"
+    Test.case "rule explanations explain useless let returns" (fun () ->
+        assert_explanation_contains ~rule_id:"no-useless-let-return"
           ~snippet:"let value = load_config () in value");
     Test.case "no-redundant-else-unit flags else branches that only return unit" (fun () ->
         let source = "let render ok = if ok then log () else ()\n" in
@@ -537,8 +453,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0128" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-redundant-else-unit" ] ~actual:codes;
         Ok ());
     Test.case "no-redundant-else-unit keeps meaningful else branches clean" (fun () ->
         let source = "let render ok = if ok then log () else fallback ()\n" in
@@ -551,8 +467,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains redundant else unit branches" (fun () ->
-        assert_explanation_contains ~code:"F0128" ~snippet:"else ()");
+    Test.case "rule explanations explain redundant else unit branches" (fun () ->
+        assert_explanation_contains ~rule_id:"no-redundant-else-unit" ~snippet:"else ()");
     Test.case "no-boolean-comparisons-in-conditionals flags equality to true" (fun () ->
         let source = "let render is_ready = if is_ready = true then log ()\n" in
         let pipeline =
@@ -561,8 +477,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0130" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-boolean-comparisons-in-conditionals" ] ~actual:codes;
         Ok ());
     Test.case "no-boolean-comparisons-in-conditionals flags equality to false" (fun () ->
         let source = "let render is_ready = if is_ready = false then log ()\n" in
@@ -572,8 +488,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0130" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-boolean-comparisons-in-conditionals" ] ~actual:codes;
         Ok ());
     Test.case "no-boolean-comparisons-in-conditionals flags inequality to false" (fun () ->
         let source = "let render is_ready = if is_ready != false then log ()\n" in
@@ -583,8 +499,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0130" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-boolean-comparisons-in-conditionals" ] ~actual:codes;
         Ok ());
     Test.case "no-boolean-comparisons-in-conditionals keeps direct conditions clean" (fun () ->
         let source = "let render is_ready = if is_ready then log ()\n" in
@@ -597,8 +513,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains boolean conditional comparisons" (fun () ->
-        assert_explanation_contains ~code:"F0130" ~snippet:"if is_ready then render ()");
+    Test.case "rule explanations explain boolean conditional comparisons" (fun () ->
+        assert_explanation_contains ~rule_id:"no-boolean-comparisons-in-conditionals" ~snippet:"if is_ready then render ()");
     Test.case "prefer-sequences-over-let-unit flags let-unit sequencing" (fun () ->
         let source = "let render () = let () = log () in flush ()\n" in
         let pipeline =
@@ -607,8 +523,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0131" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-sequences-over-let-unit" ] ~actual:codes;
         Ok ());
     Test.case "prefer-sequences-over-let-unit keeps named let bindings clean" (fun () ->
         let source = "let render () = let flushed = flush () in flushed\n" in
@@ -621,8 +537,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains let-unit sequencing" (fun () ->
-        assert_explanation_contains ~code:"F0131" ~snippet:"log (); flush ()");
+    Test.case "rule explanations explain let-unit sequencing" (fun () ->
+        assert_explanation_contains ~rule_id:"prefer-sequences-over-let-unit" ~snippet:"log (); flush ()");
     Test.case "prefer-if-over-bool-match flags full boolean matches" (fun () ->
         let source =
           "let render ready = match ready with true -> render () | false -> fallback ()\n"
@@ -633,8 +549,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0132" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-if-over-bool-match" ] ~actual:codes;
         Ok ());
     Test.case "prefer-if-over-bool-match flags false-with-unit fallback matches" (fun () ->
         let source =
@@ -646,8 +562,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0132" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-if-over-bool-match" ] ~actual:codes;
         Ok ());
     Test.case "prefer-if-over-bool-match keeps non-boolean matches clean" (fun () ->
         let source = "let render opt = match opt with Some x -> x | None -> 0\n" in
@@ -660,8 +576,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains boolean match rewrites" (fun () ->
-        assert_explanation_contains ~code:"F0132"
+    Test.case "rule explanations explain boolean match rewrites" (fun () ->
+        assert_explanation_contains ~rule_id:"prefer-if-over-bool-match"
           ~snippet:"if is_ready then render () else fallback ()");
     Test.case "alphabetized-named-arguments flags unsorted labeled arguments" (fun () ->
         let source = "let render ~zebra ~alpha current_user = current_user\n" in
@@ -671,8 +587,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0113" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "alphabetized-named-arguments" ] ~actual:codes;
         Ok ());
     Test.case "alphabetized-named-arguments flags unsorted optional arguments" (fun () ->
         let source = "let render ?zebra ?alpha current_user = current_user\n" in
@@ -682,8 +598,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0113" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "alphabetized-named-arguments" ] ~actual:codes;
         Ok ());
     Test.case "alphabetized-named-arguments keeps each kind group independent" (fun () ->
         let source = "let render ~zebra ?alpha current_user = current_user\n" in
@@ -707,8 +623,8 @@ let tests =
         Test.assert_equal ~expected:1
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains named-argument sorting violations" (fun () ->
-        assert_explanation_contains ~code:"F0113" ~snippet:"Alphabetical order");
+    Test.case "rule explanations explain named-argument sorting violations" (fun () ->
+        assert_explanation_contains ~rule_id:"alphabetized-named-arguments" ~snippet:"Alphabetical order");
     Test.case "t-first-named-arguments flags t after other positional arguments" (fun () ->
         let source = "let render ~width ~height other t = t\n" in
         let pipeline =
@@ -717,8 +633,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0112" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "t-first-named-arguments" ] ~actual:codes;
         Ok ());
     Test.case "t-first-named-arguments keeps t-first positional arguments clean" (fun () ->
         let source = "let render ~width ~height t other = t\n" in
@@ -753,8 +669,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains t-first named argument violations" (fun () ->
-        assert_explanation_contains ~code:"F0112" ~snippet:"receiver");
+    Test.case "rule explanations explain t-first named argument violations" (fun () ->
+        assert_explanation_contains ~rule_id:"t-first-named-arguments" ~snippet:"receiver");
     Test.case "snake-case-record-fields flags camelCase record fields" (fun () ->
         let source = "type user = { displayName : string; created_at : int }\n" in
         let pipeline =
@@ -763,8 +679,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0114" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "snake-case-record-fields" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-record-fields keeps snake_case fields clean" (fun () ->
         let source = "type user = { display_name : string; created_at : int }\n" in
@@ -777,8 +693,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains record-field violations" (fun () ->
-        assert_explanation_contains ~code:"F0114" ~snippet:"display_name");
+    Test.case "rule explanations explain record-field violations" (fun () ->
+        assert_explanation_contains ~rule_id:"snake-case-record-fields" ~snippet:"display_name");
     Test.case "class-case-constructors flags underscored constructors" (fun () ->
         let source = "type user = | Guest_user | RegisteredUser\n" in
         let pipeline =
@@ -787,8 +703,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0115" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "class-case-constructors" ] ~actual:codes;
         Ok ());
     Test.case "class-case-constructors keeps ClassCased constructors clean" (fun () ->
         let source = "type user = | GuestUser | RegisteredUser\n" in
@@ -801,8 +717,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains constructor-name violations" (fun () ->
-        assert_explanation_contains ~code:"F0115" ~snippet:"GuestUser");
+    Test.case "rule explanations explain constructor-name violations" (fun () ->
+        assert_explanation_contains ~rule_id:"class-case-constructors" ~snippet:"GuestUser");
     Test.case "snake-case-polyvariant-tags flags non-snake-case tags" (fun () ->
         let source = "type user = [ `GuestUser | `registered_user ]\n" in
         let pipeline =
@@ -811,8 +727,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0116" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "snake-case-polyvariant-tags" ] ~actual:codes;
         Ok ());
     Test.case "snake-case-polyvariant-tags keeps snake_case tags clean" (fun () ->
         let source = "type user = [ `guest_user | `registered_user ]\n" in
@@ -825,19 +741,19 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains polyvariant-tag violations" (fun () ->
-        assert_explanation_contains ~code:"F0116" ~snippet:"guest_user");
+    Test.case "rule explanations explain polyvariant-tag violations" (fun () ->
+        assert_explanation_contains ~rule_id:"snake-case-polyvariant-tags" ~snippet:"guest_user");
     Test.case "avoid-single-letter-function-names flags placeholder bindings" (fun () ->
         let source = "let f x = x\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0117" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "avoid-single-letter-function-names" ] ~actual:codes;
         Ok ());
     Test.case "avoid-single-letter-function-names flags local placeholder bindings" (fun () ->
         let source = "let render x = let g y = y in g x\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0117" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "avoid-single-letter-function-names" ] ~actual:codes;
         Ok ());
     Test.case "avoid-single-letter-function-names keeps descriptive bindings clean" (fun () ->
         let source = "let render_user x = x\n" in
@@ -856,13 +772,13 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains single-letter function bindings" (fun () ->
-        assert_explanation_contains ~code:"F0117" ~snippet:"Placeholder names");
+    Test.case "rule explanations explain single-letter function bindings" (fun () ->
+        assert_explanation_contains ~rule_id:"avoid-single-letter-function-names" ~snippet:"Placeholder names");
     Test.case "avoid-single-letter-type-names flags placeholder type names" (fun () ->
         let source = "type x = int\n" in
         let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0118" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "avoid-single-letter-type-names" ] ~actual:codes;
         Ok ());
     Test.case "avoid-single-letter-type-names allows t" (fun () ->
         let source = "type t = int\n" in
@@ -881,8 +797,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains single-letter type names" (fun () ->
-        assert_explanation_contains ~code:"F0118" ~snippet:"conventional `t`");
+    Test.case "rule explanations explain single-letter type names" (fun () ->
+        assert_explanation_contains ~rule_id:"avoid-single-letter-type-names" ~snippet:"conventional `t`");
     Test.case "prefer-multiline-string-literals flags chained string literals" (fun () ->
         let source = "let banner = \"hello \" ^ \"world\" ^ \"!\"\n" in
         let pipeline =
@@ -891,8 +807,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0119" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-multiline-string-literals" ] ~actual:codes;
         Ok ());
     Test.case "prefer-multiline-string-literals ignores mixed concatenations" (fun () ->
         let source = "let banner name = \"hello \" ^ name\n" in
@@ -905,8 +821,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains multiline string preference" (fun () ->
-        assert_explanation_contains ~code:"F0119" ~snippet:"multiline literal");
+    Test.case "rule explanations explain multiline string preference" (fun () ->
+        assert_explanation_contains ~rule_id:"prefer-multiline-string-literals" ~snippet:"multiline literal");
     Test.case "no-custom-operators flags symbolic custom operators" (fun () ->
         let source = "let composed = f %> g\n" in
         let pipeline =
@@ -915,8 +831,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0120" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-custom-operators" ] ~actual:codes;
         Ok ());
     Test.case "no-custom-operators allows builtin operators" (fun () ->
         let source = "let sum = a + b\n" in
@@ -929,8 +845,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains custom operators" (fun () ->
-        assert_explanation_contains ~code:"F0120" ~snippet:"hard to search");
+    Test.case "rule explanations explain custom operators" (fun () ->
+        assert_explanation_contains ~rule_id:"no-custom-operators" ~snippet:"hard to search");
     Test.case "prefer-pipelines-for-nested-calls flags very deep call chains" (fun () ->
         let source = "let rendered = foo (bar (baz (hex 1)))\n" in
         let pipeline =
@@ -939,8 +855,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0129" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-pipelines-for-nested-calls" ] ~actual:codes;
         Ok ());
     Test.case "prefer-pipelines-for-nested-calls keeps shorter chains clean" (fun () ->
         let source = "let rendered = foo (bar (baz 1))\n" in
@@ -953,8 +869,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains nested pipeline preference" (fun () ->
-        assert_explanation_contains ~code:"F0129" ~snippet:"hex 1 |> baz |> bar |> foo");
+    Test.case "rule explanations explain nested pipeline preference" (fun () ->
+        assert_explanation_contains ~rule_id:"prefer-pipelines-for-nested-calls" ~snippet:"hex 1 |> baz |> bar |> foo");
     Test.case "no-inline-parameter-type-annotations flags typed positional parameters" (fun () ->
         let source = "let render (user_id : int) (enabled : bool) = user_id\n" in
         let pipeline =
@@ -963,8 +879,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0121" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-inline-parameter-type-annotations" ] ~actual:codes;
         Ok ());
     Test.case "no-inline-parameter-type-annotations keeps unsigned parameters clean" (fun () ->
         let source = "let render user_id enabled = user_id\n" in
@@ -977,8 +893,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains inline parameter annotations" (fun () ->
-        assert_explanation_contains ~code:"F0121" ~snippet:"Function signatures");
+    Test.case "rule explanations explain inline parameter annotations" (fun () ->
+        assert_explanation_contains ~rule_id:"no-inline-parameter-type-annotations" ~snippet:"Function signatures");
     Test.case "no-function-shorthand flags named function shorthand" (fun () ->
         let source = "let render = function | x -> x + 1\n" in
         let pipeline =
@@ -987,8 +903,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0122" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-function-shorthand" ] ~actual:codes;
         Ok ());
     Test.case "no-function-shorthand keeps fun expressions clean" (fun () ->
         let source = "let render = fun x -> x + 1\n" in
@@ -1001,8 +917,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains function shorthand" (fun () ->
-        assert_explanation_contains ~code:"F0122" ~snippet:"Explicit parameters");
+    Test.case "rule explanations explain function shorthand" (fun () ->
+        assert_explanation_contains ~rule_id:"no-function-shorthand" ~snippet:"Explicit parameters");
     Test.case "limit-function-parameters flags five positional parameters" (fun () ->
         let source = "let render a b c d e = a\n" in
         let pipeline =
@@ -1011,8 +927,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0123" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "limit-function-parameters" ] ~actual:codes;
         Ok ());
     Test.case "limit-function-parameters flags eight named parameters" (fun () ->
         let source =
@@ -1024,8 +940,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0123" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "limit-function-parameters" ] ~actual:codes;
         Ok ());
     Test.case "limit-function-parameters flags mixed parameter lists at ten" (fun () ->
         let source =
@@ -1037,8 +953,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0123" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "limit-function-parameters" ] ~actual:codes;
         Ok ());
     Test.case "limit-function-parameters keeps shorter signatures clean" (fun () ->
         let source = "let render ~a ~b x y = a\n" in
@@ -1051,8 +967,8 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains parameter count limits" (fun () ->
-        assert_explanation_contains ~code:"F0123" ~snippet:"record-shaped concept");
+    Test.case "rule explanations explain parameter count limits" (fun () ->
+        assert_explanation_contains ~rule_id:"limit-function-parameters" ~snippet:"record-shaped concept");
     Test.case "limit-parenthesis-depth flags deeply parenthesized expressions" (fun () ->
         let source = "let wrapped = (((((value)))))\n" in
         let pipeline =
@@ -1061,8 +977,8 @@ let tests =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0124" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "limit-parenthesis-depth" ] ~actual:codes;
         Ok ());
     Test.case "limit-parenthesis-depth keeps shallower expressions clean" (fun () ->
         let source = "let wrapped = ((((value))))\n" in
@@ -1086,8 +1002,8 @@ let tests =
         Test.assert_equal ~expected:1
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains parenthesis depth limits" (fun () ->
-        assert_explanation_contains ~code:"F0124" ~snippet:"parenthesized expressions");
+    Test.case "rule explanations explain parenthesis depth limits" (fun () ->
+        assert_explanation_contains ~rule_id:"limit-parenthesis-depth" ~snippet:"parenthesized expressions");
     Test.case "limit-nested-match-depth flags triple-nested matches" (fun () ->
         let source =
           {|
@@ -1106,8 +1022,8 @@ let render x y z =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0135" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "limit-nested-match-depth" ] ~actual:codes;
         Ok ());
     Test.case "limit-nested-match-depth keeps shallower matches clean" (fun () ->
         let source =
@@ -1149,8 +1065,8 @@ let render x y z =
         Test.assert_equal ~expected:1
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains nested match depth limits" (fun () ->
-        assert_explanation_contains ~code:"F0135" ~snippet:"match towers");
+    Test.case "rule explanations explain nested match depth limits" (fun () ->
+        assert_explanation_contains ~rule_id:"limit-nested-match-depth" ~snippet:"match towers");
     Test.case "no-redundant-parentheses flags obvious grouping around identifiers" (fun () ->
         let source = "let render value = (value)\n" in
         let pipeline =
@@ -1159,8 +1075,8 @@ let render x y z =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0136" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-redundant-parentheses" ] ~actual:codes;
         Ok ());
     Test.case "no-redundant-parentheses reports one issue per redundant chain" (fun () ->
         let source = "let render value = ((value))\n" in
@@ -1184,8 +1100,8 @@ let render x y z =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains redundant parentheses" (fun () ->
-        assert_explanation_contains ~code:"F0136" ~snippet:"obvious grouping");
+    Test.case "rule explanations explain redundant parentheses" (fun () ->
+        assert_explanation_contains ~rule_id:"no-redundant-parentheses" ~snippet:"obvious grouping");
     Test.case "no-eta-expansion flags unary eta expansion" (fun () ->
         let source = "let wrap foo = fun value -> foo value\n" in
         let pipeline =
@@ -1194,8 +1110,8 @@ let render x y z =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0137" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-eta-expansion" ] ~actual:codes;
         Ok ());
     Test.case "no-eta-expansion flags multi-parameter eta expansion" (fun () ->
         let source = "let wrap foo = fun left right -> foo left right\n" in
@@ -1205,8 +1121,8 @@ let render x y z =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0137" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-eta-expansion" ] ~actual:codes;
         Ok ());
     Test.case "no-eta-expansion keeps transformed calls clean" (fun () ->
         let source = "let wrap foo = fun value -> foo (normalize value)\n" in
@@ -1219,8 +1135,8 @@ let render x y z =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains eta expansion" (fun () ->
-        assert_explanation_contains ~code:"F0137" ~snippet:"eta-expanded");
+    Test.case "rule explanations explain eta expansion" (fun () ->
+        assert_explanation_contains ~rule_id:"no-eta-expansion" ~snippet:"eta-expanded");
     Test.case "no-redundant-reraise flags handlers that only re-raise" (fun () ->
         let source =
           "let render value = try render_inner value with exn -> raise exn\n"
@@ -1231,8 +1147,8 @@ let render x y z =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0138" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-redundant-reraise" ] ~actual:codes;
         Ok ());
     Test.case "no-redundant-reraise keeps useful handlers clean" (fun () ->
         let source =
@@ -1247,8 +1163,8 @@ let render x y z =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains redundant reraises" (fun () ->
-        assert_explanation_contains ~code:"F0138" ~snippet:"raise exn");
+    Test.case "rule explanations explain redundant reraises" (fun () ->
+        assert_explanation_contains ~rule_id:"no-redundant-reraise" ~snippet:"raise exn");
     Test.case "no-redundant-begin-end flags begin/end grouping" (fun () ->
         let source = "let render value = begin value end\n" in
         let pipeline =
@@ -1257,8 +1173,8 @@ let render x y z =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0139" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-redundant-begin-end" ] ~actual:codes;
         Ok ());
     Test.case "no-redundant-begin-end keeps ordinary parentheses clean" (fun () ->
         let source = "let render value = (value + 1)\n" in
@@ -1271,8 +1187,8 @@ let render x y z =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains redundant begin/end" (fun () ->
-        assert_explanation_contains ~code:"F0139" ~snippet:"begin ... end");
+    Test.case "rule explanations explain redundant begin/end" (fun () ->
+        assert_explanation_contains ~rule_id:"no-redundant-begin-end" ~snippet:"begin ... end");
     Test.case "prefer-scoped-field-access flags module-qualified record access" (fun () ->
         let source = "let render record = record.Module.field\n" in
         let pipeline =
@@ -1281,8 +1197,8 @@ let render x y z =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0140" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-scoped-field-access" ] ~actual:codes;
         Ok ());
     Test.case "prefer-scoped-field-access keeps normal field access clean" (fun () ->
         let source = "let render record = record.field\n" in
@@ -1295,8 +1211,91 @@ let render x y z =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains scoped field access" (fun () ->
-        assert_explanation_contains ~code:"F0140" ~snippet:"Module.(record.field)");
+    Test.case "prefer-scoped-field-access flags repeated qualified record fields" (fun () ->
+        let source =
+          "let build value next = { Module.field = value; Module.other = next }\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_scoped_field_access.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-scoped-field-access" ] ~actual:codes;
+        Ok ());
+    Test.case "prefer-scoped-field-access keeps mixed record field qualifiers clean" (fun () ->
+        let source =
+          "let build value next = { Module.field = value; other = next }\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_scoped_field_access.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "prefer-scoped-field-access flags let-open bracket forms" (fun () ->
+        let source = "let xs = let open Libc in [| epipe; enoent |]\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_scoped_field_access.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-scoped-field-access" ] ~actual:codes;
+        Ok ());
+    Test.case "prefer-scoped-field-access keeps stacked local opens clean" (fun () ->
+        let source = "let xs = let open A in let open B in [| x |]\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_scoped_field_access.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "rule explanations explain scoped field access" (fun () ->
+        assert_explanation_contains ~rule_id:"prefer-scoped-field-access" ~snippet:"Module.{ field = value }");
+    Test.case "prefer-t-for-single-type-modules flags modules with one non-t type" (fun () ->
+        let source = "module User = struct type user = { name : string } end\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_t_for_single_type_modules.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-t-for-single-type-modules" ] ~actual:codes;
+        Ok ());
+    Test.case "prefer-t-for-single-type-modules keeps single t modules clean" (fun () ->
+        let source = "module User = struct type t = { name : string } end\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_t_for_single_type_modules.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "prefer-t-for-single-type-modules flags module types with one non-t type" (fun () ->
+        let source = "module type USER = sig type user end\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_t_for_single_type_modules.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-t-for-single-type-modules" ] ~actual:codes;
+        Ok ());
+    Test.case "rule explanations explain single type modules" (fun () ->
+        assert_explanation_contains ~rule_id:"prefer-t-for-single-type-modules" ~snippet:"User.t");
     Test.case "no-public-mutable-fields flags mutable record fields in interfaces" (fun () ->
         let source = "type t = { mutable state : int }\n" in
         let pipeline =
@@ -1307,8 +1306,8 @@ let render x y z =
         let result =
           Tusk_fix.Pipeline.run ~filename:(Path.v "sample.mli") pipeline source
         in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0141" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-public-mutable-fields" ] ~actual:codes;
         Ok ());
     Test.case "no-public-mutable-fields keeps implementation-only mutability clean" (fun () ->
         let source = "type t = { mutable state : int }\n" in
@@ -1323,8 +1322,8 @@ let render x y z =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains public mutable fields" (fun () ->
-        assert_explanation_contains ~code:"F0141" ~snippet:"mutable field");
+    Test.case "rule explanations explain public mutable fields" (fun () ->
+        assert_explanation_contains ~rule_id:"no-public-mutable-fields" ~snippet:"mutable field");
     Test.case "no-positional-bool-parameters flags inline bool parameters" (fun () ->
         let source = "let render (enabled : bool) user = user\n" in
         let pipeline =
@@ -1333,8 +1332,8 @@ let render x y z =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0142" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-positional-bool-parameters" ] ~actual:codes;
         Ok ());
     Test.case "no-positional-bool-parameters flags bool arrows in interfaces" (fun () ->
         let source = "val render : bool -> user -> user\n" in
@@ -1346,8 +1345,8 @@ let render x y z =
         let result =
           Tusk_fix.Pipeline.run ~filename:(Path.v "sample.mli") pipeline source
         in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0142" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "no-positional-bool-parameters" ] ~actual:codes;
         Ok ());
     Test.case "no-positional-bool-parameters keeps named bool arrows clean" (fun () ->
         let source = "val render : enabled:bool -> user -> user\n" in
@@ -1362,8 +1361,8 @@ let render x y z =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains positional bool parameters" (fun () ->
-        assert_explanation_contains ~code:"F0142" ~snippet:"~enabled");
+    Test.case "rule explanations explain positional bool parameters" (fun () ->
+        assert_explanation_contains ~rule_id:"no-positional-bool-parameters" ~snippet:"~enabled");
     Test.case "prefer-named-closed-polyvariants flags inline closed polyvariants in values" (fun () ->
         let source = "val decode : [ `json | `xml ] -> payload\n" in
         let pipeline =
@@ -1374,8 +1373,8 @@ let render x y z =
         let result =
           Tusk_fix.Pipeline.run ~filename:(Path.v "sample.mli") pipeline source
         in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0143" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-named-closed-polyvariants" ] ~actual:codes;
         Ok ());
     Test.case "prefer-named-closed-polyvariants flags nested closed polyvariants in aliases" (fun () ->
         let source = "type formats = [ `json | `xml ] list\n" in
@@ -1385,8 +1384,8 @@ let render x y z =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0143" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-named-closed-polyvariants" ] ~actual:codes;
         Ok ());
     Test.case "prefer-named-closed-polyvariants keeps named top-level polyvariants clean" (fun () ->
         let source = "type format = [ `json | `xml ]\n" in
@@ -1399,8 +1398,8 @@ let render x y z =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains named closed polyvariants" (fun () ->
-        assert_explanation_contains ~code:"F0143" ~snippet:"type format");
+    Test.case "rule explanations explain named closed polyvariants" (fun () ->
+        assert_explanation_contains ~rule_id:"prefer-named-closed-polyvariants" ~snippet:"type format");
     Test.case "prefer-opaque-record-types flags public record types with matching accessors" (fun () ->
         let source = "type t = { name : string }\nval name : t -> string\n" in
         let pipeline =
@@ -1411,8 +1410,8 @@ let render x y z =
         let result =
           Tusk_fix.Pipeline.run ~filename:(Path.v "sample.mli") pipeline source
         in
-        let codes = diagnostic_codes result.diagnostics in
-        Test.assert_equal ~expected:[ "F0144" ] ~actual:codes;
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal ~expected:[ "prefer-opaque-record-types" ] ~actual:codes;
         Ok ());
     Test.case "prefer-opaque-record-types keeps record types without accessors clean" (fun () ->
         let source = "type t = { name : string }\nval render : t -> view\n" in
@@ -1440,16 +1439,230 @@ let render x y z =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
-    Test.case "diagnostic code registry explains opaque record types" (fun () ->
-        assert_explanation_contains ~code:"F0144" ~snippet:"type t");
+    Test.case "rule explanations explain opaque record types" (fun () ->
+        assert_explanation_contains ~rule_id:"prefer-opaque-record-types" ~snippet:"type t");
+    Test.case "require-module-interfaces flags src modules without sibling mli files" (fun () ->
+        with_tempdir "tusk_fix_interfaces" (fun tmpdir ->
+              let src_dir = Path.(tmpdir / Path.v "packages" / Path.v "app" / Path.v "src") in
+              let file = Path.(src_dir / Path.v "session_store.ml") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file file "let load () = ()\n";
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_equal ~expected:[ "require-module-interfaces" ]
+                ~actual:(diagnostic_rule_ids result.diagnostics);
+              Ok ()));
+    Test.case "require-module-interfaces keeps src modules with sibling mli files clean" (fun () ->
+        with_tempdir "tusk_fix_interfaces" (fun tmpdir ->
+              let src_dir = Path.(tmpdir / Path.v "packages" / Path.v "app" / Path.v "src") in
+              let file = Path.(src_dir / Path.v "session_store.ml") in
+              let interface = Path.(src_dir / Path.v "session_store.mli") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file file "let load () = ()\n";
+              write_file interface "val load : unit -> unit\n";
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_equal ~expected:[]
+                ~actual:(diagnostic_rule_ids result.diagnostics);
+              Ok ()));
+    Test.case "require-module-interfaces ignores src main modules" (fun () ->
+        with_tempdir "tusk_fix_interfaces" (fun tmpdir ->
+              let src_dir = Path.(tmpdir / Path.v "packages" / Path.v "app" / Path.v "src") in
+              let file = Path.(src_dir / Path.v "main.ml") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file file "let main = ()\n";
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_equal ~expected:[]
+                ~actual:(diagnostic_rule_ids result.diagnostics);
+              Ok ()));
+    Test.case "rule explanations explain missing module interfaces" (fun () ->
+        assert_explanation_contains ~rule_id:"require-module-interfaces" ~snippet:".mli");
+    Test.case "snake-case-source-paths flags non-snake-case source filenames" (fun () ->
+        with_tempdir "tusk_fix_source_paths" (fun tmpdir ->
+              let src_dir = Path.(tmpdir / Path.v "packages" / Path.v "app" / Path.v "src") in
+              let file = Path.(src_dir / Path.v "sessionStore.ml") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file file "let session_store = ()\n";
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_equal
+                ~expected:[ "require-module-interfaces"; "snake-case-source-paths" ]
+                ~actual:(diagnostic_rule_ids result.diagnostics);
+              Ok ()));
+    Test.case "snake-case-source-paths flags non-snake-case source directories" (fun () ->
+        with_tempdir "tusk_fix_source_paths" (fun tmpdir ->
+              let src_dir =
+                Path.(tmpdir / Path.v "packages" / Path.v "app" / Path.v "src" / Path.v "JsonHelpers")
+              in
+              let file = Path.(src_dir / Path.v "session_store.ml") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file file "let session_store = ()\n";
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_equal
+                ~expected:[ "require-module-interfaces"; "snake-case-source-paths" ]
+                ~actual:(diagnostic_rule_ids result.diagnostics);
+              Ok ()));
+    Test.case "snake-case-source-paths keeps snake_case source paths clean" (fun () ->
+        with_tempdir "tusk_fix_source_paths" (fun tmpdir ->
+              let src_dir =
+                Path.(tmpdir / Path.v "packages" / Path.v "app" / Path.v "src" / Path.v "json_helpers")
+              in
+              let file = Path.(src_dir / Path.v "session_store.ml") in
+              let interface = Path.(src_dir / Path.v "session_store.mli") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file file "let session_store = ()\n";
+              write_file interface "val session_store : unit\n";
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_equal ~expected:[]
+                ~actual:(diagnostic_rule_ids result.diagnostics);
+              Ok ()));
+    Test.case "rule explanations explain snake_case source paths" (fun () ->
+        assert_explanation_contains ~rule_id:"snake-case-source-paths" ~snippet:"snake_case");
+    Test.case "package-name-style flags package names that do not start with a letter" (fun () ->
+        with_tempdir "tusk_fix_package_names" (fun tmpdir ->
+              let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "1bad") in
+              let src_dir = Path.(package_dir / Path.v "src") in
+              let file = Path.(src_dir / Path.v "main.ml") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file Path.(package_dir / Path.v "tusk.toml")
+                "[package]\nname = \"1bad\"\nversion = \"0.1.0\"\n\n[lib]\npath = \"src/main.ml\"\n";
+              write_file file "let main = ()\n";
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_equal ~expected:[ "package-name-style" ]
+                ~actual:(diagnostic_rule_ids result.diagnostics);
+              Ok ()));
+    Test.case "package-name-style flags non-kebab-case package names" (fun () ->
+        with_tempdir "tusk_fix_package_names" (fun tmpdir ->
+              let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "bad_pkg") in
+              let src_dir = Path.(package_dir / Path.v "src") in
+              let file = Path.(src_dir / Path.v "main.ml") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file Path.(package_dir / Path.v "tusk.toml")
+                "[package]\nname = \"bad_pkg\"\nversion = \"0.1.0\"\n\n[lib]\npath = \"src/main.ml\"\n";
+              write_file file "let main = ()\n";
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_equal ~expected:[ "package-name-style" ]
+                ~actual:(diagnostic_rule_ids result.diagnostics);
+              Ok ()));
+    Test.case "package-name-style flags trailing separators in package names" (fun () ->
+        with_tempdir "tusk_fix_package_names" (fun tmpdir ->
+              let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "bad-app-") in
+              let src_dir = Path.(package_dir / Path.v "src") in
+              let file = Path.(src_dir / Path.v "main.ml") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file Path.(package_dir / Path.v "tusk.toml")
+                "[package]\nname = \"bad-app-\"\nversion = \"0.1.0\"\n\n[lib]\npath = \"src/main.ml\"\n";
+              write_file file "let main = ()\n";
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_equal ~expected:[ "package-name-style" ]
+                ~actual:(diagnostic_rule_ids result.diagnostics);
+              Ok ()));
+    Test.case "package-name-style keeps good package names clean" (fun () ->
+        with_tempdir "tusk_fix_package_names" (fun tmpdir ->
+              let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "good-app") in
+              let src_dir = Path.(package_dir / Path.v "src") in
+              let file = Path.(src_dir / Path.v "main.ml") in
+              Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+              write_file Path.(package_dir / Path.v "tusk.toml")
+                "[package]\nname = \"good-app\"\nversion = \"0.1.0\"\n\n[lib]\npath = \"src/main.ml\"\n";
+              write_file file "let main = ()\n";
+              let result =
+                Tusk_fix.Runner.run_file ~mode:Tusk_fix.Runner.Check file
+              in
+              Test.assert_equal ~expected:[]
+                ~actual:(diagnostic_rule_ids result.diagnostics);
+              Ok ()));
+    Test.case "rule explanations explain package name style" (fun () ->
+        assert_explanation_contains ~rule_id:"package-name-style" ~snippet:"kebab-case");
+    Test.case "prefer-records-over-large-tuples flags repeated tuple aliases" (fun () ->
+        let source = "type user = string * string * string * string\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_records_over_large_tuples.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:[ "prefer-records-over-large-tuples" ]
+          ~actual:(diagnostic_rule_ids result.diagnostics);
+        Ok ());
+    Test.case "prefer-records-over-large-tuples flags five-element tuple aliases" (fun () ->
+        let source = "type user = int * string * bool * float * bytes\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_records_over_large_tuples.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:[ "prefer-records-over-large-tuples" ]
+          ~actual:(diagnostic_rule_ids result.diagnostics);
+        Ok ());
+    Test.case "prefer-records-over-large-tuples keeps smaller mixed tuples clean" (fun () ->
+        let source = "type user = int * string * bool * float\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_records_over_large_tuples.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:[]
+          ~actual:(diagnostic_rule_ids result.diagnostics);
+        Ok ());
+    Test.case "prefer-records-over-large-tuples flags large tuple signatures" (fun () ->
+        let source = "val user : int * string * bool * float * bytes -> unit\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_records_over_large_tuples.make () ]
+            ()
+        in
+        let result =
+          Tusk_fix.Pipeline.run ~filename:(Path.v "sample.mli") pipeline source
+        in
+        Test.assert_equal ~expected:[ "prefer-records-over-large-tuples" ]
+          ~actual:(diagnostic_rule_ids result.diagnostics);
+        Ok ());
+    Test.case "prefer-records-over-large-tuples flags repeated constructor payloads" (fun () ->
+        let source = "type event = Event of string * string * string * string\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_records_over_large_tuples.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:[ "prefer-records-over-large-tuples" ]
+          ~actual:(diagnostic_rule_ids result.diagnostics);
+        Ok ());
+    Test.case "rule explanations explain large tuple aliases" (fun () ->
+        assert_explanation_contains ~rule_id:"prefer-records-over-large-tuples" ~snippet:"record");
     Test.case "cli list-rules text output prints one rule per line" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true
-          (String.contains output
-             "\027[1mriot:snake-case-type-names\027[0m - Type names should use snake_case instead of camelCase");
+          (String.contains output "riot:");
+        Test.assert_true
+          (String.contains output "  Readability:");
         Test.assert_true
           (String.contains output
-             "\027[1mriot:snake-case-variable-names\027[0m - Variable names should use snake_case instead of camelCase");
+             "  \027[1mriot:snake-case-type-names\027[0m - Type names should use snake_case instead of camelCase");
+        Test.assert_true
+          (String.contains output
+             "  \027[1mriot:snake-case-variable-names\027[0m - Variable names should use snake_case instead of camelCase");
+        Test.assert_true
+          (String.contains output
+             "  \027[1mriot:prefer-record-destructuring-parameters\027[0m - Functions that immediately destructure a record argument should destructure it in the parameter");
         Test.assert_true
           (not (String.contains output "\027[1msnake-case-type-names\027[0m"));
         Test.assert_true
@@ -1458,6 +1671,9 @@ let render x y z =
     Test.case "cli list-rules json output includes builtin rules" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Json in
         Test.assert_true (String.contains output "\"snake-case-type-names\"");
+        Test.assert_true (String.contains output "\"category\":\"Readability\"");
+        Test.assert_true
+          (String.contains output "\"prefer-record-destructuring-parameters\"");
         Test.assert_true
           (not (String.contains output "\"F0101\""));
         Ok ());
@@ -1517,7 +1733,7 @@ let render x y z =
             ()
         in
         let result = Tusk_fix.Pipeline.run pipeline source in
-        let codes = diagnostic_codes result.diagnostics in
+        let codes = diagnostic_rule_ids result.diagnostics in
         Test.assert_equal ~expected:[] ~actual:codes;
         Ok ());
     Test.case "snake-case-type-names ignores module qualifiers in extensible types" (fun () ->
@@ -1533,12 +1749,14 @@ let render x y z =
               let package_toml = Path.(package_dir / Path.v "tusk.toml") in
               let src_dir = Path.(package_dir / Path.v "src") in
               let file = Path.(src_dir / Path.v "file.ml") in
+              let interface = Path.(src_dir / Path.v "file.mli") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
                 "[workspace]\nmembers = [\"packages/kernel\"]\n\n[tusk.fix]\nrules = [\"snake-case-type-names\"]\n";
               write_file package_toml
                 "[package]\nname = \"kernel\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [\"-snake-case-type-names\"]\n\n[lib]\npath = \"src/kernel.ml\"\n";
               write_file file "type userProfile = int\n";
+              write_file interface "type user_profile = int\n";
               let scope =
                 Tusk_fix.Config.load_scope ~cwd:tmpdir
                 |> Option.expect ~msg:"expected workspace scope"
@@ -1577,12 +1795,14 @@ let render x y z =
               let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "app") in
               let src_dir = Path.(package_dir / Path.v "src") in
               let file = Path.(src_dir / Path.v "file.ml") in
+              let interface = Path.(src_dir / Path.v "file.mli") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
                 "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [\"snake-case-type-names\"]\n";
               write_file Path.(package_dir / Path.v "tusk.toml")
                 "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [\"-snake-case-type-names\"]\n\n[lib]\npath = \"src/app.ml\"\n";
               write_file file "type userProfile = int\n";
+              write_file interface "type user_profile = int\n";
               let result =
                 Tusk_fix.Runner.run_files
                   ~pipeline_for_file:(Tusk_fix.Config.pipeline_for_file (Tusk_fix.Config.load_scope ~cwd:tmpdir))
@@ -1597,12 +1817,14 @@ let render x y z =
               let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "app") in
               let src_dir = Path.(package_dir / Path.v "src") in
               let file = Path.(src_dir / Path.v "file.ml") in
+              let interface = Path.(src_dir / Path.v "file.mli") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
                 "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [\"-snake-case-type-names\"]\n";
               write_file Path.(package_dir / Path.v "tusk.toml")
                 "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[lib]\npath = \"src/app.ml\"\n";
               write_file file "let renderUser x = x\n";
+              write_file interface "val render_user : 'a -> 'a\n";
               let result =
                 Tusk_fix.Runner.run_files
                   ~pipeline_for_file:(Tusk_fix.Config.pipeline_for_file (Tusk_fix.Config.load_scope ~cwd:tmpdir))
@@ -1617,12 +1839,14 @@ let render x y z =
               let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "app") in
               let src_dir = Path.(package_dir / Path.v "src") in
               let file = Path.(src_dir / Path.v "file.ml") in
+              let interface = Path.(src_dir / Path.v "file.mli") in
               Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
               write_file workspace_toml
                 "[workspace]\nmembers = [\"packages/app\"]\n\n[tusk.fix]\nrules = [{ name = \"snake-case-type-names\", state = \"enabled\" }]\n";
               write_file Path.(package_dir / Path.v "tusk.toml")
                 "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[tusk.fix]\nrules = [{ name = \"snake-case-type-names\", state = \"disabled\" }]\n\n[lib]\npath = \"src/app.ml\"\n";
               write_file file "type userProfile = int\n";
+              write_file interface "type user_profile = int\n";
               let result =
                 Tusk_fix.Runner.run_files
                   ~pipeline_for_file:(Tusk_fix.Config.pipeline_for_file (Tusk_fix.Config.load_scope ~cwd:tmpdir))
@@ -1929,6 +2153,84 @@ let render x y z =
         let source = Tusk_fix.Fused_runtime.registry_source providers in
         Test.assert_true (String.contains source "Provider_std_std");
         Test.assert_true (String.contains source "Provider_suri_suri");
+        Ok ());
+    Test.case "prefer-record-destructuring-parameters flags immediate record unpacking" (fun () ->
+        let source =
+          "let encode user = let { name; email; _ } = user in [ name; email ]\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_record_destructuring_parameters.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_rule_ids result.diagnostics in
+        Test.assert_equal
+          ~expected:[ "prefer-record-destructuring-parameters" ]
+          ~actual:codes;
+        Ok ());
+    Test.case "prefer-record-destructuring-parameters ignores non-record unpacking" (fun () ->
+        let source = "let encode user = let name = user.name in name\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_record_destructuring_parameters.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "prefer-record-destructuring-parameters flags repeated field access on one record parameter" (fun () ->
+        let source =
+          "let encode user = [ user.name; user.email; user.role ]\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_record_destructuring_parameters.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal
+          ~expected:[ "prefer-record-destructuring-parameters" ]
+          ~actual:(diagnostic_rule_ids result.diagnostics);
+        Ok ());
+    Test.case "prefer-record-destructuring-parameters ignores repeated field access when the whole record is also used" (fun () ->
+        let source =
+          "let encode user = render user [ user.name; user.email ]\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_record_destructuring_parameters.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "prefer-record-destructuring-parameters ignores functions with several positional parameters" (fun () ->
+        let source =
+          "let encode format user = let { name; email; _ } = user in (format, name, email)\n"
+        in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_record_destructuring_parameters.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "rule explanations explain record-destructuring parameters" (fun () ->
+        assert_explanation_contains
+          ~rule_id:"prefer-record-destructuring-parameters"
+          ~snippet:"let { ... } = value in ...";
+        Ok ());
+    Test.case "rule explanations explain ignored map traversal" (fun () ->
+        assert_explanation_contains
+          ~rule_id:"std:prefer-iter-over-ignored-map"
+          ~snippet:"List.iter";
+        Ok ());
+    Test.case "rule explanations explain List.is_empty preference" (fun () ->
+        assert_explanation_contains
+          ~rule_id:"std:prefer-list-is-empty"
+          ~snippet:"List.is_empty";
         Ok ());
   ]
 

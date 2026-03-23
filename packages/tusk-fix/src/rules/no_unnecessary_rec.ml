@@ -6,18 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Recursive bindings should only use rec when they actually self-reference.
+`rec` is a signal to the reader that the definition is recursive. Once that keyword is
+present, people quite reasonably start looking for the recursive call and for the base
+case that keeps it safe.
 
-Why this rule exists:
-- rec signals recursion and makes the reader look for a recursive call.
-- When the binding never refers to itself, rec adds noise without changing behavior.
-- Removing unnecessary rec makes the real recursive definitions stand out more clearly.
+If the binding never refers to itself, that signal is false. The keyword adds noise,
+and it makes genuinely recursive definitions harder to spot because the eye can no
+longer trust `rec` to mean "this one actually loops back."
 
-Examples:
-  Bad:    let rec render x = x + 1
-  Better: let render x = x + 1
-
-When this warning fires, Remove rec from the binding.
+When this warning fires, the fix is simple: remove `rec` and let recursive bindings
+stand out only where recursion is real.
 |}
 
 let self_references_binding binding =

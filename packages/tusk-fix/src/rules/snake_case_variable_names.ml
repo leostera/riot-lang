@@ -7,15 +7,15 @@ let rule_description =
 
 let rule_explain =
   {|
-Variable names should use snake_case.
+Local bindings are part of the ordinary value language, so they should follow the same
+`snake_case` convention as function names, arguments, and record fields.
 
-Why this rule exists:
-- Local bindings should follow the same style as function names.
-- snake_case keeps identifiers visually consistent across patterns, lets, and record fields.
+That consistency pays off in dense code. Pattern matches, `let` chains, and small local
+helpers are easier to scan when the naming style does not keep changing between
+bindings.
 
-Examples:
-  Bad:    let currentUser = ...
-  Better: let current_user = ...
+Use `current_user`, `next_state`, and `parsed_response` rather than mixing in
+camelCase at the local level.
 |}
 
 let is_upper ch = ch >= 'A' && ch <= 'Z'

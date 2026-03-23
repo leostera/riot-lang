@@ -6,7 +6,13 @@ version = "0.1.0"
 rules = [ "-no-stdlib" ]
 
 [tusk.fix.provider]
-rules = [ "no-stdlib", "prefer-bang-equal-inequality", "no-double-list-rev" ]
+rules = [
+  "no-stdlib",
+  "prefer-bang-equal-inequality",
+  "no-double-list-rev",
+  "prefer-iter-over-ignored-map",
+  "prefer-list-is-empty",
+]
 
 [dependencies]
 miniriot = { path = "../miniriot" }

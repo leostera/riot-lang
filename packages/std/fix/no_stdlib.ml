@@ -12,55 +12,51 @@ let unix_body =
   {|
 Direct calls into Unix bypass Riot's scheduling and portability boundaries.
 
-Why this rule exists:
-- Riot code runs on top of a cooperative actor runtime.
-- A blocking Unix call can stall the scheduler and delay unrelated actors.
-- Direct Unix usage also hard-codes platform details into packages that should stay platform-agnostic.
+In Riot, a blocking Unix call is not just a local implementation detail. It can
+stall the cooperative scheduler, delay unrelated actors, and leak host-specific
+behavior into packages that are supposed to stay portable.
 
-What to do instead:
-- Prefer package-owned Riot abstractions when they exist.
-- Push true OS boundaries down into the packages that are supposed to own them, like kernel.
-- If you really need a Unix boundary, introduce it deliberately instead of sprinkling Unix calls through application code.
+Keep real operating-system boundaries down in packages that are meant to own
+them, like `kernel`. Everywhere else, prefer the Riot-owned abstraction that
+already exists, or add one deliberately if the boundary is genuinely missing.
 |}
 
 let sys_body =
   {|
 Direct Sys usage reaches into process-global runtime state instead of going through Riot-owned boundaries.
 
-Why this rule exists:
-- Sys exposes host and runtime details directly from OCaml.
-- That makes portability and policy decisions leak into packages that should not own them.
-- It also makes it harder to keep behavior consistent across the ecosystem.
+`Sys` exposes host and runtime details directly from OCaml. Once those calls
+spread through ordinary packages, portability decisions and process-global
+policy leak into places that should not own them.
 
-What to do instead:
-- Prefer Riot wrappers for system information and runtime behavior.
-- Keep process-global and platform-global logic in boundary-owning packages.
+Prefer Riot wrappers for system information and runtime behavior. If something
+truly belongs at the process or platform boundary, keep it in a package that is
+explicitly responsible for that boundary instead of reaching for `Sys`
+everywhere.
 |}
 
 let stdlib_body =
   {|
 Code outside the runtime boundary should go through Riot's Std layer instead of referencing Stdlib directly.
 
-Why this rule exists:
-- Riot is trying to provide a coherent programming stack, not just a pile of packages.
-- Routing code through Std gives the ecosystem one owned surface instead of ad hoc direct references into Stdlib.
-- That leaves room for better defaults, portability adjustments, and package-wide conventions.
+Riot is trying to offer one coherent standard surface, not a mixture of
+package-local conventions plus ad hoc direct references into `Stdlib`.
+Routing code through `Std` gives the ecosystem one owned API surface and leaves
+room for shared defaults, portability adjustments, and package-wide style.
 
-What to do instead:
-- Replace Stdlib references with Std when the Riot surface already owns that API.
-- If Std does not yet expose something important, that is usually a signal to extend Std deliberately rather than bypass it forever.
+When `Std` already owns an API, use it. When it does not, that is usually a
+signal to extend `Std` deliberately instead of bypassing it forever.
 |}
 
 let pervasives_body =
   {|
 Pervasives is the historical pre-Stdlib module and should not appear in modern Riot code.
 
-Why this rule exists:
-- Pervasives is legacy OCaml surface area.
-- Riot code should point at the current owned surface, not historic compatibility layers.
+`Pervasives` is legacy OCaml surface area. Riot code should point at the
+current owned surface, not an old compatibility layer that survives mostly for
+historical reasons.
 
-What to do instead:
-- Replace direct Pervasives references with Std.
+Replace direct `Pervasives` references with `Std`.
 |}
 
 let rule_explain =

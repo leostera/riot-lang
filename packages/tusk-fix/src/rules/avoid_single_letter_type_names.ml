@@ -6,16 +6,15 @@ let rule_description =
 
 let rule_explain =
   {|
-Single-letter type names should be avoided, except for the conventional `t`.
+Single-letter type names hide the shape of an abstraction at exactly the place where
+readers most need help. In a signature, `type x` does not tell you whether `x` is a
+user profile, a parser state, or a cache entry.
 
-Why this rule exists:
-- Standalone single-letter type names hide the meaning of the abstraction.
-- `t` is the one common exception because it is the standard primary type name for a module.
+The conventional exception is `t`. When a module has one obvious primary type,
+`User.t` or `Cache.t` is the standard OCaml spelling and reads naturally at call sites.
 
-Examples:
-  Bad:    type x = ...
-  Better: type user_profile = ...
-  Good:   type t = ...
+Outside that convention, prefer names that carry domain meaning, such as
+`user_profile`, `parser_state`, or `connection_error`.
 |}
 
 let should_flag_type_name name =

@@ -6,16 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Deeply nested function calls are easier to read when written as pipelines.
+Nested calls read from the inside out. That is manageable for one or two levels, but
+once the chain gets deeper the reader has to bounce back and forth across the line to
+reconstruct evaluation order.
 
-Why this rule exists:
-- `foo (bar (baz (hex 1)))` forces the reader to scan inside-out.
-- Pipelines read in execution order and make each transformation step explicit.
-- Once a call chain gets deep enough, `|>` is usually easier on the eyes.
+Pipelines flatten the same flow into execution order: start with a value, apply one
+transformation, then the next, then the next. That makes the intermediate steps easier
+to spot and gives each transformation a stable visual rhythm.
 
-Examples:
-  Bad:    foo (bar (baz (hex 1)))
-  Better: hex 1 |> baz |> bar |> foo
+This rule exists for the cases where nested calls have become dense enough that a
+pipeline would make the same logic easier to follow.
 |}
 
 let rec unwrap_parens = function

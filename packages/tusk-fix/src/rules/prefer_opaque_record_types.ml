@@ -7,17 +7,18 @@ let rule_description =
 
 let rule_explain =
   {|
-Prefer opaque record types once the interface already exposes accessor functions.
+If an interface already exposes accessor functions such as `name : t -> string`, then
+publishing the record fields as well usually buys very little. Callers now have two
+ways to access the same information, but the module loses freedom to rearrange or
+validate its internal representation later.
 
-Examples:
-  Avoid:   type t = { name : string }
-           val name : t -> string
+Making the type opaque keeps the public API focused on the operations the module
+actually wants to support. The existing accessors remain available, and the module
+keeps the option to rename fields, add derived data, or enforce invariants without
+breaking callers.
 
-  Better:  type t
-           val name : t -> string
-
-If callers already go through functions like `name`, exposing the record fields
-directly usually just makes the representation harder to change later.
+This rule fires when the field-level representation is already redundant with the
+function surface the module has chosen to expose.
 |}
 
 let rec strip_type_wrappers = function

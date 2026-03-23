@@ -7,19 +7,15 @@ let rule_description =
 
 let rule_explain =
   {|
-Avoid one-letter type variable names like 'a and 'b in real type definitions.
+One-letter type variables are fine in tiny local examples, but they age badly in real
+APIs. By the time a type reaches an interface or a diagnostic message, `'a` and `'b`
+force the reader to reconstruct the meaning from the rest of the declaration.
 
-Why this rule exists:
-- Short type variables are compact but not descriptive.
-- In public APIs they force the reader to reverse-engineer intent from context.
+Prefer names that tell the reader what role each variable plays. `'value`, `'error`,
+`'state`, `'msg`, and `'key` are longer, but they let the type explain itself.
 
-What to do instead:
-- Use names that communicate role.
-- Prefer names like 'value, 'error, 'state, or 'msg when those roles matter.
-
-Examples:
-  Bad:    type ('a, 'b) resultish = ...
-  Better: type ('value, 'error) resultish = ...
+For example, `('value, 'error) resultish` tells a much clearer story than
+`('a, 'b) resultish`, especially once the type appears in multiple modules.
 |}
 
 let is_lower_alpha ch = ch >= 'a' && ch <= 'z'

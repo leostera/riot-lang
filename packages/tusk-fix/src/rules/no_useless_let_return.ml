@@ -6,19 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Bindings that immediately return the bound name should be collapsed to the bound expression.
+A `let` binding should usually buy you something: a clearer name, a reused value, or a
+place to hang additional logic. When the body immediately returns the same binding, the
+extra name is not carrying its weight.
 
-Why this rule exists:
-- `let value = compute () in value` adds a name but does not add information.
-- The extra binding makes the expression longer without changing control flow or meaning.
-- If the binding exists only to hand the same value back immediately, the simpler expression is easier to read.
+`let value = compute () in value` is longer than `compute ()` but does not explain the
+code any better. In those cases, the direct expression is easier to read because it
+shows the real work without the temporary detour.
 
-Examples:
-  Bad:    let value = load_config () in value
-  Better: load_config ()
-
-  Bad:    let result = parse input in result
-  Better: parse input
+Keep the binding when the name genuinely helps. Drop it when the name is created only
+to be handed straight back.
 |}
 
 let rec unwrap_parens = function

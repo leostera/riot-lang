@@ -6,18 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Deep chains of parenthesized expressions should be avoided.
+Heavy parenthesization is usually a sign that the code wants to be flatter.
+When readers have to count closing delimiters to understand an expression, the shape
+of the program is doing more work than the names inside it.
 
-Why this rule exists:
-- Heavy parenthesization usually means the expression wants to be decomposed.
-- Once the nesting gets deep, it becomes hard to scan and easy to misread.
+Sometimes the right fix is simply to remove redundant grouping. Other times the
+expression wants an intermediate name, a helper function, or a pipeline that makes
+evaluation order obvious without so much punctuation.
 
-Examples:
-  Bad:    let value = (((((compute x)))))
-  Better: let value = compute x
-  Better: let inner = compute x in inner
-
-If you need this many parentheses, the expression probably wants a name or a flatter shape.
+If a line keeps growing more parentheses just to stay understandable, it is already
+telling you that the current shape is too dense.
 |}
 
 let max_parenthesis_depth = 5

@@ -6,17 +6,15 @@ let rule_description =
 
 let rule_explain =
   {|
-Avoid `begin ... end` for ordinary expression grouping.
+`begin ... end` is a perfectly valid grouping construct, but for ordinary expression
+grouping it is usually heavier than necessary. Most readers parse parentheses faster
+than `begin` and `end`, especially when the grouped expression is short.
 
-`begin ... end` behaves like parentheses, but it is heavier on the page and harder to scan.
-When the block only exists for grouping, prefer plain parentheses or drop the grouping entirely.
+If the block exists only to force grouping, prefer plain parentheses or remove the
+grouping entirely when precedence already makes the expression obvious.
 
-Examples:
-  Avoid:   let value = begin render item end
-  Better:  let value = render item
-
-  Avoid:   let value = begin render (item + 1) end
-  Better:  let value = (render (item + 1))
+This keeps the visual weight of the code proportional to the job the grouping is
+actually doing.
 |}
 
 let opens_with_begin ({ syntax_node; _ } : Syn.Cst.parenthesized_expression) =

@@ -6,17 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Avoid eta-expanded wrappers like `fun x -> foo x`.
+An eta-expanded wrapper is a function that immediately hands all of its arguments to
+another function in the same order. In other words, it looks like a new abstraction
+but does not actually add one.
 
-These wrappers do not add behavior.
-They only forward their arguments to another function in the same order, which makes the code longer without changing meaning.
-When the wrapper is just a pass-through, use the callee directly.
+That extra layer makes the code longer and can mislead readers into looking for hidden
+behavior that is not there. If the wrapper is just `fun value -> render value`, then
+the clearer spelling is simply `render`.
 
-Examples:
-  Avoid:   fun value -> render value
-  Avoid:   fun left right -> compare left right
-  Better:  render
-  Better:  compare
+Keep the wrapper only when it genuinely changes something: argument order, partial
+application, logging, validation, or any other real behavior.
 |}
 
 let rec child_expressions_of_function_body = function

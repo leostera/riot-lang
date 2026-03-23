@@ -9,50 +9,67 @@ type result = {
 
 let make ~rules () = { rules }
 
+type builtin_rule_factory = {
+  category : string;
+  id : string;
+  make : unit -> Rule.t;
+}
+
 let builtin_rule_factories () =
   [
-    ("avoid-single-letter-function-names", Rules.Avoid_single_letter_function_names.make);
-    ("avoid-single-letter-type-names", Rules.Avoid_single_letter_type_names.make);
-    ("limit-parenthesis-depth", Rules.Limit_parenthesis_depth.make);
-    ("limit-nested-match-depth", Rules.Limit_nested_match_depth.make);
-    ("limit-open-statements", Rules.Limit_open_statements.make);
-    ("no-redundant-parentheses", Rules.No_redundant_parentheses.make);
-    ("no-redundant-begin-end", Rules.No_redundant_begin_end.make);
-    ("no-eta-expansion", Rules.No_eta_expansion.make);
-    ("no-redundant-reraise", Rules.No_redundant_reraise.make);
-    ("no-public-mutable-fields", Rules.No_public_mutable_fields.make);
-    ("prefer-scoped-field-access", Rules.Prefer_scoped_field_access.make);
-    ("no-exn-suffix-functions", Rules.No_exn_suffix_functions.make);
-    ("no-unnecessary-rec", Rules.No_unnecessary_rec.make);
-    ("no-useless-let-return", Rules.No_useless_let_return.make);
-    ("no-redundant-else-unit", Rules.No_redundant_else_unit.make);
-    ("no-boolean-comparisons-in-conditionals", Rules.No_boolean_comparisons_in_conditionals.make);
-    ("prefer-sequences-over-let-unit", Rules.Prefer_sequences_over_let_unit.make);
-    ("prefer-if-over-bool-match", Rules.Prefer_if_over_bool_match.make);
-    ("no-open-bang", Rules.No_open_bang.make);
-    ("no-inline-parameter-type-annotations", Rules.No_inline_parameter_type_annotations.make);
-    ("no-function-shorthand", Rules.No_function_shorthand.make);
-    ("limit-function-parameters", Rules.Limit_function_parameters.make);
-    ("prefer-multiline-string-literals", Rules.Prefer_multiline_string_literals.make);
-    ("no-custom-operators", Rules.No_custom_operators.make);
-    ("prefer-pipelines-for-nested-calls", Rules.Prefer_pipelines_for_nested_calls.make);
-    ("snake-case-type-names", Rules.Snake_case_type_names.make);
-    ("descriptive-type-variables", Rules.Descriptive_type_variables.make);
-    ("snake-case-function-names", Rules.Snake_case_function_names.make);
-    ("class-case-module-names", Rules.Class_case_module_names.make);
-    ("snake-case-variable-names", Rules.Snake_case_variable_names.make);
-    ("no-prime-variables", Rules.No_prime_variables.make);
-    ("snake-case-argument-names", Rules.Snake_case_argument_names.make);
-    ("ordered-argument-kinds", Rules.Ordered_argument_kinds.make);
-    ("alphabetized-named-arguments", Rules.Alphabetized_named_arguments.make);
-    ("t-first-named-arguments", Rules.T_first_named_arguments.make);
-    ("snake-case-record-fields", Rules.Snake_case_record_fields.make);
-    ("class-case-constructors", Rules.Class_case_constructors.make);
-    ("snake-case-polyvariant-tags", Rules.Snake_case_polyvariant_tags.make);
-    ("no-positional-bool-parameters", Rules.No_positional_bool_parameters.make);
-    ("prefer-named-closed-polyvariants", Rules.Prefer_named_closed_polyvariants.make);
-    ("prefer-opaque-record-types", Rules.Prefer_opaque_record_types.make);
+    { category = "Correctness"; id = "limit-open-statements"; make = Rules.Limit_open_statements.make };
+    { category = "Correctness"; id = "no-open-bang"; make = Rules.No_open_bang.make };
+    { category = "Correctness"; id = "no-positional-bool-parameters"; make = Rules.No_positional_bool_parameters.make };
+    { category = "Correctness"; id = "no-public-mutable-fields"; make = Rules.No_public_mutable_fields.make };
+    { category = "Correctness"; id = "no-redundant-reraise"; make = Rules.No_redundant_reraise.make };
+    { category = "Correctness"; id = "prefer-opaque-record-types"; make = Rules.Prefer_opaque_record_types.make };
+    { category = "Correctness"; id = "require-module-interfaces"; make = Rules.Require_module_interfaces.make };
+    { category = "Correctness"; id = "t-first-named-arguments"; make = Rules.T_first_named_arguments.make };
+    { category = "Readability"; id = "alphabetized-named-arguments"; make = Rules.Alphabetized_named_arguments.make };
+    { category = "Readability"; id = "avoid-single-letter-function-names"; make = Rules.Avoid_single_letter_function_names.make };
+    { category = "Readability"; id = "avoid-single-letter-type-names"; make = Rules.Avoid_single_letter_type_names.make };
+    { category = "Readability"; id = "class-case-constructors"; make = Rules.Class_case_constructors.make };
+    { category = "Readability"; id = "class-case-module-names"; make = Rules.Class_case_module_names.make };
+    { category = "Readability"; id = "descriptive-type-variables"; make = Rules.Descriptive_type_variables.make };
+    { category = "Readability"; id = "limit-function-parameters"; make = Rules.Limit_function_parameters.make };
+    { category = "Readability"; id = "limit-nested-match-depth"; make = Rules.Limit_nested_match_depth.make };
+    { category = "Readability"; id = "limit-parenthesis-depth"; make = Rules.Limit_parenthesis_depth.make };
+    { category = "Readability"; id = "no-boolean-comparisons-in-conditionals"; make = Rules.No_boolean_comparisons_in_conditionals.make };
+    { category = "Readability"; id = "no-custom-operators"; make = Rules.No_custom_operators.make };
+    { category = "Readability"; id = "no-eta-expansion"; make = Rules.No_eta_expansion.make };
+    { category = "Readability"; id = "no-exn-suffix-functions"; make = Rules.No_exn_suffix_functions.make };
+    { category = "Readability"; id = "no-function-shorthand"; make = Rules.No_function_shorthand.make };
+    { category = "Readability"; id = "no-inline-parameter-type-annotations"; make = Rules.No_inline_parameter_type_annotations.make };
+    { category = "Readability"; id = "no-prime-variables"; make = Rules.No_prime_variables.make };
+    { category = "Readability"; id = "no-redundant-begin-end"; make = Rules.No_redundant_begin_end.make };
+    { category = "Readability"; id = "no-redundant-else-unit"; make = Rules.No_redundant_else_unit.make };
+    { category = "Readability"; id = "no-redundant-parentheses"; make = Rules.No_redundant_parentheses.make };
+    { category = "Readability"; id = "no-unnecessary-rec"; make = Rules.No_unnecessary_rec.make };
+    { category = "Readability"; id = "no-useless-let-return"; make = Rules.No_useless_let_return.make };
+    { category = "Readability"; id = "ordered-argument-kinds"; make = Rules.Ordered_argument_kinds.make };
+    { category = "Readability"; id = "package-name-style"; make = Rules.Package_name_style.make };
+    { category = "Readability"; id = "prefer-if-over-bool-match"; make = Rules.Prefer_if_over_bool_match.make };
+    { category = "Readability"; id = "prefer-multiline-string-literals"; make = Rules.Prefer_multiline_string_literals.make };
+    { category = "Readability"; id = "prefer-named-closed-polyvariants"; make = Rules.Prefer_named_closed_polyvariants.make };
+    { category = "Readability"; id = "prefer-pipelines-for-nested-calls"; make = Rules.Prefer_pipelines_for_nested_calls.make };
+    { category = "Readability"; id = "prefer-record-destructuring-parameters"; make = Rules.Prefer_record_destructuring_parameters.make };
+    { category = "Readability"; id = "prefer-records-over-large-tuples"; make = Rules.Prefer_records_over_large_tuples.make };
+    { category = "Readability"; id = "prefer-scoped-field-access"; make = Rules.Prefer_scoped_field_access.make };
+    { category = "Readability"; id = "prefer-t-for-single-type-modules"; make = Rules.Prefer_t_for_single_type_modules.make };
+    { category = "Readability"; id = "prefer-sequences-over-let-unit"; make = Rules.Prefer_sequences_over_let_unit.make };
+    { category = "Readability"; id = "snake-case-argument-names"; make = Rules.Snake_case_argument_names.make };
+    { category = "Readability"; id = "snake-case-function-names"; make = Rules.Snake_case_function_names.make };
+    { category = "Readability"; id = "snake-case-polyvariant-tags"; make = Rules.Snake_case_polyvariant_tags.make };
+    { category = "Readability"; id = "snake-case-record-fields"; make = Rules.Snake_case_record_fields.make };
+    { category = "Readability"; id = "snake-case-source-paths"; make = Rules.Snake_case_source_paths.make };
+    { category = "Readability"; id = "snake-case-type-names"; make = Rules.Snake_case_type_names.make };
+    { category = "Readability"; id = "snake-case-variable-names"; make = Rules.Snake_case_variable_names.make };
   ]
+
+let builtin_rule_category rule_id =
+  builtin_rule_factories ()
+  |> List.find_opt (fun factory -> String.equal factory.id rule_id)
+  |> Option.map (fun factory -> factory.category)
 
 let package_rules () =
   Provider_registry.rules ()
@@ -68,15 +85,13 @@ let filtered_builtin_rules package_rules =
     package_rules |> List.map Rule.id |> List.map unqualified_rule_id
   in
   builtin_rule_factories ()
-  |> List.map snd
-  |> List.map (fun make_rule -> make_rule ())
+  |> List.map (fun factory -> factory.make ())
   |> List.filter (fun rule ->
          not (List.mem (unqualified_rule_id (Rule.id rule)) shadowed_ids))
 
 let builtin_rules () =
   builtin_rule_factories ()
-  |> List.map snd
-  |> List.map (fun make_rule -> make_rule ())
+  |> List.map (fun factory -> factory.make ())
 
 let run pipeline ?filename source =
   let parse_result =

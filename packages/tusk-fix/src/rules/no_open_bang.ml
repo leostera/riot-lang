@@ -7,17 +7,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Avoid open! and prefer plain open or explicit module qualification.
+`open!` suppresses the compiler warning that would normally tell you about accidental
+shadowing. That is a strong tradeoff to make for a small reduction in module
+qualification.
 
-Why this rule exists:
-- open! suppresses the compiler's shadowing warning, which makes accidental name collisions easier to miss.
-- If an open is safe, plain open communicates that without discarding the warning mechanism.
-- If the scope is narrow or sensitive, explicit qualification is easier to audit than a forceful open.
+If an open is truly harmless, plain `open` keeps the code readable without disabling
+the warning mechanism. If the scope is sensitive, explicit qualification like
+`List.map` or `Http.Response.ok` makes the dependency even clearer.
 
-Examples:
-  Bad:    open! List
-  Better: open List
-  Better: List.map f xs
+This rule exists because shadowing bugs are cheap to introduce and annoying to notice
+late. `open!` makes that problem easier to miss.
 |}
 
 let make_diagnostic token =

@@ -6,19 +6,20 @@ let rule_description =
 
 let rule_explain =
   {|
-Functions with too many parameters should be avoided.
+A long parameter list is often a sign that the function is operating on an unnamed data
+structure. Once the signature grows large enough, callers have to remember argument
+order, updates become error-prone, and every new parameter makes the function harder to
+refactor.
 
-Why this rule exists:
-- A long parameter list usually hides a record-shaped concept that wants a name.
-- Smaller parameter lists are easier to read, harder to mix up, and easier to refactor.
+The thresholds in this rule are intentionally generous:
+positional-only functions should stay below five parameters,
+named-only functions should stay below eight,
+and mixed signatures should stay below ten total parameters.
 
-Thresholds:
-- Positional-only functions should stay below 5 parameters.
-- Named-only functions should stay below 8 parameters.
-- Mixed named and positional functions should stay below 10 parameters.
-
-If a function keeps growing parameters like `~purchased_at`, `~quantity`, and `~item`,
-that usually means a `Purchase_order.t` or similar record wants to exist.
+When a function keeps accreting parameters such as `~purchased_at`, `~quantity`,
+`~item`, and `~currency`, that usually means a record-shaped concept wants a name.
+Introducing that record often makes both the definition and the call sites easier to
+understand.
 |}
 
 type parameter_counts = {

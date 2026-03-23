@@ -6,16 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Named functions should avoid `function` shorthand.
+`function` is compact, but it hides the parameter list right where a named function is
+introducing its public shape. With `let describe = function ...`, the reader has to
+enter the branches before they even know what the argument is called.
 
-Why this rule exists:
-- Explicit parameters make function signatures and later refactors easier.
-- `function` hides the argument list and pushes structure into the branches immediately.
+For local throwaway lambdas that tradeoff can be fine. For named functions, explicit
+parameters age better. `let describe value = match value with ...` gives the argument
+a name immediately and makes later refactors, logging, and type annotations simpler.
 
-Examples:
-  Bad:    let describe = function | Ok x -> x | Error _ -> "error"
-  Better: let describe value = match value with | Ok x -> x | Error _ -> "error"
-  Better: let describe = fun value -> match value with | Ok x -> x | Error _ -> "error"
+This rule nudges named functions toward the clearer form while still leaving `function`
+available for places where the shorthand is genuinely a better fit.
 |}
 
 let make_diagnostic binding =

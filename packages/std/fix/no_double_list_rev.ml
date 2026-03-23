@@ -16,19 +16,19 @@ let explanation =
         {|
 Avoid calling List.rev twice in a row.
 
-Why this rule exists:
-- List.rev (List.rev xs) returns the original list again.
-- The double reversal adds work without changing the result.
-- When this shows up in real code, it usually means an intermediate transform was removed and the cleanup never happened.
-
-What to do instead:
-- Replace List.rev (List.rev xs) with xs.
-- If only one reversal is actually needed, keep just the one that reflects the intended order.
-
 Examples:
-  Bad:    List.rev (List.rev items)
-  Better: items
-  Better: List.rev items
+  Instead of:
+    List.rev (List.rev items)
+
+  write either:
+    items
+
+  or, if the reversal is still semantically needed:
+    List.rev items
+
+`List.rev (List.rev xs)` returns the original list again. The extra reversal
+adds work without changing the result, and in real code it usually means an
+intermediate transformation was deleted while the cleanup never happened.
 |};
     }
 

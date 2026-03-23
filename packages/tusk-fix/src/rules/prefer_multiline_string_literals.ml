@@ -6,17 +6,17 @@ let rule_description =
 
 let rule_explain =
   {explain|
-Repeatedly concatenating string literals should be avoided.
+When a string literal starts spilling across several concatenated pieces, the reader
+has to reconstruct the final text mentally from punctuation. That is tedious for short
+examples and error-prone for longer payloads, especially when whitespace matters.
 
-Why this rule exists:
-- Long chains of `^` are harder to read than a single multiline literal.
-- Multiline literals make surrounding punctuation and whitespace much easier to inspect.
+A multiline string literal keeps the content in one place and lets the eye inspect the
+actual output instead of a chain of `^` operators. This is particularly helpful for
+HTML fragments, SQL, JSON examples, and test fixtures where punctuation and spacing
+carry meaning.
 
-Examples:
-  Bad:    "hello " ^ "world" ^ "!"
-  Better: {|
-hello world!
-|}
+Use concatenation when the pieces are genuinely dynamic. Use a multiline literal when
+the content is really one static block of text.
 |explain}
 
 let rec string_literal_chain_size_in_function_body = function

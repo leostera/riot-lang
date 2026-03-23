@@ -6,27 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Avoid nesting `match` expressions three levels deep or more.
+Three layers of nested `match` usually means the control flow has stopped fitting in
+the reader's head. Each additional `match` introduces another indentation level,
+another set of cases, and another question about which values are still in scope.
 
-Deep match towers make control flow harder to scan because each branch introduces another layer of indentation and another set of cases to keep in your head.
-Once the nesting gets this deep, the code usually wants helper functions, smaller pattern matches, or a different data shape.
+When a branch has to open yet another `match`, the code often wants one of three
+things instead: a helper function, a smaller intermediate value, or a different data
+shape that captures the combination up front.
 
-Examples:
-  Avoid:
-    match x with
-    | _ ->
-        match y with
-        | _ ->
-            match z with
-            | _ -> ...
-
-  Better:
-    let render_z z = ...
-    in
-    match x with
-    | _ ->
-        match y with
-        | _ -> render_z z
+As a rough rule, once you are writing `match x with ... match y with ... match z with`,
+stop and ask whether the innermost logic deserves a name of its own.
 |}
 
 let max_nested_match_depth = 3

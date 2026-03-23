@@ -6,19 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Matching on booleans should usually be written as `if` expressions.
+Booleans already describe a two-way branch. Writing `match is_ready with true -> ... |
+false -> ...` repeats that fact in a more verbose form than `if`.
 
-Why this rule exists:
-- `match is_ready with true -> ... | false -> ...` is just a noisier `if`.
-- `if` makes the branching condition obvious immediately.
-- When the fallback branch is just `()`, the shorter conditional form is even clearer.
+`if` keeps the reader focused on the condition first and the two outcomes second. That
+is exactly what boolean branching is for. The simplification becomes even clearer when
+the negative branch is just `()`, because `if cond then effect ()` already expresses
+"do this only when the condition holds."
 
-Examples:
-  Bad:    match is_ready with true -> render () | false -> fallback ()
-  Better: if is_ready then render () else fallback ()
-
-  Bad:    match is_ready with false -> render () | _ -> ()
-  Better: if not is_ready then render ()
+Reserve `match` for the places where you really are inspecting several cases or want
+pattern matching, not for the most ordinary boolean branch.
 |}
 
 type case_pattern_kind =

@@ -7,15 +7,17 @@ let rule_description =
 
 let rule_explain =
   {|
-Inline parameter type annotations should be avoided in function definitions.
+Inline parameter annotations scatter a function signature across the argument list.
+That makes the API harder to skim because readers have to reconstruct the type from
+several small annotations instead of reading it in one place.
 
-Why this rule exists:
-- Function signatures are easier to scan when the full type lives in one place.
-- Inline parameter annotations make it harder to evolve a function into a signed `let name : ... = ...` form.
+Putting the type on the binding itself keeps the interface intact:
+`let render : int -> bool -> view = ...`.
+The parameters can then stay focused on names, and the type stays focused on the
+shape of the function.
 
-Examples:
-  Bad:    let render (user_id : int) (enabled : bool) = ...
-  Better: let render : int -> bool -> view = fn user_id enabled -> ...
+This also makes later refactors easier, because the function already has a single
+obvious place where its signature lives.
 |}
 
 let rec subtree_contains_kind (node : Syn.Cst.syntax_node) target_kind =

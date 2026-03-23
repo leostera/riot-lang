@@ -7,15 +7,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Polymorphic variant tags should use snake_case.
+Riot treats polymorphic variant tags more like value-level names than constructor-level
+names, so `snake_case` keeps them aligned with the rest of the language.
 
-Why this rule exists:
-- Riot prefers polyvariant tags that read like values, not constructors.
-- snake_case tags are easier to scan inside inline polymorphic variant types.
+That choice matters most in inline polymorphic variant types, where the tags appear in
+dense type expressions and should stay easy to scan. Mixing `GuestUser` and
+`registered_user` in the same row makes the type feel visually inconsistent for no real
+benefit.
 
-Examples:
-  Bad:    type user = [ `GuestUser | `registered_user ]
-  Better: type user = [ `guest_user | `registered_user ]
+Use `snake_case` tags such as `` `guest_user `` and `` `registered_user `` so the style
+stays predictable across the type surface.
 |}
 
 let is_upper ch = ch >= 'A' && ch <= 'Z'

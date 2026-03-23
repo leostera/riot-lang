@@ -6,14 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Function parameters should be ordered as:
-1. labeled arguments
-2. optional arguments
-3. positional arguments
+This rule enforces one stable parameter layout: labeled arguments first, optional
+arguments next, and positional arguments last.
 
-Why this rule exists:
-- A stable order makes APIs easier to skim.
-- Putting positional arguments first tends to bury the configurable surface of the function.
+That order keeps the configurable surface of a function near the front of the
+signature. Readers can see the knobs first and the required positional data afterward.
+When positional parameters come first, the named part of the API is easier to miss and
+call sites become less uniform.
+
+The goal is not theoretical purity. It is to make function signatures easier to skim
+and easier to keep consistent across a codebase.
 |}
 
 let kind_rank = function

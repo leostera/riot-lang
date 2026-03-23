@@ -6,16 +6,13 @@ let rule_description =
 
 let rule_explain =
   {|
-Avoid obvious grouping parentheses.
+Parentheses are valuable when they explain precedence or mark a meaningful grouping.
+When they only wrap a single identifier, literal, or another parenthesized expression,
+they stop clarifying anything and start adding visual noise.
 
-Parentheses around a single identifier, literal, or another parenthesized expression do not add information.
-They make the expression visually heavier without clarifying precedence or evaluation order.
-Keep parentheses when they actually disambiguate the expression, but drop them when the grouping is already obvious.
-
-Examples:
-  Avoid:   let value = (result)
-  Avoid:   let value = ((result))
-  Better:  let value = result
+This rule only targets the cases where the grouping is already obvious. It is not a
+general attack on parentheses. Keep them when they disambiguate an expression, but do
+not leave them around as punctuation residue once they stop doing real work.
 |}
 
 let rec child_expressions_of_function_body = function

@@ -6,15 +6,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Custom infix operators should be avoided.
+Custom symbolic operators trade a small amount of local brevity for a lot of global
+guesswork. Unless the operator is already conventional, readers have to stop and
+remember what `%>`, `>>?`, or `<+>` means before they can follow the expression.
 
-Why this rule exists:
-- Symbolic operators are hard to search for and easy to misread.
-- Named functions communicate intent much better than custom punctuation.
+They are also unpleasant to search for, awkward to discuss in review, and easy to
+confuse with similar punctuation from other libraries.
 
-Examples:
-  Bad:    value %> next
-  Better: compose_right value next
+A named function usually tells the story directly. `compose_right value next` may be
+longer than `value %> next`, but it is obvious to readers who have never seen the
+code before.
 |}
 
 let allowed_infix_operators =

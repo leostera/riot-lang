@@ -6,16 +6,15 @@ let rule_description =
 
 let rule_explain =
   {|
-Else branches that only return unit should usually be omitted.
+When the only purpose of the conditional is to run an effect conditionally, `if cond
+then expr` already says that. Adding `else ()` repeats the same idea in a noisier
+form.
 
-Why this rule exists:
-- `if cond then expr` already means “do this effect conditionally”.
-- Adding `else ()` says the same thing more noisily.
-- Keeping the shorter form makes control flow easier to scan.
+Omitting the trivial unit branch makes the control flow easier to scan, especially in
+effect-heavy code where these small conditionals show up often.
 
-Examples:
-  Bad:    if is_ready then render () else ()
-  Better: if is_ready then render ()
+Keep the `else` branch when it has real behavior. Drop it when it is only there to say
+"otherwise, do nothing."
 |}
 
 let rec is_unit_expression = function

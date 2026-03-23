@@ -7,19 +7,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Avoid apostrophes in variable names.
+Apostrophes are compact, but they carry almost no meaning. `state'` tells the reader
+that this binding is somehow related to `state`, but it does not say whether it is the
+next value, an updated copy, a normalized version, or just a temporary alias.
 
-Why this rule exists:
-- Prime-suffixed names are compact but vague.
-- Names like x' or state' force the reader to guess whether the binding is an update, a copy, or just a temporary.
+Descriptive suffixes scale much better. Names like `next_state`, `updated_state`, or
+`state2` may be a little longer, but they make data flow easier to follow without
+relying on local convention.
 
-What to do instead:
-- Use a descriptive suffix like _next, _updated, or a numeric suffix like x2 when that is genuinely the best name.
-
-Examples:
-  Bad:    let state' = ...
-  Better: let next_state = ...
-  Better: let state2 = ...
+This matters most in code that evolves over time. A prime that felt obvious when the
+code had two lines often becomes opaque once the function grows.
 |}
 
 let contains_prime text =

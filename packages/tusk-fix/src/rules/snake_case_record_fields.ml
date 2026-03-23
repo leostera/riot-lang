@@ -7,15 +7,16 @@ let rule_description =
 
 let rule_explain =
   {|
-Record field names should use snake_case.
+Record fields are ordinary value-level names that happen to live inside a record type.
+Keeping them in `snake_case` makes them line up with local bindings, named arguments,
+and accessors instead of introducing a new naming convention in the middle of a data
+model.
 
-Why this rule exists:
-- Record fields are part of the API surface and should stay visually boring.
-- snake_case field names match values, arguments, and type names across Riot code.
+This matters even more for public records, where field names become part of the API and
+show up throughout construction, updates, and pattern matching.
 
-Examples:
-  Bad:    type user = { displayName : string }
-  Better: type user = { display_name : string }
+Use names like `display_name`, `created_at`, and `max_retries` so the field surface
+stays predictable and easy to skim.
 |}
 
 let is_upper ch = ch >= 'A' && ch <= 'Z'

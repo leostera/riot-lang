@@ -62,9 +62,9 @@ This file is _yours_. Keep it up to date after every big change.
 
 ### Built-in Package Rules
 
-- [ ] Package names should be `kebab-case`
-- [ ] Package names should start with a letter
-- [ ] Package names should not have trailing dashes or underscores
+- [x] Package names should be `kebab-case`
+- [x] Package names should start with a letter
+- [x] Package names should not have trailing dashes or underscores
 - [x] Subdirectories and file names should be in `snake_case`
 - [x] Warn about modules without `.mli` files
 
@@ -77,7 +77,7 @@ This file is _yours_. Keep it up to date after every big change.
 - [x] `std:prefer-bang-equal-inequality`
 - [x] `std:no-double-list-rev`
 - [x] `ignore (List.map f xs)` / `ignore (Iter.map f iter)` should prefer the corresponding iterator form
-- [ ] `List.length x == 0` / `List.length x > 0` should prefer `List.is_empty`
+- [x] `List.length x == 0` / `List.length x > 0` should prefer `List.is_empty`
 - [ ] Constants like `3.14` should prefer `Std.Math.PI`
 - [ ] Prefer combinators over manual matches:
   - [ ] `Option.map`
