@@ -267,6 +267,13 @@ module Red : sig
   val new_root : ('kind, 'text) Green.node -> ('kind, 'text) syntax_node
   (** `new_root green` creates a root red node at offset 0. *)
 
+  val new_token :
+    ('kind, 'text) Green.token -> Span.t -> ('kind, 'text) syntax_token
+  (** `new_token green span` creates a standalone red token at the given span.
+
+      This is mainly useful for synthetic CST helpers that need a lightweight
+      token wrapper without fabricating a full parsed tree. *)
+
   (** ## SyntaxNode Operations *)
 
   module SyntaxNode : sig

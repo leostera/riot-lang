@@ -73,6 +73,15 @@ let tests =
         Test.assert_true (List.length result.diagnostics > 0);
         Test.assert_true (Option.is_none result.cst);
         Ok ());
+    Test.case "cst ident helpers compare paths structurally" (fun () ->
+        let left = Syn.Cst.Ident.from_string "List.rev" in
+        let right = Syn.Cst.Ident.from_string "List.rev" in
+        let wrong = Syn.Cst.Ident.from_string "List.map" in
+        Test.assert_true (Syn.Cst.Ident.equal left right);
+        Test.assert_false (Syn.Cst.Ident.equal left wrong);
+        Test.assert_equal ~expected:[ "List"; "rev" ]
+          ~actual:(Syn.Cst.Ident.segments left |> List.map Syn.Cst.Token.text);
+        Ok ());
     Test.case "cst type extensions keep last module-path segment as name" (fun () ->
         let result = parse_ml "type Message.t += Added\n" in
         let cst =

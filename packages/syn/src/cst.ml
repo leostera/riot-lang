@@ -46,6 +46,56 @@ module Ident = struct
     match last_segment path with
     | Some segment -> Some (Token.text segment)
     | None -> None
+
+  let from_string text =
+    let open Ceibo in
+    let make_ident_segment segment =
+      let green_token =
+        Green.make_token ~kind:Syntax_kind.IDENT_EXPR ~text:segment
+          ~width:(String.length segment)
+      in
+      let syntax_token =
+        Red.new_token green_token
+          (Span.make ~start:0 ~end_:(String.length segment))
+      in
+      { Token.syntax_token = syntax_token }
+    in
+    let make_node () =
+      Green.make_node_list ~kind:Syntax_kind.PATH_EXPR [] |> Red.new_root
+    in
+    let segments = String.split_on_char '.' text in
+    match segments with
+    | [] | [ "" ] ->
+        raise (Failure "Syn.Cst.Ident.from_string requires a non-empty path")
+    | first :: rest ->
+        let first_token = make_ident_segment first in
+        let first_width = String.length first in
+        let first_node = make_node () in
+        let initial = Ident { syntax_node = first_node; name_token = first_token } in
+        List.fold_left
+          (fun (prefix, width) segment ->
+            if String.length segment = 0 then
+              raise
+                (Failure
+                   "Syn.Cst.Ident.from_string does not allow empty path segments");
+            let name_token = make_ident_segment segment in
+            let dot_token = make_ident_segment "." in
+            let width = width + 1 + String.length segment in
+            ( Qualified
+              {
+                syntax_node = make_node ();
+                prefix;
+                dot_token;
+                name_token;
+              },
+              width ))
+          (initial, first_width) rest
+        |> fst
+
+  let equal left right =
+    let left_segments = segments left |> List.map Token.text in
+    let right_segments = segments right |> List.map Token.text in
+    List.equal String.equal left_segments right_segments
 end
 
 type attribute = {

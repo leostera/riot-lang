@@ -17,6 +17,9 @@ type ('kind, 'text) syntax_element =
   | Node of ('kind, 'text) syntax_node
   | Token of ('kind, 'text) syntax_token
 
+let new_token green_token span =
+  { green_token; parent = None; offset = span.Span.start }
+
 module SyntaxNode = struct
   let green (node : ('kind, 'text) syntax_node) = node.green_node
   let offset (node : ('kind, 'text) syntax_node) = node.offset

@@ -109,6 +109,8 @@ module Ident : sig
   val segments : t -> Token.t list
   val last_segment : t -> Token.t option
   val name : t -> string option
+  val from_string : string -> t
+  val equal : t -> t -> bool
 end
 
 (** An OCaml attribute attached to some surrounding grammar node.
