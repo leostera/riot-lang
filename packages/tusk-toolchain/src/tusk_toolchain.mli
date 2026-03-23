@@ -19,7 +19,7 @@ val init : config:Tusk_model.Toolchain_config.t -> (t, string) result
 
     This: 1. Uses the provided toolchain config 2. Checks if the toolchain
     binaries exist and are executable 3. If not found, attempts to use
-    ./ocaml/compiler directory if available
+    ./vendor/ocaml/compiler directory if available
 
     Returns Ok toolchain if ready, Error msg otherwise. *)
 

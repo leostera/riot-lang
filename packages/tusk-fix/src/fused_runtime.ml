@@ -295,7 +295,9 @@ let main_source =
 
 let local_toolchain_source workspace_root =
   let direct_config = Path.(workspace_root / Path.v "ocaml-toolchain.toml") in
-  let local_compiler = Path.(workspace_root / Path.v "ocaml" / Path.v "compiler") in
+  let local_compiler =
+    Path.(workspace_root / Path.v "vendor" / Path.v "ocaml" / Path.v "compiler")
+  in
   match Fs.exists direct_config with
   | Ok true -> Some (`Copy direct_config)
   | _ -> (

@@ -44,6 +44,8 @@ let get_toolchain_path version =
 let get_toolchain_path_for_target version target =
   Path.(toolchain_base_dir / Path.v version / Path.v target)
 
+let local_compiler_path () = Path.v "./vendor/ocaml/compiler"
+
 let make_toolchain version source ~target =
   let toolchain_path = get_toolchain_path_for_target version target in
   let bin_dir = Path.(toolchain_path / Path.v "bin") in
@@ -169,11 +171,11 @@ let init ~config =
           Error
             ("Toolchain at " ^ Path.to_string toolchain_path ^ " is incomplete"))
   | _ -> (
-      (* Try to use ./ocaml/compiler if it exists *)
-      let local_compiler = Path.v "./ocaml/compiler" in
+      (* Try to use ./vendor/ocaml/compiler if it exists *)
+      let local_compiler = local_compiler_path () in
       match Fs.is_dir local_compiler with
       | Ok true -> (
-          (* Create symlink from ~/.tusk/toolchains/{version}/{host_triple} to ./ocaml/compiler *)
+          (* Create symlink from ~/.tusk/toolchains/{version}/{host_triple} to ./vendor/ocaml/compiler *)
           (match Path.parent toolchain_path with
           | Some parent ->
               let _ = Fs.create_dir_all parent in
@@ -278,7 +280,7 @@ let init_for_target ~config ~target =
       (* Try local compiler if native build *)
       if host = target then
         (* Native build - try local compiler first *)
-        let local_compiler = Path.v "./ocaml/compiler" in
+        let local_compiler = local_compiler_path () in
         (match Fs.is_dir local_compiler with
         | Ok true ->
             (* Create symlink *)

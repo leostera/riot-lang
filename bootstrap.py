@@ -94,13 +94,20 @@ def ensure_toolchain(version):
     except Exception as e:
         print(f"✗ Failed to install prebuilt binary: {e}")
         print("Falling back to source build...")
-        # Download and build OCaml from source
-        run(f"curl -L https://github.com/leostera/riot-ocaml/archive/{version}.tar.gz -o /tmp/ocaml-{version}.tar.gz")
-        run(f"cd /tmp && tar xzf ocaml-{version}.tar.gz")
-        run(f"cd /tmp/ocaml-{version} && ./configure --prefix={toolchain_dir}")
-        run(f"cd /tmp/ocaml-{version} && make -j")
-        run(f"cd /tmp/ocaml-{version} && make install")
-        run(f"rm -rf /tmp/ocaml-{version} /tmp/ocaml-{version}.tar.gz")
+        vendored_ocaml = os.path.abspath("./vendor/ocaml")
+        if os.path.exists(os.path.join(vendored_ocaml, "configure")):
+            print(f"✓ Using vendored OCaml source at {vendored_ocaml}")
+            run(
+                f"./scripts/toolchain/build-vendored-ocaml.sh --prefix '{toolchain_dir}'"
+            )
+        else:
+            # Download and build OCaml from source
+            run(f"curl -L https://github.com/leostera/riot-ocaml/archive/{version}.tar.gz -o /tmp/ocaml-{version}.tar.gz")
+            run(f"cd /tmp && tar xzf ocaml-{version}.tar.gz")
+            run(f"cd /tmp/ocaml-{version} && ./configure --prefix={toolchain_dir}")
+            run(f"cd /tmp/ocaml-{version} && make -j")
+            run(f"cd /tmp/ocaml-{version} && make install")
+            run(f"rm -rf /tmp/ocaml-{version} /tmp/ocaml-{version}.tar.gz")
         print(f"✓ OCaml {version} ({host_triple}) built from source")
     
     return toolchain_dir
