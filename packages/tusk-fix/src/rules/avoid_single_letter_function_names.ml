@@ -39,9 +39,7 @@ let diagnostic_for_binding_site (site : Traversal.binding_site) =
       None
 
 let check_tree (ctx : Rule.context) _red_root =
-  match ctx.cst with
-  | None -> []
-  | Some source_file ->
+  let source_file = ctx.cst in
       Syn.Cst.SourceFile.structure_items source_file
       |> Option.unwrap_or ~default:[]
       |> List.concat_map Traversal.binding_sites_of_structure_item

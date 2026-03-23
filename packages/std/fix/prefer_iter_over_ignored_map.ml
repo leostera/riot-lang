@@ -104,9 +104,7 @@ let diagnostic_for_expression expr =
         None
 
 let check_tree (ctx : Api.Rule.context) _red_root =
-  match ctx.cst with
-  | None -> []
-  | Some source_file ->
+  let source_file = ctx.cst in
       Syn.Cst.SourceFile.structure_items source_file
       |> Option.unwrap_or ~default:[]
       |> List.concat_map Api.Traversal.expressions_of_structure_item

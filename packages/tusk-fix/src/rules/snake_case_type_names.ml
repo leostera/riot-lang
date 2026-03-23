@@ -47,10 +47,9 @@ let make_fix token replacement =
     ~title:
       ("Rename type " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " to "
      ^ replacement)
-    ~edits:
+    ~operations:
       [
-        Fix.make_text_edit ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-          ~new_text:replacement;
+        Fix.replace_token_with_text ~target:token ~text:replacement;
       ]
 
 let make_diagnostic token =
@@ -87,9 +86,7 @@ let diagnostics_for_items source_file =
            | _ -> None)
 
 let check_tree (ctx : Rule.context) _red_root =
-  match ctx.cst with
-  | None -> []
-  | Some source_file -> diagnostics_for_items source_file
+  let source_file = ctx.cst in diagnostics_for_items source_file
 
 let make () =
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain

@@ -1,76 +1,70 @@
 open Std
 
-(** Fix - Code Transformation Types
-    
-    This module defines types for representing code fixes and transformations.
-    
-    Currently contains only type definitions. Implementation of auto-fix
-    application will be added in the future.
+type target =
+  | Node of Syn.Cst.syntax_node
+  | Token of Syn.Cst.syntax_token
+(** The syntax object an operation should act on. *)
+
+type replacement =
+  | Source_of_node of Syn.Cst.syntax_node
+  | Source_of_token of Syn.Cst.syntax_token
+  | Text of string
+(** What should replace the target.
+
+    `Source_of_*` reuses the exact original source slice covered by the given
+    syntax object. `Text` is the escape hatch for literal replacement text.
 *)
 
-(** {1 Types} *)
-
-type text_edit = {
-  span : Syn.Ceibo.Span.t;  (** Location to edit *)
-  new_text : string;  (** Text to insert/replace *)
-}
-(** A single text edit operation.
-    
-    Represents replacing the text at [span] with [new_text].
-    If [span] is zero-width (start = end), this is an insertion.
-    
-    Example:
-    {[
-      (* Replace "Hashtbl" with "Std.Collections.HashMap" *)
-      { span = { start = 10; end_ = 17 }; 
-        new_text = "Std.Collections.HashMap" }
-    ]}
-*)
+type operation =
+  | Delete of {
+      target : target;
+    }
+  | Replace of {
+      target : target;
+      replacement : replacement;
+    }
+  | Insert_before of {
+      anchor : target;
+      content : replacement;
+    }
+  | Insert_after of {
+      anchor : target;
+      content : replacement;
+    }
+  | Swap of {
+      left : target;
+      right : target;
+    }
+(** A single syntax-directed operation. *)
 
 type fix = {
-  title : string;  (** Human-readable description *)
-  edits : text_edit list;  (** List of edits to apply *)
+  title : string;
+  operations : operation list;
 }
-(** A fix that can be applied to source code.
-    
-    A fix may contain multiple edits that should be applied together.
-    Edits must not overlap.
-    
-    Example:
+(** A fix that can be applied to source code. *)
 
-    ```ocaml
-    {
-      title = "Replace Hashtbl with Std.Collections.HashMap";
-      edits = [
-        { 
-          span = { start = 10; end_ = 17 }; 
-          new_text = "Std.Collections.HashMap" 
-        }
-      ]
-    }
-    ```
-*)
+val source_of_node : Syn.Cst.syntax_node -> replacement
+val source_of_token : Syn.Cst.syntax_token -> replacement
+val text : string -> replacement
 
-val make_text_edit : span:Syn.Ceibo.Span.t -> new_text:string -> text_edit
-(** Construct a text edit. *)
+val delete : target:target -> operation
+val delete_node : Syn.Cst.syntax_node -> operation
+val replace : target:target -> replacement:replacement -> operation
+val replace_node :
+  target:Syn.Cst.syntax_node -> replacement:Syn.Cst.syntax_node -> operation
+val replace_node_with_text :
+  target:Syn.Cst.syntax_node -> text:string -> operation
+val replace_token_with_text :
+  target:Syn.Cst.syntax_token -> text:string -> operation
+val insert_before : anchor:target -> content:replacement -> operation
+val insert_after : anchor:target -> content:replacement -> operation
+val swap : left:target -> right:target -> operation
 
-val make : title:string -> edits:text_edit list -> fix
-(** Construct a fix from a set of edits. *)
-
+val make : title:string -> operations:operation list -> fix
 val title : fix -> string
-(** Get the human-readable title for a fix. *)
+val operations : fix -> operation list
 
-val edits : fix -> text_edit list
-(** Get the edits associated with a fix. *)
-
-val apply_edit : source:string -> text_edit -> (string, string) result
-(** Apply a single edit to source text. *)
-
+val apply_operation : source:string -> operation -> (string, string) result
 val apply_fix : source:string -> fix -> (string, string) result
-(** Apply a single fix to source text. *)
-
 val apply_fixes : source:string -> fix list -> (string, string) result
-(** Apply a list of fixes to source text, rejecting overlapping edits. *)
-
 val validate_fix : source:string -> fix -> (unit, string) result
-(** Validate that a fix is well-formed for the given source. *)

@@ -2189,7 +2189,7 @@ let render x y z =
             Tusk_fix.Rule.
               {
                 file_path = "sample.ml";
-                cst = Some cst;
+                cst;
               }
         in
         Test.assert_true (List.length expressions >= 5);
@@ -2208,7 +2208,7 @@ let render x y z =
             Tusk_fix.Rule.
               {
                 file_path = "sample.ml";
-                cst = Some cst;
+                cst;
               }
         in
         Test.assert_equal ~expected:[ "render"; "other" ]
@@ -2236,7 +2236,7 @@ let render x y z =
             Tusk_fix.Rule.
               {
                 file_path = "sample.ml";
-                cst = Some implementation_cst;
+                cst = implementation_cst;
               }
           |> List.map (fun declaration ->
                  Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration))
@@ -2246,7 +2246,7 @@ let render x y z =
             Tusk_fix.Rule.
               {
                 file_path = "sample.mli";
-                cst = Some interface_cst;
+                cst = interface_cst;
               }
           |> List.map (fun declaration ->
                  Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration))

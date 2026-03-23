@@ -61,9 +61,7 @@ let diagnostics_for_items source_file =
            | _ -> [])
 
 let check_tree (ctx : Rule.context) _red_root =
-  match ctx.cst with
-  | None -> []
-  | Some source_file -> diagnostics_for_items source_file
+  let source_file = ctx.cst in diagnostics_for_items source_file
 
 let make () =
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain

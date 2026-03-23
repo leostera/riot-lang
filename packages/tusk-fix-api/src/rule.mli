@@ -5,7 +5,7 @@ type green_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Green.node
 type red_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
 type context = {
   file_path : string;
-  cst : Syn.Cst.source_file option;
+  cst : Syn.Cst.source_file;
 }
 
 val make :

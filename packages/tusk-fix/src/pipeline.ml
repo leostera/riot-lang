@@ -114,7 +114,7 @@ let run pipeline ?filename source =
             | Some filename -> Path.to_string filename
             | None -> "<stdin>"
           in
-          let ctx = Rule.{ file_path; cst = Some cst } in
+          let ctx = Rule.{ file_path; cst } in
           pipeline.rules
           |> List.map (fun rule -> Rule.run rule ctx red_tree)
           |> List.concat

@@ -205,10 +205,7 @@ let diagnostics_for_source_file = function
                [])
 
 let check_tree (ctx : Rule.context) _red_root =
-  match ctx.cst with
-  | None ->
-      []
-  | Some source_file ->
+  let source_file = ctx.cst in
       diagnostics_for_source_file source_file
 
 let make () =

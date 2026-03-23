@@ -32,7 +32,7 @@ Riot is heading toward two adjacent capabilities:
 - syntax-directed lint rewrites
 - a canonical `tusk fmt`
 
-If synthetic rewrites eventually need fresh syntax materialization, Riot will
+When synthetic rewrites need fresh syntax materialization, Riot will
 need some way to turn structured syntax back into OCaml source. Building one
 "small renderer for fixes" and later a second full formatter would be a bad
 split. Both systems would grow to cover similar syntax and layout concerns, and

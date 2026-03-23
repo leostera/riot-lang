@@ -41,9 +41,7 @@ let check_tree (ctx : Rule.context) _red_root =
   if not (String.ends_with ~suffix:".mli" ctx.file_path) then
     []
   else
-    match ctx.cst with
-    | None -> []
-    | Some source_file ->
+    let source_file = ctx.cst in
         (match Syn.Cst.SourceFile.signature_items source_file with
         | Some items ->
             items

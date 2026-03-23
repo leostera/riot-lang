@@ -103,10 +103,9 @@ let make_fix token replacement =
     ~title:
       ("Replace " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " with "
      ^ replacement)
-    ~edits:
+    ~operations:
       [
-        Api.Fix.make_text_edit ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-          ~new_text:replacement;
+        Api.Fix.replace_token_with_text ~target:token ~text:replacement;
       ]
 
 let make_diagnostic token =

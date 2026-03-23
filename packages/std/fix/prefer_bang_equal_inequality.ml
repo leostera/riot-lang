@@ -32,10 +32,9 @@ let explanations () = [ explanation ]
 
 let make_fix token =
   Api.Fix.make ~title:"Replace <> with !="
-    ~edits:
+    ~operations:
       [
-        Api.Fix.make_text_edit ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-          ~new_text:"!=";
+        Api.Fix.replace_token_with_text ~target:token ~text:"!=";
       ]
 
 let make_diagnostic token =
@@ -52,10 +51,8 @@ let make_diagnostic token =
 
 let check_tree (ctx : Api.Rule.context) _red_root =
   match ctx.cst with
-  | None -> []
-  | Some source_file ->
-      Syn.Cst.SourceFile.structure_items source_file
-      |> Option.unwrap_or ~default:[]
+  | Syn.Cst.Implementation { items; _ } ->
+      items
       |> List.concat_map Api.Traversal.expressions_of_structure_item
       |> List.filter_map (function
            | Syn.Cst.Expression.Infix expr
@@ -66,6 +63,8 @@ let check_tree (ctx : Api.Rule.context) _red_root =
                  in
                  Some (make_diagnostic token)
            | _ -> None)
+  | Syn.Cst.Interface _ ->
+      []
 
 let rule () =
   Api.Rule.make ~id:package_rule_id

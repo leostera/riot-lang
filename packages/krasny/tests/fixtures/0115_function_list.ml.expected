@@ -1,1 +1,3 @@
-let f = function [] -> 0 | x :: xs -> x
+let f = function 
+  | [] -> 0 
+  | x :: xs -> x
