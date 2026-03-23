@@ -84,8 +84,8 @@ let rec diagnostics_for_expression = function
       diagnostics_for_expression receiver
   | Syn.Cst.Expression.Fun expr ->
       diagnostics_for_function_body expr.body
-  | Syn.Cst.Expression.Function expr ->
-      diagnostics_for_function_body expr.body
+  | Syn.Cst.Expression.Function { syntax_node; cases; _ } ->
+      diagnostics_for_function_body (Syn.Cst.Cases { syntax_node; cases })
   | Syn.Cst.Expression.Parenthesized expr ->
       diagnostics_for_expression expr.inner
   | Syn.Cst.Expression.Let expr ->

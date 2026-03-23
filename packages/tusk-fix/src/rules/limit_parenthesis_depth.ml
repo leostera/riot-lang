@@ -79,8 +79,9 @@ and diagnostics_for_expression ~inside_parenthesized_chain = function
           (Syn.Cst.InfixExpression.right expr)
   | Syn.Cst.Expression.Fun expr ->
       diagnostics_for_function_body ~inside_parenthesized_chain expr.body
-  | Syn.Cst.Expression.Function expr ->
-      diagnostics_for_function_body ~inside_parenthesized_chain expr.body
+  | Syn.Cst.Expression.Function { syntax_node; cases; _ } ->
+      diagnostics_for_function_body ~inside_parenthesized_chain
+        (Syn.Cst.Cases { syntax_node; cases })
   | Syn.Cst.Expression.Let expr ->
       diagnostics_for_expression ~inside_parenthesized_chain
         expr.bound_value

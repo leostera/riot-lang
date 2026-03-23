@@ -53,8 +53,8 @@ and child_expressions = function
       [ Syn.Cst.InfixExpression.left expr; Syn.Cst.InfixExpression.right expr ]
   | Syn.Cst.Expression.Fun expr ->
       child_expressions_of_function_body expr.body
-  | Syn.Cst.Expression.Function expr ->
-      child_expressions_of_function_body expr.body
+  | Syn.Cst.Expression.Function { syntax_node; cases; _ } ->
+      child_expressions_of_function_body (Syn.Cst.Cases { syntax_node; cases })
   | Syn.Cst.Expression.Let expr ->
       [ expr.bound_value; expr.body ]
   | Syn.Cst.Expression.Match expr ->

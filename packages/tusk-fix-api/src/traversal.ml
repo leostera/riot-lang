@@ -213,8 +213,8 @@ and let_bindings_of_expression expr =
       let_bindings_of_expression body
   | Syn.Cst.Expression.Fun { body; _ } ->
       let_bindings_of_function_body body
-  | Syn.Cst.Expression.Function { body; _ } ->
-      let_bindings_of_function_body body
+  | Syn.Cst.Expression.Function { cases; _ } ->
+      cases |> List.concat_map let_bindings_of_match_case
   | Syn.Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
       let_bindings_of_expression binding.bound_value
       @
@@ -424,8 +424,8 @@ let rec expressions_of_expression expr =
         expressions_of_expression body
     | Syn.Cst.Expression.Fun { body; _ } ->
         expressions_of_function_body body
-    | Syn.Cst.Expression.Function { body; _ } ->
-        expressions_of_function_body body
+    | Syn.Cst.Expression.Function { cases; _ } ->
+        cases |> List.concat_map expressions_of_match_case
     | Syn.Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
         expressions_of_expression binding.bound_value
         @

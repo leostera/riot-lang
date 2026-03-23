@@ -48,8 +48,8 @@ and string_literal_chain_size = function
       string_literal_chain_size receiver
   | Syn.Cst.Expression.Fun expr ->
       string_literal_chain_size_in_function_body expr.body
-  | Syn.Cst.Expression.Function expr ->
-      string_literal_chain_size_in_function_body expr.body
+  | Syn.Cst.Expression.Function { syntax_node; cases; _ } ->
+      string_literal_chain_size_in_function_body (Syn.Cst.Cases { syntax_node; cases })
   | Syn.Cst.Expression.Parenthesized expr ->
       string_literal_chain_size expr.inner
   | Syn.Cst.Expression.Infix expr

@@ -287,8 +287,8 @@ and binding_sites_of_expression expr =
       binding_sites_of_expression body
   | Syn.Cst.Expression.Fun { body; _ } ->
       binding_sites_of_function_body body
-  | Syn.Cst.Expression.Function { body; _ } ->
-      binding_sites_of_function_body body
+  | Syn.Cst.Expression.Function { cases; _ } ->
+      cases |> List.concat_map binding_sites_of_match_case
   | Syn.Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
       binding_sites_of_expression binding.bound_value
       @
