@@ -81,6 +81,17 @@ let tests =
         in
         Test.assert_equal ~expected:"let f = fun (x, y) -> x + y\n" ~actual;
         Ok ());
+    Test.case "format expands multi-case function expressions across lines"
+      (fun () ->
+        let source = "let f = function [] -> 0 | x :: xs -> x\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"multi-case function expressions should format"
+        in
+        Test.assert_equal
+          ~expected:"let f = function \n  | [] -> 0 \n  | x :: xs -> x\n"
+          ~actual;
+        Ok ());
     Test.case "format preserves syntax hash for selected codebase files"
       (fun () ->
         List.iter assert_roundtrip_hash workspace_files;

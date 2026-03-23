@@ -177,8 +177,34 @@ and render_function_expression ~indent
   | [ case ] when case.guard = None ->
       "fun " ^ render_fun_parameter_pattern case.pattern ^ " -> "
       ^ render_expression ~indent case.body
-  | _ ->
-      source_of_syntax_node syntax_node
+  | (cases : Syn.Cst.match_case list) ->
+      if
+        List.exists
+          (fun (case : Syn.Cst.match_case) ->
+            match case.pattern with
+            | Syn.Cst.Pattern.Or _ -> true
+            | _ -> false)
+          cases
+      then source_of_syntax_node syntax_node
+      else
+        let render_case index (case : Syn.Cst.match_case) =
+          let pattern = source_of_pattern case.pattern in
+          let guard =
+            match case.guard with
+            | None -> ""
+            | Some guard -> " when " ^ render_expression ~indent:0 guard
+          in
+          let body = render_expression ~indent:0 case.body in
+          let trailing_space =
+            if index < List.length cases - 1 then
+              " "
+            else ""
+          in
+          indent_string (indent + 2) ^ "| " ^ pattern ^ guard ^ " -> " ^ body
+          ^ trailing_space
+        in
+        indent_string indent ^ "function \n"
+        ^ (cases |> List.mapi render_case |> String.concat "\n")
 
 and render_apply_expression ~indent
     ({ syntax_node; callee; argument; _ } : Syn.Cst.apply_expression) =
@@ -204,11 +230,19 @@ let render_let_binding (binding : Syn.Cst.LetBinding.t) =
   if List.length binding.attributes > 0 || List.length binding.parameters > 0 then
     None
   else
+    let keyword = if binding.is_recursive then "let rec " else "let " in
+    let pattern = source_of_pattern binding.binding_pattern in
+    let value =
+      match binding.value with
+      | Syn.Cst.Expression.Let _ -> render_expression ~indent:2 binding.value
+      | _ -> render_expression ~indent:0 binding.value
+    in
     Some
-      (render_binding ~indent:0
-         ~keyword:(if binding.is_recursive then "let rec " else "let ")
-         (source_of_pattern binding.binding_pattern)
-         (render_expression ~indent:2 binding.value))
+      (match binding.value with
+      | Syn.Cst.Expression.Let _ ->
+          render_binding ~indent:0 ~keyword pattern value
+      | _ ->
+          keyword ^ pattern ^ " = " ^ value)
 
 let render_structure_item = function
   | Syn.Cst.StructureItem.LetBinding binding -> render_let_binding binding

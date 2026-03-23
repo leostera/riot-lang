@@ -48,7 +48,7 @@ Rough guidelines for formatting decisions:
 - [x] Add a dedicated round-trip syntax-hash corpus runner over selected repo files
 - current green corpus: `11` repo files across `krasny`, `syn`, `std`, and `tusk-fix`
 - [x] Add a `krasny` expectation suite for formatted output, separate from the current lossless-token baseline
-- bootstrap status: `krasny` builds, focused tests pass, the format expectation runner is green on the first curated block (`15` fixtures), and the round-trip syntax-hash corpus is green on `11` selected repo files
+- bootstrap status: `krasny` builds, focused tests pass, the format expectation runner is green on the first curated block (`18` fixtures), and the round-trip syntax-hash corpus is green on `11` selected repo files
 
 ### Formatter Pipeline
 
@@ -133,9 +133,9 @@ Rough guidelines for formatting decisions:
 - [x] `IDENT_PATTERN`
 - [x] `WILDCARD_PATTERN`
 - [ ] `LITERAL_PATTERN`
-- [ ] `CONSTRUCTOR_PATTERN`
+- [x] `CONSTRUCTOR_PATTERN`
 - [x] `TUPLE_PATTERN`
-- [ ] `LIST_PATTERN`
+- [x] `LIST_PATTERN`
 - [ ] `ARRAY_PATTERN`
 - [ ] `CONS_PATTERN`
 - [ ] `RECORD_PATTERN`
@@ -205,7 +205,7 @@ Rough guidelines for formatting decisions:
 - [x] `SOURCE_FILE`
 - [x] `STRUCTURE`
 - [ ] `SIGNATURE`
-- [ ] `MATCH_CASE`
+- [x] `MATCH_CASE`
 - [ ] `PATTERN_GUARD`
 - [ ] `RECORD_FIELD`
 - [ ] `RECORD_FIELD_PATTERN`
