@@ -16,6 +16,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0011` - Miniriot Pinned and Blocking Spawn
 - `RFD0012` - Simplify Tusk Around Action-Level Caching
 - `RFD0018` - Syn Matchers, Traversal, and Visitor
+- `RFD0019` - Tusk Fix Syntax-Directed Rewrites
 
 ## Accepted
 
