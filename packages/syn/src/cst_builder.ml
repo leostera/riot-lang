@@ -1815,22 +1815,31 @@ and core_type_from_node node =
         bail ~message:"expected record type field name and type during Ceibo -> CST lifting"
           ~syntax_node:node ~context:[ "core_type.record_field" ]
   and poly_variant_tag_from_node node =
+    let direct_children = direct_non_trivia_nodes node in
+    let lifted_attributes =
+      direct_children
+      |> List.filter is_attribute_node
+      |> List.filter (fun attribute_node -> not (can_lift_core_type_node attribute_node))
+      |> List.map attribute_from_node
+    in
     match direct_non_trivia_tokens node with
     | _backtick :: tag_name :: _ ->
         {
           Cst.syntax_node = node;
+          attributes = lifted_attributes;
           tag_name = token tag_name;
           payload_type =
-            (direct_non_trivia_nodes node
+            (direct_children
             |> List.find_opt can_lift_core_type_node
             |> Option.map core_type_from_node);
         }
     | tag_name :: _ ->
         {
           Cst.syntax_node = node;
+          attributes = lifted_attributes;
           tag_name = token tag_name;
           payload_type =
-            (direct_non_trivia_nodes node
+            (direct_children
             |> List.find_opt can_lift_core_type_node
             |> Option.map core_type_from_node);
         }
@@ -4607,7 +4616,20 @@ let variant_constructor_from_node node =
     in
     collect_parameters [] body
   in
-  match direct_non_trivia_nodes node with
+  let direct_children = direct_non_trivia_nodes node in
+  let lifted_attributes =
+    direct_children
+    |> List.filter is_attribute_node
+    |> List.filter (fun attribute_node -> not (can_lift_core_type_node attribute_node))
+    |> List.map attribute_from_node
+  in
+  let constructor_children =
+    direct_children
+    |> List.filter (fun child ->
+           not
+             (is_attribute_node child && not (can_lift_core_type_node child)))
+  in
+  match constructor_children with
   | first_child :: _ -> (
       match direct_non_trivia_tokens first_child with
       | constructor_name :: _ ->
@@ -4617,7 +4639,7 @@ let variant_constructor_from_node node =
                    String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":")
           in
           let lifted_payload_type =
-            direct_non_trivia_nodes node
+            constructor_children
             |> List.find_opt (fun child ->
                    let kind = Ceibo.Red.SyntaxNode.kind child in
                    can_lift_core_type_node child
@@ -4631,7 +4653,7 @@ let variant_constructor_from_node node =
                      String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "of")
             then
               let type_nodes =
-                direct_non_trivia_nodes node
+                constructor_children
                 |> List.filter can_lift_core_type_node
               in
               match type_nodes with
@@ -4687,6 +4709,7 @@ let variant_constructor_from_node node =
             Cst.VariantConstructor.
               {
                 syntax_node = node;
+                attributes = lifted_attributes;
                 constructor_name = token constructor_name;
                 arguments = lifted_arguments;
                 payload_type = lifted_payload_type;
@@ -4696,14 +4719,22 @@ let variant_constructor_from_node node =
   | [] -> None
 
 let poly_variant_tag_from_node node =
+  let direct_children = direct_non_trivia_nodes node in
+  let lifted_attributes =
+    direct_children
+    |> List.filter is_attribute_node
+    |> List.filter (fun attribute_node -> not (can_lift_core_type_node attribute_node))
+    |> List.map attribute_from_node
+  in
   match direct_non_trivia_tokens node with
   | _backtick :: tag_name :: _ ->
       Cst.PolyVariantTag.
         {
           syntax_node = node;
+          attributes = lifted_attributes;
           tag_name = token tag_name;
           payload_type =
-            (direct_non_trivia_nodes node
+            (direct_children
             |> List.find_opt can_lift_core_type_node
             |> Option.map core_type_from_node);
         }
@@ -4711,9 +4742,10 @@ let poly_variant_tag_from_node node =
       Cst.PolyVariantTag.
         {
           syntax_node = node;
+          attributes = lifted_attributes;
           tag_name = token tag_name;
           payload_type =
-            (direct_non_trivia_nodes node
+            (direct_children
             |> List.find_opt can_lift_core_type_node
             |> Option.map core_type_from_node);
         }
@@ -4789,7 +4821,7 @@ let type_definition_from_node node =
     |> List.filter_map variant_constructor_from_node
   in
   if List.length variant_constructors > 0 then
-    Cst.TypeDefinition.Variant variant_constructors
+    Cst.TypeDefinition.Variant { syntax_node = node; constructors = variant_constructors }
   else
     match
       direct_children
@@ -4803,7 +4835,7 @@ let type_definition_from_node node =
                  Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
           |> List.filter_map record_field_from_node
         in
-        Cst.TypeDefinition.Record fields
+        Cst.TypeDefinition.Record { syntax_node = record_node; fields }
     | None -> (
         match
           direct_children
@@ -6466,7 +6498,7 @@ let validate_type_definition ~context = function
               :: context)
             field_type)
         fields
-  | Cst.TypeDefinition.Record fields ->
+  | Cst.TypeDefinition.Record { fields; _ } ->
       List.iteri
         (fun index field ->
           validate_core_type
@@ -6475,7 +6507,7 @@ let validate_type_definition ~context = function
               :: context)
             (Cst.RecordField.field_type field))
         fields
-  | Cst.TypeDefinition.Variant constructors ->
+  | Cst.TypeDefinition.Variant { constructors; _ } ->
       List.iteri
         (fun index constructor ->
           Option.iter

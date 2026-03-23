@@ -70,6 +70,13 @@
           ],
           "type_definition": {
             "tag": "record",
+            "syntax_node": {
+              "kind": "TYPE_RECORD",
+              "span": {
+                "start": 16,
+                "end": 34
+              }
+            },
             "fields": [
               {
                 "syntax_node": {

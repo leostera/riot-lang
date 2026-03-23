@@ -271,6 +271,7 @@ and record_type_field = {
 *)
 and poly_variant_tag = {
   syntax_node : syntax_node;
+  attributes : attribute list;
   tag_name : Token.t;
   payload_type : core_type option;
 }
@@ -3475,6 +3476,7 @@ end
 module VariantConstructor : sig
   type t = {
     syntax_node : syntax_node;
+    attributes : attribute list;
     constructor_name : Token.t;
     arguments : ConstructorArguments.t option;
     payload_type : core_type option;
@@ -3482,6 +3484,7 @@ module VariantConstructor : sig
   }
 
   val syntax_node : t -> syntax_node
+  val attributes : t -> attribute list
   val constructor_name_token : t -> Token.t
   val arguments : t -> ConstructorArguments.t option
   val payload_type : t -> core_type option
@@ -3497,11 +3500,13 @@ end
 module PolyVariantTag : sig
   type t = poly_variant_tag = {
     syntax_node : syntax_node;
+    attributes : attribute list;
     tag_name : Token.t;
     payload_type : core_type option;
   }
 
   val syntax_node : t -> syntax_node
+  val attributes : t -> attribute list
   val tag_name_token : t -> Token.t
   val payload_type : t -> core_type option
   val name : t -> string
@@ -3607,10 +3612,16 @@ module TypeDefinition : sig
         fields : object_type_field list;
       }
         (** An object type definition such as `type t = < run : unit -> unit >`. *)
-    | Record of RecordField.t list
+    | Record of {
+        syntax_node : syntax_node;
+        fields : RecordField.t list;
+      }
         (** A record type definition such as
             `type t = { name : string; mutable count : int }`. *)
-    | Variant of VariantConstructor.t list
+    | Variant of {
+        syntax_node : syntax_node;
+        constructors : VariantConstructor.t list;
+      }
         (** A variant definition whose constructors are lifted structurally.
 
             This includes ordinary constructors like `type t = A | B of int`

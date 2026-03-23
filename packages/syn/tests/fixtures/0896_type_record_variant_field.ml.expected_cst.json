@@ -41,6 +41,13 @@
           "type_params": [],
           "type_definition": {
             "tag": "variant",
+            "syntax_node": {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 0,
+                "end": 24
+              }
+            },
             "constructors": [
               {
                 "syntax_node": {
@@ -57,8 +64,7 @@
                     "start": 13,
                     "end": 16
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -75,8 +81,7 @@
                     "start": 19,
                     "end": 23
                   }
-                },
-                "payload_type": null
+                }
               }
             ]
           },
@@ -114,6 +119,13 @@
           "type_params": [],
           "type_definition": {
             "tag": "record",
+            "syntax_node": {
+              "kind": "TYPE_RECORD",
+              "span": {
+                "start": 36,
+                "end": 68
+              }
+            },
             "fields": [
               {
                 "syntax_node": {

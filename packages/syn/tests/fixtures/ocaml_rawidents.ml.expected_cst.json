@@ -1153,6 +1153,13 @@
           "type_params": [],
           "type_definition": {
             "tag": "record",
+            "syntax_node": {
+              "kind": "TYPE_RECORD",
+              "span": {
+                "start": 1557,
+                "end": 1590
+              }
+            },
             "fields": [
               {
                 "syntax_node": {
@@ -1475,8 +1482,7 @@
                   "start": 1777,
                   "end": 1780
                 }
-              },
-              "payload_type": null
+              }
             }
           ]
         }
@@ -2385,6 +2391,13 @@
           "type_params": [],
           "type_definition": {
             "tag": "record",
+            "syntax_node": {
+              "kind": "TYPE_RECORD",
+              "span": {
+                "start": 2540,
+                "end": 2566
+              }
+            },
             "fields": [
               {
                 "syntax_node": {
@@ -2516,6 +2529,13 @@
           "type_params": [],
           "type_definition": {
             "tag": "record",
+            "syntax_node": {
+              "kind": "TYPE_RECORD",
+              "span": {
+                "start": 2576,
+                "end": 2592
+              }
+            },
             "fields": [
               {
                 "syntax_node": {
@@ -2792,6 +2812,13 @@
           "type_params": [],
           "type_definition": {
             "tag": "record",
+            "syntax_node": {
+              "kind": "TYPE_RECORD",
+              "span": {
+                "start": 3007,
+                "end": 3024
+              }
+            },
             "fields": [
               {
                 "syntax_node": {

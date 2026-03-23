@@ -41,6 +41,13 @@
           "type_params": [],
           "type_definition": {
             "tag": "variant",
+            "syntax_node": {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 0,
+                "end": 27
+              }
+            },
             "constructors": [
               {
                 "syntax_node": {
@@ -57,8 +64,7 @@
                     "start": 14,
                     "end": 18
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -75,8 +81,7 @@
                     "start": 21,
                     "end": 26
                   }
-                },
-                "payload_type": null
+                }
               }
             ]
           },

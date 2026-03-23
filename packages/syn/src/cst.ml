@@ -105,6 +105,7 @@ and record_type_field = {
 
 and poly_variant_tag = {
   syntax_node : syntax_node;
+  attributes : attribute list;
   tag_name : Token.t;
   payload_type : core_type option;
 }
@@ -2131,6 +2132,7 @@ end
 module VariantConstructor = struct
   type t = {
     syntax_node : syntax_node;
+    attributes : attribute list;
     constructor_name : Token.t;
     arguments : ConstructorArguments.t option;
     payload_type : core_type option;
@@ -2138,6 +2140,7 @@ module VariantConstructor = struct
   }
 
   let syntax_node constr = constr.syntax_node
+  let attributes constr = constr.attributes
   let constructor_name_token constr = constr.constructor_name
   let arguments constr = constr.arguments
   let payload_type constr = constr.payload_type
@@ -2148,11 +2151,13 @@ end
 module PolyVariantTag = struct
   type t = poly_variant_tag = {
     syntax_node : syntax_node;
+    attributes : attribute list;
     tag_name : Token.t;
     payload_type : core_type option;
   }
 
   let syntax_node tag = tag.syntax_node
+  let attributes tag = tag.attributes
   let tag_name_token tag = tag.tag_name
   let payload_type tag = tag.payload_type
   let name tag = Token.text tag.tag_name
@@ -2231,8 +2236,14 @@ module TypeDefinition = struct
         syntax_node : syntax_node;
         fields : object_type_field list;
       }
-    | Record of RecordField.t list
-    | Variant of VariantConstructor.t list
+    | Record of {
+        syntax_node : syntax_node;
+        fields : RecordField.t list;
+      }
+    | Variant of {
+        syntax_node : syntax_node;
+        constructors : VariantConstructor.t list;
+      }
     | PolyVariant of PolyVariant.t
 end
 

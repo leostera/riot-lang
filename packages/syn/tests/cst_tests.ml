@@ -298,7 +298,7 @@ let tests =
         match items with
         | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
-            | Syn.Cst.TypeDefinition.Record fields ->
+            | Syn.Cst.TypeDefinition.Record { fields; _ } ->
                 let names =
                   fields |> List.map Syn.Cst.RecordField.name
                 in
@@ -326,7 +326,8 @@ let tests =
         match items with
         | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
-            | Syn.Cst.TypeDefinition.Record [ name_field; code_field ] ->
+            | Syn.Cst.TypeDefinition.Record
+                { fields = [ name_field; code_field ]; _ } ->
                 let attribute_name ({ name; _ } : Syn.Cst.attribute) =
                   Syn.Cst.Ident.name name
                 in
@@ -381,7 +382,7 @@ let tests =
         match items with
         | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
-            | Syn.Cst.TypeDefinition.Variant constructors ->
+            | Syn.Cst.TypeDefinition.Variant { constructors; _ } ->
                 let names =
                   constructors
                   |> List.map Syn.Cst.VariantConstructor.name
@@ -405,7 +406,8 @@ let tests =
         match structure_items cst with
         | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
-            | Syn.Cst.TypeDefinition.Variant [ point2d; wrapped ] ->
+            | Syn.Cst.TypeDefinition.Variant
+                { constructors = [ point2d; wrapped ]; _ } ->
                 (match Syn.Cst.VariantConstructor.arguments point2d with
                 | Some (Syn.Cst.ConstructorArguments.Tuple elements) ->
                     Test.assert_equal ~expected:2 ~actual:(List.length elements)
@@ -445,7 +447,8 @@ let tests =
         match structure_items cst with
         | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
-            | Syn.Cst.TypeDefinition.Variant [ person; anonymous ] ->
+            | Syn.Cst.TypeDefinition.Variant
+                { constructors = [ person; anonymous ]; _ } ->
                 (match Syn.Cst.VariantConstructor.arguments person with
                 | Some (Syn.Cst.ConstructorArguments.Record fields) ->
                     Test.assert_equal ~expected:[ "name"; "age" ]
@@ -473,7 +476,8 @@ let tests =
         match structure_items cst with
         | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
             match Syn.Cst.TypeDeclaration.type_definition decl with
-            | Syn.Cst.TypeDefinition.Variant [ int_constr; val_constr ] ->
+            | Syn.Cst.TypeDefinition.Variant
+                { constructors = [ int_constr; val_constr ]; _ } ->
                 Test.assert_equal ~expected:None
                   ~actual:(Syn.Cst.VariantConstructor.arguments int_constr);
                 (match Syn.Cst.VariantConstructor.result_type int_constr with

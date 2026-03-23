@@ -98,6 +98,13 @@
           ],
           "type_definition": {
             "tag": "record",
+            "syntax_node": {
+              "kind": "TYPE_RECORD",
+              "span": {
+                "start": 21,
+                "end": 48
+              }
+            },
             "fields": [
               {
                 "syntax_node": {

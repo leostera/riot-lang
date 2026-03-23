@@ -41,6 +41,13 @@
           "type_params": [],
           "type_definition": {
             "tag": "record",
+            "syntax_node": {
+              "kind": "TYPE_RECORD",
+              "span": {
+                "start": 14,
+                "end": 57
+              }
+            },
             "fields": [
               {
                 "syntax_node": {
@@ -202,6 +209,13 @@
           "type_params": [],
           "type_definition": {
             "tag": "record",
+            "syntax_node": {
+              "kind": "TYPE_RECORD",
+              "span": {
+                "start": 72,
+                "end": 114
+              }
+            },
             "fields": [
               {
                 "syntax_node": {

@@ -41,6 +41,13 @@
           "type_params": [],
           "type_definition": {
             "tag": "variant",
+            "syntax_node": {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 0,
+                "end": 39
+              }
+            },
             "constructors": [
               {
                 "syntax_node": {
@@ -57,8 +64,7 @@
                     "start": 9,
                     "end": 10
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -75,8 +81,7 @@
                     "start": 13,
                     "end": 14
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -93,8 +98,7 @@
                     "start": 17,
                     "end": 18
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -111,8 +115,7 @@
                     "start": 21,
                     "end": 22
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -129,8 +132,7 @@
                     "start": 25,
                     "end": 26
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -147,8 +149,7 @@
                     "start": 29,
                     "end": 30
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -165,8 +166,7 @@
                     "start": 33,
                     "end": 34
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -183,8 +183,7 @@
                     "start": 37,
                     "end": 38
                   }
-                },
-                "payload_type": null
+                }
               }
             ]
           },

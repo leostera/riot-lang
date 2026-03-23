@@ -70,6 +70,13 @@
           ],
           "type_definition": {
             "tag": "variant",
+            "syntax_node": {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 0,
+                "end": 59
+              }
+            },
             "constructors": [
               {
                 "syntax_node": {
@@ -86,8 +93,7 @@
                     "start": 16,
                     "end": 21
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -104,251 +110,6 @@
                     "start": 24,
                     "end": 30
                   }
-                },
-                "arguments": {
-                  "tag": "tuple",
-                  "elements": [
-                    {
-                      "tag": "constr",
-                      "syntax_node": {
-                        "kind": "TYPE_CONSTR",
-                        "span": {
-                          "start": 34,
-                          "end": 43
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 34,
-                            "end": 43
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "btree",
-                          "span": {
-                            "start": 37,
-                            "end": 42
-                          }
-                        }
-                      },
-                      "arguments": [
-                        {
-                          "tag": "var",
-                          "syntax_node": {
-                            "kind": "TYPE_VAR",
-                            "span": {
-                              "start": 34,
-                              "end": 36
-                            }
-                          },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "a",
-                            "span": {
-                              "start": 35,
-                              "end": 36
-                            }
-                          }
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 46,
-                          "end": 48
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 47,
-                          "end": 48
-                        }
-                      }
-                    },
-                    {
-                      "tag": "constr",
-                      "syntax_node": {
-                        "kind": "TYPE_CONSTR",
-                        "span": {
-                          "start": 50,
-                          "end": 59
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 50,
-                            "end": 59
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "btree",
-                          "span": {
-                            "start": 53,
-                            "end": 58
-                          }
-                        }
-                      },
-                      "arguments": [
-                        {
-                          "tag": "var",
-                          "syntax_node": {
-                            "kind": "TYPE_VAR",
-                            "span": {
-                              "start": 50,
-                              "end": 52
-                            }
-                          },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "a",
-                            "span": {
-                              "start": 51,
-                              "end": 52
-                            }
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                },
-                "payload_type": {
-                  "tag": "tuple",
-                  "syntax_node": {
-                    "kind": "TYPE_TUPLE",
-                    "span": {
-                      "start": 34,
-                      "end": 59
-                    }
-                  },
-                  "elements": [
-                    {
-                      "tag": "constr",
-                      "syntax_node": {
-                        "kind": "TYPE_CONSTR",
-                        "span": {
-                          "start": 34,
-                          "end": 43
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 34,
-                            "end": 43
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "btree",
-                          "span": {
-                            "start": 37,
-                            "end": 42
-                          }
-                        }
-                      },
-                      "arguments": [
-                        {
-                          "tag": "var",
-                          "syntax_node": {
-                            "kind": "TYPE_VAR",
-                            "span": {
-                              "start": 34,
-                              "end": 36
-                            }
-                          },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "a",
-                            "span": {
-                              "start": 35,
-                              "end": 36
-                            }
-                          }
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 46,
-                          "end": 48
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 47,
-                          "end": 48
-                        }
-                      }
-                    },
-                    {
-                      "tag": "constr",
-                      "syntax_node": {
-                        "kind": "TYPE_CONSTR",
-                        "span": {
-                          "start": 50,
-                          "end": 59
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 50,
-                            "end": 59
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "btree",
-                          "span": {
-                            "start": 53,
-                            "end": 58
-                          }
-                        }
-                      },
-                      "arguments": [
-                        {
-                          "tag": "var",
-                          "syntax_node": {
-                            "kind": "TYPE_VAR",
-                            "span": {
-                              "start": 50,
-                              "end": 52
-                            }
-                          },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "a",
-                            "span": {
-                              "start": 51,
-                              "end": 52
-                            }
-                          }
-                        }
-                      ]
-                    }
-                  ]
                 }
               }
             ]

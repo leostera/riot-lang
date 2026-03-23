@@ -70,6 +70,13 @@
           ],
           "type_definition": {
             "tag": "variant",
+            "syntax_node": {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 0,
+                "end": 76
+              }
+            },
             "constructors": [
               {
                 "syntax_node": {
@@ -86,8 +93,7 @@
                     "start": 12,
                     "end": 17
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -103,47 +109,6 @@
                   "span": {
                     "start": 20,
                     "end": 26
-                  }
-                },
-                "arguments": {
-                  "tag": "tuple",
-                  "elements": [
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 30,
-                          "end": 32
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 31,
-                          "end": 32
-                        }
-                      }
-                    }
-                  ]
-                },
-                "payload_type": {
-                  "tag": "var",
-                  "syntax_node": {
-                    "kind": "TYPE_VAR",
-                    "span": {
-                      "start": 30,
-                      "end": 32
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "a",
-                    "span": {
-                      "start": 31,
-                      "end": 32
-                    }
                   }
                 }
               },
@@ -162,95 +127,6 @@
                     "start": 35,
                     "end": 39
                   }
-                },
-                "arguments": {
-                  "tag": "tuple",
-                  "elements": [
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 43,
-                          "end": 45
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 44,
-                          "end": 45
-                        }
-                      }
-                    },
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 49,
-                          "end": 51
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 50,
-                          "end": 51
-                        }
-                      }
-                    }
-                  ]
-                },
-                "payload_type": {
-                  "tag": "tuple",
-                  "syntax_node": {
-                    "kind": "TYPE_TUPLE",
-                    "span": {
-                      "start": 43,
-                      "end": 51
-                    }
-                  },
-                  "elements": [
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 43,
-                          "end": 45
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 44,
-                          "end": 45
-                        }
-                      }
-                    },
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 49,
-                          "end": 51
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 50,
-                          "end": 51
-                        }
-                      }
-                    }
-                  ]
                 }
               },
               {
@@ -268,131 +144,6 @@
                     "start": 53,
                     "end": 59
                   }
-                },
-                "arguments": {
-                  "tag": "tuple",
-                  "elements": [
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 63,
-                          "end": 65
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 64,
-                          "end": 65
-                        }
-                      }
-                    },
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 69,
-                          "end": 71
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 70,
-                          "end": 71
-                        }
-                      }
-                    },
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 74,
-                          "end": 76
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 75,
-                          "end": 76
-                        }
-                      }
-                    }
-                  ]
-                },
-                "payload_type": {
-                  "tag": "tuple",
-                  "syntax_node": {
-                    "kind": "TYPE_TUPLE",
-                    "span": {
-                      "start": 63,
-                      "end": 76
-                    }
-                  },
-                  "elements": [
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 63,
-                          "end": 65
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 64,
-                          "end": 65
-                        }
-                      }
-                    },
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 69,
-                          "end": 71
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 70,
-                          "end": 71
-                        }
-                      }
-                    },
-                    {
-                      "tag": "var",
-                      "syntax_node": {
-                        "kind": "TYPE_VAR",
-                        "span": {
-                          "start": 74,
-                          "end": 76
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "span": {
-                          "start": 75,
-                          "end": 76
-                        }
-                      }
-                    }
-                  ]
                 }
               }
             ]

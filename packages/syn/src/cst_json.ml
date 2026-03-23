@@ -74,14 +74,16 @@ and record_type_field_to_json
      ]
     @ if attributes = [] then [] else [ ("attributes", Json.Array attributes) ])
 
-and poly_variant_tag_to_json ({ syntax_node; tag_name; payload_type } : Cst.poly_variant_tag)
-    =
+and poly_variant_tag_to_json
+    ({ syntax_node; attributes; tag_name; payload_type } : Cst.poly_variant_tag) =
+  let attributes = List.map attribute_to_json attributes in
   Json.Object
-    [
-      ("syntax_node", syntax_node_to_json syntax_node);
-      ("tag_name", token_to_json tag_name);
-      ("payload_type", option_to_json core_type_to_json payload_type);
-    ]
+    ([
+       ("syntax_node", syntax_node_to_json syntax_node);
+       ("tag_name", token_to_json tag_name);
+       ("payload_type", option_to_json core_type_to_json payload_type);
+     ]
+    @ if attributes = [] then [] else [ ("attributes", Json.Array attributes) ])
 
 and poly_variant_bound_to_json = function
   | Cst.PolyVariantBound.Exact ->
@@ -1534,6 +1536,9 @@ let constructor_arguments_to_json = function
         ]
 
 let variant_constructor_to_json constr =
+  let attributes =
+    Cst.VariantConstructor.attributes constr |> List.map attribute_to_json
+  in
   let arguments =
     Cst.VariantConstructor.arguments constr
     |> Option.map constructor_arguments_to_json
@@ -1548,6 +1553,7 @@ let variant_constructor_to_json constr =
        ( "constructor_name",
          token_to_json (Cst.VariantConstructor.constructor_name_token constr) );
      ]
+    @ if attributes = [] then [] else [ ("attributes", Json.Array attributes) ]
     @
     (match arguments with
     | Some arguments -> [ ("arguments", arguments) ]
@@ -1609,16 +1615,18 @@ let type_definition_to_json = function
           ("syntax_node", syntax_node_to_json syntax_node);
           ("fields", Json.Array (List.map object_type_field_to_json fields));
         ]
-  | Cst.TypeDefinition.Record fields ->
+  | Cst.TypeDefinition.Record { syntax_node; fields } ->
       Json.Object
         [
           ("tag", Json.String "record");
+          ("syntax_node", syntax_node_to_json syntax_node);
           ("fields", Json.Array (List.map record_field_to_json fields));
         ]
-  | Cst.TypeDefinition.Variant constructors ->
+  | Cst.TypeDefinition.Variant { syntax_node; constructors } ->
       Json.Object
         [
           ("tag", Json.String "variant");
+          ("syntax_node", syntax_node_to_json syntax_node);
           ( "constructors",
             Json.Array (List.map variant_constructor_to_json constructors) );
         ]

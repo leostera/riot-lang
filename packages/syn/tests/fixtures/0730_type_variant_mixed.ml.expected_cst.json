@@ -41,6 +41,13 @@
           "type_params": [],
           "type_definition": {
             "tag": "variant",
+            "syntax_node": {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 0,
+                "end": 28
+              }
+            },
             "constructors": [
               {
                 "syntax_node": {
@@ -57,8 +64,7 @@
                     "start": 9,
                     "end": 13
                   }
-                },
-                "payload_type": null
+                }
               },
               {
                 "syntax_node": {
@@ -75,69 +81,6 @@
                     "start": 16,
                     "end": 20
                   }
-                },
-                "arguments": {
-                  "tag": "tuple",
-                  "elements": [
-                    {
-                      "tag": "constr",
-                      "syntax_node": {
-                        "kind": "TYPE_CONSTR",
-                        "span": {
-                          "start": 24,
-                          "end": 28
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 24,
-                            "end": 28
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "int",
-                          "span": {
-                            "start": 24,
-                            "end": 27
-                          }
-                        }
-                      },
-                      "arguments": []
-                    }
-                  ]
-                },
-                "payload_type": {
-                  "tag": "constr",
-                  "syntax_node": {
-                    "kind": "TYPE_CONSTR",
-                    "span": {
-                      "start": 24,
-                      "end": 28
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "TYPE_CONSTR",
-                      "span": {
-                        "start": 24,
-                        "end": 28
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "int",
-                      "span": {
-                        "start": 24,
-                        "end": 27
-                      }
-                    }
-                  },
-                  "arguments": []
                 }
               }
             ]
