@@ -129,7 +129,7 @@ and private_flag =
 
 and module_type_constraint = {
   syntax_node : syntax_node;
-  type_name : Token.t;
+  constrained_type : core_type;
   replacement_type : core_type;
   is_destructive : bool;
 }
@@ -401,7 +401,7 @@ end
 module ModuleTypeConstraint = struct
   type t = module_type_constraint = {
     syntax_node : syntax_node;
-    type_name : Token.t;
+    constrained_type : core_type;
     replacement_type : core_type;
     is_destructive : bool;
   }

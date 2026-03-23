@@ -162,7 +162,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] `TypeDefinition.Object`
   - [x] `TypeDefinition.FirstClassModule`
   - [x] public `TypeDefinition.Other` has been removed
-- [ ] Type declarations still do not expose typed structure for:
+- [x] Type declarations still do not expose typed structure for:
   - [x] manifest/core type of aliases
   - [x] constraints
   - [x] variance/injectivity on parameters
@@ -171,10 +171,10 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] constructor result types / GADT constructors
 - [ ] Attributes and extensions are still token shells rather than structured payloads
 - [~] Attributes and extensions now preserve sigils, names, and payload anchors, but their payloads are not yet fully typed
-- [~] Includes, opens, and with-constraints are still thinner than they should be
+- [x] Includes, opens, and with-constraints are still thinner than they should be
   - [x] include statements now carry typed module-expression/module-type targets
   - [x] open statements now distinguish signature-style paths from implementation module-expression targets
-  - [ ] with-constraints still do not form a richer typed tree
+  - [x] with-constraints still do not form a richer typed tree
 
 #### Present But Lossy
 

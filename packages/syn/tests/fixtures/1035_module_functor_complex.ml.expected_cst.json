@@ -107,13 +107,34 @@
                     "end": 60
                   }
                 },
-                "type_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "elt",
-                  "span": {
-                    "start": 48,
-                    "end": 51
-                  }
+                "constrained_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 48,
+                      "end": 52
+                    }
+                  },
+                  "constructor_path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 48,
+                        "end": 52
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "elt",
+                      "span": {
+                        "start": 48,
+                        "end": 51
+                      }
+                    }
+                  },
+                  "arguments": []
                 },
                 "replacement_type": {
                   "tag": "constr",
@@ -248,13 +269,34 @@
                       "end": 60
                     }
                   },
-                  "type_name": {
-                    "kind": "IDENT_EXPR",
-                    "text": "elt",
-                    "span": {
-                      "start": 48,
-                      "end": 51
-                    }
+                  "constrained_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 48,
+                        "end": 52
+                      }
+                    },
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 48,
+                          "end": 52
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "elt",
+                        "span": {
+                          "start": 48,
+                          "end": 51
+                        }
+                      }
+                    },
+                    "arguments": []
                   },
                   "replacement_type": {
                     "tag": "constr",

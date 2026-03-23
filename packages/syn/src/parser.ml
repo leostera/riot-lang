@@ -1439,12 +1439,13 @@ and parse_module_type_constraints parser =
         let type_kw = consume parser in
         let trivia_after_type = consume_trivia parser in
 
-        let type_name_children =
+        let constrained_type_children =
           match peek_kind parser with
-          | Token.Ident _ ->
-              let type_name_tok = consume parser in
-              [ make_token parser type_name_tok ]
-          | _ ->
+          | Token.Eq
+          | Token.ColonEq
+          | Token.Keyword Keyword.And
+          | Token.CloseDelim Token.Paren
+          | Token.EOF ->
               let found = peek parser in
               let diagnostic =
                 Diagnostic.missing_type_name ~found
@@ -1453,8 +1454,11 @@ and parse_module_type_constraints parser =
               in
               report_diagnostic parser diagnostic;
               []
+          | _ ->
+              let constrained_type = parse_typexpr parser in
+              [ Ceibo.Green.Node constrained_type ]
         in
-        let trivia_after_name = consume_trivia parser in
+        let trivia_after_constrained_type = consume_trivia parser in
 
         let eq_children =
           if peek_kind parser = Token.Eq || peek_kind parser = Token.ColonEq then
@@ -1485,8 +1489,8 @@ and parse_module_type_constraints parser =
           make_node Syntax_kind.TYPE_CONSTRAINT
             ([ make_token parser type_kw ]
             @ tokens_to_green parser trivia_after_type
-            @ type_name_children
-            @ tokens_to_green parser trivia_after_name
+            @ constrained_type_children
+            @ tokens_to_green parser trivia_after_constrained_type
             @ eq_children
             @ tokens_to_green parser trivia_after_eq
             @ type_children)

@@ -150,13 +150,34 @@
                       "end": 87
                     }
                   },
-                  "type_name": {
-                    "kind": "IDENT_EXPR",
-                    "text": "config",
-                    "span": {
-                      "start": 75,
-                      "end": 81
-                    }
+                  "constrained_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 75,
+                        "end": 82
+                      }
+                    },
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 75,
+                          "end": 82
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "config",
+                        "span": {
+                          "start": 75,
+                          "end": 81
+                        }
+                      }
+                    },
+                    "arguments": []
                   },
                   "replacement_type": {
                     "tag": "constr",

@@ -880,30 +880,27 @@ let arrow_label_from_node node =
       None
 
 let rec module_type_constraint_from_node node =
-  let type_name =
-    match direct_non_trivia_tokens node with
-    | _type_kw :: type_name :: _ ->
-        token type_name
-    | _ ->
-        bail ~message:"expected type name in module type constraint during Ceibo -> CST lifting"
-          ~syntax_node:node ~context:[ "module_type.constraint" ]
-  in
-  let replacement_type =
-    match direct_non_trivia_nodes node |> List.find_opt can_lift_core_type_node with
-    | Some type_node ->
-        core_type_from_node type_node
-    | None ->
-        bail
-          ~message:
-            "expected replacement type in module type constraint during Ceibo -> CST lifting"
-          ~syntax_node:node ~context:[ "module_type.constraint" ]
-  in
-  let is_destructive =
-    direct_non_trivia_tokens node
-    |> List.exists (fun syntax_token ->
-           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":=")
-  in
-  Cst.ModuleTypeConstraint.{ syntax_node = node; type_name; replacement_type; is_destructive }
+  match
+    direct_non_trivia_nodes node |> List.filter can_lift_core_type_node
+  with
+  | constrained_type_node :: replacement_type_node :: _ ->
+      let is_destructive =
+        direct_non_trivia_tokens node
+        |> List.exists (fun syntax_token ->
+               String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":=")
+      in
+      Cst.ModuleTypeConstraint.
+        {
+          syntax_node = node;
+          constrained_type = core_type_from_node constrained_type_node;
+          replacement_type = core_type_from_node replacement_type_node;
+          is_destructive;
+        }
+  | _ ->
+      bail
+        ~message:
+          "expected constrained and replacement types in module type constraint during Ceibo -> CST lifting"
+        ~syntax_node:node ~context:[ "module_type.constraint" ]
 
 and functor_parameter_from_node node =
   let name_token =
@@ -4964,10 +4961,18 @@ and validate_module_type ~context = function
   | Cst.ModuleType.With { base; constraints; _ } ->
       validate_module_type ~context:("module_type.with.base" :: context) base;
       List.iteri
-        (fun index ({ replacement_type; _ } : Cst.module_type_constraint) ->
+        (fun index
+             ({ constrained_type; replacement_type; _ } :
+               Cst.module_type_constraint) ->
           validate_core_type
             ~context:
-              (("module_type.with.constraint[" ^ Int.to_string index ^ "].type")
+              (("module_type.with.constraint[" ^ Int.to_string index ^ "].target")
+              :: context)
+            constrained_type;
+          validate_core_type
+            ~context:
+              (("module_type.with.constraint[" ^ Int.to_string index
+              ^ "].replacement")
               :: context)
             replacement_type)
         constraints

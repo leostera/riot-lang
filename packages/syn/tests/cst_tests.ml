@@ -689,15 +689,28 @@ let tests =
               ~actual:(Syn.Cst.Ident.name outer_base);
             Test.assert_equal ~expected:(Some "S")
               ~actual:(Syn.Cst.Ident.name inner_base);
-            Test.assert_equal ~expected:"t"
-              ~actual:(Syn.Cst.Token.text outer_constraint.type_name);
-            Test.assert_equal ~expected:"t"
-              ~actual:(Syn.Cst.Token.text inner_constraint.type_name);
-            Test.assert_equal ~expected:"TYPE_DECL"
-              ~actual:
-                (SyntaxKind.to_string
-                   (Ceibo.Red.SyntaxNode.kind item_node));
-            Ok ()
+            (match
+               ( outer_constraint.constrained_type,
+                 inner_constraint.constrained_type )
+             with
+            | ( Syn.Cst.CoreType.Constr
+                  { constructor_path = outer_path; arguments = outer_args; _ },
+                Syn.Cst.CoreType.Constr
+                  { constructor_path = inner_path; arguments = inner_args; _ } )
+              ->
+                Test.assert_equal ~expected:(Some "t")
+                  ~actual:(Syn.Cst.Ident.name outer_path);
+                Test.assert_equal ~expected:0 ~actual:(List.length outer_args);
+                Test.assert_equal ~expected:(Some "t")
+                  ~actual:(Syn.Cst.Ident.name inner_path);
+                Test.assert_equal ~expected:0 ~actual:(List.length inner_args);
+                Test.assert_equal ~expected:"TYPE_DECL"
+                  ~actual:
+                    (SyntaxKind.to_string
+                       (Ceibo.Red.SyntaxNode.kind item_node));
+                Ok ()
+            | _ ->
+                Error "expected constrained module-type targets");
         | _ ->
             Error "expected constrained module declaration");
     Test.case "cst module declarations preserve identifier module expressions"
@@ -1083,9 +1096,14 @@ let tests =
           :: _ ->
             Test.assert_equal ~expected:(Some "Driver")
               ~actual:(Syn.Cst.Ident.name base_path);
-            Test.assert_equal ~expected:"config"
-              ~actual:(Syn.Cst.Token.text constraint_.type_name);
-            Ok ()
+            (match constraint_.constrained_type with
+            | Syn.Cst.CoreType.Constr { constructor_path; arguments; _ } ->
+                Test.assert_equal ~expected:(Some "config")
+                  ~actual:(Syn.Cst.Ident.name constructor_path);
+                Test.assert_equal ~expected:0 ~actual:(List.length arguments);
+                Ok ()
+            | _ ->
+                Error "expected constrained module-type target")
         | _ ->
             Error "expected module type declaration with constrained body");
     Test.case "cst module type declarations preserve module-type-of bodies"

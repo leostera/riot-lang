@@ -224,16 +224,23 @@
                     "width": 1
                   },
                   {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "config",
-                    "width": 6
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
+                    "type": "node",
+                    "kind": "TYPE_CONSTR",
+                    "width": 7,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "config",
+                        "width": 6
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
                   },
                   {
                     "type": "token",

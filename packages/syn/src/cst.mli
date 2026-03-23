@@ -337,21 +337,23 @@ and private_flag =
           `type t = private int`.
       *)
 
-(** A `with type` constraint attached to a module type.
+(** A `with type` equation attached to a module type.
 
-    Both ordinary equality constraints and destructive substitutions are covered
-    here.
+    The left-hand side is preserved as a lifted core type so constraints like
+    `with type 'a t = ...` or `with type Message.t := ...` keep their target
+    structure instead of collapsing to a single token.
 
     Examples:
 
     ```ocaml,norun
     S with type t = int
+    S with type 'a t = 'a list
     S with type t := string
     ```
 *)
 and module_type_constraint = {
   syntax_node : syntax_node;
-  type_name : Token.t;
+  constrained_type : core_type;
   replacement_type : core_type;
   is_destructive : bool;
 }
@@ -905,7 +907,7 @@ end
 module ModuleTypeConstraint : sig
   type t = module_type_constraint = {
     syntax_node : syntax_node;
-    type_name : Token.t;
+    constrained_type : core_type;
     replacement_type : core_type;
     is_destructive : bool;
   }

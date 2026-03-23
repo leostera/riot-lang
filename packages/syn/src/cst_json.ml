@@ -269,12 +269,12 @@ and core_type_to_json = function
         ]
 
 and module_type_constraint_to_json
-    ({ syntax_node; type_name; replacement_type; is_destructive } :
+    ({ syntax_node; constrained_type; replacement_type; is_destructive } :
       Cst.module_type_constraint) =
   Json.Object
     [
       ("syntax_node", syntax_node_to_json syntax_node);
-      ("type_name", token_to_json type_name);
+      ("constrained_type", core_type_to_json constrained_type);
       ("replacement_type", core_type_to_json replacement_type);
       ("is_destructive", Json.Bool is_destructive);
     ]
