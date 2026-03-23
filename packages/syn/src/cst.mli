@@ -296,6 +296,24 @@ and poly_variant = {
   fields : row_field list;
 }
 
+(** A `constraint ... = ...` attached to a type declaration.
+
+    These correspond to `ptype_cstrs` in the stock parsetree and preserve both
+    sides as lifted core types.
+
+    Examples:
+
+    ```ocaml,norun
+    type 'a t = 'a list constraint 'a = int
+    type ('a, 'b) pair = 'a * 'b constraint 'a = int constraint 'b = string
+    ```
+*)
+and type_constraint = {
+  syntax_node : syntax_node;
+  left : core_type;
+  right : core_type;
+}
+
 (** A `with type` constraint attached to a module type.
 
     Both ordinary equality constraints and destructive substitutions are covered
@@ -837,6 +855,15 @@ module ModuleTypeConstraint : sig
     type_name : Token.t;
     replacement_type : core_type;
     is_destructive : bool;
+  }
+end
+
+(** Namespace view over `type_constraint`. *)
+module TypeConstraint : sig
+  type t = type_constraint = {
+    syntax_node : syntax_node;
+    left : core_type;
+    right : core_type;
   }
 end
 
@@ -2954,8 +2981,8 @@ module TypeDefinition : sig
             given a dedicated public constructor.
 
             This is where consumers should expect richer shapes such as
-            unsupported `private`, constraint-heavy, or GADT-style definitions
-            to remain accessible only through the raw `syntax_node`.
+            unsupported `private` or GADT-style definitions to remain
+            accessible only through the raw `syntax_node`.
         *)
 end
 
@@ -2975,6 +3002,7 @@ module TypeDeclaration : sig
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
+    constraints : type_constraint list;
     is_destructive_substitution : bool;
   }
 
@@ -2982,6 +3010,7 @@ module TypeDeclaration : sig
   val type_name : t -> Ident.t
   val type_params : t -> TypeParameter.t list
   val type_definition : t -> TypeDefinition.t
+  val constraints : t -> TypeConstraint.t list
   (** `true` for interface destructive substitutions such as `type t := string`. *)
   val is_destructive_substitution : t -> bool
   val name_token : t -> Token.t

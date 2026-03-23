@@ -1275,6 +1275,14 @@ let variant_constructor_to_json constr =
         option_to_json core_type_to_json (Cst.VariantConstructor.payload_type constr) );
     ]
 
+let type_constraint_to_json ({ syntax_node; left; right } : Cst.type_constraint) =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json syntax_node);
+      ("left", core_type_to_json left);
+      ("right", core_type_to_json right);
+    ]
+
 let type_definition_to_json = function
   | Cst.TypeDefinition.Abstract ->
       Json.Object [ ("tag", Json.String "abstract") ]
@@ -1334,19 +1342,28 @@ let type_definition_to_json = function
         ]
 
 let type_declaration_to_json decl =
+  let constraints =
+    Cst.TypeDeclaration.constraints decl
+    |> List.map type_constraint_to_json
+  in
   Json.Object
-    [
-      ("syntax_node", syntax_node_to_json (Cst.TypeDeclaration.syntax_node decl));
-      ("type_name", ident_to_json (Cst.TypeDeclaration.type_name decl));
-      ( "type_params",
-        Json.Array
-          (List.map type_parameter_to_json (Cst.TypeDeclaration.type_params decl))
-      );
-      ( "type_definition",
-        type_definition_to_json (Cst.TypeDeclaration.type_definition decl) );
-      ( "is_destructive_substitution",
+    ([
+       ("syntax_node", syntax_node_to_json (Cst.TypeDeclaration.syntax_node decl));
+       ("type_name", ident_to_json (Cst.TypeDeclaration.type_name decl));
+       ( "type_params",
+         Json.Array
+           (List.map type_parameter_to_json (Cst.TypeDeclaration.type_params decl))
+       );
+       ( "type_definition",
+         type_definition_to_json (Cst.TypeDeclaration.type_definition decl) );
+     ]
+    @
+    (if constraints = [] then []
+     else [ ("constraints", Json.Array constraints) ])
+    @
+    [ ( "is_destructive_substitution",
         Json.Bool (Cst.TypeDeclaration.is_destructive_substitution decl) );
-    ]
+    ])
 
 let type_extension_to_json decl =
   Json.Object

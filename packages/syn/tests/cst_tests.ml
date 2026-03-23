@@ -195,6 +195,44 @@ let tests =
               ~actual:names;
             Ok ()
         | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst type declarations expose declaration constraints" (fun () ->
+        let result =
+          parse_ml
+            "type ('a, 'b) pair = 'a * 'b constraint 'a = int constraint 'b = string\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = Syn.Cst.SourceFile.items cst in
+        match items with
+        | Syn.Cst.Item.TypeDeclaration decl :: _ ->
+            let constraints = Syn.Cst.TypeDeclaration.constraints decl in
+            let sides =
+              constraints
+              |> List.map (fun ({ left; right; _ } : Syn.Cst.TypeConstraint.t) ->
+                     let left_name =
+                       match left with
+                       | Syn.Cst.CoreType.Var { name_token; _ } ->
+                           Syn.Cst.Token.text name_token
+                       | _ -> "<unexpected-left>"
+                     in
+                     let right_name =
+                       match right with
+                       | Syn.Cst.CoreType.Constr { constructor_path; _ } ->
+                           (match Syn.Cst.Ident.name constructor_path with
+                           | Some name -> name
+                           | None -> "<missing-right>")
+                       | _ -> "<unexpected-right>"
+                     in
+                     (left_name, right_name))
+            in
+            Test.assert_equal
+              ~expected:[ ("a", "int"); ("b", "string") ]
+              ~actual:sides;
+            Ok ()
+        | _ -> Error "expected first item to be a type declaration");
     Test.case "cst type declarations expose record fields structurally" (fun () ->
         let result =
           parse_ml

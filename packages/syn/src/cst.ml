@@ -114,6 +114,12 @@ and poly_variant = {
   fields : row_field list;
 }
 
+and type_constraint = {
+  syntax_node : syntax_node;
+  left : core_type;
+  right : core_type;
+}
+
 and module_type_constraint = {
   syntax_node : syntax_node;
   type_name : Token.t;
@@ -378,6 +384,14 @@ module ModuleTypeConstraint = struct
     type_name : Token.t;
     replacement_type : core_type;
     is_destructive : bool;
+  }
+end
+
+module TypeConstraint = struct
+  type t = type_constraint = {
+    syntax_node : syntax_node;
+    left : core_type;
+    right : core_type;
   }
 end
 
@@ -1831,6 +1845,7 @@ module TypeDeclaration = struct
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
+    constraints : type_constraint list;
     is_destructive_substitution : bool;
   }
 
@@ -1838,6 +1853,7 @@ module TypeDeclaration = struct
   let type_name decl = decl.type_name
   let type_params decl = decl.type_params
   let type_definition decl = decl.type_definition
+  let constraints decl = decl.constraints
   let is_destructive_substitution decl = decl.is_destructive_substitution
 
   let name_token decl =

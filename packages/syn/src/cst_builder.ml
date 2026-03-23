@@ -3590,6 +3590,22 @@ let record_field_name_token node =
   | field_name :: _ -> Some (token field_name)
   | [] -> None
 
+let type_constraint_from_node node =
+  match
+    direct_non_trivia_nodes node
+    |> List.filter can_lift_core_type_node
+  with
+  | left_node :: right_node :: _ ->
+      Some
+        Cst.TypeConstraint.
+          {
+            syntax_node = node;
+            left = core_type_from_node left_node;
+            right = core_type_from_node right_node;
+          }
+  | _ ->
+      None
+
 let record_field_from_node node =
   record_field_name_token node
   |> Option.map (fun field_name ->
@@ -3820,6 +3836,12 @@ let type_declaration_from_node node =
            Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_PARAM)
     |> List.map type_parameter_from_node
   in
+  let lifted_constraints =
+    direct_non_trivia_nodes node
+    |> List.filter (fun child ->
+           Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_CONSTRAINT)
+    |> List.filter_map type_constraint_from_node
+  in
   let has_destructive_substitution =
     direct_non_trivia_tokens node
     |> List.exists (fun syntax_token ->
@@ -3836,6 +3858,7 @@ let type_declaration_from_node node =
                 type_name = lifted_type_name;
                 type_params = lifted_type_params;
                 type_definition = type_definition_from_node node;
+                constraints = lifted_constraints;
                 is_destructive_substitution = has_destructive_substitution;
               }
       | None -> None)
@@ -5227,10 +5250,22 @@ let validate_type_definition ~context = function
       bail ~message:"unsupported type definition shape during Ceibo -> CST lifting"
         ~syntax_node ~context
 
+let validate_type_constraint ~context ({ left; right; _ } : Cst.type_constraint) =
+  validate_core_type ~context:("type_constraint.left" :: context) left;
+  validate_core_type ~context:("type_constraint.right" :: context) right
+
 let validate_item ~context = function
-  | Cst.Item.TypeDeclaration { type_definition; _ } ->
+  | Cst.Item.TypeDeclaration { type_definition; constraints; _ } ->
       validate_type_definition ~context:("item.type_declaration" :: context)
-        type_definition
+        type_definition;
+      List.iteri
+        (fun index constraint_ ->
+          validate_type_constraint
+            ~context:
+              (("item.type_declaration.constraint[" ^ Int.to_string index ^ "]")
+              :: context)
+            constraint_)
+        constraints
   | Cst.Item.TypeExtension { constructors; _ } ->
       List.iteri
         (fun index constructor ->

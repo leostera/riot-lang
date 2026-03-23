@@ -173,13 +173,13 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] first-class module expressions / patterns / type definitions now lift through `module_type`
   - [ ] class type bodies and some declaration sites still keep raw syntax
 - [ ] Type definitions are still opaque in several branches:
-  - [ ] `TypeDefinition.Alias`
-  - [ ] `TypeDefinition.Object`
-  - [ ] `TypeDefinition.FirstClassModule`
+  - [x] `TypeDefinition.Alias`
+  - [x] `TypeDefinition.Object`
+  - [x] `TypeDefinition.FirstClassModule`
   - [ ] `TypeDefinition.Other`
 - [ ] Type declarations still do not expose typed structure for:
-  - [ ] manifest/core type of aliases
-  - [ ] constraints
+  - [x] manifest/core type of aliases
+  - [x] constraints
   - [x] variance/injectivity on parameters
   - [ ] record label declarations
   - [ ] constructor argument lists

@@ -186,6 +186,64 @@
               }
             ]
           },
+          "constraints": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_CONSTRAINT",
+                "span": {
+                  "start": 49,
+                  "end": 69
+                }
+              },
+              "left": {
+                "tag": "var",
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 60,
+                    "end": 62
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "a",
+                  "span": {
+                    "start": 61,
+                    "end": 62
+                  }
+                }
+              },
+              "right": {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 65,
+                    "end": 69
+                  }
+                },
+                "constructor_path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 65,
+                      "end": 69
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "int",
+                    "span": {
+                      "start": 65,
+                      "end": 68
+                    }
+                  }
+                },
+                "arguments": []
+              }
+            }
+          ],
           "is_destructive_substitution": false
         }
       }
