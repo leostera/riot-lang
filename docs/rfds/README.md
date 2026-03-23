@@ -15,6 +15,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0010` - Miniriot Multicore Work-Stealing Runtime
 - `RFD0011` - Miniriot Pinned and Blocking Spawn
 - `RFD0012` - Simplify Tusk Around Action-Level Caching
+- `RFD0018` - Syn Matchers, Traversal, and Visitor
 
 ## Accepted
 
