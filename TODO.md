@@ -42,7 +42,7 @@ This file is _yours_. Keep it up to date after every big change.
 
 ## Next Built-in Lints
 
-- [ ] Prefer named closed polymorphic variants over inline closed polymorphic variants like ``[ `a | `b ] list``
+- [x] Prefer named closed polymorphic variants over inline closed polymorphic variants like ``[ `a | `b ] list``
 - [x] Warn on bool positional parameters in functions; suggest a named parameter or an enum
 - [ ] Warn on tuples that should be records:
   - [ ] more than 3 elements of the same type

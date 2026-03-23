@@ -37,3 +37,4 @@ module Snake_case_record_fields = Snake_case_record_fields
 module Class_case_constructors = Class_case_constructors
 module Snake_case_polyvariant_tags = Snake_case_polyvariant_tags
 module No_positional_bool_parameters = No_positional_bool_parameters
+module Prefer_named_closed_polyvariants = Prefer_named_closed_polyvariants

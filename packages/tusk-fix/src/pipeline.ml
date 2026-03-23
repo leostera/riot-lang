@@ -50,6 +50,7 @@ let builtin_rule_factories () =
     ("class-case-constructors", Rules.Class_case_constructors.make);
     ("snake-case-polyvariant-tags", Rules.Snake_case_polyvariant_tags.make);
     ("no-positional-bool-parameters", Rules.No_positional_bool_parameters.make);
+    ("prefer-named-closed-polyvariants", Rules.Prefer_named_closed_polyvariants.make);
   ]
 
 let package_rules () =

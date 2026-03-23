@@ -71,6 +71,7 @@ let legacy_code_to_rule_id = function
   | "F0140" -> "prefer-scoped-field-access"
   | "F0141" -> "no-public-mutable-fields"
   | "F0142" -> "no-positional-bool-parameters"
+  | "F0143" -> "prefer-named-closed-polyvariants"
   | rule_id -> rule_id
 
 let legacy_code_of_rule_id = function
@@ -113,6 +114,7 @@ let legacy_code_of_rule_id = function
   | "prefer-scoped-field-access" -> "F0140"
   | "no-public-mutable-fields" -> "F0141"
   | "no-positional-bool-parameters" -> "F0142"
+  | "prefer-named-closed-polyvariants" -> "F0143"
   | rule_id -> rule_id
 
 let diagnostic_codes diagnostics =
@@ -1360,6 +1362,43 @@ let render x y z =
         Ok ());
     Test.case "diagnostic code registry explains positional bool parameters" (fun () ->
         assert_explanation_contains ~code:"F0142" ~snippet:"~enabled");
+    Test.case "prefer-named-closed-polyvariants flags inline closed polyvariants in values" (fun () ->
+        let source = "val decode : [ `json | `xml ] -> payload\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_named_closed_polyvariants.make () ]
+            ()
+        in
+        let result =
+          Tusk_fix.Pipeline.run ~filename:(Path.v "sample.mli") pipeline source
+        in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0143" ] ~actual:codes;
+        Ok ());
+    Test.case "prefer-named-closed-polyvariants flags nested closed polyvariants in aliases" (fun () ->
+        let source = "type formats = [ `json | `xml ] list\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_named_closed_polyvariants.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        let codes = diagnostic_codes result.diagnostics in
+        Test.assert_equal ~expected:[ "F0143" ] ~actual:codes;
+        Ok ());
+    Test.case "prefer-named-closed-polyvariants keeps named top-level polyvariants clean" (fun () ->
+        let source = "type format = [ `json | `xml ]\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.Prefer_named_closed_polyvariants.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:0
+          ~actual:(List.length result.diagnostics);
+        Ok ());
+    Test.case "diagnostic code registry explains named closed polyvariants" (fun () ->
+        assert_explanation_contains ~code:"F0143" ~snippet:"type format");
     Test.case "cli list-rules text output prints one rule per line" (fun () ->
         let output = Tusk_fix.Cli.list_rules_output ~format:Tusk_fix.Reporter.Text in
         Test.assert_true
