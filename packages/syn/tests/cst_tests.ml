@@ -296,8 +296,9 @@ let tests =
             Test.assert_false (Syn.Cst.LetBinding.is_function binding);
             Ok ()
         | _ -> Error "expected first item to be a let binding");
-    Test.case "cst module declarations expose declared module names" (fun () ->
-        let result = parse_ml "module Foo_bar = struct end\n" in
+    Test.case "cst module declarations preserve structure module expressions"
+      (fun () ->
+        let result = parse_ml "module Foo_bar = struct let answer = 42 end\n" in
         let cst =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
@@ -312,15 +313,145 @@ let tests =
               module_type = None;
               module_expression =
                 Some
-                  (Syn.Cst.ModuleExpression.Structure { item_syntax_nodes = []; _ });
+                  (Syn.Cst.ModuleExpression.Structure { item_syntax_nodes = [ item_node ]; _ });
               is_recursive = false;
               _;
             }
           :: _ ->
             Test.assert_equal ~expected:"Foo_bar"
               ~actual:(Syn.Cst.Token.text module_name);
+            Test.assert_equal ~expected:"LET_BINDING"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind item_node));
             Ok ()
-        | _ -> Error "expected first item to be a module declaration");
+        | _ ->
+            Error "expected module declaration with structure module expression");
+    Test.case "cst module declarations preserve identifier module expressions"
+      (fun () ->
+        let result = parse_ml "module Alias = Source\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleDeclaration
+            {
+              module_expression = Some (Syn.Cst.ModuleExpression.Path path);
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "Source")
+              ~actual:(Syn.Cst.Ident.name path);
+            Ok ()
+        | _ ->
+            Error "expected module declaration with identifier module expression");
+    Test.case "cst module declarations preserve functor module expressions"
+      (fun () ->
+        let result = parse_ml "module F = functor (X : S) -> X\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleDeclaration
+            {
+              module_expression =
+                Some
+                  (Syn.Cst.ModuleExpression.Functor
+                    {
+                      parameters =
+                        [ { name_token; module_type = Syn.Cst.ModuleType.Path param_type; _ } ];
+                      body = Syn.Cst.ModuleExpression.Path body_path;
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"X"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:(Some "S")
+              ~actual:(Syn.Cst.Ident.name param_type);
+            Test.assert_equal ~expected:(Some "X")
+              ~actual:(Syn.Cst.Ident.name body_path);
+            Ok ()
+        | _ ->
+            Error "expected module declaration with functor module expression");
+    Test.case "cst module declarations preserve functor applications structurally"
+      (fun () ->
+        let result = parse_ml "module M = F(X)(Y)\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleDeclaration
+            {
+              module_expression =
+                Some
+                  (Syn.Cst.ModuleExpression.Apply
+                    {
+                      callee =
+                        Syn.Cst.ModuleExpression.Apply
+                          {
+                            callee = Syn.Cst.ModuleExpression.Path functor_path;
+                            argument = Syn.Cst.ModuleExpression.Path first_arg;
+                            _;
+                          };
+                      argument = Syn.Cst.ModuleExpression.Path second_arg;
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "F")
+              ~actual:(Syn.Cst.Ident.name functor_path);
+            Test.assert_equal ~expected:(Some "X")
+              ~actual:(Syn.Cst.Ident.name first_arg);
+            Test.assert_equal ~expected:(Some "Y")
+              ~actual:(Syn.Cst.Ident.name second_arg);
+            Ok ()
+        | _ ->
+            Error "expected module declaration with functor application");
+    Test.case "cst module declarations preserve unpacked first-class modules"
+      (fun () ->
+        let result = parse_ml "module M = (val packed : S)\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ModuleDeclaration
+            {
+              module_expression =
+                Some
+                  (Syn.Cst.ModuleExpression.Parenthesized
+                    {
+                      inner =
+                        Syn.Cst.ModuleExpression.Unpack
+                          {
+                            expression =
+                              Syn.Cst.Expression.Path { path = module_path; _ };
+                            module_type =
+                              Some (Syn.Cst.ModuleType.Path module_type_path);
+                            _;
+                          };
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "packed")
+              ~actual:(Syn.Cst.Ident.name module_path);
+            Test.assert_equal ~expected:(Some "S")
+              ~actual:(Syn.Cst.Ident.name module_type_path);
+            Ok ()
+        | _ ->
+            Error "expected module declaration with unpacked first-class module");
     Test.case "cst recursive module items preserve grouped bindings" (fun () ->
         let result =
           parse_ml

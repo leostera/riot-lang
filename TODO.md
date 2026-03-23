@@ -122,13 +122,13 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] standalone attribute items in interfaces
   - [x] standalone extension items in interfaces
 - [ ] Module expressions:
-  - [ ] module identifiers
-  - [ ] structure module bodies
-  - [ ] functor expressions
-  - [ ] functor application expressions
+  - [x] module identifiers
+  - [x] structure module bodies
+  - [x] functor expressions
+  - [x] functor application expressions
   - [ ] unit functor application expressions
   - [ ] constrained module expressions
-  - [ ] unpacked first-class modules
+  - [x] unpacked first-class modules
   - [ ] module extensions
 - [ ] Module types:
   - [ ] module type identifiers
