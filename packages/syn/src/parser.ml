@@ -164,6 +164,16 @@ let can_start_module_type_expr parser =
   | Token.Ident name -> ident_starts_uppercase name
   | _ -> false
 
+let can_start_class_type_arrow_parameter parser =
+  match peek_kind parser with
+  | Token.Tilde | Token.Question | Token.Quote | Token.Underscore
+  | Token.Ident _ | Token.Keyword Keyword.True | Token.Keyword Keyword.False
+  | Token.Hash | Token.OpenDelim Token.Bracket
+  | Token.OpenDelim Token.Paren | Token.OpenDelim Token.Brace
+  | Token.Lt ->
+      true
+  | _ -> false
+
 (** Consume a single token WITHOUT consuming trivia after it.
 
     IMPORTANT: This is the primitive operation. It does NOT auto-consume trivia!
@@ -878,82 +888,68 @@ and parse_locally_abstract_type parser =
     @ tokens_to_green parser dot_trivia
     @ [ Ceibo.Green.Node inner_type ])
 
-(** Parse arrow type: t1 -> t2 -> t3 (right associative) 
-    Also handles labeled params: label:t1 -> t2 and optional: ?label:t1 -> t2 *)
-and parse_arrow_type parser =
-  (* Check for optional label: [?]label: before the type *)
-  let label_nodes, type_to_parse = 
-    match peek_kind parser with
-    | Token.Tilde | Token.Question ->
-        (* This is a labeled/optional parameter *)
-        let opt_tok = consume parser in
-        let trivia_after_opt = consume_trivia parser in
-        
-        (* Expect identifier for label name *)
-        (match peek_kind parser with
-        | Token.Ident _ ->
-            let label = consume parser in
-            let trivia_after_label = consume_trivia parser in
-            
-            (* Expect colon *)
-            (match peek_kind parser with
-            | Token.Colon ->
-                let colon = consume parser in
-                let trivia_after_colon = consume_trivia parser in
-                
-                (* Parse the type after the label *)
-                let typ = parse_tuple_type parser in
-                
-                (* Return label nodes and the type *)
-                ([ make_token parser opt_tok ]
-                @ tokens_to_green parser trivia_after_opt
+(** Parse the labeled prefix and domain portion shared by arrow syntaxes. *)
+and parse_labeled_arrow_domain parser ~parse_domain =
+  match peek_kind parser with
+  | Token.Tilde | Token.Question ->
+      let saved_pos = Token_cursor.position parser.cursor in
+      let prefix_tok = consume parser in
+      let trivia_after_prefix = consume_trivia parser in
+
+      (match peek_kind parser with
+      | Token.Ident _ ->
+          let label = consume parser in
+          let trivia_after_label = consume_trivia parser in
+
+          (match peek_kind parser with
+          | Token.Colon ->
+              let colon = consume parser in
+              let trivia_after_colon = consume_trivia parser in
+              let domain = parse_domain parser in
+              ( [ make_token parser prefix_tok ]
+                @ tokens_to_green parser trivia_after_prefix
                 @ [ make_token parser label ]
                 @ tokens_to_green parser trivia_after_label
                 @ [ make_token parser colon ]
                 @ tokens_to_green parser trivia_after_colon,
-                typ)
-            | _ ->
-                (* No colon, this is not a labeled param - backtrack *)
-                (* Put tokens back *)
-                Token_cursor.set_position parser.cursor opt_tok.Token.span.Ceibo.Span.start;
-                ([], parse_tuple_type parser))
-        | _ ->
-            (* No identifier after ~ or ?, backtrack *)
-            Token_cursor.set_position parser.cursor opt_tok.Token.span.Ceibo.Span.start;
-            ([], parse_tuple_type parser))
-    | Token.Ident _ ->
-        (* Check if this is label: pattern (without ~ or ?) *)
-        let saved_pos = Token_cursor.position parser.cursor in
-        let label = consume parser in
-        let trivia_after_label = consume_trivia parser in
-        
-        (match peek_kind parser with
-        | Token.Colon ->
-            (* Peek ahead to see if next is a type (not =) *)
-            let colon = consume parser in
-            let trivia_after_colon = consume_trivia parser in
-            
-            if peek_kind parser = Token.Gt then (
+                domain )
+          | _ ->
               Token_cursor.set_position parser.cursor saved_pos;
-              ([], parse_tuple_type parser))
-            else (
-              (* Check if this looks like a type context, not an expression *)
-              (* In signatures/type contexts, label:type is valid *)
-              (* We'll tentatively parse it as labeled *)
-              let typ = parse_tuple_type parser in
-              
-              ([ make_token parser label ]
+              ([], parse_domain parser))
+      | _ ->
+          Token_cursor.set_position parser.cursor saved_pos;
+          ([], parse_domain parser))
+  | Token.Ident _ ->
+      let saved_pos = Token_cursor.position parser.cursor in
+      let label = consume parser in
+      let trivia_after_label = consume_trivia parser in
+
+      (match peek_kind parser with
+      | Token.Colon ->
+          let colon = consume parser in
+          let trivia_after_colon = consume_trivia parser in
+
+          if peek_kind parser = Token.Gt then (
+            Token_cursor.set_position parser.cursor saved_pos;
+            ([], parse_domain parser))
+          else
+            let domain = parse_domain parser in
+            ( [ make_token parser label ]
               @ tokens_to_green parser trivia_after_label
               @ [ make_token parser colon ]
               @ tokens_to_green parser trivia_after_colon,
-              typ))
-        | _ ->
-            (* Not a labeled param, restore and parse normally *)
-            Token_cursor.set_position parser.cursor saved_pos;
-            ([], parse_tuple_type parser))
-    | _ ->
-        (* No label *)
-        ([], parse_tuple_type parser)
+              domain )
+      | _ ->
+          Token_cursor.set_position parser.cursor saved_pos;
+          ([], parse_domain parser))
+  | _ ->
+      ([], parse_domain parser)
+
+(** Parse arrow type: t1 -> t2 -> t3 (right associative) 
+    Also handles labeled params: label:t1 -> t2 and optional: ?label:t1 -> t2 *)
+and parse_arrow_type parser =
+  let label_nodes, type_to_parse =
+    parse_labeled_arrow_domain parser ~parse_domain:parse_tuple_type
   in
   
   let left = type_to_parse in
@@ -986,6 +982,60 @@ and parse_arrow_type parser =
       (* But we'll return what we have *)
       Token_cursor.set_position parser.cursor saved_pos;
       left))
+
+(** Parse class type expressions.
+
+    This shares the existing expression grammar for path/object/local-open
+    shapes, but recognizes `core_type -> class_type` arrows explicitly. *)
+and parse_class_type_expr parser =
+  if can_start_class_type_arrow_parameter parser then
+    let saved_pos = Token_cursor.position parser.cursor in
+    let label_nodes, parameter_type =
+      parse_labeled_arrow_domain parser ~parse_domain:parse_tuple_type
+    in
+    let trivia_after_parameter = consume_trivia parser in
+
+    if peek_kind parser = Token.Arrow then
+      let arrow = consume parser in
+      let trivia_after_arrow = consume_trivia parser in
+      let result_type = parse_class_type_expr parser in
+
+      make_node Syntax_kind.TYPE_ARROW
+        (label_nodes
+        @ [ Ceibo.Green.Node parameter_type ]
+        @ tokens_to_green parser trivia_after_parameter
+        @ [ make_token parser arrow ]
+        @ tokens_to_green parser trivia_after_arrow
+        @ [ Ceibo.Green.Node result_type ])
+      |> attach_postfix_attributes parser
+    else (
+      Token_cursor.set_position parser.cursor saved_pos;
+
+      match peek_kind parser with
+      | Token.OpenDelim Token.Paren ->
+          let saved_pos = Token_cursor.position parser.cursor in
+          let lparen = consume parser in
+          let trivia_after_lparen = consume_trivia parser in
+          let inner = parse_class_type_expr parser in
+          let trivia_after_inner = consume_trivia parser in
+
+          (match peek_kind parser with
+          | Token.CloseDelim Token.Paren ->
+              let rparen = consume parser in
+              make_node Syntax_kind.PAREN_EXPR
+                ([ make_token parser lparen ]
+                @ tokens_to_green parser trivia_after_lparen
+                @ [ Ceibo.Green.Node inner ]
+                @ tokens_to_green parser trivia_after_inner
+                @ [ make_token parser rparen ])
+              |> attach_postfix_attributes parser
+          | _ ->
+              Token_cursor.set_position parser.cursor saved_pos;
+              parse_expr parser)
+      | _ ->
+          parse_expr parser)
+  else
+    parse_expr parser
 
 (** Parse tuple type: t1 * t2 * t3 *)
 and parse_tuple_type parser =
@@ -4142,7 +4192,7 @@ and parse_object_initializer parser =
 and parse_object_inherit parser =
   let inherit_kw = consume parser in
   let trivia_after_inherit = consume_trivia parser in
-  let inherited = parse_expr parser in
+  let inherited = parse_class_type_expr parser in
   let trivia_after_inherited = consume_trivia parser in
   let attr_nodes = parse_attributes parser in
   make_node Syntax_kind.OBJECT_INHERIT
@@ -9977,7 +10027,7 @@ and parse_class_decl parser =
     | Token.Colon ->
         let colon = consume parser in
         let trivia_after_colon = consume_trivia parser in
-        let body = parse_expr parser in
+        let body = parse_class_type_expr parser in
         let trivia_after_body = consume_trivia parser in
         let trailing_attrs = parse_attributes parser in
         [ make_token parser colon ]
@@ -10022,7 +10072,7 @@ and parse_class_type_decl parser =
     | Token.Eq ->
         let eq = consume parser in
         let trivia_after_eq = consume_trivia parser in
-        let body = parse_expr parser in
+        let body = parse_class_type_expr parser in
         let trivia_after_body = consume_trivia parser in
         let trailing_attrs = parse_attributes parser in
         [ make_token parser eq ]
@@ -10033,7 +10083,7 @@ and parse_class_type_decl parser =
     | Token.Colon ->
         let colon = consume parser in
         let trivia_after_colon = consume_trivia parser in
-        let body = parse_expr parser in
+        let body = parse_class_type_expr parser in
         let trivia_after_body = consume_trivia parser in
         let trailing_attrs = parse_attributes parser in
         [ make_token parser colon ]

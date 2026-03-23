@@ -1,0 +1,349 @@
+{
+  "status": "ok",
+  "cst": {
+    "kind": "interface",
+    "syntax_node": {
+      "kind": "SOURCE_FILE",
+      "span": {
+        "start": 0,
+        "end": 149
+      }
+    },
+    "items": [
+      {
+        "tag": "class_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "CLASS_DECL",
+            "span": {
+              "start": 0,
+              "end": 55
+            }
+          },
+          "type_params": [],
+          "class_name": {
+            "kind": "IDENT_EXPR",
+            "text": "service",
+            "span": {
+              "start": 6,
+              "end": 13
+            }
+          },
+          "class_type": {
+            "tag": "arrow",
+            "syntax_node": {
+              "kind": "TYPE_ARROW",
+              "span": {
+                "start": 16,
+                "end": 54
+              }
+            },
+            "parameter_type": {
+              "tag": "constr",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 16,
+                  "end": 24
+                }
+              },
+              "constructor_path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 16,
+                    "end": 24
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "request",
+                  "span": {
+                    "start": 16,
+                    "end": 23
+                  }
+                }
+              },
+              "arguments": []
+            },
+            "result_type": {
+              "tag": "signature",
+              "syntax_node": {
+                "kind": "OBJECT_EXPR",
+                "span": {
+                  "start": 27,
+                  "end": 54
+                }
+              },
+              "fields": [
+                {
+                  "tag": "method",
+                  "syntax_node": {
+                    "kind": "OBJECT_METHOD",
+                    "span": {
+                      "start": 34,
+                      "end": 51
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "run",
+                    "span": {
+                      "start": 41,
+                      "end": 44
+                    }
+                  },
+                  "type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 47,
+                        "end": 51
+                      }
+                    },
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 47,
+                          "end": 51
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 47,
+                          "end": 50
+                        }
+                      }
+                    },
+                    "arguments": []
+                  },
+                  "is_private": false
+                }
+              ]
+            }
+          },
+          "class_body": null
+        }
+      },
+      {
+        "tag": "class_type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "CLASS_TYPE_DECL",
+            "span": {
+              "start": 55,
+              "end": 107
+            }
+          },
+          "type_params": [],
+          "class_type_name": {
+            "kind": "IDENT_EXPR",
+            "text": "factory",
+            "span": {
+              "start": 66,
+              "end": 73
+            }
+          },
+          "class_type_body": {
+            "tag": "arrow",
+            "syntax_node": {
+              "kind": "TYPE_ARROW",
+              "span": {
+                "start": 76,
+                "end": 106
+              }
+            },
+            "parameter_type": {
+              "tag": "constr",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 76,
+                  "end": 84
+                }
+              },
+              "constructor_path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 76,
+                    "end": 84
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "request",
+                  "span": {
+                    "start": 76,
+                    "end": 83
+                  }
+                }
+              },
+              "arguments": []
+            },
+            "result_type": {
+              "tag": "arrow",
+              "syntax_node": {
+                "kind": "TYPE_ARROW",
+                "span": {
+                  "start": 87,
+                  "end": 106
+                }
+              },
+              "parameter_type": {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 87,
+                    "end": 96
+                  }
+                },
+                "constructor_path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 87,
+                      "end": 96
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "response",
+                    "span": {
+                      "start": 87,
+                      "end": 95
+                    }
+                  }
+                },
+                "arguments": []
+              },
+              "result_type": {
+                "tag": "path",
+                "path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 99,
+                      "end": 106
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "service",
+                    "span": {
+                      "start": 99,
+                      "end": 106
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "tag": "class_type_declaration",
+        "item": {
+          "syntax_node": {
+            "kind": "CLASS_TYPE_DECL",
+            "span": {
+              "start": 107,
+              "end": 149
+            }
+          },
+          "type_params": [],
+          "class_type_name": {
+            "kind": "IDENT_EXPR",
+            "text": "grouped",
+            "span": {
+              "start": 118,
+              "end": 125
+            }
+          },
+          "class_type_body": {
+            "tag": "parenthesized",
+            "syntax_node": {
+              "kind": "PAREN_EXPR",
+              "span": {
+                "start": 128,
+                "end": 148
+              }
+            },
+            "inner": {
+              "tag": "arrow",
+              "syntax_node": {
+                "kind": "TYPE_ARROW",
+                "span": {
+                  "start": 129,
+                  "end": 147
+                }
+              },
+              "parameter_type": {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 129,
+                    "end": 137
+                  }
+                },
+                "constructor_path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 129,
+                      "end": 137
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "request",
+                    "span": {
+                      "start": 129,
+                      "end": 136
+                    }
+                  }
+                },
+                "arguments": []
+              },
+              "result_type": {
+                "tag": "path",
+                "path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 140,
+                      "end": 147
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "service",
+                    "span": {
+                      "start": 140,
+                      "end": 147
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ],
+    "let_bindings": [],
+    "expressions": []
+  }
+}

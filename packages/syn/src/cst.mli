@@ -651,6 +651,20 @@ and class_type =
           end
           ```
       *)
+  | Arrow of {
+      syntax_node : syntax_node;
+      parameter_type : core_type;
+      result_type : class_type;
+    }
+      (** An arrow-style class type.
+
+          Examples:
+
+          ```ocaml,norun
+          int -> object method run : int end
+          request -> response -> service
+          ```
+      *)
   | Parenthesized of {
       syntax_node : syntax_node;
       inner : class_type;
@@ -886,6 +900,11 @@ module ClassType : sig
     | Signature of {
         syntax_node : syntax_node;
         fields : class_type_field list;
+      }
+    | Arrow of {
+        syntax_node : syntax_node;
+        parameter_type : core_type;
+        result_type : class_type;
       }
     | Parenthesized of {
         syntax_node : syntax_node;
@@ -2176,6 +2195,218 @@ and parenthesized_expression = {
   inner : expression;
 }
 
+(** Class expression syntax.
+
+    These nodes cover the grammar accepted to the right of `=` in class
+    bindings. They keep class-specific structure distinct from ordinary term
+    expressions, while still reusing ordinary `expression` nodes for method
+    bodies, field initializers, and `let`-bound values inside the class.
+*)
+and class_expression =
+  | Path of Ident.t
+      (** A named class constructor reference such as `c`, `Widget.t`, or
+          `Driver.make`.
+
+          Examples:
+
+          ```ocaml,norun
+          class direct = c
+          class service = Driver.make
+          ```
+      *)
+  | Structure of class_structure
+      (** An `object ... end` class structure body.
+
+          Example:
+
+          ```ocaml,norun
+          object
+            val mutable state = 0
+            method run = state
+          end
+          ```
+      *)
+  | Fun of class_fun_expression
+      (** A function-style class expression.
+
+          Example:
+
+          ```ocaml,norun
+          fun x -> object method value = x end
+          ```
+      *)
+  | Apply of class_apply_expression
+      (** A class application such as `builder x` or `make ~clock`. *)
+  | Let of class_let_expression
+      (** A let-bound class expression.
+
+          Example:
+
+          ```ocaml,norun
+          let state = ref 0 in object method run = !state end
+          ```
+      *)
+  | Constraint of class_constraint_expression
+      (** A class expression constrained by a class type.
+
+          Example:
+
+          ```ocaml,norun
+          (object method run = 1 end : object method run : int end)
+          ```
+      *)
+  | LocalOpen of local_open_class_expression
+      (** A locally opened class expression such as `M.(builder)` or
+          `let open M in object end`.
+      *)
+  | Parenthesized of parenthesized_class_expression
+      (** A parenthesized class expression used for grouping. *)
+  | Attribute of {
+      syntax_node : syntax_node;
+      class_expression : class_expression;
+      attribute : attribute;
+    }
+      (** A class expression with an attached attribute. *)
+  | Extension of extension
+      (** A PPX extension parsed in class-expression position.
+
+          Example: `[%driver]`.
+      *)
+
+(** The structured payload of `ClassExpression.Structure`. *)
+and class_structure = {
+  syntax_node : syntax_node;
+  self_pattern : pattern option;
+  fields : class_field list;
+}
+
+(** Fields inside an `object ... end` class structure. *)
+and class_field =
+  | Method of class_method
+      (** A `method` declaration inside a class structure. *)
+  | Value of class_value
+      (** A `val` declaration inside a class structure. *)
+  | Inherit of class_inherit
+      (** An `inherit class_expr` field. *)
+  | Constraint of class_constraint
+      (** A `constraint t = u` field. *)
+  | Initializer of class_initializer
+      (** An `initializer expr` field. *)
+  | Attribute of {
+      syntax_node : syntax_node;
+      field : class_field;
+      attribute : attribute;
+    }
+      (** A class field with an attached attribute.
+
+          Example: `method run = 1 [@@foo]`.
+      *)
+  | Extension of extension
+      (** A PPX extension parsed as a class field.
+
+          Example: `[%%foo]`.
+      *)
+
+(** Payload for `ClassField.Method`.
+
+    This covers concrete methods, virtual methods, private methods, and
+    overriding methods such as `method!`.
+*)
+and class_method = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  body : expression option;
+  type_ : core_type option;
+  is_private : bool;
+  is_virtual : bool;
+  is_override : bool;
+}
+
+(** Payload for `ClassField.Value`.
+
+    This covers class fields declared with `val`, including `mutable`,
+    `virtual`, and overriding forms.
+*)
+and class_value = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  value : expression option;
+  type_ : core_type option;
+  is_mutable : bool;
+  is_virtual : bool;
+  is_override : bool;
+}
+
+(** Payload for `ClassField.Inherit`. *)
+and class_inherit = {
+  syntax_node : syntax_node;
+  class_expression : class_expression;
+}
+
+(** Payload for `ClassField.Constraint`.
+
+    Example: `constraint t = int`.
+*)
+and class_constraint = {
+  syntax_node : syntax_node;
+  left : core_type;
+  right : core_type;
+}
+
+(** Payload for `ClassField.Initializer`.
+
+    Covers `initializer expr`.
+*)
+and class_initializer = {
+  syntax_node : syntax_node;
+  body : expression option;
+}
+
+(** Payload for `ClassExpression.Apply`. *)
+and class_apply_expression = {
+  syntax_node : syntax_node;
+  callee : class_expression;
+  argument : apply_argument;
+}
+
+(** Payload for `ClassExpression.Fun`. *)
+and class_fun_expression = {
+  syntax_node : syntax_node;
+  parameters : Parameter.t list;
+  body : class_expression;
+}
+
+(** Payload for `ClassExpression.Let`. *)
+and class_let_expression = {
+  syntax_node : syntax_node;
+  binding_pattern : pattern;
+  bound_value : expression;
+  and_bindings : let_binding list;
+  body : class_expression;
+  is_recursive : bool;
+}
+
+(** Payload for `ClassExpression.Constraint`. *)
+and class_constraint_expression = {
+  syntax_node : syntax_node;
+  class_expression : class_expression;
+  class_type : class_type;
+}
+
+(** Payload for `ClassExpression.LocalOpen`. *)
+and local_open_class_expression = {
+  syntax_node : syntax_node;
+  module_path : Ident.t;
+  class_expression : class_expression;
+  via_let_open : bool;
+}
+
+(** Payload for `ClassExpression.Parenthesized`. *)
+and parenthesized_class_expression = {
+  syntax_node : syntax_node;
+  inner : class_expression;
+}
+
 (** Module expression syntax.
 
     These nodes cover the term-level side of the module language, including
@@ -2318,6 +2549,62 @@ module Expression : sig
     | Try of try_expression
     | If of if_expression
     | Parenthesized of parenthesized_expression
+
+  val syntax_node : t -> syntax_node
+end
+
+(** Namespace view over `object_member`. *)
+module ObjectMember : sig
+  type t = object_member =
+    | Method of object_method
+    | Value of object_value
+    | Inherit of object_inherit
+    | Extension of extension
+    | Initializer of object_initializer
+
+  val syntax_node : t -> syntax_node
+end
+
+(** Namespace view over `class_expression`.
+
+    The constructors mirror `class_expression` exactly, so the grammar
+    coverage and examples documented on `class_expression` apply here
+    unchanged.
+*)
+module ClassExpression : sig
+  type t = class_expression =
+    | Path of Ident.t
+    | Structure of class_structure
+    | Fun of class_fun_expression
+    | Apply of class_apply_expression
+    | Let of class_let_expression
+    | Constraint of class_constraint_expression
+    | LocalOpen of local_open_class_expression
+    | Parenthesized of parenthesized_class_expression
+    | Attribute of {
+        syntax_node : syntax_node;
+        class_expression : class_expression;
+        attribute : attribute;
+      }
+    | Extension of extension
+
+  val syntax_node : t -> syntax_node
+end
+
+(** Namespace view over `class_field`. *)
+module ClassField : sig
+  type t = class_field =
+    | Method of class_method
+    | Value of class_value
+    | Inherit of class_inherit
+    | Constraint of class_constraint
+    | Initializer of class_initializer
+    | Attribute of {
+        syntax_node : syntax_node;
+        field : class_field;
+        attribute : attribute;
+      }
+    | Extension of extension
 
   val syntax_node : t -> syntax_node
 end
@@ -2865,18 +3152,16 @@ type external_declaration = {
 
 (** A `class` declaration item.
 
-    The public CST exposes the declared name, type parameters, optional typed
-    class-type annotation, and the class body expression. Signature-only
-    declarations such as `class c : object ... end` still reuse the parsed
-    trailing node for both `class_type` and `class_body`, because the parser
-    continues to route class declarations through the expression grammar.
+    `class_type` is present for signature-style declarations such as
+    `class c : object ... end`. `class_body` is present for implementation
+    bindings such as `class c = object ... end`.
 *)
 type class_declaration = {
   syntax_node : syntax_node;
   type_params : TypeParameter.t list;
   class_name : Token.t;
   class_type : class_type option;
-  class_body : expression;
+  class_body : class_expression option;
 }
 
 (** A `class type` declaration item.

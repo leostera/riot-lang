@@ -84,7 +84,7 @@
           },
           "class_type": null,
           "class_body": {
-            "tag": "object",
+            "tag": "structure",
             "syntax_node": {
               "kind": "OBJECT_EXPR",
               "span": {
@@ -93,7 +93,7 @@
               }
             },
             "self_pattern": null,
-            "members": [
+            "fields": [
               {
                 "tag": "method",
                 "syntax_node": {
@@ -103,7 +103,6 @@
                     "end": 398
                   }
                 },
-                "attributes": [],
                 "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "bar",
@@ -227,145 +226,6 @@
     ],
     "let_bindings": [],
     "expressions": [
-      {
-        "tag": "object",
-        "syntax_node": {
-          "kind": "OBJECT_EXPR",
-          "span": {
-            "start": 350,
-            "end": 401
-          }
-        },
-        "self_pattern": null,
-        "members": [
-          {
-            "tag": "method",
-            "syntax_node": {
-              "kind": "OBJECT_METHOD",
-              "span": {
-                "start": 361,
-                "end": 398
-              }
-            },
-            "attributes": [],
-            "name_token": {
-              "kind": "IDENT_EXPR",
-              "text": "bar",
-              "span": {
-                "start": 368,
-                "end": 371
-              }
-            },
-            "body": {
-              "tag": "fun",
-              "syntax_node": {
-                "kind": "FUN_EXPR",
-                "span": {
-                  "start": 385,
-                  "end": 395
-                }
-              },
-              "parameters": [
-                {
-                  "tag": "positional",
-                  "syntax_node": {
-                    "kind": "IDENT_PATTERN",
-                    "span": {
-                      "start": 389,
-                      "end": 390
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "x",
-                    "span": {
-                      "start": 389,
-                      "end": 390
-                    }
-                  }
-                }
-              ],
-              "body": {
-                "tag": "path",
-                "syntax_node": {
-                  "kind": "IDENT_EXPR",
-                  "span": {
-                    "start": 394,
-                    "end": 395
-                  }
-                },
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "IDENT_EXPR",
-                    "span": {
-                      "start": 394,
-                      "end": 395
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "x",
-                    "span": {
-                      "start": 394,
-                      "end": 395
-                    }
-                  }
-                }
-              }
-            },
-            "type": {
-              "tag": "arrow",
-              "syntax_node": {
-                "kind": "TYPE_ARROW",
-                "span": {
-                  "start": 374,
-                  "end": 382
-                }
-              },
-              "parameter_type": {
-                "tag": "var",
-                "syntax_node": {
-                  "kind": "TYPE_VAR",
-                  "span": {
-                    "start": 374,
-                    "end": 376
-                  }
-                },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "a",
-                  "span": {
-                    "start": 375,
-                    "end": 376
-                  }
-                }
-              },
-              "result_type": {
-                "tag": "var",
-                "syntax_node": {
-                  "kind": "TYPE_VAR",
-                  "span": {
-                    "start": 380,
-                    "end": 382
-                  }
-                },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "a",
-                  "span": {
-                    "start": 381,
-                    "end": 382
-                  }
-                }
-              }
-            },
-            "is_private": false,
-            "is_virtual": false,
-            "is_override": false
-          }
-        ]
-      },
       {
         "tag": "fun",
         "syntax_node": {

@@ -872,23 +872,7 @@ let tests =
                             };
                         ];
                     });
-              class_body =
-                Syn.Cst.Expression.Object
-                  {
-                    members =
-                      [
-                        Syn.Cst.Method
-                          {
-                            name_token;
-                            body = None;
-                            type_ =
-                              Some
-                                (Syn.Cst.CoreType.Constr { constructor_path; _ });
-                            _;
-                          };
-                      ];
-                    _;
-                  };
+              class_body = None;
               _;
             }
           :: _ ->
@@ -902,12 +886,474 @@ let tests =
               ~actual:(Syn.Cst.Token.text class_type_method_name);
             Test.assert_equal ~expected:(Some "int")
               ~actual:(Syn.Cst.Ident.name declared_type);
-            Test.assert_equal ~expected:"x"
-              ~actual:(Syn.Cst.Token.text name_token);
-            Test.assert_equal ~expected:(Some "int")
-              ~actual:(Syn.Cst.Ident.name constructor_path);
             Ok ()
         | _ -> Error "expected interface class declaration");
+    Test.case "cst class declarations preserve typed class-expression forms"
+      (fun () ->
+        let result =
+          parse_ml
+            "class direct = builder\n\
+             class applied = builder arg\n\
+             class factory = fun x -> object method run = x end\n\
+             class local = let helper = 1 in object method run = helper end\n\
+             class opened = M.(builder)\n\
+             class generated = [%class_body]\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassDeclaration
+            {
+              class_name = direct_name;
+              class_body =
+                Some (Syn.Cst.ClassExpression.Path direct_path);
+              _;
+            }
+          :: Syn.Cst.Item.ClassDeclaration
+               {
+                 class_name = applied_name;
+                 class_body =
+                   Some
+                     (Syn.Cst.ClassExpression.Apply
+                       {
+                         callee = Syn.Cst.ClassExpression.Path applied_callee;
+                         argument =
+                           Syn.Cst.Positional
+                             (Syn.Cst.Expression.Path { path = applied_arg; _ });
+                         _;
+                       });
+                 _;
+               }
+             :: Syn.Cst.Item.ClassDeclaration
+                  {
+                    class_name = factory_name;
+                    class_body =
+                      Some
+                        (Syn.Cst.ClassExpression.Fun
+                          {
+                            parameters =
+                              [
+                                Syn.Cst.Parameter.Positional
+                                  { name_token = Some factory_param; _ };
+                              ];
+                            body =
+                              Syn.Cst.ClassExpression.Structure
+                                {
+                                  fields =
+                                    [
+                                      Syn.Cst.ClassField.Method
+                                        {
+                                          name_token = factory_method_name;
+                                          body =
+                                            Some
+                                              (Syn.Cst.Expression.Path
+                                                { path = factory_body_path; _ });
+                                          _;
+                                        };
+                                    ];
+                                  _;
+                                };
+                            _;
+                          });
+                    _;
+                  }
+                :: Syn.Cst.Item.ClassDeclaration
+                     {
+                       class_name = local_name;
+                       class_body =
+                         Some
+                           (Syn.Cst.ClassExpression.Let
+                             {
+                               binding_pattern =
+                                 Syn.Cst.Pattern.Identifier
+                                   { name_token = helper_name; _ };
+                               bound_value =
+                                 Syn.Cst.Expression.Literal
+                                   (Syn.Cst.Literal.Int { literal_token; _ });
+                               body =
+                                 Syn.Cst.ClassExpression.Structure
+                                   {
+                                     fields =
+                                       [
+                                         Syn.Cst.ClassField.Method
+                                           {
+                                             body =
+                                               Some
+                                                 (Syn.Cst.Expression.Path
+                                                   { path = helper_path; _ });
+                                             _;
+                                           };
+                                       ];
+                                     _;
+                                   };
+                               _;
+                             });
+                       _;
+                     }
+                   :: Syn.Cst.Item.ClassDeclaration
+                        {
+                          class_name = opened_name;
+                          class_body =
+                            Some
+                              (Syn.Cst.ClassExpression.LocalOpen
+                                {
+                                  module_path = opened_module_path;
+                                  class_expression =
+                                    Syn.Cst.ClassExpression.Path opened_body_path;
+                                  _;
+                                });
+                          _;
+                        }
+                      :: Syn.Cst.Item.ClassDeclaration
+                           {
+                             class_name = generated_name;
+                             class_body =
+                               Some
+                                 (Syn.Cst.ClassExpression.Extension extension);
+                             _;
+                           }
+                         :: _ ->
+            Test.assert_equal ~expected:"direct"
+              ~actual:(Syn.Cst.Token.text direct_name);
+            Test.assert_equal ~expected:(Some "builder")
+              ~actual:(Syn.Cst.Ident.name direct_path);
+            Test.assert_equal ~expected:"applied"
+              ~actual:(Syn.Cst.Token.text applied_name);
+            Test.assert_equal ~expected:(Some "builder")
+              ~actual:(Syn.Cst.Ident.name applied_callee);
+            Test.assert_equal ~expected:(Some "arg")
+              ~actual:(Syn.Cst.Ident.name applied_arg);
+            Test.assert_equal ~expected:"factory"
+              ~actual:(Syn.Cst.Token.text factory_name);
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text factory_param);
+            Test.assert_equal ~expected:"run"
+              ~actual:(Syn.Cst.Token.text factory_method_name);
+            Test.assert_equal ~expected:(Some "x")
+              ~actual:(Syn.Cst.Ident.name factory_body_path);
+            Test.assert_equal ~expected:"local"
+              ~actual:(Syn.Cst.Token.text local_name);
+            Test.assert_equal ~expected:"helper"
+              ~actual:(Syn.Cst.Token.text helper_name);
+            Test.assert_equal ~expected:"1"
+              ~actual:(Syn.Cst.Token.text literal_token);
+            Test.assert_equal ~expected:(Some "helper")
+              ~actual:(Syn.Cst.Ident.name helper_path);
+            Test.assert_equal ~expected:"opened"
+              ~actual:(Syn.Cst.Token.text opened_name);
+            Test.assert_equal ~expected:(Some "M")
+              ~actual:(Syn.Cst.Ident.name opened_module_path);
+            Test.assert_equal ~expected:(Some "builder")
+              ~actual:(Syn.Cst.Ident.name opened_body_path);
+            Test.assert_equal ~expected:"generated"
+              ~actual:(Syn.Cst.Token.text generated_name);
+            Test.assert_equal ~expected:(Some "class_body")
+              ~actual:(Syn.Cst.Ident.name extension.name);
+            Ok ()
+        | _ -> Error "expected typed class-expression declarations");
+    Test.case "cst class declarations preserve constrained class-expression bodies"
+      (fun () ->
+        let result =
+          parse_ml "class constrained = (builder : service)\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassDeclaration
+            {
+              class_name;
+              class_body =
+                Some
+                  (Syn.Cst.ClassExpression.Constraint
+                    {
+                      class_expression =
+                        Syn.Cst.ClassExpression.Path builder_path;
+                      class_type = Syn.Cst.ClassType.Path service_path;
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"constrained"
+              ~actual:(Syn.Cst.Token.text class_name);
+            Test.assert_equal ~expected:(Some "builder")
+              ~actual:(Syn.Cst.Ident.name builder_path);
+            Test.assert_equal ~expected:(Some "service")
+              ~actual:(Syn.Cst.Ident.name service_path);
+            Ok ()
+        | _ -> Error "expected constrained class-expression declaration");
+    Test.case "cst class structures preserve field attributes" (fun () ->
+        let result =
+          parse_ml
+            "class c = object\n\
+             \  inherit builder [@@inh]\n\
+             \  val state = seed [@@tracked]\n\
+             \  method run = state [@@trace]\n\
+             \  constraint t = int [@@eq]\n\
+             \  initializer ignore state [@@init]\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassDeclaration
+            {
+              class_body =
+                Some
+                  (Syn.Cst.ClassExpression.Structure
+                    {
+                      fields =
+                        [
+                          Syn.Cst.ClassField.Attribute
+                            {
+                              field =
+                                Syn.Cst.ClassField.Inherit
+                                  {
+                                    class_expression =
+                                      Syn.Cst.ClassExpression.Path inherited_class;
+                                    _;
+                                  };
+                              attribute = inherit_attribute;
+                              _;
+                            };
+                          Syn.Cst.ClassField.Attribute
+                            {
+                              field =
+                                Syn.Cst.ClassField.Value
+                                  {
+                                    name_token = state_name;
+                                    value =
+                                      Some
+                                        (Syn.Cst.Expression.Path
+                                          { path = state_value; _ });
+                                    _;
+                                  };
+                              attribute = state_attribute;
+                              _;
+                            };
+                          Syn.Cst.ClassField.Attribute
+                            {
+                              field =
+                                Syn.Cst.ClassField.Method
+                                  {
+                                    name_token = run_name;
+                                    body =
+                                      Some
+                                        (Syn.Cst.Expression.Path
+                                          { path = run_body; _ });
+                                    _;
+                                  };
+                              attribute = run_attribute;
+                              _;
+                            };
+                          Syn.Cst.ClassField.Attribute
+                            {
+                              field =
+                                Syn.Cst.ClassField.Constraint
+                                  {
+                                    left =
+                                      Syn.Cst.CoreType.Constr
+                                        { constructor_path = left_type; _ };
+                                    right =
+                                      Syn.Cst.CoreType.Constr
+                                        { constructor_path = right_type; _ };
+                                    _;
+                                  };
+                              attribute = constraint_attribute;
+                              _;
+                            };
+                          Syn.Cst.ClassField.Attribute
+                            {
+                              field =
+                                Syn.Cst.ClassField.Initializer
+                                  {
+                                    body =
+                                      Some
+                                        (Syn.Cst.Expression.Apply
+                                          {
+                                            callee =
+                                              Syn.Cst.Expression.Path
+                                                { path = init_callee; _ };
+                                            argument =
+                                              Syn.Cst.Positional
+                                                (Syn.Cst.Expression.Path
+                                                  { path = init_arg; _ });
+                                            _;
+                                          });
+                                    _;
+                                  };
+                              attribute = init_attribute;
+                              _;
+                            };
+                        ];
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "builder")
+              ~actual:(Syn.Cst.Ident.name inherited_class);
+            Test.assert_equal ~expected:"@@"
+              ~actual:(Syn.Cst.Token.text inherit_attribute.sigil_token);
+            Test.assert_equal ~expected:"state"
+              ~actual:(Syn.Cst.Token.text state_name);
+            Test.assert_equal ~expected:(Some "seed")
+              ~actual:(Syn.Cst.Ident.name state_value);
+            Test.assert_equal ~expected:"@@"
+              ~actual:(Syn.Cst.Token.text state_attribute.sigil_token);
+            Test.assert_equal ~expected:"run"
+              ~actual:(Syn.Cst.Token.text run_name);
+            Test.assert_equal ~expected:(Some "state")
+              ~actual:(Syn.Cst.Ident.name run_body);
+            Test.assert_equal ~expected:"@@"
+              ~actual:(Syn.Cst.Token.text run_attribute.sigil_token);
+            Test.assert_equal ~expected:(Some "t")
+              ~actual:(Syn.Cst.Ident.name left_type);
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name right_type);
+            Test.assert_equal ~expected:"@@"
+              ~actual:(Syn.Cst.Token.text constraint_attribute.sigil_token);
+            Test.assert_equal ~expected:(Some "ignore")
+              ~actual:(Syn.Cst.Ident.name init_callee);
+            Test.assert_equal ~expected:(Some "state")
+              ~actual:(Syn.Cst.Ident.name init_arg);
+            Test.assert_equal ~expected:"@@"
+              ~actual:(Syn.Cst.Token.text init_attribute.sigil_token);
+            Ok ()
+        | _ -> Error "expected class fields wrapped with attributes");
+    Test.case "cst class structures preserve class fields, constraints, and extensions"
+      (fun () ->
+        let result =
+          parse_ml
+            "class c = object\n\
+             \  val mutable state = seed\n\
+             \  inherit (builder arg)\n\
+             \  method private run = state\n\
+             \  constraint t = int\n\
+             \  [%%field]\n\
+             \  initializer ignore state\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassDeclaration
+            {
+              class_body =
+                Some
+                  (Syn.Cst.ClassExpression.Structure
+                    {
+                      fields =
+                        [
+                          Syn.Cst.ClassField.Value
+                            {
+                              name_token = state_name;
+                              value =
+                                Some
+                                  (Syn.Cst.Expression.Path { path = state_value; _ });
+                              is_mutable = true;
+                              _;
+                            };
+                          Syn.Cst.ClassField.Inherit
+                            {
+                              class_expression =
+                                Syn.Cst.ClassExpression.Parenthesized
+                                  {
+                                    inner =
+                                      Syn.Cst.ClassExpression.Apply
+                                        {
+                                          callee =
+                                            Syn.Cst.ClassExpression.Path
+                                              inherit_callee;
+                                          argument =
+                                            Syn.Cst.Positional
+                                              (Syn.Cst.Expression.Path
+                                                { path = inherit_arg; _ });
+                                          _;
+                                        };
+                                    _;
+                                  };
+                              _;
+                            };
+                          Syn.Cst.ClassField.Method
+                            {
+                              name_token = method_name;
+                              body =
+                                Some
+                                  (Syn.Cst.Expression.Path { path = method_body; _ });
+                              is_private = true;
+                              _;
+                            };
+                          Syn.Cst.ClassField.Constraint
+                            {
+                              left =
+                                Syn.Cst.CoreType.Constr
+                                  { constructor_path = left_type; _ };
+                              right =
+                                Syn.Cst.CoreType.Constr
+                                  { constructor_path = right_type; _ };
+                              _;
+                            };
+                          Syn.Cst.ClassField.Extension extension;
+                          Syn.Cst.ClassField.Initializer
+                            {
+                              body =
+                                Some
+                                  (Syn.Cst.Expression.Apply
+                                    {
+                                      callee =
+                                        Syn.Cst.Expression.Path
+                                          { path = init_callee; _ };
+                                      argument =
+                                        Syn.Cst.Positional
+                                          (Syn.Cst.Expression.Path
+                                            { path = init_arg; _ });
+                                      _;
+                                    });
+                              _;
+                            };
+                        ];
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"state"
+              ~actual:(Syn.Cst.Token.text state_name);
+            Test.assert_equal ~expected:(Some "seed")
+              ~actual:(Syn.Cst.Ident.name state_value);
+            Test.assert_equal ~expected:(Some "builder")
+              ~actual:(Syn.Cst.Ident.name inherit_callee);
+            Test.assert_equal ~expected:(Some "arg")
+              ~actual:(Syn.Cst.Ident.name inherit_arg);
+            Test.assert_equal ~expected:"run"
+              ~actual:(Syn.Cst.Token.text method_name);
+            Test.assert_equal ~expected:(Some "state")
+              ~actual:(Syn.Cst.Ident.name method_body);
+            Test.assert_equal ~expected:(Some "t")
+              ~actual:(Syn.Cst.Ident.name left_type);
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name right_type);
+            Test.assert_equal ~expected:(Some "field")
+              ~actual:(Syn.Cst.Ident.name extension.name);
+            Test.assert_equal ~expected:(Some "ignore")
+              ~actual:(Syn.Cst.Ident.name init_callee);
+            Test.assert_equal ~expected:(Some "state")
+              ~actual:(Syn.Cst.Ident.name init_arg);
+            Ok ()
+        | _ -> Error "expected structured class fields");
     Test.case "cst interface class type declarations preserve structured signatures"
       (fun () ->
         let result =
@@ -1000,6 +1446,130 @@ let tests =
               ~actual:(Syn.Cst.Ident.name extension.name);
             Ok ()
         | _ -> Error "expected class type path/local-open/extension bodies");
+    Test.case "cst interface class declarations preserve arrow-style class types"
+      (fun () ->
+        let result =
+          parse_mli "class service : request -> object method run : int end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassDeclaration
+            {
+              class_name;
+              class_type =
+                Some
+                  (Syn.Cst.ClassType.Arrow
+                    {
+                      parameter_type =
+                        Syn.Cst.CoreType.Constr
+                          { constructor_path = request_type; _ };
+                      result_type =
+                        Syn.Cst.ClassType.Signature
+                          {
+                            fields =
+                              [
+                                Syn.Cst.ClassTypeField.Method
+                                  {
+                                    name_token = method_name;
+                                    type_ =
+                                      Syn.Cst.CoreType.Constr
+                                        { constructor_path = method_type; _ };
+                                    _;
+                                  };
+                              ];
+                            _;
+                          };
+                      _;
+                    });
+              class_body = None;
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"service"
+              ~actual:(Syn.Cst.Token.text class_name);
+            Test.assert_equal ~expected:(Some "request")
+              ~actual:(Syn.Cst.Ident.name request_type);
+            Test.assert_equal ~expected:"run"
+              ~actual:(Syn.Cst.Token.text method_name);
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name method_type);
+            Ok ()
+        | _ -> Error "expected interface class declaration with arrow class type");
+    Test.case "cst class type declarations preserve arrow and parenthesized arrow bodies"
+      (fun () ->
+        let result =
+          parse_ml
+            "class type factory = request -> response -> service\n\
+             class type grouped = (request -> service)\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.ClassTypeDeclaration
+            {
+              class_type_name = factory_name;
+              class_type_body =
+                Syn.Cst.ClassType.Arrow
+                  {
+                    parameter_type =
+                      Syn.Cst.CoreType.Constr
+                        { constructor_path = request_type; _ };
+                    result_type =
+                      Syn.Cst.ClassType.Arrow
+                        {
+                          parameter_type =
+                            Syn.Cst.CoreType.Constr
+                              { constructor_path = response_type; _ };
+                          result_type = Syn.Cst.ClassType.Path service_type;
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: Syn.Cst.Item.ClassTypeDeclaration
+               {
+                 class_type_name = grouped_name;
+                 class_type_body =
+                   Syn.Cst.ClassType.Parenthesized
+                     {
+                       inner =
+                         Syn.Cst.ClassType.Arrow
+                           {
+                             parameter_type =
+                               Syn.Cst.CoreType.Constr
+                                 { constructor_path = grouped_request; _ };
+                             result_type = Syn.Cst.ClassType.Path grouped_service;
+                             _;
+                           };
+                       _;
+                     };
+                 _;
+               }
+             :: _ ->
+            Test.assert_equal ~expected:"factory"
+              ~actual:(Syn.Cst.Token.text factory_name);
+            Test.assert_equal ~expected:(Some "request")
+              ~actual:(Syn.Cst.Ident.name request_type);
+            Test.assert_equal ~expected:(Some "response")
+              ~actual:(Syn.Cst.Ident.name response_type);
+            Test.assert_equal ~expected:(Some "service")
+              ~actual:(Syn.Cst.Ident.name service_type);
+            Test.assert_equal ~expected:"grouped"
+              ~actual:(Syn.Cst.Token.text grouped_name);
+            Test.assert_equal ~expected:(Some "request")
+              ~actual:(Syn.Cst.Ident.name grouped_request);
+            Test.assert_equal ~expected:(Some "service")
+              ~actual:(Syn.Cst.Ident.name grouped_service);
+            Ok ()
+        | _ -> Error "expected arrow-style class type declarations");
     Test.case "cst class type signatures preserve field structure and field attributes"
       (fun () ->
         let result =
@@ -3135,8 +3705,8 @@ let tests =
                   {
                     members =
                       [
-                        Syn.Cst.Value _;
-                        Syn.Cst.Method
+                        Syn.Cst.ObjectMember.Value _;
+                        Syn.Cst.ObjectMember.Method
                           {
                             body =
                               Some
@@ -3182,8 +3752,8 @@ let tests =
                   {
                     members =
                       [
-                        Syn.Cst.Extension extension;
-                        Syn.Cst.Method
+                        Syn.Cst.ObjectMember.Extension extension;
+                        Syn.Cst.ObjectMember.Method
                           {
                             name_token;
                             body =

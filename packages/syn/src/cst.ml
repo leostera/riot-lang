@@ -240,6 +240,11 @@ and class_type =
       syntax_node : syntax_node;
       fields : class_type_field list;
     }
+  | Arrow of {
+      syntax_node : syntax_node;
+      parameter_type : core_type;
+      result_type : class_type;
+    }
   | Parenthesized of {
       syntax_node : syntax_node;
       inner : class_type;
@@ -436,6 +441,11 @@ module ClassType = struct
         syntax_node : syntax_node;
         fields : class_type_field list;
       }
+    | Arrow of {
+        syntax_node : syntax_node;
+        parameter_type : core_type;
+        result_type : class_type;
+      }
     | Parenthesized of {
         syntax_node : syntax_node;
         inner : class_type;
@@ -451,6 +461,7 @@ module ClassType = struct
   let syntax_node = function
     | Path path -> Ident.syntax_node path
     | Signature { syntax_node; _ }
+    | Arrow { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
     | LocalOpen { syntax_node; _ }
     | Attribute { syntax_node; _ } ->
@@ -1180,6 +1191,116 @@ and parenthesized_expression = {
   inner : expression;
 }
 
+and class_expression =
+  | Path of Ident.t
+  | Structure of class_structure
+  | Fun of class_fun_expression
+  | Apply of class_apply_expression
+  | Let of class_let_expression
+  | Constraint of class_constraint_expression
+  | LocalOpen of local_open_class_expression
+  | Parenthesized of parenthesized_class_expression
+  | Attribute of {
+      syntax_node : syntax_node;
+      class_expression : class_expression;
+      attribute : attribute;
+    }
+  | Extension of extension
+
+and class_structure = {
+  syntax_node : syntax_node;
+  self_pattern : pattern option;
+  fields : class_field list;
+}
+
+and class_field =
+  | Method of class_method
+  | Value of class_value
+  | Inherit of class_inherit
+  | Constraint of class_constraint
+  | Initializer of class_initializer
+  | Attribute of {
+      syntax_node : syntax_node;
+      field : class_field;
+      attribute : attribute;
+    }
+  | Extension of extension
+
+and class_method = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  body : expression option;
+  type_ : core_type option;
+  is_private : bool;
+  is_virtual : bool;
+  is_override : bool;
+}
+
+and class_value = {
+  syntax_node : syntax_node;
+  name_token : Token.t;
+  value : expression option;
+  type_ : core_type option;
+  is_mutable : bool;
+  is_virtual : bool;
+  is_override : bool;
+}
+
+and class_inherit = {
+  syntax_node : syntax_node;
+  class_expression : class_expression;
+}
+
+and class_constraint = {
+  syntax_node : syntax_node;
+  left : core_type;
+  right : core_type;
+}
+
+and class_initializer = {
+  syntax_node : syntax_node;
+  body : expression option;
+}
+
+and class_apply_expression = {
+  syntax_node : syntax_node;
+  callee : class_expression;
+  argument : apply_argument;
+}
+
+and class_fun_expression = {
+  syntax_node : syntax_node;
+  parameters : Parameter.t list;
+  body : class_expression;
+}
+
+and class_let_expression = {
+  syntax_node : syntax_node;
+  binding_pattern : pattern;
+  bound_value : expression;
+  and_bindings : let_binding list;
+  body : class_expression;
+  is_recursive : bool;
+}
+
+and class_constraint_expression = {
+  syntax_node : syntax_node;
+  class_expression : class_expression;
+  class_type : class_type;
+}
+
+and local_open_class_expression = {
+  syntax_node : syntax_node;
+  module_path : Ident.t;
+  class_expression : class_expression;
+  via_let_open : bool;
+}
+
+and parenthesized_class_expression = {
+  syntax_node : syntax_node;
+  inner : class_expression;
+}
+
 and module_expression =
   | Path of Ident.t
   | Structure of {
@@ -1320,6 +1441,76 @@ module Expression = struct
     | Try expr -> expr.syntax_node
     | If expr -> expr.syntax_node
     | Parenthesized expr -> expr.syntax_node
+end
+
+module ObjectMember = struct
+  type t = object_member =
+    | Method of object_method
+    | Value of object_value
+    | Inherit of object_inherit
+    | Extension of extension
+    | Initializer of object_initializer
+
+  let syntax_node = function
+    | Method member -> member.syntax_node
+    | Value member -> member.syntax_node
+    | Inherit member -> member.syntax_node
+    | Extension extension -> extension.syntax_node
+    | Initializer member -> member.syntax_node
+end
+
+module ClassExpression = struct
+  type t = class_expression =
+    | Path of Ident.t
+    | Structure of class_structure
+    | Fun of class_fun_expression
+    | Apply of class_apply_expression
+    | Let of class_let_expression
+    | Constraint of class_constraint_expression
+    | LocalOpen of local_open_class_expression
+    | Parenthesized of parenthesized_class_expression
+    | Attribute of {
+        syntax_node : syntax_node;
+        class_expression : class_expression;
+        attribute : attribute;
+      }
+    | Extension of extension
+
+  let syntax_node = function
+    | Path path -> Ident.syntax_node path
+    | Structure structure -> structure.syntax_node
+    | Fun expr -> expr.syntax_node
+    | Apply expr -> expr.syntax_node
+    | Let expr -> expr.syntax_node
+    | Constraint expr -> expr.syntax_node
+    | LocalOpen expr -> expr.syntax_node
+    | Parenthesized expr -> expr.syntax_node
+    | Attribute { syntax_node; _ } -> syntax_node
+    | Extension extension -> extension.syntax_node
+end
+
+module ClassField = struct
+  type t = class_field =
+    | Method of class_method
+    | Value of class_value
+    | Inherit of class_inherit
+    | Constraint of class_constraint
+    | Initializer of class_initializer
+    | Attribute of {
+        syntax_node : syntax_node;
+        field : class_field;
+        attribute : attribute;
+      }
+    | Extension of extension
+
+  let syntax_node = function
+    | Method field -> field.syntax_node
+    | Value field -> field.syntax_node
+    | Inherit field -> field.syntax_node
+    | Constraint field -> field.syntax_node
+    | Initializer field -> field.syntax_node
+    | Attribute { syntax_node; _ } -> syntax_node
+    | Extension extension -> extension.syntax_node
 end
 
 module ModuleExpression = struct
@@ -1766,7 +1957,7 @@ type class_declaration = {
   type_params : TypeParameter.t list;
   class_name : Token.t;
   class_type : class_type option;
-  class_body : expression;
+  class_body : class_expression option;
 }
 
 type class_type_declaration = {

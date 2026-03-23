@@ -138,26 +138,26 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] module-type-of expressions
   - [x] module type extensions
   - [x] module type aliases
-- [ ] Class expressions:
-  - [ ] class constructor references
-  - [ ] class structure bodies
-  - [ ] function-style class expressions
-  - [ ] class application expressions
-  - [ ] let-bound class expressions
-  - [ ] constrained class expressions
-  - [ ] class extensions
-  - [ ] locally opened class expressions
-- [ ] Class types:
+- [x] Class expressions:
+  - [x] class constructor references
+  - [x] class structure bodies
+  - [x] function-style class expressions
+  - [x] class application expressions
+  - [x] let-bound class expressions
+  - [x] constrained class expressions
+  - [x] class extensions
+  - [x] locally opened class expressions
+- [x] Class types:
   - [x] class type constructor references
   - [x] class signatures
-  - [ ] arrow-style class types
+  - [x] arrow-style class types
   - [x] class type extensions
   - [x] locally opened class types
-- [ ] Class fields:
-  - [ ] class constraints
-  - [ ] class-field attributes
-  - [ ] class-field extensions
-- [ ] Class type fields:
+- [x] Class fields:
+  - [x] class constraints
+  - [x] class-field attributes
+  - [x] class-field extensions
+- [x] Class type fields:
   - [x] inherited class type fields
   - [x] value declarations in class types
   - [x] method declarations in class types

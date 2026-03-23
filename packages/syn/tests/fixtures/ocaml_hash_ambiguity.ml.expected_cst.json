@@ -58,7 +58,7 @@
           },
           "class_type": null,
           "class_body": {
-            "tag": "object",
+            "tag": "structure",
             "syntax_node": {
               "kind": "OBJECT_EXPR",
               "span": {
@@ -67,7 +67,7 @@
               }
             },
             "self_pattern": null,
-            "members": []
+            "fields": []
           }
         }
       },
@@ -564,19 +564,6 @@
       }
     ],
     "let_bindings": [],
-    "expressions": [
-      {
-        "tag": "object",
-        "syntax_node": {
-          "kind": "OBJECT_EXPR",
-          "span": {
-            "start": 158,
-            "end": 168
-          }
-        },
-        "self_pattern": null,
-        "members": []
-      }
-    ]
+    "expressions": []
   }
 }
