@@ -86,7 +86,7 @@ and child_expressions = function
 let rec expression_mentions_any_name names expr =
   match expr with
   | Syn.Cst.Expression.Path { path; _ } -> (
-      match Syn.Cst.ModulePath.name path with
+      match Syn.Cst.Ident.name path with
       | Some name -> List.mem name names
       | None -> false)
   | _ ->
@@ -108,7 +108,7 @@ let rec flatten_apply expr =
   | _ -> expr, []
 
 let path_name = function
-  | Syn.Cst.Expression.Path { path; _ } -> Syn.Cst.ModulePath.name path
+  | Syn.Cst.Expression.Path { path; _ } -> Syn.Cst.Ident.name path
   | _ -> None
 
 let positional_parameter_names parameters =

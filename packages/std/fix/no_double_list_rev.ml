@@ -41,13 +41,13 @@ let rec unwrap_parens = function
   | expr -> expr
 
 let path_text path =
-  Syn.Cst.ModulePath.segments path
+  Syn.Cst.Ident.segments path
   |> List.map Syn.Cst.Token.text
   |> String.concat "."
 
 let ends_with_list_rev path =
   let segments =
-    Syn.Cst.ModulePath.segments path |> List.map Syn.Cst.Token.text
+    Syn.Cst.Ident.segments path |> List.map Syn.Cst.Token.text
   in
   match List.rev segments with
   | "rev" :: "List" :: _ -> true

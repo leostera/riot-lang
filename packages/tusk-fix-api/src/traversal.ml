@@ -115,7 +115,7 @@ let rec let_bindings_of_module_expression = function
   | Syn.Cst.ModuleExpression.Constraint { module_expression; _ }
   | Syn.Cst.ModuleExpression.Attribute { module_expression; _ } ->
       let_bindings_of_module_expression module_expression
-  | Syn.Cst.ModuleExpression.Unpack { expression; _ } ->
+  | Syn.Cst.ModuleExpression.ModuleUnpack { expression; _ } ->
       let_bindings_of_expression expression
   | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } ->
       let_bindings_of_module_expression inner
@@ -147,7 +147,7 @@ and let_bindings_of_expression expr =
       members |> List.concat_map let_bindings_of_object_member
   | Syn.Cst.Expression.PolyVariant { payload; _ } ->
       Option.to_list payload |> List.concat_map let_bindings_of_expression
-  | Syn.Cst.Expression.FirstClassModule { module_expression; _ } ->
+  | Syn.Cst.Expression.ModulePack { module_expression; _ } ->
       let_bindings_of_module_expression module_expression
   | Syn.Cst.Expression.LetModule { module_expression; body; _ } ->
       let_bindings_of_module_expression module_expression
@@ -359,7 +359,7 @@ let rec expressions_of_expression expr =
                  Option.to_list body |> List.concat_map expressions_of_expression)
     | Syn.Cst.Expression.PolyVariant { payload; _ } ->
         Option.to_list payload |> List.concat_map expressions_of_expression
-    | Syn.Cst.Expression.FirstClassModule _ ->
+    | Syn.Cst.Expression.ModulePack _ ->
         []
     | Syn.Cst.Expression.LetModule { body; _ } ->
         expressions_of_expression body

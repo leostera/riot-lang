@@ -486,7 +486,7 @@ and module_expression_to_json = function
           ("module_expression", module_expression_to_json module_expression);
           ("module_type", module_type_to_json module_type);
         ]
-  | Cst.ModuleExpression.Unpack { syntax_node; expression; module_type } ->
+  | Cst.ModuleExpression.ModuleUnpack { syntax_node; expression; module_type } ->
       Json.Object
         [
           ("tag", Json.String "unpack");
@@ -1043,7 +1043,7 @@ and expression_to_json expression =
            ("payload", option_to_json expression_to_json payload);
          ]
         @ expression_attribute_fields expression)
-  | Cst.Expression.FirstClassModule
+  | Cst.Expression.ModulePack
       { syntax_node; module_expression; module_type; _ } ->
       Json.Object
         ([

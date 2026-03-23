@@ -2612,7 +2612,7 @@ and module_expression_from_node node =
             |> List.find_opt can_lift_module_type_node
             |> Option.map module_type_from_node
           in
-          Cst.ModuleExpression.Unpack
+          Cst.ModuleExpression.ModuleUnpack
             {
               syntax_node = node;
               expression = expression_from_node expression_node;
@@ -2720,8 +2720,8 @@ and expression_from_node node =
             Cst.Expression.Object { expr with attributes = append expr.attributes }
         | Cst.Expression.PolyVariant expr ->
             Cst.Expression.PolyVariant { expr with attributes = append expr.attributes }
-        | Cst.Expression.FirstClassModule expr ->
-            Cst.Expression.FirstClassModule
+        | Cst.Expression.ModulePack expr ->
+            Cst.Expression.ModulePack
               { expr with attributes = append expr.attributes }
         | Cst.Expression.LetModule expr ->
             Cst.Expression.LetModule { expr with attributes = append expr.attributes }
@@ -3017,7 +3017,7 @@ and expression_from_node node =
             |> List.find_opt can_lift_module_type_node
             |> Option.map module_type_from_node
           in
-          Cst.Expression.FirstClassModule
+          Cst.Expression.ModulePack
             {
               syntax_node = node;
               module_expression = module_expression_from_node module_expression_node;
@@ -6150,7 +6150,7 @@ and validate_module_expression ~context = function
         module_expression;
       validate_module_type ~context:("module_expression.constraint.type" :: context)
         module_type
-  | Cst.ModuleExpression.Unpack { expression; module_type; _ } ->
+  | Cst.ModuleExpression.ModuleUnpack { expression; module_type; _ } ->
       validate_expression ~context:("module_expression.unpack.expression" :: context)
         expression;
       Option.iter
@@ -6210,7 +6210,7 @@ and validate_expression ~context = function
       Option.iter
         (validate_expression ~context:("expression.constructor.payload" :: context))
         payload
-  | Cst.Expression.FirstClassModule { module_expression; module_type; _ } ->
+  | Cst.Expression.ModulePack { module_expression; module_type; _ } ->
       validate_module_expression
         ~context:("expression.first_class_module.expression" :: context)
         module_expression;

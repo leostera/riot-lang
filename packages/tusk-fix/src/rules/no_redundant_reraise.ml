@@ -32,7 +32,7 @@ let rec unwrap_parens = function
   | expr -> expr
 
 let path_name = function
-  | Syn.Cst.Expression.Path { path; _ } -> Syn.Cst.ModulePath.name path
+  | Syn.Cst.Expression.Path { path; _ } -> Syn.Cst.Ident.name path
   | _ -> None
 
 let expression_of_apply_argument = function
@@ -52,7 +52,7 @@ let rec raises_name name expr =
         | Some argument -> path_name (unwrap_parens argument)
         | None -> None
       in
-      match Syn.Cst.ModulePath.name path, argument_name with
+      match Syn.Cst.Ident.name path, argument_name with
       | Some "raise", Some argument_name -> String.equal name argument_name
       | _ -> false)
   | _ -> false

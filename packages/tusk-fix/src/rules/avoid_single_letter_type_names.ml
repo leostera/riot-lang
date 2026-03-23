@@ -36,7 +36,7 @@ let make_diagnostic token =
     ()
 
 let diagnostic_for_decl decl =
-  match Syn.Cst.ModulePath.name (Syn.Cst.TypeDeclaration.type_name decl) with
+  match Syn.Cst.Ident.name (Syn.Cst.TypeDeclaration.type_name decl) with
   | Some name when should_flag_type_name name ->
       let token =
         Syn.Cst.TypeDeclaration.name_token decl

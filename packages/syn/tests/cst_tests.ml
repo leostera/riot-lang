@@ -883,7 +883,7 @@ let tests =
                   (Syn.Cst.ModuleExpression.Parenthesized
                     {
                       inner =
-                        Syn.Cst.ModuleExpression.Unpack
+                        Syn.Cst.ModuleExpression.ModuleUnpack
                           {
                             expression =
                               Syn.Cst.Expression.Path { path = module_path; _ };
@@ -1138,7 +1138,7 @@ let tests =
               module_type =
                 Some
                   (Syn.Cst.ModuleType.TypeOf
-                    { module_path = Syn.Cst.ModulePath.Qualified { name_token; _ }; _ });
+                    { module_path = Syn.Cst.Ident.Qualified { name_token; _ }; _ });
               _;
             }
           :: _ ->
@@ -2278,7 +2278,7 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "Driver")
-              ~actual:(Syn.Cst.ModulePath.name base_path);
+              ~actual:(Syn.Cst.Ident.name base_path);
             Test.assert_equal ~expected:1 ~actual:(List.length constraints);
             Ok ()
         | _ -> Error "expected package core type");
@@ -2299,10 +2299,10 @@ let tests =
                 Syn.Cst.CoreType.LocalOpen
                   {
                     module_path =
-                      Syn.Cst.ModulePath.Qualified
+                      Syn.Cst.Ident.Qualified
                         {
                           prefix =
-                            Syn.Cst.ModulePath.Ident { name_token = outer_module; _ };
+                            Syn.Cst.Ident.Ident { name_token = outer_module; _ };
                           name_token = inner_module;
                           _;
                         };
@@ -2688,7 +2688,7 @@ let tests =
                }
              :: _ ->
             Test.assert_equal ~expected:(Some "Driver")
-              ~actual:(Syn.Cst.ModulePath.name base_path);
+              ~actual:(Syn.Cst.Ident.name base_path);
             Test.assert_equal ~expected:1 ~actual:(List.length constraints);
             Ok ()
         | _ -> Error "expected first-class module type definition");
@@ -2777,7 +2777,7 @@ let tests =
             Test.assert_equal ~expected:(Some "List")
               ~actual:
                 (match Syn.Cst.OpenStatement.module_path stmt with
-                | Some module_path -> Syn.Cst.ModulePath.name module_path
+                | Some module_path -> Syn.Cst.Ident.name module_path
                 | None -> None);
             (match Syn.Cst.OpenStatement.target stmt with
             | Syn.Cst.OpenStatement.ModuleExpression
@@ -2807,7 +2807,7 @@ let tests =
             Test.assert_equal ~expected:(Some "List")
               ~actual:
                 (match Syn.Cst.OpenStatement.module_path stmt with
-                | Some module_path -> Syn.Cst.ModulePath.name module_path
+                | Some module_path -> Syn.Cst.Ident.name module_path
                 | None -> None);
             (match Syn.Cst.OpenStatement.target stmt with
             | Syn.Cst.OpenStatement.Path _ ->
@@ -2987,7 +2987,7 @@ let tests =
             Test.assert_equal ~expected:[ "'a" ] ~actual:binder_text;
             Test.assert_equal ~expected:[ true ] ~actual:quoted;
             Test.assert_equal ~expected:(Some "x")
-              ~actual:(Syn.Cst.ModulePath.name path);
+              ~actual:(Syn.Cst.Ident.name path);
             Ok ()
         | _ -> Error "expected polymorphic let-binding value");
     Test.case "cst let bindings expose infix string concatenation values" (fun () ->
@@ -3096,7 +3096,7 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "value")
-              ~actual:(Syn.Cst.ModulePath.name path);
+              ~actual:(Syn.Cst.Ident.name path);
             Ok ()
         | _ -> Error "expected typed expression value");
     Test.case "cst coerce expressions preserve optional source types" (fun () ->
@@ -3122,7 +3122,7 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "value")
-              ~actual:(Syn.Cst.ModulePath.name path);
+              ~actual:(Syn.Cst.Ident.name path);
             Ok ()
         | _ -> Error "expected coerce expression value");
     Test.case "cst source files keep top-level eval expressions as items" (fun () ->
@@ -3358,7 +3358,7 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "maybe")
-              ~actual:(Syn.Cst.ModulePath.name scrutinee_path);
+              ~actual:(Syn.Cst.Ident.name scrutinee_path);
             Test.assert_equal ~expected:"."
               ~actual:(Syn.Cst.Token.text dot_token);
             Ok ()
@@ -3506,7 +3506,7 @@ let tests =
             Test.assert_equal ~expected:(Some "value")
               ~actual:(Syn.Cst.Parameter.name param);
             Test.assert_equal ~expected:(Some "value")
-              ~actual:(Syn.Cst.ModulePath.name path);
+              ~actual:(Syn.Cst.Ident.name path);
             Ok ()
         | _ -> Error "expected first item to be a let binding with a fun expression");
     Test.case "cst let bindings expose function expressions structurally" (fun () ->
@@ -3590,15 +3590,15 @@ let tests =
             Test.assert_equal ~expected:(Some "value")
               ~actual:(Syn.Cst.Parameter.name param);
             Test.assert_equal ~expected:(Some "Some")
-              ~actual:(Syn.Cst.ModulePath.name some_path);
+              ~actual:(Syn.Cst.Ident.name some_path);
             Test.assert_equal ~expected:"current"
               ~actual:(Syn.Cst.Token.text current_name);
             Test.assert_equal ~expected:(Some "current")
-              ~actual:(Syn.Cst.ModulePath.name current_path);
+              ~actual:(Syn.Cst.Ident.name current_path);
             Test.assert_equal ~expected:(Some "None")
-              ~actual:(Syn.Cst.ModulePath.name none_path);
+              ~actual:(Syn.Cst.Ident.name none_path);
             Test.assert_equal ~expected:(Some "default")
-              ~actual:(Syn.Cst.ModulePath.name default_path);
+              ~actual:(Syn.Cst.Ident.name default_path);
             Ok ()
         | _ -> Error "expected fun expression with nested function body");
     Test.case "cst match expressions expose boolean cases structurally" (fun () ->
@@ -3807,7 +3807,7 @@ let tests =
                     Test.assert_equal ~expected:(Some "rev")
                       ~actual:(Some (Syn.Cst.Token.text field_name));
                     Test.assert_equal ~expected:(Some "List")
-                      ~actual:(Syn.Cst.ModulePath.name path);
+                      ~actual:(Syn.Cst.Ident.name path);
                     Ok ()
                 | _ -> Error "expected field access callee")
             | _ -> Error "expected apply expression value")
@@ -3840,17 +3840,17 @@ let tests =
                   { constructor_path = err_path; payload = Some err_payload; _ }
               ) ->
                 Test.assert_equal ~expected:(Some "Some")
-                  ~actual:(Syn.Cst.ModulePath.name some_path);
+                  ~actual:(Syn.Cst.Ident.name some_path);
                 Test.assert_equal ~expected:(Some "None")
-                  ~actual:(Syn.Cst.ModulePath.name none_path);
+                  ~actual:(Syn.Cst.Ident.name none_path);
                 Test.assert_equal ~expected:(Some "Error")
-                  ~actual:(Syn.Cst.ModulePath.name err_path);
+                  ~actual:(Syn.Cst.Ident.name err_path);
                 (match payload with
                 | Syn.Cst.Expression.Literal (Syn.Cst.Literal.Int _) -> (
                     match err_payload with
                     | Syn.Cst.Expression.Path { path; _ } ->
                         Test.assert_equal ~expected:(Some "message")
-                          ~actual:(Syn.Cst.ModulePath.name path);
+                          ~actual:(Syn.Cst.Ident.name path);
                         Ok ()
                     | _ ->
                         Error
@@ -3939,7 +3939,7 @@ let tests =
               value =
                 Syn.Cst.Expression.LocalOpen
                   {
-                    module_path = Syn.Cst.ModulePath.Ident { name_token = module_name; _ };
+                    module_path = Syn.Cst.Ident.Ident { name_token = module_name; _ };
                     body = Syn.Cst.Expression.Apply _;
                     via_let_open = true;
                     _;
@@ -3966,7 +3966,7 @@ let tests =
               value =
                 Syn.Cst.Expression.LocalOpen
                   {
-                    module_path = Syn.Cst.ModulePath.Ident { name_token = module_name; _ };
+                    module_path = Syn.Cst.Ident.Ident { name_token = module_name; _ };
                     body =
                       Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal _);
                     via_let_open = false;
@@ -4002,10 +4002,10 @@ let tests =
                           Syn.Cst.Pattern.LocalOpen
                             {
                               module_path =
-                                Syn.Cst.ModulePath.Qualified
+                                Syn.Cst.Ident.Qualified
                                   {
                                     prefix =
-                                      Syn.Cst.ModulePath.Ident
+                                      Syn.Cst.Ident.Ident
                                         { name_token = outer_module; _ };
                                     name_token = inner_module;
                                     _;
@@ -4090,7 +4090,7 @@ let tests =
             Test.assert_equal ~expected:"_"
               ~actual:(Syn.Cst.Token.text plain_wildcard);
             Test.assert_equal ~expected:(Some "S")
-              ~actual:(Syn.Cst.ModulePath.name typed_module_type);
+              ~actual:(Syn.Cst.Ident.name typed_module_type);
             Ok ()
         | _ -> Error "expected anonymous first-class module patterns");
     Test.case "cst first-class module expressions preserve module and type nodes"
@@ -4106,7 +4106,7 @@ let tests =
         | Syn.Cst.StructureItem.LetBinding
             {
               value =
-                Syn.Cst.Expression.FirstClassModule
+                Syn.Cst.Expression.ModulePack
                   {
                     module_expression = Syn.Cst.ModuleExpression.Path module_path;
                     module_type = Some (Syn.Cst.ModuleType.Path module_type_path);
@@ -4116,9 +4116,9 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "M")
-              ~actual:(Syn.Cst.ModulePath.name module_path);
+              ~actual:(Syn.Cst.Ident.name module_path);
             Test.assert_equal ~expected:(Some "S")
-              ~actual:(Syn.Cst.ModulePath.name module_type_path);
+              ~actual:(Syn.Cst.Ident.name module_type_path);
             Ok ()
         | _ -> Error "expected first-class module expression");
     Test.case "cst qualified module paths preserve recursive structure" (fun () ->
@@ -4133,16 +4133,16 @@ let tests =
         | Syn.Cst.StructureItem.LetBinding
             {
               value =
-                Syn.Cst.Expression.FirstClassModule
+                Syn.Cst.Expression.ModulePack
                   {
                     module_expression =
                       Syn.Cst.ModuleExpression.Path
-                        (Syn.Cst.ModulePath.Qualified
+                        (Syn.Cst.Ident.Qualified
                           {
                             prefix =
-                              Syn.Cst.ModulePath.Qualified
+                              Syn.Cst.Ident.Qualified
                                 {
-                                  prefix = Syn.Cst.ModulePath.Ident { name_token = root; _ };
+                                  prefix = Syn.Cst.Ident.Ident { name_token = root; _ };
                                   name_token = mid;
                                   _;
                                 };
@@ -4152,12 +4152,12 @@ let tests =
                     module_type =
                       Some
                         (Syn.Cst.ModuleType.Path
-                          (Syn.Cst.ModulePath.Qualified
+                          (Syn.Cst.Ident.Qualified
                             {
                               prefix =
-                                Syn.Cst.ModulePath.Qualified
+                                Syn.Cst.Ident.Qualified
                                   {
-                                    prefix = Syn.Cst.ModulePath.Ident { name_token = type_root; _ };
+                                    prefix = Syn.Cst.Ident.Ident { name_token = type_root; _ };
                                     name_token = type_mid;
                                     _;
                                   };
@@ -4193,7 +4193,7 @@ let tests =
         | Syn.Cst.StructureItem.LetBinding
             {
               value =
-                Syn.Cst.Expression.FirstClassModule
+                Syn.Cst.Expression.ModulePack
                   {
                     module_expression =
                       Syn.Cst.ModuleExpression.Structure
@@ -4207,7 +4207,7 @@ let tests =
             Test.assert_equal ~expected:SyntaxKind.LET_BINDING
               ~actual:(Ceibo.Red.SyntaxNode.kind item_node);
             Test.assert_equal ~expected:(Some "S")
-              ~actual:(Syn.Cst.ModulePath.name module_type_path);
+              ~actual:(Syn.Cst.Ident.name module_type_path);
             Ok ()
         | _ -> Error "expected structured packed first-class module expression");
     Test.case "cst module type declarations preserve functor module type bodies"
@@ -4238,9 +4238,9 @@ let tests =
             Test.assert_equal ~expected:"X"
               ~actual:(Syn.Cst.Token.text name_token);
             Test.assert_equal ~expected:(Some "S")
-              ~actual:(Syn.Cst.ModulePath.name param_type);
+              ~actual:(Syn.Cst.Ident.name param_type);
             Test.assert_equal ~expected:(Some "T")
-              ~actual:(Syn.Cst.ModulePath.name result_type);
+              ~actual:(Syn.Cst.Ident.name result_type);
             Ok ()
         | _ -> Error "expected module type declaration with functor body");
     Test.case "cst let-module expressions preserve module name and body"
@@ -4260,7 +4260,7 @@ let tests =
                   {
                     module_name_token;
                     module_expression =
-                      Syn.Cst.ModuleExpression.Unpack
+                      Syn.Cst.ModuleExpression.ModuleUnpack
                         {
                           expression =
                             Syn.Cst.Expression.Path { path = module_path; _ };
@@ -4276,7 +4276,7 @@ let tests =
             Test.assert_equal ~expected:"D"
               ~actual:(Syn.Cst.Token.text module_name_token);
             Test.assert_equal ~expected:(Some "driver")
-              ~actual:(Syn.Cst.ModulePath.name module_path);
+              ~actual:(Syn.Cst.Ident.name module_path);
             Ok ()
         | _ -> Error "expected let-module expression");
     Test.case "cst field access preserves nested qualified field access structurally" (fun () ->
@@ -4307,7 +4307,7 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "record")
-              ~actual:(Syn.Cst.ModulePath.name path);
+              ~actual:(Syn.Cst.Ident.name path);
             Test.assert_equal ~expected:"Module"
               ~actual:(Syn.Cst.Token.text module_name);
             Test.assert_equal ~expected:"field"
@@ -4399,11 +4399,11 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "Some")
-              ~actual:(Syn.Cst.ModulePath.name some_path);
+              ~actual:(Syn.Cst.Ident.name some_path);
             Test.assert_equal ~expected:"head"
               ~actual:(Syn.Cst.Token.text head_name);
             Test.assert_equal ~expected:(Some "None")
-              ~actual:(Syn.Cst.ModulePath.name none_path);
+              ~actual:(Syn.Cst.Ident.name none_path);
             Ok ()
         | _ -> Error "expected faithful constructor pattern structure");
     Test.case "cst constructor patterns preserve existential binders"
@@ -4453,7 +4453,7 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "Pair")
-              ~actual:(Syn.Cst.ModulePath.name constructor_path);
+              ~actual:(Syn.Cst.Ident.name constructor_path);
             Test.assert_equal ~expected:"a"
               ~actual:(Syn.Cst.Token.text a_name);
             Test.assert_equal ~expected:"b"
@@ -4583,7 +4583,7 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "Not_found")
-              ~actual:(Syn.Cst.ModulePath.name constructor_path);
+              ~actual:(Syn.Cst.Ident.name constructor_path);
             Ok ()
         | _ -> Error "expected exception pattern structure");
     Test.case "cst range patterns preserve the written bounds" (fun () ->
@@ -4725,9 +4725,9 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "x")
-              ~actual:(Syn.Cst.ModulePath.name first);
+              ~actual:(Syn.Cst.Ident.name first);
             Test.assert_equal ~expected:(Some "y")
-              ~actual:(Syn.Cst.ModulePath.name second);
+              ~actual:(Syn.Cst.Ident.name second);
             Test.assert_equal ~expected:"x"
               ~actual:(Syn.Cst.Token.text first_name);
             Test.assert_equal ~expected:"y"
@@ -4773,17 +4773,17 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "x")
-              ~actual:(Syn.Cst.ModulePath.name first);
+              ~actual:(Syn.Cst.Ident.name first);
             Test.assert_equal ~expected:(Some "y")
-              ~actual:(Syn.Cst.ModulePath.name second);
+              ~actual:(Syn.Cst.Ident.name second);
             Test.assert_equal ~expected:"x"
               ~actual:(Syn.Cst.Token.text first_name);
             Test.assert_equal ~expected:"y"
               ~actual:(Syn.Cst.Token.text second_name);
             Test.assert_equal ~expected:(Some "x")
-              ~actual:(Syn.Cst.ModulePath.name first_value);
+              ~actual:(Syn.Cst.Ident.name first_value);
             Test.assert_equal ~expected:(Some "y")
-              ~actual:(Syn.Cst.ModulePath.name second_value);
+              ~actual:(Syn.Cst.Ident.name second_value);
             Ok ()
         | _ -> Error "expected punned record expression");
     Test.case "cst record update expressions preserve base and updated fields"
@@ -4819,9 +4819,9 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "point")
-              ~actual:(Syn.Cst.ModulePath.name base_path);
+              ~actual:(Syn.Cst.Ident.name base_path);
             Test.assert_equal ~expected:(Some "x")
-              ~actual:(Syn.Cst.ModulePath.name field_path);
+              ~actual:(Syn.Cst.Ident.name field_path);
             Test.assert_equal ~expected:"x"
               ~actual:(Syn.Cst.Token.text field_name);
             Ok ()
@@ -4864,11 +4864,11 @@ let tests =
             Test.assert_equal ~expected:"current"
               ~actual:(Syn.Cst.Token.text current_name);
             Test.assert_equal ~expected:(Some "state")
-              ~actual:(Syn.Cst.ModulePath.name current_value);
+              ~actual:(Syn.Cst.Ident.name current_value);
             Test.assert_equal ~expected:"count"
               ~actual:(Syn.Cst.Token.text count_name);
             Test.assert_equal ~expected:(Some "total")
-              ~actual:(Syn.Cst.ModulePath.name count_value);
+              ~actual:(Syn.Cst.Ident.name count_value);
             Ok ()
         | _ -> Error "expected object override expression");
     Test.case "cst index and assign expressions preserve the written target"
@@ -4903,7 +4903,7 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "arr")
-              ~actual:(Syn.Cst.ModulePath.name path);
+              ~actual:(Syn.Cst.Ident.name path);
             Test.assert_equal ~expected:"0"
               ~actual:(Syn.Cst.Token.text literal_token);
             Test.assert_equal ~expected:"<-"
@@ -4938,7 +4938,7 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "obj")
-              ~actual:(Syn.Cst.ModulePath.name path);
+              ~actual:(Syn.Cst.Ident.name path);
             Test.assert_equal ~expected:"field"
               ~actual:(Syn.Cst.Token.text field_name);
             Test.assert_equal ~expected:"<-"
@@ -4990,7 +4990,7 @@ let tests =
             Test.assert_equal ~expected:"<-"
               ~actual:(Syn.Cst.Token.text operator_token);
             Test.assert_equal ~expected:(Some "next")
-              ~actual:(Syn.Cst.ModulePath.name value_path);
+              ~actual:(Syn.Cst.Ident.name value_path);
             Ok ()
         | _ -> Error "expected object method instance-variable assignment");
     Test.case "cst object expressions preserve extension members" (fun () ->
@@ -5093,11 +5093,11 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "user")
-              ~actual:(Syn.Cst.ModulePath.name user_field);
+              ~actual:(Syn.Cst.Ident.name user_field);
             Test.assert_equal ~expected:(Some "id")
-              ~actual:(Syn.Cst.ModulePath.name id_field);
+              ~actual:(Syn.Cst.Ident.name id_field);
             Test.assert_equal ~expected:(Some "name")
-              ~actual:(Syn.Cst.ModulePath.name name_field);
+              ~actual:(Syn.Cst.Ident.name name_field);
             Ok ()
         | _ -> Error "expected record pattern structure");
     Test.case "cst record patterns preserve open wildcard tails" (fun () ->
@@ -5134,7 +5134,7 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "user")
-              ~actual:(Syn.Cst.ModulePath.name field_path);
+              ~actual:(Syn.Cst.Ident.name field_path);
             Test.assert_equal ~expected:"_"
               ~actual:(Syn.Cst.Token.text wildcard_token);
             Ok ()
@@ -5204,7 +5204,7 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "s")
-              ~actual:(Syn.Cst.ModulePath.name path);
+              ~actual:(Syn.Cst.Ident.name path);
             Test.assert_equal ~expected:"0"
               ~actual:(Syn.Cst.Token.text literal_token);
             Ok ()
@@ -5337,9 +5337,9 @@ let tests =
             }
           :: _ ->
             Test.assert_equal ~expected:(Some "point")
-              ~actual:(Syn.Cst.ModulePath.name path);
+              ~actual:(Syn.Cst.Ident.name path);
             Test.assert_equal ~expected:(Some "b")
-              ~actual:(Syn.Cst.ModulePath.name field_path);
+              ~actual:(Syn.Cst.Ident.name field_path);
             Ok ()
         | _ -> Error "expected nested record update");
     Test.case "cst assert expressions preserve the asserted value" (fun () ->

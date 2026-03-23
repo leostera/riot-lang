@@ -111,12 +111,6 @@ module Ident : sig
   val name : t -> string option
 end
 
-(** Module paths reuse `Ident`'s dotted-path representation.
-
-    Examples include `String`, `Set.S`, and `Driver.Sqlite`.
-*)
-module ModulePath = Ident
-
 (** An OCaml attribute attached to some surrounding grammar node.
 
     This covers item, type, pattern, expression, and module-language attributes.
@@ -1745,7 +1739,7 @@ and effect_pattern = {
 *)
 and local_open_pattern = {
   syntax_node : syntax_node;
-  module_path : ModulePath.t;
+  module_path : Ident.t;
   pattern : pattern;
   attributes : attribute list;
 }
@@ -1908,7 +1902,7 @@ type expression =
       *)
   | PolyVariant of poly_variant_expression
       (** A polymorphic variant expression such as `` `Ok value `` or `` `Done ``. *)
-  | FirstClassModule of first_class_module_expression
+  | ModulePack of module_pack_expression
       (** A packed first-class module expression.
 
           Examples:
@@ -2148,7 +2142,7 @@ and poly_variant_expression = {
   attributes : attribute list;
 }
 
-(** Payload for `Expression.FirstClassModule`.
+(** Payload for `Expression.ModulePack`.
 
     Covers packed module expressions such as `(module M)` and
     `(module M : S)`.
@@ -2158,7 +2152,7 @@ and poly_variant_expression = {
     `module_type` carries the optional `: S` ascription without re-encoding it
     as a nested `ModuleExpression.Constraint`.
 *)
-and first_class_module_expression = {
+and module_pack_expression = {
   syntax_node : syntax_node;
   module_expression : module_expression;
   module_type : module_type option;
@@ -3038,7 +3032,7 @@ and module_expression =
           successful `Ceibo` parse stores the ascription there instead of on a
           dedicated module-expression node.
       *)
-  | Unpack of {
+  | ModuleUnpack of {
       syntax_node : syntax_node;
       expression : expression;
       module_type : module_type option;
@@ -3086,7 +3080,7 @@ module Expression : sig
     | Extension of extension
     | Object of object_expression
     | PolyVariant of poly_variant_expression
-    | FirstClassModule of first_class_module_expression
+    | ModulePack of module_pack_expression
     | LetModule of let_module_expression
     | LetException of let_exception_expression
     | Assert of assert_expression
@@ -3227,7 +3221,7 @@ module ModuleExpression : sig
         module_expression : module_expression;
         module_type : module_type;
       }
-    | Unpack of {
+    | ModuleUnpack of {
         syntax_node : syntax_node;
         expression : expression;
         module_type : module_type option;

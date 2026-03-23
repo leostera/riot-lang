@@ -12,9 +12,9 @@ This file is _yours_. Keep it up to date after every big change.
 ## TASKS
 
 - [ ] Go over the OCaml Structure Parity Checklist below and check all the boxes
-- [ ] Strengthen the CST corpus so we can compare `Syn.Cst` structure against the stock OCaml parsetree more confidently
 - [ ] Work on refactoring the existing lints
 - [ ] Work on implementing the remaining lints
+- [ ] Work on fixing the broken tests
 
 ## Verification Commands
 
@@ -59,6 +59,10 @@ Remember to document the CST types and constructors with examples so its easy to
 - [x] Remove the convenience views from  type implementation and type interface, since the ordering in which these let bindings and expressions occur in the source tree is relevant so they can't be interweaved. If someone wants to find the let bindings or val signatures, etc, they have to iterate over the items (SignatureITem.t or StructureItem.t)
 
 - [x] Expression.Fun and Expression.Function are fundamentally different: the `function | ... -> ...` expresion doesn't have parameters! it only has _cases_ and each case basically has a single parameter, like `function | x -> x` or `function | 1 -> 2` -- only the `fun x -> x` syntax and the `let f x = x` syntax have parameters. They can be in the same Expression.Function constructor, but internally they probably should be 2 different records/variants since they don't really overlap, wdyt?
+
+- [x] Expression.FirstClassModule should be called ModulePack and Expression.Unpack should be called ModuleUnpack
+
+- [x] Remove the ModulePath = Ident alias and refactor code to use Ident instead -- module path is misleading!
 
 #### Completely Absent Today
 
@@ -200,7 +204,7 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] `for` loops store a direction token instead of a typed direction flag
   - [x] record expressions only keep syntax-level field paths and optional values
   - [x] packed first-class module expressions are still mostly raw syntax
-  - [ ] Expression attributes are represented as wrapper nodes instead of orthogonal metadata
+  - [x] Expression attributes are represented as wrapper nodes instead of orthogonal metadata
 - [ ] Type declarations:
   - [x] `private_flag` is missing
   - [x] parameter variance/injectivity is missing
@@ -208,13 +212,6 @@ Remember to document the CST types and constructors with examples so its easy to
   - [x] record fields only store names + mutability, not field types and attrs
   - [~] variant constructors now expose result types, but constructor attributes are still missing
   - [x] polyvariant tags only store names, not payload types or closedness
-- [ ] Structure items:
-  - [x] implementation and interface currently share the same `Item.t`, so signature structure is lossy
-  - [ ] item-level attributes and extension payloads are not modeled like Parsetree
-- [ ] Metadata:
-  - [ ] locations are not modeled orthogonally like `Location.t` / `location_stack`
-  - [ ] many typed flags are represented as tokens/bools or dropped entirely
-  - [ ] attributes are not attached orthogonally across the tree the way Parsetree does
 
 ## tusk-fix Cleanup
 

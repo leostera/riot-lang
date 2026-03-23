@@ -15,7 +15,7 @@
 9. Keep pattern attributes orthogonal to pattern shape; attach them via `Pattern.attributes` instead of a `Pattern.Attribute` wrapper node.
 10. Keep expression attributes orthogonal to expression shape; attach them via `Expression.attributes` instead of wrapper nodes or postfix-shell `Apply` artifacts.
 11. Keep record-expression fields parsetree-like: always lift a field value expression, and preserve punning with explicit metadata instead of `None`.
-12. Keep packed first-class module expressions direct: `Expression.FirstClassModule.module_expression` should be the packed payload itself, and any `: S` ascription should stay in `Expression.FirstClassModule.module_type` instead of being rewritten as an inner `ModuleExpression.Constraint`.
+12. Keep packed first-class module expressions direct: `Expression.ModulePack.module_expression` should be the packed payload itself, and any `: S` ascription should stay in `Expression.ModulePack.module_type` instead of being rewritten as an inner `ModuleExpression.Constraint`.
 
 ## Validate
 

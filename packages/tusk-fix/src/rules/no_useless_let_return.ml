@@ -42,7 +42,7 @@ let binding_name = function
       None
 
 let body_name = function
-  | Syn.Cst.Expression.Path { path; _ } -> Syn.Cst.ModulePath.name path
+  | Syn.Cst.Expression.Path { path; _ } -> Syn.Cst.Ident.name path
   | Syn.Cst.Expression.Literal _
   | Syn.Cst.Expression.Apply _
   | Syn.Cst.Expression.Infix _

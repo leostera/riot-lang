@@ -71,7 +71,7 @@ let make_diagnostic token =
 
 let diagnostic_for_decl = function
   | Syn.Cst.TypeDeclaration.{ type_name; _ } as decl -> (
-      match Syn.Cst.ModulePath.name type_name with
+      match Syn.Cst.Ident.name type_name with
       | Some text when should_flag_type_name text ->
           let token =
             Syn.Cst.TypeDeclaration.name_token decl

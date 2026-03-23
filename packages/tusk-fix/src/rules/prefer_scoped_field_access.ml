@@ -32,7 +32,7 @@ let is_module_like_name name =
 
 let receiver_looks_like_record = function
   | Syn.Cst.Expression.Path { path; _ } -> (
-      match Syn.Cst.ModulePath.name path with
+      match Syn.Cst.Ident.name path with
       | Some name -> not (is_module_like_name name)
       | None -> true)
   | Syn.Cst.Expression.FieldAccess _

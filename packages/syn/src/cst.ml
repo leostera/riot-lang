@@ -48,8 +48,6 @@ module Ident = struct
     | None -> None
 end
 
-module ModulePath = Ident
-
 type attribute = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
@@ -926,7 +924,7 @@ and effect_pattern = {
 
 and local_open_pattern = {
   syntax_node : syntax_node;
-  module_path : ModulePath.t;
+  module_path : Ident.t;
   pattern : pattern;
   attributes : attribute list;
 }
@@ -1020,7 +1018,7 @@ type expression =
   | Extension of extension
   | Object of object_expression
   | PolyVariant of poly_variant_expression
-  | FirstClassModule of first_class_module_expression
+  | ModulePack of module_pack_expression
   | LetModule of let_module_expression
   | LetException of let_exception_expression
   | Assert of assert_expression
@@ -1135,7 +1133,7 @@ and poly_variant_expression = {
   attributes : attribute list;
 }
 
-and first_class_module_expression = {
+and module_pack_expression = {
   syntax_node : syntax_node;
   module_expression : module_expression;
   module_type : module_type option;
@@ -1607,7 +1605,7 @@ and module_expression =
       module_expression : module_expression;
       module_type : module_type;
     }
-  | Unpack of {
+  | ModuleUnpack of {
       syntax_node : syntax_node;
       expression : expression;
       module_type : module_type option;
@@ -1633,7 +1631,7 @@ module Expression = struct
     | Extension of extension
     | Object of object_expression
     | PolyVariant of poly_variant_expression
-    | FirstClassModule of first_class_module_expression
+    | ModulePack of module_pack_expression
     | LetModule of let_module_expression
     | LetException of let_exception_expression
     | Assert of assert_expression
@@ -1679,7 +1677,7 @@ module Expression = struct
     | Extension ext -> ext.syntax_node
     | Object expr -> expr.syntax_node
     | PolyVariant expr -> expr.syntax_node
-    | FirstClassModule expr -> expr.syntax_node
+    | ModulePack expr -> expr.syntax_node
     | LetModule expr -> expr.syntax_node
     | LetException expr -> expr.syntax_node
     | Assert expr -> expr.syntax_node
@@ -1727,7 +1725,7 @@ module Expression = struct
     | Extension ext -> ext.attributes
     | Object expr -> expr.attributes
     | PolyVariant expr -> expr.attributes
-    | FirstClassModule expr -> expr.attributes
+    | ModulePack expr -> expr.attributes
     | LetModule expr -> expr.attributes
     | LetException expr -> expr.attributes
     | Assert expr -> expr.attributes
@@ -1863,7 +1861,7 @@ module ModuleExpression = struct
         module_expression : module_expression;
         module_type : module_type;
       }
-    | Unpack of {
+    | ModuleUnpack of {
         syntax_node : syntax_node;
         expression : expression;
         module_type : module_type option;
@@ -1886,7 +1884,7 @@ module ModuleExpression = struct
     | Apply { syntax_node; _ }
     | ApplyUnit { syntax_node; _ }
     | Constraint { syntax_node; _ }
-    | Unpack { syntax_node; _ }
+    | ModuleUnpack { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
     | Attribute { syntax_node; _ } ->
         syntax_node

@@ -183,7 +183,7 @@ let rec binding_sites_of_module_expression = function
   | Syn.Cst.ModuleExpression.Constraint { module_expression; _ }
   | Syn.Cst.ModuleExpression.Attribute { module_expression; _ } ->
       binding_sites_of_module_expression module_expression
-  | Syn.Cst.ModuleExpression.Unpack { expression; _ } ->
+  | Syn.Cst.ModuleExpression.ModuleUnpack { expression; _ } ->
       binding_sites_of_expression expression
   | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } ->
       binding_sites_of_module_expression inner
@@ -221,7 +221,7 @@ and binding_sites_of_expression expr =
       members |> List.concat_map binding_sites_of_object_member
   | Syn.Cst.Expression.PolyVariant { payload; _ } ->
       Option.to_list payload |> List.concat_map binding_sites_of_expression
-  | Syn.Cst.Expression.FirstClassModule { module_expression; _ } ->
+  | Syn.Cst.Expression.ModulePack { module_expression; _ } ->
       binding_sites_of_module_expression module_expression
   | Syn.Cst.Expression.LetModule { module_expression; body; _ } ->
       binding_sites_of_module_expression module_expression
