@@ -17,6 +17,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0012` - Simplify Tusk Around Action-Level Caching
 - `RFD0018` - Syn Matchers, Traversal, and Visitor
 - `RFD0019` - Tusk Fix Syntax-Directed Rewrites
+- `RFD0020` - Krasny Pretty Printer
 
 ## Accepted
 
