@@ -115,6 +115,29 @@
                     "end": 27
                   }
                 },
+                "arguments": {
+                  "tag": "tuple",
+                  "elements": [
+                    {
+                      "tag": "var",
+                      "syntax_node": {
+                        "kind": "TYPE_VAR",
+                        "span": {
+                          "start": 31,
+                          "end": 33
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "span": {
+                          "start": 32,
+                          "end": 33
+                        }
+                      }
+                    }
+                  ]
+                },
                 "payload_type": {
                   "tag": "var",
                   "syntax_node": {
@@ -149,6 +172,29 @@
                     "start": 36,
                     "end": 41
                   }
+                },
+                "arguments": {
+                  "tag": "tuple",
+                  "elements": [
+                    {
+                      "tag": "var",
+                      "syntax_node": {
+                        "kind": "TYPE_VAR",
+                        "span": {
+                          "start": 45,
+                          "end": 47
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "b",
+                        "span": {
+                          "start": 46,
+                          "end": 47
+                        }
+                      }
+                    }
+                  ]
                 },
                 "payload_type": {
                   "tag": "var",

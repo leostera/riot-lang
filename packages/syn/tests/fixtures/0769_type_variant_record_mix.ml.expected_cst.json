@@ -58,6 +58,105 @@
                     "end": 14
                   }
                 },
+                "arguments": {
+                  "tag": "record",
+                  "fields": [
+                    {
+                      "syntax_node": {
+                        "kind": "TYPE_RECORD_FIELD",
+                        "span": {
+                          "start": 20,
+                          "end": 27
+                        }
+                      },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "x",
+                        "span": {
+                          "start": 20,
+                          "end": 21
+                        }
+                      },
+                      "field_type": {
+                        "tag": "constr",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 24,
+                            "end": 27
+                          }
+                        },
+                        "constructor_path": {
+                          "tag": "ident",
+                          "syntax_node": {
+                            "kind": "TYPE_CONSTR",
+                            "span": {
+                              "start": 24,
+                              "end": 27
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 24,
+                              "end": 27
+                            }
+                          }
+                        },
+                        "arguments": []
+                      },
+                      "is_mutable": false
+                    },
+                    {
+                      "syntax_node": {
+                        "kind": "TYPE_RECORD_FIELD",
+                        "span": {
+                          "start": 29,
+                          "end": 37
+                        }
+                      },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "y",
+                        "span": {
+                          "start": 29,
+                          "end": 30
+                        }
+                      },
+                      "field_type": {
+                        "tag": "constr",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 33,
+                            "end": 37
+                          }
+                        },
+                        "constructor_path": {
+                          "tag": "ident",
+                          "syntax_node": {
+                            "kind": "TYPE_CONSTR",
+                            "span": {
+                              "start": 33,
+                              "end": 37
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "span": {
+                              "start": 33,
+                              "end": 36
+                            }
+                          }
+                        },
+                        "arguments": []
+                      },
+                      "is_mutable": false
+                    }
+                  ]
+                },
                 "payload_type": {
                   "tag": "record",
                   "syntax_node": {

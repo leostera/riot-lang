@@ -105,6 +105,125 @@
                     "end": 26
                   }
                 },
+                "arguments": {
+                  "tag": "tuple",
+                  "elements": [
+                    {
+                      "tag": "var",
+                      "syntax_node": {
+                        "kind": "TYPE_VAR",
+                        "span": {
+                          "start": 30,
+                          "end": 32
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "span": {
+                          "start": 31,
+                          "end": 32
+                        }
+                      }
+                    },
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 35,
+                          "end": 43
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 35,
+                            "end": 43
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "tree",
+                          "span": {
+                            "start": 38,
+                            "end": 42
+                          }
+                        }
+                      },
+                      "arguments": [
+                        {
+                          "tag": "var",
+                          "syntax_node": {
+                            "kind": "TYPE_VAR",
+                            "span": {
+                              "start": 35,
+                              "end": 37
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "a",
+                            "span": {
+                              "start": 36,
+                              "end": 37
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 45,
+                          "end": 53
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 45,
+                            "end": 53
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "tree",
+                          "span": {
+                            "start": 48,
+                            "end": 52
+                          }
+                        }
+                      },
+                      "arguments": [
+                        {
+                          "tag": "var",
+                          "syntax_node": {
+                            "kind": "TYPE_VAR",
+                            "span": {
+                              "start": 45,
+                              "end": 47
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "a",
+                            "span": {
+                              "start": 46,
+                              "end": 47
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
                 "payload_type": {
                   "tag": "tuple",
                   "syntax_node": {

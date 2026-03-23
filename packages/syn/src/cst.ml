@@ -1737,15 +1737,23 @@ module RecordField = struct
   let attributes field = field.attributes
 end
 
+module ConstructorArguments = struct
+  type t =
+    | Tuple of core_type list
+    | Record of RecordField.t list
+end
+
 module VariantConstructor = struct
   type t = {
     syntax_node : syntax_node;
     constructor_name : Token.t;
+    arguments : ConstructorArguments.t option;
     payload_type : core_type option;
   }
 
   let syntax_node constr = constr.syntax_node
   let constructor_name_token constr = constr.constructor_name
+  let arguments constr = constr.arguments
   let payload_type constr = constr.payload_type
   let name constr = Token.text constr.constructor_name
 end

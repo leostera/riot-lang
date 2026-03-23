@@ -341,6 +341,73 @@ let tests =
                 Ok ()
             | _ -> Error "expected variant type definition")
         | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst variant constructors preserve tuple argument lists" (fun () ->
+        let result =
+          parse_ml
+            "type coord = Point2D of int * int | Wrapped of (int * int)\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+            match Syn.Cst.TypeDeclaration.type_definition decl with
+            | Syn.Cst.TypeDefinition.Variant [ point2d; wrapped ] ->
+                (match Syn.Cst.VariantConstructor.arguments point2d with
+                | Some (Syn.Cst.ConstructorArguments.Tuple elements) ->
+                    Test.assert_equal ~expected:2 ~actual:(List.length elements)
+                | _ ->
+                    raise
+                      (Failure
+                         "expected Point2D constructor to expose two tuple arguments"));
+                (match Syn.Cst.VariantConstructor.arguments wrapped with
+                | Some (Syn.Cst.ConstructorArguments.Tuple [ wrapped_type ]) -> (
+                    match wrapped_type with
+                    | Syn.Cst.CoreType.Parenthesized
+                        {
+                          inner =
+                            Syn.Cst.CoreType.Tuple { elements = [ _; _ ]; _ };
+                          _;
+                        } ->
+                        Ok ()
+                    | _ ->
+                        Error
+                          "expected Wrapped constructor to keep the parenthesized tuple as one argument")
+                | _ ->
+                    Error
+                      "expected Wrapped constructor to expose a single tuple argument")
+            | _ -> Error "expected variant type definition")
+        | _ -> Error "expected first item to be a type declaration");
+    Test.case "cst variant constructors preserve inline record arguments"
+      (fun () ->
+        let result =
+          parse_ml
+            "type person = Person of { name : string; age : int } | Anonymous\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match Syn.Cst.SourceFile.items cst with
+        | Syn.Cst.Item.TypeDeclaration decl :: _ -> (
+            match Syn.Cst.TypeDeclaration.type_definition decl with
+            | Syn.Cst.TypeDefinition.Variant [ person; anonymous ] ->
+                (match Syn.Cst.VariantConstructor.arguments person with
+                | Some (Syn.Cst.ConstructorArguments.Record fields) ->
+                    Test.assert_equal ~expected:[ "name"; "age" ]
+                      ~actual:(List.map Syn.Cst.RecordField.name fields)
+                | _ ->
+                    raise
+                      (Failure
+                         "expected Person constructor to expose inline record fields"));
+                Test.assert_equal ~expected:None
+                  ~actual:(Syn.Cst.VariantConstructor.arguments anonymous);
+                Ok ()
+            | _ -> Error "expected variant type definition")
+        | _ -> Error "expected first item to be a type declaration");
     Test.case "cst type declarations expose polyvariant tags structurally" (fun () ->
         let result =
           parse_ml

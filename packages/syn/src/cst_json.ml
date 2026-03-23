@@ -1271,15 +1271,39 @@ let record_field_to_json field =
      ]
     @ if attributes = [] then [] else [ ("attributes", Json.Array attributes) ])
 
+let constructor_arguments_to_json = function
+  | Cst.ConstructorArguments.Tuple elements ->
+      Json.Object
+        [
+          ("tag", Json.String "tuple");
+          ("elements", Json.Array (List.map core_type_to_json elements));
+        ]
+  | Cst.ConstructorArguments.Record fields ->
+      Json.Object
+        [
+          ("tag", Json.String "record");
+          ("fields", Json.Array (List.map record_field_to_json fields));
+        ]
+
 let variant_constructor_to_json constr =
+  let arguments =
+    Cst.VariantConstructor.arguments constr
+    |> Option.map constructor_arguments_to_json
+  in
   Json.Object
-    [
-      ("syntax_node", syntax_node_to_json (Cst.VariantConstructor.syntax_node constr));
-      ( "constructor_name",
-        token_to_json (Cst.VariantConstructor.constructor_name_token constr) );
-      ( "payload_type",
+    ([
+       ("syntax_node", syntax_node_to_json (Cst.VariantConstructor.syntax_node constr));
+       ( "constructor_name",
+         token_to_json (Cst.VariantConstructor.constructor_name_token constr) );
+     ]
+    @
+    (match arguments with
+    | Some arguments -> [ ("arguments", arguments) ]
+    | None -> [])
+    @
+    [ ( "payload_type",
         option_to_json core_type_to_json (Cst.VariantConstructor.payload_type constr) );
-    ]
+    ])
 
 let type_constraint_to_json ({ syntax_node; left; right } : Cst.type_constraint) =
   Json.Object

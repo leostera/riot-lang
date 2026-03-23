@@ -3672,18 +3672,57 @@ let variant_constructor_from_node node =
   | first_child :: _ -> (
       match direct_non_trivia_tokens first_child with
       | constructor_name :: _ ->
+          let lifted_payload_type =
+            direct_non_trivia_nodes node
+            |> List.find_opt (fun child ->
+                   let kind = Ceibo.Red.SyntaxNode.kind child in
+                   can_lift_core_type_node child
+                   && kind != Syntax_kind.IDENT_EXPR)
+            |> Option.map core_type_from_node
+          in
+          let lifted_arguments =
+            if
+              direct_non_trivia_tokens node
+              |> List.exists (fun syntax_token ->
+                     String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "of")
+            then
+              let type_nodes =
+                direct_non_trivia_nodes node
+                |> List.filter can_lift_core_type_node
+              in
+              match type_nodes with
+              | [] ->
+                  None
+              | [ record_node ]
+                when Ceibo.Red.SyntaxNode.kind record_node = Syntax_kind.TYPE_RECORD ->
+                  Some
+                    (Cst.ConstructorArguments.Record
+                       (direct_non_trivia_nodes record_node
+                       |> List.filter (fun child ->
+                              Ceibo.Red.SyntaxNode.kind child
+                              = Syntax_kind.TYPE_RECORD_FIELD)
+                       |> List.filter_map record_field_from_node))
+              | [ tuple_node ]
+                when Ceibo.Red.SyntaxNode.kind tuple_node = Syntax_kind.TYPE_TUPLE ->
+                  Some
+                    (Cst.ConstructorArguments.Tuple
+                       (direct_non_trivia_nodes tuple_node
+                       |> List.filter can_lift_core_type_node
+                       |> List.map core_type_from_node))
+              | _ ->
+                  Some
+                    (Cst.ConstructorArguments.Tuple
+                       (List.map core_type_from_node type_nodes))
+            else
+              None
+          in
           Some
             Cst.VariantConstructor.
               {
                 syntax_node = node;
                 constructor_name = token constructor_name;
-                payload_type =
-                  (direct_non_trivia_nodes node
-                  |> List.find_opt (fun child ->
-                         let kind = Ceibo.Red.SyntaxNode.kind child in
-                         can_lift_core_type_node child
-                         && kind != Syntax_kind.IDENT_EXPR)
-                  |> Option.map core_type_from_node);
+                arguments = lifted_arguments;
+                payload_type = lifted_payload_type;
               }
       | [] -> None)
   | [] -> None
@@ -5240,6 +5279,26 @@ and validate_match_case ~context ({ pattern; guard; body; _ } : Cst.match_case) 
   Option.iter (validate_expression ~context:("match_case.guard" :: context)) guard;
   validate_expression ~context:("match_case.body" :: context) body
 
+let validate_constructor_arguments ~context = function
+  | Cst.ConstructorArguments.Tuple elements ->
+      List.iteri
+        (fun index element ->
+          validate_core_type
+            ~context:
+              (("constructor_arguments.tuple[" ^ Int.to_string index ^ "]")
+              :: context)
+            element)
+        elements
+  | Cst.ConstructorArguments.Record fields ->
+      List.iteri
+        (fun index field ->
+          validate_core_type
+            ~context:
+              (("constructor_arguments.record[" ^ Int.to_string index ^ "].type")
+              :: context)
+            (Cst.RecordField.field_type field))
+        fields
+
 let validate_type_definition ~context = function
   | Cst.TypeDefinition.Abstract -> ()
   | Cst.TypeDefinition.Alias { manifest; _ } ->
@@ -5270,6 +5329,13 @@ let validate_type_definition ~context = function
   | Cst.TypeDefinition.Variant constructors ->
       List.iteri
         (fun index constructor ->
+          Option.iter
+            (validate_constructor_arguments
+               ~context:
+                 (("type_definition.variant.constructor[" ^ Int.to_string index
+                  ^ "].arguments")
+                 :: context))
+            (Cst.VariantConstructor.arguments constructor);
           Option.iter
             (validate_core_type
                ~context:
@@ -5304,6 +5370,13 @@ let validate_item ~context = function
   | Cst.Item.TypeExtension { constructors; _ } ->
       List.iteri
         (fun index constructor ->
+          Option.iter
+            (validate_constructor_arguments
+               ~context:
+                 (("item.type_extension.constructor[" ^ Int.to_string index
+                  ^ "].arguments")
+                 :: context))
+            (Cst.VariantConstructor.arguments constructor);
           Option.iter
             (validate_core_type
                ~context:

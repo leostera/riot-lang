@@ -87,6 +87,29 @@
                     "end": 19
                   }
                 },
+                "arguments": {
+                  "tag": "tuple",
+                  "elements": [
+                    {
+                      "tag": "var",
+                      "syntax_node": {
+                        "kind": "TYPE_VAR",
+                        "span": {
+                          "start": 23,
+                          "end": 25
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "span": {
+                          "start": 24,
+                          "end": 25
+                        }
+                      }
+                    }
+                  ]
+                },
                 "payload_type": {
                   "tag": "var",
                   "syntax_node": {
@@ -121,6 +144,59 @@
                     "start": 28,
                     "end": 32
                   }
+                },
+                "arguments": {
+                  "tag": "tuple",
+                  "elements": [
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 36,
+                          "end": 46
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 36,
+                            "end": 46
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "forest",
+                          "span": {
+                            "start": 39,
+                            "end": 45
+                          }
+                        }
+                      },
+                      "arguments": [
+                        {
+                          "tag": "var",
+                          "syntax_node": {
+                            "kind": "TYPE_VAR",
+                            "span": {
+                              "start": 36,
+                              "end": 38
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "a",
+                            "span": {
+                              "start": 37,
+                              "end": 38
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
                 },
                 "payload_type": {
                   "tag": "constr",
@@ -270,6 +346,89 @@
                     "start": 70,
                     "end": 75
                   }
+                },
+                "arguments": {
+                  "tag": "tuple",
+                  "elements": [
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 79,
+                          "end": 92
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 79,
+                            "end": 92
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "list",
+                          "span": {
+                            "start": 87,
+                            "end": 91
+                          }
+                        }
+                      },
+                      "arguments": [
+                        {
+                          "tag": "constr",
+                          "syntax_node": {
+                            "kind": "TYPE_CONSTR",
+                            "span": {
+                              "start": 79,
+                              "end": 87
+                            }
+                          },
+                          "constructor_path": {
+                            "tag": "ident",
+                            "syntax_node": {
+                              "kind": "TYPE_CONSTR",
+                              "span": {
+                                "start": 79,
+                                "end": 87
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "tree",
+                              "span": {
+                                "start": 82,
+                                "end": 86
+                              }
+                            }
+                          },
+                          "arguments": [
+                            {
+                              "tag": "var",
+                              "syntax_node": {
+                                "kind": "TYPE_VAR",
+                                "span": {
+                                  "start": 79,
+                                  "end": 81
+                                }
+                              },
+                              "name_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": "a",
+                                "span": {
+                                  "start": 80,
+                                  "end": 81
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
                 },
                 "payload_type": {
                   "tag": "constr",

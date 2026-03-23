@@ -2832,23 +2832,55 @@ module RecordField : sig
   val attributes : t -> attribute list
 end
 
+(** Structured argument forms for regular variant constructors.
+
+    These correspond to the `of ...` payload on constructors such as
+    `Pair of int * string` and `Person of { name : string }`.
+*)
+module ConstructorArguments : sig
+  type t =
+    | Tuple of core_type list
+        (** Positional constructor arguments.
+
+            Examples:
+
+            ```ocaml,norun
+            type t = Pair of int * string
+            type t = Wrapped of (int * string)
+            ```
+        *)
+    | Record of RecordField.t list
+        (** Inline record constructor arguments.
+
+            Example:
+
+            ```ocaml,norun
+            type t = Person of { name : string; age : int }
+            ```
+        *)
+end
+
 (** A constructor inside a regular variant type definition.
 
     Examples:
 
     ```ocaml,norun
     type t = A | B of int
+    type t = Pair of int * string
+    type t = Person of { name : string; age : int }
     ```
 *)
 module VariantConstructor : sig
   type t = {
     syntax_node : syntax_node;
     constructor_name : Token.t;
+    arguments : ConstructorArguments.t option;
     payload_type : core_type option;
   }
 
   val syntax_node : t -> syntax_node
   val constructor_name_token : t -> Token.t
+  val arguments : t -> ConstructorArguments.t option
   val payload_type : t -> core_type option
   val name : t -> string
 end
