@@ -51,10 +51,10 @@ This file is _yours_. Keep it up to date after every big change.
   - [ ] `let open Foo in [...]` -> prefer `Foo.[...]` unless there are multiple stacked local opens
   - [ ] `Module.{ field = value }` over `{ Module.field = value }`
 - [ ] If a module has a single type definition, prefer it be called `t`
-- [ ] If a module has a public record type and accessor functions like
-  - [ ] `.mli`: `type t = { field : string }`
-  - [ ] `.mli`: `val field : t -> string`
-  - [ ] then suggest making the type opaque
+- [x] If a module has a public record type and accessor functions like
+  - [x] `.mli`: `type t = { field : string }`
+  - [x] `.mli`: `val field : t -> string`
+  - [x] then suggest making the type opaque
 - [ ] Add a style rule encouraging record destructuring in function parameters for internal helpers like JSON serializers, so new fields are harder to ignore accidentally
 
 ## Package Rules
