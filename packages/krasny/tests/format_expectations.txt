@@ -21,3 +21,16 @@
 
 # 09xx trivia and mixed top-level preservation
 0900_trivia_and_mixed_top_level.ml
+
+# 91xx copied real-file regressions
+9101_real_krasny_doc.ml
+9102_real_krasny_printer.ml
+9103_real_krasny_solver.ml
+9104_real_krasny_source.ml
+9105_real_krasny_entry.ml
+9106_real_krasny_main.ml
+9107_real_std_float.ml
+9108_real_syn_token.ml
+9109_real_syn_keyword.ml
+9110_real_syn_error.ml
+9111_real_syn_syntax_kind.ml

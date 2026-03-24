@@ -8,6 +8,9 @@ heuristic we rely on.
 The `fixtures/` directory now contains only the active category corpora plus any future regression fixtures we
 add on purpose.
 
+We now also keep copied real-file regressions in the same manifest once a real Riot source file exposes a
+formatter drift that the category corpora do not localize well.
+
 The active manifest now follows two rules:
 
 - keep one category corpus fixture per supported syntax band
@@ -42,12 +45,20 @@ The active manifest now follows two rules:
 - `09xx`: trivia and mixed top-level preservation
   Examples: top-level comments/docstrings, mixed supported and unsupported items, type-trivia regressions.
 
+- `91xx`: copied real-file regressions
+  Examples: exact copies of real Riot source files whose current formatting drifts on expectation or syntax-hash
+  roundtrip.
+
 ## Curation Rules
 
 - Keep one category corpus fixture per supported syntax band in the active manifest.
 - Inside a category corpus, keep one representative example per syntax group.
 - Add an individual edge-case fixture only after a real formatting failure from repo code or a smoke corpus run
   shows that the category corpus is too broad to localize the bug.
+- For copied real-file regressions, start by copying the current source into both `.ml` and `.expected`, then let
+  formatter changes move the implementation toward that concrete real-code baseline.
+- When a copied real-file regression reveals a missing small syntax example, add that distilled example back into
+  the relevant `0X00` category corpus so the fix is exercised in the smallest possible shape too.
 - If two fixtures are exact `source + expected` duplicates, keep the clearest name and drop the rest from the
   active manifest.
 - If two fixtures are near-duplicates, keep both only when the differing token changes the formatter behavior
