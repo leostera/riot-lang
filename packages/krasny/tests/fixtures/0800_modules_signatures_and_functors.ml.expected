@@ -29,13 +29,13 @@ end
 module Int_eq : EQ with type t = int = struct
   type t = int
 
-  let equal left right = left = right
+  let equal = fun left right -> left = right
 end
 
 module Make (Item : SHOW) : sig
   val show_all : Item.t list -> string list
 end = struct
-  let show_all items =
+  let show_all = fun items ->
     List.map Item.show items
 end
 
@@ -64,7 +64,7 @@ module Inline : sig
 end = struct
   type t = int
 
-  let make value = value
+  let make = fun value -> value
 
   let show = Int.to_string
 end
@@ -72,17 +72,16 @@ end
 module rec Even : sig
   val check : int -> bool
 end = struct
-  let check n = n = 0 || Odd.check (n - 1)
+  let check = fun n -> n = 0 || Odd.check (n - 1)
 end
 
 and Odd : sig
   val check : int -> bool
 end = struct
-  let check n = n <> 0 && Even.check (n - 1)
+  let check = fun n -> n <> 0 && Even.check (n - 1)
 end
 
 include Nested
 
 open Nested
-
 open! Inline

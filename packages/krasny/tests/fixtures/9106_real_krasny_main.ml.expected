@@ -1,11 +1,11 @@
 open Std
 
-let parse_file ~file ~source =
+let parse_file = fun ~file ~source ->
   if String.ends_with ~suffix:".mli" file then
     Syn.parse_interface source
   else Syn.parse_implementation source
 
-let handle_format file =
+let handle_format = fun file ->
   match Fs.read (Path.v file) with
   | Error _err ->
       Log.error ("Error reading file: " ^ file);
@@ -18,7 +18,7 @@ let handle_format file =
           Log.error ("Error formatting file without a CST: " ^ file);
           exit 1
 
-let handle_syntax_hash file =
+let handle_syntax_hash = fun file ->
   match Fs.read (Path.v file) with
   | Error _err ->
       Log.error ("Error reading file: " ^ file);

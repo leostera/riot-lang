@@ -33,6 +33,14 @@ let let_rec_in =
   let rec loop  n= if n <= 0 then 0 else n + loop (n - 1) in
   loop count
 
+let parameterized_local_let_rec =
+  let rec push_many indent docs rest =
+    match List.rev docs with
+    | [] -> rest
+    | docs -> docs |> List.fold_left (fun acc doc -> (indent, doc) :: acc) rest
+  in
+  push_many width doc []
+
 let sequence_two = log "start"; log "done"
 
 let sequence_with_let = log "before"; let value = compute () in value

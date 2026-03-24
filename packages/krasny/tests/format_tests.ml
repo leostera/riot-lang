@@ -410,7 +410,8 @@ Ok (match value with
           |> Result.expect ~msg:"fun values with sequence bodies should keep their layout"
         in
         let expected =
-          {|let f = fun x ->
+          {|let f =
+ fun x ->
   print x;
   x + 1
 |}
@@ -459,7 +460,9 @@ let and_case =
         in
         let expected =
           {|let rec_case =
-  let rec f = fun n -> if n = 0 then 1 else n * f (n - 1) in
+  let rec f = fun n ->
+    if n = 0 then 1 else n * f (n - 1)
+  in
   f 5
 
 let and_case =

@@ -112,13 +112,13 @@ type ('ok, 'err) result_like =
   | Error of 'err
 
 type message =
-  | Ping of { 
-      id : int; 
-      sent_at : float 
+  | Ping of {
+      id : int;
+      sent_at : float
     }
-  | Pong of { 
-      id : int; 
-      ok : bool 
+  | Pong of {
+      id : int;
+      ok : bool
     }
 
 type opaque
@@ -127,29 +127,29 @@ type mapper = {
   run : 'a. 'a list -> 'a list;
 }
 
-type 'a constrained = 'a 
+type 'a constrained = 'a
   constraint 'a = int
 
 type closed_poly =
-  [ 
-  | `A 
-  | `B of int 
+  [
+  | `A
+  | `B of int
 ]
 
-type open_poly = [> 
-  | `A 
-  | `B of string 
+type open_poly = [>
+  | `A
+  | `B of string
 ]
 
-type limited_poly = [< 
-  | `A 
-  | `B 
-  | `C 
+type limited_poly = [<
+  | `A
+  | `B
+  | `C
 ]
 
-type extended_poly = [ 
-  | closed_poly 
-  | `D of string 
+type extended_poly = [
+  | closed_poly
+  | `D of string
 ]
 
 type printer = string -> width:int -> ?indent:int -> unit -> string

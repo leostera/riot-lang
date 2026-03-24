@@ -6,8 +6,8 @@ type mode =
 
 type frame = int * mode * Doc.t
 
-let solve ~width doc =
-  let rec push_many indent mode docs rest =
+let solve = fun ~width doc ->
+  let rec push_many = fun indent mode docs rest ->
     match List.rev docs with
     | [] ->
         rest
@@ -15,7 +15,8 @@ let solve ~width doc =
         docs
         |> List.fold_left (fun acc doc -> (indent, mode, doc) :: acc) rest
   in
-  let rec fits remaining = function
+  let rec fits = fun remaining ->
+    function
     | [] ->
         true
     | _ when remaining < 0 ->
@@ -41,14 +42,16 @@ let solve ~width doc =
     | (indent, mode, Doc.Indent (extra, doc)) :: rest ->
         fits remaining ((indent + extra, mode, doc) :: rest)
   in
-  let rec solve_many ~column ~indent ~mode = function
+  let rec solve_many = fun ~column ~indent ~mode ->
+    function
     | [] ->
         (Doc.empty, column)
     | doc :: rest ->
         let solved_doc, column = solve_doc ~column ~indent ~mode doc in
         let solved_rest, column = solve_many ~column ~indent ~mode rest in
         (Doc.concat [ solved_doc; solved_rest ], column)
-  and solve_doc ~column ~indent ~mode = function
+  and solve_doc = fun ~column ~indent ~mode ->
+    function
     | Doc.Empty ->
         (Doc.empty, column)
     | Doc.Text value ->
@@ -64,7 +67,8 @@ let solve ~width doc =
         | Flat ->
             (Doc.text flat, column + String.length flat)
         | Break ->
-            (Doc.line, indent))
+            (Doc.line, indent)
+      )
     | Doc.Concat docs ->
         solve_many ~column ~indent ~mode docs
     | Doc.Indent (extra, doc) ->

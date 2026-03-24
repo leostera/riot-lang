@@ -1,5 +1,4 @@
 open Std
-
 open Std.Collections
 
 type t =
@@ -15,21 +14,21 @@ type t =
 
 let empty = Empty
 
-let text value = if value = "" then Empty else Text value
+let text = fun value -> if value = "" then Empty else Text value
 
 let space = Space
 
-let spaces count = if count <= 0 then Empty else if count = 1 then Space else Spaces count
+let spaces = fun count -> if count <= 0 then Empty else if count = 1 then Space else Spaces count
 
 let line = Line
 
-let break ?(flat = " ") () = Break flat
+let break = fun ?(flat = " ") () -> Break flat
 
 let softline = Break ""
 
-let indent spaces doc = if spaces <= 0 then doc else Indent (spaces, doc)
+let indent = fun spaces doc -> if spaces <= 0 then doc else Indent (spaces, doc)
 
-let group doc = Group doc
+let group = fun doc -> Group doc
 
 let equal = text "="
 
@@ -55,7 +54,7 @@ let lbracket = text "["
 
 let rbracket = text "]"
 
-let concat docs =
+let concat = fun docs ->
   let add_spaces count acc =
     if count <= 0 then
       acc
@@ -100,7 +99,7 @@ let concat docs =
   | docs ->
       Concat docs
 
-let join separator docs =
+let join = fun separator docs ->
   match docs with
   | [] ->
       Empty
@@ -111,17 +110,17 @@ let join separator docs =
            |> List.map (fun doc -> [ separator; doc ])
            |> List.flatten))
 
-let words docs = join space docs
+let words = fun docs -> join space docs
 
-let lines docs = join line docs
+let lines = fun docs -> join line docs
 
-let padded doc = concat [ space; doc; space ]
+let padded = fun doc -> concat [ space; doc; space ]
 
-let prefixed prefix doc = concat [ prefix; doc ]
+let prefixed = fun prefix doc -> concat [ prefix; doc ]
 
-let suffixed doc suffix = concat [ doc; suffix ]
+let suffixed = fun doc suffix -> concat [ doc; suffix ]
 
-let wrapped left doc right = concat [ left; doc; right ]
+let wrapped = fun left doc right -> concat [ left; doc; right ]
 
 let rec is_multiline = function
   | Empty ->

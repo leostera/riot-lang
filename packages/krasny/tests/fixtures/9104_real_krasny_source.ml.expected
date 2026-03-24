@@ -1,8 +1,7 @@
 open Std
-
 open Std.Collections
 
-let trim_trailing_newlines text =
+let trim_trailing_newlines = fun text ->
   let rec loop index =
     if index <= 0 then
       ""
@@ -15,7 +14,7 @@ let trim_trailing_newlines text =
   in
   loop (String.length text)
 
-let trim_trailing_layout_whitespace text =
+let trim_trailing_layout_whitespace = fun text ->
   let rec loop index =
     if index <= 0 then
       ""
@@ -28,7 +27,7 @@ let trim_trailing_layout_whitespace text =
   in
   loop (String.length text)
 
-let split_trailing_layout_whitespace text =
+let split_trailing_layout_whitespace = fun text ->
   let trimmed = trim_trailing_layout_whitespace text in
   let trimmed_length = String.length trimmed in
   let trailing_length = String.length text - trimmed_length in
@@ -40,7 +39,7 @@ let split_trailing_layout_whitespace text =
   in
   (trimmed, trailing)
 
-let line_start_before text index =
+let line_start_before = fun text index ->
   let rec loop cursor =
     if cursor <= 0 then
       0
@@ -51,7 +50,7 @@ let line_start_before text index =
   in
   loop index
 
-let find_trailing_comment_start text end_ =
+let find_trailing_comment_start = fun text end_ ->
   if end_ < 2 || text.[end_ - 2] != '*' || text.[end_ - 1] != ')' then
     None
   else
@@ -70,7 +69,7 @@ let find_trailing_comment_start text end_ =
     in
     loop (end_ - 2) 1
 
-let split_trailing_comment_block text =
+let split_trailing_comment_block = fun text ->
   let body, trailing_layout = split_trailing_layout_whitespace text in
   let rec peel suffix_start =
     let prefix = String.sub body 0 suffix_start |> trim_trailing_layout_whitespace in
@@ -96,7 +95,7 @@ let split_trailing_comment_block text =
       String.sub body suffix_start (String.length body - suffix_start)
       ^ trailing_layout )
 
-let source_of_syntax_node (node : Syn.Cst.syntax_node) =
+let source_of_syntax_node = fun (node : Syn.Cst.syntax_node) ->
   let buffer = IO.Buffer.create 1_024 in
   Syn.Ceibo.Red.SyntaxNode.preorder node (function
     | Syn.Ceibo.Red.Token token ->
@@ -105,15 +104,15 @@ let source_of_syntax_node (node : Syn.Cst.syntax_node) =
         ());
   IO.Buffer.contents buffer |> trim_trailing_newlines
 
-let source_of_token token = Syn.Cst.Token.text token
+let source_of_token = fun token -> Syn.Cst.Token.text token
 
-let source_of_ident ident = Syn.Cst.Ident.segments ident |> List.map source_of_token |> String.concat "."
+let source_of_ident = fun ident -> Syn.Cst.Ident.segments ident |> List.map source_of_token |> String.concat "."
 
-let source_of_result (result : Syn.Parser.parse_result) = result.source
+let source_of_result = fun (result : Syn.Parser.parse_result) -> result.source
 
-let source_of_pattern pattern = source_of_syntax_node (Syn.Cst.Pattern.syntax_node pattern) |> String.trim
+let source_of_pattern = fun pattern -> source_of_syntax_node (Syn.Cst.Pattern.syntax_node pattern) |> String.trim
 
-let source_of_parameter parameter = source_of_syntax_node (Syn.Cst.Parameter.syntax_node parameter) |> String.trim
+let source_of_parameter = fun parameter -> source_of_syntax_node (Syn.Cst.Parameter.syntax_node parameter) |> String.trim
 
 let identifier_character = function
   | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '\'' ->
@@ -121,7 +120,7 @@ let identifier_character = function
   | _ ->
       false
 
-let source_mentions_identifier source identifier =
+let source_mentions_identifier = fun source identifier ->
   let source_length = String.length source in
   let identifier_length = String.length identifier in
   let rec loop index =
@@ -143,7 +142,7 @@ let source_mentions_identifier source identifier =
   in
   loop 0
 
-let contains_substring source needle =
+let contains_substring = fun source needle ->
   let source_length = String.length source in
   let needle_length = String.length needle in
   if needle_length = 0 then
@@ -158,7 +157,7 @@ let contains_substring source needle =
     in
     loop 0
 
-let fresh_match_parameter_name syntax_node =
+let fresh_match_parameter_name = fun syntax_node ->
   let source = source_of_syntax_node syntax_node in
   let rec pick = function
     | [] ->
@@ -179,7 +178,7 @@ let fresh_match_parameter_name syntax_node =
       "subject1";
     ]
 
-let syntax_node_has_comment_like_trivia (node : Syn.Cst.syntax_node) =
+let syntax_node_has_comment_like_trivia = fun (node : Syn.Cst.syntax_node) ->
   let found = ref false in
   Syn.Ceibo.Red.SyntaxNode.preorder node (function
     | Syn.Ceibo.Red.Token token -> (
@@ -192,7 +191,7 @@ let syntax_node_has_comment_like_trivia (node : Syn.Cst.syntax_node) =
         ());
   !found
 
-let source_of_span source (span : Syn.Ceibo.Span.t) =
+let source_of_span = fun source (span : Syn.Ceibo.Span.t) ->
   let source_length = String.length source in
   let start =
     if span.start < 0 then
@@ -215,12 +214,12 @@ let source_of_span source (span : Syn.Ceibo.Span.t) =
   else
     String.sub source start (end_ - start)
 
-let source_between source ~start ~end_ =
+let source_between = fun source ~start ~end_ ->
   source_of_span source (Syn.Ceibo.Span.make ~start ~end_)
 
-let is_whitespace_only text = String.trim text = ""
+let is_whitespace_only = fun text -> String.trim text = ""
 
-let contains_comment_like_text text = contains_substring text "(*"
+let contains_comment_like_text = fun text -> contains_substring text "(*"
 
-let source_of_node_from_source source node =
+let source_of_node_from_source = fun source node ->
   source_of_span source (Syn.Ceibo.Red.SyntaxNode.span node)

@@ -160,4 +160,4 @@ let show_kind = function
   | EOF -> "end of file"
   | Unknown c -> "unknown character '" ^ String.make 1 c ^ "'"
 
-let to_string token = show_kind token.kind
+let to_string = fun token -> show_kind token.kind

@@ -1,7 +1,7 @@
 open Kernel.Global
 include Kernel.Float
 
-let rec power_of_10 n =
+let rec power_of_10 = fun n ->
   match n with
   | 0 -> 1.0
   | 1 -> 10.0
@@ -12,7 +12,7 @@ let rec power_of_10 n =
   | 6 -> 1000000.0
   | _ -> 10.0 *. power_of_10 (n - 1)
 
-let to_string ?(precision = 6) f =
+let to_string = fun ?(precision = 6) f ->
   let multiplier = power_of_10 precision in
   let truncated = round (f *. multiplier) /. multiplier in
   string_of_float truncated

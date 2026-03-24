@@ -167,9 +167,9 @@ module Expression = struct
       |> List.mapi (fun index field ->
              let suffix =
                if index < List.length fields - 1 || not (closedness = Syn.Cst.Closed) then
-                 "; "
+                 ";"
                else
-                 " "
+                 ""
              in
              Doc.text
                (indent_string (indent + 2) ^ render_record_pattern_field field ^ suffix))
@@ -183,7 +183,7 @@ module Expression = struct
     in
     Doc.concat
       [
-        Doc.text (indent_string indent ^ "{ ");
+        Doc.text (indent_string indent ^ "{");
         Doc.line;
         (rendered_fields |> Doc.join Doc.line);
         Doc.line;
@@ -791,6 +791,13 @@ module Expression = struct
     | _ ->
         false
 
+  let fun_expression_body_contains_sequence ({ Syn.Cst.body; _ } : Syn.Cst.fun_expression) =
+    match body with
+    | Syn.Cst.Expression expression ->
+        expression_contains_sequence expression
+    | Syn.Cst.Cases _ ->
+        false
+
   let rec render ~indent = function
     | Syn.Cst.Expression.Literal literal ->
         render_literal literal
@@ -1250,7 +1257,8 @@ module Expression = struct
     else
       Doc.concat [ bindings; Doc.text " in"; Doc.line; rendered_body ]
 
-  and render_explicit_fun_expression ?(prefix_columns = 0) ~indent parameters expression =
+  and render_explicit_fun_expression ?(prefix_columns = 0) ?(force_multiline_body = false)
+      ~indent parameters expression =
     let rec collect parameters = function
       | Syn.Cst.Expression.Fun nested ->
           (match nested.body with
@@ -1285,15 +1293,26 @@ module Expression = struct
     in
     let multiline_body body = Doc.concat [ header; Doc.line; body ] in
     let inline_body body = Doc.concat [ header; Doc.space; body ] in
+    let block_body body =
+      if Doc.is_multiline body then
+        body
+      else
+        Doc.indent (indent + 2) body
+    in
     let _ = prefix_columns in
     match expression with
     | Syn.Cst.Expression.Match match_ ->
         multiline_body
-          (render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:true match_)
+          (block_body
+             (render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:true
+                match_))
     | Syn.Cst.Expression.Try try_ ->
-        multiline_body (render_try_expression ~indent:(indent + 2) try_)
+        multiline_body (block_body (render_try_expression ~indent:(indent + 2) try_))
     | Syn.Cst.Expression.Sequence sequence ->
-        multiline_body (render_sequence_expression ~indent:(indent + 2) sequence)
+        multiline_body
+          (block_body (render_sequence_expression ~indent:(indent + 2) sequence))
+    | Syn.Cst.Expression.If if_ ->
+        multiline_body (block_body (render_if_expression ~indent:(indent + 2) if_))
     | expression ->
         let rendered_body, body_is_preindented =
           match expression with
@@ -1320,12 +1339,6 @@ module Expression = struct
         in
         let prefers_multiline =
           has_multiline_parameter_layout
-          ||
-          parameters_are_labeled_or_optional parameters
-          &&
-          String.length
-            (source_of_syntax_node (Syn.Cst.Expression.syntax_node expression))
-          > 40
         in
         if has_multiline_parameter_layout then
           let parameter_doc =
@@ -1347,30 +1360,42 @@ module Expression = struct
               Doc.line;
               body;
             ]
-        else if prefers_multiline || Doc.is_multiline rendered_body then
+        else if force_multiline_body || prefers_multiline || Doc.is_multiline rendered_body then
           let body =
-            if body_is_preindented then
+            if body_is_preindented && Doc.is_multiline rendered_body then
               rendered_body
             else
-              Doc.indent (indent + 2) rendered_body
+              block_body rendered_body
           in
           multiline_body body
         else
           inline_body rendered_body
 
-  and render_explicit_fun_with_parameter_text ~indent ~parameters_text expression =
+  and render_explicit_fun_with_parameter_text ?(force_multiline_body = false) ~indent
+      ~parameters_text expression =
     let head =
       Doc.concat [ Doc.text "fun"; Doc.space; Doc.text parameters_text; Doc.space; Doc.arrow ]
     in
     let multiline_body body = Doc.concat [ head; Doc.line; body ] in
+    let block_body body =
+      if Doc.is_multiline body then
+        body
+      else
+        Doc.indent (indent + 2) body
+    in
     match expression with
     | Syn.Cst.Expression.Match match_ ->
         multiline_body
-          (render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:true match_)
+          (block_body
+             (render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:true
+                match_))
     | Syn.Cst.Expression.Try try_ ->
-        multiline_body (render_try_expression ~indent:(indent + 2) try_)
+        multiline_body (block_body (render_try_expression ~indent:(indent + 2) try_))
+    | Syn.Cst.Expression.If if_ ->
+        multiline_body (block_body (render_if_expression ~indent:(indent + 2) if_))
     | Syn.Cst.Expression.Sequence sequence ->
-        multiline_body (render_sequence_expression ~indent:(indent + 2) sequence)
+        multiline_body
+          (block_body (render_sequence_expression ~indent:(indent + 2) sequence))
     | _ ->
         let body_source =
           source_of_syntax_node (Syn.Cst.Expression.syntax_node expression)
@@ -1378,7 +1403,7 @@ module Expression = struct
           |> dedent_multiline_block
         in
         let rendered_body = Doc.text body_source in
-        if String.contains body_source "\n" then
+        if force_multiline_body || String.contains body_source "\n" then
           multiline_body (Doc.indent (indent + 2) rendered_body)
         else
           Doc.concat [ head; Doc.space; rendered_body ]
@@ -1700,11 +1725,7 @@ module Expression = struct
             :: List.map
                  (fun argument ->
                    if Doc.is_multiline argument && doc_starts_with_text "(" argument then
-                     Doc.concat
-                       [
-                         Doc.space;
-                         indent_after_first_fragment (indent + 2) argument;
-                       ]
+                     Doc.concat [ Doc.line; Doc.indent (indent + 2) argument ]
                    else
                      Doc.concat [ Doc.line; Doc.indent (indent + 2) argument ])
                  rendered_arguments)
@@ -1729,14 +1750,17 @@ module Expression = struct
              Doc.concat [ Doc.indent indent rendered; suffix ])
     |> Doc.join Doc.line
 
-  and render_parameterized_let_binding ~keyword ~pattern ~parameters ~value =
+  and render_parameterized_let_binding ~keyword ~pattern ~parameters ~value
+      ~force_multiline_body =
     let pattern = base_parameterized_binding_pattern pattern parameters in
     let rendered_value =
-      render_explicit_fun_expression ~prefix_columns:0 ~indent:0 parameters value
+      render_explicit_fun_expression ~prefix_columns:0 ~force_multiline_body ~indent:0
+        parameters value
     in
     Doc.concat [ Doc.text (keyword ^ pattern); Doc.space; Doc.equal; Doc.space; rendered_value ]
 
-  let render_let_binding ?source (binding : Syn.Cst.LetBinding.t) =
+  let render_let_binding ?source ?(prefer_multiline_parameterized_body = false)
+      (binding : Syn.Cst.LetBinding.t) =
     if List.length binding.attributes > 0 then
       None
     else
@@ -1763,13 +1787,14 @@ module Expression = struct
       let rendered =
         if List.length binding.parameters > 0 then
           render_parameterized_let_binding ~keyword ~pattern ~parameters:binding.parameters
-            ~value:binding.value
+            ~value:binding.value ~force_multiline_body:prefer_multiline_parameterized_body
         else
           match hidden_parameterized_binding with
           | Some (base_pattern, parameters_text) ->
               let value =
-                render_explicit_fun_with_parameter_text ~indent:0 ~parameters_text
-                  binding.value
+                render_explicit_fun_with_parameter_text
+                  ~force_multiline_body:prefer_multiline_parameterized_body ~indent:0
+                  ~parameters_text binding.value
               in
               Doc.concat
                 [
@@ -1887,7 +1912,19 @@ module Expression = struct
                   ]
               else
                 let value = render_fun_expression ~indent:0 fun_ in
-                Doc.concat [ Doc.text (keyword ^ pattern); Doc.space; Doc.equal; Doc.space; value ]
+                if fun_expression_body_contains_sequence fun_ then
+                  Doc.concat
+                    [
+                      Doc.text (keyword ^ pattern);
+                      Doc.space;
+                      Doc.equal;
+                      Doc.line;
+                      Doc.text " ";
+                      value;
+                    ]
+                else
+                  Doc.concat
+                    [ Doc.text (keyword ^ pattern); Doc.space; Doc.equal; Doc.space; value ]
           | Syn.Cst.Expression.If if_ ->
               let value = render_if_expression ~indent:2 if_ in
               if Doc.is_multiline value then
@@ -2813,11 +2850,15 @@ module Structure = struct
   and render_simple_structure_item ~source = function
     | Syn.Cst.StructureItem.LetBinding binding ->
         let original_source = Source.source_of_node_from_source source binding.syntax_node in
-        if Source.contains_substring original_source "\n" then
+        if Source.contains_comment_like_text original_source then
           Some
             (dedent_multiline_block original_source |> indent_following_lines 2 |> String.trim)
         else (
-          match Expression.render_let_binding ~source binding with
+          match
+            Expression.render_let_binding ~source
+              ~prefer_multiline_parameterized_body:(Source.contains_substring original_source "\n")
+              binding
+          with
           | Some rendered ->
               Some (Printer.to_string rendered)
           | None ->
