@@ -87,3 +87,4 @@
 top_level_comment.ml
 top_level_docstring.ml
 mixed_supported_and_unsupported_items.ml
+mixed_supported_and_unsupported_non_let_items.ml

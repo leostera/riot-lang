@@ -108,6 +108,19 @@ let trim_trailing_newlines text =
   in
   loop (String.length text)
 
+let trim_trailing_layout_whitespace text =
+  let rec loop index =
+    if index <= 0 then
+      ""
+    else
+      match text.[index - 1] with
+      | ' ' | '\t' | '\n' | '\r' ->
+          loop (index - 1)
+      | _ ->
+          String.sub text 0 index
+  in
+  loop (String.length text)
+
 let source_of_syntax_node (node : Syn.Cst.syntax_node) =
   let buffer = IO.Buffer.create 1024 in
   Syn.Ceibo.Red.SyntaxNode.preorder node (function
@@ -672,24 +685,59 @@ let render_let_binding (binding : Syn.Cst.LetBinding.t) =
 let source_of_node_from_source source node =
   source_of_span source (Syn.Ceibo.Red.SyntaxNode.span node)
 
-let render_structure_item ~source = function
+type rendered_structure_item = {
+  doc : Doc.t;
+  preserves_layout : bool;
+}
+
+let verbatim_structure_item ~source item =
+  let node = Syn.Cst.StructureItem.syntax_node item in
+  {
+    doc = Doc.text (source_of_node_from_source source node);
+    preserves_layout = true;
+  }
+
+let render_structure_item ~source ~allow_rewrite = function
   | Syn.Cst.StructureItem.LetBinding binding ->
       if syntax_node_has_comment_like_trivia binding.syntax_node then
-        Some (Doc.text (source_of_node_from_source source binding.syntax_node))
+        Some
+          {
+            doc = Doc.text (source_of_node_from_source source binding.syntax_node);
+            preserves_layout = true;
+          }
       else (
         match render_let_binding binding with
         | Some rendered ->
-            Some rendered
+            let original = source_of_node_from_source source binding.syntax_node in
+            let rendered_text = Doc.to_string rendered in
+            if allow_rewrite || rendered_text = original then
+              Some { doc = rendered; preserves_layout = false }
+            else
+              Some { doc = Doc.text original; preserves_layout = true }
         | None ->
-            Some (Doc.text (source_of_node_from_source source binding.syntax_node)))
-  | _ ->
-      None
+            Some
+              {
+                doc = Doc.text (source_of_node_from_source source binding.syntax_node);
+                preserves_layout = true;
+              })
+  | item ->
+      Some (verbatim_structure_item ~source item)
 
 let render_source_file ~source (source_file : Syn.Cst.source_file) =
   match source_file with
   | Syn.Cst.Implementation { syntax_node; items } ->
       let file_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
-      let rec render_items acc previous_end is_first_item = function
+      let allow_rewrite =
+        not
+          (List.exists
+             (function
+               | Syn.Cst.StructureItem.LetBinding _ ->
+                   false
+               | _ ->
+                   true)
+             items)
+      in
+      let rec render_items acc previous_end previous_preserves_layout is_first_item = function
         | [] ->
             let trailing_source = source_between source ~start:previous_end ~end_:file_span.end_ in
             let acc =
@@ -704,24 +752,48 @@ let render_source_file ~source (source_file : Syn.Cst.source_file) =
             let interstitial =
               source_between source ~start:previous_end ~end_:item_span.start
             in
-            let acc =
-              if is_first_item then
-                if interstitial = "" || is_whitespace_only interstitial then
-                  acc
-                else
-                  Doc.text interstitial :: acc
-              else if contains_comment_like_text interstitial then
-                Doc.text interstitial :: acc
-              else
-                Doc.concat [ Doc.line; Doc.line ] :: acc
-            in
-            (match render_structure_item ~source item with
+            (match render_structure_item ~source ~allow_rewrite item with
             | Some rendered ->
-                render_items (rendered :: acc) item_span.end_ false rest
+                let preserve_interstitial =
+                  is_first_item
+                  || (not (is_whitespace_only interstitial))
+                  || (rendered.preserves_layout && previous_preserves_layout)
+                in
+                let acc =
+                  if is_first_item then
+                    if interstitial = "" then
+                      acc
+                    else if is_whitespace_only interstitial then
+                      acc
+                    else
+                      Doc.text interstitial :: acc
+                  else if preserve_interstitial then
+                    if interstitial = "" then
+                      acc
+                    else if
+                      contains_comment_like_text interstitial
+                      && (not rendered.preserves_layout)
+                    then
+                      Doc.text (trim_trailing_layout_whitespace interstitial ^ "\n")
+                      :: acc
+                    else
+                      Doc.text interstitial :: acc
+                  else
+                    if is_whitespace_only interstitial then
+                      Doc.concat [ Doc.line; Doc.line ] :: acc
+                    else
+                      Doc.text interstitial :: acc
+                in
+                render_items
+                  (rendered.doc :: acc)
+                  item_span.end_
+                  rendered.preserves_layout
+                  false
+                  rest
             | None ->
                 None)
       in
-      render_items [] file_span.start true items
+      render_items [] file_span.start true true items
   | Syn.Cst.Interface _ -> None
 
 let format (result : Syn.Parser.parse_result) =

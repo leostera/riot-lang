@@ -76,6 +76,21 @@ let tests =
           ~expected:"(* intro *)\nlet x = 1 + 2\n\nlet f x = x + 1\n\nlet y = 3 + 4\n"
           ~actual;
         Ok ());
+    Test.case "format preserves unsupported top-level items between formatted lets"
+      (fun () ->
+        let source =
+          "open Std\ntype t =\n  | A\n  | B\n(* keep with x *)\nlet x = 1 + 2\nlet y = 3 + 4\n"
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"mixed implementation files should preserve unsupported items verbatim"
+        in
+        Test.assert_equal
+          ~expected:
+            "open Std\ntype t =\n  | A\n  | B\n(* keep with x *)\n\n\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+          ~actual;
+        Ok ());
     Test.case "format inserts blank lines between top-level let bindings"
       (fun () ->
         let source = "let x = 1\nlet y = 2\n" in

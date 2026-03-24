@@ -48,7 +48,7 @@ Rough guidelines for formatting decisions:
 - [x] Add a dedicated round-trip syntax-hash corpus runner over selected repo files
 - current green corpus: `11` repo files across `krasny`, `syn`, `std`, and `tusk-fix`
 - [x] Add a `krasny` expectation suite for formatted output, separate from the current lossless-token baseline
-- bootstrap status: `krasny` builds, focused tests pass, the format expectation runner is green on the first curated block (`89` fixtures), and the round-trip syntax-hash corpus is green on `11` selected repo files
+- bootstrap status: `krasny` builds, focused tests pass, the format expectation runner is green on the first curated block (`90` fixtures), and the round-trip syntax-hash corpus is green on `11` selected repo files
 
 ### Formatter Pipeline
 
@@ -57,6 +57,7 @@ Rough guidelines for formatting decisions:
 - [ ] Add comment and trivia attachment rules to the formatter pipeline
   - first slice landed for leading top-level comments/docstrings between supported implementation items
   - second slice landed for preserving verbatim unsupported top-level `let` bindings between formatted items
+  - third slice landed for preserving verbatim unsupported top-level non-`let` items while only rewriting adjacent mixed-file `let` bindings when their binding text stays stable
 - [x] Require a successful CST lift before formatting; do not pretty-print broken files
 - [ ] Add a codebase smoke runner for `krasny format` over real workspace files
 
