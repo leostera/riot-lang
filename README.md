@@ -13,30 +13,30 @@ There are many OCaml stacks, this one is mine.
 </p>
 
 Riot is an [actor-model][actors], multi-core-ready ecosystem and tooling for
-OCaml 5, designed from the ground up for _programmer happiness_ and _shipping_,
-following a few simple principles:
+OCaml 5, that I designed from the ground up to help me ship real world apps.
 
-* **Optimize for Programmer Happiness** -- I want writing OCaml to feel
-joyful. Riot tries to remove plumbing, incidental choices, and papercuts so
-developers can stay in flow and focus on the work that matters.
+To do this, I made this stack heavily opinionated:
 
-* **Value-oriented by design** -- Riot is built to ship value, not just
-abstractions. That means vertically integrating the pieces needed to go from
-idea to working system.
+0. **There is a single tool: tusk** -- Riot ships with its own build system /
+   package manager / task runner, `tusk`. It is extensible, it is fast, it is
+   written in Riot, and it is configurable with small TOML files.
 
-* **Conventions over configuration** -- Good defaults beat endless setup. Riot
-should reduce choices where possible, establish strong conventions, and make
-the common path feel obvious and smooth.
+1. **There is only actors** -- you must build systems with the actor-model,
+   message passing, supervision trees, and so on.
 
-* **Learn from other ecosystems** -- OCaml does not exist in a vacuum. Riot
-should eagerly adopt ideas, workflows, and patterns from elsewhere when they
-make the stack better.
+1. **There is a standard formatter** -- you can't configure it. That style is
+   how all code in this stack looks like.
 
-* **Progress over stability** -- I value improving the system, even when that
-means things break. I want Riot to keep moving forward, so I will build the
-tooling and layers needed to make that change manageable.
+2. **There is a single standard library** -- it is designed to work well with
+   actors, and you can't swap it out. In fact, you can't use Stdlib, and most
+   other standard libraries just won't play well with this runtime.
 
-If I can think of more cool sounding principles I'll add them here.
+3. **There is an aggressive linter and fixer** -- they will help you how write
+   OCaml for this stack, follow the patterns of this stack, and help us upgrade
+   code as Riot evolves. 
+
+4. **There is a new procedural macro system** -- this help us ship verbose but
+   understandable abstractions, and package them in convenient shortcuts.
 
 ## So what does it look like?
 
@@ -46,6 +46,7 @@ In the smallest form, writing OCaml in this stack looks like this:
 2. Some processes `spawn`ed 
 3. Some messages sent
 4. Some messages received and selected
+5. Some processes are linked together to form supervision trees
 
 ```ocaml
 open Std
