@@ -62,7 +62,7 @@ Rough guidelines for formatting decisions:
   same for match arms, put them one in each line
 * remove parenthesis wherever possible
 * and format large numbers with _s by default: 1000 -> 1_000, 10022 -> 10_022 
-- current fixture corpus status: `8/8` green across the unified category corpus, and `krasny:format_tests` is green again on `31/31`
+- current fixture corpus status: `8/8` green across the unified category corpus, and `krasny:format_tests` is green again on `33/33`
 
 ### Trivia
 
@@ -101,7 +101,7 @@ Rough guidelines for formatting decisions:
 - [x] `PAREN_EXPR`
 - [x] `TUPLE_EXPR`
 - [x] `LIST_EXPR`
-- [ ] `ARRAY_EXPR`
+- [x] `ARRAY_EXPR`
 - [ ] `RECORD_EXPR`
 - [ ] `RECORD_UPDATE_EXPR`
 - [ ] `UNREACHABLE_EXPR`

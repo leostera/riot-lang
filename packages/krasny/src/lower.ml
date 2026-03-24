@@ -726,6 +726,9 @@ module Expression = struct
     | Syn.Cst.Expression.List { elements; _ } ->
         render_bracketed_sequence_expression ~left:Doc.lbracket ~right:Doc.rbracket
           ~separator:(Doc.concat [ Doc.semi; Doc.break () ]) elements
+    | Syn.Cst.Expression.Array { elements; _ } ->
+        render_bracketed_sequence_expression ~left:(Doc.text "[|") ~right:(Doc.text "|]")
+          ~separator:(Doc.concat [ Doc.semi; Doc.break () ]) elements
     | Syn.Cst.Expression.PolyVariant { syntax_node; _ } ->
         Doc.text (String.trim (source_of_syntax_node syntax_node))
     | Syn.Cst.Expression.Parenthesized { syntax_node; inner = Sequence sequence; _ } ->
