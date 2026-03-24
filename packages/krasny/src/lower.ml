@@ -17,6 +17,13 @@ module Expression = struct
   let contains_substring = Source.contains_substring
   let fresh_match_parameter_name = Source.fresh_match_parameter_name
 
+  let expression_source ?source expression =
+    match source with
+    | Some source ->
+        Source.source_of_node_from_source source (Syn.Cst.Expression.syntax_node expression)
+    | None ->
+        source_of_syntax_node (Syn.Cst.Expression.syntax_node expression)
+
   let strip_digit_separators text =
     let buffer = IO.Buffer.create (String.length text) in
     let rec loop index =
@@ -304,6 +311,29 @@ module Expression = struct
       Doc.concat [ prefix; Doc.space; Doc.equal; Doc.line; value ]
     else
       Doc.concat [ prefix; Doc.space; Doc.equal; Doc.space; value ]
+
+  let source_parameterized_binding_pattern ~source ~source_start ~pattern ~value =
+    let pattern_span = Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Pattern.syntax_node pattern) in
+    let value_span = Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node value) in
+    if value_span.start <= pattern_span.end_ then
+      None
+    else
+      let between =
+        Source.source_between source ~start:(pattern_span.end_ - source_start)
+          ~end_:(value_span.start - source_start)
+      in
+      let trimmed_between = Source.trim_trailing_layout_whitespace between in
+      match String.rindex_opt trimmed_between '=' with
+      | None ->
+          None
+      | Some equals_index ->
+          let suffix =
+            String.sub trimmed_between 0 equals_index |> String.trim
+          in
+          if suffix = "" then
+            None
+          else
+            Some (source_of_pattern pattern ^ " " ^ suffix)
 
   let rec trim_leading_doc_layout = function
     | Doc.Empty | Doc.Space | Doc.Line | Doc.Break _ ->
@@ -915,29 +945,136 @@ module Expression = struct
   and render_let_expression ~indent
       ({ syntax_node; binding_pattern; bound_value; and_bindings; body; is_recursive; _ } :
         Syn.Cst.let_expression) =
-    if is_recursive then
-      Doc.text
-        (normalize_recursive_let_expression_source ~indent
-           (source_of_syntax_node syntax_node))
-    else
+    let let_source = source_of_syntax_node syntax_node in
+    let let_source_start = (Syn.Ceibo.Red.SyntaxNode.span syntax_node).start in
+    let local_expression_source expression =
+      let span = Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expression) in
+      Source.source_between let_source ~start:(span.start - let_source_start)
+        ~end_:(span.end_ - let_source_start)
+    in
     let rec collect_fun_parameters parameters = function
       | Syn.Cst.Expression.Fun { parameters = nested_parameters; body = Syn.Cst.Expression expression; _ } ->
           collect_fun_parameters (parameters @ nested_parameters) expression
       | expression ->
           (parameters, expression)
     in
-    let render_local_binding ~keyword ~pattern ~parameters ~value =
-      if List.length parameters > 0 then
-        render_parameterized_let_binding ~keyword ~pattern ~parameters ~value
+    let render_local_bound_value ~keyword value =
+      match value with
+      | Syn.Cst.Expression.Function function_ ->
+          let value_source = local_expression_source value in
+          if contains_substring value_source "\n" then
+            Doc.text (Source.trim_trailing_layout_whitespace value_source)
+          else
+            render_function_expression ~indent:0 function_
+      | Syn.Cst.Expression.Match match_ ->
+          let value_source = local_expression_source value in
+          if contains_substring value_source "\n" then
+            Doc.text
+              (indent_first_line (indent + 2)
+                 (Source.trim_trailing_layout_whitespace value_source))
+          else
+            render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:false match_
+      | Syn.Cst.Expression.Let _ ->
+          render ~indent:(indent + 2) value
+      | Syn.Cst.Expression.If if_ ->
+          render_if_expression ~indent:(indent + 2) if_
+      | Syn.Cst.Expression.Sequence sequence ->
+          render_sequence_expression ~indent:(indent + 2) sequence
+      | _ ->
+          render ~indent:(indent + 2) value
+    in
+    let render_local_parameterized_binding ~keyword ~pattern ~parameters ~value =
+      let rendered_parameters =
+        parameters
+        |> List.map (fun parameter ->
+               normalize_inline_parameter_source (source_of_parameter parameter))
+        |> String.concat " "
+      in
+      let binding_pattern = pattern ^ " " ^ rendered_parameters in
+      let rendered_value =
+        if parameters_require_explicit_fun_syntax parameters then
+          render_explicit_fun_expression ~prefix_columns:0 ~indent:0 parameters value
+        else
+          render_local_bound_value ~keyword value
+      in
+      if doc_starts_with_text "function" rendered_value then
+        Doc.concat
+          [
+            Doc.indent indent (Doc.text (keyword ^ binding_pattern));
+            Doc.space;
+            Doc.equal;
+            Doc.space;
+            rendered_value;
+          ]
       else
-        let rendered_bound_value = render ~indent:(indent + 2) value in
-        render_binding ~indent ~keyword pattern rendered_bound_value
+        render_binding ~indent ~keyword binding_pattern rendered_value
+    in
+    let render_local_binding ~keyword ~pattern ~parameters ~value ~source_pattern =
+      if List.length parameters > 0 then
+        render_local_parameterized_binding ~keyword ~pattern ~parameters ~value
+      else
+        match
+          source_parameterized_binding_pattern ~source:let_source ~source_start:let_source_start
+            ~pattern:source_pattern ~value
+        with
+        | Some binding_pattern ->
+            let rendered_bound_value = render_local_bound_value ~keyword value in
+            if doc_starts_with_text "function" rendered_bound_value then
+              Doc.concat
+                [
+                  Doc.indent indent (Doc.text (keyword ^ binding_pattern));
+                  Doc.space;
+                  Doc.equal;
+                  Doc.space;
+                  rendered_bound_value;
+                ]
+            else if String.starts_with ~prefix:"let rec " keyword then
+              (match value with
+              | Syn.Cst.Expression.If _ ->
+                  Doc.concat
+                    [
+                      Doc.indent indent (Doc.text (keyword ^ binding_pattern));
+                      Doc.space;
+                      Doc.equal;
+                      Doc.line;
+                      Doc.indent (indent + 2) rendered_bound_value;
+                    ]
+              | _ ->
+                  render_binding ~indent ~keyword binding_pattern rendered_bound_value)
+            else
+              render_binding ~indent ~keyword binding_pattern rendered_bound_value
+        | None ->
+            let rendered_bound_value = render_local_bound_value ~keyword value in
+            if doc_starts_with_text "function" rendered_bound_value then
+              Doc.concat
+                [
+                  Doc.indent indent (Doc.text (keyword ^ pattern));
+                  Doc.space;
+                  Doc.equal;
+                  Doc.space;
+                  rendered_bound_value;
+                ]
+            else if String.starts_with ~prefix:"let rec " keyword then
+              (match value with
+              | Syn.Cst.Expression.If _ ->
+                  Doc.concat
+                    [
+                      Doc.indent indent (Doc.text (keyword ^ pattern));
+                      Doc.space;
+                      Doc.equal;
+                      Doc.line;
+                      Doc.indent (indent + 2) rendered_bound_value;
+                    ]
+              | _ ->
+                  render_binding ~indent ~keyword pattern rendered_bound_value)
+            else
+              render_binding ~indent ~keyword pattern rendered_bound_value
     in
     let first_parameters, first_value = collect_fun_parameters [] bound_value in
     let first_binding =
       render_local_binding ~keyword:(if is_recursive then "let rec " else "let ")
         ~pattern:(source_of_pattern binding_pattern)
-        ~parameters:first_parameters
+        ~parameters:first_parameters ~source_pattern:binding_pattern
         ~value:first_value
     in
     let rendered_and_bindings =
@@ -946,7 +1083,7 @@ module Expression = struct
              let parameters, value = collect_fun_parameters binding.parameters binding.value in
              render_local_binding ~keyword:"and "
                ~pattern:(source_of_pattern binding.binding_pattern)
-               ~parameters
+               ~parameters ~source_pattern:binding.binding_pattern
                ~value)
     in
     let rendered_body = render ~indent body in
@@ -965,10 +1102,10 @@ module Expression = struct
     let bindings_are_multiline =
       Doc.is_multiline first_binding || List.exists Doc.is_multiline rendered_and_bindings
     in
-      if bindings_are_multiline then
-        Doc.concat [ bindings; Doc.line; Doc.text (indent_string indent ^ "in"); Doc.line; rendered_body ]
-      else
-        Doc.concat [ bindings; Doc.text " in"; Doc.line; rendered_body ]
+    if bindings_are_multiline then
+      Doc.concat [ bindings; Doc.line; Doc.text (indent_string indent ^ "in"); Doc.line; rendered_body ]
+    else
+      Doc.concat [ bindings; Doc.text " in"; Doc.line; rendered_body ]
 
   and render_explicit_fun_expression ?(prefix_columns = 0) ~indent parameters expression =
     let rec collect parameters = function
@@ -1335,8 +1472,6 @@ module Expression = struct
           (expression, args)
     in
     let render_apply_atom = function
-      | Syn.Cst.Expression.Parenthesized { inner = Syn.Cst.Expression.Apply apply; _ } ->
-          render_apply_expression ~indent:0 apply
       | Syn.Cst.Expression.Parenthesized { inner = Syn.Cst.Expression.Function function_; _ } ->
           Doc.concat
             [
@@ -1396,7 +1531,7 @@ module Expression = struct
              Doc.concat [ Doc.indent indent rendered; suffix ])
     |> Doc.join Doc.line
 
-  and render_parameterized_let_binding ~keyword ~pattern ~parameters ~value =
+  and render_parameterized_let_binding ?source ~keyword ~pattern ~parameters ~value =
     let rendered_parameters =
       parameters
       |> List.map (fun parameter -> normalize_inline_parameter_source (source_of_parameter parameter))
@@ -1412,6 +1547,14 @@ module Expression = struct
       let binding_pattern = pattern ^ " " ^ rendered_parameters in
       let rendered_value =
         match value with
+        | Syn.Cst.Expression.Function function_ ->
+            let value_source = expression_source ?source value in
+            if contains_substring value_source " when " then
+              Doc.text (Source.trim_trailing_layout_whitespace value_source)
+            else
+              render_function_expression ~indent:0 function_
+        | Syn.Cst.Expression.Let _ ->
+            render ~indent:2 value
         | Syn.Cst.Expression.If if_ ->
             render_if_expression ~indent:2 if_
         | Syn.Cst.Expression.Match match_ ->
@@ -1421,9 +1564,19 @@ module Expression = struct
         | _ ->
             render ~indent:0 value
       in
-      render_binding ~indent:0 ~keyword binding_pattern rendered_value
+      if doc_starts_with_text "function" rendered_value then
+        Doc.concat
+          [
+            Doc.text (keyword ^ binding_pattern);
+            Doc.space;
+            Doc.equal;
+            Doc.space;
+            rendered_value;
+          ]
+      else
+        render_binding ~indent:0 ~keyword binding_pattern rendered_value
 
-  let render_let_binding (binding : Syn.Cst.LetBinding.t) =
+  let render_let_binding ?source (binding : Syn.Cst.LetBinding.t) =
     if List.length binding.attributes > 0 then
       None
     else
@@ -1431,7 +1584,7 @@ module Expression = struct
       let pattern = source_of_pattern binding.binding_pattern in
       let rendered =
         if List.length binding.parameters > 0 then
-          render_parameterized_let_binding ~keyword ~pattern ~parameters:binding.parameters
+          render_parameterized_let_binding ?source ~keyword ~pattern ~parameters:binding.parameters
             ~value:binding.value
         else
           match binding.value with
@@ -1458,7 +1611,7 @@ module Expression = struct
                       value;
                     ])
           | Syn.Cst.Expression.Function function_ ->
-              let source = source_of_syntax_node (Syn.Cst.Expression.syntax_node binding.value) in
+              let source = expression_source ?source binding.value in
               if
                 List.exists (fun (case : Syn.Cst.match_case) -> Option.is_some case.guard)
                   function_.cases
@@ -2417,7 +2570,7 @@ module Structure = struct
           Some
             (dedent_multiline_block original_source |> indent_following_lines 2 |> String.trim)
         else (
-          match Expression.render_let_binding binding with
+          match Expression.render_let_binding ~source binding with
           | Some rendered ->
               Some (Printer.to_string rendered)
           | None ->
@@ -2722,7 +2875,7 @@ module Structure = struct
 
   let render_structure_item ~source ~allow_rewrite = function
     | Syn.Cst.StructureItem.LetBinding binding -> (
-        match Expression.render_let_binding binding with
+        match Expression.render_let_binding ~source binding with
         | Some rendered ->
             let original = Source.source_of_node_from_source source binding.syntax_node in
             let rendered_text = Printer.to_string rendered in
