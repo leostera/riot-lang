@@ -9,7 +9,7 @@
 3. Start with deterministic valid OCaml output before chasing aesthetic heuristics.
 4. Keep the public surface writer-oriented and `Std.IO`-friendly.
 5. Treat comments and trivia as part of the formatter design, not as a post-processing hack.
-6. Keep the active fixture manifest intentionally curated; use `tests/FIXTURES.md` and `tests/fixture_audit.py` before adding overlapping cases.
+6. Keep the active fixture manifest intentionally curated; prefer one category corpus per supported syntax band and add individual edge-case fixtures only after real code exposes a regression. Use `tests/FIXTURES.md` and `tests/fixture_audit.py` before adding overlapping cases.
 
 ## Validate
 

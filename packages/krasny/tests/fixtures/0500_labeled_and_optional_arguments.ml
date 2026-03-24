@@ -1,0 +1,24 @@
+let labeled_arg_simple = configure ~timeout:30
+let labeled_arg_shorthand = configure ~timeout
+let labeled_arg_multiple = configure ~timeout:30 ~retries:3
+let labeled_arg_with_unlabeled = connect address ~timeout:30 ~retries:3
+
+let labeled_param_simple =
+  fun ~timeout -> timeout
+
+let labeled_param_multiple =
+  fun ~timeout ~retries -> timeout + retries
+
+let optional_arg_explicit = configure ?timeout:(Some 30) ()
+let optional_arg_shorthand = configure ?timeout ()
+let optional_arg_none = configure ?timeout:None ()
+let optional_arg_some = configure ?timeout:(Some value) ()
+
+let optional_param =
+  fun ?timeout () -> timeout
+
+let optional_param_default =
+  fun ?(timeout = 30) () -> timeout
+
+let optional_param_multiple =
+  fun ?timeout ?(retries = 3) ~handler () -> handler retries timeout

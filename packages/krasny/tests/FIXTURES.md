@@ -8,10 +8,15 @@ heuristic we rely on.
 The larger `fixtures/` directory still contains historical and exploratory cases. Treat that wider corpus as
 raw material, not as the default harness.
 
+The active manifest now follows two rules:
+
+- keep one category corpus fixture per supported syntax band
+- defer individual edge-case fixtures until a real codebase example exposes a formatter regression
+
 ## Active Prefixes
 
-- `01xx`: atoms and literals
-  Examples: negative literals, chars, unit, identifier shapes.
+- `01xx`: atoms and basic expressions
+  Examples: literals, identifier shapes, paths, and simple application.
 
 - `02xx`: operators and parens
   Examples: infix normalization, precedence, explicit parens, comparison and boolean chains.
@@ -39,9 +44,10 @@ raw material, not as the default harness.
 
 ## Curation Rules
 
-- Keep one canonical fixture per formatting heuristic.
-- Add an extra fixture only when it exercises a genuinely different CST path or a different formatting
-  decision.
+- Keep one category corpus fixture per supported syntax band in the active manifest.
+- Inside a category corpus, keep one representative example per syntax group.
+- Add an individual edge-case fixture only after a real formatting failure from repo code or a smoke corpus run
+  shows that the category corpus is too broad to localize the bug.
 - If two fixtures are exact `source + expected` duplicates, keep the clearest name and drop the rest from the
   active manifest.
 - If two fixtures are near-duplicates, keep both only when the differing token changes the formatter behavior

@@ -1,0 +1,33 @@
+let int_negative = (-42)
+
+let int_hex = 0xff
+
+let float_negative = (-3.14)
+
+let string_literal = "hello"
+
+let char_literal = 'x'
+
+let bool_true = true
+
+let bool_false = false
+
+let unit_literal = ()
+
+let ident_simple = value
+
+let ident_underscore = _value
+
+let ident_prime = value'
+
+let ident_caps = Value
+
+let ident_digits = value2
+
+let path_expr = Module.Submodule.value
+
+let apply_simple = f x
+
+let apply_nested = f g x
+
+let apply_multiple = f x y z
