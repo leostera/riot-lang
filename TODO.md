@@ -27,6 +27,28 @@ This file is _yours_. Keep it up to date after every big change.
 ## krasny Checklist
 
 Rough guidelines for formatting decisions:
+* when writing tests prefer multiline strings (`{| ... |}`) which allow new linesover manually writing all the `\n` in them -- this makes it easier to visually scan the formatting change. So prefer tests like
+
+    ```ocaml
+    Test.case "breaks new lines between structure items" (fun () ->
+        let source = {|
+            let x = 1
+            let y = 2
+        |} in
+        let expected =  {|
+            let x = 1
+
+            let y = 2
+        |} in
+        let actual = 
+            parse_ml source 
+            |> Krasny.format 
+            |> Result.expect ~msg:"module structure should parse" 
+        in
+        Test.assert_equal ~expected ~actual;
+        Ok ())
+
+    ```
 * optimize for readability, newlines are cheap
 * ~100 columns is good, we have wider screens now
 * put comments _before_ the item they document! not after. double check the ast parses them well!
@@ -65,6 +87,7 @@ Rough guidelines for formatting decisions:
   - eighth slice landed for extending the curated expectation block with trivia-heavy variant-type and docstring fixtures that previously exercised unsupported-item preservation edges
   - ninth slice landed for refreshing the remaining trivia-literal expectation so the dedicated trivia/comment/docstring fixture filters are green again
   - tenth slice landed for sequence expressions by preserving dedented sequence blocks from the successful CST source and teaching multiline `fun`/`if`/`match` layouts to keep sequence-driven structure readable
+  - eleventh slice landed for splitting the monolithic formatter into `krasny_doc`, `krasny_source`, `krasny_expression`, and `krasny_structure` while keeping the public `Krasny.format` / `syntax_hash` / `write` façade stable
 - [x] Require a successful CST lift before formatting; do not pretty-print broken files
 - [x] Add a codebase smoke runner for `krasny format` over real workspace files
 - current green smoke corpus: `15` repo files across `krasny`, `syn`, `std`, `miniriot`, `http`, `suri`, and `tusk-fix`
