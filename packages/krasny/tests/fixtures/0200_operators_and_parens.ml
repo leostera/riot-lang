@@ -35,6 +35,7 @@ let and_chain = a && b && c
 let or_chain = a || b || c
 let mixed_logic = a && b || c
 let long_boolean_chain = a && b && c && d && e && f && g && h
+let huge_boolean_chain = flag01 && flag02 && flag03 && flag04 && flag05 && flag06 && flag07 && flag08 && flag09 && flag10 && flag11 && flag12 && flag13 && flag14 && flag15 && flag16 && flag17 && flag18 && flag19 && flag20 && flag21 && flag22 && flag23 && flag24 && flag25 && flag26 && flag27 && flag28 && flag29 && flag30 && flag31 && flag32 && flag33 && flag34 && flag35 && flag36 && flag37 && flag38 && flag39 && flag40 && flag41 && flag42 && flag43 && flag44 && flag45 && flag46 && flag47 && flag48 && flag49 && flag50 && flag51
 let long_mixed_logic = a || b && c || d && e || f && g
 let bitwise_and = mask land value
 let bitwise_or = left lor right
