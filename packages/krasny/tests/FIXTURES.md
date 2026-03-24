@@ -5,8 +5,8 @@ The active `krasny` harness is the manifest in
 That curated corpus should stay small enough to be readable and broad enough to cover every formatter
 heuristic we rely on.
 
-The larger `fixtures/` directory still contains historical and exploratory cases. Treat that wider corpus as
-raw material, not as the default harness.
+The `fixtures/` directory now contains only the active category corpora plus any future regression fixtures we
+add on purpose.
 
 The active manifest now follows two rules:
 
@@ -34,10 +34,10 @@ The active manifest now follows two rules:
   Reserved for the curated harness when we start pulling array/list/record update fixtures into it.
 
 - `07xx`: types and signatures
-  Reserved for curated type-expression and declaration fixtures.
+  Examples: aliases, records, variants, recursive types, and signature-shaped type declarations.
 
 - `08xx`: modules, first-class modules, objects, and methods
-  Reserved for curated module/object formatting fixtures.
+  Examples: modules, module types, inline signatures, functors, and top-level `include`/`open`.
 
 - `09xx`: trivia and mixed top-level preservation
   Examples: top-level comments/docstrings, mixed supported and unsupported items, type-trivia regressions.

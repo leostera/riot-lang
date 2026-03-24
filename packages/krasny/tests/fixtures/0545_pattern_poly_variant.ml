@@ -1,1 +1,0 @@
-let (`Tag x) = variant

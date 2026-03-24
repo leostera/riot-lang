@@ -1,3 +1,11 @@
+(* TODO(@leostera): we need to add more examples here for:
+   - [ ] defaults on `let foo ... = ..` functions
+   - [ ] pattern matching on named fields
+   - [ ] pattern matching and renaming captured fields/variables
+   - [ ] `~arg:name` patterns 
+   - [ ] `?(arg = foo as name)` patterns
+   *)
+
 let labeled_arg_simple = configure ~timeout:30
 let labeled_arg_shorthand = configure ~timeout
 let labeled_arg_multiple = configure ~timeout:30 ~retries:3

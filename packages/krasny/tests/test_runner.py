@@ -8,7 +8,7 @@ Every fixture in the manifest is validated in two ways:
 
 Usage:
   python3 test_runner.py
-  python3 test_runner.py --filter 0117
+  python3 test_runner.py --filter 0100
   python3 test_runner.py --refresh
 """
 

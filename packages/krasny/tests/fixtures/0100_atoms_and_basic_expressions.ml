@@ -1,3 +1,9 @@
+(* TODO(@leostera): we need to add more examples here for:
+  - [ ] Large int values in all bases (10, 8, 2, 16)
+  - [ ] Multiline strings
+  - [ ] Large floats
+  - [ ] Very large module paths (think from 2 to 100 module identifier paths parts)
+*)
 let int_negative = -42
 let int_hex = 0xff
 let float_negative = -3.14

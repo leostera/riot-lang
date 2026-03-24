@@ -1,1 +1,0 @@
-type status = Active

@@ -13,5 +13,11 @@
 # 05xx labeled and optional arguments
 0500_labeled_and_optional_arguments.ml
 
+# 07xx types and signatures
+0700_types_and_type_declarations.ml
+
+# 08xx modules, signatures, and functors
+0800_modules_signatures_and_functors.ml
+
 # 09xx trivia and mixed top-level preservation
 0900_trivia_and_mixed_top_level.ml

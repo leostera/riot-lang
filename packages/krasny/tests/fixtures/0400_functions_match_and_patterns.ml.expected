@@ -1,3 +1,12 @@
+(* TODO(@leostera): we need to add more examples here for:
+   - [ ] functions over records
+   - [ ] inline pattern matching on `fun .. -> ..`
+   - [ ] functions with large numbers of branches
+   - [ ] fun's with large numbers of params (from 3 to 30)
+   - [ ] functions that return functions
+   - [ ] `let foo .. = ..` syntax is also missing here
+*)
+
 let fun_nested = fun x y -> x + y
 
 let fun_body_match = fun value -> 

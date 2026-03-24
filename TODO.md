@@ -70,7 +70,7 @@ Rough guidelines for formatting decisions:
 - [x] Add fixture-level syntax-hash roundtrip checks to the Python harness
 - [x] Add a `krasny` expectation suite for formatted output, separate from the current lossless-token baseline
 - [x] Add a fixture taxonomy and duplicate-audit tool so the corpus can stay large without accumulating useless near-duplicate cases
-- bootstrap status: `krasny` builds, focused tests pass, and the curated fixture harness now consists of `6` category corpus fixtures across `01xx`, `02xx`, `03xx`, `04xx`, `05xx`, and `09xx`; each fixture checks both expected formatting and CST syntax-hash roundtrips, and edge-case fixtures are intentionally deferred until real workspace code exposes a formatter regression
+- bootstrap status: `krasny` builds, focused tests pass, and the curated fixture harness now consists of `8` category corpus fixtures across `01xx`, `02xx`, `03xx`, `04xx`, `05xx`, `07xx`, `08xx`, and `09xx`; each fixture checks both expected formatting and CST syntax-hash roundtrips, all superfluous historical fixtures have been deleted from the tree, and edge-case fixtures are intentionally deferred until real workspace code exposes a formatter regression
 
 ### Formatter Pipeline
 
@@ -92,6 +92,8 @@ Rough guidelines for formatting decisions:
   - thirteenth slice landed for categorizing the fixture corpus, grouping the active manifest by feature area, and adding a duplicate-audit script that reports both exact duplicates and normalized-Levenshtein near-duplicate families
   - fourteenth slice landed for renaming the curated active fixtures into category-based `01xx` to `09xx` ranges and dropping exact duplicate cases from the active manifest so the harness keeps a stronger signal:noise ratio while the broader backlog is audited separately
   - fifteenth slice landed for collapsing the active manifest into one category corpus per supported syntax band, so the harness now tracks syntax-group coverage directly and reserves individual regression fixtures for issues discovered while formatting real Riot code
+  - sixteenth slice landed for deleting the old superfluous fixture backlog entirely so the fixture tree now matches the active category-corpus strategy instead of carrying hundreds of duplicate historical cases
+  - seventeenth slice landed for restoring the missing `07xx` and `08xx` category corpora so types, signatures, modules, and functors remain part of the active harness instead of only living in deleted historical fixtures
 - [x] Require a successful CST lift before formatting; do not pretty-print broken files
 - [x] Simplify the Python harness to a single fixture corpus
 

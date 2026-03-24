@@ -1,3 +1,9 @@
+(* TODO(@leostera): we need some more examples here:
+  - [ ] Nested parens (from 2 to 20 nested parens)
+  - [ ] Large chains of conditionals
+  - [ ] Bitwise operations
+*)
+
 let paren_simple = value
 
 let paren_nested = value
@@ -32,7 +38,7 @@ let float_add = 1.0 +. 2.0
 
 let eq = a = b
 
-let neq = a <> b
+let neq = a != b
 
 let lt = a < b
 

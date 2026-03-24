@@ -18,7 +18,7 @@
 `timeout 900 python3 packages/krasny/tests/test_runner.py`
 
 Target individual fixture subsets when needed:
-`timeout 900 python3 packages/krasny/tests/test_runner.py --filter 0117`
+`timeout 900 python3 packages/krasny/tests/test_runner.py --filter 0100`
 `timeout 900 python3 packages/krasny/tests/test_runner.py --refresh`
 
 Audit fixture taxonomy and duplicate pressure when curating the corpus:

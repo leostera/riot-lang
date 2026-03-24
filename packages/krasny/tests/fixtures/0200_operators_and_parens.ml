@@ -1,3 +1,9 @@
+(* TODO(@leostera): we need some more examples here:
+  - [ ] Nested parens (from 2 to 20 nested parens)
+  - [ ] Large chains of conditionals
+  - [ ] Bitwise operations
+*)
+
 let paren_simple = (value)
 let paren_nested = ((value))
 let paren_string = ("hello")
@@ -15,7 +21,7 @@ let paren_precedence = (1 + 2) * 3
 let mixed_ops = 1 + 2 * 3 - 4 / 2
 let float_add = 1.0 +. 2.0
 let eq = a = b
-let neq = a <> b
+let neq = a != b
 let lt = a < b
 let gt = a > b
 let lte = a <= b
