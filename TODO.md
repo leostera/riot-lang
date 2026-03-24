@@ -69,7 +69,8 @@ Rough guidelines for formatting decisions:
 - [x] Add a focused round-trip syntax-hash invariant test for selected real codebase files
 - [x] Add fixture-level syntax-hash roundtrip checks to the Python harness
 - [x] Add a `krasny` expectation suite for formatted output, separate from the current lossless-token baseline
-- bootstrap status: `krasny` builds, focused tests pass, and the single fixture harness is `110/111` green in the current worktree (`mixed_supported_and_unsupported_non_let_multiline_trivia.ml` is locally edited and currently mismatched); every passing fixture also round-trips its CST syntax hash
+- [x] Add a fixture taxonomy and duplicate-audit tool so the corpus can stay large without accumulating useless near-duplicate cases
+- bootstrap status: `krasny` builds, focused tests pass, and the curated fixture harness is now grouped into `01xx` to `09xx` feature bands with exact duplicate active cases removed; the current worktree is `87/108` green because `21` expectations are being rewritten to newer formatting heuristics, and every passing fixture also round-trips its CST syntax hash
 
 ### Formatter Pipeline
 
@@ -88,6 +89,8 @@ Rough guidelines for formatting decisions:
   - tenth slice landed for sequence expressions by preserving dedented sequence blocks from the successful CST source and teaching multiline `fun`/`if`/`match` layouts to keep sequence-driven structure readable
   - eleventh slice landed for reworking the formatter into explicit `Doc`, `Printer`, `Lower`, and `Source` layers so the architecture matches the document model / printer / CST-to-Doc lowering split while keeping the public `Krasny.format` / `syntax_hash` / `write` façade stable
   - twelfth slice landed for simplifying the Python harness to a single fixture manifest where every fixture runs both the `.expected` formatting check and the CST syntax-hash roundtrip check
+  - thirteenth slice landed for categorizing the fixture corpus, grouping the active manifest by feature area, and adding a duplicate-audit script that reports both exact duplicates and normalized-Levenshtein near-duplicate families
+  - fourteenth slice landed for renaming the curated active fixtures into category-based `01xx` to `09xx` ranges and dropping exact duplicate cases from the active manifest so the harness keeps a stronger signal:noise ratio while the broader backlog is audited separately
 - [x] Require a successful CST lift before formatting; do not pretty-print broken files
 - [x] Simplify the Python harness to a single fixture corpus
 
