@@ -121,6 +121,18 @@ let trim_trailing_layout_whitespace text =
   in
   loop (String.length text)
 
+let split_trailing_layout_whitespace text =
+  let trimmed = trim_trailing_layout_whitespace text in
+  let trimmed_length = String.length trimmed in
+  let trailing_length = String.length text - trimmed_length in
+  let trailing =
+    if trailing_length <= 0 then
+      ""
+    else
+      String.sub text trimmed_length trailing_length
+  in
+  (trimmed, trailing)
+
 let source_of_syntax_node (node : Syn.Cst.syntax_node) =
   let buffer = IO.Buffer.create 1024 in
   Syn.Ceibo.Red.SyntaxNode.preorder node (function
@@ -688,38 +700,40 @@ let source_of_node_from_source source node =
 type rendered_structure_item = {
   doc : Doc.t;
   preserves_layout : bool;
+  trailing_layout : string;
 }
+
+let verbatim_structure_item_from_text text =
+  let body, trailing_layout = split_trailing_layout_whitespace text in
+  {
+    doc = Doc.text body;
+    preserves_layout = true;
+    trailing_layout;
+  }
 
 let verbatim_structure_item ~source item =
   let node = Syn.Cst.StructureItem.syntax_node item in
-  {
-    doc = Doc.text (source_of_node_from_source source node);
-    preserves_layout = true;
-  }
+  verbatim_structure_item_from_text (source_of_node_from_source source node)
 
 let render_structure_item ~source ~allow_rewrite = function
   | Syn.Cst.StructureItem.LetBinding binding ->
       if syntax_node_has_comment_like_trivia binding.syntax_node then
         Some
-          {
-            doc = Doc.text (source_of_node_from_source source binding.syntax_node);
-            preserves_layout = true;
-          }
+          (verbatim_structure_item_from_text
+             (source_of_node_from_source source binding.syntax_node))
       else (
         match render_let_binding binding with
         | Some rendered ->
             let original = source_of_node_from_source source binding.syntax_node in
             let rendered_text = Doc.to_string rendered in
             if allow_rewrite || rendered_text = original then
-              Some { doc = rendered; preserves_layout = false }
+              Some { doc = rendered; preserves_layout = false; trailing_layout = "" }
             else
-              Some { doc = Doc.text original; preserves_layout = true }
+              Some (verbatim_structure_item_from_text original)
         | None ->
             Some
-              {
-                doc = Doc.text (source_of_node_from_source source binding.syntax_node);
-                preserves_layout = true;
-              })
+              (verbatim_structure_item_from_text
+                 (source_of_node_from_source source binding.syntax_node)))
   | item ->
       Some (verbatim_structure_item ~source item)
 
@@ -737,9 +751,13 @@ let render_source_file ~source (source_file : Syn.Cst.source_file) =
                    true)
              items)
       in
-      let rec render_items acc previous_end previous_preserves_layout is_first_item = function
+      let rec render_items acc previous_end previous_preserves_layout previous_trailing_layout
+          is_first_item = function
         | [] ->
-            let trailing_source = source_between source ~start:previous_end ~end_:file_span.end_ in
+            let trailing_source =
+              previous_trailing_layout
+              ^ source_between source ~start:previous_end ~end_:file_span.end_
+            in
             let acc =
               if is_whitespace_only trailing_source then
                 acc
@@ -750,6 +768,8 @@ let render_source_file ~source (source_file : Syn.Cst.source_file) =
             let item_node = Syn.Cst.StructureItem.syntax_node item in
             let item_span = Syn.Ceibo.Red.SyntaxNode.span item_node in
             let interstitial =
+              previous_trailing_layout
+              ^
               source_between source ~start:previous_end ~end_:item_span.start
             in
             (match render_structure_item ~source ~allow_rewrite item with
@@ -788,12 +808,13 @@ let render_source_file ~source (source_file : Syn.Cst.source_file) =
                   (rendered.doc :: acc)
                   item_span.end_
                   rendered.preserves_layout
+                  rendered.trailing_layout
                   false
                   rest
             | None ->
                 None)
       in
-      render_items [] file_span.start true true items
+      render_items [] file_span.start true "" true items
   | Syn.Cst.Interface _ -> None
 
 let format (result : Syn.Parser.parse_result) =

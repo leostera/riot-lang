@@ -88,7 +88,22 @@ let tests =
         in
         Test.assert_equal
           ~expected:
-            "open Std\ntype t =\n  | A\n  | B\n(* keep with x *)\n\n\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+            "open Std\ntype t =\n  | A\n  | B\n(* keep with x *)\n\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+          ~actual;
+        Ok ());
+    Test.case "format preserves mixed-file docstrings before formatted lets"
+      (fun () ->
+        let source =
+          "open Std\ntype t =\n  | A\n  | B\n(** keep with x *)\nlet x = 1 + 2\nlet y = 3 + 4\n"
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"mixed implementation docstrings should stay near the next formatted item"
+        in
+        Test.assert_equal
+          ~expected:
+            "open Std\ntype t =\n  | A\n  | B\n(** keep with x *)\n\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
           ~actual;
         Ok ());
     Test.case "format inserts blank lines between top-level let bindings"
