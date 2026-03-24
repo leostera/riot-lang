@@ -81,9 +81,11 @@ type record = {
 
 type configuration_snapshot = {
   request_correlation_identifier_for_observability_pipeline : string;
-  decoded_response_payloads_grouped_by_endpoint_name : (string * (int * string option) list) list;
-  retry_schedule_overrides_by_http_status_code : (int * (float * bool) list) list option;
-  transform_domain_events_into_renderable_view_models : 
+  decoded_response_payloads_grouped_by_endpoint_name :
+    (string * (int * string option) list) list;
+  retry_schedule_overrides_by_http_status_code :
+    (int * (float * bool) list) list option;
+  transform_domain_events_into_renderable_view_models :
     (message list -> (string * int) list) option;
 }
 
@@ -180,7 +182,7 @@ type _ expr =
 type node =
   | File of string
   | Directory of string * forest
-  
+
 and forest = node list
 
 external unsafe_string_get : string -> int -> char = "%string_safe_get"
