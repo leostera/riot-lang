@@ -48,26 +48,32 @@ Rough guidelines for formatting decisions:
 - [x] Add a dedicated round-trip syntax-hash corpus runner over selected repo files
 - current green corpus: `11` repo files across `krasny`, `syn`, `std`, and `tusk-fix`
 - [x] Add a `krasny` expectation suite for formatted output, separate from the current lossless-token baseline
-- bootstrap status: `krasny` builds, focused tests pass, the format expectation runner is green on the first curated block (`90` fixtures), and the round-trip syntax-hash corpus is green on `11` selected repo files
+- bootstrap status: `krasny` builds, focused tests pass, the format expectation runner is green on the first curated block (`111` fixtures), and the round-trip syntax-hash corpus is green on `11` selected repo files
 
 ### Formatter Pipeline
 
 - [x] Replace the current lossless token renderer with a CST-driven `Doc` lowering pipeline
 - [x] Introduce the `Doc` / layout engine used by both `krasny format` and future synthetic fix rendering
-- [ ] Add comment and trivia attachment rules to the formatter pipeline
+- [x] Add comment and trivia attachment rules to the formatter pipeline
   - first slice landed for leading top-level comments/docstrings between supported implementation items
   - second slice landed for preserving verbatim unsupported top-level `let` bindings between formatted items
   - third slice landed for preserving verbatim unsupported top-level non-`let` items while only rewriting adjacent mixed-file `let` bindings when their binding text stays stable
   - fourth slice landed for splitting trailing layout from preserved top-level items so mixed-file comments/docstrings stay tighter to the next formatted `let`
   - fifth slice landed for peeling trailing standalone comment/docstring lines out of preserved top-level items so they can attach directly to the next formatted `let`
+  - sixth slice landed for peeling trailing multiline standalone comment/docstring blocks out of preserved top-level items so consecutive mixed-file trivia stays attached to the next formatted `let`
+  - seventh slice landed for clamping preserved-item source spans to source bounds so trivia-heavy unsupported items format instead of crashing
+  - eighth slice landed for extending the curated expectation block with trivia-heavy variant-type and docstring fixtures that previously exercised unsupported-item preservation edges
+  - ninth slice landed for refreshing the remaining trivia-literal expectation so the dedicated trivia/comment/docstring fixture filters are green again
+  - tenth slice landed for sequence expressions by preserving dedented sequence blocks from the successful CST source and teaching multiline `fun`/`if`/`match` layouts to keep sequence-driven structure readable
 - [x] Require a successful CST lift before formatting; do not pretty-print broken files
-- [ ] Add a codebase smoke runner for `krasny format` over real workspace files
+- [x] Add a codebase smoke runner for `krasny format` over real workspace files
+- current green smoke corpus: `15` repo files across `krasny`, `syn`, `std`, `miniriot`, `http`, `suri`, and `tusk-fix`
 
 ### Trivia
 
-- [ ] `WHITESPACE`
-- [ ] `COMMENT`
-- [ ] `DOCSTRING`
+- [x] `WHITESPACE`
+- [x] `COMMENT`
+- [x] `DOCSTRING`
 
 ### Literals
 
@@ -96,7 +102,7 @@ Rough guidelines for formatting decisions:
 - [x] `FUNCTION_EXPR`
 - [x] `LET_EXPR`
 - [x] `LET_REC_EXPR`
-- [ ] `SEQUENCE_EXPR`
+- [x] `SEQUENCE_EXPR`
 - [x] `PAREN_EXPR`
 - [ ] `TUPLE_EXPR`
 - [ ] `LIST_EXPR`

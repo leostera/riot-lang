@@ -106,6 +106,36 @@ let tests =
             "open Std\ntype t =\n  | A\n  | B\n(** keep with x *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
           ~actual;
         Ok ());
+    Test.case "format preserves mixed-file multiline comments before formatted lets"
+      (fun () ->
+        let source =
+          "open Std\ntype t =\n  | A\n  | B\n(* keep\n   with x *)\nlet x = 1 + 2\nlet y = 3 + 4\n"
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"mixed implementation comments should stay near the next formatted item"
+        in
+        Test.assert_equal
+          ~expected:
+            "open Std\ntype t =\n  | A\n  | B\n(* keep\n   with x *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+          ~actual;
+        Ok ());
+    Test.case "format preserves mixed-file multiline docstrings before formatted lets"
+      (fun () ->
+        let source =
+          "open Std\ntype t =\n  | A\n  | B\n(** keep\n    with x *)\nlet x = 1 + 2\nlet y = 3 + 4\n"
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"mixed implementation docstrings should stay near the next formatted item"
+        in
+        Test.assert_equal
+          ~expected:
+            "open Std\ntype t =\n  | A\n  | B\n(** keep\n    with x *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+          ~actual;
+        Ok ());
     Test.case "format inserts blank lines between top-level let bindings"
       (fun () ->
         let source = "let x = 1\nlet y = 2\n" in
@@ -156,6 +186,32 @@ let tests =
         Test.assert_equal
           ~expected:"let choose = if a && b then 1 else 0\n\nlet guard = if true then ()\n"
           ~actual;
+        Ok ());
+    Test.case "format preserves multiline sequence bindings" (fun () ->
+        let source = "let x =\n  print \"hello\";\n  42\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"sequence bindings should format"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
+    Test.case "format preserves multiline fun values with sequence bodies"
+      (fun () ->
+        let source = "let f =\n fun x ->\n  print x;\n  x + 1\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"fun values with sequence bodies should keep their layout"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
+    Test.case "format preserves multiline if branches containing sequences"
+      (fun () ->
+        let source = "let x =\n  if a then (\n    b;\n    c)\n  else d\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"if branches containing sequences should keep their layout"
+        in
+        Test.assert_equal ~expected:source ~actual;
         Ok ());
     Test.case "format preserves let rec and let-and expressions" (fun () ->
         let source =

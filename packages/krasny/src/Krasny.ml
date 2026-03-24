@@ -133,31 +133,61 @@ let split_trailing_layout_whitespace text =
   in
   (trimmed, trailing)
 
-let is_standalone_comment_line line =
-  let trimmed = String.trim line in
-  not (trimmed = "")
-  && String.starts_with ~prefix:"(*" trimmed
-  && String.ends_with ~suffix:"*)" trimmed
+let line_start_before text index =
+  let rec loop cursor =
+    if cursor <= 0 then
+      0
+    else if text.[cursor - 1] = '\n' then
+      cursor
+    else
+      loop (cursor - 1)
+  in
+  loop index
+
+let find_trailing_comment_start text end_ =
+  if end_ < 2 || text.[end_ - 2] != '*' || text.[end_ - 1] != ')' then
+    None
+  else
+    let rec loop index depth =
+      if index <= 0 then
+        None
+      else if text.[index - 1] = '(' && text.[index] = '*' then
+        if depth = 1 then
+          Some (index - 1)
+        else
+          loop (index - 2) (depth - 1)
+      else if text.[index - 1] = '*' && text.[index] = ')' then
+        loop (index - 2) (depth + 1)
+      else
+        loop (index - 1) depth
+    in
+    loop (end_ - 2) 1
 
 let split_trailing_comment_block text =
   let body, trailing_layout = split_trailing_layout_whitespace text in
-  let lines = String.split_on_char '\n' body in
-  let rec peel comments_rev = function
-    | line :: rest_rev when is_standalone_comment_line line ->
-        peel (line :: comments_rev) rest_rev
-    | rest_rev ->
-        (List.rev rest_rev, comments_rev)
+  let rec peel suffix_start =
+    let prefix = String.sub body 0 suffix_start |> trim_trailing_layout_whitespace in
+    let prefix_end = String.length prefix in
+    match find_trailing_comment_start prefix prefix_end with
+    | None ->
+        suffix_start
+    | Some comment_start ->
+        let line_start = line_start_before prefix comment_start in
+        let prefix_on_line =
+          String.sub prefix line_start (comment_start - line_start)
+        in
+        if String.trim prefix_on_line = "" then
+          peel line_start
+        else
+          suffix_start
   in
-  match List.rev lines with
-  | [] ->
-      (body, trailing_layout)
-  | reversed_lines ->
-      let body_lines, comment_lines = peel [] reversed_lines in
-      if comment_lines = [] || body_lines = [] then
-        (body, trailing_layout)
-      else
-        ( String.concat "\n" body_lines,
-          "\n" ^ String.concat "\n" comment_lines ^ trailing_layout )
+  let suffix_start = peel (String.length body) in
+  if suffix_start = 0 || suffix_start = String.length body then
+    (body, trailing_layout)
+  else
+    ( String.sub body 0 suffix_start,
+      String.sub body suffix_start (String.length body - suffix_start)
+      ^ trailing_layout )
 
 let source_of_syntax_node (node : Syn.Cst.syntax_node) =
   let buffer = IO.Buffer.create 1024 in
@@ -252,10 +282,27 @@ let syntax_node_has_comment_like_trivia (node : Syn.Cst.syntax_node) =
   !found
 
 let source_of_span source (span : Syn.Ceibo.Span.t) =
-  if span.end_ <= span.start then
+  let source_length = String.length source in
+  let start =
+    if span.start < 0 then
+      0
+    else if span.start > source_length then
+      source_length
+    else
+      span.start
+  in
+  let end_ =
+    if span.end_ < start then
+      start
+    else if span.end_ > source_length then
+      source_length
+    else
+      span.end_
+  in
+  if end_ <= start then
     ""
   else
-    String.sub source span.start (span.end_ - span.start)
+    String.sub source start (end_ - start)
 
 let source_between source ~start ~end_ =
   source_of_span source (Syn.Ceibo.Span.make ~start ~end_)
@@ -344,6 +391,51 @@ let indent_block spaces text =
   |> List.map (fun line -> if line = "" then line else indent_string spaces ^ line)
   |> String.concat "\n"
 
+let dedent_multiline_block text =
+  match String.split_on_char '\n' text with
+  | [] | [ _ ] ->
+      text
+  | first :: rest ->
+      let minimum_indent =
+        rest
+        |> List.filter (fun line -> not (String.trim line = ""))
+        |> List.fold_left
+             (fun minimum line ->
+               let rec count index =
+                 if index >= String.length line then
+                   index
+                 else
+                   match line.[index] with
+                   | ' ' ->
+                       count (index + 1)
+                   | _ ->
+                       index
+               in
+               let indentation = count 0 in
+               match minimum with
+               | None ->
+                   Some indentation
+               | Some current ->
+                   Some (Int.min current indentation))
+             None
+      in
+      (match minimum_indent with
+      | None ->
+          text
+      | Some indentation ->
+          first
+          :: List.map
+               (fun line ->
+                 if line = "" then
+                   line
+                 else if indentation <= 0 then
+                   line
+                 else
+                   let removable = Int.min indentation (String.length line) in
+                   String.sub line removable (String.length line - removable))
+               rest
+          |> String.concat "\n")
+
 let indent_first_line spaces text =
   match String.split_on_char '\n' text with
   | [] ->
@@ -413,11 +505,66 @@ let render_guarded_function_cases ~indent source =
 let source_of_or_pattern_alternatives { Syn.Cst.alternatives; _ } =
   alternatives |> List.map source_of_pattern
 
-let rec flatten_sequence_expression = function
-  | Syn.Cst.Expression.Sequence { left; right; _ } ->
-      flatten_sequence_expression left @ flatten_sequence_expression right
-  | expression ->
-      [ expression ]
+let rec expression_contains_sequence = function
+  | Syn.Cst.Expression.Sequence _ ->
+      true
+  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
+      expression_contains_sequence inner
+  | Syn.Cst.Expression.Let { bound_value; body; and_bindings; _ } ->
+      expression_contains_sequence bound_value
+      || expression_contains_sequence body
+      ||
+      List.exists
+        (fun (binding : Syn.Cst.let_binding) ->
+          expression_contains_sequence binding.value)
+        and_bindings
+  | Syn.Cst.Expression.Fun { body; _ } -> (
+      match body with
+      | Syn.Cst.Expression expression ->
+          expression_contains_sequence expression
+      | Syn.Cst.Cases _ ->
+          false)
+  | Syn.Cst.Expression.Function { cases; _ } ->
+      List.exists
+        (fun (case : Syn.Cst.match_case) ->
+          expression_contains_sequence case.body
+          ||
+          match case.guard with
+          | None ->
+              false
+          | Some guard ->
+              expression_contains_sequence guard)
+        cases
+  | Syn.Cst.Expression.Match { scrutinee; cases; _ } ->
+      expression_contains_sequence scrutinee
+      ||
+      List.exists
+        (fun (case : Syn.Cst.match_case) ->
+          expression_contains_sequence case.body
+          ||
+          match case.guard with
+          | None ->
+              false
+          | Some guard ->
+              expression_contains_sequence guard)
+        cases
+  | Syn.Cst.Expression.If { condition; then_branch; else_branch; _ } ->
+      expression_contains_sequence condition
+      || expression_contains_sequence then_branch
+      ||
+      (match else_branch with
+      | None ->
+          false
+      | Some else_branch ->
+          expression_contains_sequence else_branch)
+  | Syn.Cst.Expression.Prefix { operand; _ } ->
+      expression_contains_sequence operand
+  | Syn.Cst.Expression.Infix { left; right; _ } ->
+      expression_contains_sequence left || expression_contains_sequence right
+  | Syn.Cst.Expression.Path _
+  | Syn.Cst.Expression.Literal _
+  | _ ->
+      false
 
 let rec render_expression ~indent = function
   | Syn.Cst.Expression.Literal literal ->
@@ -426,6 +573,8 @@ let rec render_expression ~indent = function
       |> Doc.text
   | Syn.Cst.Expression.Path { path; _ } ->
       Doc.text (source_of_ident path)
+  | Syn.Cst.Expression.Parenthesized { syntax_node; inner = Sequence _; _ } ->
+      Doc.text (source_of_syntax_node syntax_node)
   | Syn.Cst.Expression.Parenthesized { inner = Function function_; _ } ->
       Doc.concat [ Doc.text "("; render_function_expression ~indent:0 function_; Doc.text ")" ]
   | Syn.Cst.Expression.Parenthesized { syntax_node; inner = Tuple _; _ } ->
@@ -460,7 +609,7 @@ and multiline_case_lines ~case_indent ~or_indent ~is_last_case (case : Syn.Cst.m
     | None -> Doc.empty
     | Some guard -> Doc.concat [ Doc.text " when "; render_expression ~indent:0 guard ]
   in
-  let body = render_expression ~indent:0 case.body in
+  let body = render_expression ~indent:(case_indent + 4) case.body in
   let trailing_space = if is_last_case then Doc.empty else Doc.text " " in
   match case.pattern with
   | Syn.Cst.Pattern.Or or_pattern -> (
@@ -475,26 +624,48 @@ and multiline_case_lines ~case_indent ~or_indent ~is_last_case (case : Syn.Cst.m
           in
           rendered_alternatives
           @ [
-              Doc.concat
-                [
-                  Doc.text (indent_string or_indent ^ "| " ^ last);
-                  guard;
-                  Doc.text " -> ";
-                  body;
-                  trailing_space;
-                ];
+              if Doc.is_multiline body then
+                Doc.concat
+                  [
+                    Doc.text (indent_string or_indent ^ "| " ^ last);
+                    guard;
+                    Doc.text " ->";
+                    Doc.line;
+                    body;
+                  ]
+              else
+                Doc.concat
+                  [
+                    Doc.text (indent_string or_indent ^ "| " ^ last);
+                    guard;
+                    Doc.text " -> ";
+                    body;
+                    trailing_space;
+                  ];
             ])
   | _ ->
-      [
-        Doc.concat
-          [
-            Doc.text (indent_string case_indent ^ "| " ^ source_of_pattern case.pattern);
-            guard;
-            Doc.text " -> ";
-            body;
-            trailing_space;
-          ];
-      ]
+      if Doc.is_multiline body then
+        [
+          Doc.concat
+            [
+              Doc.text (indent_string case_indent ^ "| " ^ source_of_pattern case.pattern);
+              guard;
+              Doc.text " ->";
+              Doc.line;
+              body;
+            ];
+        ]
+      else
+        [
+          Doc.concat
+            [
+              Doc.text (indent_string case_indent ^ "| " ^ source_of_pattern case.pattern);
+              guard;
+              Doc.text " -> ";
+              body;
+              trailing_space;
+            ];
+        ]
 
 and multiline_cases ~case_indent ~or_indent cases =
   cases
@@ -560,9 +731,22 @@ and render_fun_expression ~indent
             render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:true match_;
           ]
     | Syn.Cst.Expression expression ->
-        let rendered_body = render_expression ~indent:(indent + 2) expression in
+        let rendered_body =
+          match expression with
+          | Syn.Cst.Expression.Sequence _ ->
+              render_expression ~indent:(indent + 1) expression
+          | _ ->
+              render_expression ~indent:(indent + 2) expression
+        in
         if Doc.is_multiline rendered_body then
-          Doc.concat [ Doc.text ("fun " ^ rendered_parameters ^ " -> "); Doc.line; rendered_body ]
+          let header =
+            match expression with
+            | Syn.Cst.Expression.Sequence _ ->
+                Doc.text (indent_string indent ^ "fun " ^ rendered_parameters ^ " ->")
+            | _ ->
+                Doc.text ("fun " ^ rendered_parameters ^ " -> ")
+          in
+          Doc.concat [ header; Doc.line; rendered_body ]
         else Doc.concat [ Doc.text ("fun " ^ rendered_parameters ^ " -> "); rendered_body ]
     | Syn.Cst.Cases case_body ->
         Doc.text (source_of_syntax_node case_body.syntax_node)
@@ -639,23 +823,47 @@ and render_match_expression ~indent ~keyword_trailing_space
       (multiline_cases ~case_indent:indent ~or_indent:indent cases |> Doc.join Doc.line);
     ]
 
-and render_if_expression ~indent:_ ({ condition; then_branch; else_branch; _ } : Syn.Cst.if_expression) =
+and render_if_expression ~indent ({ condition; then_branch; else_branch; _ } : Syn.Cst.if_expression) =
   let rendered_condition = render_expression ~indent:0 condition in
-  let rendered_then = render_expression ~indent:0 then_branch in
+  let rendered_then = render_expression ~indent then_branch in
   match else_branch with
   | None ->
       Doc.concat [ Doc.text "if "; rendered_condition; Doc.text " then "; rendered_then ]
   | Some else_branch ->
-      let rendered_else = render_expression ~indent:0 else_branch in
-      Doc.concat
-        [
-          Doc.text "if ";
-          rendered_condition;
-          Doc.text " then ";
-          rendered_then;
-          Doc.text " else ";
-          rendered_else;
-        ]
+      let rendered_else = render_expression ~indent else_branch in
+      if Doc.is_multiline rendered_then then
+        Doc.concat
+          [
+            Doc.text (indent_string indent ^ "if ");
+            rendered_condition;
+            Doc.text " then ";
+            rendered_then;
+            Doc.line;
+            Doc.text (indent_string indent ^ "else ");
+            rendered_else;
+          ]
+      else if Doc.is_multiline rendered_else then
+        let rendered_else = render_expression ~indent:(indent + 2) else_branch in
+        Doc.concat
+          [
+            Doc.text (indent_string indent ^ "if ");
+            rendered_condition;
+            Doc.text " then ";
+            rendered_then;
+            Doc.text " else";
+            Doc.line;
+            rendered_else;
+          ]
+      else
+        Doc.concat
+          [
+            Doc.text "if ";
+            rendered_condition;
+            Doc.text " then ";
+            rendered_then;
+            Doc.text " else ";
+            rendered_else;
+          ]
 
 and render_apply_expression ~indent
     ({ syntax_node; callee; argument; _ } : Syn.Cst.apply_expression) =
@@ -676,17 +884,8 @@ and render_apply_expression ~indent
   | Syn.Cst.Labeled _ | Syn.Cst.Optional _ ->
       Doc.text (source_of_syntax_node syntax_node)
 
-and render_sequence_expression ~indent ({ left; right; _ } : Syn.Cst.sequence_expression) =
-  let expressions =
-    flatten_sequence_expression (Syn.Cst.Expression.Sequence { left; right; attributes = []; syntax_node = Syn.Cst.Expression.syntax_node left })
-  in
-  expressions
-  |> List.mapi (fun index expression ->
-         let rendered = render_expression ~indent expression in
-         if index < List.length expressions - 1 then
-           Doc.concat [ rendered; Doc.text ";"; Doc.line ]
-         else rendered)
-  |> Doc.concat
+and render_sequence_expression ~indent ({ syntax_node; _ } : Syn.Cst.sequence_expression) =
+  source_of_syntax_node syntax_node |> dedent_multiline_block |> indent_block indent |> Doc.text
 
 let render_let_binding (binding : Syn.Cst.LetBinding.t) =
   if List.length binding.attributes > 0 || List.length binding.parameters > 0 then
@@ -713,6 +912,38 @@ let render_let_binding (binding : Syn.Cst.LetBinding.t) =
       | Syn.Cst.Expression.Let _ ->
           let value = render_expression ~indent:2 binding.value in
           render_binding ~indent:0 ~keyword pattern value
+      | Syn.Cst.Expression.Fun _ ->
+          let source =
+            source_of_syntax_node (Syn.Cst.Expression.syntax_node binding.value)
+          in
+          if contains_substring source "\n" && expression_contains_sequence binding.value then
+            let value = render_expression ~indent:1 binding.value in
+            render_binding ~indent:0 ~keyword pattern value
+          else
+            let value = render_expression ~indent:0 binding.value in
+            Doc.concat [ Doc.text (keyword ^ pattern ^ " = "); value ]
+      | Syn.Cst.Expression.If if_ ->
+          let source =
+            source_of_syntax_node (Syn.Cst.Expression.syntax_node binding.value)
+          in
+          if contains_substring source "\n" && expression_contains_sequence binding.value then
+            let value = render_if_expression ~indent:2 if_ in
+            render_binding ~indent:0 ~keyword pattern value
+          else
+            let value = render_expression ~indent:0 binding.value in
+            Doc.concat [ Doc.text (keyword ^ pattern ^ " = "); value ]
+      | Syn.Cst.Expression.Match match_ ->
+          let source =
+            source_of_syntax_node (Syn.Cst.Expression.syntax_node binding.value)
+          in
+          if contains_substring source "\n" && expression_contains_sequence binding.value then
+            let value =
+              render_match_expression ~indent:2 ~keyword_trailing_space:false match_
+            in
+            render_binding ~indent:0 ~keyword pattern value
+          else
+            let value = render_expression ~indent:0 binding.value in
+            Doc.concat [ Doc.text (keyword ^ pattern ^ " = "); value ]
       | Syn.Cst.Expression.Sequence sequence ->
           let value = render_sequence_expression ~indent:2 sequence in
           render_binding ~indent:0 ~keyword pattern value

@@ -17,3 +17,4 @@
 `timeout 900 python3 packages/krasny/tests/test_runner.py`
 `timeout 900 python3 packages/krasny/tests/format_runner.py`
 `timeout 900 python3 packages/krasny/tests/roundtrip_runner.py`
+`timeout 900 python3 packages/krasny/tests/smoke_runner.py`
