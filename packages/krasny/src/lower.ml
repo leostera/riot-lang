@@ -798,6 +798,8 @@ module Expression = struct
         |> Doc.text
     | Syn.Cst.Expression.Path { path; _ } ->
         Doc.text (source_of_ident path)
+    | Syn.Cst.Expression.Constructor constructor ->
+        render_constructor_expression ~indent constructor
     | Syn.Cst.Expression.Tuple { elements; _ } ->
         elements
         |> List.map (render ~indent:0)
@@ -880,7 +882,42 @@ module Expression = struct
            Doc.indent 2 (Doc.concat [ Doc.break ~flat:"" (); content ]);
            Doc.break ~flat:"" ();
            Doc.rparen;
-         ])
+             ])
+
+  and render_constructor_expression ~indent
+      ({ constructor_path; payload; _ } : Syn.Cst.constructor_expression) =
+    let rendered_constructor = Doc.text (Source.source_of_ident constructor_path) in
+    match payload with
+    | None ->
+        rendered_constructor
+    | Some (Syn.Cst.Expression.Parenthesized { inner = Syn.Cst.Expression.Match match_; _ }) ->
+        Doc.concat
+          [
+            rendered_constructor;
+            Doc.space;
+            Doc.lparen;
+            render_match_expression ~indent:0 ~keyword_trailing_space:true match_;
+            Doc.rparen;
+          ]
+    | Some payload ->
+        let rendered_payload = render ~indent:0 payload in
+        if Doc.is_multiline rendered_payload then
+          if doc_starts_with_text "(" rendered_payload then
+            Doc.concat
+              [
+                rendered_constructor;
+                Doc.space;
+                indent_after_first_fragment (indent + 2) rendered_payload;
+              ]
+          else
+            Doc.concat
+              [
+                rendered_constructor;
+                Doc.line;
+                Doc.indent (indent + 2) rendered_payload;
+              ]
+        else
+          Doc.concat [ rendered_constructor; Doc.space; rendered_payload ]
 
   and render_bracketed_sequence_expression ~left ~right ~separator elements =
     let rendered_elements = elements |> List.map (render ~indent:0) in
@@ -1482,6 +1519,7 @@ module Expression = struct
       ({ syntax_node; scrutinee; cases; _ } : Syn.Cst.match_expression) =
     let _ = keyword_trailing_space in
     let source = source_of_syntax_node syntax_node in
+    let case_indent = if indent = 0 then 2 else indent in
     if Source.syntax_node_has_comment_like_trivia syntax_node then
       Doc.text (indent_first_line indent source)
     else if contains_substring source " when " then
@@ -1494,7 +1532,7 @@ module Expression = struct
           Doc.space;
           Doc.text "with";
           Doc.line;
-          (multiline_cases ~case_indent:indent ~or_indent:indent cases |> Doc.join Doc.line);
+          (multiline_cases ~case_indent ~or_indent:case_indent cases |> Doc.join Doc.line);
         ]
 
   and render_if_expression ?(force_multiline = false) ~indent

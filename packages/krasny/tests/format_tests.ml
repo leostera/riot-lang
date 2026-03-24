@@ -243,6 +243,45 @@ let y = 3 + 4
         in
         Test.assert_equal ~expected:"let c = 'a'\n\nlet u = ()\n\nlet x = y\n" ~actual;
         Ok ());
+    Test.case "format keeps constructor expressions stable" (fun () ->
+        let source =
+          {|let some = Some 42
+let none = None
+let err = Result.Error message
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"constructor expressions should format"
+        in
+        let expected =
+          {|let some = Some 42
+
+let none = None
+
+let err = Result.Error message
+|}
+        in
+        Test.assert_equal ~expected ~actual;
+        Ok ());
+    Test.case "format keeps multiline constructor payloads attached" (fun () ->
+        let source =
+          {|let outcome = Ok (match value with Some x -> x | None -> 0)
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"constructor payloads should stay attached to their head"
+        in
+        let expected =
+          {|let outcome =
+Ok (match value with
+  | Some x -> x
+  | None -> 0)
+|}
+        in
+        Test.assert_equal ~expected ~actual;
+        Ok ());
     Test.case "format keeps tuple expressions stable" (fun () ->
         let source = "let pair = 1, 2\n" in
         let actual =
