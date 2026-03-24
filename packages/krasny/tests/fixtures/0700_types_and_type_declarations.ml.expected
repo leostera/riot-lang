@@ -6,11 +6,13 @@
    - [x] large number of constructors for variants (mixed with GADT fields too)
    - [x] inline records for variants
    - [x] large number of fields in a record (think ~5/25/100 fields)
+   - [x] records with very long field names and complex field types
    - [x] abstract types
    - [x] records with local universal quantification
    - [x] polymorphic variants (closed, open (> and <), extensions)
    - [x] examples of function types with normal, named, and optional parameters
    - [x] recursive types (self-recursion and `type-and` definitions)
+   - [x] external definitions
 
   *)
 
@@ -30,6 +32,16 @@ type huge_record = {
   city : string;
   country : string;
   postal_code : string;
+}
+
+type configuration_snapshot = {
+  request_correlation_identifier_for_observability_pipeline : string;
+  decoded_response_payloads_grouped_by_endpoint_name :
+    (string * (int * string option) list) list;
+  retry_schedule_overrides_by_http_status_code :
+    (int * (float * bool) list) list option;
+  transform_domain_events_into_renderable_view_models :
+    (message list -> (string * int) list) option;
 }
 
 type color =
@@ -92,3 +104,7 @@ type node =
   | File of string
   | Directory of string * forest
 and forest = node list
+
+external unsafe_string_get : string -> int -> char = "%string_safe_get"
+
+external int64_of_nativeint : nativeint -> int64 = "%nativeint_to_int64"
