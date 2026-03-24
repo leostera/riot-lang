@@ -62,6 +62,7 @@ Rough guidelines for formatting decisions:
   same for match arms, put them one in each line
 * remove parenthesis wherever possible
 * and format large numbers with _s by default: 1000 -> 1_000, 10022 -> 10_022 
+- current fixture corpus status: `5/8` green (`0100`, `0200`, `0500`, `0700`, `0800`); remaining red corpora are `0300`, `0400`, and `0900`
 
 ### Trivia
 

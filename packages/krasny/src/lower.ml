@@ -17,6 +17,61 @@ module Expression = struct
   let contains_substring = Source.contains_substring
   let fresh_match_parameter_name = Source.fresh_match_parameter_name
 
+  let strip_digit_separators text =
+    let buffer = IO.Buffer.create (String.length text) in
+    let rec loop index =
+      if index >= String.length text then
+        IO.Buffer.contents buffer
+      else (
+        let char = text.[index] in
+        if not (char = '_') then
+          IO.Buffer.add_char buffer char;
+        loop (index + 1))
+    in
+    loop 0
+
+  let group_digits_from_left ~group_size digits =
+    let digits = strip_digit_separators digits in
+    let digits_length = String.length digits in
+    if digits_length <= group_size then
+      digits
+    else
+      let buffer = IO.Buffer.create (digits_length + (digits_length / group_size)) in
+      let rec loop index =
+        if index >= digits_length then
+          IO.Buffer.contents buffer
+        else (
+          if index > 0 then
+            IO.Buffer.add_char buffer '_';
+          let chunk_size = Int.min group_size (digits_length - index) in
+          IO.Buffer.add_string buffer (String.sub digits index chunk_size);
+          loop (index + chunk_size))
+      in
+      loop 0
+
+  let group_digits_from_right ~group_size digits =
+    let digits = strip_digit_separators digits in
+    let digits_length = String.length digits in
+    if digits_length <= group_size then
+      digits
+    else
+      let first_group_size =
+        match digits_length mod group_size with
+        | 0 -> group_size
+        | remainder -> remainder
+      in
+      let buffer = IO.Buffer.create (digits_length + (digits_length / group_size)) in
+      IO.Buffer.add_string buffer (String.sub digits 0 first_group_size);
+      let rec loop index =
+        if index >= digits_length then
+          IO.Buffer.contents buffer
+        else (
+          IO.Buffer.add_char buffer '_';
+          IO.Buffer.add_string buffer (String.sub digits index group_size);
+          loop (index + group_size))
+      in
+      loop first_group_size
+
   let render_int (literal : Syn.Cst.integer_constant) =
     let prefix =
       match literal.base with
@@ -27,8 +82,14 @@ module Expression = struct
     in
     let digits =
       match literal.base with
-      | Syn.Cst.Hexadecimal -> String.lowercase_ascii literal.digits
-      | Syn.Cst.Decimal | Syn.Cst.Octal | Syn.Cst.Binary -> literal.digits
+      | Syn.Cst.Decimal ->
+          group_digits_from_right ~group_size:3 literal.digits
+      | Syn.Cst.Octal ->
+          group_digits_from_right ~group_size:3 literal.digits
+      | Syn.Cst.Binary ->
+          group_digits_from_right ~group_size:4 literal.digits
+      | Syn.Cst.Hexadecimal ->
+          literal.digits |> String.lowercase_ascii |> group_digits_from_right ~group_size:4
     in
     let suffix = Option.unwrap_or literal.suffix ~default:"" in
     prefix ^ digits ^ suffix
@@ -47,7 +108,9 @@ module Expression = struct
           exponent.marker ^ sign ^ exponent.digits
     in
     let suffix = Option.unwrap_or literal.suffix ~default:"" in
-    literal.integral_digits ^ "." ^ literal.fractional_digits ^ exponent ^ suffix
+    let integral_digits = group_digits_from_right ~group_size:3 literal.integral_digits in
+    let fractional_digits = group_digits_from_left ~group_size:3 literal.fractional_digits in
+    integral_digits ^ "." ^ fractional_digits ^ exponent ^ suffix
 
   let render_literal = function
     | Syn.Cst.Literal.Int literal -> Some (render_int literal)

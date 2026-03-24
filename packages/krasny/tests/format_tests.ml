@@ -4,9 +4,9 @@ let sample_ml = Path.v "sample.ml"
 let workspace_files =
   [
     Path.v "packages/krasny/src/main.ml";
-    Path.v "packages/krasny/src/Krasny.ml";
+    Path.v "packages/krasny/src/solver.ml";
     Path.v "packages/syn/src/syntax_kind.ml";
-    Path.v "packages/syn/src/syntax_kind.mli";
+    Path.v "packages/syn/src/token_cursor.mli";
   ]
 
 let parse_ml source = Syn.parse ~filename:sample_ml source
