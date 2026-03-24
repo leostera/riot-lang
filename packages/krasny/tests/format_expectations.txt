@@ -49,7 +49,16 @@
 0078_if_function_call.ml
 0079_if_string_result.ml
 0080_if_bool_result.ml
+0081_let_in_simple.ml
+0082_let_in_two_bindings.ml
+0083_let_in_use_outer.ml
+0084_let_in_nested.ml
+0085_let_in_if.ml
+0086_let_in_function.ml
+0087_let_in_complex_expr.ml
+0088_let_rec_in.ml
 0089_let_in_multiline.ml
+0090_let_and_bindings.ml
 0106_fun_nested.ml
 0108_fun_body_match.ml
 0111_function_one_case.ml

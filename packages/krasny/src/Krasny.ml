@@ -155,6 +155,43 @@ let indent_block spaces text =
   |> List.map (fun line -> if line = "" then line else indent_string spaces ^ line)
   |> String.concat "\n"
 
+let indent_first_line spaces text =
+  match String.split_on_char '\n' text with
+  | [] ->
+      text
+  | first :: rest ->
+      String.concat "\n" ((indent_string spaces ^ first) :: rest)
+
+let collapse_horizontal_spaces text =
+  let buffer = IO.Buffer.create (String.length text) in
+  let rec loop index previous_was_space =
+    if index >= String.length text then
+      ()
+    else
+      match text.[index] with
+      | ' ' | '\t' ->
+          if not previous_was_space then
+            IO.Buffer.add_char buffer ' ';
+          loop (index + 1) true
+      | ch ->
+          IO.Buffer.add_char buffer ch;
+          loop (index + 1) false
+  in
+  loop 0 false;
+  IO.Buffer.contents buffer
+
+let normalize_recursive_let_source text =
+  match String.index_opt text '=' with
+  | None ->
+      text
+  | Some equals_index ->
+      let lhs = String.sub text 0 equals_index |> collapse_horizontal_spaces |> String.trim in
+      let rhs =
+        String.sub text (equals_index + 1) (String.length text - equals_index - 1)
+        |> String.trim
+      in
+      lhs ^ " = " ^ rhs
+
 let source_of_or_pattern_alternatives { Syn.Cst.alternatives; _ } =
   alternatives |> List.map source_of_pattern
 
@@ -224,14 +261,17 @@ and multiline_cases ~case_indent ~or_indent cases =
 and render_let_expression ~indent
     ({ syntax_node; binding_pattern; bound_value; and_bindings; body; is_recursive; _ } :
       Syn.Cst.let_expression) =
-  if List.length and_bindings > 0 then
-    source_of_syntax_node syntax_node
+  if is_recursive then
+    indent_first_line indent
+      (source_of_syntax_node syntax_node |> normalize_recursive_let_source)
+  else if List.length and_bindings > 0 then
+    indent_first_line indent (source_of_syntax_node syntax_node)
   else
+    let rendered_bound_value = render_expression ~indent:(indent + 2) bound_value in
     let current =
-      render_binding ~indent
-        ~keyword:(if is_recursive then "let rec " else "let ")
+      render_binding ~indent ~keyword:"let "
         (source_of_pattern binding_pattern)
-        (render_expression ~indent:(indent + 2) bound_value)
+        rendered_bound_value
     in
     let rendered_body = render_expression ~indent body in
     let rendered_body =
@@ -239,7 +279,9 @@ and render_let_expression ~indent
         rendered_body
       else indent_string indent ^ rendered_body
     in
-    current ^ " in\n" ^ rendered_body
+    if String.contains rendered_bound_value "\n" then
+      current ^ "\n" ^ indent_string indent ^ "in\n" ^ rendered_body
+    else current ^ " in\n" ^ rendered_body
 
 and render_fun_expression ~indent
     ({ syntax_node; parameters; body; attributes } : Syn.Cst.fun_expression) =

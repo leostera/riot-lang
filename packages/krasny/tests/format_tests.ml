@@ -95,6 +95,19 @@ let tests =
           ~expected:"let choose = if a && b then 1 else 0\n\nlet guard = if true then ()\n"
           ~actual;
         Ok ());
+    Test.case "format preserves let rec and let-and expressions" (fun () ->
+        let source =
+          "let rec_case =\n  let rec f n = if n = 0 then 1 else n * f (n - 1) in\n  f 5\nlet and_case =\n  let a = 1 and b = 2 in\n  a + b\n"
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"let variants should format"
+        in
+        Test.assert_equal
+          ~expected:
+            "let rec_case =\n  let rec f n = if n = 0 then 1 else n * f (n - 1) in\n  f 5\n\nlet and_case =\n  let a = 1 and b = 2 in\n  a + b\n"
+          ~actual;
+        Ok ());
     Test.case "format expands nested let-in bindings across lines" (fun () ->
         let source = "let x =\n  let y = 1 in let z = 2 in y + z\n" in
         let actual =
