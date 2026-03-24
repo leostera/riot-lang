@@ -272,6 +272,35 @@ let y = 3 + 4
         in
         Test.assert_equal ~expected ~actual;
         Ok ());
+    Test.case "format keeps list expressions stable" (fun () ->
+        let source = "let xs = [1; 2; 3]\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"list expressions should format"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
+    Test.case "format breaks long list expressions" (fun () ->
+        let source =
+          {|let xs = [first_very_long_component_name; second_very_long_component_name; third_very_long_component_name; fourth_very_long_component_name; fifth_very_long_component_name]
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"long list expressions should wrap at the solver width"
+        in
+        let expected =
+          {|let xs = [
+  first_very_long_component_name;
+  second_very_long_component_name;
+  third_very_long_component_name;
+  fourth_very_long_component_name;
+  fifth_very_long_component_name
+]
+|}
+        in
+        Test.assert_equal ~expected ~actual;
+        Ok ());
     Test.case "format keeps infix expressions stable" (fun () ->
         let source =
           "let arithmetic = 1 + (2 * 3)\nlet comparisons = 1 < 2 && 2 < 3\nlet logic = (true && false) || true\n"

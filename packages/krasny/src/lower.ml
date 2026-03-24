@@ -723,6 +723,9 @@ module Expression = struct
         elements
         |> List.map (render ~indent:0)
         |> Doc.join (Doc.concat [ Doc.comma; Doc.space ])
+    | Syn.Cst.Expression.List { elements; _ } ->
+        render_bracketed_sequence_expression ~left:Doc.lbracket ~right:Doc.rbracket
+          ~separator:(Doc.concat [ Doc.semi; Doc.break () ]) elements
     | Syn.Cst.Expression.PolyVariant { syntax_node; _ } ->
         Doc.text (String.trim (source_of_syntax_node syntax_node))
     | Syn.Cst.Expression.Parenthesized { syntax_node; inner = Sequence sequence; _ } ->
@@ -796,6 +799,22 @@ module Expression = struct
            Doc.break ~flat:"" ();
            Doc.rparen;
          ])
+
+  and render_bracketed_sequence_expression ~left ~right ~separator elements =
+    let rendered_elements = elements |> List.map (render ~indent:0) in
+    match rendered_elements with
+    | [] ->
+        Doc.concat [ left; right ]
+    | _ ->
+        let content = Doc.join separator rendered_elements in
+        Doc.group
+          (Doc.concat
+             [
+               left;
+               Doc.indent 2 (Doc.concat [ Doc.break ~flat:"" (); content ]);
+               Doc.break ~flat:"" ();
+               right;
+             ])
 
   and multiline_case_lines ~case_indent ~or_indent ~is_last_case (case : Syn.Cst.match_case) =
     let guard =
