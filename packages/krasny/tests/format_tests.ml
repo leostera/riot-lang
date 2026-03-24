@@ -108,6 +108,19 @@ let tests =
             "let rec_case =\n  let rec f n = if n = 0 then 1 else n * f (n - 1) in\n  f 5\n\nlet and_case =\n  let a = 1 and b = 2 in\n  a + b\n"
           ~actual;
         Ok ());
+    Test.case "format keeps labeled and optional forms stable" (fun () ->
+        let source =
+          "let label_arg = f ~y\nlet optional_arg = f ?y\nlet labeled_fun = fun ~y -> y + 1\nlet optional_fun = fun ?(y = 0) -> y + 1\nlet optional_match = fun ?y -> match y with Some v -> v | None -> 0\nlet optional_tuple = fun ?y ?z -> (y, z)\n"
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"labeled and optional forms should format"
+        in
+        Test.assert_equal
+          ~expected:
+            "let label_arg = f ~y\n\nlet optional_arg = f ?y\n\nlet labeled_fun = fun ~y -> y + 1\n\nlet optional_fun = fun ?(y = 0) -> y + 1\n\nlet optional_match = fun ?y -> match y with Some v -> v | None -> 0\n\nlet optional_tuple = fun ?y ?z -> (y, z)\n"
+          ~actual;
+        Ok ());
     Test.case "format expands nested let-in bindings across lines" (fun () ->
         let source = "let x =\n  let y = 1 in let z = 2 in y + z\n" in
         let actual =

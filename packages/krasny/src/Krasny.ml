@@ -4,6 +4,19 @@ open Std.Collections
 type format_error =
   | Cannot_build_cst of Syn.build_cst_error
 
+let trim_trailing_newlines text =
+  let rec loop index =
+    if index <= 0 then
+      ""
+    else
+      match text.[index - 1] with
+      | '\n' | '\r' ->
+          loop (index - 1)
+      | _ ->
+          String.sub text 0 index
+  in
+  loop (String.length text)
+
 let source_of_syntax_node (node : Syn.Cst.syntax_node) =
   let buffer = IO.Buffer.create 1024 in
   Syn.Ceibo.Red.SyntaxNode.preorder node (function
@@ -11,7 +24,7 @@ let source_of_syntax_node (node : Syn.Cst.syntax_node) =
         IO.Buffer.add_string buffer (Syn.Ceibo.Red.SyntaxToken.text token)
     | Syn.Ceibo.Red.Node _ ->
         ());
-  IO.Buffer.contents buffer
+  IO.Buffer.contents buffer |> trim_trailing_newlines
 
 let source_of_token token = Syn.Cst.Token.text token
 let source_of_ident ident = Syn.Cst.Ident.segments ident |> List.map source_of_token |> String.concat "."
@@ -159,6 +172,10 @@ let render_fun_parameter_pattern pattern =
     "(" ^ rendered ^ ")"
   else rendered
 
+let parameter_is_labeled_or_optional parameter =
+  let text = source_of_parameter parameter in
+  String.starts_with ~prefix:"~" text || String.starts_with ~prefix:"?" text
+
 let render_binding ~indent ~keyword binding_pattern value =
   let prefix = indent_string indent in
   if String.contains value "\n" then
@@ -242,6 +259,8 @@ let rec render_expression ~indent = function
       source_of_ident path
   | Syn.Cst.Expression.Parenthesized { inner = Function function_; _ } ->
       "(" ^ render_function_expression ~indent:0 function_ ^ ")"
+  | Syn.Cst.Expression.Parenthesized { syntax_node; inner = Tuple _; _ } ->
+      source_of_syntax_node syntax_node
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
       render_expression ~indent inner
   | Syn.Cst.Expression.Prefix { operator_token; operand = Literal literal; _ } ->
@@ -338,6 +357,9 @@ and render_fun_expression ~indent
       parameters |> List.map source_of_parameter |> String.concat " "
     in
     match body with
+    | Syn.Cst.Expression (Syn.Cst.Expression.Match match_)
+      when List.exists parameter_is_labeled_or_optional parameters ->
+        "fun " ^ rendered_parameters ^ " -> " ^ source_of_syntax_node match_.syntax_node
     | Syn.Cst.Expression (Syn.Cst.Expression.Match match_) ->
         "fun " ^ rendered_parameters ^ " -> \n"
         ^ render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:true match_
@@ -488,6 +510,10 @@ let format (result : Syn.Parser.parse_result) =
       else
         Ok
           (match render_source_file source_file with
+          | Some rendered
+            when String.ends_with ~suffix:"\n" original_source
+                 && String.ends_with ~suffix:"\n" rendered ->
+              rendered
           | Some rendered when String.ends_with ~suffix:"\n" original_source ->
               rendered ^ "\n"
           | Some rendered -> rendered

@@ -71,3 +71,16 @@
 0118_function_when_guard.ml
 0119_function_nested_pattern.ml
 0120_function_application.ml
+0341_label_simple.ml
+0342_label_shorthand.ml
+0343_label_multiple.ml
+0344_label_with_unlabeled.ml
+0345_label_in_fun.ml
+0346_label_in_fun_multi.ml
+0347_optional_simple.ml
+0348_optional_shorthand.ml
+0349_optional_none.ml
+0350_optional_some.ml
+0351_optional_in_fun.ml
+0352_optional_default.ml
+0353_optional_multi.ml
