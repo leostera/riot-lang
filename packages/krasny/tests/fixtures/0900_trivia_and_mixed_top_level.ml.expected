@@ -1,3 +1,5 @@
+(** Docstring for module. *)
+
 (* TODO(@leostera): we need to add more examples here for:
    - [x] inline comments within expressions
    - [x] doc comments over type definitoins
@@ -9,6 +11,7 @@
    - [x] comments within inline signatures
    - [x] anywhere else that we can fit a comment we should have at least 1 example of it
    *)
+
 
 (* Leading comment for a formatted let binding. *)
 let before = 1
@@ -27,15 +30,21 @@ type documented_type =
 type record_with_comments = {
   (* Comment for the first field. *)
   first : string;
-  (* Comment for the second field. *)
+  (** doc for the second field. *)
   second : int;
 }
 
+(* consturctor with a lot of spaces *)
 type preserved =
   | A
+
+
+
   | B
 
-let after_type = 3
+(* let binding with weird spacing *)
+let after_type = 
+3
 
 let inline_comment_expr =
   before + (* inline operator comment *) after
@@ -50,12 +59,11 @@ let inline_comment_args =
 module Commented : sig
   (** Inline signature comment. *)
   val show : int -> string
+
+  (* also a comment inside the signature *)
 end = struct
   let show value = Int.to_string value
 end
 
-module Preserved = struct
-  let value = 1
-end
-
-let after_module = 4
+(* full inlined module *)
+module Preserved = struct let value = 1 end

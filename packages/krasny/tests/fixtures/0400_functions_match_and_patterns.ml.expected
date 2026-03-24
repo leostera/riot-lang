@@ -16,13 +16,14 @@ let fun_nested = fun x y -> x + y
 let fun_inline_pattern = fun (x, y) -> x + y
 
 let fun_body_match = fun value -> 
-  match value with 
-  | Some x -> x 
+  match value with
+  | Some x -> x
   | None -> 0
 
-let match_simple = match value with 
-| 0 -> "zero" 
-| n -> Int.to_string  n
+let match_simple =
+  match value with
+  | 0 -> "zero"
+  | n -> Int.to_string n
 
 let function_one_case = fun [] -> 0
 
@@ -84,7 +85,7 @@ let classify_many = function
 
 let combine_many = fun a b c d e f g h i j -> a + b + c + d + e + f + g + h + i + j
 
-let function_many_or_patterns = 
+let function_many_or_patterns =
   function 
   | `A 
   | `B 
@@ -93,18 +94,18 @@ let function_many_or_patterns =
   | `E -> true 
   | _ -> false
 
-let classify_letter = 
+let classify_letter =
   function 
-  | 'a' .. 'z' -> `Lowercase
-  | 'A' .. 'Z' -> `Uppercase
-  | '0' .. '9' -> `Digit
+  | 'a' .. 'z' -> `Lowercase 
+  | 'A' .. 'Z' -> `Uppercase 
+  | '0' .. '9' -> `Digit 
   | _ -> `Other
 
 let make_adder = fun x y -> x + y
 
 let make_handler = fun x -> 
-  match x with 
-  | Some base -> fun y -> base + y 
+  match x with
+  | Some base -> fun y -> base + y
   | None -> fun y -> y
 
 let describe mode value =

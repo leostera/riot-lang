@@ -20,7 +20,7 @@ let labeled_param_multiple = fun ~timeout ~retries -> timeout + retries
 
 let optional_arg_explicit = configure ?timeout:(Some 30) ()
 
-let optional_arg_shorthand = configure ?timeout  ()
+let optional_arg_shorthand = configure ?timeout ()
 
 let optional_arg_none = configure ?timeout:None ()
 
