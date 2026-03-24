@@ -990,7 +990,7 @@ module Expression = struct
     match argument with
     | Syn.Cst.Positional _ ->
         if Source.syntax_node_has_comment_like_trivia syntax_node then
-          Doc.text (source_of_syntax_node syntax_node)
+          Doc.indent 2 (Doc.text (source_of_syntax_node syntax_node))
         else
           let head, arguments = collect_apply_parts [] (Syn.Cst.Expression.Apply { syntax_node; callee; argument; attributes = [] }) in
           let rendered_head = render_apply_atom head |> trim_inline_doc in
@@ -1239,6 +1239,51 @@ module Structure = struct
     text |> String.split_on_char '\n'
     |> List.map (fun line -> if line = "" then line else indent_string spaces ^ line)
     |> String.concat "\n"
+
+  let dedent_multiline_block text =
+    match String.split_on_char '\n' text with
+    | [] | [ _ ] ->
+        text
+    | first :: rest ->
+        let minimum_indent =
+          rest
+          |> List.filter (fun line -> not (String.trim line = ""))
+          |> List.fold_left
+               (fun minimum line ->
+                 let rec count index =
+                   if index >= String.length line then
+                     index
+                   else
+                     match line.[index] with
+                     | ' ' ->
+                         count (index + 1)
+                     | _ ->
+                         index
+                 in
+                 let indentation = count 0 in
+                 match minimum with
+                 | None ->
+                     Some indentation
+                 | Some current ->
+                     Some (Int.min current indentation))
+               None
+        in
+        (match minimum_indent with
+        | None ->
+            text
+        | Some indentation ->
+            first
+            :: List.map
+                 (fun line ->
+                   if line = "" then
+                     line
+                   else if indentation <= 0 then
+                     line
+                   else
+                     let removable = Int.min indentation (String.length line) in
+                     String.sub line removable (String.length line - removable))
+                 rest
+            |> String.concat "\n")
 
   let indent_first_line spaces text =
     match String.split_on_char '\n' text with
@@ -1754,6 +1799,424 @@ module Structure = struct
     ^ " = "
     ^ primitives
 
+  let source_of_module_expression ~source module_expression =
+    Source.source_of_node_from_source source (Syn.Cst.ModuleExpression.syntax_node module_expression)
+    |> String.trim
+
+  let parse_fragment ~filename source_text =
+    let result = Syn.parse ~filename:(Path.v filename) source_text in
+    match Syn.build_cst result with
+    | Error _ ->
+        None
+    | Ok source_file ->
+        Some (result.source, source_file)
+
+  let strip_wrapping_keyword_block ~opening ~closing text =
+    let trimmed = String.trim text in
+    let opening_length = String.length opening in
+    let closing_length = String.length closing in
+    if
+      String.length trimmed >= opening_length + closing_length
+      && String.starts_with ~prefix:opening trimmed
+      && String.ends_with ~suffix:closing trimmed
+    then
+      Some
+        (String.sub trimmed opening_length
+           (String.length trimmed - opening_length - closing_length)
+        |> String.trim)
+    else
+      None
+
+  let remove_blank_lines text =
+    text |> String.split_on_char '\n'
+    |> List.filter (fun line -> not (String.trim line = ""))
+    |> String.concat "\n"
+
+  let indent_following_lines spaces text =
+    match String.split_on_char '\n' text with
+    | [] | [ _ ] ->
+        text
+    | first :: rest ->
+        first
+        :: List.map
+             (fun line -> if line = "" then line else indent_string spaces ^ line)
+             rest
+        |> String.concat "\n"
+
+  let split_recursive_group text =
+    let rec loop current acc = function
+      | [] ->
+          List.rev
+            (if current = [] then
+               acc
+             else
+               String.concat "\n" (List.rev current) :: acc)
+      | line :: rest ->
+          if String.starts_with ~prefix:"and " (String.trim line) && not (current = []) then
+            loop [ line ] (String.concat "\n" (List.rev current) :: acc) rest
+          else
+            loop (line :: current) acc rest
+    in
+    text |> String.split_on_char '\n' |> loop [] []
+
+  let strip_leading_comment_blocks text =
+    let length = String.length text in
+    let rec skip_layout index =
+      if index >= length then
+        index
+      else
+        match text.[index] with
+        | ' ' | '\t' | '\n' | '\r' ->
+            skip_layout (index + 1)
+        | _ ->
+            index
+    in
+    let rec skip_comment index depth =
+      if index + 1 >= length then
+        length
+      else if text.[index] = '(' && text.[index + 1] = '*' then
+        skip_comment (index + 2) (depth + 1)
+      else if text.[index] = '*' && text.[index + 1] = ')' then
+        if depth = 1 then
+          index + 2
+        else
+          skip_comment (index + 2) (depth - 1)
+      else
+        skip_comment (index + 1) depth
+    in
+    let rec loop index =
+      let index = skip_layout index in
+      if index + 1 < length && text.[index] = '(' && text.[index + 1] = '*' then
+        loop (skip_comment (index + 2) 1)
+      else if index <= 0 then
+        text
+      else
+        String.sub text index (length - index)
+    in
+    loop 0
+
+  let contains_comment_after_keyword text keyword =
+    let trimmed = String.trim text in
+    match find_substring_index trimmed keyword with
+    | None ->
+        Source.contains_comment_like_text trimmed
+    | Some index ->
+        let keyword_text =
+          String.sub trimmed index (String.length trimmed - index)
+        in
+        let start = String.length keyword in
+        if start >= String.length keyword_text then
+          false
+        else
+          String.sub keyword_text start (String.length keyword_text - start)
+          |> Source.contains_comment_like_text
+
+  let render_value_declaration ~source ({ name_token; type_; _ } : Syn.Cst.value_declaration) =
+    "val " ^ Source.source_of_token name_token ^ " : " ^ render_core_type ~source type_
+
+  let rec render_simple_signature_item ~source = function
+    | Syn.Cst.SignatureItem.TypeDeclaration declaration ->
+        render_type_declaration ~source declaration
+    | Syn.Cst.SignatureItem.ValueDeclaration declaration ->
+        Some (render_value_declaration ~source declaration)
+    | Syn.Cst.SignatureItem.ModuleDeclaration declaration ->
+        render_module_declaration ~source ~keyword:"module " declaration
+    | Syn.Cst.SignatureItem.RecursiveModuleDeclaration declaration ->
+        render_recursive_module_declaration ~source declaration
+    | Syn.Cst.SignatureItem.ModuleTypeDeclaration declaration ->
+        render_module_type_declaration ~source declaration
+    | Syn.Cst.SignatureItem.OpenStatement statement ->
+        render_open_statement ~source statement
+    | Syn.Cst.SignatureItem.IncludeStatement statement ->
+        render_include_statement ~source statement
+    | item ->
+        Some
+          (Source.source_of_node_from_source source (Syn.Cst.SignatureItem.syntax_node item)
+          |> String.trim)
+
+  and render_simple_structure_item ~source = function
+    | Syn.Cst.StructureItem.LetBinding binding ->
+        let original_source = Source.source_of_node_from_source source binding.syntax_node in
+        if Source.contains_substring original_source "\n" then
+          Some
+            (dedent_multiline_block original_source |> indent_following_lines 2 |> String.trim)
+        else (
+          match Expression.render_let_binding binding with
+          | Some rendered ->
+              Some (Printer.to_string rendered)
+          | None ->
+              Some (String.trim original_source))
+    | Syn.Cst.StructureItem.TypeDeclaration declaration ->
+        render_type_declaration ~source declaration
+    | Syn.Cst.StructureItem.ExternalDeclaration declaration ->
+        Some (render_external_declaration ~source declaration)
+    | Syn.Cst.StructureItem.ModuleDeclaration declaration ->
+        render_module_declaration ~source ~keyword:"module " declaration
+    | Syn.Cst.StructureItem.RecursiveModuleDeclaration declaration ->
+        render_recursive_module_declaration ~source declaration
+    | Syn.Cst.StructureItem.ModuleTypeDeclaration declaration ->
+        render_module_type_declaration ~source declaration
+    | Syn.Cst.StructureItem.OpenStatement statement ->
+        render_open_statement ~source statement
+    | Syn.Cst.StructureItem.IncludeStatement statement ->
+        render_include_statement ~source statement
+    | item ->
+        Some
+          (Source.source_of_node_from_source source (Syn.Cst.StructureItem.syntax_node item)
+          |> String.trim)
+
+  and render_simple_signature_items ~source items =
+    let rec loop acc = function
+      | [] ->
+          Some (List.rev acc |> String.concat "\n")
+      | item :: rest -> (
+          match render_simple_signature_item ~source item with
+          | Some rendered ->
+              loop (rendered :: acc) rest
+          | None ->
+              None)
+    in
+    loop [] items
+
+  and render_simple_structure_items ~source items ~separator =
+    let rec loop acc = function
+      | [] ->
+          Some (List.rev acc |> String.concat separator)
+      | item :: rest -> (
+          match render_simple_structure_item ~source item with
+          | Some rendered ->
+              loop (rendered :: acc) rest
+          | None ->
+              None)
+    in
+    loop [] items
+
+  and render_signature_fragment source_text =
+    match parse_fragment ~filename:"inline.mli" source_text with
+    | None ->
+        None
+    | Some (fragment_source, Syn.Cst.Interface { items; _ }) ->
+        render_simple_signature_items ~source:fragment_source items |> Option.map remove_blank_lines
+    | Some _ ->
+        None
+
+  and render_structure_fragment ~separator source_text =
+    match parse_fragment ~filename:"inline.ml" source_text with
+    | None ->
+        None
+    | Some (fragment_source, Syn.Cst.Implementation { items; _ }) ->
+        render_simple_structure_items ~source:fragment_source items ~separator
+    | Some _ ->
+        None
+
+  and render_module_type ~source = function
+    | Syn.Cst.ModuleType.Path path ->
+        Some (Source.source_of_ident path)
+    | Syn.Cst.ModuleType.Signature { syntax_node; _ } ->
+        let raw = Source.source_of_node_from_source source syntax_node |> String.trim in
+        let body =
+          match strip_wrapping_keyword_block ~opening:"sig" ~closing:"end" raw with
+          | Some inner -> (
+              match render_signature_fragment inner with
+              | Some rendered ->
+                  rendered
+              | None ->
+                  inner)
+          | None ->
+              raw
+        in
+        Some ("sig\n" ^ indent_block 2 body ^ "\nend")
+    | Syn.Cst.ModuleType.Parenthesized { inner; _ } ->
+        render_module_type ~source inner |> Option.map (fun rendered -> "(" ^ rendered ^ ")")
+    | module_type ->
+        Some (Source.source_of_node_from_source source (Syn.Cst.ModuleType.syntax_node module_type) |> String.trim)
+
+  and render_module_apply ~source module_expression =
+    let rec collect arguments = function
+      | Syn.Cst.ModuleExpression.Apply { callee; argument; _ } ->
+          collect (argument :: arguments) callee
+      | expression ->
+          (expression, arguments)
+    in
+    let head, arguments = collect [] module_expression in
+    match render_module_expression ~source head with
+    | None ->
+        None
+    | Some rendered_head ->
+        let rec render_arguments acc = function
+          | [] ->
+              Some (rendered_head ^ String.concat "" (List.rev acc))
+          | argument :: rest -> (
+              match render_module_expression ~source argument with
+              | None ->
+                  None
+              | Some rendered ->
+                  render_arguments ((" (" ^ rendered ^ ")") :: acc) rest)
+        in
+        render_arguments [] arguments
+
+  and render_module_expression ~source = function
+    | Syn.Cst.ModuleExpression.Path path ->
+        Some (Source.source_of_ident path)
+    | Syn.Cst.ModuleExpression.Structure { syntax_node; _ } ->
+        let raw = Source.source_of_node_from_source source syntax_node |> String.trim in
+        let body =
+          match strip_wrapping_keyword_block ~opening:"struct" ~closing:"end" raw with
+          | Some inner -> (
+              match render_structure_fragment ~separator:"\n" inner with
+              | Some rendered ->
+                  remove_blank_lines rendered
+              | None ->
+                  inner)
+          | None ->
+              raw
+        in
+        Some ("struct\n" ^ indent_block 2 body ^ "\nend")
+    | Syn.Cst.ModuleExpression.Apply _ as apply ->
+        render_module_apply ~source apply
+    | Syn.Cst.ModuleExpression.Constraint { module_expression; module_type; _ } -> (
+        match (render_module_expression ~source module_expression, render_module_type ~source module_type) with
+        | Some rendered_expression, Some rendered_type ->
+            Some (rendered_expression ^ " : " ^ rendered_type)
+        | _ ->
+            None)
+    | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } ->
+        render_module_expression ~source inner |> Option.map (fun rendered -> "(" ^ rendered ^ ")")
+    | module_expression ->
+        Some (source_of_module_expression ~source module_expression)
+
+  and render_functor_parameter ~source ({ Syn.Cst.name_token; module_type; _ } : Syn.Cst.functor_parameter) =
+    match render_module_type ~source module_type with
+    | Some rendered_module_type ->
+        Some
+          ("(" ^ Source.source_of_token name_token ^ " : " ^ rendered_module_type ^ ")")
+    | None ->
+        None
+
+  and render_module_declaration ~source ~keyword declaration =
+    let name = Syn.Cst.ModuleDeclaration.name declaration in
+    let rec render_parameters acc = function
+      | [] ->
+          Some (List.rev acc |> String.concat "")
+      | parameter :: rest -> (
+          match render_functor_parameter ~source parameter with
+          | Some rendered ->
+              render_parameters ((" " ^ rendered) :: acc) rest
+          | None ->
+              None)
+    in
+    match render_parameters [] (Syn.Cst.ModuleDeclaration.functor_parameters declaration) with
+    | None ->
+        None
+    | Some parameters -> (
+        let module_expression =
+          match Syn.Cst.ModuleDeclaration.module_expression declaration with
+          | Some (Syn.Cst.ModuleExpression.Constraint { module_expression; _ })
+            when Option.is_some (Syn.Cst.ModuleDeclaration.module_type declaration) ->
+              Some module_expression
+          | module_expression ->
+              module_expression
+        in
+        match
+          ( Option.map (render_module_type ~source) (Syn.Cst.ModuleDeclaration.module_type declaration),
+            Option.map (render_module_expression ~source) module_expression )
+        with
+        | Some None, _ | _, Some None ->
+            None
+        | module_type, module_expression ->
+            let header = keyword ^ name ^ parameters in
+            let header =
+              match module_type with
+              | Some (Some rendered_module_type) ->
+                  header ^ " : " ^ rendered_module_type
+              | Some None | None ->
+                  header
+            in
+            Some
+              (match module_expression with
+              | Some (Some rendered_module_expression) ->
+                  header ^ " = " ^ rendered_module_expression
+              | Some None | None ->
+                  header))
+
+  and render_recursive_module_declaration ~source declaration =
+    let declarations = Syn.Cst.RecursiveModuleDeclaration.declarations declaration in
+    let rec loop index acc = function
+      | [] ->
+          Some (List.rev acc |> String.concat "\n\n")
+      | module_declaration :: rest ->
+          let keyword = if index = 0 then "module rec " else "and " in
+          (match render_module_declaration ~source ~keyword module_declaration with
+          | Some rendered ->
+              loop (index + 1) (rendered :: acc) rest
+          | None ->
+              None)
+    in
+    loop 0 [] declarations
+
+  and render_module_type_declaration ~source declaration =
+    match Syn.Cst.ModuleTypeDeclaration.module_type declaration with
+    | Some module_type ->
+        render_module_type ~source module_type
+        |> Option.map (fun rendered ->
+               "module type "
+               ^ Syn.Cst.ModuleTypeDeclaration.name declaration
+               ^ " = "
+               ^ rendered)
+    | None ->
+        Some ("module type " ^ Syn.Cst.ModuleTypeDeclaration.name declaration)
+
+  and render_open_statement ~source statement =
+    let keyword =
+      if Syn.Cst.OpenStatement.has_bang statement then
+        "open!"
+      else
+        "open"
+    in
+    match Syn.Cst.OpenStatement.target statement with
+    | Syn.Cst.OpenStatement.Path path ->
+        Some (keyword ^ " " ^ Source.source_of_ident path)
+    | Syn.Cst.OpenStatement.ModuleExpression module_expression ->
+        render_module_expression ~source module_expression
+        |> Option.map (fun rendered -> keyword ^ " " ^ rendered)
+
+  and render_include_statement ~source statement =
+    match statement.Syn.Cst.target with
+    | Syn.Cst.ModuleExpression module_expression ->
+        render_module_expression ~source module_expression
+        |> Option.map (fun rendered -> "include " ^ rendered)
+    | Syn.Cst.ModuleType module_type ->
+        render_module_type ~source module_type |> Option.map (fun rendered -> "include " ^ rendered)
+
+  let render_recursive_type_group group_text =
+    let declarations = split_recursive_group group_text in
+    let rec loop index acc = function
+      | [] ->
+          Some (List.rev acc |> String.concat "\n\n")
+      | declaration_text :: rest ->
+          let normalized_source =
+            if index = 0 then
+              declaration_text
+            else
+              "type "
+              ^ String.sub declaration_text 4 (String.length declaration_text - 4)
+          in
+          (match render_structure_fragment ~separator:"\n\n" normalized_source with
+          | Some rendered ->
+              let rendered =
+                if index = 0 then
+                  rendered
+                else if String.starts_with ~prefix:"type " rendered then
+                  "and " ^ String.sub rendered 5 (String.length rendered - 5)
+                else
+                  rendered
+              in
+              loop (index + 1) (rendered :: acc) rest
+          | None ->
+              None)
+    in
+    loop 0 [] declarations
+
   let verbatim_structure_item_from_text text =
     let body, trailing_layout = Source.split_trailing_comment_block text in
     {
@@ -1768,46 +2231,75 @@ module Structure = struct
     let node = Syn.Cst.StructureItem.syntax_node item in
     verbatim_structure_item_from_text (Source.source_of_node_from_source source node)
 
+  let structure_item_supports_mixed_rewrite = function
+    | Syn.Cst.StructureItem.LetBinding _
+    | Syn.Cst.StructureItem.TypeDeclaration _
+    | Syn.Cst.StructureItem.ExternalDeclaration _
+    | Syn.Cst.StructureItem.ModuleDeclaration _
+    | Syn.Cst.StructureItem.RecursiveModuleDeclaration _
+    | Syn.Cst.StructureItem.ModuleTypeDeclaration _
+    | Syn.Cst.StructureItem.OpenStatement _
+    | Syn.Cst.StructureItem.IncludeStatement _ ->
+        true
+    | _ ->
+        false
+
   let render_structure_item ~source ~allow_rewrite = function
-    | Syn.Cst.StructureItem.LetBinding binding ->
-        if Source.syntax_node_has_comment_like_trivia binding.syntax_node then
-          Some
-            (verbatim_structure_item_from_text
-               (Source.source_of_node_from_source source binding.syntax_node))
-        else (
-          match Expression.render_let_binding binding with
-          | Some rendered ->
-              let original = Source.source_of_node_from_source source binding.syntax_node in
-              let rendered_text = Printer.to_string rendered in
-              if allow_rewrite || rendered_text = original then
-                Some
-                  {
-                    doc = rendered;
-                    preserves_layout = false;
-                    trailing_layout = "";
-                    consumed_end = None;
-                    start_override = None;
-                  }
-              else
-                Some (verbatim_structure_item_from_text original)
-          | None ->
+    | Syn.Cst.StructureItem.LetBinding binding -> (
+        match Expression.render_let_binding binding with
+        | Some rendered ->
+            let original = Source.source_of_node_from_source source binding.syntax_node in
+            let rendered_text = Printer.to_string rendered in
+            if allow_rewrite || rendered_text = original then
               Some
-                (verbatim_structure_item_from_text
-                   (Source.source_of_node_from_source source binding.syntax_node)))
+                {
+                  doc = rendered;
+                  preserves_layout = false;
+                  trailing_layout = "";
+                  consumed_end = None;
+                  start_override = None;
+                }
+            else
+              Some (verbatim_structure_item_from_text original)
+        | None ->
+            Some
+              (verbatim_structure_item_from_text
+                 (Source.source_of_node_from_source source binding.syntax_node)))
     | Syn.Cst.StructureItem.TypeDeclaration declaration ->
         (match source_of_recursive_type_group ~source declaration with
         | Some (group, consumed_end) ->
-            let rendered = verbatim_structure_item_from_text group in
-            Some { rendered with consumed_end = Some consumed_end; start_override = None }
+            let rendered =
+              if Source.contains_comment_like_text group then
+                verbatim_structure_item_from_text group
+              else
+                match render_recursive_type_group group with
+                | Some rendered ->
+                    {
+                      doc = Doc.text rendered;
+                      preserves_layout = false;
+                      trailing_layout = "";
+                      consumed_end = Some consumed_end;
+                      start_override = None;
+                    }
+                | None ->
+                    let rendered = verbatim_structure_item_from_text group in
+                    { rendered with consumed_end = Some consumed_end; start_override = None }
+            in
+            Some rendered
         | None ->
-            if
-              Source.syntax_node_has_comment_like_trivia
-                (Syn.Cst.TypeDeclaration.syntax_node declaration)
-            then
-              Some
-                (verbatim_structure_item_from_text (source_of_type_declaration ~source declaration))
+            let declaration_source = source_of_type_declaration ~source declaration in
+            if contains_comment_after_keyword declaration_source "type " then
+              Some (verbatim_structure_item_from_text declaration_source)
             else
-              match render_type_declaration ~source declaration with
+              let normalized_source =
+                let trimmed = String.trim declaration_source in
+                match find_substring_index trimmed "type " with
+                | Some index ->
+                    String.sub trimmed index (String.length trimmed - index)
+                | None ->
+                    strip_leading_comment_blocks declaration_source |> String.trim
+              in
+              match render_structure_fragment ~separator:"\n\n" normalized_source with
               | Some rendered ->
                   Some
                     {
@@ -1817,10 +2309,19 @@ module Structure = struct
                       consumed_end = None;
                       start_override = None;
                     }
-              | None ->
-                  Some
-                    (verbatim_structure_item_from_text
-                       (source_of_type_declaration ~source declaration)))
+              | None -> (
+                  match render_type_declaration ~source declaration with
+                  | Some rendered ->
+                      Some
+                        {
+                          doc = Doc.text rendered;
+                          preserves_layout = false;
+                          trailing_layout = "";
+                          consumed_end = None;
+                          start_override = None;
+                        }
+                  | None ->
+                      Some (verbatim_structure_item_from_text declaration_source)))
     | Syn.Cst.StructureItem.ExternalDeclaration declaration ->
         if Source.syntax_node_has_comment_like_trivia declaration.syntax_node then
           Some
@@ -1835,6 +2336,79 @@ module Structure = struct
               consumed_end = None;
               start_override = None;
             }
+    | Syn.Cst.StructureItem.ModuleDeclaration declaration ->
+        let declaration_source =
+          Source.source_of_node_from_source source (Syn.Cst.ModuleDeclaration.syntax_node declaration)
+          |> String.trim
+        in
+        if contains_comment_after_keyword declaration_source "module " then
+          Some (verbatim_structure_item_from_text declaration_source)
+        else
+          render_module_declaration ~source ~keyword:"module " declaration
+          |> Option.map (fun rendered ->
+                 {
+                   doc = Doc.text rendered;
+                   preserves_layout = false;
+                   trailing_layout = "";
+                   consumed_end = None;
+                   start_override = None;
+                 })
+    | Syn.Cst.StructureItem.RecursiveModuleDeclaration declaration ->
+        let declaration_source =
+          Source.source_of_node_from_source source
+            (Syn.Cst.RecursiveModuleDeclaration.syntax_node declaration)
+          |> String.trim
+        in
+        if Source.contains_comment_like_text declaration_source then
+          Some (verbatim_structure_item_from_text declaration_source)
+        else
+          render_recursive_module_declaration ~source declaration
+          |> Option.map (fun rendered ->
+                 {
+                   doc = Doc.text rendered;
+                   preserves_layout = false;
+                   trailing_layout = "";
+                   consumed_end = None;
+                   start_override = None;
+                 })
+    | Syn.Cst.StructureItem.ModuleTypeDeclaration declaration ->
+        let declaration_source =
+          Source.source_of_node_from_source source
+            (Syn.Cst.ModuleTypeDeclaration.syntax_node declaration)
+          |> String.trim
+        in
+        if contains_comment_after_keyword declaration_source "module type " then
+          Some (verbatim_structure_item_from_text declaration_source)
+        else
+          render_module_type_declaration ~source declaration
+          |> Option.map (fun rendered ->
+                 {
+                   doc = Doc.text rendered;
+                   preserves_layout = false;
+                   trailing_layout = "";
+                   consumed_end = None;
+                   start_override = None;
+                 })
+    | Syn.Cst.StructureItem.OpenStatement statement ->
+        render_open_statement ~source statement
+        |> Option.map (fun rendered ->
+               {
+                 doc = Doc.text rendered;
+                 preserves_layout = false;
+                 trailing_layout = "";
+                 consumed_end = None;
+                 start_override = None;
+               })
+    | Syn.Cst.StructureItem.IncludeStatement statement ->
+        render_include_statement ~source statement
+        |> Option.map (fun rendered ->
+               {
+                 doc = Doc.text rendered;
+                 preserves_layout = false;
+                 trailing_layout = "";
+                 consumed_end = None;
+                 start_override = None;
+               })
     | item ->
         Some (verbatim_structure_item ~source item)
 
@@ -1842,16 +2416,7 @@ module Structure = struct
     match source_file with
     | Syn.Cst.Implementation { syntax_node; items } ->
         let file_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
-        let allow_rewrite =
-          not
-            (List.exists
-               (function
-                 | Syn.Cst.StructureItem.LetBinding _ ->
-                     false
-                 | _ ->
-                     true)
-               items)
-        in
+        let allow_rewrite = List.for_all structure_item_supports_mixed_rewrite items in
         let rec render_items acc previous_end previous_preserves_layout previous_trailing_layout
             is_first_item = function
           | [] ->
