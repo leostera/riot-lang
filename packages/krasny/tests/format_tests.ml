@@ -44,6 +44,38 @@ let tests =
         in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
+    Test.case "format preserves leading comments before formatted items" (fun () ->
+        let source = "(* hi *)\nlet x = 1 + 2\nlet y = 3 + 4\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"leading comments should stay attached to the next item"
+        in
+        Test.assert_equal
+          ~expected:"(* hi *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+          ~actual;
+        Ok ());
+    Test.case "format preserves leading docstrings before formatted items" (fun () ->
+        let source = "(** hi *)\nlet x = 1 + 2\nlet y = 3 + 4\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"leading docstrings should stay attached to the next item"
+        in
+        Test.assert_equal
+          ~expected:"(** hi *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+          ~actual;
+        Ok ());
+    Test.case "format preserves unsupported let bindings between formatted lets"
+      (fun () ->
+        let source = "(* intro *)\nlet x = 1 + 2\nlet f x = x + 1\nlet y = 3 + 4\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"unsupported let bindings should be preserved verbatim"
+        in
+        Test.assert_equal
+          ~expected:"(* intro *)\nlet x = 1 + 2\n\nlet f x = x + 1\n\nlet y = 3 + 4\n"
+          ~actual;
+        Ok ());
     Test.case "format inserts blank lines between top-level let bindings"
       (fun () ->
         let source = "let x = 1\nlet y = 2\n" in

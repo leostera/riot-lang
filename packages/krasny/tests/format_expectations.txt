@@ -84,3 +84,6 @@
 0351_optional_in_fun.ml
 0352_optional_default.ml
 0353_optional_multi.ml
+top_level_comment.ml
+top_level_docstring.ml
+mixed_supported_and_unsupported_items.ml

@@ -1,0 +1,4 @@
+(* intro *)
+let x = 1 + 2
+let f x = x + 1
+let y = 3 + 4
