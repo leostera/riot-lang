@@ -96,6 +96,7 @@ Rough guidelines for formatting decisions:
   - seventeenth slice landed for restoring the missing `07xx` and `08xx` category corpora so types, signatures, modules, and functors remain part of the active harness instead of only living in deleted historical fixtures
   - eighteenth slice landed for filling the active category corpora with concrete day-1 examples and checking off the in-file coverage TODO lists without reintroducing duplicate standalone fixtures
   - nineteenth slice landed for tightening labeled/optional let lowering, restoring sane recursive-let normalization, adding small tuple/poly-variant and large-record-pattern lowering support, and hand-correcting stale handwritten expectations so the unified `8`-fixture corpus is green again without a blanket expectation refresh
+  - twentieth slice landed for introducing explicit `Space` / `Break` / `Group` document nodes plus a width-`100` layout solver, so `krasny` now follows a real lower-to-doc then solve-then-print pipeline while the remaining lowering paths are migrated off embedded spacing and indentation strings
 - [x] Require a successful CST lift before formatting; do not pretty-print broken files
 - [x] Simplify the Python harness to a single fixture corpus
 

@@ -4,21 +4,54 @@ open Std.Collections
 type t =
   | Empty
   | Text of string
+  | Space
   | Line
+  | Break of string
+  | Group of t
   | Concat of t list
   | Indent of int * t
 
 let empty = Empty
 let text value = if value = "" then Empty else Text value
+let space = Space
 let line = Line
+let break ?(flat = " ") () = Break flat
+let softline = Break ""
 let indent spaces doc = if spaces <= 0 then doc else Indent (spaces, doc)
+let group doc = Group doc
+let equal = text "="
+let arrow = text "->"
+let bar = text "|"
+let colon = text ":"
+let semi = text ";"
+let comma = text ","
+let lparen = text "("
+let rparen = text ")"
+let lbrace = text "{"
+let rbrace = text "}"
+let lbracket = text "["
+let rbracket = text "]"
 
 let concat docs =
   let rec flatten acc = function
     | [] ->
-        List.rev acc
+      List.rev acc
     | Empty :: rest ->
         flatten acc rest
+    | Space :: rest -> (
+        match acc with
+        | Space :: _ ->
+            flatten acc rest
+        | _ ->
+            flatten (Space :: acc) rest)
+    | Break flat :: rest -> (
+        match acc with
+        | Break current :: _ when current = flat ->
+            flatten acc rest
+        | _ ->
+            flatten (Break flat :: acc) rest)
+    | Group doc :: rest ->
+        flatten (Group doc :: acc) rest
     | Concat nested :: rest ->
         flatten acc (nested @ rest)
     | doc :: rest ->
@@ -43,13 +76,26 @@ let join separator docs =
            |> List.map (fun doc -> [ separator; doc ])
            |> List.flatten))
 
+let words docs = join space docs
+let lines docs = join line docs
+let padded doc = concat [ space; doc; space ]
+let prefixed prefix doc = concat [ prefix; doc ]
+let suffixed doc suffix = concat [ doc; suffix ]
+let wrapped left doc right = concat [ left; doc; right ]
+
 let rec is_multiline = function
   | Empty ->
       false
   | Text value ->
       String.contains value "\n"
+  | Space ->
+      false
   | Line ->
       true
+  | Break _ ->
+      false
+  | Group doc ->
+      is_multiline doc
   | Concat docs ->
       List.exists is_multiline docs
   | Indent (_, doc) ->

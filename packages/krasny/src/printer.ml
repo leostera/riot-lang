@@ -7,9 +7,19 @@ let to_string doc =
         line_start
     | Doc.Text value ->
         write_text ~line_start ~indent value
+    | Doc.Space ->
+        if line_start then
+          line_start
+        else (
+          IO.Buffer.add_char buffer ' ';
+          false)
     | Doc.Line ->
         IO.Buffer.add_char buffer '\n';
         true
+    | Doc.Break flat ->
+        write ~line_start ~indent (Doc.text flat)
+    | Doc.Group doc ->
+        write ~line_start ~indent doc
     | Doc.Concat docs ->
         List.fold_left (fun line_start doc -> write ~line_start ~indent doc) line_start docs
     | Doc.Indent (extra, doc) ->

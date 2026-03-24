@@ -5,6 +5,7 @@ type format_error =
   | Cannot_build_cst of Syn.build_cst_error
 
 module Doc = Doc
+module Solver = Solver
 module Printer = Printer
 module Source = Source
 module Lower = Lower
@@ -17,7 +18,7 @@ let format (result : Syn.Parser.parse_result) =
       Ok
         (match Lower.source_file ~source:original_source source_file with
         | Some rendered ->
-            let rendered = Printer.to_string rendered in
+            let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
             if String.ends_with ~suffix:"\n" original_source
                && String.ends_with ~suffix:"\n" rendered
             then
