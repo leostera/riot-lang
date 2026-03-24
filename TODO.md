@@ -62,7 +62,7 @@ Rough guidelines for formatting decisions:
   same for match arms, put them one in each line
 * remove parenthesis wherever possible
 * and format large numbers with _s by default: 1000 -> 1_000, 10022 -> 10_022 
-- current fixture corpus status: category corpus is `6/8` green, copied real-file regressions are `1/11` green, the unified manifest is `7/19` green overall, and `krasny:format_tests` is green on `33/33`
+- current fixture corpus status: category corpus is `8/8` green, copied real-file regressions are `3/11` green, the unified manifest is `11/19` green overall, and `krasny:format_tests` is green on `33/33`
 
 ### Trivia
 

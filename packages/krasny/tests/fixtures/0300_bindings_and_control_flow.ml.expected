@@ -20,12 +20,12 @@ let if_then_else_simple = if ready then 1 else 0
 let if_no_else = if ready then log "ready"
 
 let if_nested =
-  if outer then 
-    if inner then 
-      one 
-    else 
-      two 
-  else 
+  if outer then
+    if inner then
+      one
+    else
+      two
+  else
     three
 
 let let_in_simple =
@@ -47,6 +47,14 @@ let let_rec_in =
     if n <= 0 then 0 else n + loop (n - 1)
   in
   loop count
+
+let parameterized_local_let_rec =
+  let rec push_many indent docs rest =
+    match List.rev docs with
+    | [] -> rest
+    | docs -> docs |> List.fold_left (fun acc doc -> (indent, doc) :: acc) rest
+  in
+  push_many width doc []
 
 let sequence_two =
   log "start";
@@ -85,7 +93,7 @@ let match_nested =
       | Ok None -> 0
       | Error _ -> -1
     )
-  | None -> -2
+  | None -> (-2)
 
 let match_many_branches =
   match opcode with

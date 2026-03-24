@@ -1,13 +1,18 @@
 open Std
+
 open Std.Collections
 
 type format_error =
   | Cannot_build_cst of Syn.build_cst_error
 
 module Doc = Doc
+
 module Solver = Solver
+
 module Printer = Printer
+
 module Source = Source
+
 module Lower = Lower
 
 let format (result : Syn.Parser.parse_result) =
@@ -29,8 +34,9 @@ let format (result : Syn.Parser.parse_result) =
         | None -> original_source)
 
 (* TODO(@leostera): rewrite this hasher to use Crypto.Sha521.create () *)
+
 let syntax_hash (result : Syn.Parser.parse_result) =
-  let buffer = IO.Buffer.create 1024 in
+  let buffer = IO.Buffer.create 1_024 in
   let rec write_element = function
     | Syn.Ceibo.Green.Token _ as element -> (
         match Syn.Ceibo.Green.kind element with
