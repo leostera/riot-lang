@@ -1,9 +1,13 @@
 (* TODO(@leostera): we need to add more examples here for:
    - [x] functions over records
+   - [x] functions over large records
    - [x] inline pattern matching on `fun .. -> ..`
    - [x] functions with large numbers of branches
+   - [x] functions with larger or-pattern fallthrough branches
+   - [x] functions with range patterns
    - [x] fun's with large numbers of params (from 3 to 30)
    - [x] functions that return functions
+   - [x] functions that return functions from match branches
    - [x] `let foo .. = ..` syntax is also missing here
 *)
 
@@ -73,6 +77,11 @@ let function_application =
 let sum_point =
   fun { x; y } -> x + y
 
+let summarize_large_record =
+  function
+  | { first_name; last_name; email; city; country } ->
+      first_name ^ last_name ^ email ^ city ^ country
+
 let classify_many =
   function
   | `Start -> 0
@@ -87,8 +96,30 @@ let combine_many =
   fun a b c d e f g h i j ->
     a + b + c + d + e + f + g + h + i + j
 
+let function_many_or_patterns =
+  function
+  | `A
+  | `B
+  | `C
+  | `D
+  | `E -> true
+  | _ -> false
+
+let classify_letter =
+  function
+  | 'a' .. 'z' -> `Lowercase
+  | 'A' .. 'Z' -> `Uppercase
+  | '0' .. '9' -> `Digit
+  | _ -> `Other
+
 let make_adder =
   fun x -> fun y -> x + y
+
+let make_handler =
+  fun x ->
+    match x with
+    | Some base -> fun y -> base + y
+    | None -> fun y -> y
 
 let describe mode value =
   match mode, value with
