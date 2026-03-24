@@ -6,13 +6,13 @@
 *)
 
 let int_negative = -42
-let int_decimal_large = 9_223_372_036
-let int_octal_large = 0o7_123_456
-let int_binary_large = 0b1010_0101_1111_0000
+let int_decimal_large = 9223372036
+let int_octal_large = 0o7_123456
+let int_binary_large = 0b101001011111_0000
 let int_hex = 0xff
-let int_hex_large = 0xDEAD_BEEF
+let int_hex_large = 0xDEADBEEF
 let float_negative = -3.14
-let float_large = 123_456_789.987_654
+let float_large = 123456789.987654
 let string_literal = "hello"
 let string_multiline = {|
 line one

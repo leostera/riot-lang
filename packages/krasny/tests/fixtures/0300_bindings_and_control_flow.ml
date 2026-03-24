@@ -19,43 +19,23 @@ let if_then_else_simple = if ready then 1 else 0
 
 let if_no_else = if ready then log "ready"
 
-let if_nested = 
-  if outer then 
-    if inner then 
-      one 
-    else 
-      two 
-  else 
-    three
+let if_nested = if outer then if inner then one else two else three
 
-let let_in_simple =
-  let x = 1 in
-  x + 2
+let let_in_simple = let x = 1 in x + 2
 
-let let_in_nested =
-  let x = 1 in
-  let y = x + 1 in
-  x + y
+let let_in_nested = let x = 1 in let y = x + 1 in x + y
 
 let let_and_bindings =
-  let left = compute_left ()
-  and right = compute_right () in
+  let left = compute_left () and right = compute_right () in
   left + right
 
 let let_rec_in =
-  let rec loop  n=
-    if n <= 0 then 0 else n + loop (n - 1)
-  in
+  let rec loop  n= if n <= 0 then 0 else n + loop (n - 1) in
   loop count
 
-let sequence_two =
-  log "start";
-  log "done"
+let sequence_two = log "start"; log "done"
 
-let sequence_with_let =
-  log "before";
-  let value = compute () in
-  value
+let sequence_with_let = log "before"; let value = compute () in value
 
 let sequence_with_if =
   log "before";
@@ -68,14 +48,9 @@ let sequence_with_match =
   | None -> 0
 
 let sequence_in_fun =
- fun x ->
-  log_value x;
-  x + 1
+ fun x -> log_value x; x + 1
 
-let begin_sequence = begin
-    log "begin";
-    log "end"
-  end
+let begin_sequence = begin log "begin"; log "end" end
 
 let match_nested =
   match outer with
@@ -87,12 +62,8 @@ let match_nested =
     )
   | None -> -2
 
-let match_many_branches =
-  match opcode with
-  | 0 -> "nop"
-  | 1 -> "load"
-  | 2 -> "store"
-  | 3 -> "jump"
+let match_many_branches = match opcode with
+  | 0 -> "nop" | 1 -> "load" | 2 -> "store" | 3 -> "jump"
   | 4 -> "call"
   | 5 -> "ret"
   | _ -> "unknown"
@@ -100,35 +71,25 @@ let match_many_branches =
 let match_with_guards =
   match score with
   | x when x >= 90 -> "A"
-  | x when x >= 80 -> "B"
-  | x when x >= 70 -> "C"
+  | x when x >= 80 -> "B" | x when x >= 70 -> "C"
   | _ -> "F"
 
-let match_with_fallthrough =
-  match value with
-  | 0 -> "zero"
+let match_with_fallthrough = match value with | 0 -> "zero"
   | 1 -> "one"
   | _ -> "many"
 
-let match_with_exception_pattern =
-  match lookup key with
+let match_with_exception_pattern = match lookup key with
   | exception Not_found -> None
   | value -> Some value
 
-let try_with_simple =
-  try read () with
+let try_with_simple = try read () with
   | Not_found -> default
 
 let try_with_many_branches =
-  try parse source with
-  | Failure message -> fail message
-  | Invalid_argument message -> fail message
+  try parse source with | Failure message -> fail message | Invalid_argument message -> fail message
   | End_of_file -> eof
   | _ -> unknown
 
 let nested_try_with =
-  try
-    try parse () with
-    | Not_found -> recover ()
-  with
+  try try parse () with | Not_found -> recover () with
   | Failure message -> abort message

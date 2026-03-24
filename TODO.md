@@ -6,6 +6,7 @@ This file is _yours_. Keep it up to date after every big change.
 
 1. Read this file from top to bottom and pick the next unchecked item that is unblocked.
 2. Work until its completed.
+   a. When working with fixture based tests you are FORBIDDEN FROM MODIFYING THE INPUT/OUTPUT FIXTURES
 3. Mark a task complete in this document only after the relevant verification has passed.
 4. DON'T FORGET TO GIT COMMIT AFTER EVERY SLICE! And use conevntional commit messages like: feat(pkg): <value delivered>
 
@@ -61,45 +62,6 @@ Rough guidelines for formatting decisions:
   same for match arms, put them one in each line
 * remove parenthesis wherever possible
 * and format large numbers with _s by default: 1000 -> 1_000, 10022 -> 10_022 
-
-### Bootstrap and Safety
-
-- [x] Initialize the `krasny` package, CLI, focused tests, and expectation harness
-- [x] Seed `krasny` formatter fixtures from `packages/syn/tests/fixtures`
-- [x] Add a focused round-trip syntax-hash invariant test for selected real codebase files
-- [x] Add fixture-level syntax-hash roundtrip checks to the Python harness
-- [x] Add a `krasny` expectation suite for formatted output, separate from the current lossless-token baseline
-- [x] Add a fixture taxonomy and duplicate-audit tool so the corpus can stay large without accumulating useless near-duplicate cases
-- bootstrap status: `krasny` builds, focused tests pass, and the curated fixture harness now consists of `8` category corpus fixtures across `01xx`, `02xx`, `03xx`, `04xx`, `05xx`, `07xx`, `08xx`, and `09xx`; each fixture checks both expected formatting and CST syntax-hash roundtrips, the unified fixture runner is green on all `8` category corpora again, all superfluous historical fixtures have been deleted from the tree, the in-file category TODO checklists are now checked off with real examples, and edge-case fixtures are intentionally deferred until real workspace code exposes a formatter regression
-
-### Formatter Pipeline
-
-- [x] Replace the current lossless token renderer with a CST-driven `Doc` lowering pipeline
-- [x] Introduce the `Doc` / layout engine used by both `krasny format` and future synthetic fix rendering
-- [x] Add comment and trivia attachment rules to the formatter pipeline
-  - first slice landed for leading top-level comments/docstrings between supported implementation items
-  - second slice landed for preserving verbatim unsupported top-level `let` bindings between formatted items
-  - third slice landed for preserving verbatim unsupported top-level non-`let` items while only rewriting adjacent mixed-file `let` bindings when their binding text stays stable
-  - fourth slice landed for splitting trailing layout from preserved top-level items so mixed-file comments/docstrings stay tighter to the next formatted `let`
-  - fifth slice landed for peeling trailing standalone comment/docstring lines out of preserved top-level items so they can attach directly to the next formatted `let`
-  - sixth slice landed for peeling trailing multiline standalone comment/docstring blocks out of preserved top-level items so consecutive mixed-file trivia stays attached to the next formatted `let`
-  - seventh slice landed for clamping preserved-item source spans to source bounds so trivia-heavy unsupported items format instead of crashing
-  - eighth slice landed for extending the curated expectation block with trivia-heavy variant-type and docstring fixtures that previously exercised unsupported-item preservation edges
-  - ninth slice landed for refreshing the remaining trivia-literal expectation so the dedicated trivia/comment/docstring fixture filters are green again
-  - tenth slice landed for sequence expressions by preserving dedented sequence blocks from the successful CST source and teaching multiline `fun`/`if`/`match` layouts to keep sequence-driven structure readable
-  - eleventh slice landed for reworking the formatter into explicit `Doc`, `Printer`, `Lower`, and `Source` layers so the architecture matches the document model / printer / CST-to-Doc lowering split while keeping the public `Krasny.format` / `syntax_hash` / `write` façade stable
-  - twelfth slice landed for simplifying the Python harness to a single fixture manifest where every fixture runs both the `.expected` formatting check and the CST syntax-hash roundtrip check
-  - thirteenth slice landed for categorizing the fixture corpus, grouping the active manifest by feature area, and adding a duplicate-audit script that reports both exact duplicates and normalized-Levenshtein near-duplicate families
-  - fourteenth slice landed for renaming the curated active fixtures into category-based `01xx` to `09xx` ranges and dropping exact duplicate cases from the active manifest so the harness keeps a stronger signal:noise ratio while the broader backlog is audited separately
-  - fifteenth slice landed for collapsing the active manifest into one category corpus per supported syntax band, so the harness now tracks syntax-group coverage directly and reserves individual regression fixtures for issues discovered while formatting real Riot code
-  - sixteenth slice landed for deleting the old superfluous fixture backlog entirely so the fixture tree now matches the active category-corpus strategy instead of carrying hundreds of duplicate historical cases
-  - seventeenth slice landed for restoring the missing `07xx` and `08xx` category corpora so types, signatures, modules, and functors remain part of the active harness instead of only living in deleted historical fixtures
-  - eighteenth slice landed for filling the active category corpora with concrete day-1 examples and checking off the in-file coverage TODO lists without reintroducing duplicate standalone fixtures
-  - nineteenth slice landed for tightening labeled/optional let lowering, restoring sane recursive-let normalization, adding small tuple/poly-variant and large-record-pattern lowering support, and hand-correcting stale handwritten expectations so the unified `8`-fixture corpus is green again without a blanket expectation refresh
-  - twentieth slice landed for introducing explicit `Space` / `Break` / `Group` document nodes plus a width-`100` layout solver, so `krasny` now follows a real lower-to-doc then solve-then-print pipeline while the remaining lowering paths are migrated off embedded spacing and indentation strings
-  - twenty-first slice landed for aligning the legacy exact-string tests with the clarified formatter rules, fixing multiline `function` / `fun-match` lowering artifacts, and making both the unified `8`-fixture corpus and `krasny:format_tests` green at the same time
-- [x] Require a successful CST lift before formatting; do not pretty-print broken files
-- [x] Simplify the Python harness to a single fixture corpus
 
 ### Trivia
 

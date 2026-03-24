@@ -15,108 +15,77 @@ let fun_nested = fun x y -> x + y
 
 let fun_inline_pattern = fun (x, y) -> x + y
 
-let fun_body_match = fun value -> 
-  match value with
-  | Some x -> x
-  | None -> 0
+let fun_body_match = fun value -> match value with | Some x -> x | None -> 0
 
 let match_simple =
-  match value with
-  | 0 -> "zero"
+  match value with | 0 -> "zero"
   | n -> Int.to_string n
 
 let function_one_case = fun [] -> 0
 
-let function_two_cases = 
-  function 
+let function_two_cases = function 
   | [] -> 0 
   | x :: _ -> x
 
 let function_tuple = fun (x, y) -> x + y
 
-let function_list = 
-  function 
+let function_list = function 
   | [] -> 0 
-  | [x] -> x 
-  | x :: xs -> x + List.length xs
+  | [x] -> x | x :: xs -> x + List.length xs
 
-let function_constructor = 
-  function 
-  | Some x -> x 
+let function_constructor = function | Some x -> x 
   | None -> 0
 
-let function_or_pattern = 
-  function 
-  | `A 
-  | `B -> 1 
+let function_or_pattern = function | `A | `B -> 1 
   | `C -> 2
 
-let function_when_guard = 
-  function
-  | x when x > 0 -> x
+let function_when_guard = function | x when x > 0 -> x | _ -> 0
+
+let function_nested_pattern = function | Some (x, Some y) -> x + y 
   | _ -> 0
 
-let function_nested_pattern = 
-  function 
-  | Some (x, Some y) -> x + y 
-  | _ -> 0
-
-let function_application = 
-  List.map
-    (function
-     | Some x -> x
+let function_application = List.map
+    (function | Some x -> x
      | None -> 0)
     values
 
-let sum_point = fun { x; y } -> x + y
+let sum_point = fun {x;y} 
+  -> x + y
 
-let summarize_large_record = fun 
-  { 
-    first_name; 
-    last_name; 
-    email; 
-    city; 
-    country 
-  } -> 
+let summarize_large_record { first_name; last_name; email; city; country } =
   first_name ^ last_name ^ email ^ city ^ country
 
-let classify_many = 
-  function 
+let classify_many = function 
   | `Start -> 0 
   | `Stop -> 1 
-  | `Pause -> 2 
-  | `Resume -> 3 
+  | `Pause -> 2 | `Resume -> 3 
   | `Flush -> 4 
-  | `Reset -> 5 
-  | `Unknown -> (-1)
+  | `Reset -> 5 | `Unknown -> (-1)
 
-let combine_many = fun a b c d e f g h i j -> a + b + c + d + e + f + g + h + i + j
+let combine_many a b c d e f g h i j = 
+  a 
+  + b + c + d + e + f + g + h + 
+
+  i + j
 
 let function_many_or_patterns =
   function 
-  | `A 
-  | `B 
-  | `C 
-  | `D 
-  | `E -> true 
+  | `A | `B | `C 
+  | `D | `E -> true 
   | _ -> false
 
-let classify_letter =
-  function 
-  | 'a' .. 'z' -> `Lowercase 
+let classify_letter = function | 'a' .. 'z' -> `Lowercase 
   | 'A' .. 'Z' -> `Uppercase 
   | '0' .. '9' -> `Digit 
   | _ -> `Other
 
-let make_adder = fun x y -> x + y
+let make_adder = fun x -> fun y -> x + y
 
-let make_handler = fun x -> 
-  match x with
+let make_handler = fun x -> match x with
   | Some base -> fun y -> base + y
   | None -> fun y -> y
 
-let describe mode value =
-  match mode, value with
+let describe mode value = match mode, value with
   | `Int, Some number -> Int.to_string number
   | `Int, None -> "none"
   | `Bool, Some _ -> "bool"

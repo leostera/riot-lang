@@ -1,3 +1,7 @@
+
+
+
+
 (** Docstring for module. *)
 
 (* TODO(@leostera): we need to add more examples here for:
@@ -20,18 +24,14 @@ let before = 1
 let documented = 2
 
 (** Docstring for a type definition. *)
-type documented_type =
-  (** Constructor doc comment. *)
-  | A
+type documented_type = (** Constructor doc comment. *) | A
   (* Regular constructor comment. *)
   | B
 
 (* Normal comment for a record type. *)
 type record_with_comments = {
-  (* Comment for the first field. *)
-  first : string;
-  (** doc for the second field. *)
-  second : int;
+  (* Comment for the first field. *) first : string;
+  (** doc for the second field. *) second : int;
 }
 
 (* consturctor with a lot of spaces *)
