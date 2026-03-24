@@ -47,6 +47,21 @@ let source_mentions_identifier source identifier =
   in
   loop 0
 
+let contains_substring source needle =
+  let source_length = String.length source in
+  let needle_length = String.length needle in
+  if needle_length = 0 then
+    true
+  else
+    let rec loop index =
+      if index + needle_length > source_length then
+        false
+      else if String.sub source index needle_length = needle then
+        true
+      else loop (index + 1)
+    in
+    loop 0
+
 let fresh_match_parameter_name syntax_node =
   let source = source_of_syntax_node syntax_node in
   let rec pick = function
@@ -191,6 +206,30 @@ let normalize_recursive_let_source text =
         |> String.trim
       in
       lhs ^ " = " ^ rhs
+
+let render_guarded_function_cases ~indent source =
+  let trimmed = String.trim source in
+  let prefix = "function " in
+  if not (String.starts_with ~prefix trimmed) then
+    indent_string indent ^ trimmed
+  else
+    let payload =
+      String.sub trimmed (String.length prefix) (String.length trimmed - String.length prefix)
+    in
+    let cases =
+      payload |> String.split_on_char '|'
+      |> List.map String.trim
+      |> List.filter (fun part -> String.length part > 0)
+    in
+    indent_string indent ^ "function \n"
+    ^ (cases
+      |> List.mapi (fun index case ->
+             indent_string indent ^ "| " ^ case
+             ^
+             if index < List.length cases - 1 then
+               " "
+             else "")
+      |> String.concat "\n")
 
 let source_of_or_pattern_alternatives { Syn.Cst.alternatives; _ } =
   alternatives |> List.map source_of_pattern
@@ -406,9 +445,15 @@ let render_let_binding (binding : Syn.Cst.LetBinding.t) =
     Some
       (match binding.value with
       | Syn.Cst.Expression.Function { cases; _ } as function_
-        when List.exists (fun (case : Syn.Cst.match_case) -> Option.is_some case.guard) cases ->
+        when
+          List.exists (fun (case : Syn.Cst.match_case) -> Option.is_some case.guard) cases
+          || contains_substring
+               (source_of_syntax_node (Syn.Cst.Expression.syntax_node function_))
+               " when "
+          ->
+          let source = source_of_syntax_node (Syn.Cst.Expression.syntax_node function_) in
           keyword ^ pattern ^ " = \n"
-          ^ indent_block 2 (render_expression ~indent:0 function_)
+          ^ render_guarded_function_cases ~indent:2 source
       | Syn.Cst.Expression.Let _ ->
           let value = render_expression ~indent:2 binding.value in
           render_binding ~indent:0 ~keyword pattern value

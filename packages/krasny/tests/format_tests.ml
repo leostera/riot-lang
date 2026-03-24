@@ -172,6 +172,16 @@ let tests =
           ~expected:"let ors = function \n | 1 \n | 2 \n | 3 -> true \n | _ -> false\n"
           ~actual;
         Ok ());
+    Test.case "format keeps guarded function cases multiline" (fun () ->
+        let source = "let f = function x when x > 0 -> x | _ -> 0\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"guarded function cases should format"
+        in
+        Test.assert_equal
+          ~expected:"let f = \n  function \n  | x when x > 0 -> x \n  | _ -> 0\n"
+          ~actual;
+        Ok ());
     Test.case "format preserves syntax hash for selected codebase files"
       (fun () ->
         List.iter assert_roundtrip_hash workspace_files;

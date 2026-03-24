@@ -68,5 +68,6 @@
 0115_function_list.ml
 0116_function_constructor.ml
 0117_function_or_pattern.ml
+0118_function_when_guard.ml
 0119_function_nested_pattern.ml
 0120_function_application.ml
