@@ -5,6 +5,7 @@ type t =
   | Empty
   | Text of string
   | Space
+  | Spaces of int
   | Line
   | Break of string
   | Group of t
@@ -14,6 +15,7 @@ type t =
 let empty = Empty
 let text value = if value = "" then Empty else Text value
 let space = Space
+let spaces count = if count <= 0 then Empty else if count = 1 then Space else Spaces count
 let line = Line
 let break ?(flat = " ") () = Break flat
 let softline = Break ""
@@ -33,17 +35,29 @@ let lbracket = text "["
 let rbracket = text "]"
 
 let concat docs =
+  let add_spaces count acc =
+    if count <= 0 then
+      acc
+    else
+      match acc with
+      | Spaces current :: rest ->
+          Spaces (current + count) :: rest
+      | Space :: rest ->
+          Spaces (count + 1) :: rest
+      | _ when count = 1 ->
+          Space :: acc
+      | _ ->
+          Spaces count :: acc
+  in
   let rec flatten acc = function
     | [] ->
       List.rev acc
     | Empty :: rest ->
         flatten acc rest
     | Space :: rest -> (
-        match acc with
-        | Space :: _ ->
-            flatten acc rest
-        | _ ->
-            flatten (Space :: acc) rest)
+        flatten (add_spaces 1 acc) rest)
+    | Spaces count :: rest ->
+        flatten (add_spaces count acc) rest
     | Break flat :: rest -> (
         match acc with
         | Break current :: _ when current = flat ->
@@ -89,6 +103,8 @@ let rec is_multiline = function
   | Text value ->
       String.contains value "\n"
   | Space ->
+      false
+  | Spaces _ ->
       false
   | Line ->
       true

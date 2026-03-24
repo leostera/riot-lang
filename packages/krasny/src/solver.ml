@@ -26,6 +26,8 @@ let solve ~width doc =
         fits (remaining - String.length value) rest
     | (_, _, Doc.Space) :: rest ->
         fits (remaining - 1) rest
+    | (_, _, Doc.Spaces count) :: rest ->
+        fits (remaining - count) rest
     | (_, _, Doc.Line) :: _ ->
         true
     | (_, Flat, Doc.Break flat) :: rest ->
@@ -53,6 +55,8 @@ let solve ~width doc =
         (Doc.text value, column + String.length value)
     | Doc.Space ->
         (Doc.space, column + 1)
+    | Doc.Spaces count ->
+        (Doc.spaces count, column + count)
     | Doc.Line ->
         (Doc.line, indent)
     | Doc.Break flat -> (

@@ -13,6 +13,14 @@ let to_string doc =
         else (
           IO.Buffer.add_char buffer ' ';
           false)
+    | Doc.Spaces count ->
+        if line_start then
+          line_start
+        else (
+          for _ = 1 to count do
+            IO.Buffer.add_char buffer ' '
+          done;
+          false)
     | Doc.Line ->
         IO.Buffer.add_char buffer '\n';
         true
