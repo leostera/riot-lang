@@ -65,16 +65,16 @@ let tests =
           ~expected:"(** hi *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
           ~actual;
         Ok ());
-    Test.case "format preserves unsupported let bindings between formatted lets"
+    Test.case "format rewrites parameterized let bindings between formatted lets"
       (fun () ->
         let source = "(* intro *)\nlet x = 1 + 2\nlet f x = x + 1\nlet y = 3 + 4\n" in
         let actual =
           parse_ml source |> Krasny.format
           |> Result.expect
-               ~msg:"unsupported let bindings should be preserved verbatim"
+               ~msg:"parameterized let bindings should lower through explicit fun syntax"
         in
         Test.assert_equal
-          ~expected:"(* intro *)\nlet x = 1 + 2\n\nlet f x = x + 1\n\nlet y = 3 + 4\n"
+          ~expected:"(* intro *)\nlet x = 1 + 2\n\nlet f = fun x -> x + 1\n\nlet y = 3 + 4\n"
           ~actual;
         Ok ());
     Test.case "format preserves unsupported top-level items between formatted lets"
@@ -370,7 +370,13 @@ let y = 3 + 4
           parse_ml source |> Krasny.format
           |> Result.expect ~msg:"fun values with sequence bodies should keep their layout"
         in
-        Test.assert_equal ~expected:source ~actual;
+        let expected =
+          {|let f = fun x ->
+  print x;
+  x + 1
+|}
+        in
+        Test.assert_equal ~expected ~actual;
         Ok ());
     Test.case "format preserves multiline if branches containing sequences"
       (fun () ->
@@ -414,9 +420,7 @@ let and_case =
         in
         let expected =
           {|let rec_case =
-  let rec f n =
-    if n = 0 then 1 else n * f (n - 1)
-  in
+  let rec f = fun n -> if n = 0 then 1 else n * f (n - 1) in
   f 5
 
 let and_case =
@@ -437,7 +441,7 @@ let and_case =
         in
         Test.assert_equal
           ~expected:
-            "let label_arg = f ~y\n\nlet optional_arg = f ?y\n\nlet labeled_fun = fun ~y -> y + 1\n\nlet optional_fun = fun ?(y = 0) -> y + 1\n\nlet optional_match = fun ?y -> match y with Some v -> v | None -> 0\n\nlet optional_tuple = fun ?y ?z -> (y, z)\n"
+            "let label_arg = f ~y\n\nlet optional_arg = f ?y\n\nlet labeled_fun = fun ~y -> y + 1\n\nlet optional_fun = fun ?(y = 0) -> y + 1\n\nlet optional_match = fun ?y ->\n  match y with\n  | Some v -> v\n  | None -> 0\n\nlet optional_tuple = fun ?y ?z -> (y, z)\n"
           ~actual;
         Ok ());
     Test.case "format expands nested let-in bindings across lines" (fun () ->

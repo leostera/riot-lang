@@ -267,7 +267,22 @@ module Expression = struct
     List.exists parameter_is_labeled_or_optional parameters
 
   let parameters_require_explicit_fun_syntax parameters =
-    List.length parameters >= 10 || List.exists parameter_requires_explicit_fun_syntax parameters
+    List.length parameters > 0
+
+  let base_parameterized_binding_pattern pattern parameters =
+    let rendered_parameters =
+      parameters
+      |> List.map (fun parameter -> normalize_inline_parameter_source (source_of_parameter parameter))
+      |> String.concat " "
+    in
+    if rendered_parameters = "" then
+      pattern
+    else
+      let suffix = " " ^ rendered_parameters in
+      if String.ends_with ~suffix pattern then
+        String.sub pattern 0 (String.length pattern - String.length suffix) |> String.trim
+      else
+        pattern
 
   let rec doc_starts_with_text prefix = function
     | Doc.Text text ->
@@ -312,6 +327,14 @@ module Expression = struct
     else
       Doc.concat [ prefix; Doc.space; Doc.equal; Doc.space; value ]
 
+  let indent_after_first_fragment extra = function
+    | Doc.Concat [] ->
+        Doc.empty
+    | Doc.Concat (first :: rest) ->
+        Doc.concat [ first; Doc.indent extra (Doc.concat rest) ]
+    | doc ->
+        doc
+
   let source_parameterized_binding_pattern ~source ~source_start ~pattern ~value =
     let pattern_span = Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Pattern.syntax_node pattern) in
     let value_span = Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node value) in
@@ -334,6 +357,32 @@ module Expression = struct
             None
           else
             Some (source_of_pattern pattern ^ " " ^ suffix)
+
+  let split_parameterized_binding_pattern_text pattern =
+    let pattern = String.trim pattern in
+    let length = String.length pattern in
+    let rec loop index depth =
+      if index >= length then
+        None
+      else
+        match pattern.[index] with
+        | '(' | '[' | '{' ->
+            loop (index + 1) (depth + 1)
+        | ')' | ']' | '}' ->
+            loop (index + 1) (Int.max 0 (depth - 1))
+        | ' ' | '\t' when depth = 0 ->
+            let head = String.sub pattern 0 index |> String.trim in
+            let tail =
+              String.sub pattern (index + 1) (length - index - 1) |> String.trim
+            in
+            if head = "" || tail = "" then
+              None
+            else
+              Some (head, tail)
+        | _ ->
+            loop (index + 1) depth
+    in
+    loop 0 0
 
   let rec trim_leading_doc_layout = function
     | Doc.Empty | Doc.Space | Doc.Line | Doc.Break _ ->
@@ -867,6 +916,8 @@ module Expression = struct
               Doc.line;
               Doc.indent case_indent Doc.rparen;
             ]
+      | _ when Doc.is_multiline body && doc_starts_with_text "(" body ->
+          Doc.concat [ body |> indent_after_first_fragment (case_indent + 4) ]
       | _ ->
           body
     in
@@ -953,8 +1004,14 @@ module Expression = struct
         ~end_:(span.end_ - let_source_start)
     in
     let rec collect_fun_parameters parameters = function
-      | Syn.Cst.Expression.Fun { parameters = nested_parameters; body = Syn.Cst.Expression expression; _ } ->
-          collect_fun_parameters (parameters @ nested_parameters) expression
+      | Syn.Cst.Expression.Fun ({ parameters = nested_parameters; body = Syn.Cst.Expression expression; _ } as fun_)
+        ->
+          let fun_expression = Syn.Cst.Expression.Fun fun_ in
+          let fun_source = local_expression_source fun_expression |> String.trim in
+          if parameters = [] && String.starts_with ~prefix:"fun" fun_source then
+            (parameters, fun_expression)
+          else
+            collect_fun_parameters (parameters @ nested_parameters) expression
       | expression ->
           (parameters, expression)
     in
@@ -974,6 +1031,12 @@ module Expression = struct
                  (Source.trim_trailing_layout_whitespace value_source))
           else
             render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:false match_
+      | Syn.Cst.Expression.Fun ({ syntax_node; _ } as fun_) ->
+          let value_source = local_expression_source value in
+          if Source.syntax_node_has_comment_like_trivia syntax_node then
+            Doc.text (Source.trim_trailing_layout_whitespace value_source)
+          else
+            render_fun_expression ~indent:0 fun_
       | Syn.Cst.Expression.Let _ ->
           render ~indent:(indent + 2) value
       | Syn.Cst.Expression.If if_ ->
@@ -984,30 +1047,18 @@ module Expression = struct
           render ~indent:(indent + 2) value
     in
     let render_local_parameterized_binding ~keyword ~pattern ~parameters ~value =
-      let rendered_parameters =
-        parameters
-        |> List.map (fun parameter ->
-               normalize_inline_parameter_source (source_of_parameter parameter))
-        |> String.concat " "
-      in
-      let binding_pattern = pattern ^ " " ^ rendered_parameters in
+      let binding_pattern = base_parameterized_binding_pattern pattern parameters in
       let rendered_value =
-        if parameters_require_explicit_fun_syntax parameters then
-          render_explicit_fun_expression ~prefix_columns:0 ~indent:0 parameters value
-        else
-          render_local_bound_value ~keyword value
+        render_explicit_fun_expression ~prefix_columns:0 ~indent parameters value
       in
-      if doc_starts_with_text "function" rendered_value then
-        Doc.concat
-          [
-            Doc.indent indent (Doc.text (keyword ^ binding_pattern));
-            Doc.space;
-            Doc.equal;
-            Doc.space;
-            rendered_value;
-          ]
-      else
-        render_binding ~indent ~keyword binding_pattern rendered_value
+      Doc.concat
+        [
+          Doc.indent indent (Doc.text (keyword ^ binding_pattern));
+          Doc.space;
+          Doc.equal;
+          Doc.space;
+          rendered_value;
+        ]
     in
     let render_local_binding ~keyword ~pattern ~parameters ~value ~source_pattern =
       if List.length parameters > 0 then
@@ -1018,34 +1069,54 @@ module Expression = struct
             ~pattern:source_pattern ~value
         with
         | Some binding_pattern ->
-            let rendered_bound_value = render_local_bound_value ~keyword value in
-            if doc_starts_with_text "function" rendered_bound_value then
-              Doc.concat
-                [
-                  Doc.indent indent (Doc.text (keyword ^ binding_pattern));
-                  Doc.space;
-                  Doc.equal;
-                  Doc.space;
-                  rendered_bound_value;
-                ]
-            else if String.starts_with ~prefix:"let rec " keyword then
-              (match value with
-              | Syn.Cst.Expression.If _ ->
+            (match split_parameterized_binding_pattern_text binding_pattern with
+            | Some (base_pattern, parameters_text) ->
+                let rendered_bound_value =
+                  render_explicit_fun_with_parameter_text ~indent ~parameters_text value
+                in
+                Doc.concat
+                  [
+                    Doc.indent indent (Doc.text (keyword ^ base_pattern));
+                    Doc.space;
+                    Doc.equal;
+                    Doc.space;
+                    rendered_bound_value;
+                  ]
+            | None ->
+                let rendered_bound_value = render_local_bound_value ~keyword value in
+                if
+                  doc_starts_with_text "function" rendered_bound_value
+                  || doc_starts_with_text "fun" rendered_bound_value
+                then
                   Doc.concat
                     [
                       Doc.indent indent (Doc.text (keyword ^ binding_pattern));
                       Doc.space;
                       Doc.equal;
-                      Doc.line;
-                      Doc.indent (indent + 2) rendered_bound_value;
+                      Doc.space;
+                      rendered_bound_value;
                     ]
-              | _ ->
+                else if String.starts_with ~prefix:"let rec " keyword then
+                  (match value with
+                  | Syn.Cst.Expression.If _ ->
+                      Doc.concat
+                        [
+                          Doc.indent indent (Doc.text (keyword ^ binding_pattern));
+                          Doc.space;
+                          Doc.equal;
+                          Doc.line;
+                          Doc.indent (indent + 2) rendered_bound_value;
+                        ]
+                  | _ ->
+                      render_binding ~indent ~keyword binding_pattern rendered_bound_value)
+                else
                   render_binding ~indent ~keyword binding_pattern rendered_bound_value)
-            else
-              render_binding ~indent ~keyword binding_pattern rendered_bound_value
         | None ->
             let rendered_bound_value = render_local_bound_value ~keyword value in
-            if doc_starts_with_text "function" rendered_bound_value then
+            if
+              doc_starts_with_text "function" rendered_bound_value
+              || doc_starts_with_text "fun" rendered_bound_value
+            then
               Doc.concat
                 [
                   Doc.indent indent (Doc.text (keyword ^ pattern));
@@ -1137,30 +1208,22 @@ module Expression = struct
       | _ ->
           None
     in
+    let header =
+      Doc.concat [ Doc.text "fun"; Doc.space; Doc.text rendered_parameters; Doc.space; Doc.arrow ]
+    in
+    let multiline_body body = Doc.concat [ header; Doc.line; body ] in
+    let inline_body body = Doc.concat [ header; Doc.space; body ] in
+    let _ = prefix_columns in
     match expression with
-    | Syn.Cst.Expression.Match match_
-      when parameters_are_labeled_or_optional parameters ->
-        Doc.concat
-          [
-            Doc.text ("fun " ^ rendered_parameters ^ " -> ");
-            Doc.text (source_of_syntax_node match_.syntax_node);
-          ]
     | Syn.Cst.Expression.Match match_ ->
-        Doc.concat
-          [
-            Doc.indent indent (Doc.text ("fun " ^ rendered_parameters ^ " ->"));
-            Doc.line;
-            render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:true match_;
-          ]
+        multiline_body
+          (render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:true match_)
     | Syn.Cst.Expression.Try try_ ->
-        Doc.concat
-          [
-            Doc.indent indent (Doc.text ("fun " ^ rendered_parameters ^ " ->"));
-            Doc.line;
-            render_try_expression ~indent:(indent + 2) try_;
-          ]
+        multiline_body (render_try_expression ~indent:(indent + 2) try_)
+    | Syn.Cst.Expression.Sequence sequence ->
+        multiline_body (render_sequence_expression ~indent:(indent + 2) sequence)
     | expression ->
-        let rendered_body =
+        let rendered_body, body_is_preindented =
           match expression with
           | Syn.Cst.Expression.Infix _ ->
               let source =
@@ -1170,15 +1233,19 @@ module Expression = struct
                 |> String.concat " " |> collapse_horizontal_spaces |> String.trim
               in
               if String.length source <= 100 then
-                Doc.text source
+                (Doc.text source, false)
               else
-                render ~indent:(indent + 2) expression
+                (render ~indent:0 expression, false)
+          | Syn.Cst.Expression.Function function_ ->
+              (render_function_expression ~indent:(indent + 2) function_, true)
+          | Syn.Cst.Expression.If if_ ->
+              (render_if_expression ~indent:(indent + 2) if_, true)
+          | Syn.Cst.Expression.Let _
           | Syn.Cst.Expression.Sequence _ ->
-              render ~indent:0 expression
+              (render ~indent:(indent + 2) expression, true)
           | _ ->
-              render ~indent:(indent + 2) expression
+              (render ~indent:0 expression, false)
         in
-        let _ = prefix_columns in
         let prefers_multiline =
           has_multiline_parameter_layout
           ||
@@ -1193,30 +1260,56 @@ module Expression = struct
             multiline_parameter_doc |> Option.expect ~msg:"multiline parameter doc should exist"
           in
           let body =
-            if Doc.is_multiline rendered_body then
+            if body_is_preindented then
               rendered_body
             else
-              Doc.indent 2 rendered_body
+              Doc.indent (indent + 2) rendered_body
           in
           Doc.concat
             [
-              Doc.indent indent (Doc.text "fun ");
+              Doc.text "fun";
               Doc.line;
-              Doc.indent 2 parameter_doc;
+              Doc.indent (indent + 2) parameter_doc;
               Doc.space;
               Doc.arrow;
               Doc.line;
               body;
             ]
         else if prefers_multiline || Doc.is_multiline rendered_body then
-          Doc.concat
-            [
-              Doc.indent indent (Doc.text ("fun " ^ rendered_parameters ^ " ->"));
-              Doc.line;
-              Doc.indent 2 rendered_body;
-            ]
+          let body =
+            if body_is_preindented then
+              rendered_body
+            else
+              Doc.indent (indent + 2) rendered_body
+          in
+          multiline_body body
         else
-          Doc.concat [ Doc.text ("fun " ^ rendered_parameters ^ " -> "); rendered_body ]
+          inline_body rendered_body
+
+  and render_explicit_fun_with_parameter_text ~indent ~parameters_text expression =
+    let head =
+      Doc.concat [ Doc.text "fun"; Doc.space; Doc.text parameters_text; Doc.space; Doc.arrow ]
+    in
+    let multiline_body body = Doc.concat [ head; Doc.line; body ] in
+    match expression with
+    | Syn.Cst.Expression.Match match_ ->
+        multiline_body
+          (render_match_expression ~indent:(indent + 2) ~keyword_trailing_space:true match_)
+    | Syn.Cst.Expression.Try try_ ->
+        multiline_body (render_try_expression ~indent:(indent + 2) try_)
+    | Syn.Cst.Expression.Sequence sequence ->
+        multiline_body (render_sequence_expression ~indent:(indent + 2) sequence)
+    | _ ->
+        let body_source =
+          source_of_syntax_node (Syn.Cst.Expression.syntax_node expression)
+          |> Source.trim_trailing_layout_whitespace
+          |> dedent_multiline_block
+        in
+        let rendered_body = Doc.text body_source in
+        if String.contains body_source "\n" then
+          multiline_body (Doc.indent (indent + 2) rendered_body)
+        else
+          Doc.concat [ head; Doc.space; rendered_body ]
 
   and render_fun_body ~indent parameters body =
     let rec collect parameters = function
@@ -1230,7 +1323,32 @@ module Expression = struct
     | Syn.Cst.Expression expression ->
         render_explicit_fun_expression ~indent parameters expression
     | Syn.Cst.Cases case_body ->
-        Doc.text (source_of_syntax_node case_body.syntax_node)
+        let rendered_parameters =
+          parameters
+          |> List.map (fun parameter ->
+                 normalize_inline_parameter_source (source_of_parameter parameter))
+          |> String.concat " "
+        in
+        if rendered_parameters = "" then
+          Doc.text (source_of_syntax_node case_body.syntax_node)
+        else
+          let function_source =
+            source_of_syntax_node case_body.syntax_node |> Source.trim_trailing_layout_whitespace
+          in
+          let body =
+            if String.starts_with ~prefix:"function" function_source then
+              function_source
+            else
+              "function " ^ function_source
+          in
+          Doc.concat
+            [
+              Doc.indent indent
+                (Doc.concat
+                   [ Doc.text "fun"; Doc.space; Doc.text rendered_parameters; Doc.space; Doc.arrow ]);
+              Doc.line;
+              Doc.indent 2 (Doc.text (dedent_multiline_block body));
+            ]
 
   and render_fun_expression ~indent
       ({ syntax_node; parameters; body; attributes } : Syn.Cst.fun_expression) =
@@ -1508,7 +1626,14 @@ module Expression = struct
             (Doc.indent indent rendered_head
             :: List.map
                  (fun argument ->
-                   Doc.concat [ Doc.line; Doc.indent (indent + 2) argument ])
+                   if Doc.is_multiline argument && doc_starts_with_text "(" argument then
+                     Doc.concat
+                       [
+                         Doc.space;
+                         indent_after_first_fragment (indent + 2) argument;
+                       ]
+                   else
+                     Doc.concat [ Doc.line; Doc.indent (indent + 2) argument ])
                  rendered_arguments)
     | Syn.Cst.Labeled _ | Syn.Cst.Optional _ ->
         Doc.text (String.trim (source_of_syntax_node syntax_node))
@@ -1531,50 +1656,12 @@ module Expression = struct
              Doc.concat [ Doc.indent indent rendered; suffix ])
     |> Doc.join Doc.line
 
-  and render_parameterized_let_binding ?source ~keyword ~pattern ~parameters ~value =
-    let rendered_parameters =
-      parameters
-      |> List.map (fun parameter -> normalize_inline_parameter_source (source_of_parameter parameter))
-      |> String.concat " "
+  and render_parameterized_let_binding ~keyword ~pattern ~parameters ~value =
+    let pattern = base_parameterized_binding_pattern pattern parameters in
+    let rendered_value =
+      render_explicit_fun_expression ~prefix_columns:0 ~indent:0 parameters value
     in
-    let should_lower_to_fun = parameters_require_explicit_fun_syntax parameters in
-    if should_lower_to_fun then
-      let rendered_value =
-        render_explicit_fun_expression ~prefix_columns:0 ~indent:0 parameters value
-      in
-      Doc.concat [ Doc.text (keyword ^ pattern); Doc.space; Doc.equal; Doc.space; rendered_value ]
-    else
-      let binding_pattern = pattern ^ " " ^ rendered_parameters in
-      let rendered_value =
-        match value with
-        | Syn.Cst.Expression.Function function_ ->
-            let value_source = expression_source ?source value in
-            if contains_substring value_source " when " then
-              Doc.text (Source.trim_trailing_layout_whitespace value_source)
-            else
-              render_function_expression ~indent:0 function_
-        | Syn.Cst.Expression.Let _ ->
-            render ~indent:2 value
-        | Syn.Cst.Expression.If if_ ->
-            render_if_expression ~indent:2 if_
-        | Syn.Cst.Expression.Match match_ ->
-            render_match_expression ~indent:2 ~keyword_trailing_space:false match_
-        | Syn.Cst.Expression.Sequence sequence ->
-            render_sequence_expression ~indent:2 sequence
-        | _ ->
-            render ~indent:0 value
-      in
-      if doc_starts_with_text "function" rendered_value then
-        Doc.concat
-          [
-            Doc.text (keyword ^ binding_pattern);
-            Doc.space;
-            Doc.equal;
-            Doc.space;
-            rendered_value;
-          ]
-      else
-        render_binding ~indent:0 ~keyword binding_pattern rendered_value
+    Doc.concat [ Doc.text (keyword ^ pattern); Doc.space; Doc.equal; Doc.space; rendered_value ]
 
   let render_let_binding ?source (binding : Syn.Cst.LetBinding.t) =
     if List.length binding.attributes > 0 then
@@ -1582,12 +1669,45 @@ module Expression = struct
     else
       let keyword = if binding.is_recursive then "let rec " else "let " in
       let pattern = source_of_pattern binding.binding_pattern in
+      let hidden_parameterized_binding =
+        match split_parameterized_binding_pattern_text pattern with
+        | Some split ->
+            Some split
+        | None -> (
+            match source with
+            | Some source ->
+                (match
+                   source_parameterized_binding_pattern ~source ~source_start:0
+                     ~pattern:binding.binding_pattern ~value:binding.value
+                 with
+                | Some hidden_pattern ->
+                    split_parameterized_binding_pattern_text hidden_pattern
+                | None ->
+                    None)
+            | None ->
+                None)
+      in
       let rendered =
         if List.length binding.parameters > 0 then
-          render_parameterized_let_binding ?source ~keyword ~pattern ~parameters:binding.parameters
+          render_parameterized_let_binding ~keyword ~pattern ~parameters:binding.parameters
             ~value:binding.value
         else
-          match binding.value with
+          match hidden_parameterized_binding with
+          | Some (base_pattern, parameters_text) ->
+              let value =
+                render_explicit_fun_with_parameter_text ~indent:0 ~parameters_text
+                  binding.value
+              in
+              Doc.concat
+                [
+                  Doc.text (keyword ^ base_pattern);
+                  Doc.space;
+                  Doc.equal;
+                  Doc.space;
+                  value;
+                ]
+          | None ->
+            match binding.value with
           | Syn.Cst.Expression.Infix infix -> (
               match boolean_chain_operator (Syn.Cst.Expression.Infix infix) with
               | Some _ ->
@@ -1634,12 +1754,19 @@ module Expression = struct
           | Syn.Cst.Expression.Let _ ->
               let value = render ~indent:2 binding.value in
               render_binding ~indent:0 ~keyword pattern value
-          | Syn.Cst.Expression.Fun _ ->
-              if expression_contains_sequence binding.value then
-                let value = render ~indent:1 binding.value in
-                render_binding ~indent:0 ~keyword pattern value
+          | Syn.Cst.Expression.Fun ({ syntax_node; _ } as fun_) ->
+              if Source.syntax_node_has_comment_like_trivia syntax_node then
+                let source = expression_source ?source binding.value in
+                Doc.concat
+                  [
+                    Doc.text (keyword ^ pattern);
+                    Doc.space;
+                    Doc.equal;
+                    Doc.space;
+                    Doc.text (Source.trim_trailing_layout_whitespace source);
+                  ]
               else
-                let value = render ~indent:0 binding.value in
+                let value = render_fun_expression ~indent:0 fun_ in
                 Doc.concat [ Doc.text (keyword ^ pattern); Doc.space; Doc.equal; Doc.space; value ]
           | Syn.Cst.Expression.If if_ ->
               let value = render_if_expression ~indent:2 if_ in
@@ -2595,30 +2722,64 @@ module Structure = struct
           |> String.trim)
 
   and render_simple_signature_items ~source items =
-    let rec loop acc = function
+    let signature_item_is_open_statement = function
+      | Syn.Cst.SignatureItem.OpenStatement _ ->
+          true
+      | _ ->
+          false
+    in
+    let rec loop previous_item acc = function
       | [] ->
-          Some (List.rev acc |> String.concat "\n\n")
+          Some (List.rev acc |> String.concat "")
       | item :: rest -> (
           match render_simple_signature_item ~source item with
           | Some rendered ->
-              loop (rendered :: acc) rest
+              let separator =
+                match previous_item with
+                | None ->
+                    ""
+                | Some previous_item
+                  when signature_item_is_open_statement previous_item
+                       && signature_item_is_open_statement item ->
+                    "\n"
+                | Some _ ->
+                    "\n\n"
+              in
+              loop (Some item) ((separator ^ rendered) :: acc) rest
           | None ->
               None)
     in
-    loop [] items
+    loop None [] items
 
   and render_simple_structure_items ~source items ~separator =
-    let rec loop acc = function
+    let structure_item_is_open_statement = function
+      | Syn.Cst.StructureItem.OpenStatement _ ->
+          true
+      | _ ->
+          false
+    in
+    let rec loop previous_item acc = function
       | [] ->
-          Some (List.rev acc |> String.concat separator)
+          Some (List.rev acc |> String.concat "")
       | item :: rest -> (
           match render_simple_structure_item ~source item with
           | Some rendered ->
-              loop (rendered :: acc) rest
+              let joiner =
+                match previous_item with
+                | None ->
+                    ""
+                | Some previous_item
+                  when structure_item_is_open_statement previous_item
+                       && structure_item_is_open_statement item ->
+                    "\n"
+                | Some _ ->
+                    separator
+              in
+              loop (Some item) ((joiner ^ rendered) :: acc) rest
           | None ->
               None)
     in
-    loop [] items
+    loop None [] items
 
   and render_signature_fragment source_text =
     match parse_fragment ~filename:"inline.mli" source_text with
@@ -3117,12 +3278,18 @@ module Structure = struct
         Some (verbatim_structure_item ~source item)
 
   let render_source_file ~source (source_file : Syn.Cst.source_file) =
+    let structure_item_is_open_statement = function
+      | Syn.Cst.StructureItem.OpenStatement _ ->
+          true
+      | _ ->
+          false
+    in
     match source_file with
     | Syn.Cst.Implementation { syntax_node; items } ->
         let file_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
         let allow_rewrite = List.for_all structure_item_supports_mixed_rewrite items in
         let rec render_items acc previous_end previous_preserves_layout previous_trailing_layout
-            is_first_item = function
+            previous_item is_first_item = function
           | [] ->
               let trailing_source =
                 previous_trailing_layout
@@ -3152,6 +3319,7 @@ module Structure = struct
                       previous_end
                       previous_preserves_layout
                       previous_trailing_layout
+                      previous_item
                       is_first_item
                       rest
                   else
@@ -3164,6 +3332,15 @@ module Structure = struct
                       is_first_item
                       || Source.contains_comment_like_text interstitial
                       || (rendered.preserves_layout && previous_preserves_layout)
+                    in
+                    let compact_open_group =
+                      match previous_item with
+                      | Some previous_item ->
+                          structure_item_is_open_statement previous_item
+                          && structure_item_is_open_statement item
+                          && Source.is_whitespace_only interstitial
+                      | None ->
+                          false
                     in
                     let acc =
                       if is_first_item then
@@ -3190,6 +3367,8 @@ module Structure = struct
                           Doc.text interstitial :: acc
                         else
                           Doc.text interstitial :: acc
+                      else if compact_open_group then
+                        Doc.line :: acc
                       else if Source.is_whitespace_only interstitial then
                         Doc.concat [ Doc.line; Doc.line ] :: acc
                       else
@@ -3204,12 +3383,13 @@ module Structure = struct
                           item_span.end_)
                       rendered.preserves_layout
                       rendered.trailing_layout
+                      (Some item)
                       false
                       rest
               | None ->
                   None)
         in
-        render_items [] file_span.start true "" true items
+        render_items [] file_span.start true "" None true items
     | Syn.Cst.Interface _ -> None
 end
 
