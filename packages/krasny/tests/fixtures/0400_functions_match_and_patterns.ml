@@ -17,44 +17,26 @@ let fun_nested =
 let fun_inline_pattern =
   fun (x, y) -> x + y
 
-let fun_body_match =
-  fun value ->
-    match value with
+let fun_body_match value = match value with
     | Some x -> x
     | None -> 0
 
 let match_simple =
   match value with
-  | 0 -> "zero"
-  | n -> Int.to_string n
+  | 0 -> "zero" | n -> Int.to_string n
 
-let function_one_case =
-  function
-  | [] -> 0
+let function_one_case = function | [] -> 0
 
-let function_two_cases =
-  function
-  | [] -> 0
-  | x :: _ -> x
+let function_two_cases = function | [] -> 0 | x :: _ -> x
+let function_tuple = function | x, y -> x + y
 
-let function_tuple =
-  function
-  | x, y -> x + y
+let function_list = function | [] -> 0 | [x] -> x | x :: xs -> x + List.length xs
 
-let function_list =
-  function
-  | [] -> 0
-  | [x] -> x
-  | x :: xs -> x + List.length xs
-
-let function_constructor =
-  function
+let function_constructor = function
   | Some x -> x
   | None -> 0
 
-let function_or_pattern =
-  function
-  | `A | `B -> 1
+let function_or_pattern = function | `A | `B -> 1
   | `C -> 2
 
 let function_when_guard =
@@ -82,19 +64,13 @@ let summarize_large_record =
   | { first_name; last_name; email; city; country } ->
       first_name ^ last_name ^ email ^ city ^ country
 
-let classify_many =
-  function
-  | `Start -> 0
-  | `Stop -> 1
-  | `Pause -> 2
+let classify_many = function | `Start -> 0 | `Stop -> 1 | `Pause -> 2
   | `Resume -> 3
   | `Flush -> 4
   | `Reset -> 5
   | `Unknown -> -1
 
-let combine_many =
-  fun a b c d e f g h i j ->
-    a + b + c + d + e + f + g + h + i + j
+let combine_many a b c d e f g h i j = a + b + c + d + e + f + g + h + i + j
 
 let function_many_or_patterns =
   function
@@ -108,8 +84,7 @@ let function_many_or_patterns =
 let classify_letter =
   function
   | 'a' .. 'z' -> `Lowercase
-  | 'A' .. 'Z' -> `Uppercase
-  | '0' .. '9' -> `Digit
+  | 'A' .. 'Z' -> `Uppercase | '0' .. '9' -> `Digit
   | _ -> `Other
 
 let make_adder =

@@ -8,10 +8,7 @@
 
 *)
 
-module type SHOW = sig
-  type t
-  val show : t -> string
-end
+module type SHOW = sig type t val show : t -> string end
 
 module type EQ = sig
   type t
@@ -36,19 +33,16 @@ end = struct
 end
 
 module Make_pair (Left : SHOW) (Right : SHOW) = struct
-  let show_pair (left, right) =
-    Left.show left, Right.show right
+  let show_pair (left, right) = Left.show left, Right.show right
 end
 
-module Int_list_show = Make (Int_show)
-module Int_pair_show = Make_pair (Int_show) (Int_show)
+module Int_list_show = Make(Int_show)
+module Int_pair_show = Make_pair(Int_show)(Int_show)
 
 module Nested = struct
   let value = Int_show.show 42
 
-  module Inner = struct
-    let equal = Int_eq.equal
-  end
+  module Inner = struct let equal = Int_eq.equal end
 end
 
 module Inline : sig
@@ -65,10 +59,7 @@ module rec Even : sig
   val check : int -> bool
 end = struct
   let check n = n = 0 || Odd.check (n - 1)
-end
-and Odd : sig
-  val check : int -> bool
-end = struct
+end and Odd : sig val check : int -> bool end = struct
   let check n = n <> 0 && Even.check (n - 1)
 end
 

@@ -24,31 +24,22 @@ let if_nested =
   if outer then if inner then one else two else three
 
 let let_in_simple =
-  let x = 1 in
-  x + 2
+  let x = 1 in x + 2
 
 let let_in_nested =
-  let x = 1 in
-  let y = x + 1 in
-  x + y
+  let x = 1 in let y = x + 1 in x + y
 
 let let_and_bindings =
   let left = compute_left ()
   and right = compute_right () in
   left + right
 
-let let_rec_in =
-  let rec loop n =
-    if n <= 0 then 0 else n + loop (n - 1)
-  in
+let let_rec_in = let rec loop n = if n <= 0 then 0 else n + loop (n - 1) in
   loop count
 
-let sequence_two =
-  log "start";
-  log "done"
+let sequence_two = log "start"; log "done"
 
-let sequence_with_let =
-  log "before";
+let sequence_with_let = log "before";
   let value = compute () in
   value
 
@@ -58,9 +49,7 @@ let sequence_with_if =
 
 let sequence_with_match =
   log "before";
-  match value with
-  | Some x -> x
-  | None -> 0
+  match value with | Some x -> x | None -> 0
 
 let sequence_in_fun =
   fun x ->
@@ -69,27 +58,19 @@ let sequence_in_fun =
 
 let begin_sequence =
   begin
-    log "begin";
-    log "end"
+    log "begin"; log "end"
   end
 
-let match_nested =
-  match outer with
+let match_nested = match outer with
   | Some inner ->
       match inner with
-      | Ok (Some value) -> value
-      | Ok None -> 0
+      | Ok (Some value) -> value | Ok None -> 0
       | Error _ -> -1
   | None -> -2
 
 let match_many_branches =
   match opcode with
-  | 0 -> "nop"
-  | 1 -> "load"
-  | 2 -> "store"
-  | 3 -> "jump"
-  | 4 -> "call"
-  | 5 -> "ret"
+  | 0 -> "nop" | 1 -> "load" | 2 -> "store" | 3 -> "jump" | 4 -> "call" | 5 -> "ret"
   | _ -> "unknown"
 
 let match_with_guards =
@@ -114,12 +95,10 @@ let try_with_simple =
   try read () with
   | Not_found -> default
 
-let try_with_many_branches =
-  try parse source with
+let try_with_many_branches = try parse source with
   | Failure message -> fail message
   | Invalid_argument message -> fail message
-  | End_of_file -> eof
-  | _ -> unknown
+  | End_of_file -> eof | _ -> unknown
 
 let nested_try_with =
   try
