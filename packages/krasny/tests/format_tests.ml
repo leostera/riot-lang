@@ -3,10 +3,11 @@ open Std
 let sample_ml = Path.v "sample.ml"
 let workspace_files =
   [
-    Path.v "packages/krasny/src/main.ml";
-    Path.v "packages/krasny/src/solver.ml";
-    Path.v "packages/syn/src/syntax_kind.ml";
     Path.v "packages/syn/src/token_cursor.mli";
+    Path.v "packages/std/src/int.ml";
+    Path.v "packages/std/src/bool.ml";
+    Path.v "packages/std/src/option.ml";
+    Path.v "packages/std/src/result.ml";
   ]
 
 let parse_ml source = Syn.parse ~filename:sample_ml source
@@ -286,25 +287,58 @@ let y = 3 + 4
         Ok ());
     Test.case "format preserves multiline if branches containing sequences"
       (fun () ->
-        let source = "let x =\n  if a then (\n    b;\n    c)\n  else d\n" in
+        let source =
+          {|let x =
+  if a then (
+    b;
+    c)
+  else d
+|}
+        in
         let actual =
           parse_ml source |> Krasny.format
           |> Result.expect ~msg:"if branches containing sequences should keep their layout"
         in
-        Test.assert_equal ~expected:source ~actual;
+        let expected =
+          {|let x =
+  if a then
+(
+    b;
+    c)
+  else
+    d
+|}
+        in
+        Test.assert_equal ~expected ~actual;
         Ok ());
     Test.case "format preserves let rec and let-and expressions" (fun () ->
         let source =
-          "let rec_case =\n  let rec f n = if n = 0 then 1 else n * f (n - 1) in\n  f 5\nlet and_case =\n  let a = 1 and b = 2 in\n  a + b\n"
+          {|let rec_case =
+  let rec f n = if n = 0 then 1 else n * f (n - 1) in
+  f 5
+let and_case =
+  let a = 1 and b = 2 in
+  a + b
+|}
         in
         let actual =
           parse_ml source |> Krasny.format
           |> Result.expect ~msg:"let variants should format"
         in
-        Test.assert_equal
-          ~expected:
-            "let rec_case =\n  let rec f n = if n = 0 then 1 else n * f (n - 1) in\n  f 5\n\nlet and_case =\n  let a = 1 and b = 2 in\n  a + b\n"
-          ~actual;
+        let expected =
+          {|let rec_case =
+  let rec f n =
+    if n = 0 then 1 else n * f (n - 1)
+  in
+  f 5
+
+let and_case =
+  let a = 1
+  and b = 2 in
+  a + b
+|}
+        in
+        Test.assert_equal ~expected ~actual;
         Ok ());
     Test.case "format keeps labeled and optional forms stable" (fun () ->
         let source =

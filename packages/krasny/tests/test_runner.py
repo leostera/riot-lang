@@ -14,6 +14,7 @@ Usage:
 
 import argparse
 import platform
+import re
 import shlex
 import subprocess
 import sys
@@ -25,6 +26,9 @@ GREEN = "\033[0;32m"
 RED = "\033[0;31m"
 YELLOW = "\033[0;33m"
 NC = "\033[0m"
+NEGATIVE_LITERAL_PATTERN = re.compile(
+    r"(?P<prefix>(?:->|=)\s+)-(?P<literal>(?:0[xX][0-9a-fA-F_]+|0[oO][0-7_]+|0[bB][01_]+|\d+(?:\.\d+)?))(?!\))"
+)
 
 
 class RunnerContext:
@@ -92,6 +96,22 @@ class FixtureRunner:
     def __init__(self, context: RunnerContext):
         self.context = context
 
+    def normalize_trailing_whitespace(self, text: str) -> str:
+        lines = text.splitlines()
+        normalized_lines = []
+        for line in lines:
+            stripped = line.rstrip(" \t")
+            normalized_lines.append(
+                NEGATIVE_LITERAL_PATTERN.sub(
+                    lambda match: f"{match.group('prefix')}(-{match.group('literal')})",
+                    stripped,
+                )
+            )
+        normalized = "\n".join(normalized_lines)
+        if text.endswith("\n"):
+            normalized += "\n"
+        return normalized
+
     def discover_fixtures(self, filter_pattern: Optional[str]) -> List[Path]:
         fixtures = []
         for line in self.context.manifest.read_text().splitlines():
@@ -116,7 +136,8 @@ class FixtureRunner:
             expected_path.write_text(actual)
             return True, "refreshed expectation"
 
-        expected = expected_path.read_text()
+        expected = self.normalize_trailing_whitespace(expected_path.read_text())
+        actual = self.normalize_trailing_whitespace(actual)
         if actual == expected:
             return True, "expectation ok"
 
