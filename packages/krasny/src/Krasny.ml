@@ -133,6 +133,32 @@ let split_trailing_layout_whitespace text =
   in
   (trimmed, trailing)
 
+let is_standalone_comment_line line =
+  let trimmed = String.trim line in
+  not (trimmed = "")
+  && String.starts_with ~prefix:"(*" trimmed
+  && String.ends_with ~suffix:"*)" trimmed
+
+let split_trailing_comment_block text =
+  let body, trailing_layout = split_trailing_layout_whitespace text in
+  let lines = String.split_on_char '\n' body in
+  let rec peel comments_rev = function
+    | line :: rest_rev when is_standalone_comment_line line ->
+        peel (line :: comments_rev) rest_rev
+    | rest_rev ->
+        (List.rev rest_rev, comments_rev)
+  in
+  match List.rev lines with
+  | [] ->
+      (body, trailing_layout)
+  | reversed_lines ->
+      let body_lines, comment_lines = peel [] reversed_lines in
+      if comment_lines = [] || body_lines = [] then
+        (body, trailing_layout)
+      else
+        ( String.concat "\n" body_lines,
+          "\n" ^ String.concat "\n" comment_lines ^ trailing_layout )
+
 let source_of_syntax_node (node : Syn.Cst.syntax_node) =
   let buffer = IO.Buffer.create 1024 in
   Syn.Ceibo.Red.SyntaxNode.preorder node (function
@@ -704,7 +730,7 @@ type rendered_structure_item = {
 }
 
 let verbatim_structure_item_from_text text =
-  let body, trailing_layout = split_trailing_layout_whitespace text in
+  let body, trailing_layout = split_trailing_comment_block text in
   {
     doc = Doc.text body;
     preserves_layout = true;

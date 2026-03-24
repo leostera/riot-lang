@@ -59,6 +59,7 @@ Rough guidelines for formatting decisions:
   - second slice landed for preserving verbatim unsupported top-level `let` bindings between formatted items
   - third slice landed for preserving verbatim unsupported top-level non-`let` items while only rewriting adjacent mixed-file `let` bindings when their binding text stays stable
   - fourth slice landed for splitting trailing layout from preserved top-level items so mixed-file comments/docstrings stay tighter to the next formatted `let`
+  - fifth slice landed for peeling trailing standalone comment/docstring lines out of preserved top-level items so they can attach directly to the next formatted `let`
 - [x] Require a successful CST lift before formatting; do not pretty-print broken files
 - [ ] Add a codebase smoke runner for `krasny format` over real workspace files
 

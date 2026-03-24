@@ -88,7 +88,7 @@ let tests =
         in
         Test.assert_equal
           ~expected:
-            "open Std\ntype t =\n  | A\n  | B\n(* keep with x *)\n\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+            "open Std\ntype t =\n  | A\n  | B\n(* keep with x *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
           ~actual;
         Ok ());
     Test.case "format preserves mixed-file docstrings before formatted lets"
@@ -103,7 +103,7 @@ let tests =
         in
         Test.assert_equal
           ~expected:
-            "open Std\ntype t =\n  | A\n  | B\n(** keep with x *)\n\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+            "open Std\ntype t =\n  | A\n  | B\n(** keep with x *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
           ~actual;
         Ok ());
     Test.case "format inserts blank lines between top-level let bindings"
