@@ -37,17 +37,12 @@ type record_with_comments = {
 (* consturctor with a lot of spaces *)
 type preserved =
   | A
-
-
-
   | B
 
 (* let binding with weird spacing *)
-let after_type = 
-3
+let after_type = 3
 
-let inline_comment_expr =
-  before + (* inline operator comment *) after
+let inline_comment_expr = before + (* inline operator comment *) after
 
 let inline_comment_args =
   configure

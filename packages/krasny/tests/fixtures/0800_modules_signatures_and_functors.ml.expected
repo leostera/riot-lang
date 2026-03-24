@@ -66,6 +66,7 @@ module rec Even : sig
 end = struct
   let check n = n = 0 || Odd.check (n - 1)
 end
+
 and Odd : sig
   val check : int -> bool
 end = struct

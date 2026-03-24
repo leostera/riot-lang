@@ -19,7 +19,14 @@ let if_then_else_simple = if ready then 1 else 0
 
 let if_no_else = if ready then log "ready"
 
-let if_nested = if outer then if inner then one else two else three
+let if_nested = 
+  if outer then 
+    if inner then 
+      one 
+    else 
+      two 
+  else 
+    three
 
 let let_in_simple =
   let x = 1 in
@@ -72,11 +79,12 @@ let begin_sequence = begin
 
 let match_nested =
   match outer with
-  | Some inner ->
+  | Some inner -> (
       match inner with
       | Ok (Some value) -> value
       | Ok None -> 0
       | Error _ -> -1
+    )
   | None -> -2
 
 let match_many_branches =

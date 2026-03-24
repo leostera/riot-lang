@@ -21,105 +21,34 @@ type id = int
 
 type 'a box = 'a
 
-type (
-  'a,
-  'b,
-  'c,
-  'd,
-  'e,
-  'f,
-  'g,
-  'h,
-  'i,
-  'j,
-  'k,
-  'l,
-  'm,
-  'n,
-  'o,
-  'p,
-  'q,
-  'r,
-  's,
-  't
-) twenty_params = {
-  first : 'a;
-  second : 'b;
-  third : 'c;
-  fourth : 'd;
-  fifth : 'e;
-  sixth : 'f;
-  seventh : 'g;
-  eighth : 'h;
-  ninth : 'i;
-  tenth : 'j;
-  eleventh : 'k;
-  twelfth : 'l;
-  thirteenth : 'm;
-  fourteenth : 'n;
-  fifteenth : 'o;
-  sixteenth : 'p;
-  seventeenth : 'q;
-  eighteenth : 'r;
-  nineteenth : 's;
-  twentieth : 't;
-}
+type ( 'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm, 'n, 'o, 'p, 'q, 'r, 's, 't) twenty_params = { first : 'a; second : 'b; third : 'c; fourth : 'd; fifth : 'e; sixth : 'f; seventh : 'g; eighth : 'h; ninth : 'i; tenth : 'j; eleventh : 'k; twelfth : 'l; thirteenth : 'm; fourteenth : 'n; fifteenth : 'o; sixteenth : 'p; seventeenth : 'q; eighteenth : 'r; nineteenth : 's; twentieth : 't; }
 
-type point = {
-  x : int;
-  y : int;
-}
+type point = { x : int; y : int; }
 
-type record = {
-  first_name : string;
-  last_name : string;
-  age : int;
-  city : string;
-  country : string;
-  postal_code : string;
-}
+type record = { first_name : string; last_name : string; age : int; city : string; country : string; postal_code : string; }
 
 type configuration_snapshot = {
   request_correlation_identifier_for_observability_pipeline : string;
-  decoded_response_payloads_grouped_by_endpoint_name :
-    (string * (int * string option) list) list;
-  retry_schedule_overrides_by_http_status_code :
-    (int * (float * bool) list) list option;
-  transform_domain_events_into_renderable_view_models :
-    (message list -> (string * int) list) option;
+  decoded_response_payloads_grouped_by_endpoint_name : (string * (int * string option) list) list;
+  retry_schedule_overrides_by_http_status_code : (int * (float * bool) list) list option;
+  transform_domain_events_into_renderable_view_models : (message list -> (string * int) list) option;
 }
 
-type color =
-  | Red
-  | Green
-  | Blue
-  | Cyan
-  | Magenta
-  | Yellow
-  | Black
+type color = | Red | Green | Blue | Cyan | Magenta | Yellow | Black
 
-type 'a tree =
-  | Leaf of 'a
-  | Node of 'a tree * 'a tree
+type 'a tree = | Leaf of 'a | Node of 'a tree * 'a tree
 
-type chain = {
-  value : int;
-  next : chain option;
-}
+type chain = { value : int; next : chain option; }
 
 type ('ok, 'err) result_like =
-  | Ok of 'ok
-  | Error of 'err
+  | Ok of 'ok | Error of 'err
 
 type message =
-  | Ping of { id : int; sent_at : float }
-  | Pong of { id : int; ok : bool }
+  | Ping of { id : int; sent_at : float } | Pong of { id : int; ok : bool }
 
 type opaque
 
-type mapper = {
-  run : 'a. 'a list -> 'a list;
-}
+type mapper = { run : 'a. 'a list -> 'a list; }
 
 type 'a constrained = 'a constraint 'a = int
 
@@ -133,19 +62,7 @@ type extended_poly = [ closed_poly | `D of string ]
 
 type printer = string -> width:int -> ?indent:int -> unit -> string
 
-type request_handler =
-  string ->
-  int ->
-  retries:int ->
-  timeout:float ->
-  ?trace_id:string ->
-  ?backoff_seconds:float ->
-  bool ->
-  unit ->
-  user_id:int ->
-  payload:string ->
-  string list ->
-  (string, string) result
+type request_handler = string -> int -> retries:int -> timeout:float -> ?trace_id:string -> ?backoff_seconds:float -> bool -> unit -> user_id:int -> payload:string -> string list -> (string, string) result
 
 type 'a decoder = string -> ('a, string) result
 
@@ -160,8 +77,7 @@ type _ expr =
   | Pair : 'a expr * 'b expr -> ('a * 'b) expr
 
 type node =
-  | File of string
-  | Directory of string * forest
+  | File of string | Directory of string * forest
 and forest = node list
 
 external unsafe_string_get : string -> int -> char = "%string_safe_get"
