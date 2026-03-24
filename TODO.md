@@ -67,10 +67,9 @@ Rough guidelines for formatting decisions:
 - [x] Initialize the `krasny` package, CLI, focused tests, and expectation harness
 - [x] Seed `krasny` formatter fixtures from `packages/syn/tests/fixtures`
 - [x] Add a focused round-trip syntax-hash invariant test for selected real codebase files
-- [x] Add a dedicated round-trip syntax-hash corpus runner over selected repo files
-- current green corpus: `11` repo files across `krasny`, `syn`, `std`, and `tusk-fix`
+- [x] Add fixture-level syntax-hash roundtrip checks to the Python harness
 - [x] Add a `krasny` expectation suite for formatted output, separate from the current lossless-token baseline
-- bootstrap status: `krasny` builds, focused tests pass, the format expectation runner is green on the first curated block (`111` fixtures), and the round-trip syntax-hash corpus is green on `11` selected repo files
+- bootstrap status: `krasny` builds, focused tests pass, and the single fixture harness is `110/111` green in the current worktree (`mixed_supported_and_unsupported_non_let_multiline_trivia.ml` is locally edited and currently mismatched); every passing fixture also round-trips its CST syntax hash
 
 ### Formatter Pipeline
 
@@ -87,10 +86,10 @@ Rough guidelines for formatting decisions:
   - eighth slice landed for extending the curated expectation block with trivia-heavy variant-type and docstring fixtures that previously exercised unsupported-item preservation edges
   - ninth slice landed for refreshing the remaining trivia-literal expectation so the dedicated trivia/comment/docstring fixture filters are green again
   - tenth slice landed for sequence expressions by preserving dedented sequence blocks from the successful CST source and teaching multiline `fun`/`if`/`match` layouts to keep sequence-driven structure readable
-  - eleventh slice landed for splitting the monolithic formatter into `krasny_doc`, `krasny_source`, `krasny_expression`, and `krasny_structure` while keeping the public `Krasny.format` / `syntax_hash` / `write` façade stable
+  - eleventh slice landed for reworking the formatter into explicit `Doc`, `Printer`, `Lower`, and `Source` layers so the architecture matches the document model / printer / CST-to-Doc lowering split while keeping the public `Krasny.format` / `syntax_hash` / `write` façade stable
+  - twelfth slice landed for simplifying the Python harness to a single fixture manifest where every fixture runs both the `.expected` formatting check and the CST syntax-hash roundtrip check
 - [x] Require a successful CST lift before formatting; do not pretty-print broken files
-- [x] Add a codebase smoke runner for `krasny format` over real workspace files
-- current green smoke corpus: `15` repo files across `krasny`, `syn`, `std`, `miniriot`, `http`, `suri`, and `tusk-fix`
+- [x] Simplify the Python harness to a single fixture corpus
 
 ### Trivia
 

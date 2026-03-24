@@ -15,6 +15,7 @@
 `timeout 30 tusk build krasny`
 `timeout 30 tusk test krasny:format_tests`
 `timeout 900 python3 packages/krasny/tests/test_runner.py`
-`timeout 900 python3 packages/krasny/tests/format_runner.py`
-`timeout 900 python3 packages/krasny/tests/roundtrip_runner.py`
-`timeout 900 python3 packages/krasny/tests/smoke_runner.py`
+
+Target individual fixture subsets when needed:
+`timeout 900 python3 packages/krasny/tests/test_runner.py --filter 0117`
+`timeout 900 python3 packages/krasny/tests/test_runner.py --refresh`

@@ -4,10 +4,10 @@ open Std.Collections
 type format_error =
   | Cannot_build_cst of Syn.build_cst_error
 
-module Doc = Krasny_doc
-module Source = Krasny_source
-module Expression = Krasny_expression
-module Structure = Krasny_structure
+module Doc = Doc
+module Printer = Printer
+module Source = Source
+module Lower = Lower
 
 let format (result : Syn.Parser.parse_result) =
   match Syn.build_cst result with
@@ -15,9 +15,9 @@ let format (result : Syn.Parser.parse_result) =
   | Ok source_file ->
       let original_source = Source.source_of_result result in
       Ok
-        (match Structure.render_source_file ~source:original_source source_file with
+        (match Lower.source_file ~source:original_source source_file with
         | Some rendered ->
-            let rendered = Doc.to_string rendered in
+            let rendered = Printer.to_string rendered in
             if String.ends_with ~suffix:"\n" original_source
                && String.ends_with ~suffix:"\n" rendered
             then
