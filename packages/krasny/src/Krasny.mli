@@ -10,8 +10,9 @@ type format_error =
 
 (** `format result` renders a parse result into formatted OCaml source.
 
-    The current implementation handles a small CST-driven subset and returns
-    the original source for valid-but-unsupported files. Broken files fail
+    The current implementation lowers the supported CST subset through an
+    internal document tree before rendering to text. Valid-but-unsupported
+    files still fall back to the original source for now. Broken files fail
     because formatting requires a successful CST lift. *)
 val format : Syn.Parser.parse_result -> (string, format_error) result
 
