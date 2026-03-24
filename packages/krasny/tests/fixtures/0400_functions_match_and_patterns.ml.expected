@@ -1,13 +1,15 @@
 (* TODO(@leostera): we need to add more examples here for:
-   - [ ] functions over records
-   - [ ] inline pattern matching on `fun .. -> ..`
-   - [ ] functions with large numbers of branches
-   - [ ] fun's with large numbers of params (from 3 to 30)
-   - [ ] functions that return functions
-   - [ ] `let foo .. = ..` syntax is also missing here
+   - [x] functions over records
+   - [x] inline pattern matching on `fun .. -> ..`
+   - [x] functions with large numbers of branches
+   - [x] fun's with large numbers of params (from 3 to 30)
+   - [x] functions that return functions
+   - [x] `let foo .. = ..` syntax is also missing here
 *)
 
 let fun_nested = fun x y -> x + y
+
+let fun_inline_pattern = fun (x, y) -> x + y
 
 let fun_body_match = fun value -> 
   match value with 
@@ -54,3 +56,25 @@ let function_application = List.map
       | Some x -> x
       | None -> 0)
     values
+
+let sum_point = fun { x; y } -> x + y
+
+let classify_many = function 
+  | `Start -> 0 
+  | `Stop -> 1 
+  | `Pause -> 2 
+  | `Resume -> 3 
+  | `Flush -> 4 
+  | `Reset -> 5 
+  | `Unknown -> (-1)
+
+let combine_many = fun a b c d e f g h i j -> a + b + c + d + e + f + g + h + i + j
+
+let make_adder = fun x y -> x + y
+
+let describe mode value =
+  match mode, value with
+  | `Int, Some number -> Int.to_string number
+  | `Int, None -> "none"
+  | `Bool, Some _ -> "bool"
+  | `Bool, None -> "missing"

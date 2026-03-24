@@ -1,11 +1,12 @@
 (* TODO(@leostera): we need some more examples here:
-  - [ ] Nested parens (from 2 to 20 nested parens)
-  - [ ] Large chains of conditionals
-  - [ ] Bitwise operations
+  - [x] Nested parens (from 2 to 20 nested parens)
+  - [x] Large chains of conditionals
+  - [x] Bitwise operations
 *)
 
 let paren_simple = (value)
 let paren_nested = ((value))
+let paren_deep = ((((((((((((value))))))))))))
 let paren_string = ("hello")
 let paren_bool = (flag)
 let prefix_neg = -x
@@ -33,3 +34,11 @@ let nested_comparison = (a + b) > (c + d)
 let and_chain = a && b && c
 let or_chain = a || b || c
 let mixed_logic = a && b || c
+let long_boolean_chain = a && b && c && d && e && f && g && h
+let long_mixed_logic = a || b && c || d && e || f && g
+let bitwise_and = mask land value
+let bitwise_or = left lor right
+let bitwise_xor = left lxor right
+let bitwise_shift_left = value lsl 3
+let bitwise_shift_right = value lsr 2
+let arithmetic_shift_right = value asr 1
