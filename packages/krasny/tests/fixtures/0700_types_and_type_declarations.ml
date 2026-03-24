@@ -1,6 +1,7 @@
 (* TODO(@leostera): we need to add more examples here for:
 
    - [x] type alias with params
+   - [x] type definitions with many type params
    - [x] constraints
    - [x] GADTs
    - [x] large number of constructors for variants (mixed with GADT fields too)
@@ -20,12 +21,56 @@ type id = int
 
 type 'a box = 'a
 
+type (
+  'a,
+  'b,
+  'c,
+  'd,
+  'e,
+  'f,
+  'g,
+  'h,
+  'i,
+  'j,
+  'k,
+  'l,
+  'm,
+  'n,
+  'o,
+  'p,
+  'q,
+  'r,
+  's,
+  't
+) twenty_params = {
+  first : 'a;
+  second : 'b;
+  third : 'c;
+  fourth : 'd;
+  fifth : 'e;
+  sixth : 'f;
+  seventh : 'g;
+  eighth : 'h;
+  ninth : 'i;
+  tenth : 'j;
+  eleventh : 'k;
+  twelfth : 'l;
+  thirteenth : 'm;
+  fourteenth : 'n;
+  fifteenth : 'o;
+  sixteenth : 'p;
+  seventeenth : 'q;
+  eighteenth : 'r;
+  nineteenth : 's;
+  twentieth : 't;
+}
+
 type point = {
   x : int;
   y : int;
 }
 
-type huge_record = {
+type record = {
   first_name : string;
   last_name : string;
   age : int;
@@ -87,6 +132,20 @@ type limited_poly = [< `A | `B | `C ]
 type extended_poly = [ closed_poly | `D of string ]
 
 type printer = string -> width:int -> ?indent:int -> unit -> string
+
+type request_handler =
+  string ->
+  int ->
+  retries:int ->
+  timeout:float ->
+  ?trace_id:string ->
+  ?backoff_seconds:float ->
+  bool ->
+  unit ->
+  user_id:int ->
+  payload:string ->
+  string list ->
+  (string, string) result
 
 type 'a decoder = string -> ('a, string) result
 
