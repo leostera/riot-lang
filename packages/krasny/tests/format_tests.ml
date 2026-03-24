@@ -444,6 +444,23 @@ let and_case =
             "let label_arg = f ~y\n\nlet optional_arg = f ?y\n\nlet labeled_fun = fun ~y -> y + 1\n\nlet optional_fun = fun ?(y = 0) -> y + 1\n\nlet optional_match = fun ?y ->\n  match y with\n  | Some v -> v\n  | None -> 0\n\nlet optional_tuple = fun ?y ?z -> (y, z)\n"
           ~actual;
         Ok ());
+    Test.case "format keeps typed let bindings valid" (fun () ->
+        let source =
+          {|let delimiter_of_keyword : keyword -> delimiter option = function | Begin -> Some BeginEnd | _ -> None
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"typed let bindings should format"
+        in
+        let expected =
+          {|let delimiter_of_keyword : keyword -> delimiter option = function
+  | Begin -> Some BeginEnd
+  | _ -> None
+|}
+        in
+        Test.assert_equal ~expected ~actual;
+        Ok ());
     Test.case "format expands nested let-in bindings across lines" (fun () ->
         let source = "let x =\n  let y = 1 in let z = 2 in y + z\n" in
         let actual =
@@ -453,6 +470,33 @@ let and_case =
         Test.assert_equal
           ~expected:"let x =\n  let y = 1 in\n  let z = 2 in\n  y + z\n"
           ~actual;
+        Ok ());
+    Test.case "format expands local function bindings inside let expressions"
+      (fun () ->
+        let source =
+          {|let x =
+  let rec classify = function
+    | 0 -> "zero"
+    | _ -> "other"
+  in
+  classify value
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"local function bindings should lower structurally"
+        in
+        let expected =
+          {|let x =
+  let rec classify =
+    function
+    | 0 -> "zero"
+    | _ -> "other"
+  in
+  classify value
+|}
+        in
+        Test.assert_equal ~expected ~actual;
         Ok ());
     Test.case "format rewrites single-case function expressions into fun"
       (fun () ->

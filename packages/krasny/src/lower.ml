@@ -1019,13 +1019,16 @@ module Expression = struct
       match value with
       | Syn.Cst.Expression.Function function_ ->
           let value_source = local_expression_source value in
-          if contains_substring value_source "\n" then
+          if Source.syntax_node_has_comment_like_trivia function_.syntax_node then
             Doc.text (Source.trim_trailing_layout_whitespace value_source)
+          else if contains_substring value_source "\n" then
+            preserve_multiline_source ~indent:(indent + 2)
+              (Source.trim_trailing_layout_whitespace value_source)
           else
             render_function_expression ~indent:0 function_
       | Syn.Cst.Expression.Match match_ ->
-          let value_source = local_expression_source value in
-          if contains_substring value_source "\n" then
+          if Source.syntax_node_has_comment_like_trivia match_.syntax_node then
+            let value_source = local_expression_source value in
             Doc.text
               (indent_first_line (indent + 2)
                  (Source.trim_trailing_layout_whitespace value_source))
@@ -1084,10 +1087,26 @@ module Expression = struct
                   ]
             | None ->
                 let rendered_bound_value = render_local_bound_value ~keyword value in
-                if
-                  doc_starts_with_text "function" rendered_bound_value
-                  || doc_starts_with_text "fun" rendered_bound_value
-                then
+                if doc_starts_with_text "function" rendered_bound_value then
+                  if Doc.is_multiline rendered_bound_value then
+                    Doc.concat
+                      [
+                        Doc.indent indent (Doc.text (keyword ^ binding_pattern));
+                        Doc.space;
+                        Doc.equal;
+                        Doc.line;
+                        rendered_bound_value;
+                      ]
+                  else
+                    Doc.concat
+                      [
+                        Doc.indent indent (Doc.text (keyword ^ binding_pattern));
+                        Doc.space;
+                        Doc.equal;
+                        Doc.space;
+                        rendered_bound_value;
+                      ]
+                else if doc_starts_with_text "fun" rendered_bound_value then
                   Doc.concat
                     [
                       Doc.indent indent (Doc.text (keyword ^ binding_pattern));
@@ -1113,10 +1132,26 @@ module Expression = struct
                   render_binding ~indent ~keyword binding_pattern rendered_bound_value)
         | None ->
             let rendered_bound_value = render_local_bound_value ~keyword value in
-            if
-              doc_starts_with_text "function" rendered_bound_value
-              || doc_starts_with_text "fun" rendered_bound_value
-            then
+            if doc_starts_with_text "function" rendered_bound_value then
+              if Doc.is_multiline rendered_bound_value then
+                Doc.concat
+                  [
+                    Doc.indent indent (Doc.text (keyword ^ pattern));
+                    Doc.space;
+                    Doc.equal;
+                    Doc.line;
+                    rendered_bound_value;
+                  ]
+              else
+                Doc.concat
+                  [
+                    Doc.indent indent (Doc.text (keyword ^ pattern));
+                    Doc.space;
+                    Doc.equal;
+                    Doc.space;
+                    rendered_bound_value;
+                  ]
+            else if doc_starts_with_text "fun" rendered_bound_value then
               Doc.concat
                 [
                   Doc.indent indent (Doc.text (keyword ^ pattern));
@@ -1708,6 +1743,53 @@ module Expression = struct
                 ]
           | None ->
             match binding.value with
+          | Syn.Cst.Expression.Typed { expression; type_; _ } ->
+              let rendered_type =
+                Source.source_of_syntax_node (Syn.Cst.CoreType.syntax_node type_) |> String.trim
+              in
+              let binding_prefix = keyword ^ pattern ^ " : " ^ rendered_type in
+              let rendered_expression =
+                match expression with
+                | Syn.Cst.Expression.Function function_ ->
+                    render_function_expression ~indent:2 function_
+                | Syn.Cst.Expression.Fun fun_ ->
+                    render_fun_expression ~indent:0 fun_
+                | Syn.Cst.Expression.Match match_ ->
+                    render_match_expression ~indent:2 ~keyword_trailing_space:false match_
+                | Syn.Cst.Expression.Try try_ ->
+                    render_try_expression ~indent:2 try_
+                | Syn.Cst.Expression.If if_ ->
+                    render_if_expression ~indent:2 if_
+                | Syn.Cst.Expression.Let _
+                | Syn.Cst.Expression.Sequence _ ->
+                    render ~indent:2 expression
+                | _ ->
+                    render ~indent:0 expression
+              in
+              if
+                Doc.is_multiline rendered_expression
+                && not (doc_starts_with_text "fun" rendered_expression)
+                && not (doc_starts_with_text "function" rendered_expression)
+                && not (doc_starts_with_text "(" rendered_expression)
+                && not (doc_starts_with_text "begin" rendered_expression)
+              then
+                Doc.concat
+                  [
+                    Doc.text binding_prefix;
+                    Doc.space;
+                    Doc.equal;
+                    Doc.line;
+                    rendered_expression;
+                  ]
+              else
+                Doc.concat
+                  [
+                    Doc.text binding_prefix;
+                    Doc.space;
+                    Doc.equal;
+                    Doc.space;
+                    rendered_expression;
+                  ]
           | Syn.Cst.Expression.Infix infix -> (
               match boolean_chain_operator (Syn.Cst.Expression.Infix infix) with
               | Some _ ->
