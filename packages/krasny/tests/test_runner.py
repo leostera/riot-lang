@@ -14,6 +14,7 @@ Usage:
 
 import argparse
 import platform
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -72,8 +73,15 @@ class RunnerContext:
         *,
         timeout_seconds: float,
     ) -> subprocess.CompletedProcess:
+        command = " ".join(
+            [
+                shlex.quote(str(self.binary)),
+                shlex.quote(subcommand),
+                shlex.quote(str(file_path)),
+            ]
+        )
         return subprocess.run(
-            [str(self.binary), subcommand, str(file_path)],
+            ["/bin/zsh", "-lc", command],
             capture_output=True,
             text=True,
             timeout=timeout_seconds,

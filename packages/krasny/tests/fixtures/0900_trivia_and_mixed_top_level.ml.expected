@@ -61,4 +61,6 @@ end = struct
 end
 
 (* full inlined module *)
-module Preserved = struct let value = 1 end
+module Preserved = struct
+  let value = 1
+end

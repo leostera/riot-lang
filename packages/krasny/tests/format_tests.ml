@@ -79,61 +79,141 @@ let tests =
     Test.case "format preserves unsupported top-level items between formatted lets"
       (fun () ->
         let source =
-          "open Std\ntype t =\n  | A\n  | B\n(* keep with x *)\nlet x = 1 + 2\nlet y = 3 + 4\n"
+          {|open Std
+type t =
+  | A
+  | B
+(* keep with x *)
+let x = 1 + 2
+let y = 3 + 4
+|}
         in
         let actual =
           parse_ml source |> Krasny.format
           |> Result.expect
                ~msg:"mixed implementation files should preserve unsupported items verbatim"
         in
+        let expected =
+          {|open Std
+
+type t =
+  | A
+  | B
+
+(* keep with x *)
+let x = 1 + 2
+
+let y = 3 + 4
+|}
+        in
         Test.assert_equal
-          ~expected:
-            "open Std\ntype t =\n  | A\n  | B\n(* keep with x *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+          ~expected
           ~actual;
         Ok ());
     Test.case "format preserves mixed-file docstrings before formatted lets"
       (fun () ->
         let source =
-          "open Std\ntype t =\n  | A\n  | B\n(** keep with x *)\nlet x = 1 + 2\nlet y = 3 + 4\n"
+          {|open Std
+type t =
+  | A
+  | B
+(** keep with x *)
+let x = 1 + 2
+let y = 3 + 4
+|}
         in
         let actual =
           parse_ml source |> Krasny.format
           |> Result.expect
                ~msg:"mixed implementation docstrings should stay near the next formatted item"
         in
+        let expected =
+          {|open Std
+
+type t =
+  | A
+  | B
+
+(** keep with x *)
+let x = 1 + 2
+
+let y = 3 + 4
+|}
+        in
         Test.assert_equal
-          ~expected:
-            "open Std\ntype t =\n  | A\n  | B\n(** keep with x *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+          ~expected
           ~actual;
         Ok ());
     Test.case "format preserves mixed-file multiline comments before formatted lets"
       (fun () ->
         let source =
-          "open Std\ntype t =\n  | A\n  | B\n(* keep\n   with x *)\nlet x = 1 + 2\nlet y = 3 + 4\n"
+          {|open Std
+type t =
+  | A
+  | B
+(* keep
+   with x *)
+let x = 1 + 2
+let y = 3 + 4
+|}
         in
         let actual =
           parse_ml source |> Krasny.format
           |> Result.expect
                ~msg:"mixed implementation comments should stay near the next formatted item"
         in
+        let expected =
+          {|open Std
+
+type t =
+  | A
+  | B
+
+(* keep
+   with x *)
+let x = 1 + 2
+
+let y = 3 + 4
+|}
+        in
         Test.assert_equal
-          ~expected:
-            "open Std\ntype t =\n  | A\n  | B\n(* keep\n   with x *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+          ~expected
           ~actual;
         Ok ());
     Test.case "format preserves mixed-file multiline docstrings before formatted lets"
       (fun () ->
         let source =
-          "open Std\ntype t =\n  | A\n  | B\n(** keep\n    with x *)\nlet x = 1 + 2\nlet y = 3 + 4\n"
+          {|open Std
+type t =
+  | A
+  | B
+(** keep
+    with x *)
+let x = 1 + 2
+let y = 3 + 4
+|}
         in
         let actual =
           parse_ml source |> Krasny.format
           |> Result.expect
                ~msg:"mixed implementation docstrings should stay near the next formatted item"
         in
+        let expected =
+          {|open Std
+
+type t =
+  | A
+  | B
+
+(** keep
+    with x *)
+let x = 1 + 2
+
+let y = 3 + 4
+|}
+        in
         Test.assert_equal
-          ~expected:
-            "open Std\ntype t =\n  | A\n  | B\n(** keep\n    with x *)\nlet x = 1 + 2\n\nlet y = 3 + 4\n"
+          ~expected
           ~actual;
         Ok ());
     Test.case "format inserts blank lines between top-level let bindings"
@@ -265,9 +345,14 @@ let tests =
           parse_ml source |> Krasny.format
           |> Result.expect ~msg:"multi-case function expressions should format"
         in
-        Test.assert_equal
-          ~expected:"let f = function \n  | [] -> 0 \n  | x :: xs -> x\n"
-          ~actual;
+        let expected =
+          {|let f =
+  function
+  | [] -> 0
+  | x :: xs -> x
+|}
+        in
+        Test.assert_equal ~expected ~actual;
         Ok ());
     Test.case "format expands match bodies inside fun expressions" (fun () ->
         let source = "let f = fun x -> match x with 0 -> \"zero\" | _ -> \"other\"\n" in
@@ -275,10 +360,14 @@ let tests =
           parse_ml source |> Krasny.format
           |> Result.expect ~msg:"match bodies should format"
         in
-        Test.assert_equal
-          ~expected:
-            "let f = fun x -> \n  match x with \n  | 0 -> \"zero\" \n  | _ -> \"other\"\n"
-          ~actual;
+        let expected =
+          {|let f = fun x ->
+  match x with
+  | 0 -> "zero"
+  | _ -> "other"
+|}
+        in
+        Test.assert_equal ~expected ~actual;
         Ok ());
     Test.case "format rewrites simple multi-case functions into fun-match"
       (fun () ->
@@ -287,10 +376,15 @@ let tests =
           parse_ml source |> Krasny.format
           |> Result.expect ~msg:"simple multi-case functions should format"
         in
-        Test.assert_equal
-          ~expected:
-            "let f = fun x ->\n  match x with\n  | 0 -> \"zero\" \n  | _ -> \"other\"\n"
-          ~actual;
+        let expected =
+          {|let f =
+  fun x ->
+    match x with
+    | 0 -> "zero"
+    | _ -> "other"
+|}
+        in
+        Test.assert_equal ~expected ~actual;
         Ok ());
     Test.case "format keeps or-pattern function cases multiline"
       (fun () ->
@@ -299,9 +393,16 @@ let tests =
           parse_ml source |> Krasny.format
           |> Result.expect ~msg:"or-pattern functions should format"
         in
-        Test.assert_equal
-          ~expected:"let ors = function \n | 1 \n | 2 \n | 3 -> true \n | _ -> false\n"
-          ~actual;
+        let expected =
+          {|let ors =
+  function
+  | 1
+  | 2
+  | 3 -> true
+  | _ -> false
+|}
+        in
+        Test.assert_equal ~expected ~actual;
         Ok ());
     Test.case "format keeps guarded function cases multiline" (fun () ->
         let source = "let f = function x when x > 0 -> x | _ -> 0\n" in
@@ -309,9 +410,14 @@ let tests =
           parse_ml source |> Krasny.format
           |> Result.expect ~msg:"guarded function cases should format"
         in
-        Test.assert_equal
-          ~expected:"let f = \n  function \n  | x when x > 0 -> x \n  | _ -> 0\n"
-          ~actual;
+        let expected =
+          {|let f =
+  function
+  | x when x > 0 -> x
+  | _ -> 0
+|}
+        in
+        Test.assert_equal ~expected ~actual;
         Ok ());
     Test.case "format preserves syntax hash for selected codebase files"
       (fun () ->

@@ -130,7 +130,8 @@ type mapper = {
 type 'a constrained = 'a 
   constraint 'a = int
 
-type closed_poly = [ 
+type closed_poly =
+  [ 
   | `A 
   | `B of int 
 ]

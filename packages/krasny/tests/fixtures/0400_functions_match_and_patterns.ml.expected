@@ -27,45 +27,45 @@ let match_simple =
 
 let function_one_case = fun [] -> 0
 
-let function_two_cases = 
+let function_two_cases =
   function 
   | [] -> 0 
   | x :: _ -> x
 
 let function_tuple = fun (x, y) -> x + y
 
-let function_list = 
+let function_list =
   function 
   | [] -> 0 
   | [x] -> x 
   | x :: xs -> x + List.length xs
 
-let function_constructor = 
+let function_constructor =
   function 
   | Some x -> x 
   | None -> 0
 
-let function_or_pattern = 
+let function_or_pattern =
   function 
   | `A 
   | `B -> 1 
   | `C -> 2
 
-let function_when_guard = 
+let function_when_guard =
   function
   | x when x > 0 -> x
   | _ -> 0
 
-let function_nested_pattern = 
+let function_nested_pattern =
   function 
   | Some (x, Some y) -> x + y 
   | _ -> 0
 
-let function_application = 
+let function_application =
   List.map
     (function
-     | Some x -> x
-     | None -> 0)
+         | Some x -> x
+         | None -> 0)
     values
 
 let sum_point = fun { x; y } -> x + y
@@ -80,7 +80,7 @@ let summarize_large_record = fun
   } -> 
   first_name ^ last_name ^ email ^ city ^ country
 
-let classify_many = 
+let classify_many =
   function 
   | `Start -> 0 
   | `Stop -> 1 

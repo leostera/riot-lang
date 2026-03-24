@@ -19,7 +19,7 @@ let if_then_else_simple = if ready then 1 else 0
 
 let if_no_else = if ready then log "ready"
 
-let if_nested = 
+let if_nested =
   if outer then 
     if inner then 
       one 
@@ -43,7 +43,7 @@ let let_and_bindings =
   left + right
 
 let let_rec_in =
-  let rec loop  n=
+  let rec loop n =
     if n <= 0 then 0 else n + loop (n - 1)
   in
   loop count

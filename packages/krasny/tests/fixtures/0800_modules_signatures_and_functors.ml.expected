@@ -10,21 +10,25 @@
 
 module type SHOW = sig
   type t
+
   val show : t -> string
 end
 
 module type EQ = sig
   type t
+
   val equal : t -> t -> bool
 end
 
 module Int_show : SHOW with type t = int = struct
   type t = int
+
   let show = Int.to_string
 end
 
 module Int_eq : EQ with type t = int = struct
   type t = int
+
   let equal left right = left = right
 end
 
@@ -36,11 +40,11 @@ end = struct
 end
 
 module Make_pair (Left : SHOW) (Right : SHOW) = struct
-  let show_pair (left, right) =
-    Left.show left, Right.show right
+  let show_pair = fun (left, right) -> Left.show left, Right.show right
 end
 
 module Int_list_show = Make (Int_show)
+
 module Int_pair_show = Make_pair (Int_show) (Int_show)
 
 module Nested = struct
@@ -53,11 +57,15 @@ end
 
 module Inline : sig
   type t
+
   val make : int -> t
+
   val show : t -> string
 end = struct
   type t = int
+
   let make value = value
+
   let show = Int.to_string
 end
 
@@ -76,4 +84,5 @@ end
 include Nested
 
 open Nested
+
 open! Inline
