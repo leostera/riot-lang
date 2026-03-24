@@ -243,6 +243,35 @@ let y = 3 + 4
         in
         Test.assert_equal ~expected:"let c = 'a'\n\nlet u = ()\n\nlet x = y\n" ~actual;
         Ok ());
+    Test.case "format keeps tuple expressions stable" (fun () ->
+        let source = "let pair = 1, 2\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"tuple expressions should format"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
+    Test.case "format breaks long parenthesized tuple expressions" (fun () ->
+        let source =
+          {|let pair = (first_component_name, second_component_name, third_component_name, fourth_component_name, fifth_component_name)
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"long tuple expressions should wrap at the solver width"
+        in
+        let expected =
+          {|let pair = (
+  first_component_name,
+  second_component_name,
+  third_component_name,
+  fourth_component_name,
+  fifth_component_name
+)
+|}
+        in
+        Test.assert_equal ~expected ~actual;
+        Ok ());
     Test.case "format keeps infix expressions stable" (fun () ->
         let source =
           "let arithmetic = 1 + (2 * 3)\nlet comparisons = 1 < 2 && 2 < 3\nlet logic = (true && false) || true\n"

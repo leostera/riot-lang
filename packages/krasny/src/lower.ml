@@ -719,11 +719,10 @@ module Expression = struct
         |> Doc.text
     | Syn.Cst.Expression.Path { path; _ } ->
         Doc.text (source_of_ident path)
-    | Syn.Cst.Expression.Tuple { syntax_node; elements; _ } ->
-        let rendered = elements |> List.map (render ~indent:0) in
-        if List.exists Doc.is_multiline rendered then
-          Doc.text (source_of_syntax_node syntax_node)
-        else Doc.join (Doc.text ", ") rendered
+    | Syn.Cst.Expression.Tuple { elements; _ } ->
+        elements
+        |> List.map (render ~indent:0)
+        |> Doc.join (Doc.concat [ Doc.comma; Doc.space ])
     | Syn.Cst.Expression.PolyVariant { syntax_node; _ } ->
         Doc.text (String.trim (source_of_syntax_node syntax_node))
     | Syn.Cst.Expression.Parenthesized { syntax_node; inner = Sequence sequence; _ } ->
@@ -749,8 +748,8 @@ module Expression = struct
     | Syn.Cst.Expression.Parenthesized
         { syntax_node; inner = (Match _ | If _ | Try _ | Let _); _ } ->
         Doc.text (source_of_syntax_node syntax_node)
-    | Syn.Cst.Expression.Parenthesized { syntax_node; inner = Tuple _; _ } ->
-        Doc.text (source_of_syntax_node syntax_node)
+    | Syn.Cst.Expression.Parenthesized { inner = Tuple { elements; _ }; _ } ->
+        render_parenthesized_tuple_expression elements
     | Syn.Cst.Expression.Parenthesized { inner; _ } ->
         render ~indent inner
     | Syn.Cst.Expression.Prefix { operator_token; operand = Literal literal; _ } ->
@@ -784,6 +783,19 @@ module Expression = struct
         render_apply_expression ~indent apply
     | expression ->
         Doc.text (source_of_syntax_node (Syn.Cst.Expression.syntax_node expression))
+
+  and render_parenthesized_tuple_expression elements =
+    let rendered_elements = elements |> List.map (render ~indent:0) in
+    let separator = Doc.concat [ Doc.comma; Doc.break () ] in
+    let content = Doc.join separator rendered_elements in
+    Doc.group
+      (Doc.concat
+         [
+           Doc.lparen;
+           Doc.indent 2 (Doc.concat [ Doc.break ~flat:"" (); content ]);
+           Doc.break ~flat:"" ();
+           Doc.rparen;
+         ])
 
   and multiline_case_lines ~case_indent ~or_indent ~is_last_case (case : Syn.Cst.match_case) =
     let guard =
