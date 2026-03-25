@@ -41,8 +41,9 @@ You are done with this task when `krasny` can format the entire codebase and
 the CST-hash of the source before and after formatting is the same (that is, there's no information loss).
 
 Current fail-fast progress (2026-03-25):
-- `--verify-workspace --fail-fast` now passes `116` files.
-- Current first failing file: `packages/http/tests/property_tests.ml` (syntax-hash mismatch).
+- `--verify-workspace --fail-fast` now passes `192` files.
+- Current first failing file: `packages/kernel/src/global0.mli` (canonical formatted `format exited 1`).
 - Newly fixed in this slice:
-  - `packages/gooey/src/layout.ml` (previous syntax-hash mismatch)
-  - `packages/http/src/ws/serializer.ml` (previous `format exited 1`)
+  - `packages/blink/src/sse.ml` (previous syntax-hash mismatch + canonical mismatch loop)
+  - `packages/gooey/src/layout.ml` (previous syntax-hash mismatch + canonical mismatch loop)
+  - nested module let-parameter stability regression (new fixture `0820_module_let_parameter_stability.ml`)

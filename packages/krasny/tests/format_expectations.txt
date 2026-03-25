@@ -10,19 +10,28 @@
 0320_field_assign_expression.ml
 0330_let_mutual_trailing_comment.ml
 0340_typed_let_with_locally_abstract_type.ml
+0350_typed_function_binding_headers.ml
 0360_local_open_record_pattern.ml
+0370_section_comment_order.ml
 
 # 04xx functions, match, and patterns
 0400_functions_match_and_patterns.ml
 
 # 05xx labeled and optional arguments
 0500_labeled_and_optional_arguments.ml
+0510_typed_labeled_parameter_arrow.ml
+0511_optional_parameter_default_preservation.ml
 
 # 07xx types and signatures
 0700_types_and_type_declarations.ml
+0710_first_class_module_types.ml
+0720_signature_external_declaration.mli
+0721_poly_variant_inherit_type_alias.mli
 
 # 08xx modules, signatures, and functors
 0800_modules_signatures_and_functors.ml
+0810_local_module_parameter_spacing.ml
+0820_module_let_parameter_stability.ml
 
 # 09xx trivia and mixed top-level preservation
 0900_trivia_and_mixed_top_level.ml
