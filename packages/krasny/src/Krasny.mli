@@ -17,13 +17,8 @@ type format_error =
     formatting requires a successful CST lift. *)
 val format : Syn.Parser.parse_result -> (string, format_error) result
 
-(** `syntax_hash result` computes a whitespace-insensitive hash of the concrete
-    syntax tree.
-
-    This hash ignores source positions entirely and skips whitespace trivia, but
-    it still includes comments, token text, and syntax-node structure. It is
-    useful for round-trip formatter invariants like parse -> format -> parse,
-    where layout may change but the concrete syntax should not. *)
+(** `syntax_hash result` computes a whitespace-insensitive hash of the parsed
+    concrete syntax tree. *)
 val syntax_hash : Syn.Parser.parse_result -> string
 
 (** `write ~writer result` renders a parse result into the provided writer. *)

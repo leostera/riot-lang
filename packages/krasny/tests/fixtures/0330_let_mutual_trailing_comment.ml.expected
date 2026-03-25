@@ -1,0 +1,6 @@
+let rec a = fun x -> x
+and b = fun y -> y
+
+(* Phase 4: Generate render commands *)
+
+let rec c = fun z -> z

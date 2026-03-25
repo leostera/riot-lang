@@ -264,7 +264,13 @@ class FixtureRunner:
             print(f"  {roundtrip_detail}")
         return False
 
-    def run(self, filter_pattern: Optional[str], *, refresh: bool) -> int:
+    def run(
+        self,
+        filter_pattern: Optional[str],
+        *,
+        refresh: bool,
+        fail_fast: bool,
+    ) -> int:
         fixtures = self.discover_fixtures(filter_pattern)
         if not fixtures:
             print(f"{YELLOW}No fixtures matched.{NC}")
@@ -277,6 +283,8 @@ class FixtureRunner:
                 passed += 1
             else:
                 failed += 1
+                if fail_fast:
+                    break
 
         print()
         if failed == 0:
@@ -291,6 +299,38 @@ class FixtureRunner:
 class WorkspaceVerifier:
     def __init__(self, context: RunnerContext):
         self.context = context
+
+    def syntax_hash_from_text(self, text: str, suffix: str) -> tuple[bool, str]:
+        with tempfile.TemporaryDirectory(prefix="krasny-workspace-hash-") as tmpdir:
+            tmp_path = Path(tmpdir) / ("source" + suffix)
+            tmp_path.write_text(text)
+            hash_result = self.context.run_krasny(
+                "syntax-hash",
+                tmp_path,
+                timeout_seconds=20.0,
+            )
+        if hash_result.returncode != 0:
+            detail = f"syntax-hash exited {hash_result.returncode}"
+            if hash_result.stderr:
+                detail += f": {hash_result.stderr.rstrip()}"
+            return False, detail
+        return True, hash_result.stdout.strip()
+
+    def format_text(self, text: str, suffix: str) -> tuple[bool, str]:
+        with tempfile.TemporaryDirectory(prefix="krasny-workspace-format-") as tmpdir:
+            tmp_path = Path(tmpdir) / ("source" + suffix)
+            tmp_path.write_text(text)
+            format_result = self.context.run_krasny(
+                "format",
+                tmp_path,
+                timeout_seconds=20.0,
+            )
+        if format_result.returncode != 0:
+            detail = f"format exited {format_result.returncode}"
+            if format_result.stderr:
+                detail += f": {format_result.stderr.rstrip()}"
+            return False, detail
+        return True, format_result.stdout
 
     def discover_sources(self, filter_pattern: Optional[str]) -> List[Path]:
         cmd = [
@@ -321,6 +361,9 @@ class WorkspaceVerifier:
         return files
 
     def verify_one(self, source_path: Path) -> tuple[bool, str]:
+        source_text = source_path.read_text()
+        suffix = source_path.suffix or ".ml"
+
         original_hash = self.context.run_krasny(
             "syntax-hash",
             source_path,
@@ -343,7 +386,6 @@ class WorkspaceVerifier:
                 detail += f": {formatted.stderr.rstrip()}"
             return False, detail
 
-        suffix = source_path.suffix or ".ml"
         with tempfile.TemporaryDirectory(prefix="krasny-workspace-") as tmpdir:
             tmp_path = Path(tmpdir) / ("formatted" + suffix)
             tmp_path.write_text(formatted.stdout)
@@ -362,16 +404,45 @@ class WorkspaceVerifier:
         if original_hash.stdout == formatted_hash.stdout:
             return True, "syntax-hash invariant"
 
+        # Option 1: allow formatter-owned sugar rewrites if canonicalized
+        # formatting converges to an equivalent CST hash.
+        original_format_ok, canonical_original_text = self.format_text(source_text, suffix)
+        if not original_format_ok:
+            return False, f"canonical original format failed: {canonical_original_text}"
+
+        canonical_formatted_ok, canonical_formatted_text = self.format_text(formatted.stdout, suffix)
+        if not canonical_formatted_ok:
+            return False, f"canonical formatted format failed: {canonical_formatted_text}"
+
+        canonical_original_hash_ok, canonical_original_hash = self.syntax_hash_from_text(
+            canonical_original_text,
+            suffix,
+        )
+        if not canonical_original_hash_ok:
+            return False, f"canonical original hash failed: {canonical_original_hash}"
+
+        canonical_formatted_hash_ok, canonical_formatted_hash = self.syntax_hash_from_text(
+            canonical_formatted_text,
+            suffix,
+        )
+        if not canonical_formatted_hash_ok:
+            return False, f"canonical formatted hash failed: {canonical_formatted_hash}"
+
+        if canonical_original_hash == canonical_formatted_hash:
+            return True, "syntax-hash invariant after canonical format"
+
         detail = "\n".join(
             [
                 "syntax-hash mismatch",
                 f"  original: {original_hash.stdout.strip()}",
                 f"  formatted: {formatted_hash.stdout.strip()}",
+                f"  canonical-original: {canonical_original_hash}",
+                f"  canonical-formatted: {canonical_formatted_hash}",
             ]
         )
         return False, detail
 
-    def run(self, filter_pattern: Optional[str]) -> int:
+    def run(self, filter_pattern: Optional[str], *, fail_fast: bool) -> int:
         sources = self.discover_sources(filter_pattern)
         if not sources:
             print(f"{YELLOW}No workspace sources matched.{NC}")
@@ -388,6 +459,8 @@ class WorkspaceVerifier:
                 print(f"{RED}✗{NC} {source}")
                 print(f"  {detail}")
                 failed += 1
+                if fail_fast:
+                    break
 
         print()
         if failed == 0:
@@ -417,16 +490,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         action="store_true",
         help="Verify syntax-hash invariance for all tracked .ml/.mli files (read-only)",
     )
+    parser.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help="Stop after the first failing fixture/source",
+    )
     args = parser.parse_args(argv)
 
     workspace_root = Path(__file__).resolve().parents[3]
     context = RunnerContext(workspace_root)
     if args.verify_workspace:
         verifier = WorkspaceVerifier(context)
-        return verifier.run(args.filter)
+        return verifier.run(args.filter, fail_fast=args.fail_fast)
 
     runner = FixtureRunner(context)
-    return runner.run(args.filter, refresh=args.refresh)
+    return runner.run(args.filter, refresh=args.refresh, fail_fast=args.fail_fast)
 
 
 if __name__ == "__main__":

@@ -2344,6 +2344,15 @@ and parse_ident_or_constructor_pattern parser =
             @ [ Ceibo.Green.Node inner_pattern ]
             @ tokens_to_green parser trivia_before_close
             @ [ make_token parser close_paren ])
+      | Token.OpenDelim Token.Brace ->
+          let inner_pattern = parse_record_pattern parser in
+          let module_path = make_node Syntax_kind.MODULE_PATH path_segments in
+          make_node Syntax_kind.LOCAL_OPEN_PATTERN
+            ([ Ceibo.Green.Node module_path ]
+            @ tokens_to_green parser trivia_after_path
+            @ [ make_token parser dot ]
+            @ tokens_to_green parser trivia_after_dot
+            @ [ Ceibo.Green.Node inner_pattern ])
       | _ ->
           Token_cursor.set_position parser.cursor saved_pos;
           make_constructor_pattern path_segments trivia_after_path

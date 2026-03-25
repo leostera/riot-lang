@@ -4208,6 +4208,43 @@ let tests =
               ~actual:(Syn.Cst.Token.text binding_name);
             Ok ()
         | _ -> Error "expected local open pattern");
+    Test.case "cst local open record patterns preserve module paths and record fields"
+      (fun () ->
+        let source =
+          "let serialize frame =\n\
+          \  let Frame.{ fin; opcode; payload } = frame in\n\
+          \  payload\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match top_level_let_bindings cst with
+        | {
+            value =
+              Syn.Cst.Expression.Let
+                {
+                  binding_pattern =
+                    Syn.Cst.Pattern.LocalOpen
+                      {
+                        module_path =
+                          Syn.Cst.Ident.Ident { name_token = module_name; _ };
+                        pattern = Syn.Cst.Pattern.Record { fields; _ };
+                        _;
+                      };
+                  _;
+                };
+            _;
+          }
+          :: _ ->
+            Test.assert_equal ~expected:"Frame"
+              ~actual:(Syn.Cst.Token.text module_name);
+            Test.assert_equal ~expected:3
+              ~actual:(List.length fields);
+            Ok ()
+        | _ -> Error "expected local open record pattern");
     Test.case "cst first-class module patterns preserve anonymous unpack binders"
       (fun () ->
         let source =

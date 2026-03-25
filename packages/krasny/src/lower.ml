@@ -221,6 +221,24 @@ let trailing_comment_suffix_doc syntax_node =
   in
   loop None Doc.empty trailing_tokens
 
+let trailing_comment_like_token_count syntax_node =
+  let trailing_tokens =
+    let rec collect acc = function
+      | [] ->
+          acc
+      | token :: rest when is_whitespace_token token || is_comment_like_token token ->
+          collect (token :: acc) rest
+      | _ ->
+          acc
+    in
+    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node |> List.rev |> collect []
+  in
+  trailing_tokens
+  |> List.fold_left
+       (fun count token ->
+         if is_comment_like_token token then count + 1 else count)
+       0
+
 let push_pending_break pending break_count =
   if break_count <= 0 then
     pending
@@ -484,6 +502,24 @@ let render_type_binder = function
   | Syn.Cst.TypeBinder.Bare binder ->
       Doc.text (Syn.Cst.TypeBinder.text (Syn.Cst.TypeBinder.Bare binder))
 
+let poly_type_has_explicit_type_keyword syntax_node =
+  let tokens =
+    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
+    |> List.filter (fun syntax_token ->
+           match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
+           | Syn.SyntaxKind.WHITESPACE
+           | Syn.SyntaxKind.COMMENT
+           | Syn.SyntaxKind.DOCSTRING ->
+               false
+           | _ ->
+               true)
+  in
+  match tokens with
+  | token :: _ ->
+      Syn.Ceibo.Red.SyntaxToken.text token = "type"
+  | [] ->
+      false
+
 let render_arrow_label = function
   | None ->
       Doc.empty
@@ -653,9 +689,16 @@ let rec render_core_type = function
             ])
   | Syn.Cst.CoreType.Alias { type_; name_token; _ } ->
       Doc.concat [ render_core_type type_; Doc.space; Doc.text "as"; Doc.space; doc_of_token name_token ]
-  | Syn.Cst.CoreType.Poly { binders; body; _ } ->
+  | Syn.Cst.CoreType.Poly { syntax_node; binders; body; _ } ->
+      let prefix =
+        if poly_type_has_explicit_type_keyword syntax_node then
+          Doc.concat [ kw_type; Doc.space ]
+        else
+          Doc.empty
+      in
       Doc.concat
         [
+          prefix;
           join_map (Doc.concat [ Doc.space ]) render_type_binder binders;
           Doc.text ".";
           Doc.space;
@@ -3294,7 +3337,17 @@ and is_open_signature_item = function
       false
 
 and render_structure_entry item =
-  let trailing_suffix = trailing_comment_suffix_doc (Syn.Cst.StructureItem.syntax_node item) in
+  let trailing_suffix =
+    match item with
+    | Syn.Cst.StructureItem.LetBinding binding ->
+        let syntax_node = Syn.Cst.StructureItem.syntax_node (Syn.Cst.StructureItem.LetBinding binding) in
+        if trailing_comment_like_token_count syntax_node <= 1 then
+          trailing_comment_suffix_doc syntax_node
+        else
+          None
+    | _ ->
+        trailing_comment_suffix_doc (Syn.Cst.StructureItem.syntax_node item)
+  in
   let doc =
     match trailing_suffix with
     | None ->

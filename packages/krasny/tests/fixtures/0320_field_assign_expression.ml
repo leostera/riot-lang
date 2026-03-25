@@ -1,0 +1,7 @@
+type counter = {
+  mutable value: int;
+}
+
+let bump = fun c ->
+  c.value <- c.value + 1
+

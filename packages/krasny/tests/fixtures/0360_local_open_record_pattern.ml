@@ -1,0 +1,3 @@
+let serialize frame =
+  let Frame.{ fin; rsv1; rsv2; rsv3; opcode; masked; payload } = frame in
+  payload

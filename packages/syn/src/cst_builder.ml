@@ -5848,7 +5848,13 @@ let rec structure_items_from_node node =
                              ~context:[ "item"; "let_mutual_declaration"; "and_bindings" ])
                 |> List.filter_map (fun value -> value)
               in
-              let grouped_binding = { first_binding with and_bindings } in
+              let grouped_binding =
+                {
+                  first_binding with
+                  syntax_node = node;
+                  and_bindings;
+                }
+              in
               [ Cst.StructureItem.LetBinding grouped_binding ]
           | None ->
               unsupported_item node)

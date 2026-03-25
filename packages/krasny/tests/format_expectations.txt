@@ -7,6 +7,10 @@
 # 03xx bindings and control flow
 0300_bindings_and_control_flow.ml
 0310_let_mutual_and_bindings.ml
+0320_field_assign_expression.ml
+0330_let_mutual_trailing_comment.ml
+0340_typed_let_with_locally_abstract_type.ml
+0360_local_open_record_pattern.ml
 
 # 04xx functions, match, and patterns
 0400_functions_match_and_patterns.ml

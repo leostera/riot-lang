@@ -1804,6 +1804,7 @@ module Expression = struct
     | Index expr -> expr.syntax_node
     | ObjectOverride expr -> expr.syntax_node
     | InstanceVariableAssign expr -> expr.syntax_node
+    | FieldAssign expr -> expr.syntax_node
     | Assign expr -> expr.syntax_node
     | Infix expr -> expr.syntax_node
     | Typed expr -> expr.syntax_node

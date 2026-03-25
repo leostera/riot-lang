@@ -29,7 +29,7 @@ let format (result : Syn.Parser.parse_result) =
         | None -> original_source)
 
 (* TODO(@leostera): rewrite this hasher to use Crypto.Sha521.create () *)
-let syntax_hash (result : Syn.Parser.parse_result) =
+let hash_green_tree tree =
   let buffer = IO.Buffer.create 1024 in
   let rec write_element = function
     | Syn.Ceibo.Green.Token _ as element -> (
@@ -50,8 +50,12 @@ let syntax_hash (result : Syn.Parser.parse_result) =
         Array.iter write_element (Syn.Ceibo.Green.children node);
         IO.Buffer.add_string buffer "])"
   in
-  write_element (Syn.Ceibo.Green.Node result.tree);
+  write_element (Syn.Ceibo.Green.Node tree);
   IO.Buffer.contents buffer |> Crypto.hash_string |> Crypto.Digest.hex
+
+(* TODO(@leostera): rewrite this hasher to use Crypto.Sha521.create () *)
+let syntax_hash (result : Syn.Parser.parse_result) =
+  hash_green_tree result.tree
 
 let write ~writer result =
   match format result with
