@@ -2076,106 +2076,17 @@ and render_apply_expression ({ syntax_node; callee; argument; _ } : Syn.Cst.appl
 and render_if_expression
     ({ syntax_node; keyword_token; then_token; else_token; condition; then_branch; else_branch; _ } :
       Syn.Cst.if_expression) =
-  let condition_doc = render_expression condition in
-  let needs_multiline_then =
-    branch_prefers_multiline_layout then_branch
-  in
-  let then_doc =
-    if needs_multiline_then then
-      render_block_expression then_branch
-    else
-      render_expression then_branch
-  in
-  let head =
-    Doc.concat
-      [
-        doc_of_token keyword_token;
-        Doc.space;
-        condition_doc;
-        Doc.space;
-        doc_of_token then_token;
-      ]
-  in
-  if needs_multiline_then then
-    render_if_expression_block
-      {
-        syntax_node;
-        keyword_token;
-        then_token;
-        else_token;
-        condition;
-        then_branch;
-        else_branch;
-        attributes = [];
-      }
-  else
-  match else_branch, else_token with
-  | None, _ ->
-      Doc.group
-        (Doc.concat
-           [
-             head;
-             Doc.indent 2 (Doc.concat [ Doc.break (); then_doc ]);
-           ])
-  | Some else_branch, Some else_token ->
-      let needs_multiline_else =
-        match else_branch with
-        | Syn.Cst.Expression.If _ ->
-            false
-        | _ ->
-            branch_prefers_multiline_layout else_branch
-      in
-      let else_doc =
-        if needs_multiline_else then
-          render_block_expression else_branch
-        else
-          render_expression else_branch
-      in
-      if needs_multiline_else then
-        (match else_branch with
-        | Syn.Cst.Expression.Parenthesized _ ->
-            Doc.concat
-              [
-                head;
-                Doc.line;
-                Doc.indent 2 then_doc;
-                Doc.line;
-                doc_of_token else_token;
-                Doc.space;
-                else_doc;
-              ]
-        | _ ->
-            Doc.concat
-              [
-                head;
-                Doc.line;
-                Doc.indent 2 then_doc;
-                Doc.line;
-                doc_of_token else_token;
-                Doc.line;
-                Doc.indent 2 else_doc;
-              ])
-      else
-        Doc.group
-          (Doc.concat
-             [
-               head;
-               Doc.indent 2 (Doc.concat [ Doc.break (); then_doc ]);
-               Doc.break ();
-               doc_of_token else_token;
-               Doc.indent 2 (Doc.concat [ Doc.break (); else_doc ]);
-             ])
-  | Some else_branch, None ->
-      let else_doc = render_expression else_branch in
-      Doc.group
-        (Doc.concat
-           [
-             head;
-             Doc.indent 2 (Doc.concat [ Doc.break (); then_doc ]);
-             Doc.break ();
-             kw_else;
-             Doc.indent 2 (Doc.concat [ Doc.break (); else_doc ]);
-           ])
+  render_if_expression_block
+    {
+      syntax_node;
+      keyword_token;
+      then_token;
+      else_token;
+      condition;
+      then_branch;
+      else_branch;
+      attributes = [];
+    }
 
 and render_case ?(force_multiline_body = false) ?(force_leading_bar = false)
     (case : Syn.Cst.match_case) =
@@ -2522,6 +2433,17 @@ and render_if_expression_block
   match else_branch, else_token with
   | None, _ ->
       Doc.concat [ head; Doc.line; Doc.indent 2 then_doc ]
+  | Some (Syn.Cst.Expression.If nested_if), Some else_token ->
+      Doc.concat
+        [
+          head;
+          Doc.line;
+          Doc.indent 2 then_doc;
+          Doc.line;
+          doc_of_token else_token;
+          Doc.space;
+          render_if_expression_block nested_if;
+        ]
   | Some else_branch, Some else_token ->
       let else_doc =
         if branch_prefers_multiline_layout else_branch then
@@ -2529,29 +2451,16 @@ and render_if_expression_block
         else
           render_expression else_branch
       in
-      (match else_branch with
-      | Syn.Cst.Expression.Parenthesized _ ->
-          Doc.concat
-            [
-              head;
-              Doc.line;
-              Doc.indent 2 then_doc;
-              Doc.line;
-              doc_of_token else_token;
-              Doc.space;
-              else_doc;
-            ]
-      | _ ->
-          Doc.concat
-            [
-              head;
-              Doc.line;
-              Doc.indent 2 then_doc;
-              Doc.line;
-              doc_of_token else_token;
-              Doc.line;
-              Doc.indent 2 else_doc;
-            ])
+      Doc.concat
+        [
+          head;
+          Doc.line;
+          Doc.indent 2 then_doc;
+          Doc.line;
+          doc_of_token else_token;
+          Doc.line;
+          Doc.indent 2 else_doc;
+        ]
   | Some else_branch, None ->
       let else_doc = render_expression else_branch in
       Doc.concat [ head; Doc.line; Doc.indent 2 then_doc; Doc.line; kw_else; Doc.line; Doc.indent 2 else_doc ]
