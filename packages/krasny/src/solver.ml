@@ -81,7 +81,16 @@ let solve ~width doc =
     | Doc.Concat docs ->
         solve_many ~column ~indent ~mode docs
     | Doc.Indent (extra, doc) ->
-        let solved, column = solve_doc ~column ~indent:(indent + extra) ~mode doc in
+        let child_indent = indent + extra in
+        let child_column =
+          if column = indent then
+            child_indent
+          else
+            column
+        in
+        let solved, column =
+          solve_doc ~column:child_column ~indent:child_indent ~mode doc
+        in
         (Doc.indent extra solved, column)
     | Doc.Group doc ->
         let mode =

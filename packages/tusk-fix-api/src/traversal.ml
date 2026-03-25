@@ -193,8 +193,8 @@ and let_bindings_of_expression expr =
       let_bindings_of_expression expression
   | Syn.Cst.Expression.Coerce { expression; _ } ->
       let_bindings_of_expression expression
-  | Syn.Cst.Expression.Sequence { left; right; _ } ->
-      let_bindings_of_expression left @ let_bindings_of_expression right
+  | Syn.Cst.Expression.Sequence { expressions; _ } ->
+      expressions |> List.concat_map let_bindings_of_expression
   | Syn.Cst.Expression.Tuple { elements; _ }
   | Syn.Cst.Expression.List { elements; _ }
   | Syn.Cst.Expression.Array { elements; _ } ->
@@ -404,8 +404,8 @@ let rec expressions_of_expression expr =
         expressions_of_expression expression
     | Syn.Cst.Expression.Coerce { expression; _ } ->
         expressions_of_expression expression
-    | Syn.Cst.Expression.Sequence { left; right; _ } ->
-        expressions_of_expression left @ expressions_of_expression right
+    | Syn.Cst.Expression.Sequence { expressions; _ } ->
+        expressions |> List.concat_map expressions_of_expression
     | Syn.Cst.Expression.Tuple { elements; _ }
     | Syn.Cst.Expression.List { elements; _ }
     | Syn.Cst.Expression.Array { elements; _ } ->

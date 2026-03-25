@@ -718,11 +718,13 @@ and descend_expression walk ctx (expression : Cst.Expression.t) =
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.expression ctx target in
       walk.expression ctx value
-  | Cst.Expression.Infix { left; right; attributes; _ }
-  | Cst.Expression.Sequence { left; right; attributes; _ } ->
+  | Cst.Expression.Infix { left; right; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.expression ctx left in
       walk.expression ctx right
+  | Cst.Expression.Sequence { expressions; attributes; _ } ->
+      let ctx = List.fold_left walk.attribute ctx attributes in
+      List.fold_left walk.expression ctx expressions
   | Cst.Expression.Typed { expression; type_; attributes; _ }
   | Cst.Expression.Polymorphic { expression; type_; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in

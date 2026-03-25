@@ -2477,13 +2477,12 @@ and coerce_expression = {
 
 (** Payload for `Expression.Sequence`.
 
-    Covers `left; right`.
+    Covers `e1; e2; e3`.
 *)
 and sequence_expression = {
   syntax_node : syntax_node;
   separator_token : Token.t;
-  left : expression;
-  right : expression;
+  expressions : expression list;
   attributes : attribute list;
 }
 

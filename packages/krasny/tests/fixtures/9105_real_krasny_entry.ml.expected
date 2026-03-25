@@ -5,13 +5,9 @@ type format_error =
   | Cannot_build_cst of Syn.build_cst_error
 
 module Doc = Doc
-
 module Solver = Solver
-
 module Printer = Printer
-
 module Source = Source
-
 module Lower = Lower
 
 let format = fun (result : Syn.Parser.parse_result) ->
@@ -23,7 +19,10 @@ let format = fun (result : Syn.Parser.parse_result) ->
         match Lower.source_file ~source:original_source source_file with
         | Some rendered ->
             let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
-            if String.ends_with ~suffix:"\n" original_source && String.ends_with ~suffix:"\n" rendered then
+            if 
+              String.ends_with ~suffix:"\n" original_source 
+              && String.ends_with ~suffix:"\n" rendered 
+            then
               rendered
             else if String.ends_with ~suffix:"\n" original_source then
               rendered ^ "\n"
@@ -39,16 +38,16 @@ let syntax_hash = fun (result : Syn.Parser.parse_result) ->
   let rec write_element =
     function
     | Syn.Ceibo.Green.Token _ as element -> (
-          match Syn.Ceibo.Green.kind element with
-          | Syn.SyntaxKind.WHITESPACE -> ()
-          | kind ->
-              IO.Buffer.add_string buffer "T(";
-              IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string kind);
-              IO.Buffer.add_string buffer ":";
-              IO.Buffer.add_string buffer
-                (Syn.Ceibo.Green.text element |> Option.expect ~msg:"token text");
-              IO.Buffer.add_string buffer ")"
-        )
+        match Syn.Ceibo.Green.kind element with
+        | Syn.SyntaxKind.WHITESPACE -> ()
+        | kind ->
+            IO.Buffer.add_string buffer "T(";
+            IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string kind);
+            IO.Buffer.add_string buffer ":";
+            IO.Buffer.add_string buffer
+              (Syn.Ceibo.Green.text element |> Option.expect ~msg:"token text");
+            IO.Buffer.add_string buffer ")"
+      )
     | Syn.Ceibo.Green.Node node as element ->
         IO.Buffer.add_string buffer "N(";
         IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string (Syn.Ceibo.Green.kind element));

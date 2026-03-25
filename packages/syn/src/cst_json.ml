@@ -1266,14 +1266,13 @@ and expression_to_json expression =
            ("to_type", core_type_to_json to_type);
          ]
         @ expression_attribute_fields expression)
-  | Cst.Expression.Sequence { syntax_node; separator_token; left; right; _ } ->
+  | Cst.Expression.Sequence { syntax_node; separator_token; expressions; _ } ->
       Json.Object
         ([
            ("tag", Json.String "sequence");
            ("syntax_node", syntax_node_to_json syntax_node);
            ("separator_token", token_to_json separator_token);
-           ("left", expression_to_json left);
-           ("right", expression_to_json right);
+           ("expressions", Json.Array (List.map expression_to_json expressions));
          ]
         @ expression_attribute_fields expression)
   | Cst.Expression.Tuple { syntax_node; elements; _ } ->

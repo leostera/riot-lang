@@ -62,12 +62,12 @@ let solve = fun ~width doc ->
     | Doc.Line ->
         (Doc.line, indent)
     | Doc.Break flat -> (
-          match mode with
-          | Flat ->
-              (Doc.text flat, column + String.length flat)
-          | Break ->
-              (Doc.line, indent)
-        )
+        match mode with
+        | Flat ->
+            (Doc.text flat, column + String.length flat)
+        | Break ->
+            (Doc.line, indent)
+      )
     | Doc.Concat docs ->
         solve_many ~column ~indent ~mode docs
     | Doc.Indent (extra, doc) ->

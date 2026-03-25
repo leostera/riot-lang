@@ -94,12 +94,12 @@ let concat = fun docs ->
     | Spaces count :: rest ->
         flatten (add_spaces count acc) rest
     | Break flat :: rest -> (
-          match acc with
-          | Break current :: _ when current = flat ->
-              flatten acc rest
-          | _ ->
-              flatten (Break flat :: acc) rest
-        )
+        match acc with
+        | Break current :: _ when current = flat ->
+            flatten acc rest
+        | _ ->
+            flatten (Break flat :: acc) rest
+      )
     | Group doc :: rest ->
         flatten (Group doc :: acc) rest
     | Concat nested :: rest ->

@@ -130,8 +130,8 @@ let children_of_expression = function
   | Cst.Expression.Polymorphic { expression; _ }
   | Cst.Expression.Coerce { expression; _ } ->
       [ expression ]
-  | Cst.Expression.Sequence { left; right; _ } ->
-      [ left; right ]
+  | Cst.Expression.Sequence { expressions; _ } ->
+      expressions
   | Cst.Expression.Tuple { elements; _ }
   | Cst.Expression.List { elements; _ }
   | Cst.Expression.Array { elements; _ } ->

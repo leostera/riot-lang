@@ -11,21 +11,19 @@ let to_string = fun doc ->
     | Doc.Space ->
         if line_start then
           line_start
-        else
-          (
-            IO.Buffer.add_char buffer ' ';
-            false
-          )
+        else (
+          IO.Buffer.add_char buffer ' ';
+          false
+        )
     | Doc.Spaces count ->
         if line_start then
           line_start
-        else
-          (
-            for _ = 1 to count do
+        else (
+          for _ = 1 to count do
             IO.Buffer.add_char buffer ' '
           done;
-            false
-          )
+          false
+        )
     | Doc.Line ->
         IO.Buffer.add_char buffer '\n';
         true
@@ -45,14 +43,14 @@ let to_string = fun doc ->
       | [ line ] ->
           if line_start && String.length line > 0 then
             IO.Buffer.add_string buffer (String.make indent ' ');
-            IO.Buffer.add_string buffer line;
-            line_start && String.length line = 0
+          IO.Buffer.add_string buffer line;
+          line_start && String.length line = 0
       | line :: rest ->
           if line_start && String.length line > 0 then
             IO.Buffer.add_string buffer (String.make indent ' ');
-            IO.Buffer.add_string buffer line;
-            IO.Buffer.add_char buffer '\n';
-            write_lines true rest
+          IO.Buffer.add_string buffer line;
+          IO.Buffer.add_char buffer '\n';
+          write_lines true rest
     in
     write_lines line_start (String.split_on_char '\n' value)
   in

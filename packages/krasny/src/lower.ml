@@ -41,6 +41,25 @@ let string_contains_substring text pattern =
   in
   pattern_length > 0 && loop 0
 
+let normalized_source_length source =
+  let rec loop index in_whitespace acc =
+    if index >= String.length source then
+      acc
+    else
+      match source.[index] with
+      | ' '
+      | '\t'
+      | '\n'
+      | '\r' ->
+          if in_whitespace then
+            loop (index + 1) true acc
+          else
+            loop (index + 1) true (acc + 1)
+      | _ ->
+          loop (index + 1) false (acc + 1)
+  in
+  loop 0 true 0
+
 let trim_trailing_layout_whitespace text =
   let rec find_last_non_layout index =
     if index < 0 then
@@ -1518,6 +1537,78 @@ let rec expression_keeps_inline_binding_value = function
   | _ ->
       false
 
+let tuple_source_is_long syntax_node =
+  let source = text_of_syntax_node syntax_node |> String.trim in
+  normalized_source_length source > 100
+
+let rec expression_is_pipeline = function
+  | Syn.Cst.Expression.Infix { operator_token; left; right; _ } ->
+      token_text operator_token = "|>"
+      || expression_is_pipeline left
+      || expression_is_pipeline right
+  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
+      expression_is_pipeline inner
+  | _ ->
+      false
+
+let rec expression_is_boolean_infix = function
+  | Syn.Cst.Expression.Infix { operator_token; left; right; _ } ->
+      let operator = token_text operator_token in
+      operator = "&&"
+      || operator = "||"
+      || expression_is_boolean_infix left
+      || expression_is_boolean_infix right
+  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
+      expression_is_boolean_infix inner
+  | _ ->
+      false
+
+let rec find_boolean_infix_expression = function
+  | Syn.Cst.Expression.Infix ({ operator_token; _ } as infix) ->
+      let operator = token_text operator_token in
+      if operator = "&&" || operator = "||" then
+        Some infix
+      else
+        None
+  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
+      find_boolean_infix_expression inner
+  | Syn.Cst.Expression.Prefix { operand; _ } ->
+      find_boolean_infix_expression operand
+  | Syn.Cst.Expression.Apply { callee; argument; _ } -> (
+      match argument with
+      | Syn.Cst.Positional value ->
+          (match find_boolean_infix_expression value with
+          | Some infix ->
+              Some infix
+          | None ->
+              find_boolean_infix_expression callee)
+      | Syn.Cst.Labeled { value = Some value; _ }
+      | Syn.Cst.Optional { value = Some value; _ } ->
+          (match find_boolean_infix_expression value with
+          | Some infix ->
+              Some infix
+          | None ->
+              find_boolean_infix_expression callee)
+      | Syn.Cst.Labeled { value = None; _ }
+      | Syn.Cst.Optional { value = None; _ } ->
+          find_boolean_infix_expression callee)
+  | _ ->
+      None
+
+let rec expression_is_function_like = function
+  | Syn.Cst.Expression.Function _ ->
+      true
+  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
+      expression_is_function_like inner
+  | _ ->
+      false
+
+let rec unwrap_parenthesized_expression = function
+  | Syn.Cst.Expression.Parenthesized { grouping = Syn.Cst.Parens; inner; _ } ->
+      unwrap_parenthesized_expression inner
+  | expression ->
+      expression
+
 let rec infix_chain_term_count = function
   | Syn.Cst.Expression.Infix { left; right; _ } ->
       infix_chain_term_count left + infix_chain_term_count right
@@ -1556,7 +1647,7 @@ let rec expression_is_simple_after_equals = function
 
 and apply_expression_is_simple_after_equals
     ({ syntax_node; _ } : Syn.Cst.apply_expression) =
-  if syntax_node_has_internal_newline syntax_node || syntax_node_has_comment_like_token syntax_node then
+  if syntax_node_has_comment_like_token syntax_node then
     false
   else
     let source = text_of_syntax_node syntax_node |> String.trim in
@@ -1582,6 +1673,14 @@ let expression_requires_break_after_equals = function
       true
   | _ ->
       false
+
+let expression_source_is_long expression =
+  let source = text_of_syntax_node (Syn.Cst.Expression.syntax_node expression) in
+  normalized_source_length source > 100
+
+let expression_source_has_newline expression =
+  let source = text_of_syntax_node (Syn.Cst.Expression.syntax_node expression) in
+  string_contains_substring source "\n" || string_contains_substring source "\r\n"
 
 let rec collapse_redundant_parenthesized_expression = function
   | Syn.Cst.Expression.Parenthesized { grouping = Syn.Cst.Parens; inner; _ } ->
@@ -1628,19 +1727,36 @@ let rec render_expression expression =
   | Syn.Cst.Expression.Operator { operator_tokens; _ } ->
       operator_tokens |> List.map token_text |> String.concat "" |> Doc.text
   | Syn.Cst.Expression.Tuple { elements; _ } ->
-      Doc.group
-        (Doc.concat
-           [
-             Doc.lparen;
-             Doc.indent 2
-               (Doc.concat
-                  [
-                    Doc.break ~flat:"" ();
-                    join_map (Doc.concat [ Doc.comma; Doc.break () ]) render_expression elements;
-                  ]);
-             Doc.break ~flat:"" ();
-             Doc.rparen;
-           ])
+      let rendered_elements = List.map render_expression elements in
+      let prefers_multiline =
+        tuple_source_is_long (Syn.Cst.Expression.syntax_node expression)
+        || List.exists Doc.is_multiline rendered_elements
+      in
+      if prefers_multiline then
+        let lines = join_map (Doc.concat [ Doc.comma; Doc.line ]) render_expression elements in
+        Doc.concat
+          [
+            Doc.lparen;
+            Doc.line;
+            Doc.indent 2 lines;
+            Doc.line;
+            Doc.rparen;
+          ]
+      else
+        Doc.group
+          (Doc.concat
+             [
+               Doc.lparen;
+               Doc.indent 2
+                 (Doc.concat
+                    [
+                      Doc.break ~flat:"" ();
+                      join_map (Doc.concat [ Doc.comma; Doc.break () ]) render_expression
+                        elements;
+                    ]);
+               Doc.break ~flat:"" ();
+               Doc.rparen;
+             ])
   | Syn.Cst.Expression.List { elements; _ } ->
       if elements = [] then
         Doc.concat [ Doc.lbracket; Doc.rbracket ]
@@ -1830,6 +1946,16 @@ and render_tuple_expression_bare elements =
     (join_map (Doc.concat [ Doc.comma; Doc.break () ]) render_expression elements)
 
 and render_apply_argument = function
+  | Syn.Cst.Positional
+      (Syn.Cst.Expression.Function _ as expression) ->
+      Doc.concat
+        [
+          Doc.lparen;
+          Doc.line;
+          Doc.indent 2 (render_expression expression);
+          Doc.line;
+          Doc.rparen;
+        ]
   | Syn.Cst.Positional expression ->
       if expression_needs_parens_in_apply expression then
         Doc.concat [ Doc.lparen; render_expression expression; Doc.rparen ]
@@ -2118,7 +2244,7 @@ and render_case ?(force_multiline_body = false) ?(force_leading_bar = false)
             Doc.space;
             doc_of_token case.arrow_token;
             Doc.space;
-            Doc.indent 4 body;
+            Doc.indent 2 body;
           ]
     | _
       when
@@ -2377,6 +2503,65 @@ and render_block_expression = function
 and render_if_expression_block
     ({ keyword_token; then_token; else_token; condition; then_branch; else_branch; _ } :
       Syn.Cst.if_expression) =
+  let render_condition_with_boolean_breaks condition =
+    let syntax_node = Syn.Cst.Expression.syntax_node condition in
+    let tokens = Syn.Ceibo.Red.SyntaxNode.tokens syntax_node in
+    let has_boolean_operator =
+      List.exists
+        (fun token ->
+          let text = Syn.Ceibo.Red.SyntaxToken.text token in
+          text = "&&" || text = "||")
+        tokens
+    in
+    let has_comment_like =
+      List.exists
+        (fun token ->
+          match Syn.Ceibo.Red.SyntaxToken.kind token with
+          | Syn.SyntaxKind.COMMENT
+          | Syn.SyntaxKind.DOCSTRING ->
+              true
+          | _ ->
+              false)
+        tokens
+    in
+    if (not has_boolean_operator) || has_comment_like then
+      render_expression condition
+    else
+      let rec loop acc pending_space = function
+        | [] ->
+            List.rev acc
+        | token :: rest ->
+            let kind = Syn.Ceibo.Red.SyntaxToken.kind token in
+            let text = Syn.Ceibo.Red.SyntaxToken.text token in
+            (match kind with
+            | Syn.SyntaxKind.WHITESPACE ->
+                loop acc true rest
+            | _ when text = "&&" || text = "||" ->
+                let rec drop_leading_whitespace = function
+                  | next :: tail
+                    when Syn.Ceibo.Red.SyntaxToken.kind next = Syn.SyntaxKind.WHITESPACE ->
+                      drop_leading_whitespace tail
+                  | remaining ->
+                      remaining
+                in
+                loop
+                  (Doc.space :: Doc.text text :: Doc.break () :: acc)
+                  false
+                  (drop_leading_whitespace rest)
+            | _ ->
+                let acc =
+                  if pending_space then
+                    Doc.text text :: Doc.space :: acc
+                  else
+                    Doc.text text :: acc
+                in
+                loop acc false rest)
+      in
+      Doc.concat (loop [] false tokens)
+  in
+  let condition_doc =
+    render_condition_with_boolean_breaks condition
+  in
   let then_doc =
     if branch_prefers_multiline_layout then_branch then
       render_block_expression then_branch
@@ -2384,18 +2569,38 @@ and render_if_expression_block
       render_expression then_branch
   in
   let head =
-    Doc.concat
-      [
-        doc_of_token keyword_token;
-        Doc.space;
-        render_expression condition;
-        Doc.space;
-        doc_of_token then_token;
-      ]
+    Doc.group
+      (Doc.concat
+         [
+           doc_of_token keyword_token;
+           Doc.indent 2 (Doc.concat [ Doc.break (); condition_doc ]);
+           Doc.break ();
+           doc_of_token then_token;
+         ])
   in
   match else_branch, else_token with
-  | None, _ ->
-      Doc.concat [ head; Doc.line; Doc.indent 2 then_doc ]
+  | None, _ -> (
+      match then_branch with
+      | Syn.Cst.Expression.Sequence { expressions = first :: rest; separator_token; _ } when not (rest = []) ->
+          let first_doc =
+            Doc.concat [ head; Doc.line; Doc.indent 2 (render_expression first); doc_of_token separator_token ]
+          in
+          let tail_doc =
+            rest
+            |> List.mapi (fun index expression ->
+                   let suffix =
+                     if index < List.length rest - 1 then
+                       doc_of_token separator_token
+                     else
+                       Doc.empty
+                   in
+                   Doc.concat [ render_expression expression; suffix ])
+            |> Doc.join Doc.line
+          in
+          Doc.concat [ first_doc; Doc.line; tail_doc ]
+      | _ ->
+          Doc.concat [ head; Doc.line; Doc.indent 2 then_doc ]
+    )
   | Some (Syn.Cst.Expression.If nested_if), Some else_token ->
       Doc.concat
         [
@@ -2407,23 +2612,36 @@ and render_if_expression_block
           Doc.space;
           render_if_expression_block nested_if;
         ]
-  | Some else_branch, Some else_token ->
+      | Some else_branch, Some else_token ->
       let else_doc =
         if branch_prefers_multiline_layout else_branch then
           render_block_expression else_branch
         else
           render_expression else_branch
       in
-      Doc.concat
-        [
-          head;
-          Doc.line;
-          Doc.indent 2 then_doc;
-          Doc.line;
-          doc_of_token else_token;
-          Doc.line;
-          Doc.indent 2 else_doc;
-        ]
+      (match else_branch with
+      | Syn.Cst.Expression.Parenthesized { inner = Syn.Cst.Expression.Sequence _; _ } ->
+          Doc.concat
+            [
+              head;
+              Doc.line;
+              Doc.indent 2 then_doc;
+              Doc.line;
+              doc_of_token else_token;
+              Doc.space;
+              else_doc;
+            ]
+      | _ ->
+          Doc.concat
+            [
+              head;
+              Doc.line;
+              Doc.indent 2 then_doc;
+              Doc.line;
+              doc_of_token else_token;
+              Doc.line;
+              Doc.indent 2 else_doc;
+            ])
   | Some else_branch, None ->
       let else_doc = render_expression else_branch in
       Doc.concat [ head; Doc.line; Doc.indent 2 then_doc; Doc.line; kw_else; Doc.line; Doc.indent 2 else_doc ]
@@ -2449,13 +2667,13 @@ and render_parenthesized_expression = function
           | Syn.Cst.Expression.Array _
           | Syn.Cst.Expression.Record _ ->
               render_expression inner
-          | Syn.Cst.Expression.Function { keyword_token; cases; _ } ->
+          | _ when expression_is_function_like inner ->
               Doc.concat
                 [
                   doc_of_token opening_token;
-                  doc_of_token keyword_token;
                   Doc.line;
-                  Doc.indent 5 (join_map Doc.line render_case cases);
+                  Doc.indent 2 rendered_inner;
+                  Doc.line;
                   doc_of_token closing_token;
                 ]
           | _ -> (
@@ -2669,6 +2887,8 @@ and render_local_binding
     match value with
     | _ when has_fun_rhs ->
         true
+    | _ when expression_is_boolean_infix value ->
+        false
     | _ when expression_requires_break_after_equals value ->
         false
     | _ ->
@@ -2693,6 +2913,8 @@ and render_local_binding
         keep_value_after_equals
     | _ when List.length parameters > 0 ->
         keep_value_after_equals
+    | _ when expression_is_pipeline value && Doc.is_multiline rendered_value ->
+        false
     | _ ->
         keep_value_after_equals
   in
@@ -2711,6 +2933,18 @@ and render_local_binding
     || expression_prefers_multiline_layout value
     || Doc.is_multiline rendered_value
   then
+    let rendered_value =
+      match value with
+      | Syn.Cst.Expression.Infix ({ operator_token; _ } as infix) ->
+          let operator = token_text operator_token in
+          let parts = infix_chain operator (Syn.Cst.Expression.Infix infix) in
+          join_map
+            (Doc.concat [ Doc.line; Doc.text operator; Doc.space ])
+            render_expression
+            parts
+      | _ ->
+          rendered_value
+    in
     Doc.concat
       [
         header;
@@ -3032,7 +3266,16 @@ and render_include_statement ({ target; _ } : Syn.Cst.include_statement) =
   in
   Doc.concat [ Doc.text "include"; Doc.space; target ]
 
+and is_module_alias_structure_item = function
+  | Syn.Cst.StructureItem.ModuleDeclaration
+      { functor_parameters = []; module_type = None; module_expression = Some (Syn.Cst.ModuleExpression.Path _); _ } ->
+      true
+  | _ ->
+      false
+
 and is_open_structure_item = function
+  | item when is_module_alias_structure_item item ->
+      true
   | Syn.Cst.StructureItem.OpenStatement _ ->
       true
   | _ ->
@@ -3053,7 +3296,7 @@ and render_structure_entry item =
     | Some suffix ->
         Doc.concat [ render_structure_item item; suffix ]
   in
-  (doc, is_open_structure_item item, false, false, false)
+  (doc, is_open_structure_item item, false, false, false, is_module_alias_structure_item item)
 
 and render_signature_entry item =
   let trailing_suffix = trailing_comment_suffix_doc (Syn.Cst.SignatureItem.syntax_node item) in
@@ -3064,7 +3307,7 @@ and render_signature_entry item =
     | Some suffix ->
         Doc.concat [ render_signature_item item; suffix ]
   in
-  (doc, is_open_signature_item item, false, false, false)
+  (doc, is_open_signature_item item, false, false, false, false)
 
 and render_structure_item = function
   | Syn.Cst.StructureItem.LetBinding binding ->
@@ -3139,15 +3382,24 @@ and render_structure_top_level_items ~source_node ~items =
     | None ->
         acc
     | Some pending_doc ->
-        (pending_doc, false, true, false, not strip_trailing_breaks) :: acc
+        (pending_doc, false, true, false, not strip_trailing_breaks, false) :: acc
+  in
+  let pending_has_only_breaks pending =
+    List.for_all
+      (function
+        | TriviaBreak _ ->
+            true
+        | TriviaDoc _ ->
+            false)
+      pending
   in
   let rec join_entries = function
     | [] ->
         Doc.empty
-    | (doc, _, _, _, _) :: [] ->
+    | (doc, _, _, _, _, _) :: [] ->
         doc
-    | (doc, is_open, is_trivia, tight_after, has_trailing_break)
-      :: ((_, next_is_open, _, _, _) :: _ as rest) ->
+    | (doc, is_open, is_trivia, tight_after, has_trailing_break, _)
+      :: ((_, next_is_open, _, _, _, _) :: _ as rest) ->
         let separator =
           if has_trailing_break then
             Doc.empty
@@ -3182,6 +3434,17 @@ and render_structure_top_level_items ~source_node ~items =
         | Syn.Ceibo.Red.Node _ -> (
             match items with
             | item :: items ->
+                let pending =
+                  match acc with
+                  | (_, _, _, _, _, prev_is_module_alias) :: _
+                    when
+                      prev_is_module_alias
+                      && is_module_alias_structure_item item
+                      && pending_has_only_breaks pending ->
+                      []
+                  | _ ->
+                      pending
+                in
                 let acc = flush_pending pending acc in
                 loop [] (render_structure_entry item :: acc) items rest
             | [] ->
@@ -3198,15 +3461,15 @@ and render_signature_top_level_items ~source_node ~items =
     | None ->
         acc
     | Some pending_doc ->
-        (pending_doc, false, true, false, false) :: acc
+        (pending_doc, false, true, false, false, false) :: acc
   in
   let rec join_entries = function
     | [] ->
         Doc.empty
-    | (doc, _, _, _, _) :: [] ->
+    | (doc, _, _, _, _, _) :: [] ->
         doc
-    | (doc, is_open, is_trivia, tight_after, has_trailing_break)
-      :: ((_, next_is_open, _, _, _) :: _ as rest) ->
+    | (doc, is_open, is_trivia, tight_after, has_trailing_break, _)
+      :: ((_, next_is_open, _, _, _, _) :: _ as rest) ->
         let separator =
           if has_trailing_break then
             Doc.empty

@@ -1,8 +1,7 @@
 open Std
 
 let parse_file ~file ~source =
-  if String.ends_with ~suffix:".mli" file then
-    Syn.parse_interface source
+  if String.ends_with ~suffix:".mli" file then Syn.parse_interface source
   else Syn.parse_implementation source
 
 let handle_format file =

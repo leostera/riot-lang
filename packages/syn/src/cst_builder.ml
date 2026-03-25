@@ -3639,15 +3639,14 @@ and prefix_expression_from_node node =
 
 and sequence_expression_from_node node =
   match direct_non_trivia_nodes node with
-  | left_node :: right_node :: _ ->
+  | first :: second :: rest ->
       Some
         {
           syntax_node = node;
           separator_token =
             direct_required_token_with_text ~context:[ "sequence_expression" ]
               node ";";
-          left = expression_from_node left_node;
-          right = expression_from_node right_node;
+          expressions = List.map expression_from_node (first :: second :: rest);
           attributes = [];
         }
   | _ -> None
@@ -6684,9 +6683,10 @@ and validate_expression ~context = function
         (validate_core_type ~context:("expression.coerce.from_type" :: context))
         from_type;
       validate_core_type ~context:("expression.coerce.to_type" :: context) to_type
-  | Cst.Expression.Sequence { left; right; _ } ->
-      validate_expression ~context:("expression.sequence.left" :: context) left;
-      validate_expression ~context:("expression.sequence.right" :: context) right
+  | Cst.Expression.Sequence { expressions; _ } ->
+      List.iter
+        (validate_expression ~context:("expression.sequence.expressions" :: context))
+        expressions
   | Cst.Expression.Tuple { elements; _ }
   | Cst.Expression.List { elements; _ }
   | Cst.Expression.Array { elements; _ } ->

@@ -214,10 +214,10 @@ and usage_in_expression expected_name expr =
   | Syn.Cst.Expression.Polymorphic { expression; _ }
   | Syn.Cst.Expression.Coerce { expression; _ } ->
       usage_in_expression expected_name expression
-  | Syn.Cst.Expression.Sequence { left; right; _ } ->
-      merge_usage
-        (usage_in_expression expected_name left)
-        (usage_in_expression expected_name right)
+  | Syn.Cst.Expression.Sequence { expressions; _ } ->
+      expressions
+      |> List.map (usage_in_expression expected_name)
+      |> merge_all
   | Syn.Cst.Expression.Tuple { elements; _ }
   | Syn.Cst.Expression.List { elements; _ }
   | Syn.Cst.Expression.Array { elements; _ } ->

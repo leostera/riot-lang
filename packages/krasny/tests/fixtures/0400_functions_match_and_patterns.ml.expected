@@ -63,9 +63,11 @@ let function_nested_pattern =
 
 let function_application =
   List.map
-    (function
-         | Some x -> x
-         | None -> 0)
+    (
+      function
+      | Some x -> x
+      | None -> 0
+    )
     values
 
 let sum_point = fun { x; y } -> x + y

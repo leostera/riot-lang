@@ -100,11 +100,11 @@ let begin_sequence =
 let match_nested =
   match outer with
   | Some inner -> (
-        match inner with
-        | Ok (Some value) -> value
-        | Ok None -> 0
-        | Error _ -> (-1)
-      )
+      match inner with
+      | Ok (Some value) -> value
+      | Ok None -> 0
+      | Error _ -> (-1)
+    )
   | None -> (-2)
 
 let match_many_branches =

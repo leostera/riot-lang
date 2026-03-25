@@ -1391,8 +1391,7 @@ and coerce_expression = {
 and sequence_expression = {
   syntax_node : syntax_node;
   separator_token : Token.t;
-  left : expression;
-  right : expression;
+  expressions : expression list;
   attributes : attribute list;
 }
 
