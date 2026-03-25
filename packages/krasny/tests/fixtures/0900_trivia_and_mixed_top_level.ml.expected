@@ -27,6 +27,7 @@ type documented_type =
   | B
 
 (* Normal comment for a record type. *)
+
 type record_with_comments = {
   (* Comment for the first field. *)
   first : string;
@@ -35,11 +36,13 @@ type record_with_comments = {
 }
 
 (* consturctor with a lot of spaces *)
+
 type preserved =
   | A
   | B
 
 (* let binding with weird spacing *)
+
 let after_type = 3
 
 let inline_comment_expr = before + (* inline operator comment *) after
@@ -57,7 +60,7 @@ module Commented : sig
 
   (* also a comment inside the signature *)
 end = struct
-  let show value = Int.to_string value
+  let show = fun value -> Int.to_string value
 end
 
 (* full inlined module *)

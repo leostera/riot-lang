@@ -2,12 +2,13 @@ open Std
 open Std.Collections
 
 let trim_trailing_newlines = fun text ->
-  let rec loop index =
+  let rec loop = fun index ->
     if index <= 0 then
       ""
     else
       match text.[index - 1] with
-      | '\n' | '\r' ->
+      | '\n'
+      | '\r' ->
           loop (index - 1)
       | _ ->
           String.sub text 0 index
@@ -15,12 +16,15 @@ let trim_trailing_newlines = fun text ->
   loop (String.length text)
 
 let trim_trailing_layout_whitespace = fun text ->
-  let rec loop index =
+  let rec loop = fun index ->
     if index <= 0 then
       ""
     else
       match text.[index - 1] with
-      | ' ' | '\t' | '\n' | '\r' ->
+      | ' '
+      | '\t'
+      | '\n'
+      | '\r' ->
           loop (index - 1)
       | _ ->
           String.sub text 0 index
@@ -40,7 +44,7 @@ let split_trailing_layout_whitespace = fun text ->
   (trimmed, trailing)
 
 let line_start_before = fun text index ->
-  let rec loop cursor =
+  let rec loop = fun cursor ->
     if cursor <= 0 then
       0
     else if text.[cursor - 1] = '\n' then
@@ -54,7 +58,7 @@ let find_trailing_comment_start = fun text end_ ->
   if end_ < 2 || text.[end_ - 2] != '*' || text.[end_ - 1] != ')' then
     None
   else
-    let rec loop index depth =
+    let rec loop = fun index depth ->
       if index <= 0 then
         None
       else if text.[index - 1] = '(' && text.[index] = '*' then
@@ -71,7 +75,7 @@ let find_trailing_comment_start = fun text end_ ->
 
 let split_trailing_comment_block = fun text ->
   let body, trailing_layout = split_trailing_layout_whitespace text in
-  let rec peel suffix_start =
+  let rec peel = fun suffix_start ->
     let prefix = String.sub body 0 suffix_start |> trim_trailing_layout_whitespace in
     let prefix_end = String.length prefix in
     match find_trailing_comment_start prefix prefix_end with
@@ -79,9 +83,7 @@ let split_trailing_comment_block = fun text ->
         suffix_start
     | Some comment_start ->
         let line_start = line_start_before prefix comment_start in
-        let prefix_on_line =
-          String.sub prefix line_start (comment_start - line_start)
-        in
+        let prefix_on_line = String.sub prefix line_start (comment_start - line_start) in
         if String.trim prefix_on_line = "" then
           peel line_start
         else
@@ -91,31 +93,41 @@ let split_trailing_comment_block = fun text ->
   if suffix_start = 0 || suffix_start = String.length body then
     (body, trailing_layout)
   else
-    ( String.sub body 0 suffix_start,
-      String.sub body suffix_start (String.length body - suffix_start)
-      ^ trailing_layout )
+    (
+      String.sub body 0 suffix_start,
+      String.sub body suffix_start (String.length body - suffix_start) ^ trailing_layout
+    )
 
 let source_of_syntax_node = fun (node : Syn.Cst.syntax_node) ->
   let buffer = IO.Buffer.create 1_024 in
-  Syn.Ceibo.Red.SyntaxNode.preorder node (function
-    | Syn.Ceibo.Red.Token token ->
-        IO.Buffer.add_string buffer (Syn.Ceibo.Red.SyntaxToken.text token)
-    | Syn.Ceibo.Red.Node _ ->
-        ());
+  Syn.Ceibo.Red.SyntaxNode.preorder node
+    (function
+         | Syn.Ceibo.Red.Token token ->
+             IO.Buffer.add_string buffer (Syn.Ceibo.Red.SyntaxToken.text token)
+         | Syn.Ceibo.Red.Node _ ->
+             ());
   IO.Buffer.contents buffer |> trim_trailing_newlines
 
 let source_of_token = fun token -> Syn.Cst.Token.text token
 
-let source_of_ident = fun ident -> Syn.Cst.Ident.segments ident |> List.map source_of_token |> String.concat "."
+let source_of_ident = fun ident ->
+  Syn.Cst.Ident.segments ident |> List.map source_of_token |> String.concat "."
 
 let source_of_result = fun (result : Syn.Parser.parse_result) -> result.source
 
-let source_of_pattern = fun pattern -> source_of_syntax_node (Syn.Cst.Pattern.syntax_node pattern) |> String.trim
+let source_of_pattern = fun pattern ->
+  source_of_syntax_node (Syn.Cst.Pattern.syntax_node pattern) |> String.trim
 
-let source_of_parameter = fun parameter -> source_of_syntax_node (Syn.Cst.Parameter.syntax_node parameter) |> String.trim
+let source_of_parameter = fun parameter ->
+  source_of_syntax_node (Syn.Cst.Parameter.syntax_node parameter) |> String.trim
 
-let identifier_character = function
-  | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '\'' ->
+let identifier_character =
+  function
+  | 'a' .. 'z'
+  | 'A' .. 'Z'
+  | '0' .. '9'
+  | '_'
+  | '\'' ->
       true
   | _ ->
       false
@@ -123,22 +135,19 @@ let identifier_character = function
 let source_mentions_identifier = fun source identifier ->
   let source_length = String.length source in
   let identifier_length = String.length identifier in
-  let rec loop index =
+  let rec loop = fun index ->
     if index + identifier_length > source_length then
       false
     else if String.sub source index identifier_length = identifier then
-      let before_ok =
-        index = 0 || not (identifier_character source.[index - 1])
-      in
+      let before_ok = index = 0 || not (identifier_character source.[index - 1]) in
       let after_index = index + identifier_length in
-      let after_ok =
-        after_index = source_length
-        || not (identifier_character source.[after_index])
-      in
+      let after_ok = after_index = source_length || not (identifier_character source.[after_index]) in
       if before_ok && after_ok then
         true
-      else loop (index + 1)
-    else loop (index + 1)
+      else
+        loop (index + 1)
+    else
+      loop (index + 1)
   in
   loop 0
 
@@ -148,47 +157,44 @@ let contains_substring = fun source needle ->
   if needle_length = 0 then
     true
   else
-    let rec loop index =
+    let rec loop = fun index ->
       if index + needle_length > source_length then
         false
       else if String.sub source index needle_length = needle then
         true
-      else loop (index + 1)
+      else
+        loop (index + 1)
     in
     loop 0
 
 let fresh_match_parameter_name = fun syntax_node ->
   let source = source_of_syntax_node syntax_node in
-  let rec pick = function
+  let rec pick =
+    function
     | [] ->
         "value"
     | name :: rest ->
         if source_mentions_identifier source name then
           pick rest
-        else name
+        else
+          name
   in
-  pick
-    [
-      "x";
-      "value";
-      "arg";
-      "input";
-      "subject";
-      "subject0";
-      "subject1";
-    ]
+  pick [ "x"; "value"; "arg"; "input"; "subject"; "subject0"; "subject1" ]
 
 let syntax_node_has_comment_like_trivia = fun (node : Syn.Cst.syntax_node) ->
   let found = ref false in
-  Syn.Ceibo.Red.SyntaxNode.preorder node (function
-    | Syn.Ceibo.Red.Token token -> (
-        match Syn.Ceibo.Red.SyntaxToken.kind token with
-        | Syn.SyntaxKind.COMMENT | Syn.SyntaxKind.DOCSTRING ->
-            found := true
-        | _ ->
-            ())
-    | Syn.Ceibo.Red.Node _ ->
-        ());
+  Syn.Ceibo.Red.SyntaxNode.preorder node
+    (function
+         | Syn.Ceibo.Red.Token token -> (
+               match Syn.Ceibo.Red.SyntaxToken.kind token with
+               | Syn.SyntaxKind.COMMENT
+               | Syn.SyntaxKind.DOCSTRING ->
+                   found := true
+               | _ ->
+                   ()
+             )
+         | Syn.Ceibo.Red.Node _ ->
+             ());
   !found
 
 let source_of_span = fun source (span : Syn.Ceibo.Span.t) ->

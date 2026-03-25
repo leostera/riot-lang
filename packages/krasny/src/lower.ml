@@ -911,18 +911,18 @@ let render_variant_constructor_arguments ?(prefer_multiline_inline_record = fals
       in
       (match source_node with
       | Some source_node
-        when prefer_multiline_inline_record ->
-          Doc.indent 2 (render_inline_record_definition_with_comments ~source_node fields)
-      | Some source_node
         when
           syntax_node_has_comment_like_token source_node
           || (Syn.Ceibo.Red.SyntaxNode.tokens source_node
              |> List.exists whitespace_has_newline) ->
-          Doc.indent 2 (render_inline_record_definition_with_comments ~source_node fields)
+          Doc.indent 2 (render_record_definition_with_comments ~source_node fields)
+      | Some source_node
+        when prefer_multiline_inline_record ->
+          Doc.indent 2 (render_record_definition_with_comments ~source_node fields)
       | Some _ ->
-          Doc.indent 2 (render_inline_record_definition fields)
+          Doc.indent 2 (render_record_definition fields)
       | None ->
-          Doc.indent 2 (render_inline_record_definition fields))
+          Doc.indent 2 (render_record_definition fields))
 
 let render_variant_constructor
     ?(include_trailing_comment = true)
@@ -1076,12 +1076,6 @@ let render_type_declaration_with_keyword keyword decl =
   let type_definition =
     Syn.Cst.TypeDeclaration.type_definition decl
   in
-  let type_name_is_t =
-    Syn.Cst.Ident.segments type_name
-    |> List.map token_text
-    |> String.concat "."
-    = "t"
-  in
   let params = render_type_parameters (Syn.Cst.TypeDeclaration.type_params decl) in
   let header =
     if params = Doc.empty then
@@ -1102,17 +1096,7 @@ let render_type_declaration_with_keyword keyword decl =
   let definition =
     match Syn.Cst.TypeDeclaration.private_flag decl with
     | Syn.Cst.PrivateFlag.Public ->
-        (match type_definition with
-        | Syn.Cst.TypeDefinition.Record { syntax_node; fields }
-          when
-            type_name_is_t
-            && not (syntax_node_has_comment_like_token syntax_node)
-            && not
-                 (Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-                 |> List.exists whitespace_has_newline) ->
-            Some (render_inline_record_definition fields)
-        | _ ->
-            render_type_definition type_definition)
+        render_type_definition type_definition
     | Syn.Cst.PrivateFlag.Private _ ->
         Option.map
           (fun definition -> Doc.concat [ kw_private; Doc.space; definition ])
@@ -1593,7 +1577,8 @@ let expression_requires_break_after_equals = function
   | Syn.Cst.Expression.For _
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Sequence _
-  | Syn.Cst.Expression.LetModule _ ->
+  | Syn.Cst.Expression.LetModule _
+  | Syn.Cst.Expression.LocalOpen _ ->
       true
   | _ ->
       false
@@ -2133,7 +2118,7 @@ and render_case ?(force_multiline_body = false) ?(force_leading_bar = false)
             Doc.space;
             doc_of_token case.arrow_token;
             Doc.space;
-            Doc.indent 2 body;
+            Doc.indent 4 body;
           ]
     | _
       when
@@ -2152,46 +2137,24 @@ and render_case ?(force_multiline_body = false) ?(force_leading_bar = false)
           Doc.space;
           doc_of_token case.arrow_token;
           Doc.line;
-          Doc.indent 2 body;
+          Doc.indent 4 body;
         ]
     | _ ->
         Doc.concat [ prefix; pattern; guard; Doc.space; doc_of_token case.arrow_token; Doc.space; body ]
   in
   match case.pattern with
   | Syn.Cst.Pattern.Or { alternatives; _ } -> (
-      let inline_char_literals =
-        List.length alternatives <= 4
-        && List.for_all (function
-               | Syn.Cst.Pattern.Literal { literal = Syn.Cst.Literal.Char _; _ } ->
-                   true
-               | _ ->
-                   false)
-             alternatives
-      in
-      let multiline_poly_variant_fallthrough =
-        List.length alternatives > 1
-        && List.for_all
-             (function
-               | Syn.Cst.Pattern.PolyVariant _ ->
-                   true
-               | _ ->
-                   false)
-             alternatives
-      in
-      if inline_char_literals || not multiline_poly_variant_fallthrough then
-        render_branch rendered_pattern
-      else
-        match List.rev alternatives with
-        | [] ->
-            Doc.empty
-        | last :: rest_reversed ->
-            let leading =
-              rest_reversed
-              |> List.rev
-              |> List.map (fun alternative ->
-                     Doc.concat [ prefix; render_pattern alternative; Doc.line ])
-            in
-            Doc.concat (leading @ [ render_branch (render_pattern last) ]))
+      match List.rev alternatives with
+      | [] ->
+          Doc.empty
+      | last :: rest_reversed ->
+          let leading =
+            rest_reversed
+            |> List.rev
+            |> List.map (fun alternative ->
+                   Doc.concat [ prefix; render_pattern alternative; Doc.line ])
+          in
+          Doc.concat (leading @ [ render_branch (render_pattern last) ]))
   | _ ->
       render_branch rendered_pattern
 
@@ -3090,7 +3053,7 @@ and render_structure_entry item =
     | Some suffix ->
         Doc.concat [ render_structure_item item; suffix ]
   in
-  (doc, is_open_structure_item item, false, Option.is_some trailing_suffix, false)
+  (doc, is_open_structure_item item, false, false, false)
 
 and render_signature_entry item =
   let trailing_suffix = trailing_comment_suffix_doc (Syn.Cst.SignatureItem.syntax_node item) in
@@ -3101,7 +3064,7 @@ and render_signature_entry item =
     | Some suffix ->
         Doc.concat [ render_signature_item item; suffix ]
   in
-  (doc, is_open_signature_item item, false, Option.is_some trailing_suffix, false)
+  (doc, is_open_signature_item item, false, false, false)
 
 and render_structure_item = function
   | Syn.Cst.StructureItem.LetBinding binding ->

@@ -15,9 +15,15 @@ let first = 1
 
 let second = 2
 
-let if_then_else_simple = if ready then 1 else 0
+let if_then_else_simple =
+  if ready then
+    1
+  else
+    0
 
-let if_no_else = if ready then log "ready"
+let if_no_else =
+  if ready then
+    log "ready"
 
 let if_nested =
   if outer then
@@ -44,7 +50,10 @@ let let_and_bindings =
 
 let let_rec_in =
   let rec loop = fun n ->
-    if n <= 0 then 0 else n + loop (n - 1)
+    if n <= 0 then
+      0
+    else
+      n + loop (n - 1)
   in
   loop count
 
@@ -67,7 +76,10 @@ let sequence_with_let =
 
 let sequence_with_if =
   log "before";
-  if ready then use value else fallback ()
+  if ready then
+    use value
+  else
+    fallback ()
 
 let sequence_with_match =
   log "before";
@@ -88,11 +100,11 @@ let begin_sequence =
 let match_nested =
   match outer with
   | Some inner -> (
-      match inner with
-      | Ok (Some value) -> value
-      | Ok None -> 0
-      | Error _ -> (-1)
-    )
+        match inner with
+        | Ok (Some value) -> value
+        | Ok None -> 0
+        | Error _ -> (-1)
+      )
   | None -> (-2)
 
 let match_many_branches =

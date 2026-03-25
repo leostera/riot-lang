@@ -3,7 +3,8 @@ open Std
 let parse_file = fun ~file ~source ->
   if String.ends_with ~suffix:".mli" file then
     Syn.parse_interface source
-  else Syn.parse_implementation source
+  else
+    Syn.parse_implementation source
 
 let handle_format = fun file ->
   match Fs.read (Path.v file) with
@@ -58,19 +59,14 @@ let () =
       ArgParser.print_help cmd;
       exit 1
   | Ok matches -> (
-      match ArgParser.get_subcommand matches with
-      | Some ("format", sub_matches) ->
-          let file =
-            ArgParser.get_one sub_matches "FILE"
-            |> Option.expect ~msg:"FILE required"
-          in
-          handle_format file
-      | Some ("syntax-hash", sub_matches) ->
-          let file =
-            ArgParser.get_one sub_matches "FILE"
-            |> Option.expect ~msg:"FILE required"
-          in
-          handle_syntax_hash file
-      | _ ->
-          ArgParser.print_help cmd;
-          exit 1)
+        match ArgParser.get_subcommand matches with
+        | Some ("format", sub_matches) ->
+            let file = ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required" in
+            handle_format file
+        | Some ("syntax-hash", sub_matches) ->
+            let file = ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required" in
+            handle_syntax_hash file
+        | _ ->
+            ArgParser.print_help cmd;
+            exit 1
+      )

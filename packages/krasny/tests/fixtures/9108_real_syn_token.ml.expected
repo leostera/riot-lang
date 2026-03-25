@@ -3,7 +3,10 @@ open Std
 type keyword = Keyword.t
 
 type literal =
-  | String of { value : string; terminated : bool }
+  | String of {
+      value : string;
+      terminated : bool;
+    }
   | Int of int
   | Float of float
   | Char of char
@@ -24,8 +27,14 @@ type token_kind =
   | Literal of literal
   | OpenDelim of delimiter
   | CloseDelim of delimiter
-  | Comment of { value : string; terminated : bool }
-  | Docstring of { value : string; terminated : bool }
+  | Comment of {
+      value : string;
+      terminated : bool;
+    }
+  | Docstring of {
+      value : string;
+      terminated : bool;
+    }
   | Whitespace
   | Plus
   | Minus
@@ -76,16 +85,21 @@ type token_kind =
   | EOF
   | Unknown of char
 
-type t = { kind : token_kind; span : Ceibo.Span.t }
+type t = {
+  kind : token_kind;
+  span : Ceibo.Span.t;
+}
 
-let delimiter_of_keyword : keyword -> delimiter option = function
+let delimiter_of_keyword : keyword -> delimiter option =
+  function
   | Begin -> Some BeginEnd
   | Struct -> Some StructEnd
   | Sig -> Some SigEnd
   | Object -> Some ObjectEnd
   | _ -> None
 
-let show_kind = function
+let show_kind =
+  function
   | Keyword _ -> "keyword"
   | Ident _ -> "identifier"
   | Literal (Int _) -> "integer"

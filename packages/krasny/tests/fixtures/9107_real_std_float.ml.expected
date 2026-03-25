@@ -1,4 +1,5 @@
 open Kernel.Global
+
 include Kernel.Float
 
 let rec power_of_10 = fun n ->

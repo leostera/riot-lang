@@ -114,11 +114,11 @@ type ('ok, 'err) result_like =
 type message =
   | Ping of {
       id : int;
-      sent_at : float
+      sent_at : float;
     }
   | Pong of {
       id : int;
-      ok : bool
+      ok : bool;
     }
 
 type opaque

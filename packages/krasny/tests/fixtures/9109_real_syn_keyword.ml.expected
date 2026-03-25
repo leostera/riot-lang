@@ -59,7 +59,8 @@ type t =
   | While
   | With
 
-let of_string = function
+let of_string =
+  function
   | "and" -> Some And
   | "as" -> Some As
   | "asr" -> Some Asr
@@ -119,7 +120,8 @@ let of_string = function
   | "with" -> Some With
   | _ -> None
 
-let to_string = function
+let to_string =
+  function
   | And -> "and"
   | As -> "as"
   | Asr -> "asr"
@@ -178,5 +180,15 @@ let to_string = function
   | While -> "while"
   | With -> "with"
 
-let is_opening = function Begin | Struct | Sig | Object -> true | _ -> false
-let is_closing = function End -> true | _ -> false
+let is_opening =
+  function
+  | Begin
+  | Struct
+  | Sig
+  | Object -> true
+  | _ -> false
+
+let is_closing =
+  function
+  | End -> true
+  | _ -> false

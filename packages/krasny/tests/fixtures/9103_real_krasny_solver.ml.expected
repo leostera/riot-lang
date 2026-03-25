@@ -12,8 +12,7 @@ let solve = fun ~width doc ->
     | [] ->
         rest
     | docs ->
-        docs
-        |> List.fold_left (fun acc doc -> (indent, mode, doc) :: acc) rest
+        docs |> List.fold_left (fun acc doc -> (indent, mode, doc) :: acc) rest
   in
   let rec fits = fun remaining ->
     function
@@ -63,12 +62,12 @@ let solve = fun ~width doc ->
     | Doc.Line ->
         (Doc.line, indent)
     | Doc.Break flat -> (
-        match mode with
-        | Flat ->
-            (Doc.text flat, column + String.length flat)
-        | Break ->
-            (Doc.line, indent)
-      )
+          match mode with
+          | Flat ->
+              (Doc.text flat, column + String.length flat)
+          | Break ->
+              (Doc.line, indent)
+        )
     | Doc.Concat docs ->
         solve_many ~column ~indent ~mode docs
     | Doc.Indent (extra, doc) ->
