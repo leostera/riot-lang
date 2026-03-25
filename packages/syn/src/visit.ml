@@ -767,8 +767,9 @@ and descend_expression walk ctx (expression : Cst.Expression.t) =
         List.fold_left walk.binding_operator_binding ctx and_bindings
       in
       walk.expression ctx body
-  | Cst.Expression.Let { bound_value; and_bindings; body; attributes; _ } ->
+  | Cst.Expression.Let { parameters; bound_value; and_bindings; body; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
+      let ctx = List.fold_left walk.parameter ctx parameters in
       let ctx = walk.expression ctx bound_value in
       let ctx = List.fold_left walk.let_binding ctx and_bindings in
       walk.expression ctx body
@@ -859,7 +860,8 @@ and descend_class_expression walk ctx (class_expression : Cst.ClassExpression.t)
   | Cst.ClassExpression.Apply { callee; argument; _ } ->
       let ctx = walk.class_expression ctx callee in
       walk.apply_argument ctx argument
-  | Cst.ClassExpression.Let { bound_value; and_bindings; body; _ } ->
+  | Cst.ClassExpression.Let { parameters; bound_value; and_bindings; body; _ } ->
+      let ctx = List.fold_left walk.parameter ctx parameters in
       let ctx = walk.expression ctx bound_value in
       let ctx = List.fold_left walk.let_binding ctx and_bindings in
       walk.class_expression ctx body

@@ -6,6 +6,13 @@ type mode =
 
 type frame = int * mode * Doc.t
 
+let last_line_width text =
+  match List.rev (String.split_on_char '\n' text) with
+  | [] ->
+      0
+  | last :: _ ->
+      String.length last
+
 let solve ~width doc =
   let rec push_many indent mode docs rest =
     match List.rev docs with
@@ -23,7 +30,10 @@ let solve ~width doc =
     | (_, _, Doc.Empty) :: rest ->
         fits remaining rest
     | (_, _, Doc.Text value) :: rest ->
-        fits (remaining - String.length value) rest
+        if String.contains value "\n" then
+          fits (width - last_line_width value) rest
+        else
+          fits (remaining - String.length value) rest
     | (_, _, Doc.Space) :: rest ->
         fits (remaining - 1) rest
     | (_, _, Doc.Spaces count) :: rest ->
@@ -52,7 +62,10 @@ let solve ~width doc =
     | Doc.Empty ->
         (Doc.empty, column)
     | Doc.Text value ->
-        (Doc.text value, column + String.length value)
+        if String.contains value "\n" then
+          (Doc.text value, last_line_width value)
+        else
+          (Doc.text value, column + String.length value)
     | Doc.Space ->
         (Doc.space, column + 1)
     | Doc.Spaces count ->

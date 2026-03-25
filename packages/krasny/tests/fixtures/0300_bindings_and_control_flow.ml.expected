@@ -75,12 +75,12 @@ let sequence_with_match =
   | Some x -> x
   | None -> 0
 
-let sequence_in_fun =
- fun x ->
+let sequence_in_fun = fun x ->
   log_value x;
   x + 1
 
-let begin_sequence = begin
+let begin_sequence =
+  begin
     log "begin";
     log "end"
   end
@@ -91,7 +91,7 @@ let match_nested =
       match inner with
       | Ok (Some value) -> value
       | Ok None -> 0
-      | Error _ -> -1
+      | Error _ -> (-1)
     )
   | None -> (-2)
 

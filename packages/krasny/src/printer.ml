@@ -33,22 +33,22 @@ let to_string doc =
     | Doc.Indent (extra, doc) ->
         write ~line_start ~indent:(indent + extra) doc
   and write_text ~line_start ~indent value =
-    let rec write_lines line_start = function
+    let rec write_lines line_start is_first = function
       | [] ->
           line_start
       | [ line ] ->
-          if line_start && String.length line > 0 then
+          if is_first && line_start && String.length line > 0 then
             IO.Buffer.add_string buffer (String.make indent ' ');
           IO.Buffer.add_string buffer line;
           line_start && String.length line = 0
       | line :: rest ->
-          if line_start && String.length line > 0 then
+          if is_first && line_start && String.length line > 0 then
             IO.Buffer.add_string buffer (String.make indent ' ');
           IO.Buffer.add_string buffer line;
           IO.Buffer.add_char buffer '\n';
-          write_lines true rest
+          write_lines true false rest
     in
-    write_lines line_start (String.split_on_char '\n' value)
+    write_lines line_start true (String.split_on_char '\n' value)
   in
   ignore (write ~line_start:true ~indent:0 doc);
   IO.Buffer.contents buffer

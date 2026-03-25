@@ -6,6 +6,8 @@ let expressions_of_apply_argument = function
   | Cst.Labeled { value; _ } | Cst.Optional { value; _ } ->
       Option.to_list value
 
+let expressions_of_parameter (_ : Cst.Parameter.t) = []
+
 let rec expressions_of_object_member = function
   | Cst.ObjectMember.Method { body; _ } ->
       Option.to_list body
@@ -40,9 +42,10 @@ and expressions_of_class_expression = function
       expressions_of_class_expression body
   | Cst.ClassExpression.Apply { callee; argument; _ } ->
       expressions_of_class_expression callee @ expressions_of_apply_argument argument
-  | Cst.ClassExpression.Let { bound_value; and_bindings; body; _ } ->
+  | Cst.ClassExpression.Let { parameters; bound_value; and_bindings; body; _ } ->
       [ bound_value ]
       @ (and_bindings |> List.map Cst.LetBinding.value)
+      @ (parameters |> List.concat_map expressions_of_parameter)
       @ expressions_of_class_expression body
   | Cst.ClassExpression.Constraint { class_expression; _ } ->
       expressions_of_class_expression class_expression
@@ -159,9 +162,10 @@ let children_of_expression = function
       [ binding.bound_value ]
       @ List.map (fun ({ bound_value; _ } : Cst.binding_operator_binding) -> bound_value) and_bindings
       @ [ body ]
-  | Cst.Expression.Let { bound_value; and_bindings; body; _ } ->
+  | Cst.Expression.Let { parameters; bound_value; and_bindings; body; _ } ->
       [ bound_value ]
       @ List.map Cst.LetBinding.value and_bindings
+      @ (parameters |> List.concat_map expressions_of_parameter)
       @ [ body ]
   | Cst.Expression.Match { scrutinee; cases; _ } ->
       [ scrutinee ]

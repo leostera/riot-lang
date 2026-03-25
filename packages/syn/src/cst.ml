@@ -834,6 +834,7 @@ and lazy_pattern = {
 
 and exception_pattern = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
   pattern : pattern;
   attributes : attribute list;
 }
@@ -988,20 +989,25 @@ and parenthesized_pattern = {
 
 type positional_parameter = {
   syntax_node : syntax_node;
+  pattern : pattern;
   name_token : Token.t option;
 }
 
 type labeled_parameter = {
   syntax_node : syntax_node;
+  sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
+  binding_pattern : pattern option;
 }
 
 type optional_parameter = {
   syntax_node : syntax_node;
+  sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
   has_default : bool;
+  binding_pattern : pattern option;
 }
 
 type locally_abstract_type_parameter = {
@@ -1028,6 +1034,14 @@ module Parameter = struct
     | Optional param -> param.syntax_node
     | LocallyAbstract param -> param.syntax_node
 
+  let sigil_token = function
+    | Positional _ | LocallyAbstract _ ->
+        None
+    | Labeled param ->
+        Some param.sigil_token
+    | Optional param ->
+        Some param.sigil_token
+
   let name_token = function
     | Positional param -> param.name_token
     | Labeled param -> Some param.label_token
@@ -1049,6 +1063,17 @@ module Parameter = struct
     | Optional param -> param.has_default
     | Positional _ | Labeled _ | LocallyAbstract _ ->
         false
+
+  let binding_pattern = function
+    | Positional param ->
+        Some param.pattern
+    | Labeled param ->
+        param.binding_pattern
+    | Optional param ->
+        param.binding_pattern
+    | LocallyAbstract _ ->
+        None
+
 end
 
 module Literal = Constant
@@ -1250,12 +1275,14 @@ and apply_argument =
 
 and labeled_apply_argument = {
   syntax_node : syntax_node;
+  sigil_token : Token.t;
   label_token : Token.t;
   value : expression option;
 }
 
 and optional_apply_argument = {
   syntax_node : syntax_node;
+  sigil_token : Token.t;
   label_token : Token.t;
   value : expression option;
 }
@@ -1363,6 +1390,7 @@ and coerce_expression = {
 
 and sequence_expression = {
   syntax_node : syntax_node;
+  separator_token : Token.t;
   left : expression;
   right : expression;
   attributes : attribute list;
@@ -1440,6 +1468,8 @@ and fun_body =
 
 and fun_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  arrow_token : Token.t;
   parameters : Parameter.t list;
   body : fun_body;
   attributes : attribute list;
@@ -1447,12 +1477,16 @@ and fun_expression = {
 
 and function_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
   cases : match_case list;
   attributes : attribute list;
 }
 
 and let_binding = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  rec_token : Token.t option;
+  equals_token : Token.t;
   attributes : attribute list;
   binding_pattern : pattern;
   binding_name : Token.t option;
@@ -1478,7 +1512,12 @@ and let_operator_expression = {
 
 and let_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  rec_token : Token.t option;
+  equals_token : Token.t;
+  in_token : Token.t;
   binding_pattern : pattern;
+  parameters : Parameter.t list;
   bound_value : expression;
   and_bindings : let_binding list;
   body : expression;
@@ -1488,6 +1527,8 @@ and let_expression = {
 
 and match_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  with_token : Token.t;
   scrutinee : expression;
   cases : match_case list;
   attributes : attribute list;
@@ -1495,6 +1536,8 @@ and match_expression = {
 
 and try_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  with_token : Token.t;
   body : expression;
   cases : match_case list;
   attributes : attribute list;
@@ -1502,6 +1545,9 @@ and try_expression = {
 
 and match_case = {
   syntax_node : syntax_node;
+  bar_token : Token.t option;
+  when_token : Token.t option;
+  arrow_token : Token.t;
   pattern : pattern;
   guard : expression option;
   body : expression;
@@ -1509,14 +1555,24 @@ and match_case = {
 
 and if_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  then_token : Token.t;
+  else_token : Token.t option;
   condition : expression;
   then_branch : expression;
   else_branch : expression option;
   attributes : attribute list;
 }
 
+and expression_grouping =
+  | Parens
+  | BeginEnd
+
 and parenthesized_expression = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
+  closing_token : Token.t;
+  grouping : expression_grouping;
   inner : expression;
   attributes : attribute list;
 }
@@ -1606,7 +1662,12 @@ and class_fun_expression = {
 
 and class_let_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  rec_token : Token.t option;
+  equals_token : Token.t;
+  in_token : Token.t;
   binding_pattern : pattern;
+  parameters : Parameter.t list;
   bound_value : expression;
   and_bindings : let_binding list;
   body : class_expression;
@@ -2345,6 +2406,9 @@ end
 module LetBinding = struct
   type t = let_binding = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
+    rec_token : Token.t option;
+    equals_token : Token.t;
     attributes : attribute list;
     binding_pattern : pattern;
     binding_name : Token.t option;
@@ -2354,6 +2418,9 @@ module LetBinding = struct
   }
 
   let syntax_node binding = binding.syntax_node
+  let keyword_token binding = binding.keyword_token
+  let rec_token binding = binding.rec_token
+  let equals_token binding = binding.equals_token
   let attributes binding = binding.attributes
   let binding_pattern binding = binding.binding_pattern
   let binding_name_token binding = binding.binding_name

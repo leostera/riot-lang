@@ -14,9 +14,11 @@ formatter.
 
 `krasny` should:
 
-- consume `Syn.parse_result`
-- try to format primarily from `Syn.Cst`
-- lower syntax into a formatting document IR
+- accept `Syn.Parser.parse_result` but require a successful `Syn.build_cst`
+  before formatting
+- lower typed `Syn.Cst` plus concrete token access into a formatting document
+  IR
+- solve documents at a fixed width of `100` columns
 - render formatted output through an `Std.IO`-friendly writer API
 - expose one formatting style for everyone, with no user-facing knobs
 
@@ -47,10 +49,12 @@ needs grow from that single subsystem.
 Contributors should think of `krasny` as a syntax-to-document pipeline:
 
 1. `Syn.parse_result`
-2. typed CST when available
-3. formatting document IR
-4. layout engine
-5. `Std.IO` writer
+2. `Syn.build_cst`
+3. typed CST plus concrete token access
+4. formatting document IR
+5. layout solver
+6. printer
+7. `Std.IO` writer
 
 At a high level:
 
@@ -70,8 +74,8 @@ If the style changes, Riot changes it globally and deliberately.
 
 ### Primary path: CST-driven formatting
 
-Formatting should primarily traverse `Syn.Cst`, not raw Ceibo nodes. CST gives
-the formatter the structure it actually wants:
+Formatting should primarily traverse `Syn.Cst`, not raw Ceibo nodes and not
+raw source text. CST gives the formatter the structure it actually wants:
 
 - expressions
 - patterns
@@ -83,22 +87,32 @@ the formatter the structure it actually wants:
 
 That makes the formatter easier to reason about than a raw token/node printer.
 
-### Fallback path: formatting should not fail
+Lowering should be structurally driven:
 
-`krasny` should accept `Syn.parse_result`, not only successful CST lifts.
+- pattern match on typed `Syn.Cst` constructors for semantic shape
+- read concrete keywords, punctuation, and delimiters from structured token
+  access
+- build `Doc`
+- let the solver and printer decide spaces, line breaks, and indentation
 
-The normal path is:
+That means lowering should not:
 
-- parse
-- build CST
-- format from CST
+- slice raw source text
+- check `String.starts_with "let rec "` or similar
+- emit indentation or hardcoded whitespace strings like `" = "` as a layout
+  shortcut
 
-If CST building fails because the current lift does not yet cover some parsed
-syntax, `krasny` should still be able to render from the underlying Ceibo tree
-instead of crashing or refusing to format.
+If the current public CST surface does not expose enough token structure for a
+construct, Riot should improve `syn` rather than teaching `krasny` to guess
+from text.
 
-This fallback does not need to be pretty immediately. It needs to be complete
-and valid enough that the formatter remains usable while the CST grows.
+### No raw-text fallback
+
+`krasny` should only format from a successful CST lift.
+
+If `Syn.build_cst` fails, formatting should fail with a structured error. Riot
+should not add a Ceibo-to-doc or raw-source fallback path for normal
+formatting.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -115,8 +129,8 @@ Responsibilities:
 
 - document IR
 - CST-to-doc lowering
-- Ceibo fallback lowering
-- layout engine
+- layout solver
+- printer
 - rendering to `Std.IO`
 
 Non-responsibilities:
@@ -127,28 +141,24 @@ Non-responsibilities:
 
 ## 2. Public API shape
 
-The formatter should expose an `Std.IO`-friendly writer surface.
+The formatter should expose an `Std.IO`-friendly writer surface with one fixed
+style and one fixed line width.
 
 A first-pass API could look like:
 
 ```ocaml
 module Krasny : sig
-  type config = {
-    width : int;
-  }
-
-  val default_config : config
+  type format_error =
+    | Cannot_build_cst of Syn.build_cst_error
 
   val format :
-    ?config:config ->
     Syn.Parser.parse_result ->
-    (string, string) result
+    (string, format_error) result
 
   val write :
-    ?config:config ->
     writer:Std.IO.writer ->
     Syn.Parser.parse_result ->
-    (unit, string) result
+    (unit, [> `Format of format_error | `Write of Std.IO.write_error ]) result
 end
 ```
 
@@ -162,25 +172,50 @@ The formatter pipeline should be:
 
 ```text
 Syn.parse_result
-  -> try Syn.build_cst
-  -> cst_to_doc
-  -> layout
+  -> Syn.build_cst
+  -> lower
+  -> doc
+  -> solve(width = 100)
+  -> print
   -> writer
 ```
 
-with fallback:
+There should not be a second fallback formatting pipeline that reconstructs
+syntax from raw text.
 
-```text
-Syn.parse_result
-  -> ceibo_to_doc
-  -> layout
-  -> writer
-```
+## 4. CST and token boundary
 
-The formatter should never require downstream callers to choose that path
-manually.
+`Syn.Cst` should provide the semantic structure that lowering wants, but the
+formatter still needs access to concrete tokens such as:
 
-## 4. Document IR
+- `let`
+- `rec`
+- `=`
+- `fun`
+- `->`
+- `with`
+- `struct` / `sig` / `end`
+
+That access should come from structured CST token fields or from deliberate
+token access on the attached red subtree, not from source slicing.
+
+For example, a `let` binding should expose semantic information such as:
+
+- `is_recursive`
+- pattern
+- parameters
+- value
+
+and should also expose the concrete tokens that matter for rendering, such as:
+
+- `let_keyword`
+- `rec_keyword : token option`
+- `equal`
+
+If a CST node does not expose enough token structure for faithful lowering, the
+fix belongs in `syn`, not in `krasny`.
+
+## 5. Document IR
 
 `krasny` should not render directly by string concatenation. It should lower
 syntax into a document IR.
@@ -208,24 +243,38 @@ end
 The exact constructor list is less important than the architectural point:
 
 - CST decides structure
+- token access decides concrete syntax atoms
 - `Doc` decides layout
-- rendering happens after layout choices are made
+- the solver decides breaks and indentation
+- the printer renders the solved document
 
-## 5. Layout engine
+Lowering should treat spacing and breaking as document structure, not as string
+assembly. In particular:
 
-The layout engine should follow the broad shape used by classical
+- use explicit doc items for spaces and breaks
+- keep tokens and whitespace separate
+- do not embed layout into strings like `" = "` or `"\n  "`
+- do not consider indentation while lowering beyond building `Indent`/`Group`
+  structure into the document
+
+## 6. Layout engine
+
+The layout engine should follow the broad shape used by modern document-based
 pretty-printers:
 
-- scan/measuring pass for grouped layouts
-- printing pass that chooses flat or broken forms under width constraints
+- a document tree that carries grouping and break opportunities
+- a `fits`-style solver that chooses flat or broken layouts under a width
+  constraint
+- a printer that renders the solved document
 
 The implementation does not need to be academically pure. It does need to be:
 
 - deterministic
 - simple to reason about
 - able to grow without rewriting the architecture later
+- fixed at `100` columns unless Riot deliberately changes the global style
 
-## 6. Comments and trivia
+## 7. Comments and trivia
 
 Comments and trivia must be handled intentionally.
 
@@ -238,7 +287,7 @@ one call explicit:
 
 - comments are part of formatting design, not a post-processing hack
 
-## 7. Why this is not a fragment printer
+## 8. Why this is not a fragment printer
 
 This RFD explicitly rejects building a fix-only "render one node to text"
 printer as a separate subsystem.
@@ -282,9 +331,10 @@ formatter we already know Riot will want.
 
 Rejected as the primary design.
 
-Ceibo is the right source of truth for lossless syntax and fallback behavior,
-but formatting wants structured syntax more than raw red-tree traversal. CST is
-the better primary traversal surface.
+Ceibo is the right source of truth for lossless syntax, spans, and trivia, but
+formatting wants structured syntax more than raw red-tree traversal. CST is the
+better primary traversal surface, with deliberate token access where concrete
+syntax matters.
 
 ### Alternative: direct AST/CST printer with no document IR
 
@@ -293,6 +343,15 @@ Rejected.
 OCaml layout is rich enough that direct string printing would quickly collapse
 into handwritten spacing and line-breaking heuristics scattered across many
 node printers. A document IR gives the formatter a cleaner long-term shape.
+
+### Alternative: raw-source or Ceibo fallback when CST lift fails
+
+Rejected.
+
+That would push formatter complexity into source slicing and syntax
+reconstruction right where Riot most wants strong structure. If CST lift fails,
+the correct fix is to extend `syn`'s faithful typed CST and its token exposure,
+not to add a second formatting pipeline.
 
 ### Alternative: wait until synthetic rewrites force the issue
 
@@ -308,49 +367,60 @@ Three formatter families are especially relevant.
 
 ### Swift `swift-format`
 
-Swift's official formatter is the closest structural model for `krasny`:
+Swift's official formatter is the closest structural model for `krasny`'s CST
+boundary:
 
-- syntax tree traversal
-- lowering into a formatting token/document stream
-- explicit grouping and break opportunities
-- Oppen-style scan/print layout engine
+- typed syntax tree traversal
+- concrete token access from the syntax tree itself
+- insertion of formatting controls before and after real syntax tokens
+- a dedicated pretty-printing stream and printer
 
-That is the clearest precedent for a CST-driven formatter with a real layout
-engine instead of direct string printing.
+The key lesson is not that Riot should copy Swift's printer token-for-token,
+but that it should follow the same boundary:
+
+- semantic structure from typed syntax nodes
+- concrete spelling from explicit token access
+- layout decisions in a dedicated pretty-printing layer
+
+That is the clearest precedent for using `Syn.Cst` plus structured token access
+instead of raw source reconstruction.
 
 Source:
-- https://github.com/swiftlang/swift-format/blob/main/Documentation/PrettyPrinter.md
+- [SwiftFormatter.swift](/Users/leostera/Developer/github.com/leostera/riot/3rdparty/swift-format/Sources/SwiftFormat/API/SwiftFormatter.swift)
+- [TokenStreamCreator.swift](/Users/leostera/Developer/github.com/leostera/riot/3rdparty/swift-format/Sources/SwiftFormat/PrettyPrint/TokenStreamCreator.swift)
+- [Token.swift](/Users/leostera/Developer/github.com/leostera/riot/3rdparty/swift-format/Sources/SwiftFormat/PrettyPrint/Token.swift)
 
-### Go `gofmt`
+### JavaScript `prettier`
 
-`gofmt` is the clearest precedent for formatter philosophy:
+Prettier is the clearest precedent for Riot's document model and solver:
 
-- one canonical style
-- no user knobs
-- formatter as the standard tool, not an optional preference layer
+- a first-class `Doc` IR with explicit groups, indents, and line variants
+- a `fits`-style solver
+- a separate printer over the solved document
 
-Its implementation is more direct AST printing than Riot likely wants, but its
-social model is exactly the one Riot should copy.
+That is the strongest reference for the `doc -> solver -> printer` half of
+`krasny`.
 
 Sources:
-- https://pkg.go.dev/go/printer
-- https://pkg.go.dev/cmd/gofmt
+- [builders/index.js](/Users/leostera/Developer/github.com/leostera/riot/3rdparty/prettier/src/document/builders/index.js)
+- [printer/printer.js](/Users/leostera/Developer/github.com/leostera/riot/3rdparty/prettier/src/document/printer/printer.js)
+- [public.js](/Users/leostera/Developer/github.com/leostera/riot/3rdparty/prettier/src/document/public.js)
 
 ### Rust `rustfmt`
 
-`rustfmt` is useful as a warning and as a source of practical lessons:
+`rustfmt` is useful mostly as a warning:
 
-- it is AST-driven
-- it uses many handwritten, width-aware rewrite routines
-- it is pragmatic and large-scale, but quite heuristic
+- it is explicitly heuristic rather than algorithmic
+- many `rewrite_*` functions return `String` or `Option<String>`
+- it uses source spans and snippets pervasively
 
-Riot should expect to grow some construct-specific heuristics over time, but
-should not start there. A document-based architecture gives a better first
-shape than jumping straight into a large family of handwritten rewrite
-functions.
+That is exactly the style Riot should avoid in `krasny`. It is valuable as a
+large-scale practical formatter, but it is the wrong starting architecture for
+the cleaner typed-CST-plus-Doc design Riot wants.
 
 Source:
-- https://github.com/rust-lang/rustfmt/blob/main/Design.md
+- [Design.md](/Users/leostera/Developer/github.com/leostera/riot/3rdparty/rustfmt/Design.md)
+- [visitor.rs](/Users/leostera/Developer/github.com/leostera/riot/3rdparty/rustfmt/src/visitor.rs)
 
 ### Document algebras
 
@@ -369,7 +439,8 @@ That is the family of ideas `krasny` should build on.
 1. What is the smallest good first `Doc` algebra for OCaml in Riot?
 2. How should comments be attached from Ceibo trivia to CST-driven formatting
    nodes?
-3. Should the first version guarantee formatting of parser-recovered code, or
-   only diagnostics-free parse results plus a best-effort fallback?
+3. Which concrete tokens should be exposed directly on `Syn.Cst` nodes, and
+   which should remain reachable through generic token access on the attached
+   red subtree?
 4. How should future fragment rendering for synthetic fixes reuse the same
    pipeline without exposing formatting internals everywhere?

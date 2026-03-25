@@ -3558,6 +3558,33 @@ let tests =
             Test.assert_equal ~expected:2 ~actual:(List.length cases);
             Ok ()
         | _ -> Error "expected first item to be a let binding with a function expression");
+    Test.case "cst function expressions preserve the leading bar token" (fun () ->
+        let source = "let render = function | 0 -> \"zero\" | _ -> \"other\"\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Function
+                  {
+                    cases =
+                      { bar_token = Some leading_bar_token; _ }
+                      :: { bar_token = Some second_bar_token; _ }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"|" ~actual:(Syn.Cst.Token.text leading_bar_token);
+            Test.assert_equal ~expected:"|" ~actual:(Syn.Cst.Token.text second_bar_token);
+            Ok ()
+        | _ -> Error "expected function cases to preserve their leading bars");
     Test.case "cst fun expressions preserve nested function case bodies"
       (fun () ->
         let source =
@@ -3843,6 +3870,29 @@ let tests =
                 | _ -> Error "expected field access callee")
             | _ -> Error "expected apply expression value")
         | _ -> Error "expected first item to be a let binding");
+    Test.case "cst begin-end expressions preserve grouping style" (fun () ->
+        let source = "let wrapped = begin log \"start\"; log \"done\" end\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Parenthesized
+                  {
+                    grouping = Syn.Cst.BeginEnd;
+                    inner = Syn.Cst.Expression.Sequence _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Ok ()
+        | _ -> Error "expected begin-end parenthesized sequence");
     Test.case "cst constructor expressions preserve bare and applied forms"
       (fun () ->
         let source =
@@ -3908,6 +3958,7 @@ let tests =
                     argument =
                       Syn.Cst.Labeled
                         {
+                          sigil_token;
                           label_token;
                           value =
                             Some
@@ -3920,6 +3971,8 @@ let tests =
               _;
             }
           :: _ ->
+            Test.assert_equal ~expected:"~"
+              ~actual:(Syn.Cst.Token.text sigil_token);
             Test.assert_equal ~expected:"y"
               ~actual:(Syn.Cst.Token.text label_token);
             Ok ()
@@ -3942,6 +3995,7 @@ let tests =
                     argument =
                       Syn.Cst.Optional
                         {
+                          sigil_token;
                           label_token;
                           value = None;
                           _;
@@ -3951,6 +4005,8 @@ let tests =
               _;
             }
           :: _ ->
+            Test.assert_equal ~expected:"?"
+              ~actual:(Syn.Cst.Token.text sigil_token);
             Test.assert_equal ~expected:"y"
               ~actual:(Syn.Cst.Token.text label_token);
             Ok ()

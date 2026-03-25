@@ -33,33 +33,76 @@ module SyntaxNode = struct
   let child_count (node : ('kind, 'text) syntax_node) =
     Green.child_count (green node)
 
+  let fold_children (node : ('kind, 'text) syntax_node) init f =
+    let acc = ref init in
+    let running_offset = ref node.offset in
+    Green.children (green node)
+    |> Array.iter (fun elem ->
+           let child =
+             match elem with
+             | Green.Token token ->
+                 Token
+                   {
+                     green_token = token;
+                     parent = Some node;
+                     offset = !running_offset;
+                   }
+             | Green.Node child_node ->
+                 Node
+                   {
+                     green_node = child_node;
+                     parent = Some node;
+                     offset = !running_offset;
+                   }
+           in
+           acc := f !acc child;
+           running_offset := !running_offset + Green.width elem);
+    !acc
+
   let child (node : ('kind, 'text) syntax_node) index =
-    match Green.child (green node) index with
-    | None -> None
-    | Some elem ->
-        let child_offset =
-          let rec offset_before i acc =
-            if i >= index then acc
-            else
-              match Green.child (green node) i with
-              | None -> acc
-              | Some e -> offset_before (i + 1) (acc + Green.width e)
-          in
-          node.offset + offset_before 0 0
-        in
-        Some
-          (match elem with
-          | Green.Token t ->
-              Token
-                { green_token = t; parent = Some node; offset = child_offset }
-          | Green.Node n ->
-              Node { green_node = n; parent = Some node; offset = child_offset })
+    let rec loop current_index running_offset =
+      match Green.child (green node) current_index with
+      | None ->
+          None
+      | Some elem when current_index = index ->
+          Some
+            (match elem with
+            | Green.Token token ->
+                Token
+                  {
+                    green_token = token;
+                    parent = Some node;
+                    offset = running_offset;
+                  }
+            | Green.Node child_node ->
+                Node
+                  {
+                    green_node = child_node;
+                    parent = Some node;
+                    offset = running_offset;
+                  })
+      | Some elem ->
+          loop (current_index + 1) (running_offset + Green.width elem)
+    in
+    if index < 0 then None else loop 0 node.offset
 
   let children (node : ('kind, 'text) syntax_node) =
-    let count = child_count node in
-    Array.init count (fun i -> Option.unwrap (child node i))
+    fold_children node [] (fun acc child -> child :: acc)
+    |> List.rev
+    |> Array.of_list
+
+  let children_list (node : ('kind, 'text) syntax_node) =
+    fold_children node [] (fun acc child -> child :: acc) |> List.rev
 
   let kind (node : ('kind, 'text) syntax_node) = (green node).kind
+
+  let direct_tokens (node : ('kind, 'text) syntax_node) =
+    fold_children node [] (fun acc -> function Token token -> token :: acc | Node _ -> acc)
+    |> List.rev
+
+  let direct_nodes (node : ('kind, 'text) syntax_node) =
+    fold_children node [] (fun acc -> function Node child -> child :: acc | Token _ -> acc)
+    |> List.rev
 
   let next_sibling (node : ('kind, 'text) syntax_node) =
     match node.parent with
@@ -129,6 +172,11 @@ module SyntaxNode = struct
       (function Token t -> f (Token t) | Node n -> postorder n f)
       (children node);
     f (Node node)
+
+  let tokens (node : ('kind, 'text) syntax_node) =
+    let tokens = ref [] in
+    preorder node (function Token token -> tokens := token :: !tokens | Node _ -> ());
+    List.rev !tokens
 end
 
 module SyntaxToken = struct

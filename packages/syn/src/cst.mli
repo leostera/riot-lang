@@ -1484,6 +1484,7 @@ and lazy_pattern = {
 *)
 and exception_pattern = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
   pattern : pattern;
   attributes : attribute list;
 }
@@ -1761,6 +1762,7 @@ and parenthesized_pattern = {
 *)
 type positional_parameter = {
   syntax_node : syntax_node;
+  pattern : pattern;
   name_token : Token.t option;
 }
 
@@ -1770,8 +1772,10 @@ type positional_parameter = {
 *)
 type labeled_parameter = {
   syntax_node : syntax_node;
+  sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
+  binding_pattern : pattern option;
 }
 
 (** An optional parameter introduced with `?`.
@@ -1781,9 +1785,11 @@ type labeled_parameter = {
 *)
 type optional_parameter = {
   syntax_node : syntax_node;
+  sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
   has_default : bool;
+  binding_pattern : pattern option;
 }
 
 (** A locally abstract type parameter in function parameter position.
@@ -1830,10 +1836,12 @@ module Parameter : sig
     | LocallyAbstract of locally_abstract_type_parameter
 
   val syntax_node : t -> syntax_node
+  val sigil_token : t -> Token.t option
   val name_token : t -> Token.t option
   val name : t -> string option
   val is_named : t -> bool
   val has_default : t -> bool
+  val binding_pattern : t -> pattern option
 end
 
 (** Alias of {!Constant} used for direct literal expressions. *)
@@ -2269,6 +2277,7 @@ and apply_argument =
 *)
 and labeled_apply_argument = {
   syntax_node : syntax_node;
+  sigil_token : Token.t;
   label_token : Token.t;
   value : expression option;
 }
@@ -2280,6 +2289,7 @@ and labeled_apply_argument = {
 *)
 and optional_apply_argument = {
   syntax_node : syntax_node;
+  sigil_token : Token.t;
   label_token : Token.t;
   value : expression option;
 }
@@ -2471,6 +2481,7 @@ and coerce_expression = {
 *)
 and sequence_expression = {
   syntax_node : syntax_node;
+  separator_token : Token.t;
   left : expression;
   right : expression;
   attributes : attribute list;
@@ -2620,6 +2631,8 @@ and fun_body =
 *)
 and fun_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  arrow_token : Token.t;
   parameters : Parameter.t list;
   body : fun_body;
   attributes : attribute list;
@@ -2637,6 +2650,7 @@ and fun_expression = {
 *)
 and function_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
   cases : match_case list;
   attributes : attribute list;
 }
@@ -2649,6 +2663,9 @@ and function_expression = {
 *)
 and let_binding = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  rec_token : Token.t option;
+  equals_token : Token.t;
   attributes : attribute list;
   binding_pattern : pattern;
   binding_name : Token.t option;
@@ -2693,11 +2710,17 @@ and let_operator_expression = {
 (** Payload for `Expression.Let`.
 
     The first binding is split into `binding_pattern` and `bound_value`, while
+    any parameter sugar from `let f x = ...` is preserved in `parameters`, and
     any trailing `and` bindings are exposed in `and_bindings`.
 *)
 and let_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  rec_token : Token.t option;
+  equals_token : Token.t;
+  in_token : Token.t;
   binding_pattern : pattern;
+  parameters : Parameter.t list;
   bound_value : expression;
   and_bindings : let_binding list;
   body : expression;
@@ -2711,6 +2734,8 @@ and let_expression = {
 *)
 and match_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  with_token : Token.t;
   scrutinee : expression;
   cases : match_case list;
   attributes : attribute list;
@@ -2722,6 +2747,8 @@ and match_expression = {
 *)
 and try_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  with_token : Token.t;
   body : expression;
   cases : match_case list;
   attributes : attribute list;
@@ -2734,6 +2761,9 @@ and try_expression = {
 *)
 and match_case = {
   syntax_node : syntax_node;
+  bar_token : Token.t option;
+  when_token : Token.t option;
+  arrow_token : Token.t;
   pattern : pattern;
   guard : expression option;
   body : expression;
@@ -2746,18 +2776,36 @@ and match_case = {
 *)
 and if_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  then_token : Token.t;
+  else_token : Token.t option;
   condition : expression;
   then_branch : expression;
   else_branch : expression option;
   attributes : attribute list;
 }
 
+(** Concrete grouping shell used around `Expression.Parenthesized`.
+
+    OCaml uses ordinary parentheses for `(expr)` and `begin ... end` for a
+    second grouping form that should remain distinguishable to CST consumers.
+*)
+and expression_grouping =
+  | Parens
+      (** Ordinary parentheses, such as `(expr)`. *)
+  | BeginEnd
+      (** `begin ... end` grouping. *)
+
 (** Payload for `Expression.Parenthesized`.
 
-    Covers grouping parentheses around an expression.
+    Covers grouping syntax around an expression while preserving which concrete
+    delimiter family was written.
 *)
 and parenthesized_expression = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
+  closing_token : Token.t;
+  grouping : expression_grouping;
   inner : expression;
   attributes : attribute list;
 }
@@ -2946,7 +2994,12 @@ and class_fun_expression = {
 (** Payload for `ClassExpression.Let`. *)
 and class_let_expression = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
+  rec_token : Token.t option;
+  equals_token : Token.t;
+  in_token : Token.t;
   binding_pattern : pattern;
+  parameters : Parameter.t list;
   bound_value : expression;
   and_bindings : let_binding list;
   body : class_expression;
@@ -3706,6 +3759,9 @@ end
 module LetBinding : sig
   type t = let_binding = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
+    rec_token : Token.t option;
+    equals_token : Token.t;
     attributes : attribute list;
     binding_pattern : pattern;
     binding_name : Token.t option;
@@ -3715,6 +3771,9 @@ module LetBinding : sig
   }
 
   val syntax_node : t -> syntax_node
+  val keyword_token : t -> Token.t
+  val rec_token : t -> Token.t option
+  val equals_token : t -> Token.t
   val attributes : t -> attribute list
   val binding_pattern : t -> Pattern.t
   val binding_name_token : t -> Token.t option

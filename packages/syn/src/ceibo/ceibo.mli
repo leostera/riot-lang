@@ -300,6 +300,18 @@ module Red : sig
       ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element array
     (** `children node` returns all children. *)
 
+    val children_list :
+      ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element list
+    (** `children_list node` returns all children as a list. *)
+
+    val direct_tokens :
+      ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
+    (** `direct_tokens node` returns only the direct token children. *)
+
+    val direct_nodes :
+      ('kind, 'text) syntax_node -> ('kind, 'text) syntax_node list
+    (** `direct_nodes node` returns only the direct node children. *)
+
     val kind : ('kind, 'text) syntax_node -> 'kind
     (** `kind node` returns the kind from the underlying green node. *)
 
@@ -330,6 +342,10 @@ module Red : sig
       (('kind, 'text) syntax_element -> unit) ->
       unit
     (** `postorder node f` visits nodes in post-order. *)
+
+    val tokens :
+      ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
+    (** `tokens node` returns every token in the subtree in source order. *)
   end
 
   (** ## SyntaxToken Operations *)
