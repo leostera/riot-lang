@@ -1,0 +1,3 @@
+type error = Error.t
+
+type message = Connection.message

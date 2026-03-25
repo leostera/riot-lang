@@ -1,0 +1,3 @@
+type t = Stdlib.Uchar.t [@@immediate]
+(** The type for Unicode characters. *)
+val min : t

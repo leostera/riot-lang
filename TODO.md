@@ -40,9 +40,16 @@ Otherwise, if you find a failure, you will:
 You are done with this task when `krasny` can format the entire codebase and
 the CST-hash of the source before and after formatting is the same (that is, there's no information loss).
 
-Current fail-fast progress (2026-03-25):
-- `--verify-workspace --fail-fast` now passes `223` files.
-- Current first failing file: `packages/kernel/src/net/tls.ml` (`format exited 1`).
+Current fail-fast progress (2026-03-26):
+- `--verify-workspace --fail-fast` now passes `21` files in the current working tree.
+- Current first failing file: `packages/ceibo/src/builder.mli` (canonical formatted `format exited 1`).
 - Newly fixed in this slice:
-  - `packages/kernel/src/global0.mli` (previous canonical formatted `format exited 1`)
-  - signature operator value declarations rendering (new fixture `0730_signature_operator_value_declarations.mli`)
+  - `packages/kernel/src/global0.ml` (previous syntax-hash mismatch)
+  - `packages/kernel/src/uchar.mli` (previous syntax-hash mismatch + canonical mismatch)
+  - `packages/blink/src/blink.mli` (previous canonical formatted `format exited 1`)
+  - top-level unsupported-item rendering now slices from computed source spans instead of replaying whole syntax-node token streams
+  - signature type declarations now keep attached docstrings without duplicating them into inter-item trivia
+  - new focused fixtures:
+    - `0901_exception_followed_by_section_comment.ml`
+    - `0725_signature_type_alias_docstring.mli`
+    - `0726_signature_consecutive_type_aliases.mli`

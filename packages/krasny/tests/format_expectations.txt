@@ -13,9 +13,19 @@
 0350_typed_function_binding_headers.ml
 0360_local_open_record_pattern.ml
 0370_section_comment_order.ml
+0380_long_grouped_bench_list.ml
 
 # 04xx functions, match, and patterns
 0400_functions_match_and_patterns.ml
+0410_negative_literal_patterns.ml
+0411_match_case_char_guard.ml
+0412_parenthesized_match_or_pattern.ml
+0413_parenthesized_operator_value.ml
+0414_typed_match_scrutinee.ml
+0415_nested_fun_parameter_stability.ml
+0416_local_open_unary_operator_value.ml
+0417_local_open_operator_spacing.ml
+0418_keyword_operator_binding_pattern.ml
 
 # 05xx labeled and optional arguments
 0500_labeled_and_optional_arguments.ml
@@ -27,6 +37,11 @@
 0710_first_class_module_types.ml
 0720_signature_external_declaration.mli
 0721_poly_variant_inherit_type_alias.mli
+0722_poly_variant_union_type_alias.ml
+0723_variant_constructor_poly_variant_payload.ml
+0724_type_extension_poly_variant_payload.ml
+0725_signature_type_alias_docstring.mli
+0726_signature_consecutive_type_aliases.mli
 0730_signature_operator_value_declarations.mli
 
 # 08xx modules, signatures, and functors
@@ -36,6 +51,7 @@
 
 # 09xx trivia and mixed top-level preservation
 0900_trivia_and_mixed_top_level.ml
+0901_exception_followed_by_section_comment.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml
