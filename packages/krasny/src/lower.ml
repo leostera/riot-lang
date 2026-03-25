@@ -27,6 +27,14 @@ let doc_of_top_level_trivia_token syntax_token =
   | _ ->
       None
 
+let doc_of_comment_like_token syntax_token =
+  match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
+  | Syn.SyntaxKind.COMMENT
+  | Syn.SyntaxKind.DOCSTRING ->
+      Some (Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token))
+  | _ ->
+      None
+
 let doc_of_ident ident =
   Syn.Cst.Ident.segments ident
   |> List.map doc_of_token
@@ -45,6 +53,17 @@ let doc_of_nontrivia_direct_tokens syntax_node =
   |> List.map (fun syntax_token ->
          Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token))
   |> Doc.concat
+
+let doc_of_comment_like_direct_tokens syntax_node =
+  Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node
+  |> List.filter_map doc_of_comment_like_token
+
+let render_direct_comment_suffix syntax_node =
+  match doc_of_comment_like_direct_tokens syntax_node with
+  | [] ->
+      Doc.empty
+  | comments ->
+      Doc.concat [ Doc.space; Doc.join Doc.space comments ]
 
 let doc_of_core_type type_ =
   doc_of_verbatim_syntax_node (Syn.Cst.CoreType.syntax_node type_)
@@ -587,7 +606,8 @@ let render_variant_constructor constructor =
         doc_of_token (Syn.Cst.VariantConstructor.constructor_name_token constructor);
       ]
   in
-  match
+  let body =
+    match
     Syn.Cst.VariantConstructor.arguments constructor,
     Syn.Cst.VariantConstructor.result_type constructor
   with
@@ -600,6 +620,12 @@ let render_variant_constructor constructor =
       Doc.concat [ head; Doc.space; Doc.colon; Doc.space; render_core_type result_type ]
   | None, None ->
       head
+  in
+  Doc.concat
+    [
+      body;
+      render_direct_comment_suffix (Syn.Cst.VariantConstructor.syntax_node constructor);
+    ]
 
 let render_type_definition = function
   | Syn.Cst.TypeDefinition.Abstract ->
@@ -1004,10 +1030,24 @@ let rec function_body_prefers_multiline = function
 
 and qualified_multi_argument_apply_prefers_multiline
     ({ callee; argument; _ } : Syn.Cst.apply_expression) =
-  let rec collect count has_non_positional = function
+  let rec argument_count count = function
+    | Syn.Cst.Expression.Apply { callee; _ } ->
+        argument_count (count + 1) callee
+    | _ ->
+        count
+  in
+  let rec head_is_qualified_path = function
+    | Syn.Cst.Expression.Apply { callee; _ } ->
+        head_is_qualified_path callee
+    | Syn.Cst.Expression.Path { path; _ } ->
+        List.length (Syn.Cst.Ident.segments path) > 1
+    | _ ->
+        false
+  in
+  let rec has_non_positional_argument acc = function
     | Syn.Cst.Expression.Apply { callee; argument; _ } ->
-        let has_non_positional =
-          has_non_positional
+        let acc =
+          acc
           ||
           match argument with
           | Syn.Cst.Positional _ ->
@@ -1015,20 +1055,20 @@ and qualified_multi_argument_apply_prefers_multiline
           | Syn.Cst.Labeled _ | Syn.Cst.Optional _ ->
               true
         in
-        collect (count + 1) has_non_positional callee
-    | Syn.Cst.Expression.Path { path; _ } ->
-        List.length (Syn.Cst.Ident.segments path) > 1 && count > 1 && not has_non_positional
+        has_non_positional_argument acc callee
     | _ ->
-        false
+        acc
   in
-  let has_non_positional =
+  let acc =
     match argument with
     | Syn.Cst.Positional _ ->
         false
     | Syn.Cst.Labeled _ | Syn.Cst.Optional _ ->
         true
   in
-  collect 1 has_non_positional callee
+  argument_count 1 callee > 1
+  && head_is_qualified_path callee
+  && not (has_non_positional_argument acc callee)
 
 let rec expression_keeps_inline_binding_value = function
   | Syn.Cst.Expression.Literal (Syn.Cst.Literal.String _) ->
@@ -1736,6 +1776,12 @@ and render_binding_header ~keyword_token ~rec_token pattern =
   in
   Doc.concat ([ doc_of_token keyword_token ] @ rec_part @ [ Doc.space; render_pattern pattern ])
 
+and split_typed_binding_value = function
+  | Syn.Cst.Expression.Typed { expression; type_; _ } ->
+      (expression, Some type_)
+  | expression ->
+      (expression, None)
+
 and render_binding_value ~parameters ~value =
   match parameters with
   | [] ->
@@ -1783,7 +1829,15 @@ and render_binding_value ~parameters ~value =
              ])
 
 and render_local_binding ~keyword_token ~rec_token ~equals_token ~pattern ~parameters ~value =
+  let value, type_annotation = split_typed_binding_value value in
   let header = render_binding_header ~keyword_token ~rec_token pattern in
+  let header =
+    match type_annotation with
+    | None ->
+        header
+    | Some type_ ->
+        Doc.concat [ header; colon; render_core_type type_ ]
+  in
   let rendered_value = render_binding_value ~parameters ~value in
   let keep_value_after_equals =
     match value with
