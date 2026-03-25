@@ -1534,7 +1534,15 @@ let rec expression_keeps_inline_binding_value = function
   | _ ->
       false
 
+let rec infix_chain_term_count = function
+  | Syn.Cst.Expression.Infix { left; right; _ } ->
+      infix_chain_term_count left + infix_chain_term_count right
+  | _ ->
+      1
+
 let rec expression_is_simple_after_equals = function
+  | Syn.Cst.Expression.Infix infix ->
+      infix_chain_term_count (Syn.Cst.Expression.Infix infix) <= 8
   | Syn.Cst.Expression.Path _
   | Syn.Cst.Expression.Literal _
   | Syn.Cst.Expression.Operator _
@@ -1543,7 +1551,6 @@ let rec expression_is_simple_after_equals = function
   | Syn.Cst.Expression.Constructor _
   | Syn.Cst.Expression.PolyVariant _
   | Syn.Cst.Expression.Apply _
-  | Syn.Cst.Expression.Infix _
   | Syn.Cst.Expression.Prefix _
   | Syn.Cst.Expression.Tuple _
   | Syn.Cst.Expression.List _
@@ -2155,12 +2162,15 @@ and render_if_expression
              Doc.indent 2 (Doc.concat [ Doc.break (); else_doc ]);
            ])
 
-and render_case ?(force_multiline_body = false) (case : Syn.Cst.match_case) =
+and render_case ?(force_multiline_body = false) ?(force_leading_bar = false)
+    (case : Syn.Cst.match_case) =
   let body = render_expression case.body in
   let prefix =
     match case.bar_token with
     | Some token ->
         Doc.concat [ doc_of_token token; Doc.space ]
+    | None when force_leading_bar ->
+        Doc.concat [ Doc.bar; Doc.space ]
     | None ->
         Doc.empty
   in
@@ -2371,7 +2381,9 @@ and render_function_expression ({ syntax_node; keyword_token; cases; _ } : Syn.C
       [
         doc_of_token keyword_token;
         Doc.line;
-        join_map Doc.line (render_case ~force_multiline_body:force_multiline_cases) cases;
+        join_map Doc.line
+          (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
+          cases;
       ]
   else
     Doc.group
@@ -2381,7 +2393,7 @@ and render_function_expression ({ syntax_node; keyword_token; cases; _ } : Syn.C
            Doc.space;
            join_map
              (Doc.concat [ Doc.space ])
-             (render_case ~force_multiline_body:force_multiline_cases)
+             (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
              cases;
          ])
 
@@ -2395,7 +2407,9 @@ and render_function_expression_inline
       doc_of_token keyword_token;
       Doc.line;
       Doc.indent 2
-        (join_map Doc.line (render_case ~force_multiline_body:force_multiline_cases) cases);
+        (join_map Doc.line
+           (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
+           cases);
     ]
 
 and render_function_expression_unindented
@@ -2407,7 +2421,9 @@ and render_function_expression_unindented
     [
       doc_of_token keyword_token;
       Doc.line;
-      join_map Doc.line (render_case ~force_multiline_body:force_multiline_cases) cases;
+      join_map Doc.line
+        (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
+        cases;
     ]
 
 and render_function_expression_indented
@@ -2420,7 +2436,9 @@ and render_function_expression_indented
       doc_of_token keyword_token;
       Doc.line;
       Doc.indent 2
-        (join_map Doc.line (render_case ~force_multiline_body:force_multiline_cases) cases);
+        (join_map Doc.line
+           (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
+           cases);
     ]
 
 and render_fun_body = function
@@ -2439,7 +2457,9 @@ and render_fun_body = function
         [
           kw_function;
           Doc.line;
-          join_map Doc.line (render_case ~force_multiline_body:force_multiline_cases) cases;
+          join_map Doc.line
+            (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
+            cases;
         ]
 
 and render_block_expression = function
@@ -2755,32 +2775,14 @@ and render_local_binding
         false)
   in
   let keep_value_after_equals =
-    let source_prefers_break =
-      syntax_node_has_internal_newline (Syn.Cst.Expression.syntax_node value)
-      &&
-      match value with
-      | Syn.Cst.Expression.Infix _
-      | Syn.Cst.Expression.Apply _
-      | Syn.Cst.Expression.Tuple _
-      | Syn.Cst.Expression.List _
-      | Syn.Cst.Expression.Array _
-      | Syn.Cst.Expression.Record _
-      | Syn.Cst.Expression.Parenthesized _ ->
-          true
-      | _ ->
-          false
-    in
+    let has_fun_rhs = List.length parameters > 0 || match value with Syn.Cst.Expression.Fun _ -> true | _ -> false in
     match value with
-    | Syn.Cst.Expression.Fun _ ->
+    | _ when has_fun_rhs ->
         true
     | _ when expression_requires_break_after_equals value ->
         false
     | _ ->
-        (not source_prefers_break)
-        &&
-        (List.length parameters > 0
-        || expression_is_simple_after_equals value
-        || expression_keeps_inline_binding_value value)
+        expression_is_simple_after_equals value || expression_keeps_inline_binding_value value
   in
   let rendered_value =
     match value with
