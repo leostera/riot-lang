@@ -995,10 +995,40 @@ let rec function_body_prefers_multiline = function
       function_body_prefers_multiline body
   | Syn.Cst.Expression.Fun { body = Syn.Cst.Cases _; _ } ->
       true
+  | Syn.Cst.Expression.Apply apply ->
+      qualified_multi_argument_apply_prefers_multiline apply
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
       function_body_prefers_multiline inner
   | _ ->
       false
+
+and qualified_multi_argument_apply_prefers_multiline
+    ({ callee; argument; _ } : Syn.Cst.apply_expression) =
+  let rec collect count has_non_positional = function
+    | Syn.Cst.Expression.Apply { callee; argument; _ } ->
+        let has_non_positional =
+          has_non_positional
+          ||
+          match argument with
+          | Syn.Cst.Positional _ ->
+              false
+          | Syn.Cst.Labeled _ | Syn.Cst.Optional _ ->
+              true
+        in
+        collect (count + 1) has_non_positional callee
+    | Syn.Cst.Expression.Path { path; _ } ->
+        List.length (Syn.Cst.Ident.segments path) > 1 && count > 1 && not has_non_positional
+    | _ ->
+        false
+  in
+  let has_non_positional =
+    match argument with
+    | Syn.Cst.Positional _ ->
+        false
+    | Syn.Cst.Labeled _ | Syn.Cst.Optional _ ->
+        true
+  in
+  collect 1 has_non_positional callee
 
 let rec expression_keeps_inline_binding_value = function
   | Syn.Cst.Expression.Literal (Syn.Cst.Literal.String _) ->
@@ -1212,6 +1242,10 @@ and render_record_expression = function
              Doc.break ~flat:"" ();
              Doc.rbrace;
            ])
+
+and render_tuple_expression_bare elements =
+  Doc.group
+    (join_map (Doc.concat [ Doc.comma; Doc.break () ]) render_expression elements)
 
 and render_apply_argument = function
   | Syn.Cst.Positional expression ->
@@ -1465,6 +1499,17 @@ and render_fun_expression
   let parameters = parameters |> List.map render_parameter in
   let has_multiline_parameter = List.exists Doc.is_multiline parameters in
   let body = render_fun_body body in
+  let body_prefers_multiline =
+    match body with
+    | _ when Doc.is_multiline body ->
+        true
+    | _ ->
+        (match flatten_fun_expression fun_ |> snd with
+        | Syn.Cst.Expression expression ->
+            function_body_prefers_multiline expression
+        | Syn.Cst.Cases _ ->
+            true)
+  in
   if has_multiline_parameter then
     Doc.concat
       [
@@ -1475,7 +1520,7 @@ and render_fun_expression
         Doc.line;
         Doc.indent 2 body;
       ]
-  else if Doc.is_multiline body || List.length parameters = 0 then
+  else if body_prefers_multiline || List.length parameters = 0 then
     Doc.concat
       [
         doc_of_token keyword_token;
@@ -1509,6 +1554,8 @@ and render_function_expression ({ keyword_token; cases; _ } : Syn.Cst.function_e
         ]
 
 and render_fun_body = function
+  | Syn.Cst.Expression (Syn.Cst.Expression.Tuple { elements; _ }) ->
+      render_tuple_expression_bare elements
   | Syn.Cst.Expression body ->
       if expression_prefers_multiline_layout body then
         render_block_expression body
@@ -1696,7 +1743,13 @@ and render_binding_value ~parameters ~value =
   | parameters ->
       let parameters = parameters |> List.map render_parameter |> Doc.join Doc.space in
       let has_multiline_parameters = Doc.is_multiline parameters in
-      let body = render_expression value in
+      let body =
+        match value with
+        | Syn.Cst.Expression.Tuple { elements; _ } ->
+            render_tuple_expression_bare elements
+        | _ ->
+            render_expression value
+      in
       if has_multiline_parameters then
         Doc.concat
           [
@@ -1808,13 +1861,272 @@ and render_let_binding_group_item (binding : Syn.Cst.let_binding) =
 let render_let_binding (binding : Syn.Cst.let_binding) =
   render_let_binding_group_item binding
 
-let render_open_target = function
+let nested_structure_items_from_syntax_nodes syntax_nodes =
+  Syn.CstBuilder.structure_items_from_syntax_nodes syntax_nodes
+  |> Result.expect
+       ~msg:"module structure bodies should re-lift from successful syntax nodes"
+
+let nested_signature_items_from_syntax_node syntax_node =
+  Syn.CstBuilder.signature_items_from_syntax_node syntax_node
+  |> Result.expect
+       ~msg:"module signature bodies should re-lift from successful syntax nodes"
+
+let rec render_module_type_constraint ~keyword (constraint_ : Syn.Cst.module_type_constraint) =
+  let separator =
+    if constraint_.is_destructive then
+      Doc.concat [ Doc.space; Doc.text ":="; Doc.space ]
+    else
+      equals
+  in
+  Doc.concat
+    [
+      keyword;
+      Doc.space;
+      kw_type;
+      Doc.space;
+      render_core_type constraint_.constrained_type;
+      separator;
+      render_core_type constraint_.replacement_type;
+    ]
+
+and render_functor_parameter ({ name_token; module_type; _ } : Syn.Cst.functor_parameter) =
+  Doc.concat
+    [
+      Doc.lparen;
+      doc_of_token name_token;
+      colon;
+      render_module_type_doc module_type;
+      Doc.rparen;
+    ]
+
+and render_module_type_doc = function
+  | Syn.Cst.ModuleType.Path path ->
+      doc_of_ident path
+  | Syn.Cst.ModuleType.TypeOf { module_path; _ } ->
+      Doc.concat [ Doc.text "module"; Doc.space; kw_type; Doc.space; Doc.text "of"; Doc.space; doc_of_ident module_path ]
+  | Syn.Cst.ModuleType.Signature { syntax_node; signature_syntax_node } ->
+      let items = nested_signature_items_from_syntax_node signature_syntax_node in
+      let body = render_signature_items ~source_node:syntax_node items in
+      Doc.concat
+        [
+          Doc.text "sig";
+          Doc.line;
+          Doc.indent 2 body;
+          Doc.line;
+          Doc.text "end";
+        ]
+  | Syn.Cst.ModuleType.Functor { parameters; result; _ } ->
+      Doc.concat
+        [
+          Doc.text "functor";
+          Doc.space;
+          Doc.join Doc.space (List.map render_functor_parameter parameters);
+          Doc.space;
+          Doc.arrow;
+          Doc.space;
+          render_module_type_doc result;
+        ]
+  | Syn.Cst.ModuleType.With { base; constraints; _ } ->
+      let first, rest =
+        match constraints with
+        | [] ->
+            (Doc.empty, [])
+        | first :: rest ->
+            (render_module_type_constraint ~keyword:kw_with first, rest)
+      in
+      Doc.concat
+        (render_module_type_doc base
+        :: Doc.space
+        :: first
+        :: List.map (fun constraint_ ->
+               Doc.concat
+                 [
+                   Doc.space;
+                   render_module_type_constraint ~keyword:kw_and constraint_;
+                 ])
+             rest)
+  | Syn.Cst.ModuleType.Parenthesized { inner; _ } ->
+      Doc.concat [ Doc.lparen; render_module_type_doc inner; Doc.rparen ]
+  | Syn.Cst.ModuleType.Attribute { module_type; _ } ->
+      render_module_type_doc module_type
+  | module_type ->
+      doc_of_node (Syn.Cst.ModuleType.syntax_node module_type)
+
+and render_module_application_argument = function
+  | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } ->
+      Doc.concat [ Doc.lparen; render_module_expression_doc inner; Doc.rparen ]
+  | argument ->
+      Doc.concat [ Doc.lparen; render_module_expression_doc argument; Doc.rparen ]
+
+and render_module_expression_doc = function
+  | Syn.Cst.ModuleExpression.Path path ->
+      doc_of_ident path
+  | Syn.Cst.ModuleExpression.Structure { syntax_node; item_syntax_nodes } ->
+      let items = nested_structure_items_from_syntax_nodes item_syntax_nodes in
+      let body = render_structure_items ~source_node:syntax_node items in
+      Doc.concat
+        [
+          Doc.text "struct";
+          Doc.line;
+          Doc.indent 2 body;
+          Doc.line;
+          Doc.text "end";
+        ]
+  | Syn.Cst.ModuleExpression.Functor { parameters; body; _ } ->
+      Doc.concat
+        [
+          Doc.text "functor";
+          Doc.space;
+          Doc.join Doc.space (List.map render_functor_parameter parameters);
+          Doc.space;
+          Doc.arrow;
+          Doc.space;
+          render_module_expression_doc body;
+        ]
+  | Syn.Cst.ModuleExpression.Apply { callee; argument; _ } ->
+      Doc.concat
+        [
+          render_module_expression_doc callee;
+          Doc.space;
+          render_module_application_argument argument;
+        ]
+  | Syn.Cst.ModuleExpression.ApplyUnit { callee; _ } ->
+      Doc.concat [ render_module_expression_doc callee; Doc.space; Doc.lparen; Doc.rparen ]
+  | Syn.Cst.ModuleExpression.Constraint { module_expression; module_type; _ } ->
+      Doc.concat
+        [
+          render_module_expression_doc module_expression;
+          colon;
+          render_module_type_doc module_type;
+        ]
+  | Syn.Cst.ModuleExpression.ModuleUnpack { expression; module_type; _ } ->
+      let constraint_doc =
+        match module_type with
+        | None ->
+            Doc.empty
+        | Some module_type ->
+            Doc.concat [ colon; render_module_type_doc module_type ]
+      in
+      Doc.concat
+        [
+          Doc.lparen;
+          Doc.text "val";
+          Doc.space;
+          render_expression expression;
+          constraint_doc;
+          Doc.rparen;
+        ]
+  | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } ->
+      Doc.concat [ Doc.lparen; render_module_expression_doc inner; Doc.rparen ]
+  | Syn.Cst.ModuleExpression.Attribute { module_expression; _ } ->
+      render_module_expression_doc module_expression
+  | module_expression ->
+      doc_of_node (Syn.Cst.ModuleExpression.syntax_node module_expression)
+
+and render_module_declaration_with_keyword keyword_doc
+    ({ module_name; functor_parameters; module_type; module_expression; is_destructive_substitution; _ } :
+      Syn.Cst.ModuleDeclaration.t) =
+  let header =
+    Doc.concat
+      [
+        keyword_doc;
+        Doc.space;
+        doc_of_token module_name;
+        (if functor_parameters = [] then
+           Doc.empty
+         else
+           Doc.concat
+             [
+               Doc.space;
+               Doc.join Doc.space (List.map render_functor_parameter functor_parameters);
+             ]);
+      ]
+  in
+  let header =
+    match module_type with
+    | None ->
+        header
+    | Some module_type ->
+        Doc.concat [ header; colon; render_module_type_doc module_type ]
+  in
+  match module_expression with
+  | None ->
+      header
+  | Some (Syn.Cst.ModuleExpression.Constraint { module_expression; _ })
+    when Option.is_some module_type ->
+      let separator =
+        if is_destructive_substitution then
+          Doc.concat [ Doc.space; Doc.text ":="; Doc.space ]
+        else
+          equals
+      in
+      Doc.concat [ header; separator; render_module_expression_doc module_expression ]
+  | Some module_expression ->
+      let separator =
+        if is_destructive_substitution then
+          Doc.concat [ Doc.space; Doc.text ":="; Doc.space ]
+        else
+          equals
+      in
+      Doc.concat [ header; separator; render_module_expression_doc module_expression ]
+
+and render_recursive_module_declaration (decl : Syn.Cst.RecursiveModuleDeclaration.t) =
+  match Syn.Cst.RecursiveModuleDeclaration.declarations decl with
+  | [] ->
+      Doc.empty
+  | first :: rest ->
+      Doc.join blank_line
+        (render_module_declaration_with_keyword
+           (Doc.concat [ Doc.text "module"; Doc.space; kw_rec ])
+           first
+        :: List.map (render_module_declaration_with_keyword kw_and) rest)
+
+and render_module_type_declaration ({ module_type_name; module_type; is_destructive_substitution; _ } :
+      Syn.Cst.ModuleTypeDeclaration.t) =
+  let header =
+    Doc.concat [ Doc.text "module"; Doc.space; kw_type; Doc.space; doc_of_token module_type_name ]
+  in
+  match module_type with
+  | None ->
+      header
+  | Some module_type ->
+      let separator =
+        if is_destructive_substitution then
+          Doc.concat [ Doc.space; Doc.text ":="; Doc.space ]
+        else
+          equals
+      in
+      Doc.concat [ header; separator; render_module_type_doc module_type ]
+
+and render_open_target = function
   | Syn.Cst.OpenStatement.Path path ->
       doc_of_ident path
   | Syn.Cst.OpenStatement.ModuleExpression expression ->
-      doc_of_module_expression expression
+      render_module_expression_doc expression
 
-let render_structure_item = function
+and render_include_statement ({ target; _ } : Syn.Cst.include_statement) =
+  let target =
+    match target with
+    | Syn.Cst.ModuleExpression expression ->
+        render_module_expression_doc expression
+    | Syn.Cst.ModuleType module_type ->
+        render_module_type_doc module_type
+  in
+  Doc.concat [ Doc.text "include"; Doc.space; target ]
+
+and is_open_structure_item = function
+  | Syn.Cst.StructureItem.OpenStatement _ ->
+      true
+  | _ ->
+      false
+
+and is_open_signature_item = function
+  | Syn.Cst.SignatureItem.OpenStatement _ ->
+      true
+  | _ ->
+      false
+
+and render_structure_item = function
   | Syn.Cst.StructureItem.LetBinding binding ->
       render_let_binding binding
   | Syn.Cst.StructureItem.TypeDeclaration decl ->
@@ -1823,10 +2135,18 @@ let render_structure_item = function
       render_type_mutual_declaration decl
   | Syn.Cst.StructureItem.ExternalDeclaration decl ->
       render_external_declaration decl
+  | Syn.Cst.StructureItem.ModuleDeclaration decl ->
+      render_module_declaration_with_keyword (Doc.text "module") decl
+  | Syn.Cst.StructureItem.RecursiveModuleDeclaration decl ->
+      render_recursive_module_declaration decl
+  | Syn.Cst.StructureItem.ModuleTypeDeclaration decl ->
+      render_module_type_declaration decl
+  | Syn.Cst.StructureItem.IncludeStatement stmt ->
+      render_include_statement stmt
   | Syn.Cst.StructureItem.OpenStatement open_ ->
       Doc.concat
         [
-          Doc.text "open";
+          kw_open;
           (if open_.bang_token = None then Doc.empty else Doc.text "!");
           Doc.space;
           render_open_target open_.target;
@@ -1836,12 +2156,20 @@ let render_structure_item = function
   | item ->
       doc_of_node (Syn.Cst.StructureItem.syntax_node item)
 
-let render_signature_item item =
+and render_signature_item item =
   match item with
   | Syn.Cst.SignatureItem.TypeDeclaration decl ->
       render_type_declaration_with_keyword kw_type decl
   | Syn.Cst.SignatureItem.TypeMutualDeclaration decl ->
       render_type_mutual_declaration decl
+  | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
+      render_module_declaration_with_keyword (Doc.text "module") decl
+  | Syn.Cst.SignatureItem.RecursiveModuleDeclaration decl ->
+      render_recursive_module_declaration decl
+  | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
+      render_module_type_declaration decl
+  | Syn.Cst.SignatureItem.IncludeStatement stmt ->
+      render_include_statement stmt
   | Syn.Cst.SignatureItem.OpenStatement open_ ->
       Doc.concat
         [
@@ -1856,26 +2184,38 @@ let render_signature_item item =
           Doc.text "val";
           Doc.space;
           doc_of_token decl.name_token;
-          Doc.space;
-          Doc.colon;
-          Doc.space;
+          colon;
           render_core_type decl.type_;
         ]
   | item ->
       doc_of_node (Syn.Cst.SignatureItem.syntax_node item)
 
-let render_top_level_items ~source_node ~items ~render_item =
+and render_structure_top_level_items ~source_node ~items =
   let flush_pending pending acc =
     match pending with
     | [] ->
         acc
     | pending ->
-        Doc.join Doc.line (List.rev pending) :: acc
+        (Doc.join Doc.line (List.rev pending), false) :: acc
+  in
+  let rec join_entries = function
+    | [] ->
+        Doc.empty
+    | (doc, _) :: [] ->
+        doc
+    | (doc, is_open) :: ((next_doc, next_is_open) :: _ as rest) ->
+        let separator =
+          if is_open && next_is_open then
+            Doc.line
+          else
+            blank_line
+        in
+        Doc.concat [ doc; separator; join_entries rest ]
   in
   let rec loop pending acc items = function
     | [] ->
         let acc = flush_pending pending acc in
-        Doc.join blank_line (List.rev acc)
+        join_entries (List.rev acc)
     | child :: rest -> (
         match child with
         | Syn.Ceibo.Red.Token syntax_token -> (
@@ -1888,17 +2228,61 @@ let render_top_level_items ~source_node ~items ~render_item =
             match items with
             | item :: items ->
                 let acc = flush_pending pending acc in
-                loop [] (render_item item :: acc) items rest
+                loop [] ((render_structure_item item, is_open_structure_item item) :: acc) items rest
             | [] ->
                 loop pending acc items rest))
   in
   loop [] [] items (Syn.Ceibo.Red.SyntaxNode.children_list source_node)
 
-let render_structure_items ~source_node items =
-  render_top_level_items ~source_node ~items ~render_item:render_structure_item
+and render_structure_items ~source_node items =
+  render_structure_top_level_items ~source_node ~items
 
-let render_signature_items ~source_node items =
-  render_top_level_items ~source_node ~items ~render_item:render_signature_item
+and render_signature_top_level_items ~source_node ~items =
+  let flush_pending pending acc =
+    match pending with
+    | [] ->
+        acc
+    | pending ->
+        (Doc.join Doc.line (List.rev pending), false) :: acc
+  in
+  let rec join_entries = function
+    | [] ->
+        Doc.empty
+    | (doc, _) :: [] ->
+        doc
+    | (doc, is_open) :: ((_, next_is_open) :: _ as rest) ->
+        let separator =
+          if is_open && next_is_open then
+            Doc.line
+          else
+            blank_line
+        in
+        Doc.concat [ doc; separator; join_entries rest ]
+  in
+  let rec loop pending acc items = function
+    | [] ->
+        let acc = flush_pending pending acc in
+        join_entries (List.rev acc)
+    | child :: rest -> (
+        match child with
+        | Syn.Ceibo.Red.Token syntax_token -> (
+            match doc_of_top_level_trivia_token syntax_token with
+            | Some doc ->
+                loop (doc :: pending) acc items rest
+            | None ->
+                loop pending acc items rest)
+        | Syn.Ceibo.Red.Node _ -> (
+            match items with
+            | item :: items ->
+                let acc = flush_pending pending acc in
+                loop [] ((render_signature_item item, is_open_signature_item item) :: acc) items rest
+            | [] ->
+                loop pending acc items rest))
+  in
+  loop [] [] items (Syn.Ceibo.Red.SyntaxNode.children_list source_node)
+
+and render_signature_items ~source_node items =
+  render_signature_top_level_items ~source_node ~items
 
 let source_file ~source:_ = function
   | Syn.Cst.Implementation implementation ->
