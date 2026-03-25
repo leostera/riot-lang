@@ -369,6 +369,33 @@ Ok (match value with
         in
         Test.assert_equal ~expected ~actual;
         Ok ());
+    Test.case "format keeps string and array index expressions stable" (fun () ->
+        let source =
+          {|let char_at = text.[index - 1]
+
+let item_at = arr.(index - 1)
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"index expressions should format structurally"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
+    Test.case "format keeps indexed match scrutinees attached" (fun () ->
+        let source =
+          {|let pick = fun text index ->
+  match text.[index - 1] with
+  | '\n' -> 0
+  | _ -> 1
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"indexed scrutinees should not pick up stray spacing"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
     Test.case "format keeps infix expressions stable" (fun () ->
         let source =
           "let arithmetic = 1 + (2 * 3)\nlet comparisons = 1 < 2 && 2 < 3\nlet logic = (true && false) || true\n"

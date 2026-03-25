@@ -9,6 +9,10 @@ let arrow = Doc.concat [ Doc.space; Doc.arrow; Doc.space ]
 let colon = Doc.concat [ Doc.space; Doc.colon; Doc.space ]
 let star = Doc.text "*"
 
+type pending_trivia_entry =
+  | TriviaDoc of Doc.t
+  | TriviaBreak of int
+
 let token_text = Syn.Cst.Token.text
 let doc_of_token token = Doc.text (token_text token)
 
@@ -27,13 +31,16 @@ let doc_of_top_level_trivia_token syntax_token =
   | _ ->
       None
 
-let doc_of_comment_like_token syntax_token =
+let is_comment_like_token syntax_token =
   match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
   | Syn.SyntaxKind.COMMENT
   | Syn.SyntaxKind.DOCSTRING ->
-      Some (Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token))
+      true
   | _ ->
-      None
+      false
+
+let is_whitespace_token syntax_token =
+  Syn.Ceibo.Red.SyntaxToken.kind syntax_token = Syn.SyntaxKind.WHITESPACE
 
 let doc_of_ident ident =
   Syn.Cst.Ident.segments ident
@@ -54,16 +61,206 @@ let doc_of_nontrivia_direct_tokens syntax_node =
          Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token))
   |> Doc.concat
 
-let doc_of_comment_like_direct_tokens syntax_node =
+let nontrivia_direct_tokens syntax_node =
   Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node
-  |> List.filter_map doc_of_comment_like_token
+  |> List.filter (fun syntax_token ->
+         match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
+         | Syn.SyntaxKind.WHITESPACE
+         | Syn.SyntaxKind.COMMENT
+         | Syn.SyntaxKind.DOCSTRING ->
+             false
+         | _ ->
+             true)
 
-let render_direct_comment_suffix syntax_node =
-  match doc_of_comment_like_direct_tokens syntax_node with
-  | [] ->
-      Doc.empty
-  | comments ->
-      Doc.concat [ Doc.space; Doc.join Doc.space comments ]
+let whitespace_has_newline syntax_token =
+  is_whitespace_token syntax_token
+  && String.contains (Syn.Ceibo.Red.SyntaxToken.text syntax_token) "\n"
+
+let whitespace_has_blank_line syntax_token =
+  let text = Syn.Ceibo.Red.SyntaxToken.text syntax_token in
+  let rec has_double_newline index =
+    if index + 1 >= String.length text then
+      false
+    else if text.[index] = '\n' && text.[index + 1] = '\n' then
+      true
+    else
+      has_double_newline (index + 1)
+  in
+  Syn.Ceibo.Red.SyntaxToken.kind syntax_token = Syn.SyntaxKind.WHITESPACE
+  && has_double_newline 0
+
+let separator_of_whitespace_token syntax_token =
+  if whitespace_has_blank_line syntax_token then
+    blank_line
+  else if whitespace_has_newline syntax_token then
+    Doc.line
+  else
+    Doc.space
+
+let newline_count_of_whitespace_token syntax_token =
+  let text = Syn.Ceibo.Red.SyntaxToken.text syntax_token in
+  let rec loop index count =
+    if index >= String.length text then
+      count
+    else if text.[index] = '\n' then
+      loop (index + 1) (count + 1)
+    else
+      loop (index + 1) count
+  in
+  if is_whitespace_token syntax_token then
+    loop 0 0
+  else
+    0
+
+let trailing_comment_suffix_doc syntax_node =
+  let trailing_tokens =
+    let rec collect acc = function
+      | [] ->
+          acc
+      | token :: rest when is_whitespace_token token || is_comment_like_token token ->
+          collect (token :: acc) rest
+      | _ ->
+          acc
+    in
+    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node |> List.rev |> collect []
+  in
+  let rec loop acc separator = function
+    | [] ->
+        acc
+    | token :: rest when is_whitespace_token token ->
+        loop acc (separator_of_whitespace_token token) rest
+    | token :: rest when is_comment_like_token token ->
+        let doc = Doc.text (Syn.Ceibo.Red.SyntaxToken.text token) in
+        let acc =
+          match acc with
+          | None ->
+              Some (Doc.concat [ separator; doc ])
+          | Some current ->
+              Some (Doc.concat [ current; separator; doc ])
+        in
+        loop acc Doc.empty rest
+    | _ :: rest ->
+        loop acc separator rest
+  in
+  loop None Doc.empty trailing_tokens
+
+let push_pending_break pending break_count =
+  if break_count <= 0 then
+    pending
+  else
+  match pending with
+  | TriviaBreak existing :: rest ->
+      TriviaBreak (Int.max existing break_count) :: rest
+  | _ ->
+      TriviaBreak break_count :: pending
+
+let pending_doc_count pending =
+  pending
+  |> List.fold_left
+       (fun count -> function
+         | TriviaDoc _ ->
+             count + 1
+         | TriviaBreak _ ->
+             count)
+       0
+
+let render_pending_trivia ?(strip_trailing_breaks = true) pending =
+  let break_doc break_count =
+    List.init break_count (fun _ -> Doc.line)
+    |> Doc.concat
+  in
+  let rec strip_trailing_blanks = function
+    | [] ->
+        []
+    | [ TriviaBreak _ ] ->
+        []
+    | entry :: rest ->
+        let rest = strip_trailing_blanks rest in
+        (match entry, rest with
+        | TriviaBreak _, [] ->
+            []
+        | _ ->
+            entry :: rest)
+  in
+  let rec loop acc separator = function
+    | [] ->
+        acc
+    | TriviaBreak break_count :: rest ->
+        let separator = break_doc break_count in
+        loop acc separator rest
+    | TriviaDoc doc :: rest ->
+        let acc =
+          match acc with
+          | None ->
+              Some doc
+          | Some current ->
+              Some (Doc.concat [ current; separator; doc ])
+        in
+        loop acc Doc.line rest
+  in
+  let pending = List.rev pending in
+  let pending =
+    if strip_trailing_breaks then
+      strip_trailing_blanks pending
+    else
+      pending
+  in
+  let trailing_break =
+    if strip_trailing_breaks then
+      None
+    else
+      match List.rev pending with
+      | TriviaBreak break_count :: _ ->
+          Some (break_doc break_count)
+      | _ ->
+          None
+  in
+  match loop None Doc.line pending, trailing_break with
+  | Some doc, Some trailing_break ->
+      Some (Doc.concat [ doc; trailing_break ])
+  | doc, None ->
+      doc
+  | None, Some _ ->
+      None
+
+let render_interleaved_node_docs ~source_node ~should_consume_node ~node_docs =
+  let flush_pending pending acc =
+    match render_pending_trivia pending with
+    | None ->
+        acc
+    | Some pending_doc ->
+        pending_doc :: acc
+  in
+  let rec loop pending acc node_docs = function
+    | [] ->
+        flush_pending pending acc |> List.rev
+    | child :: rest -> (
+        match child with
+        | Syn.Ceibo.Red.Token syntax_token -> (
+            match doc_of_top_level_trivia_token syntax_token with
+            | Some doc ->
+                loop (TriviaDoc doc :: pending) acc node_docs rest
+            | None ->
+                let pending =
+                  let newline_count = newline_count_of_whitespace_token syntax_token in
+                  if newline_count > 0 then
+                    push_pending_break pending newline_count
+                  else
+                    pending
+                in
+                loop pending acc node_docs rest)
+        | Syn.Ceibo.Red.Node node ->
+            if should_consume_node node then
+              match node_docs with
+              | node_doc :: node_docs ->
+                  let acc = flush_pending pending acc in
+                  loop [] (node_doc :: acc) node_docs rest
+              | [] ->
+                  loop pending acc node_docs rest
+            else
+              loop pending acc node_docs rest)
+  in
+  loop [] [] node_docs (Syn.Ceibo.Red.SyntaxNode.children_list source_node)
 
 let doc_of_core_type type_ =
   doc_of_verbatim_syntax_node (Syn.Cst.CoreType.syntax_node type_)
@@ -515,6 +712,41 @@ and render_inline_record_definition fields =
       Doc.rbrace;
     ]
 
+and render_record_definition_with_comments ~source_node fields =
+  let field_docs =
+    fields
+    |> List.map (fun field ->
+           Doc.concat [ render_record_definition_field field; Doc.semi ])
+  in
+  let body =
+    render_interleaved_node_docs ~source_node
+      ~should_consume_node:(fun node ->
+        Syn.Ceibo.Red.SyntaxNode.kind node = Syn.SyntaxKind.TYPE_RECORD_FIELD)
+      ~node_docs:field_docs
+    |> Doc.join Doc.line
+  in
+  Doc.concat [ Doc.lbrace; Doc.line; Doc.indent 2 body; Doc.line; Doc.rbrace ]
+
+and render_inline_record_definition_with_comments ~source_node fields =
+  let field_count = List.length fields in
+  let field_docs =
+    fields
+    |> List.mapi (fun index field ->
+           let doc = render_record_definition_field field in
+           if index < field_count - 1 then
+             Doc.concat [ doc; Doc.semi ]
+           else
+             doc)
+  in
+  let body =
+    render_interleaved_node_docs ~source_node
+      ~should_consume_node:(fun node ->
+        Syn.Ceibo.Red.SyntaxNode.kind node = Syn.SyntaxKind.TYPE_RECORD_FIELD)
+      ~node_docs:field_docs
+    |> Doc.join Doc.line
+  in
+  Doc.concat [ Doc.lbrace; Doc.line; Doc.indent 2 body; Doc.line; Doc.rbrace ]
+
 and render_object_type_field (field : Syn.Cst.object_type_field) =
   Doc.group
     (Doc.concat
@@ -595,9 +827,20 @@ let render_variant_constructor_arguments = function
         (join_map (Doc.concat [ Doc.space; star; Doc.break ~flat:" " () ]) render_core_type
            types)
   | Syn.Cst.ConstructorArguments.Record fields ->
-      Doc.indent 2 (render_inline_record_definition fields)
+      let source_node =
+        match fields with
+        | [] ->
+            None
+        | field :: _ ->
+            Syn.Ceibo.Red.SyntaxNode.parent (Syn.Cst.RecordField.syntax_node field)
+      in
+      (match source_node with
+      | Some source_node ->
+          Doc.indent 2 (render_inline_record_definition_with_comments ~source_node fields)
+      | None ->
+          Doc.indent 2 (render_inline_record_definition fields))
 
-let render_variant_constructor constructor =
+let render_variant_constructor ?(include_trailing_comment = true) constructor =
   let head =
     Doc.concat
       [
@@ -621,21 +864,39 @@ let render_variant_constructor constructor =
   | None, None ->
       head
   in
-  Doc.concat
-    [
-      body;
-      render_direct_comment_suffix (Syn.Cst.VariantConstructor.syntax_node constructor);
-    ]
+  if include_trailing_comment then
+    match trailing_comment_suffix_doc (Syn.Cst.VariantConstructor.syntax_node constructor) with
+    | None ->
+        body
+    | Some suffix ->
+        Doc.concat [ body; suffix ]
+  else
+    body
+
+let render_variant_definition ~source_node constructors =
+  let constructor_count = List.length constructors in
+  let constructor_docs =
+    constructors
+    |> List.mapi (fun index constructor ->
+           render_variant_constructor
+             ~include_trailing_comment:(index < constructor_count - 1)
+             constructor)
+  in
+  render_interleaved_node_docs ~source_node
+    ~should_consume_node:(fun node ->
+      Syn.Ceibo.Red.SyntaxNode.kind node = Syn.SyntaxKind.TYPE_VARIANT_CONSTR)
+    ~node_docs:constructor_docs
+  |> Doc.join Doc.line
 
 let render_type_definition = function
   | Syn.Cst.TypeDefinition.Abstract ->
       None
   | Syn.Cst.TypeDefinition.Alias { manifest; _ } ->
       Some (render_core_type manifest)
-  | Syn.Cst.TypeDefinition.Record { fields; _ } ->
-      Some (render_record_definition fields)
-  | Syn.Cst.TypeDefinition.Variant { constructors; _ } ->
-      Some (Doc.join Doc.line (List.map render_variant_constructor constructors))
+  | Syn.Cst.TypeDefinition.Record { syntax_node; fields } ->
+      Some (render_record_definition_with_comments ~source_node:syntax_node fields)
+  | Syn.Cst.TypeDefinition.Variant { syntax_node; constructors } ->
+      Some (render_variant_definition ~source_node:syntax_node constructors)
   | Syn.Cst.TypeDefinition.PolyVariant poly_variant ->
       (match Syn.Cst.PolyVariant.kind poly_variant with
       | Syn.Cst.PolyVariantBound.Exact when not (poly_variant_has_inherit_field poly_variant) ->
@@ -1009,18 +1270,28 @@ and branch_prefers_multiline_layout = function
       false
 
 let rec function_body_prefers_multiline = function
-  | Syn.Cst.Expression.If _
+  | Syn.Cst.Expression.If { then_branch; else_branch; _ } ->
+      branch_prefers_multiline_layout then_branch
+      ||
+      (match else_branch with
+      | None ->
+          false
+      | Some else_branch ->
+          branch_prefers_multiline_layout else_branch)
   | Syn.Cst.Expression.Match _
   | Syn.Cst.Expression.Try _
-  | Syn.Cst.Expression.Function _
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Sequence _
   | Syn.Cst.Expression.Parenthesized { grouping = Syn.Cst.BeginEnd; _ } ->
       true
+  | Syn.Cst.Expression.Function { cases; _ } ->
+      List.exists (fun (case : Syn.Cst.match_case) ->
+          Option.is_some case.guard || expression_prefers_multiline_layout case.body)
+        cases
   | Syn.Cst.Expression.Fun { body = Syn.Cst.Expression body; _ } ->
       function_body_prefers_multiline body
   | Syn.Cst.Expression.Fun { body = Syn.Cst.Cases _; _ } ->
-      true
+      false
   | Syn.Cst.Expression.Apply apply ->
       qualified_multi_argument_apply_prefers_multiline apply
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
@@ -1041,6 +1312,12 @@ and qualified_multi_argument_apply_prefers_multiline
         head_is_qualified_path callee
     | Syn.Cst.Expression.Path { path; _ } ->
         List.length (Syn.Cst.Ident.segments path) > 1
+    | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
+        (match receiver with
+        | Syn.Cst.Expression.Path _ | Syn.Cst.Expression.FieldAccess _ ->
+            true
+        | _ ->
+            false)
     | _ ->
         false
   in
@@ -1175,13 +1452,8 @@ let rec render_expression expression =
           Doc.concat [ Doc.lparen; Doc.text "-"; render_literal literal; Doc.rparen ]
       | _ ->
           Doc.concat [ Doc.text operator; render_expression operand ])
-  | Syn.Cst.Expression.Infix { operator_token; _ } as infix ->
-      let operator = token_text operator_token in
-      let parts = infix_chain operator infix in
-      Doc.group
-        (join_map
-           (Doc.concat [ Doc.break (); Doc.text operator; Doc.space ])
-           render_expression parts)
+  | Syn.Cst.Expression.Infix infix ->
+      render_infix_expression infix
   | Syn.Cst.Expression.Apply apply ->
       render_apply_expression apply
   | Syn.Cst.Expression.If if_ ->
@@ -1218,6 +1490,8 @@ let rec render_expression expression =
             render_expression receiver
       in
       Doc.concat [ receiver; Doc.text "."; doc_of_token field_name ]
+  | Syn.Cst.Expression.Index index ->
+      render_index_expression index
   | Syn.Cst.Expression.Typed { expression; type_; _ } ->
       Doc.concat [ render_expression expression; colon; doc_of_core_type type_ ]
   | Syn.Cst.Expression.PolyVariant { syntax_node; payload; _ } ->
@@ -1242,6 +1516,43 @@ and render_record_field (field : Syn.Cst.record_expression_field) =
       doc_of_ident field.field_path
   | Syn.Cst.Explicit ->
       Doc.concat [ doc_of_ident field.field_path; equals; render_expression field.value ]
+
+and render_index_expression ({ syntax_node; collection; index; _ } : Syn.Cst.index_expression) =
+  let collection_doc =
+    match collection with
+    | Syn.Cst.Expression.If _
+    | Syn.Cst.Expression.Match _
+    | Syn.Cst.Expression.Try _
+    | Syn.Cst.Expression.Let _
+    | Syn.Cst.Expression.Sequence _
+    | Syn.Cst.Expression.Fun _
+    | Syn.Cst.Expression.Function _ ->
+        Doc.concat [ Doc.lparen; render_expression collection; Doc.rparen ]
+    | _ ->
+        render_expression collection
+  in
+  let punct =
+    nontrivia_direct_tokens syntax_node
+    |> List.map Syn.Ceibo.Red.SyntaxToken.text
+  in
+  match punct with
+  | [ dot; left_delim; right_delim ] ->
+      Doc.concat
+        [
+          collection_doc;
+          Doc.text dot;
+          Doc.text left_delim;
+          render_expression index;
+          Doc.text right_delim;
+        ]
+  | _ ->
+      Doc.concat
+        [
+          collection_doc;
+          Doc.text ".(";
+          render_expression index;
+          Doc.rparen;
+        ]
 
 and render_record_expression = function
   | Syn.Cst.RecordExpression.Literal { fields; _ } ->
@@ -1318,7 +1629,121 @@ and render_apply_argument = function
               render_expression value;
             ])
 
-and render_apply_expression ({ callee; argument; _ } : Syn.Cst.apply_expression) =
+and syntax_node_of_apply_argument = function
+  | Syn.Cst.Positional expression ->
+      Syn.Cst.Expression.syntax_node expression
+  | Syn.Cst.Labeled argument ->
+      argument.syntax_node
+  | Syn.Cst.Optional argument ->
+      argument.syntax_node
+
+and render_infix_expression ({ syntax_node; left; operator_token; right; _ } :
+      Syn.Cst.infix_expression) =
+  if List.exists is_comment_like_token (Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node) then
+    let left_offset = Syn.Ceibo.Red.SyntaxNode.offset (Syn.Cst.Expression.syntax_node left) in
+    let right_offset = Syn.Ceibo.Red.SyntaxNode.offset (Syn.Cst.Expression.syntax_node right) in
+    let rec loop acc separator = function
+      | [] ->
+          Option.unwrap_or acc ~default:Doc.empty
+      | child :: rest -> (
+          match child with
+          | Syn.Ceibo.Red.Token syntax_token when is_whitespace_token syntax_token ->
+              loop acc (separator_of_whitespace_token syntax_token) rest
+          | Syn.Ceibo.Red.Token syntax_token when is_comment_like_token syntax_token ->
+              let doc = Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token) in
+              let acc =
+                match acc with
+                | None ->
+                    Some doc
+                | Some current ->
+                    Some (Doc.concat [ current; separator; doc ])
+              in
+              loop acc Doc.empty rest
+          | Syn.Ceibo.Red.Token syntax_token ->
+              let doc = Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token) in
+              let acc =
+                match acc with
+                | None ->
+                    Some doc
+                | Some current ->
+                    Some (Doc.concat [ current; separator; doc ])
+              in
+              loop acc Doc.empty rest
+          | Syn.Ceibo.Red.Node node ->
+              let node_offset = Syn.Ceibo.Red.SyntaxNode.offset node in
+              let doc =
+                if node_offset = left_offset then
+                  render_expression left
+                else if node_offset = right_offset then
+                  render_expression right
+                else
+                  doc_of_verbatim_syntax_node node
+              in
+              let acc =
+                match acc with
+                | None ->
+                    Some doc
+                | Some current ->
+                    Some (Doc.concat [ current; separator; doc ])
+              in
+              loop acc Doc.empty rest)
+    in
+    loop None Doc.empty (Syn.Ceibo.Red.SyntaxNode.children_list syntax_node)
+  else
+    let operator = token_text operator_token in
+    let parts =
+      infix_chain operator
+        (Syn.Cst.Expression.Infix { syntax_node; left; operator_token; right; attributes = [] })
+    in
+    Doc.group
+      (join_map
+         (Doc.concat [ Doc.break (); Doc.text operator; Doc.space ])
+         render_expression parts)
+
+and render_apply_expression ({ syntax_node; callee; argument; _ } : Syn.Cst.apply_expression) =
+  if List.exists is_comment_like_token (Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node) then
+    let callee_offset = Syn.Ceibo.Red.SyntaxNode.offset (Syn.Cst.Expression.syntax_node callee) in
+    let argument_offset = Syn.Ceibo.Red.SyntaxNode.offset (syntax_node_of_apply_argument argument) in
+    let rec loop acc separator = function
+      | [] ->
+          Option.unwrap_or acc ~default:Doc.empty
+      | child :: rest -> (
+          match child with
+          | Syn.Ceibo.Red.Token syntax_token when is_whitespace_token syntax_token ->
+              loop acc (separator_of_whitespace_token syntax_token) rest
+          | Syn.Ceibo.Red.Token syntax_token when is_comment_like_token syntax_token ->
+              let doc = Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token) in
+              let acc =
+                match acc with
+                | None ->
+                    Some doc
+                | Some current ->
+                    Some (Doc.concat [ current; separator; doc ])
+              in
+              loop acc Doc.empty rest
+          | Syn.Ceibo.Red.Token _ ->
+              loop acc separator rest
+          | Syn.Ceibo.Red.Node node ->
+              let node_offset = Syn.Ceibo.Red.SyntaxNode.offset node in
+              let doc =
+                if node_offset = callee_offset then
+                  render_expression callee
+                else if node_offset = argument_offset then
+                  render_apply_argument argument
+                else
+                  doc_of_verbatim_syntax_node node
+              in
+              let acc =
+                match acc with
+                | None ->
+                    Some doc
+                | Some current ->
+                    Some (Doc.concat [ current; separator; doc ])
+              in
+              loop acc Doc.empty rest)
+    in
+    loop None Doc.empty (Syn.Ceibo.Red.SyntaxNode.children_list syntax_node)
+  else
   let rec collect_arguments acc = function
     | Syn.Cst.Expression.Apply { callee; argument; _ } ->
         collect_arguments (argument :: acc) callee
@@ -1388,7 +1813,12 @@ and render_if_expression
   else
   match else_branch, else_token with
   | None, _ ->
-      Doc.concat [ head; Doc.space; then_doc ]
+      Doc.group
+        (Doc.concat
+           [
+             head;
+             Doc.indent 2 (Doc.concat [ Doc.break (); then_doc ]);
+           ])
   | Some else_branch, Some else_token ->
       let needs_multiline_else =
         branch_prefers_multiline_layout else_branch
@@ -1411,10 +1841,26 @@ and render_if_expression
             Doc.indent 2 else_doc;
           ]
       else
-        Doc.concat [ head; Doc.space; then_doc; Doc.space; doc_of_token else_token; Doc.space; else_doc ]
+        Doc.group
+          (Doc.concat
+             [
+               head;
+               Doc.indent 2 (Doc.concat [ Doc.break (); then_doc ]);
+               Doc.break ();
+               doc_of_token else_token;
+               Doc.indent 2 (Doc.concat [ Doc.break (); else_doc ]);
+             ])
   | Some else_branch, None ->
       let else_doc = render_expression else_branch in
-      Doc.concat [ head; Doc.space; then_doc; Doc.space; kw_else; Doc.space; else_doc ]
+      Doc.group
+        (Doc.concat
+           [
+             head;
+             Doc.indent 2 (Doc.concat [ Doc.break (); then_doc ]);
+             Doc.break ();
+             kw_else;
+             Doc.indent 2 (Doc.concat [ Doc.break (); else_doc ]);
+           ])
 
 and render_case (case : Syn.Cst.match_case) =
   let body = render_expression case.body in
@@ -1476,17 +1922,29 @@ and render_case (case : Syn.Cst.match_case) =
   in
   match case.pattern with
   | Syn.Cst.Pattern.Or { alternatives; _ } -> (
-      match List.rev alternatives with
-      | [] ->
-          Doc.empty
-      | last :: rest_reversed ->
-          let leading =
-            rest_reversed
-            |> List.rev
-            |> List.map (fun alternative ->
-                   Doc.concat [ prefix; render_pattern alternative; Doc.line ])
-          in
-          Doc.concat (leading @ [ render_branch (render_pattern last) ]))
+      let inline_char_literals =
+        List.length alternatives <= 4
+        && List.for_all (function
+               | Syn.Cst.Pattern.Literal { literal = Syn.Cst.Literal.Char _; _ } ->
+                   true
+               | _ ->
+                   false)
+             alternatives
+      in
+      if inline_char_literals then
+        render_branch rendered_pattern
+      else
+        match List.rev alternatives with
+        | [] ->
+            Doc.empty
+        | last :: rest_reversed ->
+            let leading =
+              rest_reversed
+              |> List.rev
+              |> List.map (fun alternative ->
+                     Doc.concat [ prefix; render_pattern alternative; Doc.line ])
+            in
+            Doc.concat (leading @ [ render_branch (render_pattern last) ]))
   | _ ->
       render_branch rendered_pattern
 
@@ -1782,7 +2240,7 @@ and split_typed_binding_value = function
   | expression ->
       (expression, None)
 
-and render_binding_value ~parameters ~value =
+and render_binding_value ~force_multiline_body ~parameters ~value =
   match parameters with
   | [] ->
       render_expression value
@@ -1805,7 +2263,7 @@ and render_binding_value ~parameters ~value =
             Doc.line;
             Doc.indent 2 body;
           ]
-      else if function_body_prefers_multiline value || Doc.is_multiline body then
+      else if force_multiline_body || function_body_prefers_multiline value || Doc.is_multiline body then
         Doc.concat
           [
             kw_fun;
@@ -1828,7 +2286,9 @@ and render_binding_value ~parameters ~value =
                Doc.indent 2 (Doc.concat [ Doc.break (); body ]);
              ])
 
-and render_local_binding ~keyword_token ~rec_token ~equals_token ~pattern ~parameters ~value =
+and render_local_binding
+    ~local_context
+    ~keyword_token ~rec_token ~equals_token ~pattern ~parameters ~value =
   let value, type_annotation = split_typed_binding_value value in
   let header = render_binding_header ~keyword_token ~rec_token pattern in
   let header =
@@ -1838,7 +2298,22 @@ and render_local_binding ~keyword_token ~rec_token ~equals_token ~pattern ~param
     | Some type_ ->
         Doc.concat [ header; colon; render_core_type type_ ]
   in
-  let rendered_value = render_binding_value ~parameters ~value in
+  let force_multiline_body =
+    local_context
+    &&
+    Option.is_some rec_token
+    &&
+    (List.length parameters > 0
+    ||
+    match value with
+    | Syn.Cst.Expression.Fun _ ->
+        true
+    | _ ->
+        false)
+  in
+  let rendered_value =
+    render_binding_value ~force_multiline_body ~parameters ~value
+  in
   let keep_value_after_equals =
     match value with
     | Syn.Cst.Expression.Fun _ ->
@@ -1878,11 +2353,19 @@ and render_let_expression
     ({ keyword_token; rec_token; equals_token; binding_pattern; parameters; bound_value; and_bindings; body; in_token; _ } :
       Syn.Cst.let_expression) =
   let first_binding =
-    render_local_binding ~keyword_token ~rec_token ~equals_token ~pattern:binding_pattern
+    render_local_binding ~local_context:true ~keyword_token ~rec_token ~equals_token
+      ~pattern:binding_pattern
       ~parameters
       ~value:bound_value
   in
-  let and_bindings = and_bindings |> List.map render_let_binding_group_item in
+  let and_bindings =
+    and_bindings
+    |> List.map (fun (binding : Syn.Cst.let_binding) ->
+           render_local_binding ~local_context:true ~keyword_token:binding.keyword_token
+             ~rec_token:binding.rec_token ~equals_token:binding.equals_token
+             ~pattern:binding.binding_pattern ~parameters:binding.parameters
+             ~value:binding.value)
+  in
   let bindings =
     Doc.concat
       (first_binding :: List.map (fun binding -> Doc.concat [ Doc.line; binding ]) and_bindings)
@@ -1908,7 +2391,8 @@ and render_let_expression
       ]
 
 and render_let_binding_group_item (binding : Syn.Cst.let_binding) =
-  render_local_binding ~keyword_token:binding.keyword_token ~rec_token:binding.rec_token
+  render_local_binding ~local_context:false ~keyword_token:binding.keyword_token
+    ~rec_token:binding.rec_token
     ~equals_token:binding.equals_token ~pattern:binding.binding_pattern
     ~parameters:binding.parameters ~value:binding.value
 
@@ -2180,6 +2664,28 @@ and is_open_signature_item = function
   | _ ->
       false
 
+and render_structure_entry item =
+  let trailing_suffix = trailing_comment_suffix_doc (Syn.Cst.StructureItem.syntax_node item) in
+  let doc =
+    match trailing_suffix with
+    | None ->
+        render_structure_item item
+    | Some suffix ->
+        Doc.concat [ render_structure_item item; suffix ]
+  in
+  (doc, is_open_structure_item item, false, Option.is_some trailing_suffix, false)
+
+and render_signature_entry item =
+  let trailing_suffix = trailing_comment_suffix_doc (Syn.Cst.SignatureItem.syntax_node item) in
+  let doc =
+    match trailing_suffix with
+    | None ->
+        render_signature_item item
+    | Some suffix ->
+        Doc.concat [ render_signature_item item; suffix ]
+  in
+  (doc, is_open_signature_item item, false, Option.is_some trailing_suffix, false)
+
 and render_structure_item = function
   | Syn.Cst.StructureItem.LetBinding binding ->
       render_let_binding binding
@@ -2246,20 +2752,28 @@ and render_signature_item item =
 
 and render_structure_top_level_items ~source_node ~items =
   let flush_pending pending acc =
-    match pending with
-    | [] ->
+    let strip_trailing_breaks =
+      not (acc = [] && pending_doc_count pending = 1)
+    in
+    match render_pending_trivia ~strip_trailing_breaks pending with
+    | None ->
         acc
-    | pending ->
-        (Doc.join Doc.line (List.rev pending), false) :: acc
+    | Some pending_doc ->
+        (pending_doc, false, true, false, not strip_trailing_breaks) :: acc
   in
   let rec join_entries = function
     | [] ->
         Doc.empty
-    | (doc, _) :: [] ->
+    | (doc, _, _, _, _) :: [] ->
         doc
-    | (doc, is_open) :: ((next_doc, next_is_open) :: _ as rest) ->
+    | (doc, is_open, is_trivia, tight_after, has_trailing_break)
+      :: ((_, next_is_open, _, _, _) :: _ as rest) ->
         let separator =
-          if is_open && next_is_open then
+          if has_trailing_break then
+            Doc.empty
+          else if tight_after || is_trivia then
+            Doc.line
+          else if is_open && next_is_open then
             Doc.line
           else
             blank_line
@@ -2275,14 +2789,21 @@ and render_structure_top_level_items ~source_node ~items =
         | Syn.Ceibo.Red.Token syntax_token -> (
             match doc_of_top_level_trivia_token syntax_token with
             | Some doc ->
-                loop (doc :: pending) acc items rest
+                loop (TriviaDoc doc :: pending) acc items rest
             | None ->
+                let pending =
+                  let newline_count = newline_count_of_whitespace_token syntax_token in
+                  if newline_count > 0 then
+                    push_pending_break pending newline_count
+                  else
+                    pending
+                in
                 loop pending acc items rest)
         | Syn.Ceibo.Red.Node _ -> (
             match items with
             | item :: items ->
                 let acc = flush_pending pending acc in
-                loop [] ((render_structure_item item, is_open_structure_item item) :: acc) items rest
+                loop [] (render_structure_entry item :: acc) items rest
             | [] ->
                 loop pending acc items rest))
   in
@@ -2293,20 +2814,25 @@ and render_structure_items ~source_node items =
 
 and render_signature_top_level_items ~source_node ~items =
   let flush_pending pending acc =
-    match pending with
-    | [] ->
+    match render_pending_trivia pending with
+    | None ->
         acc
-    | pending ->
-        (Doc.join Doc.line (List.rev pending), false) :: acc
+    | Some pending_doc ->
+        (pending_doc, false, true, false, false) :: acc
   in
   let rec join_entries = function
     | [] ->
         Doc.empty
-    | (doc, _) :: [] ->
+    | (doc, _, _, _, _) :: [] ->
         doc
-    | (doc, is_open) :: ((_, next_is_open) :: _ as rest) ->
+    | (doc, is_open, is_trivia, tight_after, has_trailing_break)
+      :: ((_, next_is_open, _, _, _) :: _ as rest) ->
         let separator =
-          if is_open && next_is_open then
+          if has_trailing_break then
+            Doc.empty
+          else if tight_after || is_trivia then
+            Doc.line
+          else if is_open && next_is_open then
             Doc.line
           else
             blank_line
@@ -2322,14 +2848,21 @@ and render_signature_top_level_items ~source_node ~items =
         | Syn.Ceibo.Red.Token syntax_token -> (
             match doc_of_top_level_trivia_token syntax_token with
             | Some doc ->
-                loop (doc :: pending) acc items rest
+                loop (TriviaDoc doc :: pending) acc items rest
             | None ->
+                let pending =
+                  let newline_count = newline_count_of_whitespace_token syntax_token in
+                  if newline_count > 0 then
+                    push_pending_break pending newline_count
+                  else
+                    pending
+                in
                 loop pending acc items rest)
         | Syn.Ceibo.Red.Node _ -> (
             match items with
             | item :: items ->
                 let acc = flush_pending pending acc in
-                loop [] ((render_signature_item item, is_open_signature_item item) :: acc) items rest
+                loop [] (render_signature_entry item :: acc) items rest
             | [] ->
                 loop pending acc items rest))
   in
