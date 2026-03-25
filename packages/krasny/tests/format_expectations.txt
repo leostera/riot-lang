@@ -27,6 +27,7 @@
 0710_first_class_module_types.ml
 0720_signature_external_declaration.mli
 0721_poly_variant_inherit_type_alias.mli
+0730_signature_operator_value_declarations.mli
 
 # 08xx modules, signatures, and functors
 0800_modules_signatures_and_functors.ml

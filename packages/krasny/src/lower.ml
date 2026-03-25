@@ -3749,6 +3749,40 @@ and render_structure_item = function
       doc_of_node (Syn.Cst.StructureItem.syntax_node item)
 
 and render_signature_item item =
+  let value_declaration_name_doc (decl : Syn.Cst.value_declaration) =
+    let syntax_node = decl.syntax_node in
+    let source = Source.source_of_syntax_node syntax_node |> String.trim in
+    let fallback = doc_of_token decl.name_token in
+    if not (String.starts_with ~prefix:"val" source) then
+      fallback
+    else
+      let after_val =
+        if String.length source <= 3 then
+          ""
+        else
+          String.sub source 3 (String.length source - 3)
+      in
+      let rec find_colon index paren_depth =
+        if index >= String.length after_val then
+          None
+        else
+          match String.get after_val index with
+          | '(' ->
+              find_colon (index + 1) (paren_depth + 1)
+          | ')' ->
+              find_colon (index + 1) (Int.max 0 (paren_depth - 1))
+          | ':' when paren_depth = 0 ->
+              Some index
+          | _ ->
+              find_colon (index + 1) paren_depth
+      in
+      match find_colon 0 0 with
+      | None ->
+          fallback
+      | Some colon_index ->
+          let name = String.sub after_val 0 colon_index |> String.trim in
+          if name = "" then fallback else Doc.text name
+  in
   match item with
   | Syn.Cst.SignatureItem.TypeDeclaration decl ->
       render_type_declaration_with_keyword kw_type decl
@@ -3775,7 +3809,7 @@ and render_signature_item item =
         [
           Doc.text "val";
           Doc.space;
-          doc_of_token decl.name_token;
+          value_declaration_name_doc decl;
           colon;
           render_core_type decl.type_;
         ]
