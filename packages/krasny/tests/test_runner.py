@@ -13,6 +13,7 @@ Usage:
 """
 
 import argparse
+import difflib
 import platform
 import re
 import shlex
@@ -96,6 +97,33 @@ class FixtureRunner:
     def __init__(self, context: RunnerContext):
         self.context = context
 
+    def render_unified_diff(
+        self,
+        fixture_path: Path,
+        expected_path: Path,
+        expected: str,
+        actual: str,
+        *,
+        max_lines: int = 200,
+    ) -> str:
+        diff_lines = list(
+            difflib.unified_diff(
+                expected.splitlines(),
+                actual.splitlines(),
+                fromfile=str(expected_path.relative_to(self.context.workspace_root)),
+                tofile=str(fixture_path.relative_to(self.context.workspace_root)) + " (actual)",
+                lineterm="",
+            )
+        )
+        if not diff_lines:
+            return ""
+        if len(diff_lines) <= max_lines:
+            return "\n".join(diff_lines)
+        head = "\n".join(diff_lines[:max_lines])
+        return (
+            f"{head}\n... diff truncated ({len(diff_lines) - max_lines} additional lines omitted) ..."
+        )
+
     def normalize_trailing_whitespace(self, text: str) -> str:
         lines = text.splitlines()
         normalized_lines = []
@@ -129,19 +157,23 @@ class FixtureRunner:
         actual: str,
         *,
         refresh: bool,
-    ) -> tuple[bool, str]:
+    ) -> tuple[bool, str, Optional[str]]:
         expected_path = Path(str(fixture_path) + ".expected")
 
         if refresh or not expected_path.exists():
             expected_path.write_text(actual)
-            return True, "refreshed expectation"
+            return True, "refreshed expectation", None
 
         expected = self.normalize_trailing_whitespace(expected_path.read_text())
         actual = self.normalize_trailing_whitespace(actual)
         if actual == expected:
-            return True, "expectation ok"
+            return True, "expectation ok", None
 
-        return False, f"expected output mismatch in {expected_path.name}"
+        return (
+            False,
+            f"expected output mismatch in {expected_path.name}",
+            self.render_unified_diff(fixture_path, expected_path, expected, actual),
+        )
 
     def check_roundtrip(self, fixture_path: Path, actual: str) -> tuple[bool, str]:
         suffix = fixture_path.suffix or ".ml"
@@ -211,7 +243,7 @@ class FixtureRunner:
             return False
 
         actual = format_result.stdout
-        expectation_ok, expectation_detail = self.check_expectation(
+        expectation_ok, expectation_detail, expectation_diff = self.check_expectation(
             fixture_path,
             actual,
             refresh=refresh,
@@ -226,6 +258,8 @@ class FixtureRunner:
         print(f"{RED}✗{NC} {fixture_path}")
         if not expectation_ok:
             print(f"  {expectation_detail}")
+            if expectation_diff:
+                print(expectation_diff)
         if not roundtrip_ok:
             print(f"  {roundtrip_detail}")
         return False

@@ -41,6 +41,30 @@ let string_contains_substring text pattern =
   in
   pattern_length > 0 && loop 0
 
+let trim_trailing_layout_whitespace text =
+  let rec find_last_non_layout index =
+    if index < 0 then
+      -1
+    else
+      match text.[index] with
+      | ' '
+      | '\t'
+      | '\n'
+      | '\r' ->
+          find_last_non_layout (index - 1)
+      | _ ->
+          index
+  in
+  let last_index = find_last_non_layout (String.length text - 1) in
+  if last_index < 0 then
+    ""
+  else
+    String.sub text 0 (last_index + 1)
+
+let syntax_node_has_internal_newline syntax_node =
+  let text = text_of_syntax_node syntax_node |> trim_trailing_layout_whitespace in
+  String.contains text "\n"
+
 let doc_of_top_level_trivia_token syntax_token =
   match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
   | Syn.SyntaxKind.COMMENT
@@ -63,6 +87,18 @@ let syntax_node_has_comment_like_token syntax_node =
 
 let is_whitespace_token syntax_token =
   Syn.Ceibo.Red.SyntaxToken.kind syntax_token = Syn.SyntaxKind.WHITESPACE
+
+let text_of_tokens_between_spans syntax_node ~start_offset ~end_offset =
+  if end_offset <= start_offset then
+    ""
+  else
+    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
+    |> List.filter (fun syntax_token ->
+           let span = Syn.Ceibo.Red.SyntaxToken.span syntax_token in
+           span.start >= start_offset && span.end_ <= end_offset)
+    |> List.map Syn.Ceibo.Red.SyntaxToken.text
+    |> String.concat ""
+    |> String.trim
 
 let doc_of_ident ident =
   Syn.Cst.Ident.segments ident
@@ -1034,10 +1070,22 @@ let type_definition_layout decl =
       Inline_definition
 
 let render_type_declaration_with_keyword keyword decl =
+  let type_name =
+    Syn.Cst.TypeDeclaration.type_name decl
+  in
+  let type_definition =
+    Syn.Cst.TypeDeclaration.type_definition decl
+  in
+  let type_name_is_t =
+    Syn.Cst.Ident.segments type_name
+    |> List.map token_text
+    |> String.concat "."
+    = "t"
+  in
   let params = render_type_parameters (Syn.Cst.TypeDeclaration.type_params decl) in
   let header =
     if params = Doc.empty then
-      Doc.concat [ keyword; Doc.space; doc_of_ident (Syn.Cst.TypeDeclaration.type_name decl) ]
+      Doc.concat [ keyword; Doc.space; doc_of_ident type_name ]
     else
       Doc.concat
         [
@@ -1045,7 +1093,7 @@ let render_type_declaration_with_keyword keyword decl =
           Doc.space;
           params;
           Doc.space;
-          doc_of_ident (Syn.Cst.TypeDeclaration.type_name decl);
+          doc_of_ident type_name;
         ]
   in
   let header =
@@ -1054,11 +1102,21 @@ let render_type_declaration_with_keyword keyword decl =
   let definition =
     match Syn.Cst.TypeDeclaration.private_flag decl with
     | Syn.Cst.PrivateFlag.Public ->
-        render_type_definition (Syn.Cst.TypeDeclaration.type_definition decl)
+        (match type_definition with
+        | Syn.Cst.TypeDefinition.Record { syntax_node; fields }
+          when
+            type_name_is_t
+            && not (syntax_node_has_comment_like_token syntax_node)
+            && not
+                 (Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
+                 |> List.exists whitespace_has_newline) ->
+            Some (render_inline_record_definition fields)
+        | _ ->
+            render_type_definition type_definition)
     | Syn.Cst.PrivateFlag.Private _ ->
         Option.map
           (fun definition -> Doc.concat [ kw_private; Doc.space; definition ])
-          (render_type_definition (Syn.Cst.TypeDeclaration.type_definition decl))
+          (render_type_definition type_definition)
   in
   let with_definition =
     match definition with
@@ -1473,6 +1531,48 @@ let rec expression_keeps_inline_binding_value = function
       true
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
       expression_keeps_inline_binding_value inner
+  | _ ->
+      false
+
+let rec expression_is_simple_after_equals = function
+  | Syn.Cst.Expression.Path _
+  | Syn.Cst.Expression.Literal _
+  | Syn.Cst.Expression.Operator _
+  | Syn.Cst.Expression.Unreachable _
+  | Syn.Cst.Expression.Extension _
+  | Syn.Cst.Expression.Constructor _
+  | Syn.Cst.Expression.PolyVariant _
+  | Syn.Cst.Expression.Apply _
+  | Syn.Cst.Expression.Infix _
+  | Syn.Cst.Expression.Prefix _
+  | Syn.Cst.Expression.Tuple _
+  | Syn.Cst.Expression.List _
+  | Syn.Cst.Expression.Array _
+  | Syn.Cst.Expression.Record _
+  | Syn.Cst.Expression.FieldAccess _
+  | Syn.Cst.Expression.Index _
+  | Syn.Cst.Expression.Coerce _
+  | Syn.Cst.Expression.Typed _
+  | Syn.Cst.Expression.MethodCall _
+  | Syn.Cst.Expression.New _
+  | Syn.Cst.Expression.LocalOpen _ ->
+      true
+  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
+      expression_is_simple_after_equals inner
+  | _ ->
+      false
+
+let expression_requires_break_after_equals = function
+  | Syn.Cst.Expression.Function _
+  | Syn.Cst.Expression.If _
+  | Syn.Cst.Expression.Match _
+  | Syn.Cst.Expression.Try _
+  | Syn.Cst.Expression.While _
+  | Syn.Cst.Expression.For _
+  | Syn.Cst.Expression.Let _
+  | Syn.Cst.Expression.Sequence _
+  | Syn.Cst.Expression.LetModule _ ->
+      true
   | _ ->
       false
 
@@ -1997,7 +2097,11 @@ and render_if_expression
            ])
   | Some else_branch, Some else_token ->
       let needs_multiline_else =
-        branch_prefers_multiline_layout else_branch
+        match else_branch with
+        | Syn.Cst.Expression.If _ ->
+            false
+        | _ ->
+            branch_prefers_multiline_layout else_branch
       in
       let else_doc =
         if needs_multiline_else then
@@ -2058,7 +2162,7 @@ and render_case ?(force_multiline_body = false) (case : Syn.Cst.match_case) =
     | Some token ->
         Doc.concat [ doc_of_token token; Doc.space ]
     | None ->
-        Doc.concat [ Doc.bar; Doc.space ]
+        Doc.empty
   in
   let rendered_pattern =
     match case.pattern with
@@ -2095,7 +2199,15 @@ and render_case ?(force_multiline_body = false) (case : Syn.Cst.match_case) =
             Doc.space;
             Doc.indent 2 body;
           ]
-    | _ when force_multiline_body || Doc.is_multiline body || expression_prefers_multiline_layout case.body ->
+    | _
+      when
+        force_multiline_body
+        || Doc.is_multiline body
+        || expression_prefers_multiline_layout case.body
+        ||
+        let case_source = text_of_syntax_node case.syntax_node in
+        string_contains_substring case_source "->\n"
+        || string_contains_substring case_source "->\r\n" ->
       Doc.concat
         [
           prefix;
@@ -2249,16 +2361,29 @@ and render_fun_expression
         body;
       ]
 
-and render_function_expression ({ keyword_token; cases; _ } : Syn.Cst.function_expression) =
+and render_function_expression ({ syntax_node; keyword_token; cases; _ } : Syn.Cst.function_expression) =
   let force_multiline_cases =
     List.length cases > 2 && List.exists case_body_prefers_multiline cases
   in
-  Doc.concat
-    [
-      doc_of_token keyword_token;
-      Doc.line;
-      join_map Doc.line (render_case ~force_multiline_body:force_multiline_cases) cases;
-    ]
+  let source_has_newline = syntax_node_has_internal_newline syntax_node in
+  if source_has_newline then
+    Doc.concat
+      [
+        doc_of_token keyword_token;
+        Doc.line;
+        join_map Doc.line (render_case ~force_multiline_body:force_multiline_cases) cases;
+      ]
+  else
+    Doc.group
+      (Doc.concat
+         [
+           doc_of_token keyword_token;
+           Doc.space;
+           join_map
+             (Doc.concat [ Doc.space ])
+             (render_case ~force_multiline_body:force_multiline_cases)
+             cases;
+         ])
 
 and render_function_expression_inline
     ({ keyword_token; cases; _ } : Syn.Cst.function_expression) =
@@ -2269,7 +2394,33 @@ and render_function_expression_inline
     [
       doc_of_token keyword_token;
       Doc.line;
-      Doc.indent 2 (join_map Doc.line (render_case ~force_multiline_body:force_multiline_cases) cases);
+      Doc.indent 2
+        (join_map Doc.line (render_case ~force_multiline_body:force_multiline_cases) cases);
+    ]
+
+and render_function_expression_unindented
+    ({ keyword_token; cases; _ } : Syn.Cst.function_expression) =
+  let force_multiline_cases =
+    List.length cases > 2 && List.exists case_body_prefers_multiline cases
+  in
+  Doc.concat
+    [
+      doc_of_token keyword_token;
+      Doc.line;
+      join_map Doc.line (render_case ~force_multiline_body:force_multiline_cases) cases;
+    ]
+
+and render_function_expression_indented
+    ({ keyword_token; cases; _ } : Syn.Cst.function_expression) =
+  let force_multiline_cases =
+    List.length cases > 2 && List.exists case_body_prefers_multiline cases
+  in
+  Doc.concat
+    [
+      doc_of_token keyword_token;
+      Doc.line;
+      Doc.indent 2
+        (join_map Doc.line (render_case ~force_multiline_body:force_multiline_cases) cases);
     ]
 
 and render_fun_body = function
@@ -2306,7 +2457,7 @@ and render_block_expression = function
   | Syn.Cst.Expression.Sequence sequence ->
       render_sequence_expression sequence
   | Syn.Cst.Expression.Function function_ ->
-      render_function_expression function_
+      render_function_expression_unindented function_
   | Syn.Cst.Expression.Fun fun_ ->
       render_fun_expression fun_
   | Syn.Cst.Expression.Parenthesized _ as expression ->
@@ -2536,7 +2687,7 @@ and render_binding_value ~force_multiline_body ~parameters ~value =
           ]
       else
         Doc.group
-          (Doc.concat
+      (Doc.concat
              [
                kw_fun;
                Doc.space;
@@ -2545,6 +2696,37 @@ and render_binding_value ~force_multiline_body ~parameters ~value =
                Doc.arrow;
                Doc.indent 2 (Doc.concat [ Doc.break (); body ]);
              ])
+
+and render_binding_value_with_parameter_doc ~force_multiline_body ~parameter_doc ~value =
+  let body =
+    match value with
+    | Syn.Cst.Expression.Tuple { elements; _ } ->
+        render_tuple_expression_bare elements
+    | _ ->
+        render_expression value
+  in
+  if force_multiline_body || function_body_prefers_multiline value || Doc.is_multiline body then
+    Doc.concat
+      [
+        kw_fun;
+        Doc.space;
+        parameter_doc;
+        Doc.space;
+        Doc.arrow;
+        Doc.line;
+        Doc.indent 2 body;
+      ]
+  else
+    Doc.group
+      (Doc.concat
+         [
+           kw_fun;
+           Doc.space;
+           parameter_doc;
+           Doc.space;
+           Doc.arrow;
+           Doc.indent 2 (Doc.concat [ Doc.break (); body ]);
+         ])
 
 and render_local_binding
     ~local_context
@@ -2572,31 +2754,55 @@ and render_local_binding
     | _ ->
         false)
   in
-  let inline_function_binding =
+  let keep_value_after_equals =
+    let source_prefers_break =
+      syntax_node_has_internal_newline (Syn.Cst.Expression.syntax_node value)
+      &&
+      match value with
+      | Syn.Cst.Expression.Infix _
+      | Syn.Cst.Expression.Apply _
+      | Syn.Cst.Expression.Tuple _
+      | Syn.Cst.Expression.List _
+      | Syn.Cst.Expression.Array _
+      | Syn.Cst.Expression.Record _
+      | Syn.Cst.Expression.Parenthesized _ ->
+          true
+      | _ ->
+          false
+    in
     match value with
-    | Syn.Cst.Expression.Function function_ ->
-        Option.is_some type_annotation || List.length function_.cases >= 10
-    | _ ->
+    | Syn.Cst.Expression.Fun _ ->
+        true
+    | _ when expression_requires_break_after_equals value ->
         false
+    | _ ->
+        (not source_prefers_break)
+        &&
+        (List.length parameters > 0
+        || expression_is_simple_after_equals value
+        || expression_keeps_inline_binding_value value)
   in
   let rendered_value =
-    if inline_function_binding then
-      match value with
-      | Syn.Cst.Expression.Function function_ ->
-          render_function_expression_inline function_
-      | _ ->
-          render_binding_value ~force_multiline_body ~parameters ~value
-    else
-      render_binding_value ~force_multiline_body ~parameters ~value
+    match value with
+    | Syn.Cst.Expression.Function function_
+      when parameters = []
+           && keep_value_after_equals
+           && syntax_node_has_internal_newline function_.syntax_node ->
+        render_function_expression_indented function_
+    | Syn.Cst.Expression.Function function_
+      when parameters = [] && not keep_value_after_equals ->
+        render_function_expression_unindented function_
+    | _ ->
+        render_binding_value ~force_multiline_body ~parameters ~value
   in
   let keep_value_after_equals =
     match value with
     | Syn.Cst.Expression.Fun _ ->
-        true
-    | Syn.Cst.Expression.Function _ ->
-        inline_function_binding
+        keep_value_after_equals
+    | _ when List.length parameters > 0 ->
+        keep_value_after_equals
     | _ ->
-        List.length parameters > 0 || expression_keeps_inline_binding_value value
+        keep_value_after_equals && not (Doc.is_multiline rendered_value)
   in
   if keep_value_after_equals then
     Doc.concat
@@ -2607,7 +2813,11 @@ and render_local_binding
         Doc.space;
         rendered_value;
       ]
-  else if expression_prefers_multiline_layout value || Doc.is_multiline rendered_value then
+  else if
+    syntax_node_has_internal_newline (Syn.Cst.Expression.syntax_node value)
+    || expression_prefers_multiline_layout value
+    || Doc.is_multiline rendered_value
+  then
     Doc.concat
       [
         header;
