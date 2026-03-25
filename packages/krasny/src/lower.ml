@@ -1550,7 +1550,6 @@ let rec expression_is_simple_after_equals = function
   | Syn.Cst.Expression.Extension _
   | Syn.Cst.Expression.Constructor _
   | Syn.Cst.Expression.PolyVariant _
-  | Syn.Cst.Expression.Apply _
   | Syn.Cst.Expression.Prefix _
   | Syn.Cst.Expression.Tuple _
   | Syn.Cst.Expression.List _
@@ -1564,10 +1563,26 @@ let rec expression_is_simple_after_equals = function
   | Syn.Cst.Expression.New _
   | Syn.Cst.Expression.LocalOpen _ ->
       true
+  | Syn.Cst.Expression.Apply apply ->
+      apply_expression_is_simple_after_equals apply
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
       expression_is_simple_after_equals inner
   | _ ->
       false
+
+and apply_expression_is_simple_after_equals
+    ({ syntax_node; _ } : Syn.Cst.apply_expression) =
+  if syntax_node_has_internal_newline syntax_node || syntax_node_has_comment_like_token syntax_node then
+    false
+  else
+    let source = text_of_syntax_node syntax_node |> String.trim in
+    not
+      (string_contains_substring source "function"
+      || string_contains_substring source "match "
+      || string_contains_substring source "if "
+      || string_contains_substring source "try "
+      || string_contains_substring source "while "
+      || string_contains_substring source "for ")
 
 let expression_requires_break_after_equals = function
   | Syn.Cst.Expression.Function _
@@ -2804,7 +2819,7 @@ and render_local_binding
     | _ when List.length parameters > 0 ->
         keep_value_after_equals
     | _ ->
-        keep_value_after_equals && not (Doc.is_multiline rendered_value)
+        keep_value_after_equals
   in
   if keep_value_after_equals then
     Doc.concat
@@ -2817,6 +2832,7 @@ and render_local_binding
       ]
   else if
     syntax_node_has_internal_newline (Syn.Cst.Expression.syntax_node value)
+    || not (expression_is_simple_after_equals value)
     || expression_prefers_multiline_layout value
     || Doc.is_multiline rendered_value
   then
@@ -3144,15 +3160,11 @@ and render_include_statement ({ target; _ } : Syn.Cst.include_statement) =
 and is_open_structure_item = function
   | Syn.Cst.StructureItem.OpenStatement _ ->
       true
-  | Syn.Cst.StructureItem.IncludeStatement _ ->
-      true
   | _ ->
       false
 
 and is_open_signature_item = function
   | Syn.Cst.SignatureItem.OpenStatement _ ->
-      true
-  | Syn.Cst.SignatureItem.IncludeStatement _ ->
       true
   | _ ->
       false

@@ -28,7 +28,7 @@ RED = "\033[0;31m"
 YELLOW = "\033[0;33m"
 NC = "\033[0m"
 NEGATIVE_LITERAL_PATTERN = re.compile(
-    r"(?P<prefix>(?:->|=)\s+)-(?P<literal>(?:0[xX][0-9a-fA-F_]+|0[oO][0-7_]+|0[bB][01_]+|\d+(?:\.\d+)?))(?!\))"
+    r"(?P<prefix>(?:->|=)[ \t]+)-(?P<literal>(?:0[xX][0-9a-fA-F_]+|0[oO][0-7_]+|0[bB][01_]+|\d+(?:\.\d+)?))(?!\))"
 )
 
 
