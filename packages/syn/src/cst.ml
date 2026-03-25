@@ -2403,6 +2403,16 @@ module TypeExtension = struct
     | None -> panic "TypeExtension.name_token: missing type name token"
 end
 
+module TypeMutualDeclaration = struct
+  type t = {
+    syntax_node : syntax_node;
+    declarations : TypeDeclaration.t list;
+  }
+
+  let syntax_node decl = decl.syntax_node
+  let declarations decl = decl.declarations
+end
+
 module LetBinding = struct
   type t = let_binding = {
     syntax_node : syntax_node;
@@ -2553,6 +2563,7 @@ type include_statement = {
 module StructureItem = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
+    | TypeMutualDeclaration of TypeMutualDeclaration.t
     | TypeExtension of TypeExtension.t
     | LetBinding of LetBinding.t
     | Expression of Expression.t
@@ -2571,6 +2582,7 @@ module StructureItem = struct
 
   let syntax_node = function
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
+    | TypeMutualDeclaration decl -> TypeMutualDeclaration.syntax_node decl
     | TypeExtension decl -> TypeExtension.syntax_node decl
     | LetBinding binding -> LetBinding.syntax_node binding
     | Expression expr -> Expression.syntax_node expr
@@ -2592,6 +2604,7 @@ end
 module SignatureItem = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
+    | TypeMutualDeclaration of TypeMutualDeclaration.t
     | TypeExtension of TypeExtension.t
     | Attribute of attribute
     | Extension of extension
@@ -2607,6 +2620,7 @@ module SignatureItem = struct
 
   let syntax_node = function
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
+    | TypeMutualDeclaration decl -> TypeMutualDeclaration.syntax_node decl
     | TypeExtension decl -> TypeExtension.syntax_node decl
     | Attribute attribute -> attribute.syntax_node
     | Extension extension -> extension.syntax_node

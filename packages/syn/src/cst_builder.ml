@@ -5218,6 +5218,19 @@ let type_declaration_from_node node =
       | None -> None)
   | None -> None
 
+let type_mutual_declaration_from_nodes ~group_syntax_node nodes =
+  let decls =
+    nodes
+    |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL)
+    |> List.filter_map type_declaration_from_node
+  in
+  if decls = [] then
+    None
+  else
+    Some
+      Cst.TypeMutualDeclaration.
+        { syntax_node = group_syntax_node; declarations = decls }
+
 let type_extension_from_node node =
   let extension_type_params =
     direct_non_trivia_nodes node
@@ -5752,6 +5765,15 @@ let rec structure_items_from_node node =
         with
         | Some decl -> [ Cst.StructureItem.RecursiveModuleDeclaration decl ]
         | None -> unsupported_item node
+      else if
+        child_nodes != []
+        && List.for_all
+             (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL)
+             child_nodes
+      then
+        match type_mutual_declaration_from_nodes ~group_syntax_node:node child_nodes with
+        | Some decl -> [ Cst.StructureItem.TypeMutualDeclaration decl ]
+        | None -> unsupported_item node
       else
         child_nodes |> List.concat_map structure_items_from_node
   | Syntax_kind.LET_BINDING -> (
@@ -5852,6 +5874,15 @@ let rec signature_items_from_node node =
           recursive_module_declaration_from_nodes ~group_syntax_node:node child_nodes
         with
         | Some decl -> [ Cst.SignatureItem.RecursiveModuleDeclaration decl ]
+        | None -> unsupported_item node
+      else if
+        child_nodes != []
+        && List.for_all
+             (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL)
+             child_nodes
+      then
+        match type_mutual_declaration_from_nodes ~group_syntax_node:node child_nodes with
+        | Some decl -> [ Cst.SignatureItem.TypeMutualDeclaration decl ]
         | None -> unsupported_item node
       else
         child_nodes |> List.concat_map signature_items_from_node
@@ -6930,6 +6961,9 @@ let validate_open_statement ~context stmt =
 let validate_structure_item ~context = function
   | Cst.StructureItem.TypeDeclaration decl ->
       validate_type_declaration ~context decl
+  | Cst.StructureItem.TypeMutualDeclaration decl ->
+      Cst.TypeMutualDeclaration.declarations decl
+      |> List.iter (validate_type_declaration ~context)
   | Cst.StructureItem.TypeExtension decl ->
       validate_type_extension ~context decl
   | Cst.StructureItem.LetBinding { binding_pattern; value; _ } ->
@@ -6962,6 +6996,9 @@ let validate_structure_item ~context = function
 let validate_signature_item ~context = function
   | Cst.SignatureItem.TypeDeclaration decl ->
       validate_type_declaration ~context decl
+  | Cst.SignatureItem.TypeMutualDeclaration decl ->
+      Cst.TypeMutualDeclaration.declarations decl
+      |> List.iter (validate_type_declaration ~context)
   | Cst.SignatureItem.TypeExtension decl ->
       validate_type_extension ~context decl
   | Cst.SignatureItem.Attribute _ | Cst.SignatureItem.Extension _ ->

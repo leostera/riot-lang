@@ -16,6 +16,54 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Work on implementing the remaining lints
 - [ ] Work on fixing the broken tests
 
+## syn Fixture Audit Plan
+
+Goal: make `packages/syn/tests/fixtures` tight, high-signal, and cheap to maintain without weakening lossless or regression coverage.
+
+Current audit snapshot:
+- `1195` source fixtures drive `2390` checked-in JSON expectations.
+- Source fixtures are about `102 KB`; expectation snapshots are about `18.3 MB`.
+- `907` fixtures are one-liners.
+- There are `74` exact duplicate source groups covering `163` fixtures.
+- Keeping one fixture per exact-duplicate group would remove `89` redundant fixture triplets and about `712 KB`.
+- There are `101` near-duplicate families covering `269` fixtures.
+- `types-and-declarations` is the worst category: `323` fixtures, `74` exact-duplicate fixtures, `41` near-duplicate families covering `112` fixtures.
+- There are `8` reused numeric IDs: `0660`, `1052`, `9025`, `9026`, `9109`, `9130`, `9131`, `9137`.
+- There were `0` cases where an exact-duplicate family existed only to preserve different lossless output. The obvious duplicate families are dead weight.
+
+Cleanup order:
+- [ ] Delete the `89` exact duplicate fixture triplets first.
+- [ ] Collapse near-duplicate micro-fixture families into one canonical fixture plus one deliberate edge-case fixture where needed.
+- [ ] Aggressively prune the generator-era `0500-0900` type matrix, especially the overlapping arrow, tuple, polymorphic, recursive, and record-definition families.
+- [ ] Rebalance the suite toward repo invariants: lossless parsing, `.ml` vs `.mli`, module/signature structure, and bug-driven regressions.
+- [ ] Move fixture-generator scripts out of `packages/syn/tests/fixtures/`; they are tooling, not fixtures.
+- [ ] Add a fixture audit script for `syn`, modeled after `packages/krasny/tests/fixture_audit.py`, so duplicates and near-duplicates stay visible.
+
+Target organization:
+- [ ] Split fixtures by purpose instead of flat chronology.
+- [ ] Create a `smoke` bucket with one representative per syntax family.
+- [ ] Create a `lossless` bucket for trivia/span/token-retention fixtures.
+- [ ] Create an `interfaces` bucket for `.mli` and signature-specific fixtures.
+- [ ] Create a `regressions` bucket for bug-driven fixtures, especially the `9000+` series.
+- [ ] Create an `upstream` bucket for the `ocaml_*` corpus.
+- [ ] Create a `real_world` bucket for copied real-file snippets.
+- [ ] Remove numeric-ID collisions, or drop numeric prefixes entirely once directory names carry the structure.
+
+Families that need the most attention:
+- [ ] Atom/operator microcases in `0000-0049`; many differ only by operator token or redundant parens.
+- [ ] List/tuple/record microcases in `0130-0240`; several are exact copies or near copies.
+- [ ] Type/declaration families in `0500-0900`; this is the biggest concentration of low-signal overlap.
+- [ ] Module/signature duplicates where identical sources were copied into later regression ranges.
+- [ ] Record-expression fixtures in `7000+`; several names imply span/newline differences but the source is byte-for-byte identical.
+
+Done criteria:
+- [ ] No exact duplicate source fixtures remain.
+- [ ] No reused numeric fixture IDs remain if numbering is kept.
+- [ ] Each remaining fixture has a clear role: smoke, lossless, interface, regression, upstream, or real-world.
+- [ ] Lossless/trivia coverage is explicitly preserved rather than mixed into generic syntax buckets.
+- [ ] `.mli` coverage is intentionally represented rather than incidental.
+- [ ] A fixture audit script can report category counts, exact duplicates, and near-duplicate families in one command.
+
 ## Verification Commands
 
 1. Rebuild `tusk` when build-system, parser, or lint-runtime changes affect the binary:
@@ -62,7 +110,7 @@ Rough guidelines for formatting decisions:
   same for match arms, put them one in each line
 * remove parenthesis wherever possible
 * and format large numbers with _s by default: 1000 -> 1_000, 10022 -> 10_022 
-- current fixture corpus status: category corpus is `5/8` green, copied real-file regressions are `0/11` green, the unified manifest is `5/19` green overall, `krasny:format_tests` is `14/37`, and `syn:cst_tests` is `151/151`
+- current fixture corpus status: category corpus is `6/8` green, copied real-file regressions are `0/11` green, the unified manifest is `6/19` green overall, `krasny:format_tests` is `13/37`, and `syn:cst_tests` is `152/152`
 
 ### Trivia
 
@@ -161,25 +209,25 @@ Rough guidelines for formatting decisions:
 
 ### Type Expressions
 
-- [ ] `TYPE_VAR`
-- [ ] `TYPE_CONSTR`
-- [ ] `TYPE_ALIAS`
-- [ ] `TYPE_ARROW`
-- [ ] `TYPE_TUPLE`
-- [ ] `TYPE_PAREN`
-- [ ] `TYPE_POLY_VARIANT`
-- [ ] `POLY_VARIANT_TAG`
-- [ ] `TYPE_PARAM`
-- [ ] `TYPE_PARAMS`
-- [ ] `TYPE_VARIANT_CONSTR`
-- [ ] `TYPE_EXTENSIBLE`
-- [ ] `TYPE_RECORD`
-- [ ] `TYPE_RECORD_FIELD`
-- [ ] `OBJECT_TYPE`
-- [ ] `OBJECT_TYPE_FIELD`
+- [x] `TYPE_VAR`
+- [x] `TYPE_CONSTR`
+- [x] `TYPE_ALIAS`
+- [x] `TYPE_ARROW`
+- [x] `TYPE_TUPLE`
+- [x] `TYPE_PAREN`
+- [x] `TYPE_POLY_VARIANT`
+- [x] `POLY_VARIANT_TAG`
+- [x] `TYPE_PARAM`
+- [x] `TYPE_PARAMS`
+- [x] `TYPE_VARIANT_CONSTR`
+- [x] `TYPE_EXTENSIBLE`
+- [x] `TYPE_RECORD`
+- [x] `TYPE_RECORD_FIELD`
+- [x] `OBJECT_TYPE`
+- [x] `OBJECT_TYPE_FIELD`
 - [ ] `LOCAL_OPEN_TYPE`
-- [ ] `TYPE_CONSTRAINT`
-- [ ] `POLY_TYPE`
+- [x] `TYPE_CONSTRAINT`
+- [x] `POLY_TYPE`
 - [ ] `MODULE_TYPE_EXPR`
 - [ ] `FIRST_CLASS_MODULE_TYPE`
 - [ ] `MODULE_TYPE_PATH`
@@ -193,8 +241,8 @@ Rough guidelines for formatting decisions:
 - [x] `LET_BINDING`
 - [ ] `LET_REC_BINDING`
 - [ ] `LET_MUTUAL_DECL`
-- [ ] `TYPE_DECL`
-- [ ] `TYPE_MUTUAL_DECL`
+- [x] `TYPE_DECL`
+- [x] `TYPE_MUTUAL_DECL`
 - [ ] `EXCEPTION_DECL`
 - [ ] `MODULE_DECL`
 - [ ] `CLASS_DECL`
@@ -204,7 +252,7 @@ Rough guidelines for formatting decisions:
 - [ ] `OPEN_STMT`
 - [ ] `INCLUDE_STMT`
 - [ ] `VAL_DECL`
-- [ ] `EXTERNAL_DECL`
+- [x] `EXTERNAL_DECL`
 
 ### Structural
 

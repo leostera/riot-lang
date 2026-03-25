@@ -1759,6 +1759,17 @@ let type_extension_to_json decl =
              (Cst.TypeExtension.constructors decl)) );
     ]
 
+let type_mutual_declaration_to_json decl =
+  Json.Object
+    [
+      ( "syntax_node",
+        syntax_node_to_json (Cst.TypeMutualDeclaration.syntax_node decl) );
+      ( "declarations",
+        Json.Array
+          (List.map type_declaration_to_json
+             (Cst.TypeMutualDeclaration.declarations decl)) );
+    ]
+
 let module_declaration_to_json decl =
   Json.Object
     [
@@ -2159,6 +2170,12 @@ let structure_item_to_json = function
           ("tag", Json.String "type_declaration");
           ("item", type_declaration_to_json decl);
         ]
+  | Cst.StructureItem.TypeMutualDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "type_mutual_declaration");
+          ("item", type_mutual_declaration_to_json decl);
+        ]
   | Cst.StructureItem.TypeExtension decl ->
       Json.Object
         [
@@ -2256,6 +2273,12 @@ let signature_item_to_json = function
         [
           ("tag", Json.String "type_declaration");
           ("item", type_declaration_to_json decl);
+        ]
+  | Cst.SignatureItem.TypeMutualDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "type_mutual_declaration");
+          ("item", type_mutual_declaration_to_json decl);
         ]
   | Cst.SignatureItem.TypeExtension decl ->
       Json.Object

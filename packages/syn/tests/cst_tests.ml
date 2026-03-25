@@ -208,6 +208,29 @@ let tests =
                 |> Option.map Syn.Cst.Token.text);
             Ok ()
         | _ -> Error "expected private and public type declarations");
+    Test.case "cst mutual type declarations preserve grouped bindings"
+      (fun () ->
+        let result =
+          parse_ml "type node = File of string\nand forest = node list\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.TypeMutualDeclaration decl :: _ -> (
+            match Syn.Cst.TypeMutualDeclaration.declarations decl with
+            | [ first; second ] ->
+                Test.assert_equal ~expected:(Some "node")
+                  ~actual:(Syn.Cst.Ident.name (Syn.Cst.TypeDeclaration.type_name first));
+                Test.assert_equal ~expected:(Some "forest")
+                  ~actual:(Syn.Cst.Ident.name (Syn.Cst.TypeDeclaration.type_name second));
+                Ok ()
+            | _ ->
+                Error "expected two grouped type declarations")
+        | _ ->
+            Error "expected grouped mutual type declaration");
     Test.case "cst type declarations expose direct type parameters" (fun () ->
         let result =
           parse_ml "type ('a, 'error) resultish = int\n"

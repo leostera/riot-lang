@@ -7,6 +7,7 @@ let blank_line = Doc.concat [ Doc.line; Doc.line ]
 let equals = Doc.concat [ Doc.space; Doc.equal; Doc.space ]
 let arrow = Doc.concat [ Doc.space; Doc.arrow; Doc.space ]
 let colon = Doc.concat [ Doc.space; Doc.colon; Doc.space ]
+let star = Doc.text "*"
 
 let token_text = Syn.Cst.Token.text
 let doc_of_token token = Doc.text (token_text token)
@@ -68,6 +69,19 @@ let kw_when = Doc.text "when"
 let kw_function = Doc.text "function"
 let kw_fun = Doc.text "fun"
 let kw_open = Doc.text "open"
+let kw_type = Doc.text "type"
+let kw_external = Doc.text "external"
+let kw_constraint = Doc.text "constraint"
+let kw_of = Doc.text "of"
+let kw_mutable = Doc.text "mutable"
+let kw_private = Doc.text "private"
+
+let join_map separator f = function
+  | [] ->
+      Doc.empty
+  | first :: rest ->
+      Doc.concat
+        (f first :: List.map (fun item -> Doc.concat [ separator; f item ]) rest)
 
 let group_digits_from_left ~group_size digits =
   let digits = String.split_on_char '_' digits |> String.concat "" in
@@ -163,11 +177,579 @@ let render_literal = function
   | Syn.Cst.Literal.Unit _ ->
       Doc.text "()"
 
-let rec join_map separator f = function
-  | [] -> Doc.empty
-  | [ value ] -> f value
-  | value :: rest ->
-      Doc.concat (f value :: List.map (fun item -> Doc.concat [ separator; f item ]) rest)
+let render_type_binder = function
+  | Syn.Cst.TypeBinder.Quoted binder ->
+      Doc.text (Syn.Cst.TypeBinder.text (Syn.Cst.TypeBinder.Quoted binder))
+  | Syn.Cst.TypeBinder.Bare binder ->
+      Doc.text (Syn.Cst.TypeBinder.text (Syn.Cst.TypeBinder.Bare binder))
+
+let render_arrow_label = function
+  | None ->
+      Doc.empty
+  | Some (Syn.Cst.ArrowLabel.Named { sigil_token; label_token }) ->
+      Doc.concat
+        [
+          Option.unwrap_or (Option.map doc_of_token sigil_token) ~default:Doc.empty;
+          doc_of_token label_token;
+          Doc.colon;
+        ]
+  | Some (Syn.Cst.ArrowLabel.OptionalNamed { sigil_token; label_token }) ->
+      Doc.concat [ doc_of_token sigil_token; doc_of_token label_token; Doc.colon ]
+
+let rec core_type_needs_parens_in_application = function
+  | Syn.Cst.CoreType.Arrow _
+  | Syn.Cst.CoreType.Tuple _
+  | Syn.Cst.CoreType.PolyVariant _
+  | Syn.Cst.CoreType.Record _
+  | Syn.Cst.CoreType.Object _
+  | Syn.Cst.CoreType.Alias _ ->
+      true
+  | Syn.Cst.CoreType.Parenthesized _ ->
+      false
+  | _ ->
+      false
+
+let render_type_parameter parameter =
+  let variance =
+    match Syn.Cst.TypeParameter.variance parameter with
+    | None ->
+        Doc.empty
+    | Some (Syn.Cst.TypeParameterVariance.Covariant { marker_token }) ->
+        doc_of_token marker_token
+    | Some (Syn.Cst.TypeParameterVariance.Contravariant { marker_token }) ->
+        doc_of_token marker_token
+  in
+  let injective =
+    if Syn.Cst.TypeParameter.is_injective parameter then
+      Doc.text "!"
+    else
+      Doc.empty
+  in
+  let variable =
+    match Syn.Cst.TypeParameter.type_variable parameter with
+    | Some type_variable ->
+        Doc.text (Syn.Cst.TypeVariable.text type_variable)
+    | None ->
+        Doc.text "_"
+  in
+  Doc.concat [ variance; injective; variable ]
+
+let render_type_parameters parameters =
+  match parameters with
+  | [] ->
+      Doc.empty
+  | [ parameter ] ->
+      render_type_parameter parameter
+  | parameters when List.length parameters > 6 ->
+      Doc.concat
+        [
+          Doc.lparen;
+          Doc.line;
+          Doc.indent 2
+            (join_map (Doc.concat [ Doc.comma; Doc.line ]) render_type_parameter parameters);
+          Doc.line;
+          Doc.rparen;
+        ]
+  | parameters ->
+      Doc.concat
+        [
+          Doc.lparen;
+          join_map (Doc.concat [ Doc.comma; Doc.space ]) render_type_parameter parameters;
+          Doc.rparen;
+        ]
+
+let rec core_type_arrow_arity = function
+  | Syn.Cst.CoreType.Arrow { result_type; _ } ->
+      1 + core_type_arrow_arity result_type
+  | Syn.Cst.CoreType.Parenthesized { inner; _ } ->
+      core_type_arrow_arity inner
+  | _ ->
+      0
+
+let rec core_type_has_labeled_arrow = function
+  | Syn.Cst.CoreType.Arrow { label = Some _; _ } ->
+      true
+  | Syn.Cst.CoreType.Arrow { result_type; _ } ->
+      core_type_has_labeled_arrow result_type
+  | Syn.Cst.CoreType.Parenthesized { inner; _ } ->
+      core_type_has_labeled_arrow inner
+  | _ ->
+      false
+
+let rec core_type_prefers_multiline = function
+  | Syn.Cst.CoreType.Arrow arrow ->
+      core_type_arrow_arity (Syn.Cst.CoreType.Arrow arrow) >= 5
+      || core_type_prefers_multiline arrow.parameter_type
+      || core_type_prefers_multiline arrow.result_type
+  | Syn.Cst.CoreType.Tuple { elements; _ } ->
+      List.length elements > 3 || List.exists core_type_prefers_multiline elements
+  | Syn.Cst.CoreType.PolyVariant _
+  | Syn.Cst.CoreType.Record _
+  | Syn.Cst.CoreType.Object _ ->
+      true
+  | Syn.Cst.CoreType.Parenthesized { inner; _ } ->
+      core_type_prefers_multiline inner
+  | Syn.Cst.CoreType.Alias { type_; _ } ->
+      core_type_prefers_multiline type_
+  | Syn.Cst.CoreType.Constr { arguments; _ } ->
+      List.exists core_type_prefers_multiline arguments
+  | _ ->
+      false
+
+let rec core_type_is_atomic = function
+  | Syn.Cst.CoreType.Wildcard _
+  | Syn.Cst.CoreType.Var _ ->
+      true
+  | Syn.Cst.CoreType.Constr { arguments = []; _ } ->
+      true
+  | Syn.Cst.CoreType.Constr { arguments = [ argument ]; _ } ->
+      core_type_is_atomic argument
+  | Syn.Cst.CoreType.Constr { arguments = [ Syn.Cst.CoreType.Tuple { elements; _ } ]; _ } ->
+      List.for_all core_type_is_atomic elements
+  | Syn.Cst.CoreType.Parenthesized { inner; _ } ->
+      core_type_is_atomic inner
+  | _ ->
+      false
+
+let record_field_prefers_multiline ~name_token ~field_type =
+  String.length (token_text name_token) > 32 && not (core_type_is_atomic field_type)
+
+let rec render_core_type = function
+  | Syn.Cst.CoreType.Wildcard { wildcard_token; _ } ->
+      doc_of_token wildcard_token
+  | Syn.Cst.CoreType.Var { syntax_node; _ } ->
+      doc_of_nontrivia_direct_tokens syntax_node
+  | Syn.Cst.CoreType.Constr { constructor_path; arguments; _ } ->
+      let head = doc_of_ident constructor_path in
+      (match arguments with
+      | [] ->
+          head
+      | [ Syn.Cst.CoreType.Tuple { elements; _ } ] ->
+          Doc.concat
+            [
+              Doc.lparen;
+              join_map (Doc.concat [ Doc.comma; Doc.space ]) render_core_type elements;
+              Doc.rparen;
+              Doc.space;
+              head;
+            ]
+      | [ argument ] ->
+          let argument =
+            if core_type_needs_parens_in_application argument then
+              Doc.concat [ Doc.lparen; render_core_type argument; Doc.rparen ]
+            else
+              render_core_type argument
+          in
+          Doc.concat [ argument; Doc.space; head ]
+      | arguments ->
+          Doc.concat
+            [
+              Doc.lparen;
+              join_map (Doc.concat [ Doc.comma; Doc.space ]) render_core_type arguments;
+              Doc.rparen;
+              Doc.space;
+              head;
+            ])
+  | Syn.Cst.CoreType.Alias { type_; name_token; _ } ->
+      Doc.concat [ render_core_type type_; Doc.space; Doc.text "as"; Doc.space; doc_of_token name_token ]
+  | Syn.Cst.CoreType.Poly { binders; body; _ } ->
+      Doc.concat
+        [
+          join_map (Doc.concat [ Doc.space ]) render_type_binder binders;
+          Doc.text ".";
+          Doc.space;
+          render_core_type body;
+        ]
+  | Syn.Cst.CoreType.Arrow { label; parameter_type; result_type; _ } ->
+      let render_arrow_parameter label parameter_type =
+        let parameter_type =
+          match parameter_type with
+          | Syn.Cst.CoreType.Arrow _ ->
+              Doc.concat [ Doc.lparen; render_core_type parameter_type; Doc.rparen ]
+          | _ ->
+              render_core_type parameter_type
+        in
+        Doc.concat [ render_arrow_label label; parameter_type ]
+      in
+      let rec collect params label parameter_type result_type =
+        let params = params @ [ render_arrow_parameter label parameter_type ] in
+        match result_type with
+        | Syn.Cst.CoreType.Arrow { label; parameter_type; result_type; _ } ->
+            collect params label parameter_type result_type
+        | result_type ->
+            (params, render_core_type result_type)
+      in
+      let parameters, result = collect [] label parameter_type result_type in
+      let parts = parameters @ [ result ] in
+      Doc.group
+        (join_map (Doc.concat [ Doc.space; Doc.arrow; Doc.break () ]) (fun doc -> doc) parts)
+  | Syn.Cst.CoreType.Tuple { elements; _ } ->
+      Doc.group
+        (join_map
+           (Doc.concat [ Doc.space; star; Doc.break ~flat:" " () ])
+           render_core_type elements)
+  | Syn.Cst.CoreType.Parenthesized { inner; _ } ->
+      Doc.concat [ Doc.lparen; render_core_type inner; Doc.rparen ]
+  | Syn.Cst.CoreType.PolyVariant poly_variant ->
+      render_poly_variant_type poly_variant
+  | Syn.Cst.CoreType.Record { fields; _ } ->
+      render_record_type fields
+  | Syn.Cst.CoreType.FirstClassModule { module_type; _ } ->
+      Doc.concat
+        [ Doc.lparen; Doc.text "module"; Doc.space; doc_of_module_type module_type; Doc.rparen ]
+  | other ->
+      doc_of_verbatim_syntax_node (Syn.Cst.CoreType.syntax_node other)
+
+and render_record_core_type_field (field : Syn.Cst.record_type_field) =
+  let type_doc = render_core_type field.field_type in
+  let separator =
+    if
+      core_type_prefers_multiline field.field_type
+      || record_field_prefers_multiline
+           ~name_token:field.field_name ~field_type:field.field_type
+    then
+      Doc.line
+    else
+      Doc.break ()
+  in
+  let prefix =
+    if field.is_mutable then
+      Doc.concat [ kw_mutable; Doc.space; doc_of_token field.field_name ]
+    else
+      doc_of_token field.field_name
+  in
+  Doc.group
+    (Doc.concat
+       [
+         prefix;
+         Doc.space;
+         Doc.colon;
+         Doc.indent 2 (Doc.concat [ separator; type_doc ]);
+       ])
+
+and render_record_type fields =
+  Doc.concat
+    [
+      Doc.lbrace;
+      Doc.line;
+      Doc.indent 2
+        (join_map (Doc.concat [ Doc.semi; Doc.line ]) render_record_core_type_field fields);
+      Doc.line;
+      Doc.rbrace;
+    ]
+
+and render_record_definition_field (field : Syn.Cst.RecordField.t) =
+  let field_type = Syn.Cst.RecordField.field_type field in
+  let type_doc = render_core_type field_type in
+  let separator =
+    if
+      core_type_prefers_multiline field_type
+      || record_field_prefers_multiline
+           ~name_token:(Syn.Cst.RecordField.field_name_token field)
+           ~field_type
+    then
+      Doc.line
+    else
+      Doc.break ()
+  in
+  let prefix =
+    if Syn.Cst.RecordField.is_mutable field then
+      Doc.concat [ kw_mutable; Doc.space; doc_of_token (Syn.Cst.RecordField.field_name_token field) ]
+    else
+      doc_of_token (Syn.Cst.RecordField.field_name_token field)
+  in
+  Doc.group
+    (Doc.concat
+       [
+         prefix;
+         Doc.space;
+         Doc.colon;
+         Doc.indent 2 (Doc.concat [ separator; type_doc ]);
+       ])
+
+and render_record_definition fields =
+  let body =
+    join_map (Doc.concat [ Doc.semi; Doc.line ]) render_record_definition_field fields
+  in
+  Doc.concat
+    [
+      Doc.lbrace;
+      Doc.line;
+      Doc.indent 2
+        (Doc.concat
+           [
+             body;
+             (if fields = [] then Doc.empty else Doc.semi);
+           ]);
+      Doc.line;
+      Doc.rbrace;
+    ]
+
+and render_inline_record_definition fields =
+  Doc.concat
+    [
+      Doc.lbrace;
+      Doc.line;
+      Doc.indent 2
+        (join_map (Doc.concat [ Doc.semi; Doc.line ]) render_record_definition_field fields);
+      Doc.line;
+      Doc.rbrace;
+    ]
+
+and render_object_type_field (field : Syn.Cst.object_type_field) =
+  Doc.group
+    (Doc.concat
+       [
+         doc_of_token field.field_name;
+         Doc.space;
+         Doc.colon;
+         Doc.indent 2 (Doc.concat [ Doc.break (); render_core_type field.field_type ]);
+       ])
+
+and render_object_type fields =
+  Doc.concat
+    [
+      Doc.text "<";
+      Doc.line;
+      Doc.indent 2
+        (join_map (Doc.concat [ Doc.semi; Doc.line ]) render_object_type_field fields);
+      Doc.line;
+      Doc.text ">";
+    ]
+
+and render_poly_variant_field = function
+  | Syn.Cst.RowField.Tag tag ->
+      let head = Doc.concat [ Doc.text "`"; doc_of_token tag.tag_name ] in
+      (match tag.payload_type with
+      | None ->
+          head
+      | Some payload_type ->
+          Doc.concat [ head; Doc.space; kw_of; Doc.space; render_core_type payload_type ])
+  | Syn.Cst.RowField.Inherit { type_; _ } ->
+      render_core_type type_
+
+and render_poly_variant_type ?(field_indent = 2) poly_variant =
+  let open_doc =
+    match Syn.Cst.PolyVariant.kind poly_variant with
+    | Syn.Cst.PolyVariantBound.Exact ->
+        Doc.lbracket
+    | Syn.Cst.PolyVariantBound.UpperBound { marker_token } ->
+        Doc.concat [ Doc.lbracket; doc_of_token marker_token ]
+    | Syn.Cst.PolyVariantBound.LowerBound { marker_token } ->
+        Doc.concat [ Doc.lbracket; doc_of_token marker_token ]
+  in
+  let fields =
+    Syn.Cst.PolyVariant.fields poly_variant
+    |> List.map (fun field ->
+           Doc.concat [ Doc.bar; Doc.space; render_poly_variant_field field ])
+  in
+  Doc.concat
+    [
+      open_doc;
+      Doc.line;
+      Doc.indent field_indent (Doc.join Doc.line fields);
+      Doc.line;
+      Doc.rbracket;
+    ]
+
+let poly_variant_has_inherit_field poly_variant =
+  Syn.Cst.PolyVariant.fields poly_variant
+  |> List.exists (function
+         | Syn.Cst.RowField.Inherit _ ->
+             true
+         | Syn.Cst.RowField.Tag _ ->
+             false)
+
+let render_type_constraint (constraint_ : Syn.Cst.type_constraint) =
+  Doc.concat
+    [
+      kw_constraint;
+      Doc.space;
+      render_core_type constraint_.left;
+      equals;
+      render_core_type constraint_.right;
+    ]
+
+let render_variant_constructor_arguments = function
+  | Syn.Cst.ConstructorArguments.Tuple types ->
+      Doc.group
+        (join_map (Doc.concat [ Doc.space; star; Doc.break ~flat:" " () ]) render_core_type
+           types)
+  | Syn.Cst.ConstructorArguments.Record fields ->
+      Doc.indent 2 (render_inline_record_definition fields)
+
+let render_variant_constructor constructor =
+  let head =
+    Doc.concat
+      [
+        Doc.bar;
+        Doc.space;
+        doc_of_token (Syn.Cst.VariantConstructor.constructor_name_token constructor);
+      ]
+  in
+  match
+    Syn.Cst.VariantConstructor.arguments constructor,
+    Syn.Cst.VariantConstructor.result_type constructor
+  with
+  | Some arguments, Some result_type ->
+      let payload = render_variant_constructor_arguments arguments in
+      Doc.concat [ head; Doc.space; Doc.colon; Doc.space; payload; arrow; render_core_type result_type ]
+  | Some arguments, None ->
+      Doc.concat [ head; Doc.space; kw_of; Doc.space; render_variant_constructor_arguments arguments ]
+  | None, Some result_type ->
+      Doc.concat [ head; Doc.space; Doc.colon; Doc.space; render_core_type result_type ]
+  | None, None ->
+      head
+
+let render_type_definition = function
+  | Syn.Cst.TypeDefinition.Abstract ->
+      None
+  | Syn.Cst.TypeDefinition.Alias { manifest; _ } ->
+      Some (render_core_type manifest)
+  | Syn.Cst.TypeDefinition.Record { fields; _ } ->
+      Some (render_record_definition fields)
+  | Syn.Cst.TypeDefinition.Variant { constructors; _ } ->
+      Some (Doc.join Doc.line (List.map render_variant_constructor constructors))
+  | Syn.Cst.TypeDefinition.PolyVariant poly_variant ->
+      (match Syn.Cst.PolyVariant.kind poly_variant with
+      | Syn.Cst.PolyVariantBound.Exact when not (poly_variant_has_inherit_field poly_variant) ->
+          let fields =
+            Syn.Cst.PolyVariant.fields poly_variant
+            |> List.map (fun field ->
+                   Doc.concat [ Doc.bar; Doc.space; render_poly_variant_field field ])
+          in
+          Some
+            (Doc.concat
+               [
+                 Doc.indent 2 (Doc.concat [ Doc.lbracket; Doc.line; Doc.join Doc.line fields ]);
+                 Doc.line;
+                 Doc.rbracket;
+               ])
+      | Syn.Cst.PolyVariantBound.Exact
+      | Syn.Cst.PolyVariantBound.UpperBound _
+      | Syn.Cst.PolyVariantBound.LowerBound _ ->
+          Some (render_poly_variant_type poly_variant))
+  | Syn.Cst.TypeDefinition.Extensible _ ->
+      Some (Doc.text "..")
+  | Syn.Cst.TypeDefinition.FirstClassModule { module_type; _ } ->
+      Some
+        (Doc.concat
+           [ Doc.lparen; Doc.text "module"; Doc.space; doc_of_module_type module_type; Doc.rparen ])
+  | Syn.Cst.TypeDefinition.Object { fields; _ } ->
+      Some (render_object_type fields)
+
+type type_definition_layout =
+  | Inline_definition
+  | Inline_opening_definition
+  | Broken_definition
+  | Broken_definition_no_outer_indent
+
+let type_definition_layout decl =
+  match Syn.Cst.TypeDeclaration.type_definition decl with
+  | Syn.Cst.TypeDefinition.Record _
+  | Syn.Cst.TypeDefinition.Object _ ->
+      Inline_opening_definition
+  | Syn.Cst.TypeDefinition.PolyVariant poly_variant ->
+      (match Syn.Cst.PolyVariant.kind poly_variant with
+      | Syn.Cst.PolyVariantBound.Exact ->
+          if poly_variant_has_inherit_field poly_variant then
+            Inline_opening_definition
+          else
+            Broken_definition_no_outer_indent
+      | Syn.Cst.PolyVariantBound.UpperBound _
+      | Syn.Cst.PolyVariantBound.LowerBound _ ->
+          Inline_opening_definition)
+  | Syn.Cst.TypeDefinition.Variant _ ->
+      Broken_definition
+  | Syn.Cst.TypeDefinition.Alias { manifest; _ } ->
+      if core_type_prefers_multiline manifest then
+        Broken_definition
+      else
+        Inline_definition
+  | Syn.Cst.TypeDefinition.FirstClassModule _
+  | Syn.Cst.TypeDefinition.Extensible _ ->
+      Inline_definition
+  | Syn.Cst.TypeDefinition.Abstract ->
+      Inline_definition
+
+let render_type_declaration_with_keyword keyword decl =
+  let params = render_type_parameters (Syn.Cst.TypeDeclaration.type_params decl) in
+  let header =
+    if params = Doc.empty then
+      Doc.concat [ keyword; Doc.space; doc_of_ident (Syn.Cst.TypeDeclaration.type_name decl) ]
+    else
+      Doc.concat
+        [
+          keyword;
+          Doc.space;
+          params;
+          Doc.space;
+          doc_of_ident (Syn.Cst.TypeDeclaration.type_name decl);
+        ]
+  in
+  let header =
+    header
+  in
+  let definition =
+    match Syn.Cst.TypeDeclaration.private_flag decl with
+    | Syn.Cst.PrivateFlag.Public ->
+        render_type_definition (Syn.Cst.TypeDeclaration.type_definition decl)
+    | Syn.Cst.PrivateFlag.Private _ ->
+        Option.map
+          (fun definition -> Doc.concat [ kw_private; Doc.space; definition ])
+          (render_type_definition (Syn.Cst.TypeDeclaration.type_definition decl))
+  in
+  let with_definition =
+    match definition with
+    | None ->
+        header
+    | Some definition ->
+        (match type_definition_layout decl with
+        | Inline_definition ->
+            Doc.concat [ header; equals; definition ]
+        | Inline_opening_definition ->
+            Doc.concat [ header; Doc.space; Doc.equal; Doc.space; definition ]
+        | Broken_definition ->
+            Doc.concat [ header; Doc.space; Doc.equal; Doc.line; Doc.indent 2 definition ]
+        | Broken_definition_no_outer_indent ->
+            Doc.concat [ header; Doc.space; Doc.equal; Doc.line; definition ])
+  in
+  let with_constraints =
+    Syn.Cst.TypeDeclaration.constraints decl
+    |> List.fold_left
+         (fun acc constraint_ ->
+           Doc.concat [ acc; Doc.line; Doc.indent 2 (render_type_constraint constraint_) ])
+         with_definition
+  in
+  with_constraints
+
+let render_type_mutual_declaration decl =
+  match Syn.Cst.TypeMutualDeclaration.declarations decl with
+  | [] ->
+      Doc.empty
+  | first :: rest ->
+      Doc.join blank_line
+        (render_type_declaration_with_keyword kw_type first
+        :: List.map (render_type_declaration_with_keyword kw_and) rest)
+
+let render_external_declaration (decl : Syn.Cst.external_declaration) =
+  let primitive_names =
+    decl.primitive_name_tokens |> List.map doc_of_token |> Doc.join Doc.space
+  in
+  Doc.concat
+    [
+      kw_external;
+      Doc.space;
+      doc_of_token decl.name_token;
+      Doc.space;
+      Doc.colon;
+      Doc.space;
+      render_core_type decl.type_;
+      Doc.space;
+      Doc.equal;
+      Doc.space;
+      primitive_names;
+    ]
 
 let rec render_pattern = function
   | Syn.Cst.Pattern.Identifier { name_token; _ } ->
@@ -1235,6 +1817,12 @@ let render_open_target = function
 let render_structure_item = function
   | Syn.Cst.StructureItem.LetBinding binding ->
       render_let_binding binding
+  | Syn.Cst.StructureItem.TypeDeclaration decl ->
+      render_type_declaration_with_keyword kw_type decl
+  | Syn.Cst.StructureItem.TypeMutualDeclaration decl ->
+      render_type_mutual_declaration decl
+  | Syn.Cst.StructureItem.ExternalDeclaration decl ->
+      render_external_declaration decl
   | Syn.Cst.StructureItem.OpenStatement open_ ->
       Doc.concat
         [
@@ -1249,7 +1837,32 @@ let render_structure_item = function
       doc_of_node (Syn.Cst.StructureItem.syntax_node item)
 
 let render_signature_item item =
-  doc_of_node (Syn.Cst.SignatureItem.syntax_node item)
+  match item with
+  | Syn.Cst.SignatureItem.TypeDeclaration decl ->
+      render_type_declaration_with_keyword kw_type decl
+  | Syn.Cst.SignatureItem.TypeMutualDeclaration decl ->
+      render_type_mutual_declaration decl
+  | Syn.Cst.SignatureItem.OpenStatement open_ ->
+      Doc.concat
+        [
+          kw_open;
+          (if open_.bang_token = None then Doc.empty else Doc.text "!");
+          Doc.space;
+          render_open_target open_.target;
+        ]
+  | Syn.Cst.SignatureItem.ValueDeclaration decl ->
+      Doc.concat
+        [
+          Doc.text "val";
+          Doc.space;
+          doc_of_token decl.name_token;
+          Doc.space;
+          Doc.colon;
+          Doc.space;
+          render_core_type decl.type_;
+        ]
+  | item ->
+      doc_of_node (Syn.Cst.SignatureItem.syntax_node item)
 
 let render_top_level_items ~source_node ~items ~render_item =
   let flush_pending pending acc =
