@@ -7057,3 +7057,52 @@ let create_from_ceibo ~kind tree =
   match lift ~kind tree with
   | cst -> Ok cst
   | exception Bail error -> Error error
+
+let structure_item_payload_nodes_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.STRUCT_EXPR ->
+      direct_non_trivia_nodes node
+  | _ ->
+      [ node ]
+
+let signature_item_payload_nodes_from_node node =
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.SIGNATURE ->
+      direct_non_trivia_nodes node
+  | Syntax_kind.IDENT_EXPR -> (
+      match direct_non_trivia_tokens node with
+      | sig_kw :: _
+        when String.equal (Ceibo.Red.SyntaxToken.text sig_kw) "sig" ->
+          direct_non_trivia_nodes node
+      | _ ->
+          [ node ])
+  | _ ->
+      [ node ]
+
+let structure_items_from_syntax_node node =
+  match structure_item_payload_nodes_from_node node |> List.concat_map structure_items_from_node with
+  | items -> Ok items
+  | exception Bail error -> Error error
+
+let structure_items_from_syntax_nodes nodes =
+  match
+    nodes
+    |> List.concat_map structure_item_payload_nodes_from_node
+    |> List.concat_map structure_items_from_node
+  with
+  | items -> Ok items
+  | exception Bail error -> Error error
+
+let signature_items_from_syntax_node node =
+  match signature_item_payload_nodes_from_node node |> List.concat_map signature_items_from_node with
+  | items -> Ok items
+  | exception Bail error -> Error error
+
+let signature_items_from_syntax_nodes nodes =
+  match
+    nodes
+    |> List.concat_map signature_item_payload_nodes_from_node
+    |> List.concat_map signature_items_from_node
+  with
+  | items -> Ok items
+  | exception Bail error -> Error error

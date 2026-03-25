@@ -10,3 +10,15 @@ type error = {
 val create_from_ceibo :
   kind:[ `Implementation | `Interface ] ->
   Cst.green_node -> (Cst.t, error) result
+
+val structure_items_from_syntax_node :
+  Cst.syntax_node -> (Cst.StructureItem.t list, error) result
+
+val structure_items_from_syntax_nodes :
+  Cst.syntax_node list -> (Cst.StructureItem.t list, error) result
+
+val signature_items_from_syntax_node :
+  Cst.syntax_node -> (Cst.SignatureItem.t list, error) result
+
+val signature_items_from_syntax_nodes :
+  Cst.syntax_node list -> (Cst.SignatureItem.t list, error) result

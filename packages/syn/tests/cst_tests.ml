@@ -716,6 +716,34 @@ let tests =
             Ok ()
         | _ ->
             Error "expected module declaration with structure module expression");
+    Test.case "cst builder can reify nested structure items from module expressions"
+      (fun () ->
+        let result = parse_ml "module Foo_bar = struct let answer = 42 end\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
+            {
+              module_expression =
+                Some
+                  (Syn.Cst.ModuleExpression.Structure { item_syntax_nodes; _ });
+              _;
+            }
+          :: _ -> (
+            match Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes with
+            | Ok [ Syn.Cst.StructureItem.LetBinding binding ] ->
+                Test.assert_equal ~expected:"answer"
+                  ~actual:(Syn.Cst.LetBinding.name binding);
+                Ok ()
+            | Ok _ ->
+                Error "expected nested structure items to lift a let binding"
+            | Error _ ->
+                Error "expected nested structure items to reify successfully")
+        | _ ->
+            Error "expected module declaration with structure module expression");
     Test.case "cst module declarations preserve constrained module expressions"
       (fun () ->
         let result =
@@ -1138,6 +1166,33 @@ let tests =
             { module_type = Some (Syn.Cst.ModuleType.Signature _); _ }
           :: _ ->
             Ok ()
+        | _ ->
+            Error "expected module type declaration with signature body");
+    Test.case "cst builder can reify nested signature items from module types"
+      (fun () ->
+        let result = parse_ml "module type S = sig val x : int end\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration
+            {
+              module_type =
+                Some (Syn.Cst.ModuleType.Signature { signature_syntax_node; _ });
+              _;
+            }
+          :: _ -> (
+            match Syn.CstBuilder.signature_items_from_syntax_node signature_syntax_node with
+            | Ok [ Syn.Cst.SignatureItem.ValueDeclaration decl ] ->
+                Test.assert_equal ~expected:"x"
+                  ~actual:(Syn.Cst.Token.text decl.name_token);
+                Ok ()
+            | Ok _ ->
+                Error "expected nested signature items to lift a val declaration"
+            | Error _ ->
+                Error "expected nested signature items to reify successfully")
         | _ ->
             Error "expected module type declaration with signature body");
     Test.case "cst module type declarations preserve with-constraint bodies"
