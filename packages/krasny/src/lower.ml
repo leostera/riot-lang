@@ -2241,7 +2241,7 @@ and render_case ?(force_multiline_body = false) ?(force_leading_bar = false)
           Doc.space;
           doc_of_token case.arrow_token;
           Doc.line;
-          Doc.indent 4 body;
+          Doc.indent 2 body;
         ]
     | _ ->
         Doc.concat [ prefix; pattern; guard; Doc.space; doc_of_token case.arrow_token; Doc.space; body ]
@@ -2689,7 +2689,10 @@ and render_binding_value ~force_multiline_body ~parameters ~value =
               Doc.indent 2 body;
             ]
       | _ ->
-          render_expression value)
+          if expression_requires_break_after_equals value then
+            render_block_expression value
+          else
+            render_expression value)
   | parameters ->
       let parameters = parameters |> List.map render_parameter |> Doc.join Doc.space in
       let has_multiline_parameters = Doc.is_multiline parameters in
