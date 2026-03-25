@@ -6,6 +6,7 @@
 
 # 03xx bindings and control flow
 0300_bindings_and_control_flow.ml
+0310_let_mutual_and_bindings.ml
 
 # 04xx functions, match, and patterns
 0400_functions_match_and_patterns.ml

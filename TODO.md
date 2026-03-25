@@ -12,11 +12,29 @@ This file is _yours_. Keep it up to date after every big change.
 
 ## TASKS
 
-- [ ] Work on Krasny
+- [ ] Make Krasny able to format the entire codebase without losing information
 - [ ] Work on implementing the remaining lints
 - [ ] Work on fixing the broken tests
+- [ ] Fix `syn`'s fixture mess
 
-## syn Fixture Audit Plan
+### Krasny formats the whole codebase
+
+You are done with this task when we can run: `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast` and there are no failures.
+
+Otherwise, if you find a failure, you will:
+1. call `syn print-cst <file>`
+2. call `syn print-ceibo <file>`
+3. call `krasy syntax-hash <file>`
+4. call `krasy format <file>`
+5. you will identify the failure and create a small fixture in packages/krasny/tests/fixtures/
+6. you will run `./packages/krasny/tests/test_runner.py --filter <new fixture>` to verify it fails
+7. you will enter the _fix loop_:
+   a. modify krasny or even syn if you need to
+   b. rerun the test runner
+   c. if the test still fails, go back to a
+
+
+### syn Fixture Audit Plan
 
 Goal: make `packages/syn/tests/fixtures` tight, high-signal, and cheap to maintain without weakening lossless or regression coverage.
 
@@ -110,7 +128,7 @@ Rough guidelines for formatting decisions:
   same for match arms, put them one in each line
 * remove parenthesis wherever possible
 * and format large numbers with _s by default: 1000 -> 1_000, 10022 -> 10_022 
-- current fixture corpus status: category corpus is `7/8` green, copied real-file regressions are `0/11` green, the unified manifest is `7/19` green overall, `krasny:format_tests` is `19/39`, and `syn:cst_tests` is `154/154`
+- current fixture corpus status: category corpus is `9/9` green, copied real-file regressions are `11/11` green, the unified manifest is `20/20` green overall, `krasny:format_tests` is `8/8`, and `syn:cst_tests` is `154/154`
 
 ### Trivia
 
@@ -240,7 +258,7 @@ Rough guidelines for formatting decisions:
 
 - [x] `LET_BINDING`
 - [ ] `LET_REC_BINDING`
-- [ ] `LET_MUTUAL_DECL`
+- [x] `LET_MUTUAL_DECL`
 - [x] `TYPE_DECL`
 - [x] `TYPE_MUTUAL_DECL`
 - [ ] `EXCEPTION_DECL`

@@ -3011,7 +3011,13 @@ and render_let_binding_group_item (binding : Syn.Cst.let_binding) =
     ~parameters:binding.parameters ~value:binding.value
 
 let render_let_binding (binding : Syn.Cst.let_binding) =
-  render_let_binding_group_item binding
+  let first = render_let_binding_group_item binding in
+  let trailing =
+    binding.and_bindings
+    |> List.map (fun and_binding ->
+           Doc.concat [ Doc.line; render_let_binding_group_item and_binding ])
+  in
+  Doc.concat (first :: trailing)
 
 let nested_structure_items_from_syntax_nodes syntax_nodes =
   Syn.CstBuilder.structure_items_from_syntax_nodes syntax_nodes

@@ -808,7 +808,8 @@ and descend_let_binding walk ctx binding =
   let ctx =
     List.fold_left walk.parameter ctx (Cst.LetBinding.parameters binding)
   in
-  walk.expression ctx (Cst.LetBinding.value binding)
+  let ctx = walk.expression ctx (Cst.LetBinding.value binding) in
+  List.fold_left walk.let_binding ctx (Cst.LetBinding.and_bindings binding)
 
 and descend_class_field walk ctx (field : Cst.class_field) =
   match field with

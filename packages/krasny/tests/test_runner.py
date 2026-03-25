@@ -288,6 +288,117 @@ class FixtureRunner:
         return 1
 
 
+class WorkspaceVerifier:
+    def __init__(self, context: RunnerContext):
+        self.context = context
+
+    def discover_sources(self, filter_pattern: Optional[str]) -> List[Path]:
+        cmd = [
+            "/bin/zsh",
+            "-lc",
+            "git ls-files '*.ml' '*.mli'",
+        ]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=self.context.workspace_root,
+        )
+        if result.returncode != 0:
+            print(f"{RED}Failed:{NC} could not list workspace sources via git ls-files")
+            if result.stderr:
+                print(result.stderr.rstrip())
+            return []
+
+        files: List[Path] = []
+        for rel in result.stdout.splitlines():
+            rel = rel.strip()
+            if not rel:
+                continue
+            if filter_pattern and filter_pattern not in rel:
+                continue
+            files.append(self.context.workspace_root / rel)
+        return files
+
+    def verify_one(self, source_path: Path) -> tuple[bool, str]:
+        original_hash = self.context.run_krasny(
+            "syntax-hash",
+            source_path,
+            timeout_seconds=20.0,
+        )
+        if original_hash.returncode != 0:
+            detail = f"syntax-hash exited {original_hash.returncode}"
+            if original_hash.stderr:
+                detail += f": {original_hash.stderr.rstrip()}"
+            return False, detail
+
+        formatted = self.context.run_krasny(
+            "format",
+            source_path,
+            timeout_seconds=20.0,
+        )
+        if formatted.returncode != 0:
+            detail = f"format exited {formatted.returncode}"
+            if formatted.stderr:
+                detail += f": {formatted.stderr.rstrip()}"
+            return False, detail
+
+        suffix = source_path.suffix or ".ml"
+        with tempfile.TemporaryDirectory(prefix="krasny-workspace-") as tmpdir:
+            tmp_path = Path(tmpdir) / ("formatted" + suffix)
+            tmp_path.write_text(formatted.stdout)
+            formatted_hash = self.context.run_krasny(
+                "syntax-hash",
+                tmp_path,
+                timeout_seconds=20.0,
+            )
+
+        if formatted_hash.returncode != 0:
+            detail = f"formatted syntax-hash exited {formatted_hash.returncode}"
+            if formatted_hash.stderr:
+                detail += f": {formatted_hash.stderr.rstrip()}"
+            return False, detail
+
+        if original_hash.stdout == formatted_hash.stdout:
+            return True, "syntax-hash invariant"
+
+        detail = "\n".join(
+            [
+                "syntax-hash mismatch",
+                f"  original: {original_hash.stdout.strip()}",
+                f"  formatted: {formatted_hash.stdout.strip()}",
+            ]
+        )
+        return False, detail
+
+    def run(self, filter_pattern: Optional[str]) -> int:
+        sources = self.discover_sources(filter_pattern)
+        if not sources:
+            print(f"{YELLOW}No workspace sources matched.{NC}")
+            return 0
+
+        passed = 0
+        failed = 0
+        for source in sources:
+            ok, detail = self.verify_one(source)
+            if ok:
+                print(f"{GREEN}✓{NC} {source}")
+                passed += 1
+            else:
+                print(f"{RED}✗{NC} {source}")
+                print(f"  {detail}")
+                failed += 1
+
+        print()
+        if failed == 0:
+            print(f"{GREEN}Passed:{NC} {passed}")
+            return 0
+
+        print(f"{RED}Failed:{NC} {failed}")
+        print(f"{GREEN}Passed:{NC} {passed}")
+        return 1
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run krasny fixture expectations and syntax-hash roundtrips",
@@ -301,10 +412,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         action="store_true",
         help="Rewrite .expected files from current formatter output",
     )
+    parser.add_argument(
+        "--verify-workspace",
+        action="store_true",
+        help="Verify syntax-hash invariance for all tracked .ml/.mli files (read-only)",
+    )
     args = parser.parse_args(argv)
 
     workspace_root = Path(__file__).resolve().parents[3]
     context = RunnerContext(workspace_root)
+    if args.verify_workspace:
+        verifier = WorkspaceVerifier(context)
+        return verifier.run(args.filter)
+
     runner = FixtureRunner(context)
     return runner.run(args.filter, refresh=args.refresh)
 

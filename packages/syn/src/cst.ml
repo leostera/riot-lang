@@ -1491,6 +1491,7 @@ and let_binding = {
   binding_name : Token.t option;
   parameters : Parameter.t list;
   value : expression;
+  and_bindings : let_binding list;
   is_recursive : bool;
 }
 
@@ -2423,6 +2424,7 @@ module LetBinding = struct
     binding_name : Token.t option;
     parameters : Parameter.t list;
     value : expression;
+    and_bindings : let_binding list;
     is_recursive : bool;
   }
 
@@ -2440,6 +2442,7 @@ module LetBinding = struct
 
   let parameters binding = binding.parameters
   let value binding = binding.value
+  let and_bindings binding = binding.and_bindings
   let value_syntax_node binding = Expression.syntax_node binding.value
   let is_recursive binding = binding.is_recursive
 

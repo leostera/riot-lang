@@ -1545,6 +1545,10 @@ and let_binding_to_json binding =
           Json.Array (List.map parameter_to_json (Cst.LetBinding.parameters binding))
         );
         ("value", expression_to_json (Cst.LetBinding.value binding));
+        ( "and_bindings",
+          Json.Array
+            (List.map let_binding_to_json (Cst.LetBinding.and_bindings binding))
+        );
         ("is_recursive", Json.Bool (Cst.LetBinding.is_recursive binding));
       ]
 

@@ -3980,6 +3980,7 @@ and let_expression_from_node ~is_recursive_binding node =
                       value =
                         binding_value_from_prefix ~binding_syntax_node:node
                           ~prefix_nodes:prefix_nodes ~value_node:value_node;
+                      and_bindings = [];
                       is_recursive = is_recursive_binding;
                     }
             | [] -> None)
@@ -4382,6 +4383,7 @@ and class_let_expression_from_node ~is_recursive_binding node =
                         value =
                           binding_value_from_prefix ~binding_syntax_node:node
                             ~prefix_nodes:prefix_nodes ~value_node:value_node;
+                        and_bindings = [];
                         is_recursive = is_recursive_binding;
                       }
               | [] -> None)
@@ -4642,6 +4644,7 @@ and let_binding_from_binding_operator_binding ~binding_syntax_node
         simple_pattern_name_token (Cst.Pattern.syntax_node clause_pattern);
       parameters = [];
       value = clause_value;
+      and_bindings = [];
       is_recursive = false;
     }
 
@@ -5258,15 +5261,8 @@ let type_extension_from_node node =
       | None -> None)
   | _ -> None
 
-let let_binding_from_node ~is_recursive_binding node =
-  let binding_keyword_token =
-    match direct_token_with_text node "let" with
-    | Some keyword_token ->
-        keyword_token
-    | None ->
-        bail ~message:"expected let-binding keyword during Ceibo -> CST lifting"
-          ~syntax_node:node ~context:[ "let_binding" ]
-  in
+let let_binding_from_node_with_keyword ~keyword_token ~is_recursive_binding node =
+  let binding_keyword_token = keyword_token in
   let binding_rec_token = direct_token_with_text node "rec" in
   let binding_equals_token =
     match direct_token_with_text node "=" with
@@ -5305,10 +5301,27 @@ let let_binding_from_node ~is_recursive_binding node =
                 value =
                   binding_value_from_prefix ~binding_syntax_node:node
                     ~prefix_nodes:prefix_nodes ~value_node:value_node;
+                and_bindings = [];
                 is_recursive = is_recursive_binding;
               }
       | [] -> None)
   | [] -> None
+
+let let_binding_from_node ~is_recursive_binding node =
+  let binding_keyword_token =
+    match direct_token_with_text node "let" with
+    | Some keyword_token ->
+        keyword_token
+    | None -> (
+        match direct_token_with_text node "and" with
+        | Some keyword_token ->
+            keyword_token
+        | None ->
+            bail ~message:"expected let-binding keyword during Ceibo -> CST lifting"
+              ~syntax_node:node ~context:[ "let_binding" ])
+  in
+  let_binding_from_node_with_keyword ~keyword_token:binding_keyword_token
+    ~is_recursive_binding node
 
 let let_expression_binding_from_node ~is_recursive_binding node =
   if (not is_recursive_binding) && is_binding_operator_expression_node node then
@@ -5359,6 +5372,7 @@ let let_expression_binding_from_node ~is_recursive_binding node =
                 value =
                   binding_value_from_prefix ~binding_syntax_node:node
                     ~prefix_nodes:prefix_nodes ~value_node:bound_value_node;
+                and_bindings = [];
                 is_recursive = is_recursive_binding;
               }
   | _ -> None
@@ -5784,11 +5798,62 @@ let rec structure_items_from_node node =
       | Some binding -> [ Cst.StructureItem.LetBinding binding ]
       | None -> unsupported_item node)
   | Syntax_kind.LET_MUTUAL_DECL ->
-      direct_non_trivia_nodes node
-      |> List.filter (fun child ->
-             let kind = Ceibo.Red.SyntaxNode.kind child in
-             kind = Syntax_kind.LET_BINDING || kind = Syntax_kind.LET_REC_BINDING)
-      |> List.concat_map structure_items_from_node
+      let binding_nodes =
+        direct_non_trivia_nodes node
+        |> List.filter (fun child ->
+               let kind = Ceibo.Red.SyntaxNode.kind child in
+               kind = Syntax_kind.LET_BINDING || kind = Syntax_kind.LET_REC_BINDING)
+      in
+      (match binding_nodes with
+      | first_node :: rest_nodes ->
+          let first_binding_tokens = direct_non_trivia_tokens first_node in
+          let is_recursive_group =
+            first_binding_tokens
+            |> List.exists (fun token ->
+                   String.equal (Ceibo.Red.SyntaxToken.text token) "rec")
+          in
+          let let_keyword_token =
+            match List.find_opt (fun token -> String.equal (Ceibo.Red.SyntaxToken.text token) "let") first_binding_tokens with
+            | Some token ->
+                token
+            | None ->
+                bail
+                  ~message:"expected let keyword for let-mutual declaration during Ceibo -> CST lifting"
+                  ~syntax_node:first_node ~context:[ "item"; "let_mutual_declaration" ]
+          in
+          let group_tokens = direct_non_trivia_tokens node in
+          let and_keyword_tokens =
+            group_tokens
+            |> List.filter (fun token -> String.equal (Ceibo.Red.SyntaxToken.text token) "and")
+          in
+          (match
+             let_binding_from_node_with_keyword
+               ~keyword_token:(token let_keyword_token)
+               ~is_recursive_binding:is_recursive_group first_node
+           with
+          | Some first_binding ->
+              let and_bindings =
+                rest_nodes
+                |> List.mapi (fun index binding_node ->
+                       match List.nth_opt and_keyword_tokens index with
+                       | Some and_keyword_token ->
+                           let_binding_from_node_with_keyword
+                             ~keyword_token:(token and_keyword_token)
+                             ~is_recursive_binding:is_recursive_group binding_node
+                       | None ->
+                           bail
+                             ~message:
+                               "expected matching and keyword for let-mutual declaration during Ceibo -> CST lifting"
+                             ~syntax_node:binding_node
+                             ~context:[ "item"; "let_mutual_declaration"; "and_bindings" ])
+                |> List.filter_map (fun value -> value)
+              in
+              let grouped_binding = { first_binding with and_bindings } in
+              [ Cst.StructureItem.LetBinding grouped_binding ]
+          | None ->
+              unsupported_item node)
+      | [] ->
+          unsupported_item node)
   | Syntax_kind.CLASS_DECL -> (
       match class_declaration_from_node node with
       | Some decl -> [ Cst.StructureItem.ClassDeclaration decl ]
@@ -6966,10 +7031,23 @@ let validate_structure_item ~context = function
       |> List.iter (validate_type_declaration ~context)
   | Cst.StructureItem.TypeExtension decl ->
       validate_type_extension ~context decl
-  | Cst.StructureItem.LetBinding { binding_pattern; value; _ } ->
+  | Cst.StructureItem.LetBinding { binding_pattern; value; and_bindings; _ } ->
       validate_pattern ~context:("item.let_binding.pattern" :: context)
         binding_pattern;
-      validate_expression ~context:("item.let_binding.value" :: context) value
+      validate_expression ~context:("item.let_binding.value" :: context) value;
+      List.iteri
+        (fun index binding ->
+          validate_pattern
+            ~context:
+              (("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].pattern")
+              :: context)
+            (Cst.LetBinding.binding_pattern binding);
+          validate_expression
+            ~context:
+              (("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].value")
+              :: context)
+            (Cst.LetBinding.value binding))
+        and_bindings
   | Cst.StructureItem.Expression expr ->
       validate_expression ~context:("item.expression" :: context) expr
   | Cst.StructureItem.ClassDeclaration decl ->

@@ -2657,8 +2657,10 @@ and function_expression = {
 (** A single `let` binding.
 
     This shape is used both for item-level bindings and for nested `and`
-    bindings inside `let ... in ...` expressions. `binding_name` is extracted
-    only when the binding pattern has a simple recoverable name.
+    bindings inside `let ... in ...` expressions. For top-level mutual groups,
+    `and_bindings` stores trailing clauses under the leading binding.
+    `binding_name` is extracted only when the binding pattern has a simple
+    recoverable name.
 *)
 and let_binding = {
   syntax_node : syntax_node;
@@ -2670,6 +2672,7 @@ and let_binding = {
   binding_name : Token.t option;
   parameters : Parameter.t list;
   value : expression;
+  and_bindings : let_binding list;
   is_recursive : bool;
 }
 
@@ -3776,6 +3779,7 @@ module LetBinding : sig
     binding_name : Token.t option;
     parameters : Parameter.t list;
     value : expression;
+    and_bindings : let_binding list;
     is_recursive : bool;
   }
 
@@ -3789,6 +3793,7 @@ module LetBinding : sig
   val name : t -> string
   val parameters : t -> Parameter.t list
   val value : t -> Expression.t
+  val and_bindings : t -> t list
   val value_syntax_node : t -> syntax_node
   val is_recursive : t -> bool
   val is_function : t -> bool
