@@ -355,6 +355,8 @@ class WorkspaceVerifier:
             rel = rel.strip()
             if not rel:
                 continue
+            if rel.startswith("packages/krasny/tests/fixtures/"):
+                continue
             if filter_pattern and filter_pattern not in rel:
                 continue
             files.append(self.context.workspace_root / rel)
