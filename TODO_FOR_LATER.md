@@ -45,9 +45,11 @@ Done criteria:
 - [x] Upstream `syn`'s red-tree helper surface into `packages/ceibo`:
   `Red.new_token`, `SyntaxNode.children_list`, `SyntaxNode.direct_tokens`,
   `SyntaxNode.direct_nodes`, and `SyntaxNode.tokens`.
-- [ ] Delete `packages/syn/src/ceibo` once tusk no longer generates or expects
-  `Syn__Ceibo__Aliases` / `Syn__Ceibo*` objects for the `syn` package when the
-  vendored subtree is absent.
+- [x] Delete `packages/syn/src/ceibo`; `packages/ceibo` is now the single
+  source of truth for `syn`'s red-green tree surface.
+- [ ] Fix the `tusk` incremental build bug for `syn` after the ceibo dedupe:
+  `tusk build syn` can fail in a dirty incremental state after removing the
+  vendored subtree, while `tusk clean && tusk build syn` succeeds.
 
 ## Verification Commands
 

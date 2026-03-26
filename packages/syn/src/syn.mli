@@ -76,7 +76,7 @@ open Std
 
 (** # Module Exports *)
 
-module Ceibo : module type of Ceibo
+module Ceibo = Ceibo
 (** Red-green syntax tree library. See `Ceibo` module documentation. *)
 
 module Error : module type of Error

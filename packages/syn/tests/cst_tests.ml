@@ -10,7 +10,7 @@ let sample_ml = Path.v "sample.ml"
 let sample_mli = Path.v "sample.mli"
 
 type parsed = {
-  tree : (Syn.SyntaxKind.t, string) Syn.Ceibo.Green.node;
+  tree : (Syn.SyntaxKind.t, string) Ceibo.Green.node;
   diagnostics : Syn.Diagnostic.t list;
   cst : Syn.Cst.source_file option;
 }
@@ -3252,7 +3252,7 @@ let tests =
             }
           :: _ ->
             Test.assert_true
-              (String.equal (Syn.Ceibo.Red.SyntaxToken.text syntax_token) "true");
+              (String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "true");
             Ok ()
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst typed expressions preserve the wrapped expression and type node"
