@@ -17,18 +17,12 @@ Cleanup order:
 - [ ] Collapse near-duplicate micro-fixture families into one canonical fixture plus one deliberate edge-case fixture where needed.
 - [ ] Aggressively prune the generator-era `0500-0900` type matrix, especially the overlapping arrow, tuple, polymorphic, recursive, and record-definition families.
 - [ ] Rebalance the suite toward repo invariants: lossless parsing, `.ml` vs `.mli`, module/signature structure, and bug-driven regressions.
-- [ ] Move fixture-generator scripts out of `packages/syn/tests/fixtures/`; they are tooling, not fixtures.
+- [x] Move fixture-generator scripts out of `packages/syn/tests/fixtures/`; they are tooling, not fixtures.
 - [x] Add a fixture audit script for `syn`, modeled after `packages/krasny/tests/fixture_audit.py`, so duplicates and near-duplicates stay visible.
 
 Target organization:
 - [ ] Split fixtures by purpose instead of flat chronology.
-- [ ] Create a `smoke` bucket with one representative per syntax family.
-- [ ] Create a `lossless` bucket for trivia/span/token-retention fixtures.
-- [ ] Create an `interfaces` bucket for `.mli` and signature-specific fixtures.
-- [ ] Create a `regressions` bucket for bug-driven fixtures, especially the `9000+` series.
-- [ ] Create an `upstream` bucket for the `ocaml_*` corpus.
-- [ ] Create a `real_world` bucket for copied real-file snippets.
-- [ ] Remove numeric-ID collisions, or drop numeric prefixes entirely once directory names carry the structure.
+- [ ] Learn from the krasny fixtures organization
 
 Families that need the most attention:
 - [ ] Atom/operator microcases in `0000-0049`; many differ only by operator token or redundant parens.
