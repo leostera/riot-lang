@@ -1195,7 +1195,14 @@ let rec render_core_type = function
               head;
             ])
   | Syn.Cst.CoreType.Alias { type_; name_token; _ } ->
-      Doc.concat [ render_core_type type_; Doc.space; Doc.text "as"; Doc.space; doc_of_token name_token ]
+      let alias_name = token_text name_token in
+      let alias_name =
+        if String.starts_with ~prefix:"'" alias_name then
+          alias_name
+        else
+          "'" ^ alias_name
+      in
+      Doc.concat [ render_core_type type_; Doc.space; Doc.text "as"; Doc.space; Doc.text alias_name ]
   | Syn.Cst.CoreType.Attribute { type_; attribute; _ } ->
       Doc.concat [ render_core_type type_; Doc.space; render_attribute attribute ]
   | Syn.Cst.CoreType.Poly { syntax_node; binders; body; _ } ->
@@ -2508,6 +2515,9 @@ let rec render_expression expression =
   | Syn.Cst.Expression.Typed { expression; type_; _ } ->
       Doc.concat
         [ Doc.lparen; render_expression expression; annotation_colon; doc_of_core_type type_; Doc.rparen ]
+  | Syn.Cst.Expression.Polymorphic { expression; type_; _ } ->
+      Doc.concat
+        [ Doc.lparen; render_expression expression; annotation_colon; doc_of_core_type type_; Doc.rparen ]
   | Syn.Cst.Expression.PolyVariant { syntax_node; payload; _ } ->
       let head = doc_of_nontrivia_direct_tokens syntax_node in
       (match payload with
@@ -3649,6 +3659,8 @@ and render_binding_header ~keyword_token ~rec_token pattern =
 
 and split_typed_binding_value = function
   | Syn.Cst.Expression.Typed { expression; type_; _ } ->
+      (expression, Some type_)
+  | Syn.Cst.Expression.Polymorphic { expression; type_; _ } ->
       (expression, Some type_)
   | expression ->
       (expression, None)

@@ -41,12 +41,15 @@ You are done with this task when `krasny` can format the entire codebase and
 the CST-hash of the source before and after formatting is the same (that is, there's no information loss).
 
 Current fail-fast progress (2026-03-26):
-- Latest completed fail-fast checkpoint reached `910` passing files before hitting `packages/syn/src/cst_builder.ml` (canonical `format exited 1`), and that file now round-trips canonically after fixes in this slice.
-- Follow-up unbuffered `--verify-workspace --fail-fast` reruns now progress well past the previous frontier with no new failure observed yet in the running window; next concrete first-failure file is still pending capture.
+- Unbuffered `--verify-workspace --fail-fast` reached `1620` passing files before first failure at `packages/syn/tests/fixtures/0834_type_constraint_as.ml` (canonical formatted `format exited 1`).
+- `packages/syn/tests/fixtures/0834_type_constraint_as.ml` now round-trips canonically after fixing alias-binder quote rendering in core type aliases (`as 'a` was incorrectly emitted as `as a`).
+- A polling loop script is available at `scripts/verify_fail_fast_loop.sh` and now defaults to writing `krasny_verify_results.log` at repo root for live frontier tracking.
 - Newly fixed in this slice:
   - `packages/syn/tests/fixtures/0400_attribute_item.ml` (previous syntax-hash mismatch / canonical divergence from dropped `;;` before floating attribute item)
   - `packages/syn/src/cst_builder.ml` (canonical reformat parse break reintroduced by typed-expression paren policy drift)
+  - `packages/syn/tests/fixtures/0834_type_constraint_as.ml` (previous canonical `format exited 1` from dropped quote in `as` binder)
   - top-level expression items now keep `;;` when immediately followed by a floating attribute item (`[@@@...]`), preserving item boundaries and syntax-hash invariance
   - typed expressions render as `(expr : type)` again, while avoiding unnecessary extra wrapping in apply/match scrutinee contexts to reduce double-parenthesization
+  - typed annotation formatting now follows `x: type` (no space before `:`) where handled in formatter output
   - new focused fixture:
     - `0422_top_level_expression_double_semicolon_before_floating_attribute.ml`
