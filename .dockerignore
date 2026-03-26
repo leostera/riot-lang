@@ -17,9 +17,8 @@ tusk
 # Tusk local cache
 .tusk/
 
-# Git (keep .git for versioning info, but ignore large objects)
-.git/objects/
-.git/logs/
+# Git
+.git/
 
 # GitHub workflows (not needed in container)
 .github/

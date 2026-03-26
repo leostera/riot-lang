@@ -2,7 +2,8 @@
 
 set -eu
 
-repo_root=$(git rev-parse --show-toplevel)
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repo_root=$(CDPATH= cd -- "$script_dir/../.." && pwd)
 source_dir="$repo_root/vendor/ocaml"
 prefix="$source_dir/compiler"
 

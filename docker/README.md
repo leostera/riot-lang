@@ -51,6 +51,28 @@ If you need to build the image locally:
 ./docker/build.sh
 ```
 
+### Manual Publish
+
+Until the GitHub Actions Docker publishing workflow is re-enabled, publish the
+builder image manually:
+
+```bash
+./docker/publish.sh
+```
+
+This builds `riot-builder:local`, smoke-tests it, tags:
+
+- `ghcr.io/leostera/riot/riot-builder:latest`
+- `ghcr.io/leostera/riot/riot-builder:sha-<git-short-sha>`
+
+and pushes both tags.
+
+To inspect the commands without pushing:
+
+```bash
+./docker/publish.sh --no-push --dry-run
+```
+
 ## Image Architecture
 
 ```
@@ -164,11 +186,13 @@ docker run --rm -v $(pwd):/app -u $(id -u):$(id -g) riot-builder:latest build
 
 ## Published Images
 
-Images are automatically built and published to GitHub Container Registry on every push to `main`:
+The practical published image refs for the current manual flow are:
 
 - **Latest stable:** `ghcr.io/leostera/riot/riot-builder:latest`
 - **Specific commit:** `ghcr.io/leostera/riot/riot-builder:sha-<commit>`
-- **Branch builds:** `ghcr.io/leostera/riot/riot-builder:main`
+
+At the time of writing, the repository's Docker publishing workflow is
+disabled, so these tags are only as current as the last manual publish.
 
 ### Image Tags
 

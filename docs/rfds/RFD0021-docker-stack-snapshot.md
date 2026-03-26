@@ -187,10 +187,12 @@ It is a pre-seeded build container whose job is to compile Riot workspaces.
 
 ## 3. Local build helper
 
-`docker/build.sh` is the only active helper for image construction in this
-repository.
+The active local helpers for image construction and publication are:
 
-It:
+- `docker/build.sh`
+- `docker/publish.sh`
+
+`docker/build.sh`:
 
 - assumes it is run from the repo root
 - defaults to:
@@ -200,16 +202,24 @@ It:
 - supports `--platform`, `--name`, and `--tag`
 - shells out to plain `docker build`
 
-Notably, it does not:
+`docker/publish.sh`:
 
-- push images
+- builds the image locally through `docker/build.sh`
+- smoke-tests the resulting image
+- tags the image for GHCR as `latest` and `sha-<git-short-sha>`
+- optionally pushes those tags
+
+The current helpers still do not:
+
 - attach OCI metadata
 - use `docker buildx`
 - build multi-arch manifests
-- tag by git SHA automatically
-- perform post-build smoke tests beyond printing suggested commands
+- publish branch tags automatically
 
-So the local helper is a build convenience script, not a publishing pipeline.
+Only `docker/publish.sh` performs post-build smoke tests.
+
+So the current local tooling is enough for manual publication, but it is still
+not a full automated publishing pipeline.
 
 ## 4. Docker context behavior
 
@@ -217,6 +227,7 @@ So the local helper is a build convenience script, not a publishing pipeline.
 
 - `_build/`
 - `.tusk/`
+- `.git/`
 - `minitusk`
 - `tusk`
 - `docs/`
@@ -227,7 +238,7 @@ This has two important effects:
 
 1. the builder image always bootstraps from source instead of reusing the
    caller's local `_build` or installed toolchains
-2. documentation and local Docker helper files are not copied into the build
+2. Git metadata and local Docker helper files are not copied into the build
    context payload itself, even though `docker/Dockerfile` is still used as the
    build file
 

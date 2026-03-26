@@ -58,6 +58,20 @@ This will:
 2. Create a clean builder image with Tusk installed
 3. Tag it as `riot-builder:latest`
 
+### Publish riot-builder
+
+If you want to refresh the shared GHCR image manually:
+
+```bash
+./docker/publish.sh
+```
+
+To preview the commands without pushing:
+
+```bash
+./docker/publish.sh --no-push --dry-run
+```
+
 ### Verify
 
 ```bash
@@ -107,7 +121,8 @@ ls bootstrap.py  # Should exist
 
 ### Can't pull from ghcr.io
 
-The images are published automatically on push to main. If you need them before that, build locally.
+The Docker publishing workflow is currently disabled. If you need a fresh image,
+build or publish it manually from this repository.
 
 ### Binary not found after build
 
