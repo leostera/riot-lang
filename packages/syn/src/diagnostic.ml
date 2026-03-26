@@ -737,60 +737,198 @@ let from_json json =
           let span = Ceibo.Span.make ~start ~end_ in
           match id_opt with
           | Some id ->
+              let expected =
+                Option.and_then (List.assoc_opt "expected" kind_fields) (function
+                  | String s -> Some s
+                  | _ -> None)
+                |> Option.unwrap_or ~default:""
+              in
+              let fix =
+                Option.and_then (List.assoc_opt "fix" kind_fields) (function
+                  | String s -> Some s
+                  | _ -> None)
+                |> Option.unwrap_or ~default:""
+              in
+              let strip_prefix_str str ~prefix =
+                let prefix_len = String.length prefix in
+                let str_len = String.length str in
+                if str_len >= prefix_len && String.starts_with ~prefix str then
+                  String.sub str prefix_len (str_len - prefix_len)
+                else ""
+              in
+              let parse_missing_binary_operand expected =
+                let right_prefix = "right operand for " in
+                let left_prefix = "left operand for " in
+                if
+                  String.starts_with ~prefix:right_prefix expected
+                then
+                  (
+                    "right",
+                    strip_prefix_str expected ~prefix:right_prefix
+                  )
+                else if String.starts_with ~prefix:left_prefix expected then
+                  ("left", strip_prefix_str expected ~prefix:left_prefix)
+                else ("", "")
+              in
+              let parse_consecutive_binary_operators expected =
+                let operators_prefix = "expression between operators in " in
+                strip_prefix_str expected ~prefix:operators_prefix
+              in
+              let parse_unclosed_delimiter expected fix =
+                match expected with
+                | "closing delimiter" -> ""
+                | ")" -> "("
+                | "]" -> "["
+                | "}" -> "{"
+                | "end" ->
+                    if
+                      String.starts_with
+                        ~prefix:"add end to close the begin block" fix
+                    then "begin"
+                    else if
+                      String.starts_with
+                        ~prefix:"add end to close the struct block" fix
+                    then "struct"
+                    else if
+                      String.starts_with
+                        ~prefix:"add end to close the signature" fix
+                    then "sig"
+                    else ""
+                | _ -> ""
+              in
+              let parse_bracketed_type_name fix =
+                let prefix =
+                  "put generics on the left of the type name with parenthesis, like this: "
+                in
+                let tail = strip_prefix_str fix ~prefix in
+                let type_prefix = "('a, 'b) " in
+                if tail = "" then ""
+                else
+                  if String.starts_with ~prefix:type_prefix tail then
+                    strip_prefix_str tail ~prefix:type_prefix
+                  else ""
+              in
+              let parse_quoted_field expected ~prefix =
+                if not (String.starts_with ~prefix expected) then
+                  ""
+                else
+                  let rest =
+                    strip_prefix_str expected ~prefix
+                  in
+                  match String.index_opt rest '\'' with
+                  | Some idx -> String.sub rest 0 idx
+                  | None -> rest
+              in
               let kind =
-                match id with
-                | "E0001" -> MalformedTypeVariable { found }
-                | "E0002" -> MissingLetBindingPattern { found }
-                | "E0003" -> MissingLetBindingEquals { found }
-                | "E0004" -> MissingLetBindingExpr { found }
-                | "E0005" -> UnexpectedStructureItem { found }
-                | "E0006" -> UnexpectedSignatureItem { found }
-                | "E0007" -> InvalidPattern { found }
-                | "E0008" -> InvalidExpression { found }
-                | "E0009" -> InvalidConstant { found }
-                | "E0010" -> InvalidTypeExpression { found }
-                | "E0011" -> MissingLetKeyword { found }
-                | "E0012" -> MissingTypeKeyword { found }
-                | "E0013" -> MissingTypeName { found }
-                | "E0014" -> UnclosedDelimiter { opener = ""; found }
-                | "E0015" -> EmptyCharLiteral
-                | "E0016" -> MultiCharLiteral { text = found.text }
-                | "E0017" -> UnclosedCharLiteral { text = found.text }
-                | "E0018" -> UnclosedTypeParams { found }
-                | "E0019" ->
-                    MissingBinaryOperand { operator = ""; side = ""; found }
-                | "E0020" ->
-                    ConsecutiveBinaryOperators { operators = ""; found }
-                | "E0021" -> InvalidTypeParameter { text = found.text; found }
-                | "E0022" -> UppercaseTypeVariable { text = found.text; found }
-                | "E0023" -> UppercaseTypeName { text = found.text; found }
-                | "E0024" -> BracketedTypeParameters { type_name = ""; found }
-                | "E0025" -> ListDoubleSemicolon { found }
-                | "E0026" -> MissingTypeDeclEquals { found }
-                | "E0027" -> IfMissingThen { found }
-                | "E0028" -> MatchMissingScrutinee { found }
-                | "E0029" -> MatchMissingWith { found }
-                | "E0030" -> MatchMissingPattern { found }
-                | "E0031" -> MatchGuardMissingExpr { found }
-                | "E0032" -> TuplePatternExtraComma { found }
-                | "E0033" ->
+                match Error.id_of_string id with
+                | Some E0001_MalformedTypeVariable ->
+                    MalformedTypeVariable { found }
+                | Some E0002_MissingLetBindingPattern ->
+                    MissingLetBindingPattern { found }
+                | Some E0003_MissingLetBindingEquals ->
+                    MissingLetBindingEquals { found }
+                | Some E0004_MissingLetBindingExpr ->
+                    MissingLetBindingExpr { found }
+                | Some E0005_UnexpectedStructureItem ->
+                    UnexpectedStructureItem { found }
+                | Some E0006_UnexpectedSignatureItem ->
+                    UnexpectedSignatureItem { found }
+                | Some E0007_InvalidPattern -> InvalidPattern { found }
+                | Some E0008_InvalidExpression -> InvalidExpression { found }
+                | Some E0009_InvalidConstant -> InvalidConstant { found }
+                | Some E0010_InvalidTypeExpression ->
+                    InvalidTypeExpression { found }
+                | Some E0011_MissingLetKeyword -> MissingLetKeyword { found }
+                | Some E0012_MissingTypeKeyword -> MissingTypeKeyword { found }
+                | Some E0013_MissingTypeDeclEquals ->
+                    MissingTypeDeclEquals { found }
+                | Some E0014_UnclosedDelimiter ->
+                    UnclosedDelimiter
+                      {
+                        opener = parse_unclosed_delimiter expected fix;
+                        found;
+                      }
+                | Some E0015_MissingTypeName -> MissingTypeName { found }
+                | Some E0016_EmptyCharLiteral -> EmptyCharLiteral
+                | Some E0017_MultiCharLiteral ->
+                    MultiCharLiteral { text = found.text }
+                | Some E0018_UnclosedCharLiteral ->
+                    UnclosedCharLiteral { text = found.text }
+                | Some E0019_UnclosedTypeParams -> UnclosedTypeParams { found }
+                | Some E0020_MissingBinaryOperand ->
+                    let side, operator =
+                      parse_missing_binary_operand expected
+                    in
+                    MissingBinaryOperand { operator; side; found }
+                | Some E0021_ConsecutiveBinaryOperators ->
+                    ConsecutiveBinaryOperators
+                      { operators = parse_consecutive_binary_operators expected; found }
+                | Some E0022_InvalidTypeParameter ->
+                    InvalidTypeParameter { text = found.text; found }
+                | Some E0023_UppercaseTypeVariable ->
+                    UppercaseTypeVariable { text = found.text; found }
+                | Some E0024_UppercaseTypeName ->
+                    UppercaseTypeName { text = found.text; found }
+                | Some E0025_BracketedTypeParameters ->
+                    BracketedTypeParameters
+                      { type_name = parse_bracketed_type_name fix; found }
+                | Some E0026_ListDoubleSemicolon ->
+                    ListDoubleSemicolon { found }
+                | Some E0027_IfMissingThen -> IfMissingThen { found }
+                | Some E0028_MatchMissingScrutinee ->
+                    MatchMissingScrutinee { found }
+                | Some E0029_MatchMissingWith -> MatchMissingWith { found }
+                | Some E0030_MatchMissingPattern ->
+                    MatchMissingPattern { found }
+                | Some E0031_MatchGuardMissingExpr ->
+                    MatchGuardMissingExpr { found }
+                | Some E0032_TuplePatternExtraComma ->
+                    TuplePatternExtraComma { found }
+                | Some E0033_ConstructorPatternNeedsParens ->
                     ConstructorPatternNeedsParens { constructor = ""; found }
-                | "E0034" -> ConsPatternMissingHead { found }
-                | "E0035" -> ConsPatternMissingTail { found }
-                | "E0036" -> OrPatternMissing { found }
-                | "E0037" -> OrPatternDouble { found }
-                | "E0043" ->
+                | Some E0034_ConsPatternMissingHead -> ConsPatternMissingHead { found }
+                | Some E0035_ConsPatternMissingTail -> ConsPatternMissingTail { found }
+                | Some E0036_OrPatternMissing -> OrPatternMissing { found }
+                | Some E0037_OrPatternDouble -> OrPatternDouble { found }
+                | Some E0038_MutableFieldMissingName ->
+                    MutableFieldMissingName { found }
+                | Some E0039_RecordFieldMissingColon ->
+                    RecordFieldMissingColon
+                      {
+                        field_name =
+                          parse_quoted_field expected
+                            ~prefix:"colon after field name '";
+                        found;
+                      }
+                | Some E0040_RecordFieldMissingType ->
+                    RecordFieldMissingType
+                      {
+                        field_name =
+                          parse_quoted_field expected
+                            ~prefix:"type definition for field '";
+                        found;
+                      }
+                | Some E0041_PolyTypeMissingVarName ->
+                    PolyTypeMissingVarName { found }
+                | Some E0042_PolyTypeMissingDot ->
+                    PolyTypeMissingDot { found }
+                | Some E0043_UnexpectedClosingDelimiter ->
                     UnexpectedClosingDelimiter
                       { delimiter = found.text; found }
-                | "E0044" -> MissingModuleDeclEquals { found }
-                | "E0045" -> MissingExternalColon { found }
-                | "E0046" -> MissingExceptionName { found }
-                | "E0047" -> MissingModulePath { found }
-                | "E0048" -> MissingModuleTypeName { found }
-                | "E0049" -> MissingModuleTypeExpr { found }
-                | "E0050" -> MissingModuleExpr { found }
-                | "E0051" -> MissingWithKeyword { found }
-                | "E0052" -> InvalidModuleName { found }
+                | Some E0044_MissingModuleDeclEquals ->
+                    MissingModuleDeclEquals { found }
+                | Some E0045_MissingExternalColon ->
+                    MissingExternalColon { found }
+                | Some E0046_MissingExceptionName ->
+                    MissingExceptionName { found }
+                | Some E0047_MissingModulePath -> MissingModulePath { found }
+                | Some E0048_MissingModuleTypeName ->
+                    MissingModuleTypeName { found }
+                | Some E0049_MissingModuleTypeExpr ->
+                    MissingModuleTypeExpr { found }
+                | Some E0050_MissingModuleExpr -> MissingModuleExpr { found }
+                | Some E0051_MissingWithKeyword -> MissingWithKeyword { found }
+                | Some E0052_InvalidModuleName -> InvalidModuleName { found }
                 | _ -> InvalidExpression { found }
               in
               Ok { kind; span }
