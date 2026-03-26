@@ -29,6 +29,12 @@ synchronization primitives, external commands, cryptography, and more.
 * `tusk` -- a new extensible build system and package manager that becomes the
 only tool you need to install and use to do _everything_ in this stack. 
 
+* `ocaml-toolchain.toml` -- a managed toolchain story, including support for
+cross-compilation
+
+* a familiar package management experience -- with commands like `tusk add
+@leostera/agents` to add, remove, and update your dependencies
+
 * an extensible command system, where packages can provide custom commands to
 support your workflows better, and they are all surfaced via tusk. Think `tusk
 minttea:gen component`
@@ -47,8 +53,6 @@ thing up and running!
 
 ## Quick Start
 
-Riot ships with `tusk`, its own build tool and package manager.
-
 To get a feel for Riot quickly:
 
 ```sh
@@ -56,7 +60,9 @@ curl -sSL https://cdn.riot.ml/tusk/install.sh | sh
 tusk --help
 ```
 
-To scaffold a starter Riot application you can run:
+To strat an empty workspace run `tusk init` and follow the instructions.
+
+Or you can scaffold a starter Riot application by running:
 
 ```sh
 tusk run leostera/create-riot-app
