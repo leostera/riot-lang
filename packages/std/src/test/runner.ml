@@ -2,7 +2,7 @@ open Global
 open Collections
 
 type mode = Sequential | Shuffle
-type target = All | FilterByPrefix of string
+type target = All | FilterBySubstring of string
 
 type config = {
   concurrency : int;
@@ -17,9 +17,9 @@ type run_summary = Test_result.summary
 let filter_tests target tests =
   match target with
   | All -> tests
-  | FilterByPrefix prefix ->
+  | FilterBySubstring query ->
       List.filter
-        (fun (test : Test_case.t) -> String.starts_with ~prefix test.name)
+        (fun (test : Test_case.t) -> String.contains test.name query)
         tests
 
 let shuffle_list lst =

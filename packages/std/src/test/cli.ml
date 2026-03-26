@@ -29,7 +29,7 @@ let run_tests_cmd =
          |> help "Number of concurrent workers"
          |> default "1";
          option "pattern" |> long "pattern"
-         |> help "Test name prefix to filter by";
+         |> help "Test name substring to filter by";
        ]
 
 let list_tests_cmd = command "list-tests" |> about "List all tests"
@@ -69,7 +69,7 @@ let main ~name ~tests ~args =
               let target =
                 match get_one sub_matches "pattern" with
                 | None -> Runner.All
-                | Some prefix -> Runner.(FilterByPrefix prefix)
+                | Some query -> Runner.(FilterBySubstring query)
               in
               let mode =
                 if shuffle then Runner.Shuffle else Runner.Sequential
