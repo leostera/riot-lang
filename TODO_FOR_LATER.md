@@ -3,12 +3,12 @@
 Goal: make `packages/syn/tests/fixtures` tight, high-signal, and cheap to maintain without weakening lossless or regression coverage.
 
 Current audit snapshot (2026-03-26):
-- `1093` source fixtures drive `2188` checked-in JSON expectations.
-- Source fixtures are about `96.9 KB`; expectation snapshots are about `18.0 MB`.
-- `818` fixtures are one-liners.
+- `1087` source fixtures drive `2174` checked-in JSON expectations.
+- Source fixtures are about `97.4 KB`; expectation snapshots are about `18.0 MB`.
+- `806` fixtures are one-liners.
 - Exact source duplicates have been fully removed (`0` exact duplicate source groups).
-- `5` near-duplicate families remain at `0.95` similarity.
-- Near-duplicate families at `0.88` similarity dropped to `58`.
+- `0` near-duplicate families remain at `0.95` similarity.
+- Near-duplicate families at `0.88` similarity currently `54`.
 - `types-and-signatures` is still a high-density area: `174` fixtures, `0` exact-duplicate fixtures.
 - There are `8` reused numeric IDs: `0660`, `1052`, `9025`, `9026`, `9109`, `9130`, `9131`, `9137`.
 - There were `0` cases where an exact-duplicate family existed only to preserve different lossless output.
