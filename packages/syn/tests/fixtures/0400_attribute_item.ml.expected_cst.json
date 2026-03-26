@@ -13,32 +13,52 @@
       {
         "tag": "expression",
         "item": {
-          "tag": "path",
+          "tag": "sequence",
           "syntax_node": {
-            "kind": "IDENT_EXPR",
+            "kind": "SEQUENCE_EXPR",
             "span": {
               "start": 0,
-              "end": 4
+              "end": 5
             }
           },
-          "path": {
-            "tag": "ident",
-            "syntax_node": {
-              "kind": "IDENT_EXPR",
-              "span": {
-                "start": 0,
-                "end": 4
-              }
-            },
-            "name_token": {
-              "kind": "IDENT_EXPR",
-              "text": "item",
-              "span": {
-                "start": 0,
-                "end": 4
+          "separator_token": {
+            "kind": "IDENT_EXPR",
+            "text": ";",
+            "span": {
+              "start": 4,
+              "end": 5
+            }
+          },
+          "expressions": [
+            {
+              "tag": "path",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 0,
+                  "end": 4
+                }
+              },
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 0,
+                    "end": 4
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "item",
+                  "span": {
+                    "start": 0,
+                    "end": 4
+                  }
+                }
               }
             }
-          }
+          ]
         }
       },
       {

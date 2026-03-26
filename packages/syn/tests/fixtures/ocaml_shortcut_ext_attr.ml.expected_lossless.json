@@ -2,7 +2,7 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 2562,
+    "width": 2576,
     "children": [
       {
         "type": "token",
@@ -7183,7 +7183,7 @@
       {
         "type": "node",
         "kind": "MODULE_TYPE_DECL",
-        "width": 23,
+        "width": 30,
         "children": [
           {
             "type": "token",
@@ -7214,6 +7214,43 @@
             "kind": "IDENT_EXPR",
             "text": "foo",
             "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "ATTRIBUTE_EXPR",
+            "width": 6,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "@",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "foo",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "]",
+                "width": 1
+              }
+            ]
           },
           {
             "type": "token",
@@ -7455,7 +7492,7 @@
       {
         "type": "node",
         "kind": "MODULE_TYPE_DECL",
-        "width": 548,
+        "width": 555,
         "children": [
           {
             "type": "token",
@@ -7508,7 +7545,7 @@
           {
             "type": "node",
             "kind": "IDENT_EXPR",
-            "width": 392,
+            "width": 399,
             "children": [
               {
                 "type": "token",
@@ -8659,7 +8696,7 @@
               {
                 "type": "node",
                 "kind": "MODULE_TYPE_DECL",
-                "width": 25,
+                "width": 32,
                 "children": [
                   {
                     "type": "token",
@@ -8690,6 +8727,43 @@
                     "kind": "IDENT_EXPR",
                     "text": "foo",
                     "width": 3
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "ATTRIBUTE_EXPR",
+                    "width": 6,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "[",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "@",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "foo",
+                        "width": 3
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "]",
+                        "width": 1
+                      }
+                    ]
                   },
                   {
                     "type": "token",

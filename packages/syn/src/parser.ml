@@ -5257,10 +5257,16 @@ and parse_assign_expr parser =
 (** Parse sequence expression: expr1; expr2; expr3 *)
 and parse_sequence_expr parser =
   let first = parse_assign_expr parser in
+  let trivia_before_first_semi_start = Token_cursor.position parser.cursor in
+  let trivia_before_first_semi = consume_trivia parser in
 
   (* Check if we have semicolons to make a sequence *)
   if peek_kind parser = Token.Semi then (
-    let parts = ref [ Ceibo.Green.Node first ] in
+    let parts =
+      ref
+        ([ Ceibo.Green.Node first ]
+        @ tokens_to_green parser trivia_before_first_semi)
+    in
 
     let rec parse_rest () =
       if peek_kind parser = Token.Semi then (
@@ -5309,7 +5315,9 @@ and parse_sequence_expr parser =
     parse_rest ();
 
     make_node Syntax_kind.SEQUENCE_EXPR !parts)
-  else first
+  else (
+    Token_cursor.set_position parser.cursor trivia_before_first_semi_start;
+    first)
 
 (** Parse parenthesized expression or unit: (expr) or () *)
 and parse_paren_expr parser =
@@ -8959,7 +8967,7 @@ and parse_module_type_decl parser =
   (* Consume 'type' keyword *)
   let type_kw = consume parser in
   let trivia_after_type = consume_trivia parser in
-  let ext_nodes, trivia_after_ext, attr_nodes =
+  let ext_nodes, trivia_after_ext, leading_attr_nodes =
     parse_extension_and_attributes parser
   in
   
@@ -9004,7 +9012,7 @@ and parse_module_type_decl parser =
       make_error_node parser ~diagnostic ~consumed_tokens:[]
   in
   let trivia_after_expr = consume_trivia parser in
-  let attr_nodes = parse_attributes parser in
+  let trailing_attr_nodes = parse_attributes parser in
   
   (* Build MODULE_TYPE_DECL node *)
   make_node Syntax_kind.MODULE_TYPE_DECL
@@ -9014,14 +9022,14 @@ and parse_module_type_decl parser =
     @ tokens_to_green parser trivia_after_type
     @ ext_nodes
     @ tokens_to_green parser trivia_after_ext
-    @ attr_nodes
+    @ leading_attr_nodes
     @ [ make_token parser type_name ]
     @ tokens_to_green parser trivia_after_name
     @ [ make_token parser eq ]
     @ tokens_to_green parser trivia_after_eq
     @ [ Ceibo.Green.Node type_expr ]
     @ tokens_to_green parser trivia_after_expr
-    @ attr_nodes)
+    @ trailing_attr_nodes)
 
 (** Parse module declaration: module M = E *)
 and parse_module_decl parser =

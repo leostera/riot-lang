@@ -33,6 +33,11 @@
 0421_labeled_arg_poly_variant_then_label.ml
 0422_top_level_expression_double_semicolon_before_floating_attribute.ml
 0423_extended_index_operators.ml
+0424_top_level_trailing_sequence_prefix_operator.ml
+0425_prefix_parenthesized_field_access.ml
+0426_top_level_trailing_sequence_before_let.ml
+0427_let_in_sequence_after_multiline_apply.ml
+0428_top_level_phrase_separator_after_supported_item.ml
 
 # 05xx labeled and optional arguments
 0500_labeled_and_optional_arguments.ml
@@ -51,6 +56,7 @@
 0726_signature_consecutive_type_aliases.mli
 0727_signature_abstract_type_then_value_docstrings.mli
 0728_external_declaration_attribute.ml
+0729_shortcut_extension_declaration_items.ml
 0730_signature_operator_value_declarations.mli
 
 # 08xx modules, signatures, and functors
@@ -71,6 +77,7 @@
 0907_docstring_after_fun_with_local_exception_and_try.ml
 0908_trailing_inline_comment_in_module.ml
 0909_comment_stability_between_lets.ml
+0910_docstring_before_local_open_let.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

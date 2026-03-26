@@ -43,6 +43,65 @@ let test_fixture fixture_path expected_path =
       ("Parse tree mismatch for " ^ fixture_path ^ "\nExpected:\n" ^
        expected_str ^ "\n\nActual:\n" ^ actual_str ^ "\n")
 
+let test_tagged_quoted_string_cst () =
+  let source = "let explanation = {explain|hello|explain}\n" in
+  let parse_result =
+    Syn.parse ~filename:(Path.v "tagged_quoted_string.ml") source
+  in
+  if List.length parse_result.Parser.diagnostics > 0 then
+    let diagnostics =
+      parse_result.Parser.diagnostics
+      |> List.map Diagnostic.to_string
+      |> String.concat "\n"
+    in
+    Error ("unexpected parse diagnostics:\n" ^ diagnostics)
+  else
+    match Syn.build_cst parse_result with
+    | Ok cst -> (
+        match cst with
+        | Syn.Cst.Implementation
+            {
+              items =
+                Syn.Cst.StructureItem.LetBinding
+                  {
+                    value =
+                      Syn.Cst.Expression.Literal
+                        (Syn.Cst.Literal.String
+                          {
+                            delimiter = Syn.Cst.Quoted { marker };
+                            contents;
+                            terminated;
+                            _;
+                          });
+                    _;
+                  }
+                :: _;
+              _;
+            } ->
+            if String.equal marker "explain"
+               && String.equal contents "hello"
+               && terminated
+            then
+              Ok ()
+            else
+              Error
+                ("unexpected tagged string CST payload: marker=" ^ marker
+               ^ ", contents=" ^ contents
+               ^ ", terminated=" ^ Bool.to_string terminated)
+        | _ ->
+            Error "unexpected CST shape for tagged quoted string literal")
+    | Error (Syn.Cst_builder_error err) ->
+        Error
+          ("expected CST builder to succeed, got " ^ err.Syn.CstBuilder.message
+         ^ " @ "
+          ^ Syn.SyntaxKind.to_string err.Syn.CstBuilder.syntax_kind
+         ^ " in " ^ String.concat " > " err.Syn.CstBuilder.context)
+    | Error (Syn.Parse_diagnostics diagnostics) ->
+        let diagnostics =
+          diagnostics |> List.map Diagnostic.to_string |> String.concat "\n"
+        in
+        Error ("unexpected build_cst parse diagnostics:\n" ^ diagnostics)
+
 let discover_fixtures () =
   let fixtures_dir = Path.v "packages/syn/tests/fixtures" in
   let entries_iter =
@@ -72,11 +131,12 @@ let () =
     ~main:(fun ~args ->
       let fixtures = discover_fixtures () in
       let tests =
-        List.map
-          (fun (fixture_path, expected_path) ->
-            let name = Path.basename (Path.v fixture_path) in
-            Test.case name (fun () -> test_fixture fixture_path expected_path))
-          fixtures
+        Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst
+        :: List.map
+             (fun (fixture_path, expected_path) ->
+               let name = Path.basename (Path.v fixture_path) in
+               Test.case name (fun () -> test_fixture fixture_path expected_path))
+             fixtures
       in
       Test.Cli.main ~name:"syn-fixtures" ~tests ~args)
     ~args:Env.args ()

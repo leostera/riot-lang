@@ -2487,6 +2487,37 @@ let tests =
             | _ ->
                 Error "expected one external declaration attribute")
         | _ -> Error "expected first item to be an external declaration");
+    Test.case "cst shortcut extension declarations preserve declared names"
+      (fun () ->
+        let result =
+          parse_ml
+            "module%foo [@foo] M = M\n\
+             module type%foo [@foo] S = S\n\
+             external%foo [@foo] x : _ = \"\"\n\
+             exception%foo [@foo] X\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration module_decl
+          :: Syn.Cst.StructureItem.ModuleTypeDeclaration module_type_decl
+          :: Syn.Cst.StructureItem.ExternalDeclaration external_decl
+          :: Syn.Cst.StructureItem.ExceptionDeclaration exception_decl
+          :: _ ->
+            Test.assert_equal ~expected:"M"
+              ~actual:(Syn.Cst.ModuleDeclaration.name module_decl);
+            Test.assert_equal ~expected:"S"
+              ~actual:(Syn.Cst.ModuleTypeDeclaration.name module_type_decl);
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text external_decl.name_token);
+            Test.assert_equal ~expected:"X"
+              ~actual:(Syn.Cst.Token.text exception_decl.name_token);
+            Ok ()
+        | _ ->
+            Error "expected shortcut extension declaration items");
     Test.case "cst include statements preserve typed include targets" (fun () ->
         let result =
           parse_mli "include module type of Stdlib.Array\n"
@@ -4042,6 +4073,64 @@ let tests =
           :: _ ->
             Ok ()
         | _ -> Error "expected begin-end parenthesized sequence");
+    Test.case "cst preserves top-level trailing-semicolon phrases as sequences"
+      (fun () ->
+        let source = "-1;;\n\n~+2;;\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.Expression
+            (Syn.Cst.Expression.Sequence { expressions = [ _ ]; _ })
+          :: Syn.Cst.StructureItem.Expression
+               (Syn.Cst.Expression.Sequence { expressions = [ _ ]; _ })
+             :: _ ->
+            Ok ()
+        | _ -> Error "expected top-level trailing-semicolon sequences");
+    Test.case "cst keeps newline-before-semicolon sequences inside let-in bodies"
+      (fun () ->
+        let source =
+          "let with_lock t f = f ()\n\
+           \n\
+           let render t =\n\
+           \  let value = 0 in\n\
+           \  with_lock t\n\
+           \    (fun () ->\n\
+           \      ignore 1;\n\
+           \      ignore 2)\n\
+           \  ;\n\
+           \  (match value with\n\
+           \  | 0 -> ()\n\
+           \  | _ -> ());\n\
+           \  ignore value\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | _ :: Syn.Cst.StructureItem.LetBinding
+                 {
+                   value =
+                     Syn.Cst.Expression.Let
+                       {
+                         body =
+                           Syn.Cst.Expression.Sequence
+                             { expressions = [ _; _; _ ]; _ };
+                         _;
+                       };
+                   _;
+                 }
+               :: _ ->
+            Ok ()
+        | _ ->
+            Error
+              "expected let-in body to remain a three-part sequence");
     Test.case "cst constructor expressions preserve bare and applied forms"
       (fun () ->
         let source =
@@ -4960,6 +5049,69 @@ let tests =
             Test.assert_true terminated;
             Ok ()
         | _ -> Error "expected structured literal constants");
+    Test.case "lexer tagged quoted string literals tokenize as strings" (fun () ->
+        let kinds =
+          Syn.tokenize "let explanation = {explain|hello|explain}\n"
+          |> List.map (fun token -> Syn.Token.show_kind token.Syn.Token.kind)
+        in
+        Test.assert_equal
+          ~expected:
+            [
+              "keyword";
+              "whitespace";
+              "identifier";
+              "whitespace";
+              "=";
+              "whitespace";
+              "string";
+              "whitespace";
+              "end of file";
+            ]
+          ~actual:kinds;
+        Ok ());
+    Test.case "cst tagged quoted string literals preserve marker and contents"
+      (fun () ->
+        let parsed = Syn.parse ~filename:sample_ml "let explanation = {explain|hello|explain}\n" in
+        Test.assert_equal ~expected:0 ~actual:(List.length parsed.Syn.Parser.diagnostics);
+        match Syn.build_cst parsed with
+        | Error (Syn.Cst_builder_error err) ->
+            Error
+              ("expected CST builder to succeed, got "
+              ^ err.Syn.CstBuilder.message
+              ^ " @ "
+              ^ Syn.SyntaxKind.to_string err.Syn.CstBuilder.syntax_kind
+              ^ " in "
+              ^ String.concat " > " err.Syn.CstBuilder.context)
+        | Error (Syn.Parse_diagnostics diagnostics) ->
+            let diagnostics =
+              diagnostics
+              |> List.map Syn.Diagnostic.to_string
+              |> String.concat "\n"
+            in
+            Error
+              ("expected tagged string parse to be diagnostics-free, got:\n"
+             ^ diagnostics)
+        | Ok cst -> (
+            match structure_items cst with
+            | Syn.Cst.StructureItem.LetBinding
+                {
+                  value =
+                    Syn.Cst.Expression.Literal
+                      (Syn.Cst.Literal.String
+                        {
+                          delimiter = Syn.Cst.Quoted { marker };
+                          contents;
+                          terminated;
+                          _;
+                        });
+                  _;
+                }
+              :: _ ->
+                Test.assert_equal ~expected:"explain" ~actual:marker;
+                Test.assert_equal ~expected:"hello" ~actual:contents;
+                Test.assert_true terminated;
+                Ok ()
+            | _ -> Error "expected tagged quoted string literal"));
     Test.case "cst record expressions preserve literal fields structurally" (fun () ->
         let source = "let point = { x = 1; y = 2 }\n" in
         let result = parse_ml source in

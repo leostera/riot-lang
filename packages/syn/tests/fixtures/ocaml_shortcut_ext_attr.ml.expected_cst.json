@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 2562
+        "end": 2576
       }
     },
     "items": [
@@ -4314,10 +4314,10 @@
           },
           "name_token": {
             "kind": "IDENT_EXPR",
-            "text": "%",
+            "text": "x",
             "span": {
-              "start": 1802,
-              "end": 1803
+              "start": 1814,
+              "end": 1815
             }
           },
           "type": {
@@ -4401,10 +4401,10 @@
           },
           "name_token": {
             "kind": "IDENT_EXPR",
-            "text": "%",
+            "text": "X",
             "span": {
-              "start": 1835,
-              "end": 1836
+              "start": 1847,
+              "end": 1848
             }
           }
         }
@@ -4421,10 +4421,10 @@
           },
           "module_name": {
             "kind": "IDENT_EXPR",
-            "text": "%",
+            "text": "M",
             "span": {
-              "start": 1856,
-              "end": 1857
+              "start": 1868,
+              "end": 1869
             }
           },
           "functor_parameters": [],
@@ -4475,10 +4475,10 @@
               },
               "module_name": {
                 "kind": "IDENT_EXPR",
-                "text": "%",
+                "text": "M",
                 "span": {
-                  "start": 1881,
-                  "end": 1882
+                  "start": 1897,
+                  "end": 1898
                 }
               },
               "functor_parameters": [],
@@ -4661,15 +4661,15 @@
             "kind": "MODULE_TYPE_DECL",
             "span": {
               "start": 1929,
-              "end": 1952
+              "end": 1959
             }
           },
           "module_type_name": {
             "kind": "IDENT_EXPR",
-            "text": "%",
+            "text": "S",
             "span": {
-              "start": 1940,
-              "end": 1941
+              "start": 1952,
+              "end": 1953
             }
           },
           "module_type": {
@@ -4679,16 +4679,16 @@
               "syntax_node": {
                 "kind": "MODULE_TYPE_PATH",
                 "span": {
-                  "start": 1949,
-                  "end": 1952
+                  "start": 1956,
+                  "end": 1959
                 }
               },
               "name_token": {
                 "kind": "IDENT_EXPR",
                 "text": "S",
                 "span": {
-                  "start": 1949,
-                  "end": 1950
+                  "start": 1956,
+                  "end": 1957
                 }
               }
             }
@@ -4702,8 +4702,8 @@
           "syntax_node": {
             "kind": "INCLUDE_STMT",
             "span": {
-              "start": 1952,
-              "end": 1973
+              "start": 1959,
+              "end": 1980
             }
           },
           "target": {
@@ -4715,16 +4715,16 @@
                 "syntax_node": {
                   "kind": "MODULE_PATH",
                   "span": {
-                    "start": 1971,
-                    "end": 1973
+                    "start": 1978,
+                    "end": 1980
                   }
                 },
                 "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "M",
                   "span": {
-                    "start": 1971,
-                    "end": 1972
+                    "start": 1978,
+                    "end": 1979
                   }
                 }
               }
@@ -4738,8 +4738,8 @@
           "syntax_node": {
             "kind": "OPEN_STMT",
             "span": {
-              "start": 1973,
-              "end": 2014
+              "start": 1980,
+              "end": 2021
             }
           },
           "target": {
@@ -4751,16 +4751,16 @@
                 "syntax_node": {
                   "kind": "MODULE_PATH",
                   "span": {
-                    "start": 1989,
-                    "end": 2014
+                    "start": 1996,
+                    "end": 2021
                   }
                 },
                 "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "M",
                   "span": {
-                    "start": 1989,
-                    "end": 1990
+                    "start": 1996,
+                    "end": 1997
                   }
                 }
               }
@@ -4771,16 +4771,16 @@
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
-                "start": 1989,
-                "end": 2014
+                "start": 1996,
+                "end": 2021
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "M",
               "span": {
-                "start": 1989,
-                "end": 1990
+                "start": 1996,
+                "end": 1997
               }
             }
           },
@@ -4793,16 +4793,16 @@
           "syntax_node": {
             "kind": "MODULE_TYPE_DECL",
             "span": {
-              "start": 2014,
-              "end": 2562
+              "start": 2021,
+              "end": 2576
             }
           },
           "module_type_name": {
             "kind": "IDENT_EXPR",
             "text": "S",
             "span": {
-              "start": 2026,
-              "end": 2027
+              "start": 2033,
+              "end": 2034
             }
           },
           "module_type": {
@@ -4810,15 +4810,15 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 2030,
-                "end": 2422
+                "start": 2037,
+                "end": 2436
               }
             },
             "signature_syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 2030,
-                "end": 2422
+                "start": 2037,
+                "end": 2436
               }
             }
           },

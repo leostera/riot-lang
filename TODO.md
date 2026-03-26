@@ -41,19 +41,15 @@ You are done with this task when `krasny` can format the entire codebase and
 the CST-hash of the source before and after formatting is the same (that is, there's no information loss).
 
 Current fail-fast progress (2026-03-26):
-- Latest recorded frontier from the external loop log was:
-  - `--verify-workspace --fail-fast` passing `1947` files
-  - first failure: `packages/syn/tests/fixtures/ocaml_extended_indexoperators.ml` (syntax-hash mismatch after canonical formatting)
-- `packages/syn/tests/fixtures/ocaml_extended_indexoperators.ml` now round-trips locally (`orig == fmt` syntax-hash).
+- The latest whole-workspace rerun now has `1` known remaining failure:
+  - `packages/syn/tests/fixtures/ocaml_prefix_op.ml` (canonical formatted `format exited 1`)
+- The current fail-fast frontier is `packages/syn/tests/fixtures/ocaml_prefix_op.ml`.
 - A polling loop script is available at `scripts/verify_fail_fast_loop.sh` and defaults to writing `krasny_verify_results.log` at repo root for live frontier tracking.
-- Next workspace frontier is pending a fresh full `--verify-workspace --fail-fast` completion after the fixes below.
 - Newly fixed in this slice:
-  - `packages/syn/tests/fixtures/ocaml_attributes.ml` (previous `format exited 2` panic in nested module body relift path)
-  - `packages/syn/tests/fixtures/ocaml_extended_indexoperators.ml` (previous syntax-hash mismatch from dropped extended index operator punctuation and operator-binding parameter lifting drift)
-  - nested module/signature relift now falls back to verbatim source instead of panicking when re-lift fails
-  - module/module-type attribute wrappers now render explicitly (`... [@attr]`) instead of dropping attribute shells
-  - expression-level attributes are now emitted via `doc_with_expression_attributes`
-  - binding headers now preserve parameters for operator-capable binding patterns (`Identifier`/`Operator`) instead of always rewriting to `= fun ... -> ...`
+  - `packages/tusk-fix/src/rules/prefer_multiline_string_literals.ml` (previous `format exited 1`)
+  - `packages/tusk-init/src/tusk_init.ml` (previous syntax-hash mismatch)
+  - `syn` now lexes tagged quoted string literals without dropping their delimiters or payload text
+  - `krasny` now lowers binding-operator expressions structurally instead of replaying raw `LET_OPERATOR_EXPR` source, so following docstrings stop getting duplicated into prior function bodies and inline `let*` bindings render with ` = ` spacing
   - new focused fixtures:
-    - `0821_nested_module_body_attribute_relift_fallback.ml`
-    - `0423_extended_index_operators.ml`
+    - `0910_docstring_before_local_open_let.ml`
+    - `1100_tagged_quoted_string_literal.ml`

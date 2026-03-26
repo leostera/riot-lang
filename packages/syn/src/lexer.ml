@@ -24,59 +24,56 @@ let is_octal_digit_or_underscore = function '0' .. '7' | '_' -> true | _ -> fals
 let is_binary_digit = function '0' | '1' -> true | _ -> false
 let is_binary_digit_or_underscore = function '0' | '1' | '_' -> true | _ -> false
 
-let lex_whitespace cursor start =
-  Cursor.skip_while cursor is_whitespace;
-  let end_ = Cursor.position cursor in
-  { Token.kind = Token.Whitespace; span = Ceibo.Span.make ~start ~end_ }
+type quoted_string_info = {
+  pipe_offset : int;
+  delimiter : string;
+  is_extension : bool;
+}
 
-let try_skip_quoted_string cursor =
-  let is_quoted_string_header_char = function
-    | '%' -> true
-    | c -> is_ident_continue c
-  in
+let is_quoted_string_header_char = function
+  | '%' -> true
+  | c -> is_ident_continue c
 
-  let trim_right text =
-    let rec loop i =
-      if i < 0 then ""
-      else
-        match String.get text i with
-        | ' ' | '\t' | '\n' | '\r' -> loop (i - 1)
-        | _ -> String.sub text 0 (i + 1)
-    in
-    loop (String.length text - 1)
-  in
-
-  let delimiter_of_header header ~is_extension =
-    if not is_extension then
-      header
+let trim_right text =
+  let rec loop i =
+    if i < 0 then ""
     else
-      let trimmed = trim_right header in
-      let rec find_last_space i =
-        if i < 0 then None
-        else
-          match String.get trimmed i with
-          | ' ' | '\t' | '\n' | '\r' -> Some i
-          | _ -> find_last_space (i - 1)
-      in
-      match find_last_space (String.length trimmed - 1) with
-      | Some i when i + 1 < String.length trimmed ->
-          String.sub trimmed (i + 1) (String.length trimmed - i - 1)
-      | _ ->
-          ""
+      match String.get text i with
+      | ' ' | '\t' | '\n' | '\r' -> loop (i - 1)
+      | _ -> String.sub text 0 (i + 1)
   in
+  loop (String.length text - 1)
 
-  let rec find_pipe offset ~is_extension =
-    match Cursor.peek_n cursor offset with
-    | Some '|' -> Some offset
-    | Some c when is_extension && (is_quoted_string_header_char c || is_whitespace c) ->
-        find_pipe (offset + 1) ~is_extension
-    | Some c when is_quoted_string_header_char c ->
-        find_pipe (offset + 1) ~is_extension
-    | Some _ -> None
-    | None -> None
-  in
+let delimiter_of_quoted_string_header header ~is_extension =
+  if not is_extension then
+    header
+  else
+    let trimmed = trim_right header in
+    let rec find_last_space i =
+      if i < 0 then None
+      else
+        match String.get trimmed i with
+        | ' ' | '\t' | '\n' | '\r' -> Some i
+        | _ -> find_last_space (i - 1)
+    in
+    match find_last_space (String.length trimmed - 1) with
+    | Some i when i + 1 < String.length trimmed ->
+        String.sub trimmed (i + 1) (String.length trimmed - i - 1)
+    | _ ->
+        ""
 
-  let rec delimiter_matches delimiter index =
+let rec find_quoted_string_pipe_offset cursor offset ~is_extension =
+  match Cursor.peek_n cursor offset with
+  | Some '|' -> Some offset
+  | Some c when is_extension && (is_quoted_string_header_char c || is_whitespace c) ->
+      find_quoted_string_pipe_offset cursor (offset + 1) ~is_extension
+  | Some c when is_quoted_string_header_char c ->
+      find_quoted_string_pipe_offset cursor (offset + 1) ~is_extension
+  | Some _ -> None
+  | None -> None
+
+let delimiter_matches_after_pipe cursor delimiter =
+  let rec loop index =
     if index = String.length delimiter then
       match Cursor.peek_n cursor (index + 1) with
       | Some '}' -> true
@@ -84,11 +81,13 @@ let try_skip_quoted_string cursor =
     else
       match Cursor.peek_n cursor (index + 1) with
       | Some c when c = String.get delimiter index ->
-          delimiter_matches delimiter (index + 1)
+          loop (index + 1)
       | _ ->
           false
   in
+  loop 0
 
+let quoted_string_info_at_cursor cursor =
   match Cursor.peek cursor with
   | Some '{' -> (
       let header_start, is_extension =
@@ -105,43 +104,58 @@ let try_skip_quoted_string cursor =
             (0, false)
       in
       if header_start = 0 then
-        false
+        None
       else
-      match find_pipe header_start ~is_extension with
-      | None ->
-          false
-      | Some pipe_offset ->
-          let header =
-            if pipe_offset = header_start then ""
+        match find_quoted_string_pipe_offset cursor header_start ~is_extension with
+        | None ->
+            None
+        | Some pipe_offset ->
+            let header =
+              if pipe_offset = header_start then
+                ""
+              else
+                Cursor.slice cursor (Cursor.position cursor + header_start)
+                  (pipe_offset - header_start)
+            in
+            let delimiter =
+              delimiter_of_quoted_string_header header ~is_extension
+            in
+            if is_extension && pipe_offset = header_start then
+              None
             else
-              Cursor.slice cursor (Cursor.position cursor + header_start)
-                (pipe_offset - header_start)
-          in
-          let delimiter = delimiter_of_header header ~is_extension in
-          if is_extension && pipe_offset = header_start then
-            false
-          else
-            (for _ = 0 to pipe_offset do
-               Cursor.advance cursor
-             done;
-             let rec skip_body () =
-               match Cursor.peek cursor with
-               | None ->
-                   ()
-               | Some '|' when delimiter_matches delimiter 0 ->
-                   Cursor.advance cursor;
-                   for _ = 0 to String.length delimiter - 1 do
-                     Cursor.advance cursor
-                   done;
-                   Cursor.advance cursor
-               | Some _ ->
-                   Cursor.advance cursor;
-                   skip_body ()
-             in
-             skip_body ();
-             true))
+              Some { pipe_offset; delimiter; is_extension })
   | _ ->
+      None
+
+let lex_whitespace cursor start =
+  Cursor.skip_while cursor is_whitespace;
+  let end_ = Cursor.position cursor in
+  { Token.kind = Token.Whitespace; span = Ceibo.Span.make ~start ~end_ }
+
+let try_skip_quoted_string cursor =
+  match quoted_string_info_at_cursor cursor with
+  | None ->
       false
+  | Some { pipe_offset; delimiter; _ } ->
+      for _ = 0 to pipe_offset do
+        Cursor.advance cursor
+      done;
+      let rec skip_body () =
+        match Cursor.peek cursor with
+        | None ->
+            ()
+        | Some '|' when delimiter_matches_after_pipe cursor delimiter ->
+            Cursor.advance cursor;
+            for _ = 0 to String.length delimiter - 1 do
+              Cursor.advance cursor
+            done;
+            Cursor.advance cursor
+        | Some _ ->
+            Cursor.advance cursor;
+            skip_body ()
+      in
+      skip_body ();
+      true
 
 let rec lex_block_comment cursor depth content_start token_start =
   match Cursor.peek cursor with
@@ -456,33 +470,58 @@ let lex_string cursor token_start =
   }
 
 let lex_quoted_string cursor token_start =
-  (* Skip opening delimiter: brace and pipe *)
-  Cursor.advance cursor;
-  Cursor.advance cursor;
-  let start = Cursor.position cursor in
-  let rec loop () =
-    match Cursor.peek cursor with
-    | None -> (Cursor.slice cursor start (Cursor.position cursor - start), false)
-    | Some '|' -> (
-        Cursor.advance cursor;
+  let rec find_pipe_offset offset =
+    match Cursor.peek_n cursor offset with
+    | Some '|' ->
+        Some offset
+    | Some c when is_ident_continue c ->
+        find_pipe_offset (offset + 1)
+    | _ ->
+        None
+  in
+  match find_pipe_offset 1 with
+  | Some pipe_offset ->
+      let delimiter =
+        if pipe_offset = 1 then
+          ""
+        else
+          Cursor.slice cursor (Cursor.position cursor + 1) (pipe_offset - 1)
+      in
+      for _ = 0 to pipe_offset do
+        Cursor.advance cursor
+      done;
+      let start = Cursor.position cursor in
+      let rec loop () =
         match Cursor.peek cursor with
-        | Some '}' ->
+        | None ->
+            (Cursor.slice cursor start (Cursor.position cursor - start), false)
+        | Some '|' when delimiter_matches_after_pipe cursor delimiter ->
             let value =
-              Cursor.slice cursor start (Cursor.position cursor - start - 1)
+              Cursor.slice cursor start (Cursor.position cursor - start)
             in
             Cursor.advance cursor;
+            for _ = 0 to String.length delimiter - 1 do
+              Cursor.advance cursor
+            done;
+            Cursor.advance cursor;
             (value, true)
-        | _ -> loop ())
-    | Some _ ->
-        Cursor.advance cursor;
-        loop ()
-  in
-  let value, terminated = loop () in
-  let end_ = Cursor.position cursor in
-  {
-    Token.kind = Token.Literal (String { value; terminated });
-    span = { start = token_start; end_ };
-  }
+        | Some _ ->
+            Cursor.advance cursor;
+            loop ()
+      in
+      let value, terminated = loop () in
+      let end_ = Cursor.position cursor in
+      {
+        Token.kind = Token.Literal (String { value; terminated });
+        span = { start = token_start; end_ };
+      }
+  | None ->
+      Cursor.advance cursor;
+      let end_ = Cursor.position cursor in
+      {
+        Token.kind = Token.OpenDelim Brace;
+        span = Ceibo.Span.make ~start:token_start ~end_;
+      }
 
 let lex_char cursor token_start =
   Cursor.advance cursor;
@@ -644,7 +683,10 @@ let next cursor delim_stack =
         }
     | Some '{' -> (
         match Cursor.peek_n cursor 1 with
-        | Some '|' -> lex_quoted_string cursor start
+        | Some '|' ->
+            lex_quoted_string cursor start
+        | Some c when is_ident_continue c ->
+            lex_quoted_string cursor start
         | _ ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in

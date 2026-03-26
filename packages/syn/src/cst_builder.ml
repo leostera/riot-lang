@@ -302,6 +302,77 @@ let first_and_last_direct_token node =
       | None ->
           Some (first, first))
 
+let rec drop_attribute_shell_tokens tokens =
+  let token_text = Ceibo.Red.SyntaxToken.text in
+  let rec loop depth = function
+    | [] ->
+        []
+    | syntax_token :: rest ->
+        let text = token_text syntax_token in
+        if String.equal text "[" then
+          loop (depth + 1) rest
+        else if String.equal text "]" then
+          if depth = 1 then
+            rest
+          else
+            loop (depth - 1) rest
+        else
+          loop depth rest
+  in
+  loop 1 tokens
+
+let rec drop_leading_declaration_decorator_tokens tokens =
+  let token_text = Ceibo.Red.SyntaxToken.text in
+  match tokens with
+  | percent_token :: _extension_name :: rest
+    when String.equal (token_text percent_token) "%" ->
+      drop_leading_declaration_decorator_tokens rest
+  | open_bracket :: rest when String.equal (token_text open_bracket) "[" ->
+      drop_leading_declaration_decorator_tokens (drop_attribute_shell_tokens rest)
+  | _ ->
+      tokens
+
+let declaration_tokens_after_keywords ~keyword_count tokens =
+  let rec drop count remaining =
+    if count <= 0 then
+      remaining
+    else
+      match remaining with
+      | _ :: rest ->
+          drop (count - 1) rest
+      | [] ->
+          []
+  in
+  drop keyword_count tokens |> drop_leading_declaration_decorator_tokens
+
+let find_declaration_name_token ~skip_keywords tokens =
+  let token_text = Ceibo.Red.SyntaxToken.text in
+  let rec loop = function
+    | [] ->
+        None
+    | syntax_token :: rest ->
+        let text = token_text syntax_token in
+        if List.exists (String.equal text) skip_keywords then
+          loop rest
+        else if String.equal text "%" then
+          (match rest with
+          | _extension_name :: after_extension ->
+              loop after_extension
+          | [] ->
+              None)
+        else if String.equal text "[" then
+          loop (drop_attribute_shell_tokens rest)
+        else if
+          String.equal text ":"
+          || String.equal text "="
+          || String.equal text ":="
+        then
+          None
+        else
+          Some syntax_token
+  in
+  loop tokens
+
 let direct_tokens node =
   Ceibo.Red.SyntaxNode.direct_tokens node
 
@@ -3353,12 +3424,9 @@ and expression_from_node node =
             }
       | _ -> unsupported_expression node)
   | Syntax_kind.SEQUENCE_EXPR -> (
-      match known_expression_children node with
-      | expr :: [] -> expr
-      | _ -> (
-          match sequence_expression_from_node node with
-          | Some expr -> Cst.Expression.Sequence expr
-          | None -> unsupported_expression node))
+      match sequence_expression_from_node node with
+      | Some expr -> Cst.Expression.Sequence expr
+      | None -> unsupported_expression node)
   | Syntax_kind.TUPLE_EXPR ->
       Cst.Expression.Tuple
         { syntax_node = node; elements = known_expression_children node; attributes = [] }
@@ -3777,14 +3845,14 @@ and prefix_expression_from_node node =
 
 and sequence_expression_from_node node =
   match direct_non_trivia_nodes node with
-  | first :: second :: rest ->
+  | first :: rest ->
       Some
         {
           syntax_node = node;
           separator_token =
             direct_required_token_with_text ~context:[ "sequence_expression" ]
               node ";";
-          expressions = List.map expression_from_node (first :: second :: rest);
+          expressions = List.map expression_from_node (first :: rest);
           attributes = [];
         }
   | _ -> None
@@ -5523,26 +5591,17 @@ let let_expression_binding_from_node ~is_recursive_binding node =
   | _ -> None
 
 let module_declaration_from_node node =
-  match direct_non_trivia_tokens node with
-  | first_token :: rest -> (
-      let token_text = Ceibo.Red.SyntaxToken.text in
-      let binding_tokens =
-        if String.equal (token_text first_token) "module" then
-          rest
-        else
-          first_token :: rest
-      in
-      let is_recursive_declaration, module_name =
-        match binding_tokens with
-        | rec_kw :: module_name :: _
-          when String.equal (token_text rec_kw) "rec" ->
-            (true, module_name)
-        | module_name :: _ ->
-            (false, module_name)
-        | [] ->
-            bail ~message:"expected module name during Ceibo -> CST lifting"
-              ~syntax_node:node ~context:[ "item"; "module_declaration" ]
-      in
+  let direct_tokens = direct_non_trivia_tokens node in
+  let is_recursive_declaration =
+    direct_tokens
+    |> List.exists (fun syntax_token ->
+           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "rec")
+  in
+  match
+    find_declaration_name_token ~skip_keywords:[ "module"; "rec"; "and" ]
+      direct_tokens
+  with
+  | Some module_name -> (
       let direct_children = direct_non_trivia_nodes node in
       let destructive_substitution =
         direct_non_trivia_tokens node
@@ -5609,7 +5668,7 @@ let module_declaration_from_node node =
             is_destructive_substitution = destructive_substitution;
             is_recursive = is_recursive_declaration;
           })
-  | _ -> None
+  | None -> None
 
 let recursive_module_declaration_from_nodes ~group_syntax_node module_decl_nodes =
   let recursive_declarations =
@@ -5636,8 +5695,11 @@ let recursive_module_declaration_from_nodes ~group_syntax_node module_decl_nodes
           }
 
 let module_type_declaration_from_node node =
-  match direct_non_trivia_tokens node with
-  | _module_kw :: _type_kw :: module_type_name :: _ ->
+  match
+    find_declaration_name_token ~skip_keywords:[ "module"; "type" ]
+      (direct_non_trivia_tokens node)
+  with
+  | Some module_type_name ->
       let destructive_substitution =
         direct_non_trivia_tokens node
         |> List.exists (fun syntax_token ->
@@ -5655,7 +5717,7 @@ let module_type_declaration_from_node node =
               |> Option.map module_type_from_node);
             is_destructive_substitution = destructive_substitution;
           }
-  | _ -> None
+  | None -> None
 
 let class_declaration_from_node node =
   let has_equals_body =
@@ -5847,9 +5909,9 @@ let external_declaration_from_node node =
     |> List.map token
   in
   let external_name_token =
-    match direct_non_trivia_tokens node with
-    | _external_kw :: name_syntax_token :: _ -> Some (token name_syntax_token)
-    | _ -> None
+    find_declaration_name_token ~skip_keywords:[ "external" ]
+      (direct_non_trivia_tokens node)
+    |> Option.map token
   in
   match external_name_token with
   | Some lifted_name_token -> (
@@ -5893,12 +5955,15 @@ let include_statement_from_node node =
   | None -> None
 
 let exception_declaration_from_node node =
-  match direct_non_trivia_tokens node with
-  | _exception_kw :: name_syntax_token :: _ ->
+  match
+    find_declaration_name_token ~skip_keywords:[ "exception" ]
+      (direct_non_trivia_tokens node)
+  with
+  | Some name_syntax_token ->
       Some
         ({ syntax_node = node; name_token = token name_syntax_token }
           : Cst.exception_declaration)
-  | _ -> None
+  | None -> None
 
 let rec structure_items_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
@@ -6059,11 +6124,7 @@ let rec structure_items_from_node node =
   | Syntax_kind.EXTENSION_EXPR ->
       [ Cst.StructureItem.Extension (extension_from_node node) ]
   | Syntax_kind.SEQUENCE_EXPR -> (
-      match direct_non_trivia_nodes node with
-      | only_expr :: [] -> (
-          [ Cst.StructureItem.Expression (expression_from_node only_expr) ])
-      | _ -> (
-          [ Cst.StructureItem.Expression (expression_from_node node) ]))
+      [ Cst.StructureItem.Expression (expression_from_node node) ])
   | _ -> (
       [ Cst.StructureItem.Expression (expression_from_node node) ])
 

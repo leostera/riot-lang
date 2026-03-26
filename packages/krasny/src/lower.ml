@@ -157,6 +157,63 @@ let string_contains_substring text pattern =
   in
   pattern_length > 0 && loop 0
 
+let source_gap_has_only_phrase_separators ~source ~source_offset ~start ~end_ =
+  let source_length = String.length source in
+  let relative_start = Int.max 0 (start - source_offset) in
+  let relative_end = Int.min source_length (end_ - source_offset) in
+  let rec loop index saw_semicolon =
+    if index >= relative_end then
+      saw_semicolon
+    else
+      match String.get source index with
+      | ';' ->
+          loop (index + 1) true
+      | ' '
+      | '\t'
+      | '\n'
+      | '\r' ->
+          loop (index + 1) saw_semicolon
+      | _ ->
+          false
+  in
+  relative_end > relative_start && loop relative_start false
+
+let source_gap_leading_phrase_separator ~source ~source_offset ~start ~end_ =
+  let source_length = String.length source in
+  let relative_start = Int.max 0 (start - source_offset) in
+  let relative_end = Int.min source_length (end_ - source_offset) in
+  let rec skip_layout index =
+    if index >= relative_end then
+      index
+    else
+      match String.get source index with
+      | ' '
+      | '\t'
+      | '\n'
+      | '\r' ->
+          skip_layout (index + 1)
+      | _ ->
+          index
+  in
+  let rec consume_semicolons index saw_semicolon =
+    if index >= relative_end then
+      (index, saw_semicolon)
+    else if Char.equal (String.get source index) ';' then
+      consume_semicolons (index + 1) true
+    else
+      (index, saw_semicolon)
+  in
+  let start_index = skip_layout relative_start in
+  let after_semicolons, saw_semicolon =
+    consume_semicolons start_index false
+  in
+  if saw_semicolon then
+    Some
+      ( String.sub source start_index (after_semicolons - start_index),
+        source_offset + after_semicolons )
+  else
+    None
+
 let normalized_source_length source =
   let rec loop index in_whitespace acc =
     if index >= String.length source then
@@ -2007,6 +2064,7 @@ let expression_needs_parens_in_apply = function
   | Syn.Cst.Expression.If _
   | Syn.Cst.Expression.Match _
   | Syn.Cst.Expression.Try _
+  | Syn.Cst.Expression.LetOperator _
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Sequence _
   | Syn.Cst.Expression.Fun _
@@ -2042,6 +2100,7 @@ let expression_needs_multiline_binding = function
   | Syn.Cst.Expression.Match _
   | Syn.Cst.Expression.Try _
   | Syn.Cst.Expression.Function _
+  | Syn.Cst.Expression.LetOperator _
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Sequence _ ->
       true
@@ -2054,6 +2113,7 @@ let rec expression_prefers_multiline_layout = function
   | Syn.Cst.Expression.Match _
   | Syn.Cst.Expression.Try _
   | Syn.Cst.Expression.Function _
+  | Syn.Cst.Expression.LetOperator _
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Sequence _ ->
       true
@@ -2092,6 +2152,7 @@ and branch_prefers_multiline_layout = function
   | Syn.Cst.Expression.Try _
   | Syn.Cst.Expression.Function _
   | Syn.Cst.Expression.Fun _
+  | Syn.Cst.Expression.LetOperator _
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Sequence _
   | Syn.Cst.Expression.Parenthesized { grouping = Syn.Cst.BeginEnd; _ } ->
@@ -2107,6 +2168,7 @@ let rec function_body_prefers_multiline = function
       if_prefers_multiline_layout if_
   | Syn.Cst.Expression.Match _
   | Syn.Cst.Expression.Try _
+  | Syn.Cst.Expression.LetOperator _
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Sequence _
   | Syn.Cst.Expression.Parenthesized { grouping = Syn.Cst.BeginEnd; _ } ->
@@ -2309,6 +2371,7 @@ let expression_requires_break_after_equals = function
   | Syn.Cst.Expression.Try _
   | Syn.Cst.Expression.While _
   | Syn.Cst.Expression.For _
+  | Syn.Cst.Expression.LetOperator _
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Sequence _
   | Syn.Cst.Expression.LetModule _
@@ -2466,7 +2529,14 @@ let rec render_expression expression =
       | Syn.Cst.Expression.Literal literal when operator = "-" || operator = "~-" ->
           Doc.concat [ Doc.lparen; Doc.text "-"; render_literal literal; Doc.rparen ]
       | _ ->
-          Doc.concat [ Doc.text operator; render_expression operand ])
+          let operand_doc =
+            match operand with
+            | _ when expression_needs_parens_in_apply operand ->
+                Doc.concat [ Doc.lparen; render_expression operand; Doc.rparen ]
+            | _ ->
+                render_expression operand
+          in
+          Doc.concat [ Doc.text operator; operand_doc ])
   | Syn.Cst.Expression.FieldAssign { target; operator_token; value; _ } ->
       Doc.concat
         [
@@ -2502,6 +2572,8 @@ let rec render_expression expression =
       render_function_expression function_
   | Syn.Cst.Expression.Fun fun_ ->
       render_fun_expression fun_
+  | Syn.Cst.Expression.LetOperator let_operator ->
+      render_let_operator_expression let_operator
   | Syn.Cst.Expression.Let let_ ->
       render_let_expression let_
   | Syn.Cst.Expression.LetException let_exception ->
@@ -2520,6 +2592,7 @@ let rec render_expression expression =
         | Syn.Cst.Expression.If _
         | Syn.Cst.Expression.Match _
         | Syn.Cst.Expression.Try _
+        | Syn.Cst.Expression.LetOperator _
         | Syn.Cst.Expression.Let _
         | Syn.Cst.Expression.Sequence _
         | Syn.Cst.Expression.Fun _
@@ -2568,6 +2641,7 @@ and render_index_expression ({ syntax_node; collection; index; _ } : Syn.Cst.ind
     | Syn.Cst.Expression.If _
     | Syn.Cst.Expression.Match _
     | Syn.Cst.Expression.Try _
+    | Syn.Cst.Expression.LetOperator _
     | Syn.Cst.Expression.Let _
     | Syn.Cst.Expression.Sequence _
     | Syn.Cst.Expression.Fun _
@@ -2831,6 +2905,7 @@ and apply_argument_prefers_break = function
             ( Syn.Cst.Expression.If _
             | Syn.Cst.Expression.Match _
             | Syn.Cst.Expression.Try _
+            | Syn.Cst.Expression.LetOperator _
             | Syn.Cst.Expression.Let _
             | Syn.Cst.Expression.Sequence _ );
           _;
@@ -3342,6 +3417,8 @@ and render_block_expression = function
   | Syn.Cst.Expression.Try try_ ->
       render_match_expression ~keyword_token:try_.keyword_token
         ~scrutinee:try_.body ~with_token:try_.with_token ~cases:try_.cases
+  | Syn.Cst.Expression.LetOperator let_operator ->
+      render_let_operator_expression let_operator
   | Syn.Cst.Expression.Let let_ ->
       render_let_expression let_
   | Syn.Cst.Expression.Sequence sequence ->
@@ -3638,11 +3715,88 @@ and render_let_exception_expression
       render_expression body;
     ]
 
+and render_binding_operator_binding
+    ({ keyword_token; operator_token; binding_pattern; bound_value } :
+      Syn.Cst.binding_operator_binding) =
+  let header =
+    Doc.concat
+      [
+        doc_of_token keyword_token;
+        doc_of_token operator_token;
+        Doc.space;
+        render_pattern binding_pattern;
+      ]
+  in
+  let leading_value_trivia =
+    render_trivia_between_spans
+      ~start:
+        (nontrivia_bounds_span_of_syntax_node
+           (Syn.Cst.Pattern.syntax_node binding_pattern))
+          .end_
+      ~end_:
+        (nontrivia_bounds_span_of_syntax_node
+           (Syn.Cst.Expression.syntax_node bound_value))
+          .start
+  in
+  let rendered_value =
+    render_expression bound_value
+    |> doc_with_leading_trivia leading_value_trivia
+  in
+  let keep_value_after_equals =
+    Option.is_none leading_value_trivia
+    && not (expression_requires_break_after_equals bound_value)
+    && (expression_is_simple_after_equals bound_value
+       || expression_keeps_inline_binding_value bound_value)
+    && not (Doc.is_multiline rendered_value)
+  in
+  if keep_value_after_equals then
+    Doc.concat [ header; Doc.text " = "; rendered_value ]
+  else
+    Doc.concat [ header; Doc.space; Doc.text "="; Doc.line; Doc.indent 2 rendered_value ]
+
+and render_let_operator_expression
+    ({ binding; and_bindings; body; _ } : Syn.Cst.let_operator_expression) =
+  let rendered_bindings =
+    render_binding_operator_binding binding
+    :: List.map render_binding_operator_binding and_bindings
+  in
+  let bindings =
+    match rendered_bindings with
+    | first :: rest ->
+        Doc.concat
+          (first :: List.map (fun binding -> Doc.concat [ Doc.line; binding ]) rest)
+    | [] ->
+        Doc.empty
+  in
+  let last_bound_value =
+    match List.rev and_bindings with
+    | { bound_value; _ } :: _ ->
+        bound_value
+    | [] ->
+        binding.bound_value
+  in
+  let body_trivia =
+    render_trivia_between_spans
+      ~start:
+        (nontrivia_bounds_span_of_syntax_node
+           (Syn.Cst.Expression.syntax_node last_bound_value))
+          .end_
+      ~end_:
+        (nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node body))
+          .start
+  in
+  let body_doc = render_expression body |> doc_with_leading_trivia body_trivia in
+  if Doc.is_multiline bindings then
+    Doc.concat [ bindings; Doc.line; kw_in; Doc.line; body_doc ]
+  else
+    Doc.concat [ bindings; Doc.space; kw_in; Doc.line; body_doc ]
+
 and render_sequence_expression ({ separator_token; expressions; _ } : Syn.Cst.sequence_expression) =
+  let expression_count = List.length expressions in
   expressions
   |> List.mapi (fun index expression ->
          let suffix =
-           if index < List.length expressions - 1 then
+           if index < expression_count - 1 || expression_count = 1 then
              doc_of_token separator_token
            else
              Doc.empty
@@ -4428,6 +4582,32 @@ and split_leading_inline_comment_source gap_source =
         in
         (Some (Doc.text comment), remaining)
 
+and flatten_top_level_expression_item = function
+  | Syn.Cst.StructureItem.Expression (Syn.Cst.Expression.Sequence { expressions; _ }) ->
+      expressions
+  | Syn.Cst.StructureItem.Expression expression ->
+      [ expression ]
+  | _ ->
+      []
+
+and render_structure_expression_run ~has_trailing_separator items =
+  let expressions =
+    items
+    |> List.concat_map flatten_top_level_expression_item
+  in
+  let expression_count = List.length expressions in
+  expressions
+  |> List.mapi (fun index expression ->
+         let suffix =
+           if index < expression_count - 1 || (has_trailing_separator && index = expression_count - 1)
+           then
+             Doc.semi
+           else
+             Doc.empty
+         in
+         Doc.concat [ render_expression expression; suffix ])
+  |> Doc.join Doc.line
+
 and render_structure_entry ~source ~source_offset ~span ~trailing_suffix item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
   let should_preserve_verbatim =
@@ -4742,6 +4922,72 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         let pending = parse_between pending ~start:cursor ~end_:source_end in
         let acc = flush_pending pending acc in
         join_entries (List.rev acc)
+    | (Syn.Cst.StructureItem.Expression _ as item) :: rest ->
+        let base_span = structure_item_span item in
+        let pending = parse_between pending ~start:cursor ~end_:base_span.start in
+        let rec collect_expression_run (prev_span : Syn.Ceibo.Span.t) acc remaining =
+          match remaining with
+          | (Syn.Cst.StructureItem.Expression _ as next) :: tail ->
+              let next_span = structure_item_span next in
+              if
+                source_gap_has_only_phrase_separators ~source ~source_offset
+                  ~start:prev_span.end_ ~end_:next_span.start
+              then
+                collect_expression_run next_span (next :: acc) tail
+              else
+                (List.rev acc, remaining, prev_span)
+          | _ ->
+              (List.rev acc, remaining, prev_span)
+        in
+        let run_items, remaining, run_span =
+          collect_expression_run base_span [ item ] rest
+        in
+        let next_boundary =
+          match remaining with
+          | next :: _ ->
+              (structure_item_span next).start
+          | [] ->
+              source_end
+        in
+        let trailing_phrase_separator =
+          source_gap_leading_phrase_separator ~source ~source_offset
+            ~start:run_span.end_ ~end_:next_boundary
+        in
+        let preserved_run_end =
+          match trailing_phrase_separator with
+          | Some (_, suffix_end) ->
+              suffix_end
+          | None ->
+              run_span.end_
+        in
+        let should_preserve_run_verbatim =
+          match run_items, trailing_phrase_separator with
+          | _ :: _ :: _, _ ->
+              true
+          | [ _ ], Some _ ->
+              true
+          | _ ->
+              false
+        in
+        let acc = flush_pending pending acc in
+        let entry, next_cursor =
+          if should_preserve_run_verbatim then
+            let run_source =
+              source_of_relative_span ~source ~source_offset
+                { Syn.Ceibo.Span.start = base_span.start; end_ = preserved_run_end }
+            in
+            ( (Doc.text run_source, false, false, false, false, false),
+              preserved_run_end )
+          else
+            match run_items with
+            | [ item ] ->
+                ( render_structure_entry ~source ~source_offset ~span:base_span
+                    ~trailing_suffix:None item,
+                  run_span.end_ )
+            | _ ->
+                assert false
+        in
+        loop [] (entry :: acc) next_cursor remaining
     | item :: rest ->
         let base_span = structure_item_span item in
         let pending = parse_between pending ~start:cursor ~end_:base_span.start in
@@ -4756,21 +5002,44 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
           | _ ->
               pending
         in
+        let next_boundary =
+          match rest with
+          | next :: _ ->
+              (structure_item_span next).start
+          | [] ->
+              source_end
+        in
+        let leading_phrase_separator =
+          source_gap_leading_phrase_separator ~source ~source_offset
+            ~start:base_span.end_ ~end_:next_boundary
+        in
         let trailing_suffix =
-          match item, rest with
-          | Syn.Cst.StructureItem.Expression _, next :: _
-            when
-              Syn.Ceibo.Red.SyntaxNode.kind (Syn.Cst.StructureItem.syntax_node next)
-              = Syn.SyntaxKind.ATTRIBUTE_EXPR ->
-              Some (";;", cursor)
-          | _ ->
-              None
+          match leading_phrase_separator with
+          | Some _ as suffix ->
+              suffix
+          | None ->
+              (match item, rest with
+              | Syn.Cst.StructureItem.Expression _, next :: _
+                when
+                  Syn.Ceibo.Red.SyntaxNode.kind
+                    (Syn.Cst.StructureItem.syntax_node next)
+                  = Syn.SyntaxKind.ATTRIBUTE_EXPR ->
+                  Some (";;", base_span.end_)
+              | _ ->
+                  None)
+        in
+        let next_cursor =
+          match leading_phrase_separator with
+          | Some (_, suffix_end) ->
+              suffix_end
+          | None ->
+              base_span.end_
         in
         let acc = flush_pending pending acc in
         loop []
           (render_structure_entry ~source ~source_offset ~span:base_span ~trailing_suffix item
           :: acc)
-          base_span.end_
+          next_cursor
           rest
   in
   let source_node_span = Syn.Ceibo.Red.SyntaxNode.span source_node in

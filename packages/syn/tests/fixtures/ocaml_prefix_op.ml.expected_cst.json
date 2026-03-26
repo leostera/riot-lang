@@ -13,959 +13,1219 @@
       {
         "tag": "expression",
         "item": {
-          "tag": "prefix",
+          "tag": "sequence",
           "syntax_node": {
-            "kind": "PREFIX_EXPR",
+            "kind": "SEQUENCE_EXPR",
             "span": {
               "start": 63,
-              "end": 65
+              "end": 66
             }
           },
-          "operator_token": {
+          "separator_token": {
             "kind": "IDENT_EXPR",
-            "text": "-",
+            "text": ";",
             "span": {
-              "start": 63,
-              "end": 64
+              "start": 65,
+              "end": 66
             }
           },
-          "operand": {
-            "tag": "literal",
-            "literal": {
-              "tag": "int",
+          "expressions": [
+            {
+              "tag": "prefix",
               "syntax_node": {
-                "kind": "INT_LITERAL",
+                "kind": "PREFIX_EXPR",
                 "span": {
-                  "start": 64,
+                  "start": 63,
                   "end": 65
                 }
               },
-              "literal_token": {
-                "kind": "INT_LITERAL",
-                "text": "1",
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "-",
                 "span": {
-                  "start": 64,
-                  "end": 65
+                  "start": 63,
+                  "end": 64
                 }
               },
-              "base": "decimal",
-              "prefix": null,
-              "digits": "1",
-              "suffix": null
+              "operand": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 64,
+                      "end": 65
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "1",
+                    "span": {
+                      "start": 64,
+                      "end": 65
+                    }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "1",
+                  "suffix": null
+                }
+              }
             }
-          }
+          ]
         }
       },
       {
         "tag": "expression",
         "item": {
-          "tag": "literal",
-          "literal": {
-            "tag": "int",
-            "syntax_node": {
-              "kind": "INT_LITERAL",
-              "span": {
-                "start": 68,
-                "end": 69
-              }
-            },
-            "literal_token": {
-              "kind": "INT_LITERAL",
-              "text": "1",
-              "span": {
-                "start": 68,
-                "end": 69
-              }
-            },
-            "base": "decimal",
-            "prefix": null,
-            "digits": "1",
-            "suffix": null
-          }
-        }
-      },
-      {
-        "tag": "expression",
-        "item": {
-          "tag": "prefix",
+          "tag": "sequence",
           "syntax_node": {
-            "kind": "PREFIX_EXPR",
+            "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 72,
-              "end": 76
+              "start": 68,
+              "end": 70
             }
           },
-          "operator_token": {
+          "separator_token": {
             "kind": "IDENT_EXPR",
-            "text": "-",
+            "text": ";",
             "span": {
-              "start": 72,
-              "end": 73
+              "start": 69,
+              "end": 70
             }
           },
-          "operand": {
-            "tag": "literal",
-            "literal": {
-              "tag": "float",
-              "syntax_node": {
-                "kind": "FLOAT_LITERAL",
-                "span": {
-                  "start": 73,
-                  "end": 76
-                }
-              },
-              "literal_token": {
-                "kind": "FLOAT_LITERAL",
-                "text": "1.0",
-                "span": {
-                  "start": 73,
-                  "end": 76
-                }
-              },
-              "integral_digits": "1",
-              "fractional_digits": "0",
-              "exponent": null,
-              "suffix": null
-            }
-          }
-        }
-      },
-      {
-        "tag": "expression",
-        "item": {
-          "tag": "literal",
-          "literal": {
-            "tag": "float",
-            "syntax_node": {
-              "kind": "FLOAT_LITERAL",
-              "span": {
-                "start": 79,
-                "end": 82
-              }
-            },
-            "literal_token": {
-              "kind": "FLOAT_LITERAL",
-              "text": "1.0",
-              "span": {
-                "start": 79,
-                "end": 82
-              }
-            },
-            "integral_digits": "1",
-            "fractional_digits": "0",
-            "exponent": null,
-            "suffix": null
-          }
-        }
-      },
-      {
-        "tag": "expression",
-        "item": {
-          "tag": "prefix",
-          "syntax_node": {
-            "kind": "PREFIX_EXPR",
-            "span": {
-              "start": 85,
-              "end": 89
-            }
-          },
-          "operator_token": {
-            "kind": "IDENT_EXPR",
-            "text": "-",
-            "span": {
-              "start": 85,
-              "end": 86
-            }
-          },
-          "operand": {
-            "tag": "literal",
-            "literal": {
-              "tag": "float",
-              "syntax_node": {
-                "kind": "FLOAT_LITERAL",
-                "span": {
-                  "start": 86,
-                  "end": 89
-                }
-              },
-              "literal_token": {
-                "kind": "FLOAT_LITERAL",
-                "text": "1.0",
-                "span": {
-                  "start": 86,
-                  "end": 89
-                }
-              },
-              "integral_digits": "1",
-              "fractional_digits": "0",
-              "exponent": null,
-              "suffix": null
-            }
-          }
-        }
-      },
-      {
-        "tag": "expression",
-        "item": {
-          "tag": "literal",
-          "literal": {
-            "tag": "float",
-            "syntax_node": {
-              "kind": "FLOAT_LITERAL",
-              "span": {
-                "start": 92,
-                "end": 95
-              }
-            },
-            "literal_token": {
-              "kind": "FLOAT_LITERAL",
-              "text": "1.0",
-              "span": {
-                "start": 92,
-                "end": 95
-              }
-            },
-            "integral_digits": "1",
-            "fractional_digits": "0",
-            "exponent": null,
-            "suffix": null
-          }
-        }
-      },
-      {
-        "tag": "expression",
-        "item": {
-          "tag": "prefix",
-          "syntax_node": {
-            "kind": "PREFIX_EXPR",
-            "span": {
-              "start": 121,
-              "end": 124
-            }
-          },
-          "operator_token": {
-            "kind": "IDENT_EXPR",
-            "text": "~",
-            "span": {
-              "start": 121,
-              "end": 122
-            }
-          },
-          "operand": {
-            "tag": "prefix",
-            "syntax_node": {
-              "kind": "PREFIX_EXPR",
-              "span": {
-                "start": 122,
-                "end": 124
-              }
-            },
-            "operator_token": {
-              "kind": "IDENT_EXPR",
-              "text": "+",
-              "span": {
-                "start": 122,
-                "end": 123
-              }
-            },
-            "operand": {
+          "expressions": [
+            {
               "tag": "literal",
               "literal": {
                 "tag": "int",
                 "syntax_node": {
                   "kind": "INT_LITERAL",
                   "span": {
-                    "start": 123,
-                    "end": 124
-                  }
-                },
-                "literal_token": {
-                  "kind": "INT_LITERAL",
-                  "text": "2",
-                  "span": {
-                    "start": 123,
-                    "end": 124
-                  }
-                },
-                "base": "decimal",
-                "prefix": null,
-                "digits": "2",
-                "suffix": null
-              }
-            }
-          }
-        }
-      },
-      {
-        "tag": "expression",
-        "item": {
-          "tag": "prefix",
-          "syntax_node": {
-            "kind": "PREFIX_EXPR",
-            "span": {
-              "start": 175,
-              "end": 186
-            }
-          },
-          "operator_token": {
-            "kind": "IDENT_EXPR",
-            "text": "-",
-            "span": {
-              "start": 175,
-              "end": 176
-            }
-          },
-          "operand": {
-            "tag": "parenthesized",
-            "syntax_node": {
-              "kind": "PAREN_EXPR",
-              "span": {
-                "start": 176,
-                "end": 186
-              }
-            },
-            "opening_token": {
-              "kind": "IDENT_EXPR",
-              "text": "(",
-              "span": {
-                "start": 176,
-                "end": 177
-              }
-            },
-            "closing_token": {
-              "kind": "IDENT_EXPR",
-              "text": ")",
-              "span": {
-                "start": 185,
-                "end": 186
-              }
-            },
-            "grouping": "parens",
-            "inner": {
-              "tag": "literal",
-              "literal": {
-                "tag": "int",
-                "syntax_node": {
-                  "kind": "INT_LITERAL",
-                  "span": {
-                    "start": 177,
-                    "end": 178
+                    "start": 68,
+                    "end": 69
                   }
                 },
                 "literal_token": {
                   "kind": "INT_LITERAL",
                   "text": "1",
                   "span": {
-                    "start": 177,
-                    "end": 178
+                    "start": 68,
+                    "end": 69
                   }
                 },
                 "base": "decimal",
                 "prefix": null,
                 "digits": "1",
                 "suffix": null
-              },
-              "attributes": [
-                {
-                  "syntax_node": {
-                    "kind": "ATTRIBUTE_EXPR",
-                    "span": {
-                      "start": 179,
-                      "end": 185
-                    }
-                  },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "@",
-                    "span": {
-                      "start": 180,
-                      "end": 181
-                    }
-                  },
-                  "name": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "ATTRIBUTE_EXPR",
-                      "span": {
-                        "start": 179,
-                        "end": 185
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "foo",
-                      "span": {
-                        "start": 181,
-                        "end": 184
-                      }
-                    }
-                  },
-                  "payload_syntax_node": null,
-                  "payload": null
-                }
-              ]
+              }
             }
-          }
+          ]
         }
       },
       {
         "tag": "expression",
         "item": {
-          "tag": "prefix",
+          "tag": "sequence",
           "syntax_node": {
-            "kind": "PREFIX_EXPR",
+            "kind": "SEQUENCE_EXPR",
+            "span": {
+              "start": 72,
+              "end": 77
+            }
+          },
+          "separator_token": {
+            "kind": "IDENT_EXPR",
+            "text": ";",
+            "span": {
+              "start": 76,
+              "end": 77
+            }
+          },
+          "expressions": [
+            {
+              "tag": "prefix",
+              "syntax_node": {
+                "kind": "PREFIX_EXPR",
+                "span": {
+                  "start": 72,
+                  "end": 76
+                }
+              },
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "-",
+                "span": {
+                  "start": 72,
+                  "end": 73
+                }
+              },
+              "operand": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "float",
+                  "syntax_node": {
+                    "kind": "FLOAT_LITERAL",
+                    "span": {
+                      "start": 73,
+                      "end": 76
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "FLOAT_LITERAL",
+                    "text": "1.0",
+                    "span": {
+                      "start": 73,
+                      "end": 76
+                    }
+                  },
+                  "integral_digits": "1",
+                  "fractional_digits": "0",
+                  "exponent": null,
+                  "suffix": null
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "sequence",
+          "syntax_node": {
+            "kind": "SEQUENCE_EXPR",
+            "span": {
+              "start": 79,
+              "end": 83
+            }
+          },
+          "separator_token": {
+            "kind": "IDENT_EXPR",
+            "text": ";",
+            "span": {
+              "start": 82,
+              "end": 83
+            }
+          },
+          "expressions": [
+            {
+              "tag": "literal",
+              "literal": {
+                "tag": "float",
+                "syntax_node": {
+                  "kind": "FLOAT_LITERAL",
+                  "span": {
+                    "start": 79,
+                    "end": 82
+                  }
+                },
+                "literal_token": {
+                  "kind": "FLOAT_LITERAL",
+                  "text": "1.0",
+                  "span": {
+                    "start": 79,
+                    "end": 82
+                  }
+                },
+                "integral_digits": "1",
+                "fractional_digits": "0",
+                "exponent": null,
+                "suffix": null
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "sequence",
+          "syntax_node": {
+            "kind": "SEQUENCE_EXPR",
+            "span": {
+              "start": 85,
+              "end": 90
+            }
+          },
+          "separator_token": {
+            "kind": "IDENT_EXPR",
+            "text": ";",
+            "span": {
+              "start": 89,
+              "end": 90
+            }
+          },
+          "expressions": [
+            {
+              "tag": "prefix",
+              "syntax_node": {
+                "kind": "PREFIX_EXPR",
+                "span": {
+                  "start": 85,
+                  "end": 89
+                }
+              },
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "-",
+                "span": {
+                  "start": 85,
+                  "end": 86
+                }
+              },
+              "operand": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "float",
+                  "syntax_node": {
+                    "kind": "FLOAT_LITERAL",
+                    "span": {
+                      "start": 86,
+                      "end": 89
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "FLOAT_LITERAL",
+                    "text": "1.0",
+                    "span": {
+                      "start": 86,
+                      "end": 89
+                    }
+                  },
+                  "integral_digits": "1",
+                  "fractional_digits": "0",
+                  "exponent": null,
+                  "suffix": null
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "sequence",
+          "syntax_node": {
+            "kind": "SEQUENCE_EXPR",
+            "span": {
+              "start": 92,
+              "end": 96
+            }
+          },
+          "separator_token": {
+            "kind": "IDENT_EXPR",
+            "text": ";",
+            "span": {
+              "start": 95,
+              "end": 96
+            }
+          },
+          "expressions": [
+            {
+              "tag": "literal",
+              "literal": {
+                "tag": "float",
+                "syntax_node": {
+                  "kind": "FLOAT_LITERAL",
+                  "span": {
+                    "start": 92,
+                    "end": 95
+                  }
+                },
+                "literal_token": {
+                  "kind": "FLOAT_LITERAL",
+                  "text": "1.0",
+                  "span": {
+                    "start": 92,
+                    "end": 95
+                  }
+                },
+                "integral_digits": "1",
+                "fractional_digits": "0",
+                "exponent": null,
+                "suffix": null
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "sequence",
+          "syntax_node": {
+            "kind": "SEQUENCE_EXPR",
+            "span": {
+              "start": 121,
+              "end": 125
+            }
+          },
+          "separator_token": {
+            "kind": "IDENT_EXPR",
+            "text": ";",
+            "span": {
+              "start": 124,
+              "end": 125
+            }
+          },
+          "expressions": [
+            {
+              "tag": "prefix",
+              "syntax_node": {
+                "kind": "PREFIX_EXPR",
+                "span": {
+                  "start": 121,
+                  "end": 124
+                }
+              },
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "~",
+                "span": {
+                  "start": 121,
+                  "end": 122
+                }
+              },
+              "operand": {
+                "tag": "prefix",
+                "syntax_node": {
+                  "kind": "PREFIX_EXPR",
+                  "span": {
+                    "start": 122,
+                    "end": 124
+                  }
+                },
+                "operator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "+",
+                  "span": {
+                    "start": 122,
+                    "end": 123
+                  }
+                },
+                "operand": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 123,
+                        "end": 124
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "2",
+                      "span": {
+                        "start": 123,
+                        "end": 124
+                      }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "2",
+                    "suffix": null
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "sequence",
+          "syntax_node": {
+            "kind": "SEQUENCE_EXPR",
+            "span": {
+              "start": 175,
+              "end": 187
+            }
+          },
+          "separator_token": {
+            "kind": "IDENT_EXPR",
+            "text": ";",
+            "span": {
+              "start": 186,
+              "end": 187
+            }
+          },
+          "expressions": [
+            {
+              "tag": "prefix",
+              "syntax_node": {
+                "kind": "PREFIX_EXPR",
+                "span": {
+                  "start": 175,
+                  "end": 186
+                }
+              },
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "-",
+                "span": {
+                  "start": 175,
+                  "end": 176
+                }
+              },
+              "operand": {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "PAREN_EXPR",
+                  "span": {
+                    "start": 176,
+                    "end": 186
+                  }
+                },
+                "opening_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 176,
+                    "end": 177
+                  }
+                },
+                "closing_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ")",
+                  "span": {
+                    "start": 185,
+                    "end": 186
+                  }
+                },
+                "grouping": "parens",
+                "inner": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 177,
+                        "end": 178
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "1",
+                      "span": {
+                        "start": 177,
+                        "end": 178
+                      }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
+                  },
+                  "attributes": [
+                    {
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 179,
+                          "end": 185
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "@",
+                        "span": {
+                          "start": 180,
+                          "end": 181
+                        }
+                      },
+                      "name": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "ATTRIBUTE_EXPR",
+                          "span": {
+                            "start": 179,
+                            "end": 185
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "foo",
+                          "span": {
+                            "start": 181,
+                            "end": 184
+                          }
+                        }
+                      },
+                      "payload_syntax_node": null,
+                      "payload": null
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "expression",
+        "item": {
+          "tag": "sequence",
+          "syntax_node": {
+            "kind": "SEQUENCE_EXPR",
             "span": {
               "start": 189,
-              "end": 200
+              "end": 201
             }
           },
-          "operator_token": {
+          "separator_token": {
             "kind": "IDENT_EXPR",
-            "text": "+",
+            "text": ";",
             "span": {
-              "start": 189,
-              "end": 190
+              "start": 200,
+              "end": 201
             }
           },
-          "operand": {
-            "tag": "parenthesized",
-            "syntax_node": {
-              "kind": "PAREN_EXPR",
-              "span": {
-                "start": 190,
-                "end": 200
-              }
-            },
-            "opening_token": {
-              "kind": "IDENT_EXPR",
-              "text": "(",
-              "span": {
-                "start": 190,
-                "end": 191
-              }
-            },
-            "closing_token": {
-              "kind": "IDENT_EXPR",
-              "text": ")",
-              "span": {
-                "start": 199,
-                "end": 200
-              }
-            },
-            "grouping": "parens",
-            "inner": {
-              "tag": "literal",
-              "literal": {
-                "tag": "int",
-                "syntax_node": {
-                  "kind": "INT_LITERAL",
-                  "span": {
-                    "start": 191,
-                    "end": 192
-                  }
-                },
-                "literal_token": {
-                  "kind": "INT_LITERAL",
-                  "text": "1",
-                  "span": {
-                    "start": 191,
-                    "end": 192
-                  }
-                },
-                "base": "decimal",
-                "prefix": null,
-                "digits": "1",
-                "suffix": null
+          "expressions": [
+            {
+              "tag": "prefix",
+              "syntax_node": {
+                "kind": "PREFIX_EXPR",
+                "span": {
+                  "start": 189,
+                  "end": 200
+                }
               },
-              "attributes": [
-                {
-                  "syntax_node": {
-                    "kind": "ATTRIBUTE_EXPR",
-                    "span": {
-                      "start": 193,
-                      "end": 199
-                    }
-                  },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "@",
-                    "span": {
-                      "start": 194,
-                      "end": 195
-                    }
-                  },
-                  "name": {
-                    "tag": "ident",
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "+",
+                "span": {
+                  "start": 189,
+                  "end": 190
+                }
+              },
+              "operand": {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "PAREN_EXPR",
+                  "span": {
+                    "start": 190,
+                    "end": 200
+                  }
+                },
+                "opening_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 190,
+                    "end": 191
+                  }
+                },
+                "closing_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ")",
+                  "span": {
+                    "start": 199,
+                    "end": 200
+                  }
+                },
+                "grouping": "parens",
+                "inner": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
                     "syntax_node": {
-                      "kind": "ATTRIBUTE_EXPR",
+                      "kind": "INT_LITERAL",
                       "span": {
-                        "start": 193,
-                        "end": 199
+                        "start": 191,
+                        "end": 192
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "foo",
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "1",
                       "span": {
-                        "start": 195,
-                        "end": 198
+                        "start": 191,
+                        "end": 192
                       }
-                    }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
                   },
-                  "payload_syntax_node": null,
-                  "payload": null
+                  "attributes": [
+                    {
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 193,
+                          "end": 199
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "@",
+                        "span": {
+                          "start": 194,
+                          "end": 195
+                        }
+                      },
+                      "name": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "ATTRIBUTE_EXPR",
+                          "span": {
+                            "start": 193,
+                            "end": 199
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "foo",
+                          "span": {
+                            "start": 195,
+                            "end": 198
+                          }
+                        }
+                      },
+                      "payload_syntax_node": null,
+                      "payload": null
+                    }
+                  ]
                 }
-              ]
+              }
             }
-          }
+          ]
         }
       },
       {
         "tag": "expression",
         "item": {
-          "tag": "prefix",
+          "tag": "sequence",
           "syntax_node": {
-            "kind": "PREFIX_EXPR",
+            "kind": "SEQUENCE_EXPR",
             "span": {
               "start": 203,
-              "end": 216
+              "end": 217
             }
           },
-          "operator_token": {
+          "separator_token": {
             "kind": "IDENT_EXPR",
-            "text": "-",
+            "text": ";",
             "span": {
-              "start": 203,
-              "end": 204
+              "start": 216,
+              "end": 217
             }
           },
-          "operand": {
-            "tag": "parenthesized",
-            "syntax_node": {
-              "kind": "PAREN_EXPR",
-              "span": {
-                "start": 204,
-                "end": 216
-              }
-            },
-            "opening_token": {
-              "kind": "IDENT_EXPR",
-              "text": "(",
-              "span": {
-                "start": 204,
-                "end": 205
-              }
-            },
-            "closing_token": {
-              "kind": "IDENT_EXPR",
-              "text": ")",
-              "span": {
-                "start": 215,
-                "end": 216
-              }
-            },
-            "grouping": "parens",
-            "inner": {
-              "tag": "literal",
-              "literal": {
-                "tag": "float",
-                "syntax_node": {
-                  "kind": "FLOAT_LITERAL",
-                  "span": {
-                    "start": 205,
-                    "end": 208
-                  }
-                },
-                "literal_token": {
-                  "kind": "FLOAT_LITERAL",
-                  "text": "1.0",
-                  "span": {
-                    "start": 205,
-                    "end": 208
-                  }
-                },
-                "integral_digits": "1",
-                "fractional_digits": "0",
-                "exponent": null,
-                "suffix": null
+          "expressions": [
+            {
+              "tag": "prefix",
+              "syntax_node": {
+                "kind": "PREFIX_EXPR",
+                "span": {
+                  "start": 203,
+                  "end": 216
+                }
               },
-              "attributes": [
-                {
-                  "syntax_node": {
-                    "kind": "ATTRIBUTE_EXPR",
-                    "span": {
-                      "start": 209,
-                      "end": 215
-                    }
-                  },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "@",
-                    "span": {
-                      "start": 210,
-                      "end": 211
-                    }
-                  },
-                  "name": {
-                    "tag": "ident",
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "-",
+                "span": {
+                  "start": 203,
+                  "end": 204
+                }
+              },
+              "operand": {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "PAREN_EXPR",
+                  "span": {
+                    "start": 204,
+                    "end": 216
+                  }
+                },
+                "opening_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 204,
+                    "end": 205
+                  }
+                },
+                "closing_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ")",
+                  "span": {
+                    "start": 215,
+                    "end": 216
+                  }
+                },
+                "grouping": "parens",
+                "inner": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "float",
                     "syntax_node": {
-                      "kind": "ATTRIBUTE_EXPR",
+                      "kind": "FLOAT_LITERAL",
                       "span": {
-                        "start": 209,
-                        "end": 215
+                        "start": 205,
+                        "end": 208
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "foo",
+                    "literal_token": {
+                      "kind": "FLOAT_LITERAL",
+                      "text": "1.0",
                       "span": {
-                        "start": 211,
-                        "end": 214
+                        "start": 205,
+                        "end": 208
                       }
-                    }
+                    },
+                    "integral_digits": "1",
+                    "fractional_digits": "0",
+                    "exponent": null,
+                    "suffix": null
                   },
-                  "payload_syntax_node": null,
-                  "payload": null
+                  "attributes": [
+                    {
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 209,
+                          "end": 215
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "@",
+                        "span": {
+                          "start": 210,
+                          "end": 211
+                        }
+                      },
+                      "name": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "ATTRIBUTE_EXPR",
+                          "span": {
+                            "start": 209,
+                            "end": 215
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "foo",
+                          "span": {
+                            "start": 211,
+                            "end": 214
+                          }
+                        }
+                      },
+                      "payload_syntax_node": null,
+                      "payload": null
+                    }
+                  ]
                 }
-              ]
+              }
             }
-          }
+          ]
         }
       },
       {
         "tag": "expression",
         "item": {
-          "tag": "prefix",
+          "tag": "sequence",
           "syntax_node": {
-            "kind": "PREFIX_EXPR",
+            "kind": "SEQUENCE_EXPR",
             "span": {
               "start": 219,
-              "end": 232
+              "end": 233
             }
           },
-          "operator_token": {
+          "separator_token": {
             "kind": "IDENT_EXPR",
-            "text": "+",
+            "text": ";",
             "span": {
-              "start": 219,
-              "end": 220
+              "start": 232,
+              "end": 233
             }
           },
-          "operand": {
-            "tag": "parenthesized",
-            "syntax_node": {
-              "kind": "PAREN_EXPR",
-              "span": {
-                "start": 220,
-                "end": 232
-              }
-            },
-            "opening_token": {
-              "kind": "IDENT_EXPR",
-              "text": "(",
-              "span": {
-                "start": 220,
-                "end": 221
-              }
-            },
-            "closing_token": {
-              "kind": "IDENT_EXPR",
-              "text": ")",
-              "span": {
-                "start": 231,
-                "end": 232
-              }
-            },
-            "grouping": "parens",
-            "inner": {
-              "tag": "literal",
-              "literal": {
-                "tag": "float",
-                "syntax_node": {
-                  "kind": "FLOAT_LITERAL",
-                  "span": {
-                    "start": 221,
-                    "end": 224
-                  }
-                },
-                "literal_token": {
-                  "kind": "FLOAT_LITERAL",
-                  "text": "1.0",
-                  "span": {
-                    "start": 221,
-                    "end": 224
-                  }
-                },
-                "integral_digits": "1",
-                "fractional_digits": "0",
-                "exponent": null,
-                "suffix": null
+          "expressions": [
+            {
+              "tag": "prefix",
+              "syntax_node": {
+                "kind": "PREFIX_EXPR",
+                "span": {
+                  "start": 219,
+                  "end": 232
+                }
               },
-              "attributes": [
-                {
-                  "syntax_node": {
-                    "kind": "ATTRIBUTE_EXPR",
-                    "span": {
-                      "start": 225,
-                      "end": 231
-                    }
-                  },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "@",
-                    "span": {
-                      "start": 226,
-                      "end": 227
-                    }
-                  },
-                  "name": {
-                    "tag": "ident",
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "+",
+                "span": {
+                  "start": 219,
+                  "end": 220
+                }
+              },
+              "operand": {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "PAREN_EXPR",
+                  "span": {
+                    "start": 220,
+                    "end": 232
+                  }
+                },
+                "opening_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 220,
+                    "end": 221
+                  }
+                },
+                "closing_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ")",
+                  "span": {
+                    "start": 231,
+                    "end": 232
+                  }
+                },
+                "grouping": "parens",
+                "inner": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "float",
                     "syntax_node": {
-                      "kind": "ATTRIBUTE_EXPR",
+                      "kind": "FLOAT_LITERAL",
                       "span": {
-                        "start": 225,
-                        "end": 231
+                        "start": 221,
+                        "end": 224
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "foo",
+                    "literal_token": {
+                      "kind": "FLOAT_LITERAL",
+                      "text": "1.0",
                       "span": {
-                        "start": 227,
-                        "end": 230
+                        "start": 221,
+                        "end": 224
                       }
-                    }
+                    },
+                    "integral_digits": "1",
+                    "fractional_digits": "0",
+                    "exponent": null,
+                    "suffix": null
                   },
-                  "payload_syntax_node": null,
-                  "payload": null
+                  "attributes": [
+                    {
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 225,
+                          "end": 231
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "@",
+                        "span": {
+                          "start": 226,
+                          "end": 227
+                        }
+                      },
+                      "name": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "ATTRIBUTE_EXPR",
+                          "span": {
+                            "start": 225,
+                            "end": 231
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "foo",
+                          "span": {
+                            "start": 227,
+                            "end": 230
+                          }
+                        }
+                      },
+                      "payload_syntax_node": null,
+                      "payload": null
+                    }
+                  ]
                 }
-              ]
+              }
             }
-          }
+          ]
         }
       },
       {
         "tag": "expression",
         "item": {
-          "tag": "prefix",
+          "tag": "sequence",
           "syntax_node": {
-            "kind": "PREFIX_EXPR",
+            "kind": "SEQUENCE_EXPR",
             "span": {
               "start": 235,
-              "end": 249
+              "end": 250
             }
           },
-          "operator_token": {
+          "separator_token": {
             "kind": "IDENT_EXPR",
-            "text": "-.",
+            "text": ";",
             "span": {
-              "start": 235,
-              "end": 237
+              "start": 249,
+              "end": 250
             }
           },
-          "operand": {
-            "tag": "parenthesized",
-            "syntax_node": {
-              "kind": "PAREN_EXPR",
-              "span": {
-                "start": 237,
-                "end": 249
-              }
-            },
-            "opening_token": {
-              "kind": "IDENT_EXPR",
-              "text": "(",
-              "span": {
-                "start": 237,
-                "end": 238
-              }
-            },
-            "closing_token": {
-              "kind": "IDENT_EXPR",
-              "text": ")",
-              "span": {
-                "start": 248,
-                "end": 249
-              }
-            },
-            "grouping": "parens",
-            "inner": {
-              "tag": "literal",
-              "literal": {
-                "tag": "float",
-                "syntax_node": {
-                  "kind": "FLOAT_LITERAL",
-                  "span": {
-                    "start": 238,
-                    "end": 241
-                  }
-                },
-                "literal_token": {
-                  "kind": "FLOAT_LITERAL",
-                  "text": "1.0",
-                  "span": {
-                    "start": 238,
-                    "end": 241
-                  }
-                },
-                "integral_digits": "1",
-                "fractional_digits": "0",
-                "exponent": null,
-                "suffix": null
+          "expressions": [
+            {
+              "tag": "prefix",
+              "syntax_node": {
+                "kind": "PREFIX_EXPR",
+                "span": {
+                  "start": 235,
+                  "end": 249
+                }
               },
-              "attributes": [
-                {
-                  "syntax_node": {
-                    "kind": "ATTRIBUTE_EXPR",
-                    "span": {
-                      "start": 242,
-                      "end": 248
-                    }
-                  },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "@",
-                    "span": {
-                      "start": 243,
-                      "end": 244
-                    }
-                  },
-                  "name": {
-                    "tag": "ident",
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "-.",
+                "span": {
+                  "start": 235,
+                  "end": 237
+                }
+              },
+              "operand": {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "PAREN_EXPR",
+                  "span": {
+                    "start": 237,
+                    "end": 249
+                  }
+                },
+                "opening_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 237,
+                    "end": 238
+                  }
+                },
+                "closing_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ")",
+                  "span": {
+                    "start": 248,
+                    "end": 249
+                  }
+                },
+                "grouping": "parens",
+                "inner": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "float",
                     "syntax_node": {
-                      "kind": "ATTRIBUTE_EXPR",
+                      "kind": "FLOAT_LITERAL",
                       "span": {
-                        "start": 242,
-                        "end": 248
+                        "start": 238,
+                        "end": 241
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "foo",
+                    "literal_token": {
+                      "kind": "FLOAT_LITERAL",
+                      "text": "1.0",
                       "span": {
-                        "start": 244,
-                        "end": 247
+                        "start": 238,
+                        "end": 241
                       }
-                    }
+                    },
+                    "integral_digits": "1",
+                    "fractional_digits": "0",
+                    "exponent": null,
+                    "suffix": null
                   },
-                  "payload_syntax_node": null,
-                  "payload": null
+                  "attributes": [
+                    {
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 242,
+                          "end": 248
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "@",
+                        "span": {
+                          "start": 243,
+                          "end": 244
+                        }
+                      },
+                      "name": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "ATTRIBUTE_EXPR",
+                          "span": {
+                            "start": 242,
+                            "end": 248
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "foo",
+                          "span": {
+                            "start": 244,
+                            "end": 247
+                          }
+                        }
+                      },
+                      "payload_syntax_node": null,
+                      "payload": null
+                    }
+                  ]
                 }
-              ]
+              }
             }
-          }
+          ]
         }
       },
       {
         "tag": "expression",
         "item": {
-          "tag": "prefix",
+          "tag": "sequence",
           "syntax_node": {
-            "kind": "PREFIX_EXPR",
+            "kind": "SEQUENCE_EXPR",
             "span": {
               "start": 252,
-              "end": 266
+              "end": 267
             }
           },
-          "operator_token": {
+          "separator_token": {
             "kind": "IDENT_EXPR",
-            "text": "+.",
+            "text": ";",
             "span": {
-              "start": 252,
-              "end": 254
+              "start": 266,
+              "end": 267
             }
           },
-          "operand": {
-            "tag": "parenthesized",
-            "syntax_node": {
-              "kind": "PAREN_EXPR",
-              "span": {
-                "start": 254,
-                "end": 266
-              }
-            },
-            "opening_token": {
-              "kind": "IDENT_EXPR",
-              "text": "(",
-              "span": {
-                "start": 254,
-                "end": 255
-              }
-            },
-            "closing_token": {
-              "kind": "IDENT_EXPR",
-              "text": ")",
-              "span": {
-                "start": 265,
-                "end": 266
-              }
-            },
-            "grouping": "parens",
-            "inner": {
-              "tag": "literal",
-              "literal": {
-                "tag": "float",
-                "syntax_node": {
-                  "kind": "FLOAT_LITERAL",
-                  "span": {
-                    "start": 255,
-                    "end": 258
-                  }
-                },
-                "literal_token": {
-                  "kind": "FLOAT_LITERAL",
-                  "text": "1.0",
-                  "span": {
-                    "start": 255,
-                    "end": 258
-                  }
-                },
-                "integral_digits": "1",
-                "fractional_digits": "0",
-                "exponent": null,
-                "suffix": null
+          "expressions": [
+            {
+              "tag": "prefix",
+              "syntax_node": {
+                "kind": "PREFIX_EXPR",
+                "span": {
+                  "start": 252,
+                  "end": 266
+                }
               },
-              "attributes": [
-                {
-                  "syntax_node": {
-                    "kind": "ATTRIBUTE_EXPR",
-                    "span": {
-                      "start": 259,
-                      "end": 265
-                    }
-                  },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "@",
-                    "span": {
-                      "start": 260,
-                      "end": 261
-                    }
-                  },
-                  "name": {
-                    "tag": "ident",
+              "operator_token": {
+                "kind": "IDENT_EXPR",
+                "text": "+.",
+                "span": {
+                  "start": 252,
+                  "end": 254
+                }
+              },
+              "operand": {
+                "tag": "parenthesized",
+                "syntax_node": {
+                  "kind": "PAREN_EXPR",
+                  "span": {
+                    "start": 254,
+                    "end": 266
+                  }
+                },
+                "opening_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 254,
+                    "end": 255
+                  }
+                },
+                "closing_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ")",
+                  "span": {
+                    "start": 265,
+                    "end": 266
+                  }
+                },
+                "grouping": "parens",
+                "inner": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "float",
                     "syntax_node": {
-                      "kind": "ATTRIBUTE_EXPR",
+                      "kind": "FLOAT_LITERAL",
                       "span": {
-                        "start": 259,
-                        "end": 265
+                        "start": 255,
+                        "end": 258
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "foo",
+                    "literal_token": {
+                      "kind": "FLOAT_LITERAL",
+                      "text": "1.0",
                       "span": {
-                        "start": 261,
-                        "end": 264
+                        "start": 255,
+                        "end": 258
                       }
-                    }
+                    },
+                    "integral_digits": "1",
+                    "fractional_digits": "0",
+                    "exponent": null,
+                    "suffix": null
                   },
-                  "payload_syntax_node": null,
-                  "payload": null
+                  "attributes": [
+                    {
+                      "syntax_node": {
+                        "kind": "ATTRIBUTE_EXPR",
+                        "span": {
+                          "start": 259,
+                          "end": 265
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "@",
+                        "span": {
+                          "start": 260,
+                          "end": 261
+                        }
+                      },
+                      "name": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "ATTRIBUTE_EXPR",
+                          "span": {
+                            "start": 259,
+                            "end": 265
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "foo",
+                          "span": {
+                            "start": 261,
+                            "end": 264
+                          }
+                        }
+                      },
+                      "payload_syntax_node": null,
+                      "payload": null
+                    }
+                  ]
                 }
-              ]
+              }
             }
-          }
+          ]
         }
       },
       {

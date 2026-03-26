@@ -1581,45 +1581,9 @@
               },
               {
                 "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "{",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "u",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "|",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "x",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "|",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "u",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "}",
-                "width": 1
+                "kind": "STRING_LITERAL",
+                "text": "{u|x|u}",
+                "width": 7
               },
               {
                 "type": "token",
@@ -1726,45 +1690,9 @@
               },
               {
                 "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "{",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "u",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "|",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "x",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "|",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "u",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "}",
-                "width": 1
+                "kind": "STRING_LITERAL",
+                "text": "{u|x|u}",
+                "width": 7
               },
               {
                 "type": "token",
@@ -1876,45 +1804,9 @@
                   },
                   {
                     "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "{",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "u",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "|",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "x",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "|",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "u",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "}",
-                    "width": 1
+                    "kind": "STRING_LITERAL",
+                    "text": "{u|x|u}",
+                    "width": 7
                   },
                   {
                     "type": "token",

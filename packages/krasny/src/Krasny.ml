@@ -12,7 +12,8 @@ module Lower = Lower
 
 let format (result : Syn.Parser.parse_result) =
   match Syn.build_cst result with
-  | Error err -> Error (Cannot_build_cst err)
+  | Error err ->
+      Error (Cannot_build_cst err)
   | Ok source_file ->
       let original_source = Source.source_of_result result in
       Ok
