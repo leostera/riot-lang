@@ -42,6 +42,7 @@ There are currently no RFDs marked `rejected`.
 - `RFD0014` - Tusk Dependency Classes
 - `RFD0016` - Tusk Foreign Dependency Model Snapshot
 - `RFD0017` - OCaml Cross-Compilation Snapshot
+- `RFD0021` - Docker Stack Snapshot
 
 ## Notes
 
