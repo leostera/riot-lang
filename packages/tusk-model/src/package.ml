@@ -632,6 +632,22 @@ let autodiscover_bench_binaries (sources : sources) ~(package_path : Path.t) :
       else None)
     sources.bench
 
+let merge_binaries ~(declared : binary list) ~(autodiscovered : binary list) :
+    binary list =
+  let seen_paths =
+    declared |> List.map (fun (bin : binary) -> Path.to_string bin.path)
+  in
+  let _, discovered =
+    List.fold_left
+      (fun (seen_paths, acc) (bin : binary) ->
+        let path = Path.to_string bin.path in
+        if List.mem path seen_paths
+        then (seen_paths, acc)
+        else (path :: seen_paths, bin :: acc))
+      (seen_paths, []) autodiscovered
+  in
+  declared @ List.rev discovered
+
 let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
     ~(workspace_dev_deps : dependency list)
     ~(workspace_build_deps : dependency list)
@@ -688,7 +704,10 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
       Log.debug ("[PACKAGE] " ^ name ^ ": discovered " ^ Int.to_string (List.length test_binaries) ^ " test binaries from " ^ Int.to_string (List.length sources.tests) ^ " test files");
       Log.debug ("[PACKAGE] " ^ name ^ ": discovered " ^ Int.to_string (List.length example_binaries) ^ " example binaries from " ^ Int.to_string (List.length sources.examples) ^ " example files");
       Log.debug ("[PACKAGE] " ^ name ^ ": discovered " ^ Int.to_string (List.length bench_binaries) ^ " benchmark binaries from " ^ Int.to_string (List.length sources.bench) ^ " benchmark files");
-      let all_binaries = binaries @ test_binaries @ example_binaries @ bench_binaries in
+      let all_binaries =
+        merge_binaries ~declared:binaries
+          ~autodiscovered:(test_binaries @ example_binaries @ bench_binaries)
+      in
       
       (* Parse commands using Package_command module *)
       let commands = 

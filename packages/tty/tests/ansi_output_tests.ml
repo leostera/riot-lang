@@ -1,4 +1,5 @@
 open Std
+module Test = Std.Test
 
 (** Tests for ANSI escape sequences from the Escape_seq module *)
 
@@ -109,43 +110,31 @@ let test_disable_focus_tracking () =
   if output = "\x1b[?1004l" then Ok ()
   else Error ("Expected '\\x1b[?1004l', got '" ^ output)
 
-(** Run all tests *)
+let tests =
+  Test.
+    [
+      case "show_cursor" test_show_cursor;
+      case "hide_cursor" test_hide_cursor;
+      case "cursor_position" test_cursor_position;
+      case "cursor_up" test_cursor_up;
+      case "cursor_down" test_cursor_down;
+      case "cursor_forward" test_cursor_forward;
+      case "cursor_back" test_cursor_back;
+      case "erase_display" test_erase_display;
+      case "erase_line" test_erase_line;
+      case "erase_to_end_of_line" test_erase_to_end_of_line;
+      case "erase_to_start_of_line" test_erase_to_start_of_line;
+      case "enter_alt_screen" test_enter_alt_screen;
+      case "exit_alt_screen" test_exit_alt_screen;
+      case "enable_mouse_all_motion" test_enable_mouse_all_motion;
+      case "disable_mouse" test_disable_mouse;
+      case "enable_bracketed_paste" test_enable_bracketed_paste;
+      case "disable_bracketed_paste" test_disable_bracketed_paste;
+      case "enable_focus_tracking" test_enable_focus_tracking;
+      case "disable_focus_tracking" test_disable_focus_tracking;
+    ]
 
 let () =
-  let tests = [
-    ("show_cursor", test_show_cursor);
-    ("hide_cursor", test_hide_cursor);
-    ("cursor_position", test_cursor_position);
-    ("cursor_up", test_cursor_up);
-    ("cursor_down", test_cursor_down);
-    ("cursor_forward", test_cursor_forward);
-    ("cursor_back", test_cursor_back);
-    ("erase_display", test_erase_display);
-    ("erase_line", test_erase_line);
-    ("erase_to_end_of_line", test_erase_to_end_of_line);
-    ("erase_to_start_of_line", test_erase_to_start_of_line);
-    ("enter_alt_screen", test_enter_alt_screen);
-    ("exit_alt_screen", test_exit_alt_screen);
-    ("enable_mouse_all_motion", test_enable_mouse_all_motion);
-    ("disable_mouse", test_disable_mouse);
-    ("enable_bracketed_paste", test_enable_bracketed_paste);
-    ("disable_bracketed_paste", test_disable_bracketed_paste);
-    ("enable_focus_tracking", test_enable_focus_tracking);
-    ("disable_focus_tracking", test_disable_focus_tracking);
-  ] in
-  
-  let passed = cell 0 in
-  let failed = cell 0 in
-  
-  List.iter (fun (name, test) ->
-    match test () with
-    | Ok () -> 
-        print ("✓ " ^ name ^ "\n");
-        passed := !passed + 1
-    | Error msg -> 
-        print ("✗ " ^ name ^ ": " ^ msg ^ "\n");
-        failed := !failed + 1
-  ) tests;
-  
-  print ("\n" ^ Int.to_string !passed ^ " passed, " ^ Int.to_string !failed ^ " failed\n");
-  if !failed > 0 then exit 1
+  Miniriot.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"tty_ansi_output" ~tests ~args)
+    ~args:Env.args ()

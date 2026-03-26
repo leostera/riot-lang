@@ -79,11 +79,6 @@ let tests =
   ]
 
 let () =
-  (* Run test directly and print results *)
-  match test_three_column_with_grow () with
-  | Ok () -> 
-      println "✓ Test passed: Three columns with Grow in middle";
-      exit 0
-  | Error msg ->
-      println ("✗ Test failed: " ^ msg);
-      exit 1
+  Miniriot.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"grow_layout_tests" ~tests ~args)
+    ~args:Env.args ()

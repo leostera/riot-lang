@@ -1,4 +1,5 @@
 open Std
+module Test = Std.Test
 
 (** Tests for TTY API - focusing on state management and input, not output *)
 
@@ -115,35 +116,23 @@ let test_stdin_stdout_stderr_fds () =
   let _stderr = Tty.stderr_fd () in
   Ok ()
 
-(** Run all tests *)
+let tests =
+  Test.
+    [
+      case "make_tty" test_make_tty;
+      case "make_raw" test_make_raw;
+      case "size_accessors" test_size_accessors;
+      case "refresh_size" test_refresh_size;
+      case "mode_switching" test_mode_switching;
+      case "escape_sequences_are_strings" test_escape_sequences_are_strings;
+      case "csi_constant" test_csi_constant;
+      case "strip_ansi" test_strip_ansi;
+      case "width_calculation" test_width_calculation;
+      case "is_tty" test_is_tty;
+      case "stdin_stdout_stderr_fds" test_stdin_stdout_stderr_fds;
+    ]
 
 let () =
-  let tests = [
-    ("make_tty", test_make_tty);
-    ("make_raw", test_make_raw);
-    ("size_accessors", test_size_accessors);
-    ("refresh_size", test_refresh_size);
-    ("mode_switching", test_mode_switching);
-    ("escape_sequences_are_strings", test_escape_sequences_are_strings);
-    ("csi_constant", test_csi_constant);
-    ("strip_ansi", test_strip_ansi);
-    ("width_calculation", test_width_calculation);
-    ("is_tty", test_is_tty);
-    ("stdin_stdout_stderr_fds", test_stdin_stdout_stderr_fds);
-  ] in
-  
-  let passed = cell 0 in
-  let failed = cell 0 in
-  
-  List.iter (fun (name, test) ->
-    match test () with
-    | Ok () -> 
-        print ("✓ " ^ name ^ "\n");
-        passed := !passed + 1
-    | Error msg -> 
-        print ("✗ " ^ name ^ ": " ^ msg ^ "\n");
-        failed := !failed + 1
-  ) tests;
-  
-  print ("\n" ^ Int.to_string !passed ^ " passed, " ^ Int.to_string !failed ^ " failed\n");
-  if !failed > 0 then exit 1
+  Miniriot.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"tty_api" ~tests ~args)
+    ~args:Env.args ()

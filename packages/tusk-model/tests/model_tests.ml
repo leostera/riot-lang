@@ -39,6 +39,11 @@ let make_package () =
       fix_providers = [];
     }
 
+let with_tempdir prefix fn =
+  match Fs.with_tempdir ~prefix fn with
+  | Ok result -> result
+  | Error _ -> Error "Tempdir creation failed"
+
 let test_build_scope_drops_commands_and_runtime_outputs () =
   let pkg = make_package () in
   let projected = Tusk_model.Package.for_scope Tusk_model.Package.Build pkg in
@@ -86,6 +91,60 @@ let test_dev_scope_keeps_only_dev_outputs () =
   then Ok ()
   else Error "dev scope should reuse runtime deps while keeping only dev outputs"
 
+let test_explicit_binaries_override_autodiscovery () =
+  with_tempdir "tusk_model_package" (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      let examples_dir = Path.(tmpdir / Path.v "examples") in
+      Result.expect (Fs.create_dir_all src_dir)
+        ~msg:"Failed to create src directory";
+      Result.expect (Fs.create_dir_all examples_dir)
+        ~msg:"Failed to create examples directory";
+      Result.expect
+        (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml"))
+        ~msg:"Failed to write library source";
+      Result.expect
+        (Fs.write "let () = ()\n"
+           Path.(examples_dir / Path.v "test_https_httpbin.ml"))
+        ~msg:"Failed to write explicit example";
+      Result.expect
+        (Fs.write "let () = ()\n"
+           Path.(examples_dir / Path.v "simple_https.ml"))
+        ~msg:"Failed to write autodiscovered example";
+
+      let manifest =
+        Std.Data.Toml.parse
+          {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[lib]
+path = "src/demo.ml"
+
+[[bin]]
+name = "test_https_httpbin"
+path = "examples/test_https_httpbin.ml"
+|}
+        |> Result.expect ~msg:"Expected package TOML to parse"
+      in
+      let pkg =
+        Tusk_model.Package.from_toml manifest ~workspace_deps:[]
+          ~workspace_dev_deps:[] ~workspace_build_deps:[]
+          ~path:tmpdir ~relative_path:(Path.v "packages/demo")
+        |> Result.expect ~msg:"Expected package manifest to parse"
+      in
+      let binary_names =
+        pkg.binaries
+        |> List.map (fun (bin : Tusk_model.Package.binary) -> bin.name)
+      in
+      match binary_names with
+      | [ "test_https_httpbin"; "simple_https" ] -> Ok ()
+      | _ ->
+          Error
+            ("expected explicit example binary to suppress autodiscovery \
+              duplicate, got: ["
+            ^ String.concat ", " binary_names ^ "]"))
+
 let tests =
   Test.
     [
@@ -94,6 +153,8 @@ let tests =
       case "for_scope: runtime keeps commands" test_runtime_scope_keeps_commands;
       case "for_scope: dev keeps only dev outputs"
         test_dev_scope_keeps_only_dev_outputs;
+      case "package: explicit binaries suppress autodiscovery duplicates"
+        test_explicit_binaries_override_autodiscovery;
     ]
 
 let name = "Tusk Model Tests"

@@ -1,4 +1,5 @@
 open Std
+module Test = Std.Test
 
 (** Comprehensive tests for TTY module - tests both TTY state management and Escape_seq *)
 
@@ -315,81 +316,50 @@ let test_mode_switching () =
       else Error "Mode switching failed"
   | Error _ -> Ok ()
 
-(** ## Run All Tests *)
+let tests =
+  Test.
+    [
+      case "show_cursor" test_show_cursor;
+      case "hide_cursor" test_hide_cursor;
+      case "show_hide_sequence" test_show_hide_sequence;
+      case "cursor_position_home" test_cursor_position_home;
+      case "cursor_position_arbitrary" test_cursor_position_arbitrary;
+      case "cursor_up" test_cursor_up;
+      case "cursor_down" test_cursor_down;
+      case "cursor_forward" test_cursor_forward;
+      case "cursor_back" test_cursor_back;
+      case "cursor_next_line" test_cursor_next_line;
+      case "cursor_previous_line" test_cursor_previous_line;
+      case "cursor_horizontal" test_cursor_horizontal;
+      case "save_restore_cursor" test_save_restore_cursor;
+      case "erase_display_below" test_erase_display_below;
+      case "erase_display_above" test_erase_display_above;
+      case "erase_display_all" test_erase_display_all;
+      case "erase_entire_line" test_erase_entire_line;
+      case "erase_line_right" test_erase_line_right;
+      case "erase_line_left" test_erase_line_left;
+      case "alt_screen" test_alt_screen;
+      case "save_restore_screen" test_save_restore_screen;
+      case "reset_scroll_region" test_reset_scroll_region;
+      case "change_scrolling_region" test_change_scrolling_region;
+      case "mouse_sequences" test_mouse_sequences;
+      case "bracketed_paste" test_bracketed_paste;
+      case "focus_tracking" test_focus_tracking;
+      case "kitty_keyboard" test_kitty_keyboard;
+      case "sync_output" test_sync_output;
+      case "color_sequences" test_color_sequences;
+      case "text_attributes" test_text_attributes;
+      case "strip_simple" test_strip_simple;
+      case "strip_multiple" test_strip_multiple;
+      case "strip_complex" test_strip_complex;
+      case "width_simple" test_width_simple;
+      case "width_with_ansi" test_width_with_ansi;
+      case "tty_creation" test_tty_creation;
+      case "raw_mode" test_raw_mode;
+      case "mode_switching" test_mode_switching;
+    ]
 
 let () =
-  let tests = [
-    (* Cursor visibility *)
-    ("show_cursor", test_show_cursor);
-    ("hide_cursor", test_hide_cursor);
-    ("show_hide_sequence", test_show_hide_sequence);
-    
-    (* Cursor movement *)
-    ("cursor_position_home", test_cursor_position_home);
-    ("cursor_position_arbitrary", test_cursor_position_arbitrary);
-    ("cursor_up", test_cursor_up);
-    ("cursor_down", test_cursor_down);
-    ("cursor_forward", test_cursor_forward);
-    ("cursor_back", test_cursor_back);
-    ("cursor_next_line", test_cursor_next_line);
-    ("cursor_previous_line", test_cursor_previous_line);
-    ("cursor_horizontal", test_cursor_horizontal);
-    ("save_restore_cursor", test_save_restore_cursor);
-    
-    (* Screen clearing *)
-    ("erase_display_below", test_erase_display_below);
-    ("erase_display_above", test_erase_display_above);
-    ("erase_display_all", test_erase_display_all);
-    ("erase_entire_line", test_erase_entire_line);
-    ("erase_line_right", test_erase_line_right);
-    ("erase_line_left", test_erase_line_left);
-    
-    (* Alternate screen *)
-    ("alt_screen", test_alt_screen);
-    ("save_restore_screen", test_save_restore_screen);
-    ("reset_scroll_region", test_reset_scroll_region);
-    ("change_scrolling_region", test_change_scrolling_region);
-    
-    (* Mouse support *)
-    ("mouse_sequences", test_mouse_sequences);
-    
-    (* Other features *)
-    ("bracketed_paste", test_bracketed_paste);
-    ("focus_tracking", test_focus_tracking);
-    ("kitty_keyboard", test_kitty_keyboard);
-    ("sync_output", test_sync_output);
-    ("color_sequences", test_color_sequences);
-    ("text_attributes", test_text_attributes);
-    
-    (* ANSI stripping *)
-    ("strip_simple", test_strip_simple);
-    ("strip_multiple", test_strip_multiple);
-    ("strip_complex", test_strip_complex);
-    ("width_simple", test_width_simple);
-    ("width_with_ansi", test_width_with_ansi);
-    
-    (* TTY state *)
-    ("tty_creation", test_tty_creation);
-    ("raw_mode", test_raw_mode);
-    ("mode_switching", test_mode_switching);
-  ] in
-  
-  println "Running comprehensive TTY tests...\n\n";
-  
-  let passed = cell 0 in
-  let failed = cell 0 in
-  
-  List.iter (fun (name, test) ->
-    match test () with
-    | Ok () ->
-        print ("  ✓ " ^ name ^ "\n");
-        passed := !passed + 1
-    | Error msg ->
-        print ("  ✗ " ^ name ^ ": " ^ msg ^ "\n");
-        failed := !failed + 1
-  ) tests;
-  
-  println "\n========================================";
-  print ("Results: " ^ Int.to_string !passed ^ " passed, " ^ Int.to_string !failed ^ " failed\n");
-  
-  if !failed > 0 then exit 1
+  Miniriot.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"tty_comprehensive" ~tests ~args)
+    ~args:Env.args ()
