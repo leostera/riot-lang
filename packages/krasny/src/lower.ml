@@ -279,6 +279,29 @@ let nontrivia_direct_tokens syntax_node =
          | _ ->
              true)
 
+let nontrivia_bounds_span_of_syntax_node syntax_node =
+  let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
+  let nontrivia_tokens =
+    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
+    |> List.filter (fun syntax_token ->
+           match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
+           | Syn.SyntaxKind.WHITESPACE
+           | Syn.SyntaxKind.COMMENT
+           | Syn.SyntaxKind.DOCSTRING ->
+               false
+           | _ ->
+               true)
+  in
+  match nontrivia_tokens with
+  | [] ->
+      full_span
+  | first :: rest ->
+      let last = List.fold_left (fun _ token -> token) first rest in
+      {
+        Syn.Ceibo.Span.start = (Syn.Ceibo.Red.SyntaxToken.span first).start;
+        end_ = (Syn.Ceibo.Red.SyntaxToken.span last).end_;
+      }
+
 let syntax_node_has_explicit_fun_rhs syntax_node =
   let tokens =
     Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
@@ -601,27 +624,27 @@ let parse_trivia_between_offsets source ~start ~end_ pending =
   | Invalid_argument _ ->
       pending
 
+let pending_trivia_position = function
+  | TriviaDoc (position, _) ->
+      position
+  | TriviaBreak (position, _) ->
+      position
+
+let compare_pending_trivia_by_position left right =
+  Int.compare (pending_trivia_position left) (pending_trivia_position right)
+
+let extract_leading_inline_comment pending =
+  let pending = List.sort compare_pending_trivia_by_position pending in
+  match pending with
+  | TriviaDoc (_, doc) :: rest ->
+      (Some doc, rest)
+  | _ ->
+      (None, pending)
+
 let render_pending_trivia ?(strip_trailing_breaks = true) pending =
   let break_doc break_count =
     List.init break_count (fun _ -> Doc.line)
     |> Doc.concat
-  in
-  let compare_pending_trivia_by_position left right =
-    let left_position =
-      match left with
-      | TriviaDoc (position, _) ->
-          position
-      | TriviaBreak (position, _) ->
-          position
-    in
-    let right_position =
-      match right with
-      | TriviaDoc (position, _) ->
-          position
-      | TriviaBreak (position, _) ->
-          position
-    in
-    Int.compare left_position right_position
   in
   let rec strip_trailing_blanks = function
     | [] ->
@@ -676,6 +699,33 @@ let render_pending_trivia ?(strip_trailing_breaks = true) pending =
       doc
   | None, Some _ ->
       None
+
+let render_trivia_between_spans ~start ~end_ =
+  match !current_source with
+  | None ->
+      None
+  | Some source ->
+      parse_trivia_between_offsets source ~start ~end_ []
+      |> render_pending_trivia
+
+let doc_with_trailing_trivia doc trivia =
+  match trivia with
+  | None ->
+      doc
+  | Some trivia ->
+      Doc.concat [ doc; Doc.line; trivia ]
+
+let doc_with_leading_trivia trivia doc =
+  match trivia with
+  | None ->
+      doc
+  | Some trivia ->
+      Doc.concat [ trivia; Doc.line; doc ]
+
+let source_has_trailing_comment_block source =
+  let body, trailing = Source.split_trailing_comment_block source in
+  String.length body < String.length source
+  && Source.contains_comment_like_text trailing
 
 let render_interleaved_node_docs ~source_node ~should_consume_node ~node_docs =
   let flush_pending pending acc =
@@ -758,6 +808,26 @@ let doc_of_module_type module_type =
   doc_of_verbatim_syntax_node_from_current_source (Syn.Cst.ModuleType.syntax_node module_type)
 
 let render_module_expression_hook = ref doc_of_module_expression
+
+let render_attribute (attribute : Syn.Cst.attribute) =
+  Doc.concat
+    [
+      Doc.lbracket;
+      doc_of_token attribute.sigil_token;
+      doc_of_ident attribute.name;
+      (match attribute.payload_syntax_node with
+      | Some payload_syntax_node ->
+          let payload_text =
+            Source.source_of_syntax_node payload_syntax_node |> String.trim
+          in
+          if payload_text = "" then
+            Doc.empty
+          else
+            Doc.concat [ Doc.space; Doc.text payload_text ]
+      | None ->
+          Doc.empty);
+      Doc.rbracket;
+    ]
 
 let render_first_class_module_type module_type =
   let module_type_text =
@@ -906,14 +976,14 @@ let render_literal = function
   | Syn.Cst.Literal.Int literal ->
       let literal_text =
         signed_literal_text_from_syntax_node
-          ~default_text:(token_text literal.literal_token)
+          ~default_text:(render_integer_constant literal)
           literal.syntax_node
       in
       Doc.text literal_text
   | Syn.Cst.Literal.Float literal ->
       let literal_text =
         signed_literal_text_from_syntax_node
-          ~default_text:(token_text literal.literal_token)
+          ~default_text:(render_float_constant literal)
           literal.syntax_node
       in
       Doc.text literal_text
@@ -971,6 +1041,8 @@ let rec core_type_needs_parens_in_application = function
   | Syn.Cst.CoreType.Object _
   | Syn.Cst.CoreType.Alias _ ->
       true
+  | Syn.Cst.CoreType.Attribute { type_; _ } ->
+      core_type_needs_parens_in_application type_
   | Syn.Cst.CoreType.Parenthesized _ ->
       false
   | _ ->
@@ -1058,6 +1130,8 @@ let rec core_type_prefers_multiline = function
       core_type_prefers_multiline inner
   | Syn.Cst.CoreType.Alias { type_; _ } ->
       core_type_prefers_multiline type_
+  | Syn.Cst.CoreType.Attribute { type_; _ } ->
+      core_type_prefers_multiline type_
   | Syn.Cst.CoreType.Constr { arguments; _ } ->
       List.exists core_type_prefers_multiline arguments
   | _ ->
@@ -1075,6 +1149,8 @@ let rec core_type_is_atomic = function
       List.for_all core_type_is_atomic elements
   | Syn.Cst.CoreType.Parenthesized { inner; _ } ->
       core_type_is_atomic inner
+  | Syn.Cst.CoreType.Attribute { type_; _ } ->
+      core_type_is_atomic type_
   | _ ->
       false
 
@@ -1119,6 +1195,8 @@ let rec render_core_type = function
             ])
   | Syn.Cst.CoreType.Alias { type_; name_token; _ } ->
       Doc.concat [ render_core_type type_; Doc.space; Doc.text "as"; Doc.space; doc_of_token name_token ]
+  | Syn.Cst.CoreType.Attribute { type_; attribute; _ } ->
+      Doc.concat [ render_core_type type_; Doc.space; render_attribute attribute ]
   | Syn.Cst.CoreType.Poly { syntax_node; binders; body; _ } ->
       let prefix =
         if poly_type_has_explicit_type_keyword syntax_node then
@@ -1671,6 +1749,17 @@ let render_external_declaration (decl : Syn.Cst.external_declaration) =
   let primitive_names =
     decl.primitive_name_tokens |> List.map doc_of_token |> Doc.join Doc.space
   in
+  let attributes =
+    match decl.attributes with
+    | [] ->
+        Doc.empty
+    | attributes ->
+        Doc.concat
+          [
+            Doc.space;
+            attributes |> List.map render_attribute |> Doc.join Doc.space;
+          ]
+  in
   Doc.concat
     [
       kw_external;
@@ -1684,6 +1773,7 @@ let render_external_declaration (decl : Syn.Cst.external_declaration) =
       Doc.equal;
       Doc.space;
       primitive_names;
+      attributes;
     ]
 
 let rec render_pattern = function
@@ -1854,6 +1944,33 @@ let pattern_requires_parens_in_named_parameter = function
 let render_parameter parameter =
   Doc.text (Source.source_of_parameter parameter)
 
+let rec pattern_is_simple_function_parameter = function
+  | Syn.Cst.Pattern.Identifier _
+  | Syn.Cst.Pattern.Wildcard _ ->
+      true
+  | Syn.Cst.Pattern.Typed { pattern; _ }
+  | Syn.Cst.Pattern.Parenthesized { inner = pattern; _ } ->
+      pattern_is_simple_function_parameter pattern
+  | _ ->
+      false
+
+let parameters_mix_complex_positional_and_named parameters =
+  let has_named =
+    List.exists Syn.Cst.Parameter.is_named parameters
+  in
+  let has_complex_positional =
+    List.exists
+      (function
+        | Syn.Cst.Parameter.Positional { pattern; _ } ->
+            not (pattern_is_simple_function_parameter pattern)
+        | Syn.Cst.Parameter.Labeled _
+        | Syn.Cst.Parameter.Optional _
+        | Syn.Cst.Parameter.LocallyAbstract _ ->
+            false)
+      parameters
+  in
+  has_named && has_complex_positional
+
 let is_simple_expression = function
   | Syn.Cst.Expression.Path _
   | Syn.Cst.Expression.Literal _
@@ -1875,7 +1992,9 @@ let expression_needs_parens_in_apply = function
   | Syn.Cst.Expression.Sequence _
   | Syn.Cst.Expression.Fun _
   | Syn.Cst.Expression.Function _
-  | Syn.Cst.Expression.Infix _ ->
+  | Syn.Cst.Expression.Infix _
+  | Syn.Cst.Expression.Typed _
+  | Syn.Cst.Expression.Coerce _ ->
       true
   | _ ->
       false
@@ -2322,6 +2441,24 @@ let rec render_expression expression =
           Doc.concat [ Doc.lparen; Doc.text "-"; render_literal literal; Doc.rparen ]
       | _ ->
           Doc.concat [ Doc.text operator; render_expression operand ])
+  | Syn.Cst.Expression.FieldAssign { target; operator_token; value; _ } ->
+      Doc.concat
+        [
+          render_expression (Syn.Cst.Expression.FieldAccess target);
+          Doc.space;
+          doc_of_token operator_token;
+          Doc.space;
+          render_expression value;
+        ]
+  | Syn.Cst.Expression.Assign { target; operator_token; value; _ } ->
+      Doc.concat
+        [
+          render_expression target;
+          Doc.space;
+          doc_of_token operator_token;
+          Doc.space;
+          render_expression value;
+        ]
   | Syn.Cst.Expression.Infix infix ->
       render_infix_expression infix
   | Syn.Cst.Expression.Apply apply ->
@@ -2341,6 +2478,8 @@ let rec render_expression expression =
       render_fun_expression fun_
   | Syn.Cst.Expression.Let let_ ->
       render_let_expression let_
+  | Syn.Cst.Expression.LetException let_exception ->
+      render_let_exception_expression let_exception
   | Syn.Cst.Expression.LetModule let_module ->
       render_let_module_expression let_module
   | Syn.Cst.Expression.LocalOpen local_open ->
@@ -3033,6 +3172,19 @@ and render_fun_expression
   let parameters = parameters |> List.map render_parameter in
   let has_multiline_parameter = List.exists Doc.is_multiline parameters in
   let body = render_fun_body body in
+  let body_start =
+    match fun_.body with
+    | Syn.Cst.Expression expression ->
+        (nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node expression)).start
+    | Syn.Cst.Cases cases ->
+        (nontrivia_bounds_span_of_syntax_node cases.syntax_node).start
+  in
+  let body_trivia =
+    render_trivia_between_spans
+      ~start:(Syn.Cst.Token.span arrow_token).end_
+      ~end_:body_start
+  in
+  let body = doc_with_leading_trivia body_trivia body in
   let body_prefers_multiline =
     match body with
     | _ when Doc.is_multiline body ->
@@ -3244,6 +3396,16 @@ and render_if_expression_block
     else
       render_expression then_branch
   in
+  let then_trivia =
+    match else_token with
+    | None ->
+        None
+    | Some else_token ->
+        render_trivia_between_spans
+          ~start:(nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node then_branch)).end_
+          ~end_:(Syn.Cst.Token.span else_token).start
+  in
+  let then_doc = doc_with_trailing_trivia then_doc then_trivia in
   let head =
     Doc.group
       (Doc.concat
@@ -3278,6 +3440,11 @@ and render_if_expression_block
           Doc.concat [ head; Doc.line; Doc.indent 2 then_doc ]
     )
   | Some (Syn.Cst.Expression.If nested_if), Some else_token ->
+      let else_trivia =
+        render_trivia_between_spans
+          ~start:(Syn.Cst.Token.span else_token).end_
+          ~end_:(nontrivia_bounds_span_of_syntax_node nested_if.syntax_node).start
+      in
       Doc.concat
         [
           head;
@@ -3285,8 +3452,16 @@ and render_if_expression_block
           Doc.indent 2 then_doc;
           Doc.line;
           doc_of_token else_token;
-          Doc.space;
-          render_if_expression_block nested_if;
+          (match else_trivia with
+          | None ->
+              Doc.space
+          | Some _ ->
+              Doc.line);
+          (match else_trivia with
+          | None ->
+              render_if_expression_block nested_if
+          | Some trivia ->
+              Doc.indent 2 (doc_with_leading_trivia (Some trivia) (render_if_expression_block nested_if)));
         ]
       | Some else_branch, Some else_token ->
       let else_doc =
@@ -3295,6 +3470,12 @@ and render_if_expression_block
         else
           render_expression else_branch
       in
+      let else_trivia =
+        render_trivia_between_spans
+          ~start:(Syn.Cst.Token.span else_token).end_
+          ~end_:(nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node else_branch)).start
+      in
+      let else_doc = doc_with_leading_trivia else_trivia else_doc in
       (match else_branch with
       | Syn.Cst.Expression.Parenthesized { inner = Syn.Cst.Expression.Sequence _; _ } ->
           Doc.concat
@@ -3412,6 +3593,24 @@ and render_let_module_expression
   in
   Doc.concat [ header; Doc.line; render_expression body ]
 
+and render_let_exception_expression
+    ({ exception_declaration; body; _ } : Syn.Cst.let_exception_expression) =
+  let exception_doc =
+    text_of_syntax_node exception_declaration.syntax_node
+    |> String.trim
+    |> Doc.text
+  in
+  Doc.concat
+    [
+      kw_let;
+      Doc.space;
+      exception_doc;
+      Doc.space;
+      kw_in;
+      Doc.line;
+      render_expression body;
+    ]
+
 and render_sequence_expression ({ separator_token; expressions; _ } : Syn.Cst.sequence_expression) =
   expressions
   |> List.mapi (fun index expression ->
@@ -3460,7 +3659,7 @@ and split_typed_binding_pattern = function
   | pattern ->
       (pattern, None)
 
-and render_binding_value ~force_multiline_body ~parameters ~value =
+and render_binding_value ~leading_body_trivia ~force_multiline_body ~parameters ~value =
   match parameters with
   | [] ->
       (match value with
@@ -3484,6 +3683,10 @@ and render_binding_value ~force_multiline_body ~parameters ~value =
           else
             render_expression value)
   | parameters ->
+      let force_multiline_body =
+        force_multiline_body
+        || parameters_mix_complex_positional_and_named parameters
+      in
       let parameters = parameters |> List.map render_parameter |> Doc.join Doc.space in
       let has_multiline_parameters = Doc.is_multiline parameters in
       let body =
@@ -3493,6 +3696,7 @@ and render_binding_value ~force_multiline_body ~parameters ~value =
         | _ ->
             render_expression value
       in
+      let body = doc_with_leading_trivia leading_body_trivia body in
       if has_multiline_parameters then
         Doc.concat
           [
@@ -3620,6 +3824,11 @@ and render_local_binding
        | _ ->
            false)
   in
+  let leading_value_trivia =
+    render_trivia_between_spans
+      ~start:(Syn.Cst.Token.span equals_token).end_
+      ~end_:(nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node value)).start
+  in
   let keep_value_after_equals =
     let has_fun_rhs =
       match value with
@@ -3628,7 +3837,9 @@ and render_local_binding
       | _ ->
           false
     in
-    if not (parameters = []) && not keep_header_parameters then
+    if Option.is_some leading_value_trivia && (parameters = [] || keep_header_parameters) then
+      false
+    else if not (parameters = []) && not keep_header_parameters then
       true
     else
       match value with
@@ -3658,9 +3869,16 @@ and render_local_binding
           else
             render_expression value
         else
-          render_binding_value ~force_multiline_body ~parameters ~value
+          render_binding_value ~leading_body_trivia:leading_value_trivia
+            ~force_multiline_body ~parameters ~value
     | _ ->
-        render_binding_value ~force_multiline_body ~parameters:[] ~value
+        render_binding_value ~leading_body_trivia:None ~force_multiline_body ~parameters:[] ~value
+  in
+  let rendered_value =
+    if parameters = [] || keep_header_parameters then
+      doc_with_leading_trivia leading_value_trivia rendered_value
+    else
+      rendered_value
   in
   let keep_value_after_equals =
     match value with
@@ -3739,7 +3957,12 @@ and render_let_expression
     Doc.concat
       (first_binding :: List.map (fun binding -> Doc.concat [ Doc.line; binding ]) and_bindings)
   in
-  let body_doc = render_expression body in
+  let body_trivia =
+    render_trivia_between_spans
+      ~start:(Syn.Cst.Token.span in_token).end_
+      ~end_:(nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node body)).start
+  in
+  let body_doc = render_expression body |> doc_with_leading_trivia body_trivia in
   if Doc.is_multiline first_binding then
     Doc.concat
       [
@@ -4051,10 +4274,129 @@ and is_open_signature_item = function
   | _ ->
       false
 
-and render_structure_entry ~source ~span item =
-  let syntax_node = Syn.Cst.StructureItem.syntax_node item in
-  let rendered_source = Source.source_of_span source span in
-  let trailing_suffix = None in
+and source_of_relative_span ~source ~source_offset (span : Syn.Ceibo.Span.t) =
+  Source.source_between source ~start:(span.start - source_offset)
+    ~end_:(span.end_ - source_offset)
+
+and trailing_inline_comment_suffix ~source ~source_offset (span : Syn.Ceibo.Span.t) =
+  let source_length = String.length source in
+  let rec skip_horizontal index =
+    if index >= source_length then
+      index
+    else
+      match source.[index] with
+      | ' '
+      | '\t' ->
+          skip_horizontal (index + 1)
+      | _ ->
+          index
+  in
+  let rec scan_comment index depth =
+    if index >= source_length then
+      None
+    else if index + 1 < source_length && source.[index] = '(' && source.[index + 1] = '*' then
+      scan_comment (index + 2) (depth + 1)
+    else if index + 1 < source_length && source.[index] = '*' && source.[index + 1] = ')' then
+      if depth = 1 then
+        Some (index + 2)
+      else
+        scan_comment (index + 2) (depth - 1)
+    else
+      scan_comment (index + 1) depth
+  in
+  let start = span.end_ - source_offset in
+  if start < 0 || start >= source_length then
+    None
+  else
+    let comment_start = skip_horizontal start in
+    if
+      comment_start + 1 >= source_length
+      || not (Char.equal source.[comment_start] '(')
+      || not (Char.equal source.[comment_start + 1] '*')
+    then
+      None
+    else
+      match scan_comment (comment_start + 2) 1 with
+      | None ->
+          None
+      | Some after_comment ->
+          let suffix_end = skip_horizontal after_comment in
+          Some
+            ( Source.source_between source ~start:start ~end_:suffix_end,
+              source_offset + suffix_end )
+
+and leading_inline_comment_between_offsets source ~start ~end_ =
+  let source_length = String.length source in
+  let start = Int.max 0 (Int.min start source_length) in
+  let end_ = Int.max start (Int.min end_ source_length) in
+  match
+    trailing_inline_comment_suffix ~source ~source_offset:0
+      { Syn.Ceibo.Span.start; end_ = start }
+  with
+  | Some (suffix_text, suffix_end) when suffix_end <= end_ ->
+      Some (Doc.text suffix_text, suffix_end)
+  | _ ->
+      None
+
+and split_leading_inline_comment_source gap_source =
+  let source_length = String.length gap_source in
+  let rec skip_horizontal index =
+    if index >= source_length then
+      index
+    else
+      match gap_source.[index] with
+      | ' '
+      | '\t' ->
+          skip_horizontal (index + 1)
+      | _ ->
+          index
+  in
+  let rec scan_comment index depth =
+    if index >= source_length || index + 1 >= source_length then
+      None
+    else if gap_source.[index] = '(' && gap_source.[index + 1] = '*' then
+      scan_comment (index + 2) (depth + 1)
+    else if gap_source.[index] = '*' && gap_source.[index + 1] = ')' then
+      if depth = 1 then
+        Some (index + 2)
+      else
+        scan_comment (index + 2) (depth - 1)
+    else
+      scan_comment (index + 1) depth
+  in
+  let comment_start = skip_horizontal 0 in
+  if
+    comment_start >= source_length
+    || comment_start + 1 >= source_length
+    || not (Char.equal gap_source.[comment_start] '(')
+    || not (Char.equal gap_source.[comment_start + 1] '*')
+  then
+    (None, gap_source)
+  else
+    match scan_comment (comment_start + 2) 1 with
+    | None ->
+        (None, gap_source)
+    | Some comment_end ->
+        let comment =
+          String.sub gap_source comment_start (comment_end - comment_start)
+        in
+        let remaining =
+          if comment_end >= source_length then
+            ""
+          else
+            String.sub gap_source comment_end (source_length - comment_end)
+        in
+        (Some (Doc.text comment), remaining)
+
+and render_structure_entry ~source ~source_offset ~span ~trailing_suffix item =
+  let rendered_source = source_of_relative_span ~source ~source_offset span in
+  let trailing_suffix =
+    match trailing_suffix with
+    | None ->
+        None
+    | Some (suffix_text, _) ->
+        Some (Doc.text suffix_text)
+  in
   let doc =
     let base_doc =
       if structure_item_uses_verbatim_span item then
@@ -4068,20 +4410,19 @@ and render_structure_entry ~source ~span item =
     | Some suffix ->
         Doc.concat [ base_doc; suffix ]
   in
-  let tight_after =
-    Source.contains_comment_like_text rendered_source
-    || if structure_item_uses_verbatim_span item then
-         false
-       else
-         Source.contains_comment_like_text (Source.source_of_syntax_node syntax_node)
-  in
+  let tight_after = false in
   (doc, is_open_structure_item item, false, tight_after, false, is_module_alias_structure_item item)
 
-and render_signature_entry ~source ~span item =
-  let syntax_node = Syn.Cst.SignatureItem.syntax_node item in
-  let rendered_source = Source.source_of_span source span in
+and render_signature_entry ~source ~source_offset ~span ~trailing_suffix item =
+  let rendered_source = source_of_relative_span ~source ~source_offset span in
   let should_preserve_verbatim = false in
-  let trailing_suffix = None in
+  let trailing_suffix =
+    match trailing_suffix with
+    | None ->
+        None
+    | Some (suffix_text, _) ->
+        Some (Doc.text suffix_text)
+  in
   let doc =
     if should_preserve_verbatim || signature_item_uses_verbatim_span item then
       Doc.text rendered_source
@@ -4098,20 +4439,10 @@ and render_signature_entry ~source ~span item =
     | Syn.Cst.SignatureItem.TypeMutualDeclaration _ ->
         true
     | _ ->
-        Source.contains_comment_like_text rendered_source
-        || if signature_item_uses_verbatim_span item then
-             false
-           else
-             Source.contains_comment_like_text (Source.source_of_syntax_node syntax_node)
+        false
   in
   let compact_after =
-    match item with
-    | Syn.Cst.SignatureItem.TypeDeclaration _
-    | Syn.Cst.SignatureItem.TypeMutualDeclaration _ ->
-        Source.contains_comment_like_text rendered_source
-        || Source.contains_comment_like_text (Source.source_of_syntax_node syntax_node)
-    | _ ->
-        false
+    false
   in
   (doc, is_open_signature_item item, false, tight_after, false, compact_after)
 
@@ -4365,8 +4696,8 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         let acc = flush_pending pending acc in
         join_entries (List.rev acc)
     | item :: rest ->
-        let span = structure_item_span item in
-        let pending = parse_between pending ~start:cursor ~end_:span.start in
+        let base_span = structure_item_span item in
+        let pending = parse_between pending ~start:cursor ~end_:base_span.start in
         let pending =
           match acc with
           | (_, _, _, _, _, prev_is_module_alias) :: _
@@ -4379,7 +4710,10 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
               pending
         in
         let acc = flush_pending pending acc in
-        loop [] (render_structure_entry ~source ~span item :: acc) span.end_ rest
+        loop []
+          (render_structure_entry ~source ~source_offset ~span:base_span ~trailing_suffix:None item :: acc)
+          base_span.end_
+          rest
   in
   let source_node_span = Syn.Ceibo.Red.SyntaxNode.span source_node in
   loop [] [] source_node_span.start items
@@ -4436,12 +4770,7 @@ and render_signature_top_level_items ~source ~source_offset ~source_node ~items 
     if signature_item_uses_verbatim_span item then
       span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia:true syntax_node
     else
-      match item with
-      | Syn.Cst.SignatureItem.TypeDeclaration _
-      | Syn.Cst.SignatureItem.TypeMutualDeclaration _ ->
-          span_of_syntax_node_nonwhitespace_bounds syntax_node
-      | _ ->
-          span_of_syntax_node_nontrivia_bounds syntax_node
+      span_of_syntax_node_nontrivia_bounds syntax_node
   in
   let compare_signature_items_by_span left right =
     let left_span = signature_item_span left in
@@ -4465,10 +4794,12 @@ and render_signature_top_level_items ~source ~source_offset ~source_node ~items 
         let acc = flush_pending pending acc in
         join_entries (List.rev acc)
     | item :: rest ->
-        let span = signature_item_span item in
-        let pending = parse_between pending ~start:cursor ~end_:span.start in
+        let base_span = signature_item_span item in
+        let pending = parse_between pending ~start:cursor ~end_:base_span.start in
         let acc = flush_pending pending acc in
-        loop [] (render_signature_entry ~source ~span item :: acc) rest span.end_
+        loop []
+          (render_signature_entry ~source ~source_offset ~span:base_span ~trailing_suffix:None item :: acc)
+          rest base_span.end_
   in
   let source_node_span = Syn.Ceibo.Red.SyntaxNode.span source_node in
   loop [] [] items source_node_span.start

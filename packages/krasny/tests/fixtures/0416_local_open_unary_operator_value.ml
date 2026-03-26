@@ -1,0 +1,4 @@
+let int_neg = Stdlib.( ~- )
+let int_pos = Stdlib.( ~+ )
+let float_neg = Stdlib.( ~-. )
+let float_pos = Stdlib.( ~+. )

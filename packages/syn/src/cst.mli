@@ -3955,6 +3955,7 @@ type external_declaration = {
   name_token : Token.t;
   type_ : core_type;
   primitive_name_tokens : Token.t list;
+  attributes : attribute list;
 }
 
 (** A `class` declaration item.
@@ -4131,6 +4132,8 @@ module SignatureItem : sig
         (** An `open` item. *)
     | ValueDeclaration of value_declaration
         (** A `val` declaration item. *)
+    | ExternalDeclaration of external_declaration
+        (** An `external` declaration item. *)
     | IncludeStatement of include_statement
         (** An `include` item. *)
     | ExceptionDeclaration of exception_declaration

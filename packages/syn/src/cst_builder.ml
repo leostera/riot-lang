@@ -55,6 +55,15 @@ let is_trivia kind =
 
 let token syntax_tok = Cst.Token.{ syntax_token = syntax_tok }
 
+let synthetic_token ~kind ~text ~start_offset ~end_offset =
+  let green_token =
+    Ceibo.Green.make_token ~kind ~text ~width:(String.length text)
+  in
+  let syntax_token =
+    Ceibo.Red.new_token green_token (Ceibo.Span.make ~start:start_offset ~end_:end_offset)
+  in
+  token syntax_token
+
 let substring text start length =
   let text_length = String.length text in
   if length <= 0 || start >= text_length then
@@ -296,13 +305,33 @@ let first_and_last_direct_token node =
 let direct_tokens node =
   Ceibo.Red.SyntaxNode.direct_tokens node
 
+let is_literal_token_kind = function
+  | Syntax_kind.STRING_LITERAL
+  | Syntax_kind.INT_LITERAL
+  | Syntax_kind.FLOAT_LITERAL
+  | Syntax_kind.CHAR_LITERAL
+  | Syntax_kind.BOOL_LITERAL ->
+      true
+  | _ ->
+      false
+
 let literal_token_from_node ~context node =
-  match direct_non_trivia_tokens node with
-  | literal_syntax_token :: _ ->
+  let direct_tokens = direct_non_trivia_tokens node in
+  let find_literal_token syntax_tokens =
+    syntax_tokens
+    |> List.find_opt (fun syntax_token ->
+           is_literal_token_kind (Ceibo.Red.SyntaxToken.kind syntax_token))
+  in
+  match find_literal_token direct_tokens with
+  | Some literal_syntax_token ->
       token literal_syntax_token
-  | [] ->
-      bail ~message:"expected literal token during Ceibo -> CST lifting"
-        ~syntax_node:node ~context
+  | None -> (
+      match find_literal_token (subtree_non_trivia_tokens node) with
+      | Some literal_syntax_token ->
+          token literal_syntax_token
+      | None ->
+          bail ~message:"expected literal token during Ceibo -> CST lifting"
+            ~syntax_node:node ~context)
 
 let constant_from_syntax_token ~syntax_node syntax_token =
   let literal_token = token syntax_token in
@@ -420,9 +449,23 @@ let module_path_from_node node =
 
 let ident_path_from_node node =
   match direct_non_trivia_tokens node with
-  | first :: _ ->
+  | first :: rest ->
+      let name_token =
+        match rest with
+        | [] ->
+            token first
+        | _ ->
+            let tokens = first :: rest in
+            let text =
+              tokens |> List.map Ceibo.Red.SyntaxToken.text |> String.concat ""
+            in
+            let start_offset = (Ceibo.Red.SyntaxToken.span first).start in
+            let last = List.fold_left (fun _ token -> token) first rest in
+            let end_offset = (Ceibo.Red.SyntaxToken.span last).end_ in
+            synthetic_token ~kind:Syntax_kind.IDENT_EXPR ~text ~start_offset ~end_offset
+      in
       Cst.Ident.Ident
-        { syntax_node = node; name_token = token first }
+        { syntax_node = node; name_token }
   | [] ->
       bail ~message:"expected identifier path segment during Ceibo -> CST lifting"
         ~syntax_node:node ~context:[ "module_path"; "ident" ]
@@ -1860,8 +1903,20 @@ and core_type_from_node node =
     | Syntax_kind.POLY_VARIANT_TAG ->
         Cst.RowField.Tag (poly_variant_tag_from_node node)
     | _ when can_lift_core_type_node node ->
+        let inherited_type =
+          match Ceibo.Red.SyntaxNode.kind node with
+          | Syntax_kind.TYPE_CONSTR ->
+              Cst.CoreType.Constr
+                {
+                  syntax_node = node;
+                  constructor_path = type_constructor_path_from_node node;
+                  arguments = [];
+                }
+          | _ ->
+              core_type_from_node node
+        in
         Cst.RowField.Inherit
-          { syntax_node = node; type_ = core_type_from_node node }
+          { syntax_node = node; type_ = inherited_type }
     | _ ->
         bail ~message:"expected polymorphic variant row field during Ceibo -> CST lifting"
           ~syntax_node:node ~context:[ "core_type.poly_variant.row_field" ]
@@ -2510,17 +2565,39 @@ and effect_pattern_from_node node =
   | _ -> None
 
 let parameter_from_node node =
+  let binding_pattern_from_direct_nodes ~label_name_token direct_nodes =
+    match direct_nodes with
+    | binding_pattern_node :: _
+      when is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind binding_pattern_node) ->
+        Some (pattern_from_node binding_pattern_node)
+    | type_node :: _
+      when is_type_syntax_kind (Ceibo.Red.SyntaxNode.kind type_node) ->
+        let identifier_pattern =
+          Cst.Pattern.Identifier
+            {
+              syntax_node = node;
+              name_token = label_name_token;
+              attributes = [];
+            }
+        in
+        Some
+          (Cst.Pattern.Typed
+             {
+               syntax_node = node;
+               pattern = identifier_pattern;
+               type_ = core_type_from_node type_node;
+               attributes = [];
+             })
+    | _ ->
+        None
+  in
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.LABELED_PARAM -> (
       let direct_nodes = direct_non_trivia_nodes node in
       match token_with_text node "~", first_ident_token_in_subtree node with
       | Some sigil_token, Some label_name_token ->
           let binding_pattern =
-            match direct_nodes with
-            | binding_pattern_node :: _ ->
-                Some (pattern_from_node binding_pattern_node)
-            | [] ->
-                None
+            binding_pattern_from_direct_nodes ~label_name_token direct_nodes
           in
           Cst.Parameter.Labeled
             {
@@ -2541,11 +2618,7 @@ let parameter_from_node node =
       match token_with_text node "?", first_ident_token_in_subtree node with
       | Some sigil_token, Some label_name_token ->
           let binding_pattern =
-            match direct_nodes with
-            | binding_pattern_node :: _ ->
-                Some (pattern_from_node binding_pattern_node)
-            | [] ->
-                None
+            binding_pattern_from_direct_nodes ~label_name_token direct_nodes
           in
           Cst.Parameter.Optional
             {
@@ -4650,18 +4723,18 @@ and let_binding_from_binding_operator_binding ~binding_syntax_node
 
 and match_case_from_node node =
   let non_trivia_children = direct_non_trivia_nodes node in
-  let expression_children =
-    non_trivia_children
-    |> List.filter can_lift_expression_node
-    |> List.map expression_from_node
-  in
   let has_guard =
     direct_non_trivia_tokens node
     |> List.exists (fun syntax_token ->
            String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "when")
   in
   match non_trivia_children with
-  | pattern_node :: _ -> (
+  | pattern_node :: rest -> (
+      let expression_children =
+        rest
+        |> List.filter can_lift_expression_node
+        |> List.map expression_from_node
+      in
       match expression_children, has_guard with
       | [], _ -> None
       | body_exprs, false -> (
@@ -5049,8 +5122,20 @@ let row_field_from_node node =
   | Syntax_kind.POLY_VARIANT_TAG ->
       Cst.RowField.Tag (poly_variant_tag_from_node node)
   | _ when can_lift_core_type_node node ->
+      let inherited_type =
+        match Ceibo.Red.SyntaxNode.kind node with
+        | Syntax_kind.TYPE_CONSTR ->
+            Cst.CoreType.Constr
+              {
+                syntax_node = node;
+                constructor_path = type_constructor_path_from_node node;
+                arguments = [];
+              }
+        | _ ->
+            core_type_from_node node
+      in
       Cst.RowField.Inherit
-        { syntax_node = node; type_ = core_type_from_node node }
+        { syntax_node = node; type_ = inherited_type }
   | _ ->
       bail ~message:"expected polymorphic variant row field during Ceibo -> CST lifting"
         ~syntax_node:node ~context:[ "type_definition.poly_variant.row_field" ]
@@ -5719,6 +5804,7 @@ let external_declaration_from_node node =
                name_token = lifted_name_token;
                type_ = core_type_from_node lifted_type_node;
                primitive_name_tokens = lifted_primitive_name_tokens;
+               attributes = attributes_from_node node;
              }
               : Cst.external_declaration)
       | None -> None)
@@ -5987,6 +6073,10 @@ let rec signature_items_from_node node =
   | Syntax_kind.VAL_DECL -> (
       match value_declaration_from_node node with
       | Some decl -> [ Cst.SignatureItem.ValueDeclaration decl ]
+      | None -> unsupported_item node)
+  | Syntax_kind.EXTERNAL_DECL -> (
+      match external_declaration_from_node node with
+      | Some decl -> [ Cst.SignatureItem.ExternalDeclaration decl ]
       | None -> unsupported_item node)
   | Syntax_kind.INCLUDE_STMT -> (
       match include_statement_from_node node with
@@ -7097,6 +7187,9 @@ let validate_signature_item ~context = function
       validate_open_statement ~context stmt
   | Cst.SignatureItem.ValueDeclaration { type_; _ } ->
       validate_core_type ~context:("item.value_declaration.type" :: context) type_
+  | Cst.SignatureItem.ExternalDeclaration { type_; _ } ->
+      validate_core_type ~context:("item.external_declaration.type" :: context)
+        type_
   | Cst.SignatureItem.ModuleDeclaration _
   | Cst.SignatureItem.RecursiveModuleDeclaration _
   | Cst.SignatureItem.IncludeStatement _

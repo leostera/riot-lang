@@ -1,0 +1,4 @@
+module Exception = struct
+  exception Receive_timeout
+  exception Syscall_timeout
+end

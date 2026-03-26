@@ -2459,6 +2459,34 @@ let tests =
               ~actual:(List.map Syn.Cst.Token.text primitive_name_tokens);
             Ok ()
         | _ -> Error "expected first item to be an external declaration");
+    Test.case "cst external declarations preserve item attributes" (fun () ->
+        let result =
+          parse_ml
+            "external caml_hash : int -> int = \"caml_hash\" [@@noalloc]\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ExternalDeclaration { attributes; _ } :: _ ->
+            Test.assert_equal ~expected:1 ~actual:(List.length attributes);
+            (match attributes with
+            | [ attribute ] ->
+                let attribute_name =
+                  match Syn.Cst.Ident.name attribute.name with
+                  | Some name ->
+                      name
+                  | None ->
+                      ""
+                in
+                Test.assert_equal ~expected:"noalloc"
+                  ~actual:attribute_name;
+                Ok ()
+            | _ ->
+                Error "expected one external declaration attribute")
+        | _ -> Error "expected first item to be an external declaration");
     Test.case "cst include statements preserve typed include targets" (fun () ->
         let result =
           parse_mli "include module type of Stdlib.Array\n"
@@ -2647,6 +2675,20 @@ let tests =
           expect_some result.cst
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let assert_nested item_syntax_nodes =
+          let nested_items =
+            Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes
+          in
+          match nested_items with
+          | Ok (Syn.Cst.StructureItem.LetBinding binding :: _) ->
+              Test.assert_equal ~expected:3
+                ~actual:(List.length binding.parameters);
+              Ok ()
+          | Ok _ ->
+              Error "expected nested let binding"
+          | Error _ ->
+              Error "expected nested structure relift to succeed"
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.LetBinding
@@ -3572,7 +3614,36 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
+        let assert_nested item_syntax_nodes =
+          let nested_items =
+            Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes
+          in
+          match nested_items with
+          | Ok (Syn.Cst.StructureItem.LetBinding binding :: _) ->
+              Test.assert_equal ~expected:3
+                ~actual:(List.length binding.parameters);
+              Ok ()
+          | Ok _ ->
+              Error "expected nested let binding"
+          | Error _ ->
+              Error
+                "expected nested structure relift to succeed"
+        in
         match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LetModule
+                  {
+                    module_expression =
+                      Syn.Cst.ModuleExpression.Structure
+                        { item_syntax_nodes; _ };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            assert_nested item_syntax_nodes
         | Syn.Cst.StructureItem.LetBinding
             {
               value =
@@ -5676,6 +5747,150 @@ let tests =
               ~actual:(Syn.Cst.Token.text direction_token);
             Ok ()
         | _ -> Error "expected ascending for expression");
+    Test.case
+      "cst builder keeps let-binding parameters when relifting local module structure items"
+      (fun () ->
+        let source =
+          "let x =\n\
+          \  let module M = struct\n\
+          \    let read data ?timeout:_ buf = Ok 0\n\
+          \    let read_vectored data iov = Ok 0\n\
+          \  end in\n\
+          \  ()\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let assert_nested item_syntax_nodes =
+          let nested_items =
+            Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes
+          in
+          match nested_items with
+          | Ok (Syn.Cst.StructureItem.LetBinding binding :: _) ->
+              Test.assert_equal ~expected:3
+                ~actual:(List.length binding.parameters);
+              (match nested_items with
+              | Ok (_ :: Syn.Cst.StructureItem.LetBinding second_binding :: _) ->
+                  Test.assert_equal ~expected:2
+                    ~actual:(List.length second_binding.parameters)
+              | _ ->
+                  ());
+              Ok ()
+          | Ok _ ->
+              Error "expected nested let binding"
+          | Error _ ->
+              Error "expected nested structure relift to succeed"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LetModule
+                  {
+                    module_expression =
+                      Syn.Cst.ModuleExpression.Structure
+                        { item_syntax_nodes; _ };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            assert_nested item_syntax_nodes
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Let
+                  {
+                    body =
+                      Syn.Cst.Expression.LetModule
+                        {
+                          module_expression =
+                            Syn.Cst.ModuleExpression.Structure
+                              { item_syntax_nodes; _ };
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            assert_nested item_syntax_nodes
+        | _ -> Error "expected local module in let body");
+    Test.case
+      "cst builder keeps let-binding parameters for compact local-module bindings"
+      (fun () ->
+        let source =
+          "let x =\n\
+          \  let module M = struct\n\
+          \    let read  data ?timeout:_ buf= Ok 0\n\
+          \    let read_vectored  data iov= Ok 0\n\
+          \  end in\n\
+          \  ()\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let assert_nested item_syntax_nodes =
+          let nested_items =
+            Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes
+          in
+          match nested_items with
+          | Ok (Syn.Cst.StructureItem.LetBinding binding :: _) ->
+              Test.assert_equal ~expected:3
+                ~actual:(List.length binding.parameters);
+              (match nested_items with
+              | Ok (_ :: Syn.Cst.StructureItem.LetBinding second_binding :: _) ->
+                  Test.assert_equal ~expected:2
+                    ~actual:(List.length second_binding.parameters)
+              | _ ->
+                  ());
+              Ok ()
+          | Ok _ ->
+              Error "expected nested let binding"
+          | Error _ ->
+              Error "expected nested structure relift to succeed"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LetModule
+                  {
+                    module_expression =
+                      Syn.Cst.ModuleExpression.Structure
+                        { item_syntax_nodes; _ };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            assert_nested item_syntax_nodes
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Let
+                  {
+                    body =
+                      Syn.Cst.Expression.LetModule
+                        {
+                          module_expression =
+                            Syn.Cst.ModuleExpression.Structure
+                              { item_syntax_nodes; _ };
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            assert_nested item_syntax_nodes
+        | _ -> Error "expected local module in let body");
   ]
 
 let () =

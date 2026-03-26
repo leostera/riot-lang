@@ -70,16 +70,9 @@ let function_application =
     )
     values
 
-let sum_point = fun { x; y } -> x + y
+let sum_point = fun {x;y} -> x + y
 
-let summarize_large_record = fun
-  {
-    first_name;
-    last_name;
-    email;
-    city;
-    country
-  } ->
+let summarize_large_record = fun { first_name; last_name; email; city; country } ->
   first_name ^ last_name ^ email ^ city ^ country
 
 let classify_many =
@@ -110,7 +103,7 @@ let classify_letter =
   | '0' .. '9' -> `Digit
   | _ -> `Other
 
-let make_adder = fun x y -> x + y
+let make_adder = fun x -> fun y -> x + y
 
 let make_handler = fun x ->
   match x with

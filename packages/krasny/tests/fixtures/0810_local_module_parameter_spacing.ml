@@ -1,0 +1,6 @@
+let x =
+  let module M = struct
+    let read data ?timeout:_ buf = Ok 0
+    let read_vectored data iov = Ok 0
+  end in
+  ()

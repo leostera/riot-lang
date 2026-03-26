@@ -1,0 +1,4 @@
+let metadata = fun stat_result ->
+  match stat_result with
+  | Ok m -> Ok (m : Metadata.t)
+  | Error e -> Error e

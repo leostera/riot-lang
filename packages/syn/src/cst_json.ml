@@ -1851,6 +1851,7 @@ let external_declaration_to_json (decl : Cst.external_declaration) =
       ("name_token", token_to_json decl.name_token);
       ("type", core_type_to_json decl.type_);
       ("primitive_name_tokens", Json.Array (List.map token_to_json decl.primitive_name_tokens));
+      ("attributes", Json.Array (List.map attribute_to_json decl.attributes));
     ]
 
 let rec class_field_to_json = function
@@ -2342,6 +2343,12 @@ let signature_item_to_json = function
         [
           ("tag", Json.String "value_declaration");
           ("item", value_declaration_to_json decl);
+        ]
+  | Cst.SignatureItem.ExternalDeclaration decl ->
+      Json.Object
+        [
+          ("tag", Json.String "external_declaration");
+          ("item", external_declaration_to_json decl);
         ]
   | Cst.SignatureItem.IncludeStatement stmt ->
       Json.Object

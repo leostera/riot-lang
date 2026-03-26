@@ -1,4 +1,5 @@
 open Std
+
 (* Internal state for iterator *)
 module Iterator = struct
   (* Split string on first occurrence of pattern *)

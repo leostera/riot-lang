@@ -1,0 +1,4 @@
+let create_encoder = fun ?(max_dynamic_table_size = 4_096) () ->
+  max_dynamic_table_size
+
+let encode = fun encoder ~headers ?(sensitive_headers = []) -> (encoder, headers, sensitive_headers)

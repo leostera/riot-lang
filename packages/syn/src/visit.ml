@@ -887,7 +887,8 @@ and descend_value_declaration walk ctx (declaration : Cst.value_declaration) =
   walk.core_type ctx declaration.type_
 
 and descend_external_declaration walk ctx (declaration : Cst.external_declaration) =
-  walk.core_type ctx declaration.type_
+  let ctx = walk.core_type ctx declaration.type_ in
+  List.fold_left walk.attribute ctx declaration.attributes
 
 and descend_class_declaration walk ctx (declaration : Cst.class_declaration) =
   let ctx = List.fold_left walk.type_parameter ctx declaration.type_params in
@@ -1002,6 +1003,8 @@ and descend_signature_item walk ctx (item : Cst.SignatureItem.t) =
       walk.open_statement ctx statement
   | Cst.SignatureItem.ValueDeclaration declaration ->
       walk.value_declaration ctx declaration
+  | Cst.SignatureItem.ExternalDeclaration declaration ->
+      walk.external_declaration ctx declaration
   | Cst.SignatureItem.IncludeStatement statement ->
       walk.include_statement ctx statement
   | Cst.SignatureItem.ExceptionDeclaration declaration ->

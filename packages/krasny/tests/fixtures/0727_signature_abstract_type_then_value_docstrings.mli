@@ -1,0 +1,5 @@
+type ('kind, 'text) t
+(** A builder for constructing trees *)
+
+val create : unit -> ('kind, 'text) t
+(** Create a new builder *)

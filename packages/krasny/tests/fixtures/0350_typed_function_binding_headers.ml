@@ -1,0 +1,8 @@
+let rec f (x : int) : int =
+  x
+
+and g (y : int) : int =
+  y
+
+let h (z : int) : int =
+  z

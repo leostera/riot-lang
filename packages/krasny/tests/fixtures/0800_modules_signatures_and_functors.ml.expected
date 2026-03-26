@@ -10,13 +10,11 @@
 
 module type SHOW = sig
   type t
-
   val show : t -> string
 end
 
 module type EQ = sig
   type t
-
   val equal : t -> t -> bool
 end
 
@@ -57,7 +55,6 @@ end
 
 module Inline : sig
   type t
-
   val make : int -> t
 
   val show : t -> string

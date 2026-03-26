@@ -1,0 +1,6 @@
+let parse_key key =
+  match (key : Event.key) with
+  | Event.Up ->
+      1
+  | _ ->
+      0

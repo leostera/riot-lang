@@ -38,6 +38,8 @@ let labeled_record_pattern = fun ~point:{ x; y } -> x + y
 
 let labeled_record_pattern_renamed = fun ~point:{ x = x_coord; y = y_coord } -> x_coord + y_coord
 
-let configure_defaults = fun ?(timeout = 30) ?(retries = 3) ~handler () -> handler timeout retries
+let configure_defaults = fun ?(timeout = 30) ?(retries = 3) ~handler () ->
+  handler timeout retries
 
-let optional_alias = fun ?timeout:chosen_timeout () -> Option.value ~default:default_timeout chosen_timeout
+let optional_alias = fun ?timeout:chosen_timeout () ->
+  Option.value ~default:default_timeout chosen_timeout

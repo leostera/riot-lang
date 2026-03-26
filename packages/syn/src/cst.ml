@@ -2537,6 +2537,7 @@ type external_declaration = {
   name_token : Token.t;
   type_ : core_type;
   primitive_name_tokens : Token.t list;
+  attributes : attribute list;
 }
 
 type class_declaration = {
@@ -2618,6 +2619,7 @@ module SignatureItem = struct
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t
     | ValueDeclaration of value_declaration
+    | ExternalDeclaration of external_declaration
     | IncludeStatement of include_statement
     | ExceptionDeclaration of exception_declaration
 
@@ -2635,6 +2637,7 @@ module SignatureItem = struct
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
     | OpenStatement stmt -> OpenStatement.syntax_node stmt
     | ValueDeclaration decl -> decl.syntax_node
+    | ExternalDeclaration decl -> decl.syntax_node
     | IncludeStatement stmt -> stmt.syntax_node
     | ExceptionDeclaration decl -> decl.syntax_node
 end

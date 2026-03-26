@@ -1,0 +1,1 @@
+type cursor_visibility = [ `hidden | `visible ]

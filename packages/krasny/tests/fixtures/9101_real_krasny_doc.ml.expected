@@ -32,7 +32,8 @@ let spaces = fun count ->
 
 let line = Line
 
-let break = fun ?(flat = " ") () -> Break flat
+let break = fun ?(flat = " ") () ->
+  Break flat
 
 let softline = Break ""
 

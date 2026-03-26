@@ -10,6 +10,8 @@
 0320_field_assign_expression.ml
 0330_let_mutual_trailing_comment.ml
 0340_typed_let_with_locally_abstract_type.ml
+0341_labeled_wildcard_after_positional_parameter.ml
+0342_constructor_pattern_before_labeled_parameters.ml
 0350_typed_function_binding_headers.ml
 0360_local_open_record_pattern.ml
 0370_section_comment_order.ml
@@ -26,6 +28,7 @@
 0416_local_open_unary_operator_value.ml
 0417_local_open_operator_spacing.ml
 0418_keyword_operator_binding_pattern.ml
+0419_typed_constructor_payload.ml
 
 # 05xx labeled and optional arguments
 0500_labeled_and_optional_arguments.ml
@@ -42,16 +45,26 @@
 0724_type_extension_poly_variant_payload.ml
 0725_signature_type_alias_docstring.mli
 0726_signature_consecutive_type_aliases.mli
+0727_signature_abstract_type_then_value_docstrings.mli
+0728_external_declaration_attribute.ml
 0730_signature_operator_value_declarations.mli
 
 # 08xx modules, signatures, and functors
 0800_modules_signatures_and_functors.ml
+0801_module_with_exception_declarations.ml
 0810_local_module_parameter_spacing.ml
 0820_module_let_parameter_stability.ml
 
 # 09xx trivia and mixed top-level preservation
 0900_trivia_and_mixed_top_level.ml
 0901_exception_followed_by_section_comment.ml
+0902_docstring_between_multiline_lets.ml
+0903_docstring_after_function_binding.ml
+0904_comments_inside_if_binding.ml
+0905_docstring_after_explicit_fun_with_inner_comment.ml
+0906_docstring_after_fun_with_local_exception.ml
+0907_docstring_after_fun_with_local_exception_and_try.ml
+0908_trailing_inline_comment_in_module.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml
