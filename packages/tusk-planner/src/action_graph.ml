@@ -69,10 +69,11 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
       in
       ([ compile ], outputs, sources)
   | { kind = ML mod_; file = Concrete path; open_modules; _ } ->
+      let native_object_output = Module.o mod_ in
       let cmx_output = Module.cmx mod_ in
       let cmi_output = Module.cmi mod_ in
       let cmt_output = Module.cmt mod_ in
-      let outputs = [ cmt_output; cmi_output; cmx_output ] in
+      let outputs = [ cmt_output; cmi_output; cmx_output; native_object_output ] in
       let sources = [ path ] in
       let compile =
         Action.CompileImplementation
@@ -89,10 +90,11 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         Action.WriteFile { destination = path; content = contents }
       in
 
+      let native_object_output = Module.o mod_ in
       let cmx_output = Module.cmx mod_ in
       let cmi_output = Module.cmi mod_ in
       let cmt_output = Module.cmt mod_ in
-      let outputs = [ cmt_output; cmi_output; cmx_output ] in
+      let outputs = [ cmt_output; cmi_output; cmx_output; native_object_output ] in
       let sources = [] in
 
       let is_alias_file =

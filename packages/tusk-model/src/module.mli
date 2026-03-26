@@ -31,6 +31,9 @@ val cmo : t -> Path.t
 val cmx : t -> Path.t
 (** Get the compiled object filename (e.g., "Std__Path.cmx") *)
 
+val o : t -> Path.t
+(** Get the native object filename (e.g., "Std__Path.o") *)
+
 val cmt : t -> Path.t
 (** Get the compiled typed tree filename (e.g., "Std__Path.cmt") *)
 
