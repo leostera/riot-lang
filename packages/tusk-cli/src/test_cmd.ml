@@ -243,7 +243,7 @@ let run_query_path ~workspace ~extra_args request =
     print_query_empty_hint request;
     Ok ())
   else
-    match Build.build_command ~scope:Build.Dev None None with
+    match Build.build_command ~scope:Build.Dev package_filter None with
     | Error _ -> Error (Failure "Build failed")
     | Ok () ->
         let client = reconnect ~workspace in

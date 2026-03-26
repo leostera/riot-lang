@@ -276,11 +276,11 @@ let build_scope_wires_declared_build_dependencies () =
   in
   let app_build = node_for graph "app" Build in
   let deps = dependency_keys_for_node graph app_build in
-  let codegen_runtime_key =
-    Package_graph.package_key ~package_name:"codegen" Runtime
+  let codegen_build_key =
+    Package_graph.package_key ~package_name:"codegen" Build
   in
   Test.assert_true
-    (List.exists (Package.key_equal codegen_runtime_key) deps);
+    (List.exists (Package.key_equal codegen_build_key) deps);
   Ok ()
 
 let tests =

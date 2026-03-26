@@ -7,6 +7,8 @@ let test_toolchain =
   Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
   |> Result.expect ~msg:"Failed to initialize toolchain"
 
+let planner_artifacts_version = "planner-artifacts:v5"
+
 let make_test_workspace tmpdir packages =
   Tusk_model.Workspace.
     {
@@ -36,10 +38,11 @@ let make_package tmpdir name =
       fix_providers = [];
     }
 
-let compute_input_hash ~package ~workspace ~profile ~build_ctx =
+let compute_input_hash ?(planner_version = planner_artifacts_version)
+    ~package ~workspace ~profile ~build_ctx () =
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
-  H.write_string state "planner-artifacts:v2";
+  H.write_string state planner_version;
   Tusk_model.Build_ctx.hash state build_ctx;
   Tusk_model.Package.hash state package;
   let sorted_deps =
@@ -76,7 +79,7 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs () =
         let profile = Tusk_model.Profile.debug in
         let build_ctx = Tusk_model.Build_ctx.make ~session_id ~profile () in
         let input_hash =
-          compute_input_hash ~package ~workspace ~profile ~build_ctx
+          compute_input_hash ~package ~workspace ~profile ~build_ctx ()
         in
 
         let action_graph_json =
@@ -176,11 +179,141 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs () =
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_stale_plan_bundle_version_rebuilds_plan_graphs () =
+  match
+    Fs.with_tempdir ~prefix:"planner_bundle_stale_version_test" (fun tmpdir ->
+        let package =
+          {
+            (make_package tmpdir "pkg") with
+            library = Some { path = Path.v "src/pkg.ml" };
+            sources =
+              {
+                src = [ Path.v "src/pkg.ml" ];
+                native = [];
+                tests = [];
+                examples = [];
+                bench = [];
+              };
+          }
+        in
+        let src_dir = Path.(package.path / Path.v "src") in
+        let source = Path.(src_dir / Path.v "pkg.ml") in
+        let _ =
+          Fs.create_dir_all src_dir
+          |> Result.expect ~msg:"expected src dir creation to succeed"
+        in
+        let _ =
+          Fs.write "let value = 1\n" source
+          |> Result.expect ~msg:"expected source write to succeed"
+        in
+        let workspace = make_test_workspace tmpdir [ package ] in
+        let store = Tusk_store.Store.create ~workspace in
+        let session_id = Tusk_model.Session_id.make () in
+        let profile = Tusk_model.Profile.release in
+        let build_ctx = Tusk_model.Build_ctx.make ~session_id ~profile () in
+        let stale_input_hash =
+          compute_input_hash ~planner_version:"planner-artifacts:v2" ~package
+            ~workspace ~profile ~build_ctx ()
+        in
+
+        let stale_action_graph_json =
+          let ag = Tusk_planner.Action_graph.create () in
+          let action =
+            Tusk_planner.Action.WriteFile
+              { destination = Path.v "out.txt"; content = "stale" }
+          in
+          let spec =
+            Tusk_planner.Action_node.make ~actions:[ action ]
+              ~outs:[ Path.v "out.txt" ] ~srcs:[] ~package
+              ~toolchain:test_toolchain
+              ~dependency_hashes:(fun _ -> Crypto.hash_string "")
+              ~deps:[]
+          in
+          let _ = Tusk_planner.Action_graph.add_node ag spec in
+          Tusk_planner.Action_graph.to_json ag
+        in
+
+        let stale_module_graph_json =
+          Std.Data.Json.Object
+            [
+              ( "nodes",
+                Std.Data.Json.Array
+                  [
+                    Std.Data.Json.Object
+                      [
+                        ("id", Std.Data.Json.Int 1);
+                        ( "file",
+                          Std.Data.Json.Object
+                            [
+                              ("kind", Std.Data.Json.String "concrete");
+                              ("path", Std.Data.Json.String "");
+                            ] );
+                        ( "kind",
+                          Std.Data.Json.Object
+                            [ ("kind", Std.Data.Json.String "root") ] );
+                        ("deps", Std.Data.Json.Array []);
+                        ("opens", Std.Data.Json.Array []);
+                      ];
+                  ] );
+            ]
+        in
+
+        let stale_bundle =
+          Std.Data.Json.Object
+            [
+              ("version", Std.Data.Json.Int 1);
+              ("package", Std.Data.Json.String package.name);
+              ("module_graph", stale_module_graph_json);
+              ("action_graph", stale_action_graph_json);
+            ]
+        in
+        let _ =
+          Tusk_store.Store.save_plan_bundle store ~hash:stale_input_hash
+            ~plan:stale_bundle
+          |> Result.expect ~msg:"expected stale plan bundle save to succeed"
+        in
+
+        let package_graph =
+          Tusk_planner.Package_graph.create
+            ~scope:Tusk_planner.Package_graph.Runtime workspace
+          |> Result.expect ~msg:"package graph should build"
+        in
+        let package_key =
+          Tusk_planner.Package_graph.package_key ~package_name:package.name
+            Tusk_planner.Package_graph.Runtime
+        in
+
+        match
+          Tusk_planner.Package_planner.plan_package ~workspace
+            ~toolchain:test_toolchain ~store ~package_graph ~package_key
+            ~package ~build_ctx
+        with
+        | Error err ->
+            Error
+              ("expected stale bundle miss to replan package, got planner error: "
+             ^ Tusk_planner.Planning_error.to_string err)
+        | Ok (Tusk_planner.Package_planner.Planned { action_graph; _ }) ->
+            let actions = Tusk_planner.Action_graph.to_action_list action_graph in
+            if
+              List.exists
+                (function
+                  | Tusk_planner.Action.CreateLibrary _ -> true
+                  | _ -> false)
+                actions
+            then Ok ()
+            else Error "expected stale plan bundle to be ignored and rebuilt"
+        | Ok _ -> Error "expected Planned result")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let tests =
   Test.
     [
       case "plan bundle cache hit restores module and action graphs"
         test_plan_bundle_cache_hit_restores_module_and_action_graphs;
+      case "stale plan bundle version rebuilds plan graphs"
+        test_stale_plan_bundle_version_rebuilds_plan_graphs;
     ]
 
 let name = "Planner Package Planning Tests"

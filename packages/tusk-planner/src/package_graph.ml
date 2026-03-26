@@ -176,7 +176,7 @@ let create ~scope (workspace : Workspace.t) : (t, create_error) result =
         | Some from_node -> (
             let dep_scope =
               match from_scope with
-              | Build -> Runtime
+              | Build -> Build
               | Runtime -> Runtime
               | Dev -> Runtime
             in

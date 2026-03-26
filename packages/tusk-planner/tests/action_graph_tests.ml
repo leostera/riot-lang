@@ -1,6 +1,7 @@
 open Std
 
 module Test = Std.Test
+module G = Std.Graph.SimpleGraph
 
 let test_toolchain =
   Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
@@ -182,6 +183,204 @@ let test_action_hash_tracks_package_relative_source_contents () =
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_shared_library_links_stdlib_without_explicit_dependency () =
+  match
+    Fs.with_tempdir ~prefix:"planner_shared_stdlib" (fun tmpdir ->
+        let workspace = Tusk_model.Workspace.make ~root:tmpdir ~packages:[] () in
+        let store = Tusk_store.Store.create ~workspace in
+        let package =
+          {
+            (make_package_with_paths ~name:"minttea"
+               ~path:Path.(tmpdir / Path.v "packages" / Path.v "minttea")
+               ~relative_path:(Path.v "packages/minttea"))
+            with
+            library = Some { path = Path.v "src/minttea.ml" };
+          }
+        in
+        let ctx =
+          Tusk_model.Build_ctx.make
+            ~session_id:(Tusk_model.Session_id.of_string "test-session")
+            ~profile:Tusk_model.Profile.release ()
+        in
+        let module_graph = G.make () in
+        let _ =
+          G.add_node module_graph
+            (Tusk_planner.Module_node.make_library ~name:package.name
+               ~includes:[ Path.v "." ])
+        in
+        let action_graph, _ =
+          Tusk_planner.Action_graph.from_module_graph ~package
+            ~profile:Tusk_model.Profile.release ~ctx ~toolchain:test_toolchain
+            ~store ~depset:[] ~needs_unix:false ~needs_dynlink:false
+            module_graph
+        in
+        match
+          List.filter_map
+            (function
+              | Tusk_planner.Action.CreateSharedLibrary { libraries; _ } ->
+                  Some libraries
+              | _ -> None)
+            (Tusk_planner.Action_graph.to_action_list action_graph)
+        with
+        | [ libraries ] ->
+            if
+              List.exists
+                (fun library -> Path.equal library (Path.v "stdlib.cmxa"))
+                libraries
+            then Ok ()
+            else Error "expected shared library link to include stdlib.cmxa"
+        | [] -> Error "expected CreateSharedLibrary action"
+        | _ -> Error "expected one CreateSharedLibrary action")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_shared_library_links_transitive_package_libraries () =
+  match
+    Fs.with_tempdir ~prefix:"planner_shared_dep_libs" (fun tmpdir ->
+        let workspace = Tusk_model.Workspace.make ~root:tmpdir ~packages:[] () in
+        let store = Tusk_store.Store.create ~workspace in
+        let package =
+          {
+            (make_package_with_paths ~name:"tusk-eval"
+               ~path:Path.(tmpdir / Path.v "packages" / Path.v "tusk-eval")
+               ~relative_path:(Path.v "packages/tusk-eval"))
+            with
+            library = Some { path = Path.v "src/tusk_eval.ml" };
+          }
+        in
+        let make_dep ~name ~artifact_dir ~depset =
+          let dep_package =
+            {
+              (make_package_with_paths ~name
+                 ~path:Path.(tmpdir / Path.v "packages" / Path.v name)
+                 ~relative_path:Path.(Path.v "packages" / Path.v name))
+              with
+              library = Some { path = Path.v ("src/" ^ name ^ ".ml") };
+            }
+          in
+          Tusk_planner.Dependency.
+            {
+              package = dep_package;
+              artifact_dir;
+              depset;
+              hash = Crypto.hash_string name;
+            }
+        in
+        let dep_c = make_dep ~name:"ceibo" ~artifact_dir:(Path.v "/cache/c") ~depset:[] in
+        let dep_b =
+          make_dep ~name:"syn" ~artifact_dir:(Path.v "/cache/b") ~depset:[ dep_c ]
+        in
+        let dep_a =
+          make_dep ~name:"tusk-toolchain" ~artifact_dir:(Path.v "/cache/a")
+            ~depset:[ dep_b ]
+        in
+        let ctx =
+          Tusk_model.Build_ctx.make
+            ~session_id:(Tusk_model.Session_id.of_string "test-session")
+            ~profile:Tusk_model.Profile.release ()
+        in
+        let module_graph = G.make () in
+        let _ =
+          G.add_node module_graph
+            (Tusk_planner.Module_node.make_library ~name:package.name
+               ~includes:[ Path.v "." ])
+        in
+        let action_graph, _ =
+          Tusk_planner.Action_graph.from_module_graph ~package
+            ~profile:Tusk_model.Profile.release ~ctx ~toolchain:test_toolchain
+            ~store ~depset:[ dep_a ] ~needs_unix:false ~needs_dynlink:false
+            module_graph
+        in
+        match
+          List.filter_map
+            (function
+              | Tusk_planner.Action.CreateSharedLibrary { libraries; _ } ->
+                  Some libraries
+              | _ -> None)
+            (Tusk_planner.Action_graph.to_action_list action_graph)
+        with
+        | [ libraries ] ->
+            let expected =
+              [
+                Path.v "stdlib.cmxa";
+                Tusk_planner.Dependency.library_cmxa dep_c;
+                Tusk_planner.Dependency.library_cmxa dep_b;
+                Tusk_planner.Dependency.library_cmxa dep_a;
+              ]
+            in
+            if libraries = expected then Ok ()
+            else
+              Error
+                ("expected shared library dependencies ["
+               ^ String.concat ", " (List.map Path.to_string expected)
+               ^ "] but got ["
+               ^ String.concat ", " (List.map Path.to_string libraries)
+               ^ "]")
+        | [] -> Error "expected CreateSharedLibrary action"
+        | _ -> Error "expected one CreateSharedLibrary action")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_shared_library_adds_platform_linker_flags () =
+  match
+    Fs.with_tempdir ~prefix:"planner_shared_linker_flags" (fun tmpdir ->
+        let workspace = Tusk_model.Workspace.make ~root:tmpdir ~packages:[] () in
+        let store = Tusk_store.Store.create ~workspace in
+        let package =
+          {
+            (make_package_with_paths ~name:"minttea"
+               ~path:Path.(tmpdir / Path.v "packages" / Path.v "minttea")
+               ~relative_path:(Path.v "packages/minttea"))
+            with
+            library = Some { path = Path.v "src/minttea.ml" };
+          }
+        in
+        let ctx =
+          Tusk_model.Build_ctx.make
+            ~session_id:(Tusk_model.Session_id.of_string "test-session")
+            ~profile:Tusk_model.Profile.release ()
+        in
+        let module_graph = G.make () in
+        let _ =
+          G.add_node module_graph
+            (Tusk_planner.Module_node.make_library ~name:package.name
+               ~includes:[ Path.v "." ])
+        in
+        let action_graph, _ =
+          Tusk_planner.Action_graph.from_module_graph ~package
+            ~profile:Tusk_model.Profile.release ~ctx ~toolchain:test_toolchain
+            ~store ~depset:[] ~needs_unix:false ~needs_dynlink:false
+            module_graph
+        in
+        let expected_flags =
+          match Tusk_model.Build_ctx.target_platform_name ctx with
+          | "macos" -> [ "-Wl,-undefined,dynamic_lookup" ]
+          | _ -> []
+        in
+        match
+          List.filter_map
+            (function
+              | Tusk_planner.Action.CreateSharedLibrary { cclib_flags; _ } ->
+                  Some cclib_flags
+              | _ -> None)
+            (Tusk_planner.Action_graph.to_action_list action_graph)
+        with
+        | [ cclib_flags ] ->
+            if cclib_flags = expected_flags then Ok ()
+            else
+              Error
+                ("expected shared library linker flags ["
+               ^ String.concat ", " expected_flags
+               ^ "] but got ["
+               ^ String.concat ", " cclib_flags ^ "]")
+        | [] -> Error "expected CreateSharedLibrary action"
+        | _ -> Error "expected one CreateSharedLibrary action")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let tests =
   Test.
     [
@@ -191,6 +390,14 @@ let tests =
         test_action_graph_json_round_trip_preserves_package_paths_and_hashes;
       case "action hash tracks package-relative source contents"
         test_action_hash_tracks_package_relative_source_contents;
+      case
+        "shared libraries link stdlib without explicit stdlib dependency"
+        test_shared_library_links_stdlib_without_explicit_dependency;
+      case
+        "shared libraries link transitive package libraries in dependency order"
+        test_shared_library_links_transitive_package_libraries;
+      case "shared libraries add platform linker flags"
+        test_shared_library_adds_platform_linker_flags;
     ]
 
 let name = "Planner Action Graph Tests"

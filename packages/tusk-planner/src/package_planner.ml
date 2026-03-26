@@ -354,7 +354,7 @@ let compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx =
   (* Planner artifact contract version.
      Bump this when planned output shapes or link-time artifact requirements
      change in ways that must invalidate cached package artifacts. *)
-  H.write_string state "planner-artifacts:v2";
+  H.write_string state "planner-artifacts:v5";
 
   (* Build context (includes resolved profile) *)
   Build_ctx.hash state build_ctx;

@@ -297,7 +297,7 @@ let create_executable t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccopt_flag
   (* Include current directory *)
   let includes_with_dot = Path.v "." :: includes in
   run t ~cwd ~includes:includes_with_dot ~libs ~cclibs ~ccopt_flags ~cclib_flags ~output:(Some output)
-    ~mode:Executable
+    ~mode:Executable ~flags:[LinkAll]
     (List.map Path.to_string objects)
 
 (** Create a shared library (.cmxs plugin) *)
