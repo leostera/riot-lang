@@ -20,6 +20,23 @@
               "end": 64
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,6 +74,22 @@
                 "end": 64
               }
             },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "match",
+              "span": {
+                "start": 8,
+                "end": 13
+              }
+            },
+            "with_token": {
+              "kind": "IDENT_EXPR",
+              "text": "with",
+              "span": {
+                "start": 16,
+                "end": 20
+              }
+            },
             "scrutinee": {
               "tag": "path",
               "syntax_node": {
@@ -92,6 +125,16 @@
                   "span": {
                     "start": 21,
                     "end": 34
+                  }
+                },
+                "bar_token": null,
+                "when_token": null,
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 27,
+                    "end": 29
                   }
                 },
                 "pattern": {
@@ -159,6 +202,23 @@
                     "end": 50
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 35,
+                    "end": 36
+                  }
+                },
+                "when_token": null,
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 42,
+                    "end": 44
+                  }
+                },
                 "pattern": {
                   "tag": "literal",
                   "syntax_node": {
@@ -224,6 +284,23 @@
                     "end": 63
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 51,
+                    "end": 52
+                  }
+                },
+                "when_token": null,
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 55,
+                    "end": 57
+                  }
+                },
                 "pattern": {
                   "tag": "wildcard",
                   "syntax_node": {
@@ -260,6 +337,7 @@
               }
             ]
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

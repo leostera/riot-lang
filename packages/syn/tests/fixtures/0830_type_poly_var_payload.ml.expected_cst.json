@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 46
+        "end": 45
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "TYPE_DECL",
             "span": {
               "start": 0,
-              "end": 46
+              "end": 45
             }
           },
           "type_name": {
@@ -45,7 +45,7 @@
               "kind": "TYPE_POLY_VARIANT",
               "span": {
                 "start": 9,
-                "end": 45
+                "end": 44
               }
             },
             "kind": {
@@ -58,16 +58,16 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 14,
-                      "end": 26
+                      "start": 11,
+                      "end": 23
                     }
                   },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Int",
                     "span": {
-                      "start": 15,
-                      "end": 18
+                      "start": 12,
+                      "end": 15
                     }
                   },
                   "payload_type": {
@@ -75,8 +75,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 22,
-                        "end": 26
+                        "start": 19,
+                        "end": 23
                       }
                     },
                     "constructor_path": {
@@ -84,16 +84,16 @@
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 22,
-                          "end": 26
+                          "start": 19,
+                          "end": 23
                         }
                       },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "int",
                         "span": {
-                          "start": 22,
-                          "end": 25
+                          "start": 19,
+                          "end": 22
                         }
                       }
                     },
@@ -107,16 +107,16 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 26,
-                      "end": 44
+                      "start": 25,
+                      "end": 43
                     }
                   },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "String",
                     "span": {
-                      "start": 27,
-                      "end": 33
+                      "start": 26,
+                      "end": 32
                     }
                   },
                   "payload_type": {
@@ -124,8 +124,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 37,
-                        "end": 44
+                        "start": 36,
+                        "end": 43
                       }
                     },
                     "constructor_path": {
@@ -133,16 +133,16 @@
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 37,
-                          "end": 44
+                          "start": 36,
+                          "end": 43
                         }
                       },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "string",
                         "span": {
-                          "start": 37,
-                          "end": 43
+                          "start": 36,
+                          "end": 42
                         }
                       }
                     },

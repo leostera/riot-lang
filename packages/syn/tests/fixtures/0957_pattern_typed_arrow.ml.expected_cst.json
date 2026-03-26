@@ -20,6 +20,23 @@
               "end": 32
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 26,
+              "end": 27
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -55,6 +72,103 @@
                 "span": {
                   "start": 7,
                   "end": 26
+                }
+              },
+              "pattern": {
+                "tag": "typed",
+                "syntax_node": {
+                  "kind": "TYPED_PATTERN",
+                  "span": {
+                    "start": 7,
+                    "end": 26
+                  }
+                },
+                "pattern": {
+                  "tag": "identifier",
+                  "syntax_node": {
+                    "kind": "IDENT_PATTERN",
+                    "span": {
+                      "start": 8,
+                      "end": 9
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "g",
+                    "span": {
+                      "start": 8,
+                      "end": 9
+                    }
+                  }
+                },
+                "type": {
+                  "tag": "arrow",
+                  "syntax_node": {
+                    "kind": "TYPE_ARROW",
+                    "span": {
+                      "start": 12,
+                      "end": 25
+                    }
+                  },
+                  "label": null,
+                  "parameter_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 12,
+                        "end": 16
+                      }
+                    },
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 12,
+                          "end": 16
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 12,
+                          "end": 15
+                        }
+                      }
+                    },
+                    "arguments": []
+                  },
+                  "result_type": {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 19,
+                        "end": 25
+                      }
+                    },
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 19,
+                          "end": 25
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "string",
+                        "span": {
+                          "start": 19,
+                          "end": 25
+                        }
+                      }
+                    },
+                    "arguments": []
+                  }
                 }
               },
               "name_token": {
@@ -133,6 +247,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

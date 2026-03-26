@@ -21,6 +21,31 @@
               "end": 38
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 14,
+              "end": 15
+            }
+          },
+          "in_token": {
+            "kind": "IDENT_EXPR",
+            "text": "in",
+            "span": {
+              "start": 26,
+              "end": 28
+            }
+          },
           "binding_pattern": {
             "tag": "typed",
             "syntax_node": {
@@ -78,6 +103,7 @@
               "arguments": []
             }
           },
+          "parameters": [],
           "bound_value": {
             "tag": "typed",
             "syntax_node": {

@@ -78,6 +78,23 @@
               "end": 252
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 177,
+              "end": 180
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 211,
+              "end": 212
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "extension",
@@ -348,6 +365,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -359,6 +377,23 @@
             "span": {
               "start": 254,
               "end": 344
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 254,
+              "end": 257
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 297,
+              "end": 298
             }
           },
           "attributes": [],
@@ -587,6 +622,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -598,6 +634,23 @@
             "span": {
               "start": 346,
               "end": 445
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 346,
+              "end": 349
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 384,
+              "end": 385
             }
           },
           "attributes": [],
@@ -917,6 +970,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -928,6 +982,23 @@
             "span": {
               "start": 447,
               "end": 531
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 447,
+              "end": 450
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 488,
+              "end": 489
             }
           },
           "attributes": [],
@@ -1147,6 +1218,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -1158,6 +1230,23 @@
             "span": {
               "start": 533,
               "end": 639
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 533,
+              "end": 536
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 617,
+              "end": 618
             }
           },
           "attributes": [],
@@ -1300,6 +1389,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

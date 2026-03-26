@@ -20,6 +20,23 @@
               "end": 54
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,6 +74,22 @@
                 "end": 54
               }
             },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "match",
+              "span": {
+                "start": 8,
+                "end": 13
+              }
+            },
+            "with_token": {
+              "kind": "IDENT_EXPR",
+              "text": "with",
+              "span": {
+                "start": 29,
+                "end": 33
+              }
+            },
             "scrutinee": {
               "tag": "poly_variant",
               "syntax_node": {
@@ -83,6 +116,23 @@
                     "end": 28
                   }
                 },
+                "opening_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 17,
+                    "end": 18
+                  }
+                },
+                "closing_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ")",
+                  "span": {
+                    "start": 27,
+                    "end": 28
+                  }
+                },
+                "grouping": "parens",
                 "inner": {
                   "tag": "poly_variant",
                   "syntax_node": {
@@ -109,6 +159,23 @@
                         "end": 27
                       }
                     },
+                    "opening_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "(",
+                      "span": {
+                        "start": 21,
+                        "end": 22
+                      }
+                    },
+                    "closing_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": ")",
+                      "span": {
+                        "start": 26,
+                        "end": 27
+                      }
+                    },
+                    "grouping": "parens",
                     "inner": {
                       "tag": "poly_variant",
                       "syntax_node": {
@@ -163,6 +230,16 @@
                   "span": {
                     "start": 34,
                     "end": 53
+                  }
+                },
+                "bar_token": null,
+                "when_token": null,
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 49,
+                    "end": 51
                   }
                 },
                 "pattern": {
@@ -289,6 +366,7 @@
               }
             ]
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

@@ -20,6 +20,23 @@
               "end": 10
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -73,6 +90,7 @@
               "suffix": null
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -84,6 +102,23 @@
             "span": {
               "start": 11,
               "end": 23
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 11,
+              "end": 14
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 17,
+              "end": 18
             }
           },
           "attributes": [],
@@ -136,6 +171,7 @@
               "value": true
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -147,6 +183,23 @@
             "span": {
               "start": 24,
               "end": 39
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 24,
+              "end": 27
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 30,
+              "end": 31
             }
           },
           "attributes": [],
@@ -203,6 +256,7 @@
               "terminated": true
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

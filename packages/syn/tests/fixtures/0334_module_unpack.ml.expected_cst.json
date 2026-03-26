@@ -20,6 +20,23 @@
               "end": 38
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,6 +74,31 @@
                 "end": 38
               }
             },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "let",
+              "span": {
+                "start": 10,
+                "end": 13
+              }
+            },
+            "rec_token": null,
+            "equals_token": {
+              "kind": "IDENT_EXPR",
+              "text": "=",
+              "span": {
+                "start": 25,
+                "end": 26
+              }
+            },
+            "in_token": {
+              "kind": "IDENT_EXPR",
+              "text": "in",
+              "span": {
+                "start": 29,
+                "end": 31
+              }
+            },
             "binding_pattern": {
               "tag": "first_class_module",
               "syntax_node": {
@@ -66,6 +108,7 @@
                   "end": 24
                 }
               },
+              "module_type": null,
               "name_token": {
                 "kind": "IDENT_EXPR",
                 "text": "M",
@@ -73,9 +116,9 @@
                   "start": 22,
                   "end": 23
                 }
-              },
-              "module_type": null
+              }
             },
+            "parameters": [],
             "bound_value": {
               "tag": "path",
               "syntax_node": {
@@ -153,6 +196,7 @@
             },
             "is_recursive": false
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

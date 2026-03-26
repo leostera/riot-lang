@@ -20,6 +20,23 @@
               "end": 50
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,6 +74,14 @@
                 "end": 50
               }
             },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "function",
+              "span": {
+                "start": 8,
+                "end": 16
+              }
+            },
             "cases": [
               {
                 "syntax_node": {
@@ -64,6 +89,16 @@
                   "span": {
                     "start": 17,
                     "end": 37
+                  }
+                },
+                "bar_token": null,
+                "when_token": null,
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 29,
+                    "end": 31
                   }
                 },
                 "pattern": {
@@ -246,6 +281,23 @@
                     "end": 49
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 38,
+                    "end": 39
+                  }
+                },
+                "when_token": null,
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 45,
+                    "end": 47
+                  }
+                },
                 "pattern": {
                   "tag": "constructor",
                   "syntax_node": {
@@ -305,6 +357,7 @@
               }
             ]
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

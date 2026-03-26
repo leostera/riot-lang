@@ -21,6 +21,22 @@
               "end": 64
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "match",
+            "span": {
+              "start": 18,
+              "end": 23
+            }
+          },
+          "with_token": {
+            "kind": "IDENT_EXPR",
+            "text": "with",
+            "span": {
+              "start": 26,
+              "end": 30
+            }
+          },
           "scrutinee": {
             "tag": "path",
             "syntax_node": {
@@ -58,6 +74,23 @@
                   "end": 55
                 }
               },
+              "bar_token": {
+                "kind": "IDENT_EXPR",
+                "text": "|",
+                "span": {
+                  "start": 31,
+                  "end": 32
+                }
+              },
+              "when_token": null,
+              "arrow_token": {
+                "kind": "IDENT_EXPR",
+                "text": "->",
+                "span": {
+                  "start": 44,
+                  "end": 46
+                }
+              },
               "pattern": {
                 "tag": "first_class_module",
                 "syntax_node": {
@@ -67,6 +100,7 @@
                     "end": 43
                   }
                 },
+                "module_type": null,
                 "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "M",
@@ -74,8 +108,7 @@
                     "start": 41,
                     "end": 42
                   }
-                },
-                "module_type": null
+                }
               },
               "guard": null,
               "body": {
@@ -131,6 +164,23 @@
                 "span": {
                   "start": 55,
                   "end": 63
+                }
+              },
+              "bar_token": {
+                "kind": "IDENT_EXPR",
+                "text": "|",
+                "span": {
+                  "start": 55,
+                  "end": 56
+                }
+              },
+              "when_token": null,
+              "arrow_token": {
+                "kind": "IDENT_EXPR",
+                "text": "->",
+                "span": {
+                  "start": 59,
+                  "end": 61
                 }
               },
               "pattern": {

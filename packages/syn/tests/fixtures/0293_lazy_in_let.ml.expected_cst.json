@@ -20,6 +20,23 @@
               "end": 44
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,6 +74,31 @@
                 "end": 44
               }
             },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "let",
+              "span": {
+                "start": 10,
+                "end": 13
+              }
+            },
+            "rec_token": null,
+            "equals_token": {
+              "kind": "IDENT_EXPR",
+              "text": "=",
+              "span": {
+                "start": 16,
+                "end": 17
+              }
+            },
+            "in_token": {
+              "kind": "IDENT_EXPR",
+              "text": "in",
+              "span": {
+                "start": 38,
+                "end": 40
+              }
+            },
             "binding_pattern": {
               "tag": "identifier",
               "syntax_node": {
@@ -75,6 +117,7 @@
                 }
               }
             },
+            "parameters": [],
             "bound_value": {
               "tag": "lazy",
               "syntax_node": {
@@ -93,6 +136,23 @@
                     "end": 37
                   }
                 },
+                "opening_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 23,
+                    "end": 24
+                  }
+                },
+                "closing_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ")",
+                  "span": {
+                    "start": 36,
+                    "end": 37
+                  }
+                },
+                "grouping": "parens",
                 "inner": {
                   "tag": "apply",
                   "syntax_node": {
@@ -180,6 +240,7 @@
             },
             "is_recursive": false
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

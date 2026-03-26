@@ -20,6 +20,23 @@
               "end": 30
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,26 +74,26 @@
                 "end": 30
               }
             },
-            "left": {
-              "tag": "apply",
-              "syntax_node": {
-                "kind": "APPLY_EXPR",
-                "span": {
-                  "start": 10,
-                  "end": 23
-                }
-              },
-              "callee": {
-                "tag": "path",
+            "separator_token": {
+              "kind": "IDENT_EXPR",
+              "text": ";",
+              "span": {
+                "start": 23,
+                "end": 24
+              }
+            },
+            "expressions": [
+              {
+                "tag": "apply",
                 "syntax_node": {
-                  "kind": "IDENT_EXPR",
+                  "kind": "APPLY_EXPR",
                   "span": {
                     "start": 10,
-                    "end": 15
+                    "end": 23
                   }
                 },
-                "path": {
-                  "tag": "ident",
+                "callee": {
+                  "tag": "path",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -84,72 +101,83 @@
                       "end": 15
                     }
                   },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "print",
-                    "span": {
-                      "start": 10,
-                      "end": 15
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 10,
+                        "end": 15
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "print",
+                      "span": {
+                        "start": 10,
+                        "end": 15
+                      }
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "positional",
+                  "value": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "string",
+                      "syntax_node": {
+                        "kind": "STRING_LITERAL",
+                        "span": {
+                          "start": 16,
+                          "end": 23
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "STRING_LITERAL",
+                        "text": "\"hello\"",
+                        "span": {
+                          "start": 16,
+                          "end": 23
+                        }
+                      },
+                      "delimiter": {
+                        "tag": "double_quote"
+                      },
+                      "contents": "hello",
+                      "terminated": true
                     }
                   }
                 }
               },
-              "argument": {
-                "tag": "positional",
-                "value": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "string",
-                    "syntax_node": {
-                      "kind": "STRING_LITERAL",
-                      "span": {
-                        "start": 16,
-                        "end": 23
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "STRING_LITERAL",
-                      "text": "\"hello\"",
-                      "span": {
-                        "start": 16,
-                        "end": 23
-                      }
-                    },
-                    "delimiter": {
-                      "tag": "double_quote"
-                    },
-                    "contents": "hello",
-                    "terminated": true
-                  }
+              {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 27,
+                      "end": 29
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "42",
+                    "span": {
+                      "start": 27,
+                      "end": 29
+                    }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "42",
+                  "suffix": null
                 }
               }
-            },
-            "right": {
-              "tag": "literal",
-              "literal": {
-                "tag": "int",
-                "syntax_node": {
-                  "kind": "INT_LITERAL",
-                  "span": {
-                    "start": 27,
-                    "end": 29
-                  }
-                },
-                "literal_token": {
-                  "kind": "INT_LITERAL",
-                  "text": "42",
-                  "span": {
-                    "start": 27,
-                    "end": 29
-                  }
-                },
-                "base": "decimal",
-                "prefix": null,
-                "digits": "42",
-                "suffix": null
-              }
-            }
+            ]
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

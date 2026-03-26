@@ -20,6 +20,23 @@
               "end": 42
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -55,6 +72,22 @@
               "span": {
                 "start": 8,
                 "end": 42
+              }
+            },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "try",
+              "span": {
+                "start": 8,
+                "end": 11
+              }
+            },
+            "with_token": {
+              "kind": "IDENT_EXPR",
+              "text": "with",
+              "span": {
+                "start": 14,
+                "end": 18
               }
             },
             "body": {
@@ -94,6 +127,23 @@
                     "end": 41
                   }
                 },
+                "bar_token": null,
+                "when_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "when",
+                  "span": {
+                    "start": 21,
+                    "end": 25
+                  }
+                },
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 31,
+                    "end": 33
+                  }
+                },
                 "pattern": {
                   "tag": "constructor",
                   "syntax_node": {
@@ -124,7 +174,34 @@
                   "existentials": null,
                   "arguments": []
                 },
-                "guard": null,
+                "guard": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 26,
+                      "end": 30
+                    }
+                  },
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 26,
+                        "end": 30
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "cond",
+                      "span": {
+                        "start": 26,
+                        "end": 30
+                      }
+                    }
+                  }
+                },
                 "body": {
                   "tag": "path",
                   "syntax_node": {
@@ -156,6 +233,7 @@
               }
             ]
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

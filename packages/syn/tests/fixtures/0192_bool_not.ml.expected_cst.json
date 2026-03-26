@@ -20,6 +20,23 @@
               "end": 47
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,6 +74,14 @@
                 "end": 47
               }
             },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "function",
+              "span": {
+                "start": 8,
+                "end": 16
+              }
+            },
             "cases": [
               {
                 "syntax_node": {
@@ -64,6 +89,16 @@
                   "span": {
                     "start": 17,
                     "end": 30
+                  }
+                },
+                "bar_token": null,
+                "when_token": null,
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 22,
+                    "end": 24
                   }
                 },
                 "pattern": {
@@ -127,6 +162,23 @@
                     "end": 46
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 31,
+                    "end": 32
+                  }
+                },
+                "when_token": null,
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 39,
+                    "end": 41
+                  }
+                },
                 "pattern": {
                   "tag": "literal",
                   "syntax_node": {
@@ -182,6 +234,7 @@
               }
             ]
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

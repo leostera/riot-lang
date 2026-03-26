@@ -20,6 +20,30 @@
               "end": 123
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": {
+            "kind": "IDENT_EXPR",
+            "text": "rec",
+            "span": {
+              "start": 4,
+              "end": 7
+            }
+          },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 16,
+              "end": 17
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,6 +81,14 @@
                 "end": 123
               }
             },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "function",
+              "span": {
+                "start": 18,
+                "end": 26
+              }
+            },
             "cases": [
               {
                 "syntax_node": {
@@ -64,6 +96,23 @@
                   "span": {
                     "start": 31,
                     "end": 39
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 29,
+                    "end": 30
+                  }
+                },
+                "when_token": null,
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 34,
+                    "end": 36
                   }
                 },
                 "pattern": {
@@ -96,6 +145,23 @@
                   "span": {
                     "start": 42,
                     "end": 76
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 42,
+                    "end": 43
+                  }
+                },
+                "when_token": null,
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 61,
+                    "end": 63
                   }
                 },
                 "pattern": {
@@ -281,6 +347,23 @@
                     "end": 122
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 79,
+                    "end": 80
+                  }
+                },
+                "when_token": null,
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 96,
+                    "end": 98
+                  }
+                },
                 "pattern": {
                   "tag": "cons",
                   "syntax_node": {
@@ -374,6 +457,23 @@
                         "end": 106
                       }
                     },
+                    "opening_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "(",
+                      "span": {
+                        "start": 99,
+                        "end": 100
+                      }
+                    },
+                    "closing_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": ")",
+                      "span": {
+                        "start": 105,
+                        "end": 106
+                      }
+                    },
+                    "grouping": "parens",
                     "inner": {
                       "tag": "infix",
                       "syntax_node": {
@@ -530,6 +630,7 @@
               }
             ]
           },
+          "and_bindings": [],
           "is_recursive": true
         }
       }

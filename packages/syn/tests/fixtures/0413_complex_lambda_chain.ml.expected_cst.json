@@ -20,6 +20,23 @@
               "end": 52
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -84,6 +101,23 @@
                       "end": 46
                     }
                   },
+                  "opening_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "(",
+                    "span": {
+                      "start": 8,
+                      "end": 9
+                    }
+                  },
+                  "closing_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ")",
+                    "span": {
+                      "start": 45,
+                      "end": 46
+                    }
+                  },
+                  "grouping": "parens",
                   "inner": {
                     "tag": "fun",
                     "syntax_node": {
@@ -91,6 +125,22 @@
                       "span": {
                         "start": 9,
                         "end": 45
+                      }
+                    },
+                    "keyword_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "fun",
+                      "span": {
+                        "start": 9,
+                        "end": 12
+                      }
+                    },
+                    "arrow_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "->",
+                      "span": {
+                        "start": 15,
+                        "end": 17
                       }
                     },
                     "parameters": [
@@ -101,6 +151,24 @@
                           "span": {
                             "start": 13,
                             "end": 14
+                          }
+                        },
+                        "pattern": {
+                          "tag": "identifier",
+                          "syntax_node": {
+                            "kind": "IDENT_PATTERN",
+                            "span": {
+                              "start": 13,
+                              "end": 14
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "y",
+                            "span": {
+                              "start": 13,
+                              "end": 14
+                            }
                           }
                         },
                         "name_token": {
@@ -124,6 +192,22 @@
                             "end": 45
                           }
                         },
+                        "keyword_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "fun",
+                          "span": {
+                            "start": 18,
+                            "end": 21
+                          }
+                        },
+                        "arrow_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "->",
+                          "span": {
+                            "start": 24,
+                            "end": 26
+                          }
+                        },
                         "parameters": [
                           {
                             "tag": "positional",
@@ -132,6 +216,24 @@
                               "span": {
                                 "start": 22,
                                 "end": 23
+                              }
+                            },
+                            "pattern": {
+                              "tag": "identifier",
+                              "syntax_node": {
+                                "kind": "IDENT_PATTERN",
+                                "span": {
+                                  "start": 22,
+                                  "end": 23
+                                }
+                              },
+                              "name_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": "z",
+                                "span": {
+                                  "start": 22,
+                                  "end": 23
+                                }
                               }
                             },
                             "name_token": {
@@ -155,6 +257,22 @@
                                 "end": 45
                               }
                             },
+                            "keyword_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "fun",
+                              "span": {
+                                "start": 27,
+                                "end": 30
+                              }
+                            },
+                            "arrow_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "->",
+                              "span": {
+                                "start": 33,
+                                "end": 35
+                              }
+                            },
                             "parameters": [
                               {
                                 "tag": "positional",
@@ -163,6 +281,24 @@
                                   "span": {
                                     "start": 31,
                                     "end": 32
+                                  }
+                                },
+                                "pattern": {
+                                  "tag": "identifier",
+                                  "syntax_node": {
+                                    "kind": "IDENT_PATTERN",
+                                    "span": {
+                                      "start": 31,
+                                      "end": 32
+                                    }
+                                  },
+                                  "name_token": {
+                                    "kind": "IDENT_EXPR",
+                                    "text": "w",
+                                    "span": {
+                                      "start": 31,
+                                      "end": 32
+                                    }
                                   }
                                 },
                                 "name_token": {
@@ -391,6 +527,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

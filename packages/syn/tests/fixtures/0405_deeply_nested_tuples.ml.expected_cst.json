@@ -20,6 +20,23 @@
               "end": 44
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,6 +74,23 @@
                 "end": 44
               }
             },
+            "opening_token": {
+              "kind": "IDENT_EXPR",
+              "text": "(",
+              "span": {
+                "start": 8,
+                "end": 9
+              }
+            },
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 43,
+                "end": 44
+              }
+            },
+            "grouping": "parens",
             "inner": {
               "tag": "tuple",
               "syntax_node": {
@@ -76,6 +110,23 @@
                       "end": 25
                     }
                   },
+                  "opening_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "(",
+                    "span": {
+                      "start": 9,
+                      "end": 10
+                    }
+                  },
+                  "closing_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ")",
+                    "span": {
+                      "start": 24,
+                      "end": 25
+                    }
+                  },
+                  "grouping": "parens",
                   "inner": {
                     "tag": "tuple",
                     "syntax_node": {
@@ -95,6 +146,23 @@
                             "end": 16
                           }
                         },
+                        "opening_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "(",
+                          "span": {
+                            "start": 10,
+                            "end": 11
+                          }
+                        },
+                        "closing_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": ")",
+                          "span": {
+                            "start": 15,
+                            "end": 16
+                          }
+                        },
+                        "grouping": "parens",
                         "inner": {
                           "tag": "tuple",
                           "syntax_node": {
@@ -167,6 +235,23 @@
                             "end": 24
                           }
                         },
+                        "opening_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "(",
+                          "span": {
+                            "start": 18,
+                            "end": 19
+                          }
+                        },
+                        "closing_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": ")",
+                          "span": {
+                            "start": 23,
+                            "end": 24
+                          }
+                        },
+                        "grouping": "parens",
                         "inner": {
                           "tag": "tuple",
                           "syntax_node": {
@@ -242,6 +327,23 @@
                       "end": 43
                     }
                   },
+                  "opening_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "(",
+                    "span": {
+                      "start": 27,
+                      "end": 28
+                    }
+                  },
+                  "closing_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ")",
+                    "span": {
+                      "start": 42,
+                      "end": 43
+                    }
+                  },
+                  "grouping": "parens",
                   "inner": {
                     "tag": "tuple",
                     "syntax_node": {
@@ -261,6 +363,23 @@
                             "end": 34
                           }
                         },
+                        "opening_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "(",
+                          "span": {
+                            "start": 28,
+                            "end": 29
+                          }
+                        },
+                        "closing_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": ")",
+                          "span": {
+                            "start": 33,
+                            "end": 34
+                          }
+                        },
+                        "grouping": "parens",
                         "inner": {
                           "tag": "tuple",
                           "syntax_node": {
@@ -333,6 +452,23 @@
                             "end": 42
                           }
                         },
+                        "opening_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "(",
+                          "span": {
+                            "start": 36,
+                            "end": 37
+                          }
+                        },
+                        "closing_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": ")",
+                          "span": {
+                            "start": 41,
+                            "end": 42
+                          }
+                        },
+                        "grouping": "parens",
                         "inner": {
                           "tag": "tuple",
                           "syntax_node": {
@@ -402,6 +538,7 @@
               ]
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

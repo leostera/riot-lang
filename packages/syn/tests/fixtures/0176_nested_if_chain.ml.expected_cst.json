@@ -20,6 +20,23 @@
               "end": 60
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,6 +74,30 @@
                 "end": 60
               }
             },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "if",
+              "span": {
+                "start": 8,
+                "end": 10
+              }
+            },
+            "then_token": {
+              "kind": "IDENT_EXPR",
+              "text": "then",
+              "span": {
+                "start": 13,
+                "end": 17
+              }
+            },
+            "else_token": {
+              "kind": "IDENT_EXPR",
+              "text": "else",
+              "span": {
+                "start": 37,
+                "end": 41
+              }
+            },
             "condition": {
               "tag": "path",
               "syntax_node": {
@@ -92,6 +133,30 @@
                 "span": {
                   "start": 18,
                   "end": 36
+                }
+              },
+              "keyword_token": {
+                "kind": "IDENT_EXPR",
+                "text": "if",
+                "span": {
+                  "start": 18,
+                  "end": 20
+                }
+              },
+              "then_token": {
+                "kind": "IDENT_EXPR",
+                "text": "then",
+                "span": {
+                  "start": 23,
+                  "end": 27
+                }
+              },
+              "else_token": {
+                "kind": "IDENT_EXPR",
+                "text": "else",
+                "span": {
+                  "start": 30,
+                  "end": 34
                 }
               },
               "condition": {
@@ -182,6 +247,30 @@
                   "end": 60
                 }
               },
+              "keyword_token": {
+                "kind": "IDENT_EXPR",
+                "text": "if",
+                "span": {
+                  "start": 42,
+                  "end": 44
+                }
+              },
+              "then_token": {
+                "kind": "IDENT_EXPR",
+                "text": "then",
+                "span": {
+                  "start": 47,
+                  "end": 51
+                }
+              },
+              "else_token": {
+                "kind": "IDENT_EXPR",
+                "text": "else",
+                "span": {
+                  "start": 54,
+                  "end": 58
+                }
+              },
               "condition": {
                 "tag": "path",
                 "syntax_node": {
@@ -262,6 +351,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

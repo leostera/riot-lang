@@ -20,6 +20,23 @@
               "end": 33
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -117,6 +134,23 @@
                       "end": 19
                     }
                   },
+                  "opening_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "(",
+                    "span": {
+                      "start": 12,
+                      "end": 13
+                    }
+                  },
+                  "closing_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ")",
+                    "span": {
+                      "start": 18,
+                      "end": 19
+                    }
+                  },
+                  "grouping": "parens",
                   "inner": {
                     "tag": "infix",
                     "syntax_node": {
@@ -204,6 +238,23 @@
                     "end": 29
                   }
                 },
+                "opening_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 22,
+                    "end": 23
+                  }
+                },
+                "closing_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ")",
+                  "span": {
+                    "start": 28,
+                    "end": 29
+                  }
+                },
+                "grouping": "parens",
                 "inner": {
                   "tag": "infix",
                   "syntax_node": {
@@ -308,6 +359,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

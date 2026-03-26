@@ -21,6 +21,31 @@
               "end": 29
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 13,
+              "end": 14
+            }
+          },
+          "in_token": {
+            "kind": "IDENT_EXPR",
+            "text": "in",
+            "span": {
+              "start": 21,
+              "end": 23
+            }
+          },
           "binding_pattern": {
             "tag": "record",
             "syntax_node": {
@@ -92,6 +117,7 @@
               "tag": "closed"
             }
           },
+          "parameters": [],
           "bound_value": {
             "tag": "path",
             "syntax_node": {

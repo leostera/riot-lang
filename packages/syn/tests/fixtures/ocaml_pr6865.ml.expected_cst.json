@@ -20,6 +20,23 @@
               "end": 167
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 153,
+              "end": 156
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 163,
+              "end": 164
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -73,6 +90,7 @@
               "suffix": null
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -80,10 +98,27 @@
         "tag": "let_binding",
         "item": {
           "syntax_node": {
-            "kind": "LET_BINDING",
+            "kind": "LET_MUTUAL_DECL",
             "span": {
               "start": 169,
-              "end": 183
+              "end": 196
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 169,
+              "end": 172
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 179,
+              "end": 180
             }
           },
           "attributes": [],
@@ -112,45 +147,62 @@
               }
             }
           },
-          "is_recursive": false
-        }
-      },
-      {
-        "tag": "let_binding",
-        "item": {
-          "syntax_node": {
-            "kind": "LET_BINDING",
-            "span": {
-              "start": 188,
-              "end": 194
-            }
-          },
-          "attributes": [],
-          "binding_pattern": {
-            "tag": "wildcard",
-            "syntax_node": {
-              "kind": "WILDCARD_PATTERN",
-              "span": {
-                "start": 188,
-                "end": 189
-              }
-            }
-          },
-          "binding_name": null,
-          "parameters": [],
-          "value": {
-            "tag": "literal",
-            "literal": {
-              "tag": "unit",
+          "and_bindings": [
+            {
               "syntax_node": {
-                "kind": "UNIT_LITERAL",
+                "kind": "LET_BINDING",
                 "span": {
-                  "start": 192,
+                  "start": 188,
                   "end": 194
                 }
-              }
+              },
+              "keyword_token": {
+                "kind": "IDENT_EXPR",
+                "text": "and",
+                "span": {
+                  "start": 184,
+                  "end": 187
+                }
+              },
+              "rec_token": null,
+              "equals_token": {
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "span": {
+                  "start": 190,
+                  "end": 191
+                }
+              },
+              "attributes": [],
+              "binding_pattern": {
+                "tag": "wildcard",
+                "syntax_node": {
+                  "kind": "WILDCARD_PATTERN",
+                  "span": {
+                    "start": 188,
+                    "end": 189
+                  }
+                }
+              },
+              "binding_name": null,
+              "parameters": [],
+              "value": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "unit",
+                  "syntax_node": {
+                    "kind": "UNIT_LITERAL",
+                    "span": {
+                      "start": 192,
+                      "end": 194
+                    }
+                  }
+                }
+              },
+              "and_bindings": [],
+              "is_recursive": false
             }
-          },
+          ],
           "is_recursive": false
         }
       },
@@ -162,6 +214,23 @@
             "span": {
               "start": 196,
               "end": 210
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 196,
+              "end": 199
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 206,
+              "end": 207
             }
           },
           "attributes": [],
@@ -190,6 +259,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

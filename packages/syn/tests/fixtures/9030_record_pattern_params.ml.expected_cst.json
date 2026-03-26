@@ -20,6 +20,23 @@
               "end": 73
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 51,
+              "end": 54
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 66,
+              "end": 67
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -55,6 +72,77 @@
                 "span": {
                   "start": 58,
                   "end": 66
+                }
+              },
+              "pattern": {
+                "tag": "record",
+                "syntax_node": {
+                  "kind": "RECORD_PATTERN",
+                  "span": {
+                    "start": 58,
+                    "end": 66
+                  }
+                },
+                "fields": [
+                  {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD_PATTERN",
+                      "span": {
+                        "start": 60,
+                        "end": 61
+                      }
+                    },
+                    "field_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD_PATTERN",
+                        "span": {
+                          "start": 60,
+                          "end": 61
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "x",
+                        "span": {
+                          "start": 60,
+                          "end": 61
+                        }
+                      }
+                    },
+                    "pattern": null
+                  },
+                  {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD_PATTERN",
+                      "span": {
+                        "start": 63,
+                        "end": 65
+                      }
+                    },
+                    "field_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD_PATTERN",
+                        "span": {
+                          "start": 63,
+                          "end": 65
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "y",
+                        "span": {
+                          "start": 63,
+                          "end": 64
+                        }
+                      }
+                    },
+                    "pattern": null
+                  }
+                ],
+                "closedness": {
+                  "tag": "closed"
                 }
               },
               "name_token": null
@@ -134,6 +222,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -145,6 +234,23 @@
             "span": {
               "start": 74,
               "end": 104
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 74,
+              "end": 77
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 97,
+              "end": 98
             }
           },
           "attributes": [],
@@ -182,6 +288,111 @@
                 "span": {
                   "start": 81,
                   "end": 97
+                }
+              },
+              "pattern": {
+                "tag": "record",
+                "syntax_node": {
+                  "kind": "RECORD_PATTERN",
+                  "span": {
+                    "start": 81,
+                    "end": 97
+                  }
+                },
+                "fields": [
+                  {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD_PATTERN",
+                      "span": {
+                        "start": 83,
+                        "end": 88
+                      }
+                    },
+                    "field_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD_PATTERN",
+                        "span": {
+                          "start": 83,
+                          "end": 88
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "span": {
+                          "start": 83,
+                          "end": 84
+                        }
+                      }
+                    },
+                    "pattern": {
+                      "tag": "identifier",
+                      "syntax_node": {
+                        "kind": "IDENT_PATTERN",
+                        "span": {
+                          "start": 87,
+                          "end": 88
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "x",
+                        "span": {
+                          "start": 87,
+                          "end": 88
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD_PATTERN",
+                      "span": {
+                        "start": 90,
+                        "end": 95
+                      }
+                    },
+                    "field_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD_PATTERN",
+                        "span": {
+                          "start": 90,
+                          "end": 95
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "b",
+                        "span": {
+                          "start": 90,
+                          "end": 91
+                        }
+                      }
+                    },
+                    "pattern": {
+                      "tag": "identifier",
+                      "syntax_node": {
+                        "kind": "IDENT_PATTERN",
+                        "span": {
+                          "start": 94,
+                          "end": 95
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "y",
+                        "span": {
+                          "start": 94,
+                          "end": 95
+                        }
+                      }
+                    }
+                  }
+                ],
+                "closedness": {
+                  "tag": "closed"
                 }
               },
               "name_token": null
@@ -261,6 +472,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -272,6 +484,23 @@
             "span": {
               "start": 105,
               "end": 134
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 105,
+              "end": 108
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 128,
+              "end": 129
             }
           },
           "attributes": [],
@@ -311,6 +540,85 @@
                   "end": 128
                 }
               },
+              "pattern": {
+                "tag": "record",
+                "syntax_node": {
+                  "kind": "RECORD_PATTERN",
+                  "span": {
+                    "start": 112,
+                    "end": 128
+                  }
+                },
+                "fields": [
+                  {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD_PATTERN",
+                      "span": {
+                        "start": 114,
+                        "end": 118
+                      }
+                    },
+                    "field_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD_PATTERN",
+                        "span": {
+                          "start": 114,
+                          "end": 118
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "name",
+                        "span": {
+                          "start": 114,
+                          "end": 118
+                        }
+                      }
+                    },
+                    "pattern": null
+                  },
+                  {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD_PATTERN",
+                      "span": {
+                        "start": 120,
+                        "end": 123
+                      }
+                    },
+                    "field_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD_PATTERN",
+                        "span": {
+                          "start": 120,
+                          "end": 123
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "age",
+                        "span": {
+                          "start": 120,
+                          "end": 123
+                        }
+                      }
+                    },
+                    "pattern": null
+                  }
+                ],
+                "closedness": {
+                  "tag": "open",
+                  "wildcard_token": {
+                    "kind": "WILDCARD_PATTERN",
+                    "text": "_",
+                    "span": {
+                      "start": 125,
+                      "end": 126
+                    }
+                  }
+                }
+              },
               "name_token": null
             }
           ],
@@ -342,6 +650,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -353,6 +662,23 @@
             "span": {
               "start": 135,
               "end": 179
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 135,
+              "end": 138
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 171,
+              "end": 172
             }
           },
           "attributes": [],
@@ -392,6 +718,77 @@
                   "end": 171
                 }
               },
+              "pattern": {
+                "tag": "record",
+                "syntax_node": {
+                  "kind": "RECORD_PATTERN",
+                  "span": {
+                    "start": 148,
+                    "end": 171
+                  }
+                },
+                "fields": [
+                  {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD_PATTERN",
+                      "span": {
+                        "start": 150,
+                        "end": 156
+                      }
+                    },
+                    "field_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD_PATTERN",
+                        "span": {
+                          "start": 150,
+                          "end": 156
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "source",
+                        "span": {
+                          "start": 150,
+                          "end": 156
+                        }
+                      }
+                    },
+                    "pattern": null
+                  },
+                  {
+                    "syntax_node": {
+                      "kind": "RECORD_FIELD_PATTERN",
+                      "span": {
+                        "start": 158,
+                        "end": 170
+                      }
+                    },
+                    "field_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "RECORD_FIELD_PATTERN",
+                        "span": {
+                          "start": 158,
+                          "end": 170
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "current_pos",
+                        "span": {
+                          "start": 158,
+                          "end": 169
+                        }
+                      }
+                    },
+                    "pattern": null
+                  }
+                ],
+                "closedness": {
+                  "tag": "closed"
+                }
+              },
               "name_token": null
             }
           ],
@@ -423,6 +820,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

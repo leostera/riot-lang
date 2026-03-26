@@ -20,6 +20,23 @@
               "end": 29
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -94,6 +111,14 @@
                   "end": 29
                 }
               },
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "?",
+                "span": {
+                  "start": 10,
+                  "end": 11
+                }
+              },
               "label_token": {
                 "kind": "IDENT_EXPR",
                 "text": "a",
@@ -149,6 +174,14 @@
                       "end": 29
                     }
                   },
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "?",
+                    "span": {
+                      "start": 18,
+                      "end": 19
+                    }
+                  },
                   "label_token": {
                     "kind": "IDENT_EXPR",
                     "text": "b",
@@ -166,6 +199,23 @@
                         "end": 29
                       }
                     },
+                    "opening_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "(",
+                      "span": {
+                        "start": 21,
+                        "end": 22
+                      }
+                    },
+                    "closing_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": ")",
+                      "span": {
+                        "start": 28,
+                        "end": 29
+                      }
+                    },
+                    "grouping": "parens",
                     "inner": {
                       "tag": "constructor",
                       "syntax_node": {
@@ -224,6 +274,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

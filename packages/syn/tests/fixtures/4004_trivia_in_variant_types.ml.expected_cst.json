@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 689
+        "end": 688
       }
     },
     "items": [
@@ -346,7 +346,7 @@
             "kind": "TYPE_DECL",
             "span": {
               "start": 485,
-              "end": 578
+              "end": 577
             }
           },
           "type_name": {
@@ -374,7 +374,7 @@
               "kind": "TYPE_POLY_VARIANT",
               "span": {
                 "start": 495,
-                "end": 553
+                "end": 552
               }
             },
             "kind": {
@@ -387,16 +387,16 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 500,
-                      "end": 515
+                      "start": 497,
+                      "end": 512
                     }
                   },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "A",
                     "span": {
-                      "start": 501,
-                      "end": 502
+                      "start": 498,
+                      "end": 499
                     }
                   },
                   "payload_type": null
@@ -408,16 +408,16 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 515,
-                      "end": 552
+                      "start": 514,
+                      "end": 551
                     }
                   },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "B",
                     "span": {
-                      "start": 516,
-                      "end": 517
+                      "start": 515,
+                      "end": 516
                     }
                   },
                   "payload_type": {
@@ -425,8 +425,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 548,
-                        "end": 552
+                        "start": 547,
+                        "end": 551
                       }
                     },
                     "constructor_path": {
@@ -434,16 +434,16 @@
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 548,
-                          "end": 552
+                          "start": 547,
+                          "end": 551
                         }
                       },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "int",
                         "span": {
-                          "start": 548,
-                          "end": 551
+                          "start": 547,
+                          "end": 550
                         }
                       }
                     },
@@ -462,8 +462,8 @@
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 578,
-              "end": 689
+              "start": 577,
+              "end": 688
             }
           },
           "type_name": {
@@ -471,16 +471,16 @@
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
-                "start": 585,
-                "end": 588
+                "start": 584,
+                "end": 587
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "t6",
               "span": {
-                "start": 585,
-                "end": 587
+                "start": 584,
+                "end": 586
               }
             }
           },
@@ -489,8 +489,8 @@
               "syntax_node": {
                 "kind": "TYPE_PARAM",
                 "span": {
-                  "start": 583,
-                  "end": 584
+                  "start": 582,
+                  "end": 583
                 }
               },
               "variance": null,
@@ -499,16 +499,16 @@
                 "syntax_node": {
                   "kind": "TYPE_VAR",
                   "span": {
-                    "start": 583,
-                    "end": 584
+                    "start": 582,
+                    "end": 583
                   }
                 },
                 "name_token": {
                   "kind": "WILDCARD_PATTERN",
                   "text": "_",
                   "span": {
-                    "start": 583,
-                    "end": 584
+                    "start": 582,
+                    "end": 583
                   }
                 }
               }
@@ -519,8 +519,8 @@
             "syntax_node": {
               "kind": "TYPE_DECL",
               "span": {
-                "start": 578,
-                "end": 689
+                "start": 577,
+                "end": 688
               }
             },
             "constructors": [
@@ -528,16 +528,16 @@
                 "syntax_node": {
                   "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 594,
-                    "end": 637
+                    "start": 593,
+                    "end": 636
                   }
                 },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Int",
                   "span": {
-                    "start": 594,
-                    "end": 597
+                    "start": 593,
+                    "end": 596
                   }
                 }
               },
@@ -545,16 +545,16 @@
                 "syntax_node": {
                   "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 639,
-                    "end": 689
+                    "start": 638,
+                    "end": 688
                   }
                 },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "String",
                   "span": {
-                    "start": 639,
-                    "end": 645
+                    "start": 638,
+                    "end": 644
                   }
                 }
               }

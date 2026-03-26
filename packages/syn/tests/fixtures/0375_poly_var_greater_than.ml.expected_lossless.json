@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 28,
+    "width": 27,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 27,
+        "width": 26,
         "children": [
           {
             "type": "token",
@@ -55,7 +55,7 @@
           {
             "type": "node",
             "kind": "TYPED_EXPR",
-            "width": 19,
+            "width": 18,
             "children": [
               {
                 "type": "token",
@@ -97,7 +97,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_POLY_VARIANT",
-                "width": 13,
+                "width": 12,
                 "children": [
                   {
                     "type": "token",
@@ -109,24 +109,6 @@
                     "type": "token",
                     "kind": "IDENT_EXPR",
                     "text": ">",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "|",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "|",
                     "width": 1
                   },
                   {
@@ -159,6 +141,18 @@
                         "width": 1
                       }
                     ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   },
                   {
                     "type": "node",

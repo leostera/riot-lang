@@ -124,6 +124,22 @@
                       "end": 395
                     }
                   },
+                  "keyword_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "fun",
+                    "span": {
+                      "start": 385,
+                      "end": 388
+                    }
+                  },
+                  "arrow_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "->",
+                    "span": {
+                      "start": 391,
+                      "end": 393
+                    }
+                  },
                   "parameters": [
                     {
                       "tag": "positional",
@@ -132,6 +148,24 @@
                         "span": {
                           "start": 389,
                           "end": 390
+                        }
+                      },
+                      "pattern": {
+                        "tag": "identifier",
+                        "syntax_node": {
+                          "kind": "IDENT_PATTERN",
+                          "span": {
+                            "start": 389,
+                            "end": 390
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "x",
+                          "span": {
+                            "start": 389,
+                            "end": 390
+                          }
                         }
                       },
                       "name_token": {

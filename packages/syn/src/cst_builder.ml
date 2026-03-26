@@ -1017,6 +1017,69 @@ let is_parameter_like_kind = function
       true
   | _ -> false
 
+let pattern_with_attributes pattern attributes =
+  match attributes with
+  | [] ->
+      pattern
+  | _ ->
+      let append existing = existing @ attributes in
+      match pattern with
+      | Cst.Pattern.Identifier pattern ->
+          Cst.Pattern.Identifier
+            { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Wildcard pattern ->
+          Cst.Pattern.Wildcard { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Extension pattern ->
+          Cst.Pattern.Extension
+            { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Literal pattern ->
+          Cst.Pattern.Literal { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Lazy pattern ->
+          Cst.Pattern.Lazy { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Exception pattern ->
+          Cst.Pattern.Exception
+            { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Range pattern ->
+          Cst.Pattern.Range { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Operator pattern ->
+          Cst.Pattern.Operator { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.FirstClassModule pattern ->
+          Cst.Pattern.FirstClassModule
+            { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.PolyVariant pattern ->
+          Cst.Pattern.PolyVariant
+            { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.PolyVariantInherit pattern ->
+          Cst.Pattern.PolyVariantInherit
+            { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Constructor pattern ->
+          Cst.Pattern.Constructor
+            { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Tuple pattern ->
+          Cst.Pattern.Tuple { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.List pattern ->
+          Cst.Pattern.List { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Array pattern ->
+          Cst.Pattern.Array { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Record pattern ->
+          Cst.Pattern.Record { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Cons pattern ->
+          Cst.Pattern.Cons { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Or pattern ->
+          Cst.Pattern.Or { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Alias pattern ->
+          Cst.Pattern.Alias { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Typed pattern ->
+          Cst.Pattern.Typed { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Effect pattern ->
+          Cst.Pattern.Effect { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.LocalOpen pattern ->
+          Cst.Pattern.LocalOpen
+            { pattern with attributes = append pattern.attributes }
+      | Cst.Pattern.Parenthesized pattern ->
+          Cst.Pattern.Parenthesized
+            { pattern with attributes = append pattern.attributes }
+
 let name_token_from_ident_pattern node =
   match direct_non_trivia_tokens node with
   | first :: _ -> Some (token first)
@@ -2262,63 +2325,6 @@ let rec pattern_from_node node =
     Ceibo.Red.SyntaxNode.children node |> Array.to_list |> fun children ->
     loop children false None false []
   in
-  let pattern_with_attributes pattern attributes =
-    match attributes with
-    | [] ->
-        pattern
-    | _ ->
-        let append existing = existing @ attributes in
-        match pattern with
-        | Cst.Pattern.Identifier pattern ->
-            Cst.Pattern.Identifier { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Wildcard pattern ->
-            Cst.Pattern.Wildcard { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Extension pattern ->
-            Cst.Pattern.Extension { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Literal pattern ->
-            Cst.Pattern.Literal { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Lazy pattern ->
-            Cst.Pattern.Lazy { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Exception pattern ->
-            Cst.Pattern.Exception { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Range pattern ->
-            Cst.Pattern.Range { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Operator pattern ->
-            Cst.Pattern.Operator { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.FirstClassModule pattern ->
-            Cst.Pattern.FirstClassModule
-              { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.PolyVariant pattern ->
-            Cst.Pattern.PolyVariant { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.PolyVariantInherit pattern ->
-            Cst.Pattern.PolyVariantInherit
-              { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Constructor pattern ->
-            Cst.Pattern.Constructor { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Tuple pattern ->
-            Cst.Pattern.Tuple { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.List pattern ->
-            Cst.Pattern.List { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Array pattern ->
-            Cst.Pattern.Array { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Record pattern ->
-            Cst.Pattern.Record { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Cons pattern ->
-            Cst.Pattern.Cons { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Or pattern ->
-            Cst.Pattern.Or { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Alias pattern ->
-            Cst.Pattern.Alias { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Typed pattern ->
-            Cst.Pattern.Typed { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Effect pattern ->
-            Cst.Pattern.Effect { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.LocalOpen pattern ->
-            Cst.Pattern.LocalOpen { pattern with attributes = append pattern.attributes }
-        | Cst.Pattern.Parenthesized pattern ->
-            Cst.Pattern.Parenthesized
-              { pattern with attributes = append pattern.attributes }
-  in
   let node, attributes = peel_outer_pattern_attributes node in
   let pattern =
     match Ceibo.Red.SyntaxNode.kind node with
@@ -2673,6 +2679,65 @@ let parameter_from_node node =
           name_token = simple_pattern_name_token node;
         }
 
+let parameter_with_attributes parameter attributes =
+  match attributes, parameter with
+  | [], _ ->
+      parameter
+  | _, Cst.Parameter.Positional parameter ->
+      Cst.Parameter.Positional
+        { parameter with pattern = pattern_with_attributes parameter.pattern attributes }
+  | _, Cst.Parameter.Labeled parameter -> (
+      match parameter.binding_pattern with
+      | Some pattern ->
+          Cst.Parameter.Labeled
+            {
+              parameter with
+              binding_pattern = Some (pattern_with_attributes pattern attributes);
+            }
+      | None ->
+          Cst.Parameter.Labeled parameter)
+  | _, Cst.Parameter.Optional parameter -> (
+      match parameter.binding_pattern with
+      | Some pattern ->
+          Cst.Parameter.Optional
+            {
+              parameter with
+              binding_pattern = Some (pattern_with_attributes pattern attributes);
+            }
+      | None ->
+          Cst.Parameter.Optional parameter)
+  | _, Cst.Parameter.LocallyAbstract _ ->
+      parameter
+
+let standalone_attribute_node node =
+  Ceibo.Red.SyntaxNode.kind node = Syntax_kind.ATTRIBUTE_EXPR
+  && not
+       (direct_non_trivia_nodes node
+       |> List.exists (fun child ->
+              let kind = Ceibo.Red.SyntaxNode.kind child in
+              is_parameter_like_kind kind || is_pattern_syntax_kind kind))
+
+let parameter_candidate_node node =
+  let kind = Ceibo.Red.SyntaxNode.kind node in
+  is_parameter_like_kind kind
+  || (kind = Syntax_kind.ATTRIBUTE_EXPR && not (standalone_attribute_node node))
+
+let parameters_from_nodes nodes =
+  let rec loop pending_attributes acc = function
+    | [] ->
+        List.rev acc
+    | node :: rest when standalone_attribute_node node ->
+        loop (pending_attributes @ [ attribute_from_node node ]) acc rest
+    | node :: rest when parameter_candidate_node node ->
+        let parameter =
+          parameter_with_attributes (parameter_from_node node) pending_attributes
+        in
+        loop [] (parameter :: acc) rest
+    | _ :: rest ->
+        loop pending_attributes acc rest
+  in
+  loop [] [] nodes
+
 let rec apply_argument_from_node node =
   let first_nontrivia_expression_child node =
     direct_non_trivia_nodes node
@@ -2724,7 +2789,7 @@ and binding_parameter_nodes prefix_nodes =
          is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
 
 and binding_parameters_from_prefix prefix_nodes =
-  binding_parameter_nodes prefix_nodes |> List.map parameter_from_node
+  binding_parameter_nodes prefix_nodes |> parameters_from_nodes
 
 and binding_value_from_prefix ~binding_syntax_node ~prefix_nodes ~value_node =
   let value = expression_from_node value_node in
@@ -3901,11 +3966,7 @@ and fun_expression_from_node node =
           arrow_token =
             direct_required_token_with_text ~context:[ "fun_expression" ] node
               "->";
-          parameters =
-            prefix_nodes
-            |> List.filter (fun child ->
-                   is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
-            |> List.map parameter_from_node;
+          parameters = parameters_from_nodes prefix_nodes;
           body = fun_body_from_node body_node;
           attributes = [];
         }
@@ -4609,8 +4670,7 @@ and class_expression_from_node node =
           Cst.ClassExpression.Fun
             {
               syntax_node = node;
-              parameters =
-                rev_param_nodes |> List.rev |> List.map parameter_from_node;
+              parameters = rev_param_nodes |> List.rev |> parameters_from_nodes;
               body = class_expression_from_node body_node;
             }
       | _ ->

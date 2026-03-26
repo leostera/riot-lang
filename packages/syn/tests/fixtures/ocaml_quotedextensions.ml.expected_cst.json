@@ -285,6 +285,23 @@
               "end": 463
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 387,
+              "end": 390
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 439,
+              "end": 440
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "extension",
@@ -503,6 +520,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -514,6 +532,23 @@
             "span": {
               "start": 465,
               "end": 570
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 465,
+              "end": 468
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 535,
+              "end": 536
             }
           },
           "attributes": [],
@@ -734,6 +769,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -745,6 +781,23 @@
             "span": {
               "start": 572,
               "end": 718
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 572,
+              "end": 575
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 632,
+              "end": 633
             }
           },
           "attributes": [],
@@ -1044,6 +1097,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

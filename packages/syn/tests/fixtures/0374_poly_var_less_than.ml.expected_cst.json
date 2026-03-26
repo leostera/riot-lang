@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 28
+        "end": 27
       }
     },
     "items": [
@@ -17,7 +17,24 @@
             "kind": "LET_BINDING",
             "span": {
               "start": 0,
-              "end": 27
+              "end": 26
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
             }
           },
           "attributes": [],
@@ -54,7 +71,7 @@
               "kind": "TYPED_EXPR",
               "span": {
                 "start": 8,
-                "end": 27
+                "end": 26
               }
             },
             "expression": {
@@ -91,7 +108,7 @@
                 "kind": "TYPE_POLY_VARIANT",
                 "span": {
                   "start": 13,
-                  "end": 26
+                  "end": 25
                 }
               },
               "kind": {
@@ -112,16 +129,16 @@
                     "syntax_node": {
                       "kind": "POLY_VARIANT_TAG",
                       "span": {
-                        "start": 19,
-                        "end": 22
+                        "start": 16,
+                        "end": 19
                       }
                     },
                     "tag_name": {
                       "kind": "IDENT_EXPR",
                       "text": "A",
                       "span": {
-                        "start": 20,
-                        "end": 21
+                        "start": 17,
+                        "end": 18
                       }
                     },
                     "payload_type": null
@@ -133,16 +150,16 @@
                     "syntax_node": {
                       "kind": "POLY_VARIANT_TAG",
                       "span": {
-                        "start": 22,
-                        "end": 25
+                        "start": 21,
+                        "end": 24
                       }
                     },
                     "tag_name": {
                       "kind": "IDENT_EXPR",
                       "text": "B",
                       "span": {
-                        "start": 23,
-                        "end": 24
+                        "start": 22,
+                        "end": 23
                       }
                     },
                     "payload_type": null
@@ -151,6 +168,7 @@
               ]
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

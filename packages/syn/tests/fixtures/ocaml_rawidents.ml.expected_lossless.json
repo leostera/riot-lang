@@ -1287,12 +1287,6 @@
                     "width": 1
                   },
                   {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
-                  },
-                  {
                     "type": "node",
                     "kind": "POLY_VARIANT_TAG",
                     "width": 20,
@@ -1378,6 +1372,12 @@
                         ]
                       }
                     ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   },
                   {
                     "type": "token",

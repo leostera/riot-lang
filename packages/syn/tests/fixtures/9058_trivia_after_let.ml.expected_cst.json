@@ -20,6 +20,23 @@
               "end": 89
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 20,
+              "end": 21
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,6 +74,24 @@
                   "end": 15
                 }
               },
+              "pattern": {
+                "tag": "identifier",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 13,
+                    "end": 15
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "fd",
+                  "span": {
+                    "start": 13,
+                    "end": 15
+                  }
+                }
+              },
               "name_token": {
                 "kind": "IDENT_EXPR",
                 "text": "fd",
@@ -73,6 +108,24 @@
                 "span": {
                   "start": 16,
                   "end": 20
+                }
+              },
+              "pattern": {
+                "tag": "identifier",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 16,
+                    "end": 20
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "addr",
+                  "span": {
+                    "start": 16,
+                    "end": 20
+                  }
                 }
               },
               "name_token": {
@@ -94,150 +147,22 @@
                 "end": 89
               }
             },
-            "left": {
-              "tag": "apply",
-              "syntax_node": {
-                "kind": "APPLY_EXPR",
-                "span": {
-                  "start": 24,
-                  "end": 44
-                }
-              },
-              "callee": {
+            "separator_token": {
+              "kind": "IDENT_EXPR",
+              "text": ";",
+              "span": {
+                "start": 44,
+                "end": 45
+              }
+            },
+            "expressions": [
+              {
                 "tag": "apply",
                 "syntax_node": {
                   "kind": "APPLY_EXPR",
                   "span": {
                     "start": 24,
-                    "end": 39
-                  }
-                },
-                "callee": {
-                  "tag": "field_access",
-                  "syntax_node": {
-                    "kind": "FIELD_ACCESS_EXPR",
-                    "span": {
-                      "start": 24,
-                      "end": 37
-                    }
-                  },
-                  "receiver": {
-                    "tag": "path",
-                    "syntax_node": {
-                      "kind": "IDENT_EXPR",
-                      "span": {
-                        "start": 24,
-                        "end": 28
-                      }
-                    },
-                    "path": {
-                      "tag": "ident",
-                      "syntax_node": {
-                        "kind": "IDENT_EXPR",
-                        "span": {
-                          "start": 24,
-                          "end": 28
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "Unix",
-                        "span": {
-                          "start": 24,
-                          "end": 28
-                        }
-                      }
-                    }
-                  },
-                  "field_name": {
-                    "kind": "IDENT_EXPR",
-                    "text": "connect",
-                    "span": {
-                      "start": 29,
-                      "end": 36
-                    }
-                  }
-                },
-                "argument": {
-                  "tag": "positional",
-                  "value": {
-                    "tag": "path",
-                    "syntax_node": {
-                      "kind": "IDENT_EXPR",
-                      "span": {
-                        "start": 37,
-                        "end": 39
-                      }
-                    },
-                    "path": {
-                      "tag": "ident",
-                      "syntax_node": {
-                        "kind": "IDENT_EXPR",
-                        "span": {
-                          "start": 37,
-                          "end": 39
-                        }
-                      },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "fd",
-                        "span": {
-                          "start": 37,
-                          "end": 39
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "argument": {
-                "tag": "positional",
-                "value": {
-                  "tag": "path",
-                  "syntax_node": {
-                    "kind": "IDENT_EXPR",
-                    "span": {
-                      "start": 40,
-                      "end": 44
-                    }
-                  },
-                  "path": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "IDENT_EXPR",
-                      "span": {
-                        "start": 40,
-                        "end": 44
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "addr",
-                      "span": {
-                        "start": 40,
-                        "end": 44
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "right": {
-              "tag": "apply",
-              "syntax_node": {
-                "kind": "APPLY_EXPR",
-                "span": {
-                  "start": 48,
-                  "end": 88
-                }
-              },
-              "callee": {
-                "tag": "apply",
-                "syntax_node": {
-                  "kind": "APPLY_EXPR",
-                  "span": {
-                    "start": 48,
-                    "end": 84
+                    "end": 44
                   }
                 },
                 "callee": {
@@ -245,8 +170,8 @@
                   "syntax_node": {
                     "kind": "APPLY_EXPR",
                     "span": {
-                      "start": 48,
-                      "end": 66
+                      "start": 24,
+                      "end": 39
                     }
                   },
                   "callee": {
@@ -254,8 +179,8 @@
                     "syntax_node": {
                       "kind": "FIELD_ACCESS_EXPR",
                       "span": {
-                        "start": 48,
-                        "end": 64
+                        "start": 24,
+                        "end": 37
                       }
                     },
                     "receiver": {
@@ -263,8 +188,8 @@
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
-                          "start": 48,
-                          "end": 52
+                          "start": 24,
+                          "end": 28
                         }
                       },
                       "path": {
@@ -272,26 +197,26 @@
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
-                            "start": 48,
-                            "end": 52
+                            "start": 24,
+                            "end": 28
                           }
                         },
                         "name_token": {
                           "kind": "IDENT_EXPR",
                           "text": "Unix",
                           "span": {
-                            "start": 48,
-                            "end": 52
+                            "start": 24,
+                            "end": 28
                           }
                         }
                       }
                     },
                     "field_name": {
                       "kind": "IDENT_EXPR",
-                      "text": "setsockopt",
+                      "text": "connect",
                       "span": {
-                        "start": 53,
-                        "end": 63
+                        "start": 29,
+                        "end": 36
                       }
                     }
                   },
@@ -302,8 +227,8 @@
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
-                          "start": 64,
-                          "end": 66
+                          "start": 37,
+                          "end": 39
                         }
                       },
                       "path": {
@@ -311,16 +236,16 @@
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
-                            "start": 64,
-                            "end": 66
+                            "start": 37,
+                            "end": 39
                           }
                         },
                         "name_token": {
                           "kind": "IDENT_EXPR",
                           "text": "fd",
                           "span": {
-                            "start": 64,
-                            "end": 66
+                            "start": 37,
+                            "end": 39
                           }
                         }
                       }
@@ -330,16 +255,144 @@
                 "argument": {
                   "tag": "positional",
                   "value": {
-                    "tag": "constructor",
+                    "tag": "path",
                     "syntax_node": {
-                      "kind": "FIELD_ACCESS_EXPR",
+                      "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 67,
-                        "end": 84
+                        "start": 40,
+                        "end": 44
                       }
                     },
-                    "constructor_path": {
-                      "tag": "qualified",
+                    "path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "IDENT_EXPR",
+                        "span": {
+                          "start": 40,
+                          "end": 44
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "addr",
+                        "span": {
+                          "start": 40,
+                          "end": 44
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 48,
+                    "end": 88
+                  }
+                },
+                "callee": {
+                  "tag": "apply",
+                  "syntax_node": {
+                    "kind": "APPLY_EXPR",
+                    "span": {
+                      "start": 48,
+                      "end": 84
+                    }
+                  },
+                  "callee": {
+                    "tag": "apply",
+                    "syntax_node": {
+                      "kind": "APPLY_EXPR",
+                      "span": {
+                        "start": 48,
+                        "end": 66
+                      }
+                    },
+                    "callee": {
+                      "tag": "field_access",
+                      "syntax_node": {
+                        "kind": "FIELD_ACCESS_EXPR",
+                        "span": {
+                          "start": 48,
+                          "end": 64
+                        }
+                      },
+                      "receiver": {
+                        "tag": "path",
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 48,
+                            "end": 52
+                          }
+                        },
+                        "path": {
+                          "tag": "ident",
+                          "syntax_node": {
+                            "kind": "IDENT_EXPR",
+                            "span": {
+                              "start": 48,
+                              "end": 52
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "Unix",
+                            "span": {
+                              "start": 48,
+                              "end": 52
+                            }
+                          }
+                        }
+                      },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "setsockopt",
+                        "span": {
+                          "start": 53,
+                          "end": 63
+                        }
+                      }
+                    },
+                    "argument": {
+                      "tag": "positional",
+                      "value": {
+                        "tag": "path",
+                        "syntax_node": {
+                          "kind": "IDENT_EXPR",
+                          "span": {
+                            "start": 64,
+                            "end": 66
+                          }
+                        },
+                        "path": {
+                          "tag": "ident",
+                          "syntax_node": {
+                            "kind": "IDENT_EXPR",
+                            "span": {
+                              "start": 64,
+                              "end": 66
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "fd",
+                            "span": {
+                              "start": 64,
+                              "end": 66
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "argument": {
+                    "tag": "positional",
+                    "value": {
+                      "tag": "constructor",
                       "syntax_node": {
                         "kind": "FIELD_ACCESS_EXPR",
                         "span": {
@@ -347,72 +400,83 @@
                           "end": 84
                         }
                       },
-                      "prefix": {
-                        "tag": "ident",
+                      "constructor_path": {
+                        "tag": "qualified",
                         "syntax_node": {
-                          "kind": "IDENT_EXPR",
+                          "kind": "FIELD_ACCESS_EXPR",
                           "span": {
                             "start": 67,
-                            "end": 71
+                            "end": 84
+                          }
+                        },
+                        "prefix": {
+                          "tag": "ident",
+                          "syntax_node": {
+                            "kind": "IDENT_EXPR",
+                            "span": {
+                              "start": 67,
+                              "end": 71
+                            }
+                          },
+                          "name_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "Unix",
+                            "span": {
+                              "start": 67,
+                              "end": 71
+                            }
+                          }
+                        },
+                        "dot_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": ".",
+                          "span": {
+                            "start": 71,
+                            "end": 72
                           }
                         },
                         "name_token": {
                           "kind": "IDENT_EXPR",
-                          "text": "Unix",
+                          "text": "TCP_NODELAY",
                           "span": {
-                            "start": 67,
-                            "end": 71
+                            "start": 72,
+                            "end": 83
                           }
                         }
                       },
-                      "dot_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": ".",
+                      "payload": null
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "positional",
+                  "value": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "bool",
+                      "syntax_node": {
+                        "kind": "BOOL_LITERAL",
                         "span": {
-                          "start": 71,
-                          "end": 72
+                          "start": 84,
+                          "end": 88
                         }
                       },
-                      "name_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "TCP_NODELAY",
+                      "literal_token": {
+                        "kind": "BOOL_LITERAL",
+                        "text": "true",
                         "span": {
-                          "start": 72,
-                          "end": 83
+                          "start": 84,
+                          "end": 88
                         }
-                      }
-                    },
-                    "payload": null
-                  }
-                }
-              },
-              "argument": {
-                "tag": "positional",
-                "value": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "bool",
-                    "syntax_node": {
-                      "kind": "BOOL_LITERAL",
-                      "span": {
-                        "start": 84,
-                        "end": 88
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "BOOL_LITERAL",
-                      "text": "true",
-                      "span": {
-                        "start": 84,
-                        "end": 88
-                      }
-                    },
-                    "value": true
+                      },
+                      "value": true
+                    }
                   }
                 }
               }
-            }
+            ]
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

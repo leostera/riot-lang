@@ -324,6 +324,23 @@
                 "end": 186
               }
             },
+            "opening_token": {
+              "kind": "IDENT_EXPR",
+              "text": "(",
+              "span": {
+                "start": 176,
+                "end": 177
+              }
+            },
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 185,
+                "end": 186
+              }
+            },
+            "grouping": "parens",
             "inner": {
               "tag": "literal",
               "literal": {
@@ -419,6 +436,23 @@
                 "end": 200
               }
             },
+            "opening_token": {
+              "kind": "IDENT_EXPR",
+              "text": "(",
+              "span": {
+                "start": 190,
+                "end": 191
+              }
+            },
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 199,
+                "end": 200
+              }
+            },
+            "grouping": "parens",
             "inner": {
               "tag": "literal",
               "literal": {
@@ -514,6 +548,23 @@
                 "end": 216
               }
             },
+            "opening_token": {
+              "kind": "IDENT_EXPR",
+              "text": "(",
+              "span": {
+                "start": 204,
+                "end": 205
+              }
+            },
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 215,
+                "end": 216
+              }
+            },
+            "grouping": "parens",
             "inner": {
               "tag": "literal",
               "literal": {
@@ -609,6 +660,23 @@
                 "end": 232
               }
             },
+            "opening_token": {
+              "kind": "IDENT_EXPR",
+              "text": "(",
+              "span": {
+                "start": 220,
+                "end": 221
+              }
+            },
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 231,
+                "end": 232
+              }
+            },
+            "grouping": "parens",
             "inner": {
               "tag": "literal",
               "literal": {
@@ -704,6 +772,23 @@
                 "end": 249
               }
             },
+            "opening_token": {
+              "kind": "IDENT_EXPR",
+              "text": "(",
+              "span": {
+                "start": 237,
+                "end": 238
+              }
+            },
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 248,
+                "end": 249
+              }
+            },
+            "grouping": "parens",
             "inner": {
               "tag": "literal",
               "literal": {
@@ -799,6 +884,23 @@
                 "end": 266
               }
             },
+            "opening_token": {
+              "kind": "IDENT_EXPR",
+              "text": "(",
+              "span": {
+                "start": 254,
+                "end": 255
+              }
+            },
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 265,
+                "end": 266
+              }
+            },
+            "grouping": "parens",
             "inner": {
               "tag": "literal",
               "literal": {
@@ -911,6 +1013,23 @@
                   "end": 281
                 }
               },
+              "opening_token": {
+                "kind": "IDENT_EXPR",
+                "text": "(",
+                "span": {
+                  "start": 271,
+                  "end": 272
+                }
+              },
+              "closing_token": {
+                "kind": "IDENT_EXPR",
+                "text": ")",
+                "span": {
+                  "start": 280,
+                  "end": 281
+                }
+              },
+              "grouping": "parens",
               "inner": {
                 "tag": "literal",
                 "literal": {

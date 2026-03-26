@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 22
+        "end": 21
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "TYPE_DECL",
             "span": {
               "start": 0,
-              "end": 22
+              "end": 21
             }
           },
           "type_name": {
@@ -45,7 +45,7 @@
               "kind": "TYPE_POLY_VARIANT",
               "span": {
                 "start": 9,
-                "end": 21
+                "end": 20
               }
             },
             "kind": {
@@ -58,16 +58,16 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 14,
-                      "end": 17
+                      "start": 11,
+                      "end": 14
                     }
                   },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "A",
                     "span": {
-                      "start": 15,
-                      "end": 16
+                      "start": 12,
+                      "end": 13
                     }
                   },
                   "payload_type": null
@@ -79,16 +79,16 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 17,
-                      "end": 20
+                      "start": 16,
+                      "end": 19
                     }
                   },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "B",
                     "span": {
-                      "start": 18,
-                      "end": 19
+                      "start": 17,
+                      "end": 18
                     }
                   },
                   "payload_type": null

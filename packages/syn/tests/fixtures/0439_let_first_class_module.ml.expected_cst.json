@@ -21,6 +21,31 @@
               "end": 27
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 15,
+              "end": 16
+            }
+          },
+          "in_token": {
+            "kind": "IDENT_EXPR",
+            "text": "in",
+            "span": {
+              "start": 19,
+              "end": 21
+            }
+          },
           "binding_pattern": {
             "tag": "first_class_module",
             "syntax_node": {
@@ -30,6 +55,7 @@
                 "end": 14
               }
             },
+            "module_type": null,
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "M",
@@ -37,9 +63,9 @@
                 "start": 12,
                 "end": 13
               }
-            },
-            "module_type": null
+            }
           },
+          "parameters": [],
           "bound_value": {
             "tag": "path",
             "syntax_node": {

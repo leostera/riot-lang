@@ -20,6 +20,23 @@
               "end": 107
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 62,
+              "end": 65
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 94,
+              "end": 95
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -89,6 +106,63 @@
                 "span": {
                   "start": 83,
                   "end": 90
+                }
+              },
+              "pattern": {
+                "tag": "typed",
+                "syntax_node": {
+                  "kind": "TYPED_PATTERN",
+                  "span": {
+                    "start": 83,
+                    "end": 90
+                  }
+                },
+                "pattern": {
+                  "tag": "identifier",
+                  "syntax_node": {
+                    "kind": "IDENT_PATTERN",
+                    "span": {
+                      "start": 84,
+                      "end": 85
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "span": {
+                      "start": 84,
+                      "end": 85
+                    }
+                  }
+                },
+                "type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 88,
+                      "end": 89
+                    }
+                  },
+                  "constructor_path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 88,
+                        "end": 89
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "a",
+                      "span": {
+                        "start": 88,
+                        "end": 89
+                      }
+                    }
+                  },
+                  "arguments": []
                 }
               },
               "name_token": {
@@ -227,6 +301,7 @@
               "arguments": []
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -238,6 +313,23 @@
             "span": {
               "start": 108,
               "end": 144
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 108,
+              "end": 111
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 133,
+              "end": 134
             }
           },
           "attributes": [],
@@ -322,6 +414,24 @@
                   "end": 129
                 }
               },
+              "pattern": {
+                "tag": "identifier",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 128,
+                    "end": 129
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "x",
+                  "span": {
+                    "start": 128,
+                    "end": 129
+                  }
+                }
+              },
               "name_token": {
                 "kind": "IDENT_EXPR",
                 "text": "x",
@@ -340,6 +450,24 @@
                   "end": 131
                 }
               },
+              "pattern": {
+                "tag": "identifier",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 130,
+                    "end": 131
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "y",
+                  "span": {
+                    "start": 130,
+                    "end": 131
+                  }
+                }
+              },
               "name_token": {
                 "kind": "IDENT_EXPR",
                 "text": "y",
@@ -356,6 +484,24 @@
                 "span": {
                   "start": 132,
                   "end": 133
+                }
+              },
+              "pattern": {
+                "tag": "identifier",
+                "syntax_node": {
+                  "kind": "IDENT_PATTERN",
+                  "span": {
+                    "start": 132,
+                    "end": 133
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "z",
+                  "span": {
+                    "start": 132,
+                    "end": 133
+                  }
                 }
               },
               "name_token": {
@@ -377,6 +523,23 @@
                 "end": 144
               }
             },
+            "opening_token": {
+              "kind": "IDENT_EXPR",
+              "text": "(",
+              "span": {
+                "start": 135,
+                "end": 136
+              }
+            },
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 143,
+                "end": 144
+              }
+            },
+            "grouping": "parens",
             "inner": {
               "tag": "tuple",
               "syntax_node": {
@@ -474,6 +637,7 @@
               ]
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

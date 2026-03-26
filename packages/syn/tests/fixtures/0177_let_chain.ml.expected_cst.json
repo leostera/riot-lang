@@ -20,6 +20,23 @@
               "end": 64
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,6 +74,31 @@
                 "end": 64
               }
             },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "let",
+              "span": {
+                "start": 10,
+                "end": 13
+              }
+            },
+            "rec_token": null,
+            "equals_token": {
+              "kind": "IDENT_EXPR",
+              "text": "=",
+              "span": {
+                "start": 16,
+                "end": 17
+              }
+            },
+            "in_token": {
+              "kind": "IDENT_EXPR",
+              "text": "in",
+              "span": {
+                "start": 20,
+                "end": 22
+              }
+            },
             "binding_pattern": {
               "tag": "identifier",
               "syntax_node": {
@@ -75,6 +117,7 @@
                 }
               }
             },
+            "parameters": [],
             "bound_value": {
               "tag": "literal",
               "literal": {
@@ -110,6 +153,31 @@
                   "end": 64
                 }
               },
+              "keyword_token": {
+                "kind": "IDENT_EXPR",
+                "text": "let",
+                "span": {
+                  "start": 25,
+                  "end": 28
+                }
+              },
+              "rec_token": null,
+              "equals_token": {
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "span": {
+                  "start": 31,
+                  "end": 32
+                }
+              },
+              "in_token": {
+                "kind": "IDENT_EXPR",
+                "text": "in",
+                "span": {
+                  "start": 35,
+                  "end": 37
+                }
+              },
               "binding_pattern": {
                 "tag": "identifier",
                 "syntax_node": {
@@ -128,6 +196,7 @@
                   }
                 }
               },
+              "parameters": [],
               "bound_value": {
                 "tag": "literal",
                 "literal": {
@@ -163,6 +232,31 @@
                     "end": 64
                   }
                 },
+                "keyword_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "let",
+                  "span": {
+                    "start": 40,
+                    "end": 43
+                  }
+                },
+                "rec_token": null,
+                "equals_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "=",
+                  "span": {
+                    "start": 46,
+                    "end": 47
+                  }
+                },
+                "in_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "in",
+                  "span": {
+                    "start": 50,
+                    "end": 52
+                  }
+                },
                 "binding_pattern": {
                   "tag": "identifier",
                   "syntax_node": {
@@ -181,6 +275,7 @@
                     }
                   }
                 },
+                "parameters": [],
                 "bound_value": {
                   "tag": "literal",
                   "literal": {
@@ -333,6 +428,7 @@
             },
             "is_recursive": false
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

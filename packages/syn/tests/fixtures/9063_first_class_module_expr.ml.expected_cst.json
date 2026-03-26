@@ -20,6 +20,23 @@
               "end": 35
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 11,
+              "end": 12
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -106,6 +123,7 @@
             },
             "module_type": null
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -117,6 +135,23 @@
             "span": {
               "start": 36,
               "end": 68
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 36,
+              "end": 39
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 52,
+              "end": 53
             }
           },
           "attributes": [],
@@ -199,6 +234,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

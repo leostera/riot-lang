@@ -11,217 +11,225 @@
     },
     "items": [
       {
-        "tag": "type_declaration",
+        "tag": "type_mutual_declaration",
         "item": {
           "syntax_node": {
-            "kind": "TYPE_DECL",
+            "kind": "TYPE_MUTUAL_DECL",
             "span": {
               "start": 0,
-              "end": 46
-            }
-          },
-          "type_name": {
-            "tag": "ident",
-            "syntax_node": {
-              "kind": "MODULE_PATH",
-              "span": {
-                "start": 8,
-                "end": 13
-              }
-            },
-            "name_token": {
-              "kind": "IDENT_EXPR",
-              "text": "tree",
-              "span": {
-                "start": 8,
-                "end": 12
-              }
-            }
-          },
-          "type_params": [
-            {
-              "syntax_node": {
-                "kind": "TYPE_PARAM",
-                "span": {
-                  "start": 5,
-                  "end": 7
-                }
-              },
-              "variance": null,
-              "is_injective": false,
-              "type_variable": {
-                "syntax_node": {
-                  "kind": "TYPE_VAR",
-                  "span": {
-                    "start": 5,
-                    "end": 7
-                  }
-                },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "a",
-                  "span": {
-                    "start": 6,
-                    "end": 7
-                  }
-                }
-              }
-            }
-          ],
-          "type_definition": {
-            "tag": "variant",
-            "syntax_node": {
-              "kind": "TYPE_DECL",
-              "span": {
-                "start": 0,
-                "end": 46
-              }
-            },
-            "constructors": [
-              {
-                "syntax_node": {
-                  "kind": "TYPE_VARIANT_CONSTR",
-                  "span": {
-                    "start": 15,
-                    "end": 26
-                  }
-                },
-                "constructor_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "Leaf",
-                  "span": {
-                    "start": 15,
-                    "end": 19
-                  }
-                }
-              },
-              {
-                "syntax_node": {
-                  "kind": "TYPE_VARIANT_CONSTR",
-                  "span": {
-                    "start": 28,
-                    "end": 46
-                  }
-                },
-                "constructor_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "Node",
-                  "span": {
-                    "start": 28,
-                    "end": 32
-                  }
-                }
-              }
-            ]
-          },
-          "is_destructive_substitution": false
-        }
-      },
-      {
-        "tag": "type_declaration",
-        "item": {
-          "syntax_node": {
-            "kind": "TYPE_DECL",
-            "span": {
-              "start": 50,
               "end": 92
             }
           },
-          "type_name": {
-            "tag": "ident",
-            "syntax_node": {
-              "kind": "IDENT_EXPR",
-              "span": {
-                "start": 53,
-                "end": 59
-              }
-            },
-            "name_token": {
-              "kind": "IDENT_EXPR",
-              "text": "forest",
-              "span": {
-                "start": 53,
-                "end": 59
-              }
-            }
-          },
-          "type_params": [
+          "declarations": [
             {
               "syntax_node": {
-                "kind": "TYPE_PARAM",
+                "kind": "TYPE_DECL",
                 "span": {
-                  "start": 50,
-                  "end": 52
+                  "start": 0,
+                  "end": 46
                 }
               },
-              "variance": null,
-              "is_injective": false,
-              "type_variable": {
+              "type_name": {
+                "tag": "ident",
                 "syntax_node": {
-                  "kind": "TYPE_VAR",
+                  "kind": "MODULE_PATH",
                   "span": {
-                    "start": 50,
-                    "end": 52
+                    "start": 8,
+                    "end": 13
                   }
                 },
                 "name_token": {
                   "kind": "IDENT_EXPR",
-                  "text": "a",
+                  "text": "tree",
                   "span": {
-                    "start": 51,
-                    "end": 52
-                  }
-                }
-              }
-            }
-          ],
-          "type_definition": {
-            "tag": "variant",
-            "syntax_node": {
-              "kind": "TYPE_DECL",
-              "span": {
-                "start": 50,
-                "end": 92
-              }
-            },
-            "constructors": [
-              {
-                "syntax_node": {
-                  "kind": "TYPE_VARIANT_CONSTR",
-                  "span": {
-                    "start": 62,
-                    "end": 68
-                  }
-                },
-                "constructor_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "Empty",
-                  "span": {
-                    "start": 62,
-                    "end": 67
+                    "start": 8,
+                    "end": 12
                   }
                 }
               },
-              {
+              "type_params": [
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_PARAM",
+                    "span": {
+                      "start": 5,
+                      "end": 7
+                    }
+                  },
+                  "variance": null,
+                  "is_injective": false,
+                  "type_variable": {
+                    "syntax_node": {
+                      "kind": "TYPE_VAR",
+                      "span": {
+                        "start": 5,
+                        "end": 7
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "a",
+                      "span": {
+                        "start": 6,
+                        "end": 7
+                      }
+                    }
+                  }
+                }
+              ],
+              "type_definition": {
+                "tag": "variant",
                 "syntax_node": {
-                  "kind": "TYPE_VARIANT_CONSTR",
+                  "kind": "TYPE_DECL",
                   "span": {
-                    "start": 70,
+                    "start": 0,
+                    "end": 46
+                  }
+                },
+                "constructors": [
+                  {
+                    "syntax_node": {
+                      "kind": "TYPE_VARIANT_CONSTR",
+                      "span": {
+                        "start": 15,
+                        "end": 26
+                      }
+                    },
+                    "constructor_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Leaf",
+                      "span": {
+                        "start": 15,
+                        "end": 19
+                      }
+                    }
+                  },
+                  {
+                    "syntax_node": {
+                      "kind": "TYPE_VARIANT_CONSTR",
+                      "span": {
+                        "start": 28,
+                        "end": 46
+                      }
+                    },
+                    "constructor_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Node",
+                      "span": {
+                        "start": 28,
+                        "end": 32
+                      }
+                    }
+                  }
+                ]
+              },
+              "is_destructive_substitution": false
+            },
+            {
+              "syntax_node": {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 50,
+                  "end": 92
+                }
+              },
+              "type_name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 53,
+                    "end": 59
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "forest",
+                  "span": {
+                    "start": 53,
+                    "end": 59
+                  }
+                }
+              },
+              "type_params": [
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_PARAM",
+                    "span": {
+                      "start": 50,
+                      "end": 52
+                    }
+                  },
+                  "variance": null,
+                  "is_injective": false,
+                  "type_variable": {
+                    "syntax_node": {
+                      "kind": "TYPE_VAR",
+                      "span": {
+                        "start": 50,
+                        "end": 52
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "a",
+                      "span": {
+                        "start": 51,
+                        "end": 52
+                      }
+                    }
+                  }
+                }
+              ],
+              "type_definition": {
+                "tag": "variant",
+                "syntax_node": {
+                  "kind": "TYPE_DECL",
+                  "span": {
+                    "start": 50,
                     "end": 92
                   }
                 },
-                "constructor_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "Trees",
-                  "span": {
-                    "start": 70,
-                    "end": 75
+                "constructors": [
+                  {
+                    "syntax_node": {
+                      "kind": "TYPE_VARIANT_CONSTR",
+                      "span": {
+                        "start": 62,
+                        "end": 68
+                      }
+                    },
+                    "constructor_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Empty",
+                      "span": {
+                        "start": 62,
+                        "end": 67
+                      }
+                    }
+                  },
+                  {
+                    "syntax_node": {
+                      "kind": "TYPE_VARIANT_CONSTR",
+                      "span": {
+                        "start": 70,
+                        "end": 92
+                      }
+                    },
+                    "constructor_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Trees",
+                      "span": {
+                        "start": 70,
+                        "end": 75
+                      }
+                    }
                   }
-                }
-              }
-            ]
-          },
-          "is_destructive_substitution": false
+                ]
+              },
+              "is_destructive_substitution": false
+            }
+          ]
         }
       }
     ]

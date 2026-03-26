@@ -11,266 +11,274 @@
     },
     "items": [
       {
-        "tag": "type_declaration",
+        "tag": "type_mutual_declaration",
         "item": {
           "syntax_node": {
-            "kind": "TYPE_DECL",
+            "kind": "TYPE_MUTUAL_DECL",
             "span": {
               "start": 0,
-              "end": 46
-            }
-          },
-          "type_name": {
-            "tag": "ident",
-            "syntax_node": {
-              "kind": "MODULE_PATH",
-              "span": {
-                "start": 5,
-                "end": 10
-              }
-            },
-            "name_token": {
-              "kind": "IDENT_EXPR",
-              "text": "node",
-              "span": {
-                "start": 5,
-                "end": 9
-              }
-            }
-          },
-          "type_params": [],
-          "type_definition": {
-            "tag": "variant",
-            "syntax_node": {
-              "kind": "TYPE_DECL",
-              "span": {
-                "start": 0,
-                "end": 46
-              }
-            },
-            "constructors": [
-              {
-                "syntax_node": {
-                  "kind": "TYPE_VARIANT_CONSTR",
-                  "span": {
-                    "start": 12,
-                    "end": 24
-                  }
-                },
-                "constructor_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "Leaf",
-                  "span": {
-                    "start": 12,
-                    "end": 16
-                  }
-                }
-              },
-              {
-                "syntax_node": {
-                  "kind": "TYPE_VARIANT_CONSTR",
-                  "span": {
-                    "start": 26,
-                    "end": 46
-                  }
-                },
-                "constructor_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "Branch",
-                  "span": {
-                    "start": 26,
-                    "end": 32
-                  }
-                }
-              }
-            ]
-          },
-          "is_destructive_substitution": false
-        }
-      },
-      {
-        "tag": "type_declaration",
-        "item": {
-          "syntax_node": {
-            "kind": "TYPE_DECL",
-            "span": {
-              "start": 50,
               "end": 106
             }
           },
-          "type_name": {
-            "tag": "ident",
-            "syntax_node": {
-              "kind": "IDENT_EXPR",
-              "span": {
-                "start": 50,
-                "end": 59
-              }
-            },
-            "name_token": {
-              "kind": "IDENT_EXPR",
-              "text": "tree_info",
-              "span": {
-                "start": 50,
-                "end": 59
-              }
-            }
-          },
-          "type_params": [],
-          "type_definition": {
-            "tag": "record",
-            "syntax_node": {
-              "kind": "TYPE_RECORD",
-              "span": {
-                "start": 62,
-                "end": 105
-              }
-            },
-            "fields": [
-              {
+          "declarations": [
+            {
+              "syntax_node": {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 0,
+                  "end": 46
+                }
+              },
+              "type_name": {
+                "tag": "ident",
                 "syntax_node": {
-                  "kind": "TYPE_RECORD_FIELD",
+                  "kind": "MODULE_PATH",
                   "span": {
-                    "start": 64,
-                    "end": 75
+                    "start": 5,
+                    "end": 10
                   }
                 },
-                "field_name": {
+                "name_token": {
                   "kind": "IDENT_EXPR",
-                  "text": "left",
+                  "text": "node",
                   "span": {
-                    "start": 64,
-                    "end": 68
+                    "start": 5,
+                    "end": 9
+                  }
+                }
+              },
+              "type_params": [],
+              "type_definition": {
+                "tag": "variant",
+                "syntax_node": {
+                  "kind": "TYPE_DECL",
+                  "span": {
+                    "start": 0,
+                    "end": 46
                   }
                 },
-                "field_type": {
-                  "tag": "constr",
-                  "syntax_node": {
-                    "kind": "TYPE_CONSTR",
-                    "span": {
-                      "start": 71,
-                      "end": 75
+                "constructors": [
+                  {
+                    "syntax_node": {
+                      "kind": "TYPE_VARIANT_CONSTR",
+                      "span": {
+                        "start": 12,
+                        "end": 24
+                      }
+                    },
+                    "constructor_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Leaf",
+                      "span": {
+                        "start": 12,
+                        "end": 16
+                      }
                     }
                   },
-                  "constructor_path": {
-                    "tag": "ident",
+                  {
                     "syntax_node": {
-                      "kind": "TYPE_CONSTR",
+                      "kind": "TYPE_VARIANT_CONSTR",
                       "span": {
-                        "start": 71,
+                        "start": 26,
+                        "end": 46
+                      }
+                    },
+                    "constructor_name": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Branch",
+                      "span": {
+                        "start": 26,
+                        "end": 32
+                      }
+                    }
+                  }
+                ]
+              },
+              "is_destructive_substitution": false
+            },
+            {
+              "syntax_node": {
+                "kind": "TYPE_DECL",
+                "span": {
+                  "start": 50,
+                  "end": 106
+                }
+              },
+              "type_name": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 50,
+                    "end": 59
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "tree_info",
+                  "span": {
+                    "start": 50,
+                    "end": 59
+                  }
+                }
+              },
+              "type_params": [],
+              "type_definition": {
+                "tag": "record",
+                "syntax_node": {
+                  "kind": "TYPE_RECORD",
+                  "span": {
+                    "start": 62,
+                    "end": 105
+                  }
+                },
+                "fields": [
+                  {
+                    "syntax_node": {
+                      "kind": "TYPE_RECORD_FIELD",
+                      "span": {
+                        "start": 64,
                         "end": 75
                       }
                     },
-                    "name_token": {
+                    "field_name": {
                       "kind": "IDENT_EXPR",
-                      "text": "node",
+                      "text": "left",
                       "span": {
-                        "start": 71,
-                        "end": 75
+                        "start": 64,
+                        "end": 68
                       }
-                    }
+                    },
+                    "field_type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 71,
+                          "end": 75
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 71,
+                            "end": 75
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "node",
+                          "span": {
+                            "start": 71,
+                            "end": 75
+                          }
+                        }
+                      },
+                      "arguments": []
+                    },
+                    "is_mutable": false
                   },
-                  "arguments": []
-                },
-                "is_mutable": false
-              },
-              {
-                "syntax_node": {
-                  "kind": "TYPE_RECORD_FIELD",
-                  "span": {
-                    "start": 77,
-                    "end": 89
-                  }
-                },
-                "field_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "right",
-                  "span": {
-                    "start": 77,
-                    "end": 82
-                  }
-                },
-                "field_type": {
-                  "tag": "constr",
-                  "syntax_node": {
-                    "kind": "TYPE_CONSTR",
-                    "span": {
-                      "start": 85,
-                      "end": 89
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
+                  {
                     "syntax_node": {
-                      "kind": "TYPE_CONSTR",
+                      "kind": "TYPE_RECORD_FIELD",
                       "span": {
-                        "start": 85,
+                        "start": 77,
                         "end": 89
                       }
                     },
-                    "name_token": {
+                    "field_name": {
                       "kind": "IDENT_EXPR",
-                      "text": "node",
+                      "text": "right",
                       "span": {
-                        "start": 85,
-                        "end": 89
+                        "start": 77,
+                        "end": 82
                       }
-                    }
+                    },
+                    "field_type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 85,
+                          "end": 89
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 85,
+                            "end": 89
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "node",
+                          "span": {
+                            "start": 85,
+                            "end": 89
+                          }
+                        }
+                      },
+                      "arguments": []
+                    },
+                    "is_mutable": false
                   },
-                  "arguments": []
-                },
-                "is_mutable": false
-              },
-              {
-                "syntax_node": {
-                  "kind": "TYPE_RECORD_FIELD",
-                  "span": {
-                    "start": 91,
-                    "end": 104
-                  }
-                },
-                "field_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "height",
-                  "span": {
-                    "start": 91,
-                    "end": 97
-                  }
-                },
-                "field_type": {
-                  "tag": "constr",
-                  "syntax_node": {
-                    "kind": "TYPE_CONSTR",
-                    "span": {
-                      "start": 100,
-                      "end": 104
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
+                  {
                     "syntax_node": {
-                      "kind": "TYPE_CONSTR",
+                      "kind": "TYPE_RECORD_FIELD",
                       "span": {
-                        "start": 100,
+                        "start": 91,
                         "end": 104
                       }
                     },
-                    "name_token": {
+                    "field_name": {
                       "kind": "IDENT_EXPR",
-                      "text": "int",
+                      "text": "height",
                       "span": {
-                        "start": 100,
-                        "end": 103
+                        "start": 91,
+                        "end": 97
                       }
-                    }
-                  },
-                  "arguments": []
-                },
-                "is_mutable": false
-              }
-            ]
-          },
-          "is_destructive_substitution": false
+                    },
+                    "field_type": {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 100,
+                          "end": 104
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 100,
+                            "end": 104
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 100,
+                            "end": 103
+                          }
+                        }
+                      },
+                      "arguments": []
+                    },
+                    "is_mutable": false
+                  }
+                ]
+              },
+              "is_destructive_substitution": false
+            }
+          ]
         }
       }
     ]

@@ -20,6 +20,23 @@
               "end": 19
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -96,6 +113,23 @@
                     "end": 19
                   }
                 },
+                "opening_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 10,
+                    "end": 11
+                  }
+                },
+                "closing_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ")",
+                  "span": {
+                    "start": 18,
+                    "end": 19
+                  }
+                },
+                "grouping": "parens",
                 "inner": {
                   "tag": "apply",
                   "syntax_node": {
@@ -144,6 +178,23 @@
                           "end": 18
                         }
                       },
+                      "opening_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "(",
+                        "span": {
+                          "start": 13,
+                          "end": 14
+                        }
+                      },
+                      "closing_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": ")",
+                        "span": {
+                          "start": 17,
+                          "end": 18
+                        }
+                      },
+                      "grouping": "parens",
                       "inner": {
                         "tag": "apply",
                         "syntax_node": {
@@ -219,6 +270,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

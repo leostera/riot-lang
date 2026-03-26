@@ -2,7 +2,7 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 3528,
+    "width": 3535,
     "children": [
       {
         "type": "token",
@@ -2163,12 +2163,12 @@
       {
         "type": "node",
         "kind": "SEQUENCE_EXPR",
-        "width": 18,
+        "width": 19,
         "children": [
           {
             "type": "node",
             "kind": "ASSIGN_EXPR",
-            "width": 17,
+            "width": 18,
             "children": [
               {
                 "type": "node",
@@ -2304,14 +2304,14 @@
               },
               {
                 "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
+                "kind": "FLOAT_LITERAL",
+                "width": 2,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "2",
-                    "width": 1
+                    "kind": "FLOAT_LITERAL",
+                    "text": "2.",
+                    "width": 2
                   }
                 ]
               }
@@ -2414,12 +2414,12 @@
       {
         "type": "node",
         "kind": "SEQUENCE_EXPR",
-        "width": 18,
+        "width": 19,
         "children": [
           {
             "type": "node",
             "kind": "ASSIGN_EXPR",
-            "width": 17,
+            "width": 18,
             "children": [
               {
                 "type": "node",
@@ -2555,14 +2555,14 @@
               },
               {
                 "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
+                "kind": "FLOAT_LITERAL",
+                "width": 2,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "3",
-                    "width": 1
+                    "kind": "FLOAT_LITERAL",
+                    "text": "3.",
+                    "width": 2
                   }
                 ]
               }
@@ -2665,12 +2665,12 @@
       {
         "type": "node",
         "kind": "SEQUENCE_EXPR",
-        "width": 18,
+        "width": 19,
         "children": [
           {
             "type": "node",
             "kind": "ASSIGN_EXPR",
-            "width": 17,
+            "width": 18,
             "children": [
               {
                 "type": "node",
@@ -2806,14 +2806,14 @@
               },
               {
                 "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
+                "kind": "FLOAT_LITERAL",
+                "width": 2,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "5",
-                    "width": 1
+                    "kind": "FLOAT_LITERAL",
+                    "text": "5.",
+                    "width": 2
                   }
                 ]
               }
@@ -2916,12 +2916,12 @@
       {
         "type": "node",
         "kind": "SEQUENCE_EXPR",
-        "width": 33,
+        "width": 34,
         "children": [
           {
             "type": "node",
             "kind": "ASSIGN_EXPR",
-            "width": 17,
+            "width": 18,
             "children": [
               {
                 "type": "node",
@@ -3057,14 +3057,14 @@
               },
               {
                 "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
+                "kind": "FLOAT_LITERAL",
+                "width": 2,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "7",
-                    "width": 1
+                    "kind": "FLOAT_LITERAL",
+                    "text": "7.",
+                    "width": 2
                   }
                 ]
               }
@@ -5356,12 +5356,12 @@
       {
         "type": "node",
         "kind": "SEQUENCE_EXPR",
-        "width": 21,
+        "width": 22,
         "children": [
           {
             "type": "node",
             "kind": "ASSIGN_EXPR",
-            "width": 20,
+            "width": 21,
             "children": [
               {
                 "type": "node",
@@ -5522,14 +5522,14 @@
               },
               {
                 "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
+                "kind": "FLOAT_LITERAL",
+                "width": 2,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "7",
-                    "width": 1
+                    "kind": "FLOAT_LITERAL",
+                    "text": "7.",
+                    "width": 2
                   }
                 ]
               }
@@ -5631,12 +5631,12 @@
       {
         "type": "node",
         "kind": "SEQUENCE_EXPR",
-        "width": 22,
+        "width": 23,
         "children": [
           {
             "type": "node",
             "kind": "ASSIGN_EXPR",
-            "width": 21,
+            "width": 22,
             "children": [
               {
                 "type": "node",
@@ -5797,14 +5797,14 @@
               },
               {
                 "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 2,
+                "kind": "FLOAT_LITERAL",
+                "width": 3,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "11",
-                    "width": 2
+                    "kind": "FLOAT_LITERAL",
+                    "text": "11.",
+                    "width": 3
                   }
                 ]
               }
@@ -5907,12 +5907,12 @@
       {
         "type": "node",
         "kind": "SEQUENCE_EXPR",
-        "width": 22,
+        "width": 23,
         "children": [
           {
             "type": "node",
             "kind": "ASSIGN_EXPR",
-            "width": 21,
+            "width": 22,
             "children": [
               {
                 "type": "node",
@@ -6073,14 +6073,14 @@
               },
               {
                 "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 2,
+                "kind": "FLOAT_LITERAL",
+                "width": 3,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "13",
-                    "width": 2
+                    "kind": "FLOAT_LITERAL",
+                    "text": "13.",
+                    "width": 3
                   }
                 ]
               }

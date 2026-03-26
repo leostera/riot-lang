@@ -20,6 +20,23 @@
               "end": 46
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 28,
+              "end": 31
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 34,
+              "end": 35
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -99,6 +116,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -110,6 +128,23 @@
             "span": {
               "start": 47,
               "end": 73
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 47,
+              "end": 50
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 53,
+              "end": 54
             }
           },
           "attributes": [],
@@ -191,6 +226,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       },
@@ -202,6 +238,23 @@
             "span": {
               "start": 74,
               "end": 152
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 74,
+              "end": 77
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 80,
+              "end": 81
             }
           },
           "attributes": [],
@@ -347,6 +400,7 @@
               }
             }
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

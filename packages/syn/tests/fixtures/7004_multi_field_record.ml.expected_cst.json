@@ -158,6 +158,23 @@
               "end": 55
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 31,
+              "end": 34
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 37,
+              "end": 38
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -321,6 +338,7 @@
               }
             ]
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }

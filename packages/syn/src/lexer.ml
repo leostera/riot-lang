@@ -401,15 +401,23 @@ let lex_number cursor token_start =
                 match float_of_string_opt float_str with
                 | Some f -> Token.Literal (Float f)
                 | None -> Token.Literal (Float 0.0))
+            | Some '.' -> (
+                (* Dot-dot and similar forms are not float literals. *)
+                match int_of_string_opt num_str with
+                | Some i -> Token.Literal (Int i)
+                | None -> Token.Literal (Int 0))
             | Some c when is_alpha c -> (
                 Cursor.advance cursor;
                 let _ = consume_numeric_suffix () in
                 Token.Literal (Float 0.0))
             | _ -> (
-                (* Dot is not part of the number - it's an operator or field access *)
-                match int_of_string_opt num_str with
-                | Some i -> Token.Literal (Int i)
-                | None -> Token.Literal (Int 0)))
+                (* Accept shorthand floats like [1.] and [3.] *)
+                Cursor.advance cursor;
+                let _ = consume_numeric_suffix () in
+                let float_str = num_str ^ "." in
+                match float_of_string_opt float_str with
+                | Some f -> Token.Literal (Float f)
+                | None -> Token.Literal (Float 0.0)))
         | _ -> (
             match int_of_string_opt num_str with
             | Some i -> Token.Literal (Int i)

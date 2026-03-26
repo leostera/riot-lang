@@ -20,6 +20,23 @@
               "end": 28
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
+          "rec_token": null,
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 6,
+              "end": 7
+            }
+          },
           "attributes": [],
           "binding_pattern": {
             "tag": "identifier",
@@ -57,92 +74,92 @@
                 "end": 28
               }
             },
-            "left": {
-              "tag": "apply",
-              "syntax_node": {
-                "kind": "APPLY_EXPR",
-                "span": {
-                  "start": 10,
-                  "end": 13
-                }
-              },
-              "callee": {
-                "tag": "path",
-                "syntax_node": {
-                  "kind": "IDENT_EXPR",
-                  "span": {
-                    "start": 10,
-                    "end": 11
-                  }
-                },
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "IDENT_EXPR",
-                    "span": {
-                      "start": 10,
-                      "end": 11
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "f",
-                    "span": {
-                      "start": 10,
-                      "end": 11
-                    }
-                  }
-                }
-              },
-              "argument": {
-                "tag": "positional",
-                "value": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "int",
-                    "syntax_node": {
-                      "kind": "INT_LITERAL",
-                      "span": {
-                        "start": 12,
-                        "end": 13
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "INT_LITERAL",
-                      "text": "1",
-                      "span": {
-                        "start": 12,
-                        "end": 13
-                      }
-                    },
-                    "base": "decimal",
-                    "prefix": null,
-                    "digits": "1",
-                    "suffix": null
-                  }
-                }
+            "separator_token": {
+              "kind": "IDENT_EXPR",
+              "text": ";",
+              "span": {
+                "start": 13,
+                "end": 14
               }
             },
-            "right": {
-              "tag": "apply",
-              "syntax_node": {
-                "kind": "APPLY_EXPR",
-                "span": {
-                  "start": 17,
-                  "end": 20
-                }
-              },
-              "callee": {
-                "tag": "path",
+            "expressions": [
+              {
+                "tag": "apply",
                 "syntax_node": {
-                  "kind": "IDENT_EXPR",
+                  "kind": "APPLY_EXPR",
                   "span": {
-                    "start": 17,
-                    "end": 18
+                    "start": 10,
+                    "end": 13
                   }
                 },
-                "path": {
-                  "tag": "ident",
+                "callee": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 10,
+                      "end": 11
+                    }
+                  },
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 10,
+                        "end": 11
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "f",
+                      "span": {
+                        "start": 10,
+                        "end": 11
+                      }
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "positional",
+                  "value": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 12,
+                          "end": 13
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "1",
+                        "span": {
+                          "start": 12,
+                          "end": 13
+                        }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "1",
+                      "suffix": null
+                    }
+                  }
+                }
+              },
+              {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 17,
+                    "end": 20
+                  }
+                },
+                "callee": {
+                  "tag": "path",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -150,46 +167,123 @@
                       "end": 18
                     }
                   },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "g",
-                    "span": {
-                      "start": 17,
-                      "end": 18
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 17,
+                        "end": 18
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "g",
+                      "span": {
+                        "start": 17,
+                        "end": 18
+                      }
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "positional",
+                  "value": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 19,
+                          "end": 20
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "2",
+                        "span": {
+                          "start": 19,
+                          "end": 20
+                        }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "2",
+                      "suffix": null
                     }
                   }
                 }
               },
-              "argument": {
-                "tag": "positional",
-                "value": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "int",
+              {
+                "tag": "apply",
+                "syntax_node": {
+                  "kind": "APPLY_EXPR",
+                  "span": {
+                    "start": 24,
+                    "end": 27
+                  }
+                },
+                "callee": {
+                  "tag": "path",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 24,
+                      "end": 25
+                    }
+                  },
+                  "path": {
+                    "tag": "ident",
                     "syntax_node": {
-                      "kind": "INT_LITERAL",
+                      "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 19,
-                        "end": 20
+                        "start": 24,
+                        "end": 25
                       }
                     },
-                    "literal_token": {
-                      "kind": "INT_LITERAL",
-                      "text": "2",
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "h",
                       "span": {
-                        "start": 19,
-                        "end": 20
+                        "start": 24,
+                        "end": 25
                       }
-                    },
-                    "base": "decimal",
-                    "prefix": null,
-                    "digits": "2",
-                    "suffix": null
+                    }
+                  }
+                },
+                "argument": {
+                  "tag": "positional",
+                  "value": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 26,
+                          "end": 27
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "3",
+                        "span": {
+                          "start": 26,
+                          "end": 27
+                        }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "3",
+                      "suffix": null
+                    }
                   }
                 }
               }
-            }
+            ]
           },
+          "and_bindings": [],
           "is_recursive": false
         }
       }
