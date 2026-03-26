@@ -1,13 +1,10 @@
 module Tag = struct
-  type t = int
-
-  let empty = 0xff
+  let empty = 0xFF
 
   (* 255 - bucket never used *)
   let deleted = 0x80
 
-  (* 128 - tombstone for removed entry *)
-
   (* Create a FULL tag from a hash (stores top 7 bits) *)
-  let full = fun hash -> hash land 0x7f
+  (* 128 - tombstone for removed entry *)
+  let full = fun hash -> hash land 0x7F
 end

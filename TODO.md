@@ -41,18 +41,11 @@ You are done with this task when `krasny` can format the entire codebase and
 the CST-hash of the source before and after formatting is the same (that is, there's no information loss).
 
 Current fail-fast progress (2026-03-26):
-- `--verify-workspace --fail-fast` now passes `936` files.
-- Current first failing file: `packages/swisstable/src/swisstable.ml` (syntax-hash mismatch after canonical formatting).
+- `--verify-workspace --fail-fast` now passes `910` files.
+- Current first failing file: `packages/syn/src/cst_builder.ml` (canonical formatted `format exited 1` due parse errors on second-pass formatted output).
 - Newly fixed in this slice:
-  - `packages/std/src/gen_stage.ml` (previous verified frontier: `format exited 1`)
-  - `packages/suri/src/socket_pool/transport.ml` (previous `format exited 1`)
-  - constructor-pattern parameters followed by labeled parameters now parse cleanly in `syn`, so formatter runs on transport-style bindings instead of bailing on an `invalid-pattern`
-  - external declaration item attributes now round-trip through `syn` and `krasny`, so implementation `external ... [@@noalloc]` declarations no longer lose their attribute shell
-  - new focused fixtures:
-    - `0341_labeled_wildcard_after_positional_parameter.ml`
-    - `0342_constructor_pattern_before_labeled_parameters.ml`
-    - `0419_typed_constructor_payload.ml`
-    - `0728_external_declaration_attribute.ml`
-    - `0902_docstring_between_multiline_lets.ml`
-    - `0903_docstring_after_function_binding.ml`
+  - `packages/swisstable/src/swisstable.ml` (previous syntax-hash mismatch after canonical formatting)
+  - nested structure/signature source slicing now uses `current_source` span slices instead of `Source.source_of_syntax_node`, preventing `ceibo` token-stream trivia reordering from leaking into formatter input
+  - focused comment-stability fixtures now round-trip without hash drift:
     - `0908_trailing_inline_comment_in_module.ml`
+    - `0909_comment_stability_between_lets.ml`

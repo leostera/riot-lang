@@ -4725,7 +4725,11 @@ and render_structure_items ?source ~source_node items =
     | Some source ->
         source
     | None ->
-        Source.source_of_syntax_node source_node
+        (match !current_source with
+        | Some full_source ->
+            Source.source_of_span full_source (Syn.Ceibo.Red.SyntaxNode.span source_node)
+        | None ->
+            Source.source_of_syntax_node source_node)
   in
   let source_offset =
     match source_opt with
@@ -4811,7 +4815,11 @@ and render_signature_items ?source ~source_node items =
     | Some source ->
         source
     | None ->
-        Source.source_of_syntax_node source_node
+        (match !current_source with
+        | Some full_source ->
+            Source.source_of_span full_source (Syn.Ceibo.Red.SyntaxNode.span source_node)
+        | None ->
+            Source.source_of_syntax_node source_node)
   in
   let source_offset =
     match source_opt with
