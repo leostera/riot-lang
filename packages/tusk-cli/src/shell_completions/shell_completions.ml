@@ -34,8 +34,21 @@ let list_binaries (workspace : Tusk_model.Workspace.t) =
         pkg.binaries)
   |> List.sort_uniq String.compare
 
-(** List test binaries as "package:test" for display in completions *)
+(** List package names, package wildcards, and test binaries for completions *)
 let list_tests (workspace : Tusk_model.Workspace.t) =
+  let test_packages =
+    workspace.packages
+    |> List.filter Tusk_model.Package.is_workspace_member
+    |> List.filter_map (fun (pkg : Tusk_model.Package.t) ->
+        let has_tests =
+          List.exists
+            (fun (bin : Tusk_model.Package.binary) ->
+              String.ends_with ~suffix:"_tests" bin.name
+              || String.ends_with ~suffix:"-tests" bin.name)
+            pkg.binaries
+        in
+        if has_tests then Some pkg.name else None)
+  in
   let individual_tests =
     workspace.packages
     |> List.filter Tusk_model.Package.is_workspace_member
@@ -50,20 +63,9 @@ let list_tests (workspace : Tusk_model.Workspace.t) =
           pkg.binaries)
   in
   (* Add pkg:... entries for packages with tests *)
-  let package_wildcards =
-    workspace.packages
-    |> List.filter Tusk_model.Package.is_workspace_member
-    |> List.filter_map (fun (pkg : Tusk_model.Package.t) ->
-        let has_tests =
-          List.exists
-            (fun (bin : Tusk_model.Package.binary) ->
-              String.ends_with ~suffix:"_tests" bin.name
-              || String.ends_with ~suffix:"-tests" bin.name)
-            pkg.binaries
-        in
-        if has_tests then Some (pkg.name ^ ":...") else None)
-  in
-  (package_wildcards @ individual_tests) |> List.sort_uniq String.compare
+  let package_wildcards = List.map (fun pkg_name -> pkg_name ^ ":...") test_packages in
+  (test_packages @ package_wildcards @ individual_tests)
+  |> List.sort_uniq String.compare
 
 (** List benchmark binaries as "package:bench" for display in completions *)
 let list_benchmarks (workspace : Tusk_model.Workspace.t) =
