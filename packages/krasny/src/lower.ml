@@ -7,6 +7,7 @@ let blank_line = Doc.concat [ Doc.line; Doc.line ]
 let equals = Doc.concat [ Doc.space; Doc.equal; Doc.space ]
 let arrow = Doc.concat [ Doc.space; Doc.arrow; Doc.space ]
 let colon = Doc.concat [ Doc.space; Doc.colon; Doc.space ]
+let annotation_colon = Doc.concat [ Doc.colon; Doc.space ]
 let multiline_list_threshold = 10
 let star = Doc.text "*"
 let current_source = ref None
@@ -2506,7 +2507,7 @@ let rec render_expression expression =
       render_index_expression index
   | Syn.Cst.Expression.Typed { expression; type_; _ } ->
       Doc.concat
-        [ Doc.lparen; render_expression expression; colon; doc_of_core_type type_; Doc.rparen ]
+        [ Doc.lparen; render_expression expression; annotation_colon; doc_of_core_type type_; Doc.rparen ]
   | Syn.Cst.Expression.PolyVariant { syntax_node; payload; _ } ->
       let head = doc_of_nontrivia_direct_tokens syntax_node in
       (match payload with
@@ -3809,7 +3810,7 @@ and render_local_binding
     | None ->
         header
     | Some type_ ->
-        Doc.concat [ header; colon; render_core_type type_ ]
+        Doc.concat [ header; annotation_colon; render_core_type type_ ]
   in
   let force_multiline_body =
     local_context
