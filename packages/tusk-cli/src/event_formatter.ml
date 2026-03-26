@@ -60,15 +60,7 @@ let format ~displayed_packages (event : Telemetry.event) =
   (* Workspace events *)
   | Telemetry_events.WorkspaceStarted _ -> ""
   | Telemetry_events.WorkspaceCompleted
-      { total_duration; cached_count; built_count; failed_count; _ } ->
-      if failed_count = 0 then
-        let formatted_secs = Time.Duration.to_secs_string ~precision:2 total_duration in
-        let total_count = built_count + cached_count in
-        "   \027[1;32mFinished\027[0m in " ^ formatted_secs ^ "s (" ^ 
-          Int.to_string total_count ^ " built)"
-      else
-        let total_count = built_count + cached_count in
-        "   \027[1;31mFailed\027[0m with " ^ Int.to_string failed_count ^ " errors (" ^ 
-          Int.to_string total_count ^ " built)"
+      _ ->
+      ""
   (* Catch-all for unknown or future telemetry events *)
   | _ -> ""
