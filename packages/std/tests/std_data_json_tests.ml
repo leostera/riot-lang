@@ -2,6 +2,15 @@ open Std
 open Std.Data
 open Std.Collections
 
+let describe_json = function
+  | Json.Null -> "null"
+  | Json.Bool b -> "bool(" ^ Bool.to_string b ^ ")"
+  | Json.Int i -> "int(" ^ Int.to_string i ^ ")"
+  | Json.Float f -> "float(" ^ Float.to_string f ^ ")"
+  | Json.String s -> "string(" ^ s ^ ")"
+  | Json.Array items -> "array(" ^ Int.to_string (List.length items) ^ ")"
+  | Json.Object fields -> "object(" ^ Int.to_string (List.length fields) ^ ")"
+
 let test_parse_null () =
   match Json.of_string "null" with
   | Ok Json.Null -> Ok ()
@@ -20,22 +29,29 @@ let test_parse_false () =
 let test_parse_integer () =
   match Json.of_string "42" with
   | Ok (Json.Int 42) -> Ok ()
-  | _ -> Error "Failed to parse integer"
+  | Ok value -> Error ("Failed to parse integer, got " ^ describe_json value)
+  | Error err -> Error ("Parse failed: " ^ Json.error_to_string err)
 
 let test_parse_negative_integer () =
   match Json.of_string "-123" with
   | Ok (Json.Int -123) -> Ok ()
-  | _ -> Error "Failed to parse negative integer"
+  | Ok value ->
+      Error ("Failed to parse negative integer, got " ^ describe_json value)
+  | Error err -> Error ("Parse failed: " ^ Json.error_to_string err)
 
 let test_parse_float () =
   match Json.of_string "3.14" with
   | Ok (Json.Float 3.14) -> Ok ()
-  | _ -> Error "Failed to parse float"
+  | Ok value -> Error ("Failed to parse float, got " ^ describe_json value)
+  | Error err -> Error ("Parse failed: " ^ Json.error_to_string err)
 
 let test_parse_scientific_notation () =
   match Json.of_string "1.5e10" with
   | Ok (Json.Float _) -> Ok ()
-  | _ -> Error "Failed to parse scientific notation"
+  | Ok value ->
+      Error
+        ("Failed to parse scientific notation, got " ^ describe_json value)
+  | Error err -> Error ("Parse failed: " ^ Json.error_to_string err)
 
 let test_parse_simple_string () =
   match Json.of_string {|"hello"|} with

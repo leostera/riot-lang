@@ -378,12 +378,14 @@ let parse content =
             (* skip = *)
             try
               let value = parse_value () in
-              current_items := (key, value) :: !current_items;
+              current_items :=
+                (key, value) :: List.remove_assoc key !current_items;
               skip_to_eol ()
             with Exit ->
               (* Bare string parsing hit delimiter *)
               let value = String "" in
-              current_items := (key, value) :: !current_items;
+              current_items :=
+                (key, value) :: List.remove_assoc key !current_items;
               skip_to_eol ())
     done;
     raise Exit

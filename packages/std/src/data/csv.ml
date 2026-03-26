@@ -70,6 +70,15 @@ let of_string ?(config = default_config) str =
               raise_error
                 (Unterminated_quote
                    { line = !line; column = !column })
+          | Some c when c = config.quote -> (
+              advance ();
+              match peek () with
+              | Some next_c when next_c = config.quote ->
+                  Buffer.add_char buffer config.quote;
+                  advance ();
+                  loop ()
+              | _ ->
+                  trim (Buffer.contents buffer))
           | Some c when c = config.escape -> (
               advance ();
               match peek () with
@@ -88,9 +97,6 @@ let of_string ?(config = default_config) str =
               | _ ->
                   Buffer.add_char buffer c;
                   loop ())
-          | Some c when c = config.quote ->
-              advance ();
-              trim (Buffer.contents buffer)
           | Some c ->
               Buffer.add_char buffer c;
               advance ();

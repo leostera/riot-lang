@@ -1,5 +1,13 @@
 open Std
 
+let live_server_enabled =
+  Env.var Env.Bool ~name:"BLINK_RUN_LIVE_SERVER_TESTS"
+  |> Option.unwrap_or ~default:false
+
+let case =
+  if live_server_enabled then Test.case
+  else Test.skip
+
 let test_large_json_response () =
   (* Test that we can read JSON responses without truncation.
      This test makes a real HTTP request to an LM Studio instance expected
@@ -188,11 +196,12 @@ let test_sse_parsing () =
           )
 
 let tests =
-  Test.[
-    case "large JSON response without truncation" test_large_json_response;
-    case "streamed/chunked response without truncation" test_streamed_response;
-    case "SSE event parsing" test_sse_parsing;
-  ]
+  Test.
+    [
+      case "large JSON response without truncation" test_large_json_response;
+      case "streamed/chunked response without truncation" test_streamed_response;
+      case "SSE event parsing" test_sse_parsing;
+    ]
 
 let test_config = {|
 [[log.handler]]

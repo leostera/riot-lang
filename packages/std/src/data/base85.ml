@@ -54,12 +54,16 @@ let encode str = encode_bytes (Bytes.unsafe_of_string str)
 
 let strip_delimiters str =
   let str =
-    if String.length str >= 2 && String.sub str 0 2 = "<~" then
-      String.sub str 2 (String.length str - 2)
+    let len = String.length str in
+    if len >= 2 then
+      if String.sub str 0 2 = "<~" then String.sub str 2 (len - 2)
+      else str
     else str
   in
-  if String.length str >= 2 && String.sub str (String.length str - 2) 2 = "~>"
-  then String.sub str 0 (String.length str - 2)
+  let len = String.length str in
+  if len >= 2 then
+    if String.sub str (len - 2) 2 = "~>" then String.sub str 0 (len - 2)
+    else str
   else str
 
 let decode_char c =
@@ -67,6 +71,7 @@ let decode_char c =
   if code >= 33 && code <= 117 then Some (code - 33) else None
 
 let decode_bytes str =
+  let exception Invalid_base85_character in
   let str = strip_delimiters str in
   let len = String.length str in
   let result = Buffer.create (len * 4 / 5) in
@@ -98,7 +103,7 @@ let decode_bytes str =
                 chars := v :: !chars;
                 Cell.incr count;
                 Cell.incr cursor
-            | None -> cursor := len
+            | None -> raise Invalid_base85_character
           else Cell.incr cursor
         done;
 
@@ -140,7 +145,7 @@ let decode_bytes str =
 
           decode_group ()
   in
-  decode_group ()
+  try decode_group () with Invalid_base85_character -> Error `Invalid_base85
 
 let decode str =
   match decode_bytes str with

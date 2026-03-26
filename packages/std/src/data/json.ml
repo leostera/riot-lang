@@ -169,18 +169,18 @@ let of_string str =
   let parse_number () =
     let start = !pos in
     let is_float = cell false in
-    while
-      !pos < len
-      &&
-      match str.[!pos] with
-      | '0' .. '9' | '-' | '+' -> true
-      | '.' | 'e' | 'E' ->
+    let rec consume () =
+      match peek () with
+      | Some ('0' .. '9' | '-' | '+') ->
+          advance ();
+          consume ()
+      | Some ('.' | 'e' | 'E') ->
           is_float := true;
-          true
-      | _ -> false
-    do
-      advance ()
-    done;
+          advance ();
+          consume ()
+      | _ -> ()
+    in
+    consume ();
     let num_str = String.sub str start (!pos - start) in
     if !is_float then Float (float_of_string num_str)
     else Int (int_of_string num_str)

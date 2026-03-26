@@ -1,14 +1,52 @@
 open Std
-module Base64 = Std.Data.Base64
+open Std.Data
+open Std.IO
 
-let test_encode_simple () = Error "todo"
-let test_encode_empty () = Error "todo"
-let test_encode_bytes () = Error "todo"
-let test_decode_simple () = Error "todo"
-let test_decode_invalid_char () = Error "todo"
-let test_roundtrip () = Error "todo"
-let test_roundtrip_binary () = Error "todo"
-let test_padding () = Error "todo"
+let test_encode_simple () =
+  let encoded = Base64.encode "Hello" in
+  if encoded = "SGVsbG8=" then Ok ()
+  else Error ("Expected 'SGVsbG8=', got '" ^ encoded ^ "'")
+
+let test_encode_empty () =
+  let encoded = Base64.encode "" in
+  if encoded = "" then Ok ()
+  else Error "Empty string should encode to empty string"
+
+let test_encode_bytes () =
+  let bytes = Bytes.of_string "test" in
+  let encoded = Base64.encode_bytes bytes in
+  if encoded = "dGVzdA==" then Ok ()
+  else Error ("Expected 'dGVzdA==', got '" ^ encoded ^ "'")
+
+let test_decode_simple () =
+  match Base64.decode "SGVsbG8=" with
+  | Ok "Hello" -> Ok ()
+  | Ok s -> Error ("Expected 'Hello', got '" ^ s ^ "'")
+  | Error _ -> Error "Decode failed"
+
+let test_decode_invalid_char () =
+  match Base64.decode "SGVsbG8!" with
+  | Error `Invalid_base64 -> Ok ()
+  | Ok _ -> Error "Should reject invalid Base64 character"
+
+let test_roundtrip () =
+  let original = "Hello, World!" in
+  let encoded = Base64.encode original in
+  match Base64.decode encoded with
+  | Ok decoded when decoded = original -> Ok ()
+  | _ -> Error "Roundtrip failed"
+
+let test_roundtrip_binary () =
+  let original = "\x00\x01\x02\xFF\xFE\xFD" in
+  let encoded = Base64.encode original in
+  match Base64.decode encoded with
+  | Ok decoded when decoded = original -> Ok ()
+  | _ -> Error "Binary roundtrip failed"
+
+let test_padding () =
+  let encoded = Base64.encode "f" in
+  if encoded = "Zg==" then Ok ()
+  else Error ("Expected 'Zg==', got '" ^ encoded ^ "'")
 
 let tests =
   Test.

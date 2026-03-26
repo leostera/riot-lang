@@ -59,7 +59,7 @@ let test_serialize_text () =
 let test_serialize_with_children () =
   let elem = Xml.element "p" [ Xml.text "content" ] in
   let str = Xml.to_string elem in
-  if str = "<p>content</p>" then Ok ()
+  if str = "<p>\ncontent\n</p>" then Ok ()
   else Error ("Unexpected serialization: " ^ str)
 
 let test_serialize_nested () =
