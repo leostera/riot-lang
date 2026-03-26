@@ -1962,6 +1962,17 @@ let rec pattern_is_simple_function_parameter = function
   | _ ->
       false
 
+let rec pattern_supports_binding_header_parameters = function
+  | Syn.Cst.Pattern.Identifier _
+  | Syn.Cst.Pattern.Operator _ ->
+      true
+  | Syn.Cst.Pattern.Parenthesized { inner; _ } ->
+      pattern_supports_binding_header_parameters inner
+  | Syn.Cst.Pattern.Typed { pattern; _ } ->
+      pattern_supports_binding_header_parameters pattern
+  | _ ->
+      false
+
 let parameters_mix_complex_positional_and_named parameters =
   let has_named =
     List.exists Syn.Cst.Parameter.is_named parameters
@@ -2349,8 +2360,16 @@ let infix_chain operator expression =
   in
   collect [] expression
 
+let doc_with_expression_attributes expression doc =
+  match Syn.Cst.Expression.attributes expression with
+  | [] ->
+      doc
+  | attributes ->
+      Doc.concat [ doc; Doc.space; join_map Doc.space render_attribute attributes ]
+
 let rec render_expression expression =
-  match expression with
+  let doc =
+    match expression with
   | Syn.Cst.Expression.Path { path; _ } ->
       doc_of_ident path
   | Syn.Cst.Expression.Literal literal ->
@@ -2533,6 +2552,8 @@ let rec render_expression expression =
           Doc.concat [ head; Doc.space; payload ])
   | other ->
       doc_of_node (Syn.Cst.Expression.syntax_node other)
+  in
+  doc_with_expression_attributes expression doc
 
 and render_record_field (field : Syn.Cst.record_expression_field) =
   match field.source with
@@ -2559,24 +2580,20 @@ and render_index_expression ({ syntax_node; collection; index; _ } : Syn.Cst.ind
     nontrivia_direct_tokens syntax_node
     |> List.map Syn.Ceibo.Red.SyntaxToken.text
   in
-  match punct with
-  | [ dot; left_delim; right_delim ] ->
-      Doc.concat
-        [
-          collection_doc;
-          Doc.text dot;
-          Doc.text left_delim;
-          render_expression index;
-          Doc.text right_delim;
-        ]
-  | _ ->
-      Doc.concat
-        [
-          collection_doc;
-          Doc.text ".(";
-          render_expression index;
-          Doc.rparen;
-        ]
+  let before_index, after_index =
+    match List.rev punct with
+    | [] ->
+        (".(", ")")
+    | right :: reversed_left ->
+        (List.rev reversed_left |> String.concat "", right)
+  in
+  Doc.concat
+    [
+      collection_doc;
+      Doc.text before_index;
+      render_expression index;
+      Doc.text after_index;
+    ]
 
 and render_record_expression = function
   | Syn.Cst.RecordExpression.Literal { fields; _ } ->
@@ -3809,7 +3826,8 @@ and render_local_binding
   let parameter_doc = parameters |> List.map render_parameter |> Doc.join Doc.space in
   let keep_header_parameters =
     not (parameters = [])
-    && Option.is_some type_annotation
+    && (Option.is_some type_annotation
+       || pattern_supports_binding_header_parameters pattern)
   in
   let header =
     if keep_header_parameters then
@@ -4012,15 +4030,13 @@ let render_let_binding (binding : Syn.Cst.let_binding) =
   in
   Doc.concat (first :: trailing)
 
-let nested_structure_items_from_syntax_nodes syntax_nodes =
-  Syn.CstBuilder.structure_items_from_syntax_nodes syntax_nodes
-  |> Result.expect
-       ~msg:"module structure bodies should re-lift from successful syntax nodes"
+let nested_structure_items_from_syntax_node syntax_node =
+  Syn.CstBuilder.structure_items_from_syntax_node syntax_node
+  |> Result.to_option
 
 let nested_signature_items_from_syntax_node syntax_node =
   Syn.CstBuilder.signature_items_from_syntax_node syntax_node
-  |> Result.expect
-       ~msg:"module signature bodies should re-lift from successful syntax nodes"
+  |> Result.to_option
 
 let rec render_module_type_constraint ~keyword (constraint_ : Syn.Cst.module_type_constraint) =
   let separator =
@@ -4056,16 +4072,19 @@ and render_module_type_doc = function
   | Syn.Cst.ModuleType.TypeOf { module_path; _ } ->
       Doc.concat [ Doc.text "module"; Doc.space; kw_type; Doc.space; Doc.text "of"; Doc.space; doc_of_ident module_path ]
   | Syn.Cst.ModuleType.Signature { syntax_node; signature_syntax_node } ->
-      let items = nested_signature_items_from_syntax_node signature_syntax_node in
-      let body = render_signature_items ~source_node:syntax_node items in
-      Doc.concat
-        [
-          Doc.text "sig";
-          Doc.line;
-          Doc.indent 2 body;
-          Doc.line;
-          Doc.text "end";
-        ]
+      (match nested_signature_items_from_syntax_node signature_syntax_node with
+      | Some items ->
+          let body = render_signature_items ~source_node:syntax_node items in
+          Doc.concat
+            [
+              Doc.text "sig";
+              Doc.line;
+              Doc.indent 2 body;
+              Doc.line;
+              Doc.text "end";
+            ]
+      | None ->
+          doc_of_verbatim_syntax_node_from_current_source syntax_node)
   | Syn.Cst.ModuleType.Functor { parameters; result; _ } ->
       Doc.concat
         [
@@ -4098,8 +4117,8 @@ and render_module_type_doc = function
              rest)
   | Syn.Cst.ModuleType.Parenthesized { inner; _ } ->
       Doc.concat [ Doc.lparen; render_module_type_doc inner; Doc.rparen ]
-  | Syn.Cst.ModuleType.Attribute { module_type; _ } ->
-      render_module_type_doc module_type
+  | Syn.Cst.ModuleType.Attribute { module_type; attribute; _ } ->
+      Doc.concat [ render_module_type_doc module_type; Doc.space; render_attribute attribute ]
   | module_type ->
       doc_of_node (Syn.Cst.ModuleType.syntax_node module_type)
 
@@ -4112,17 +4131,20 @@ and render_module_application_argument = function
 and render_module_expression_doc = function
   | Syn.Cst.ModuleExpression.Path path ->
       doc_of_ident path
-  | Syn.Cst.ModuleExpression.Structure { syntax_node; item_syntax_nodes } ->
-      let items = nested_structure_items_from_syntax_nodes item_syntax_nodes in
-      let body = render_structure_items ~source_node:syntax_node items in
-      Doc.concat
-        [
-          Doc.text "struct";
-          Doc.line;
-          Doc.indent 2 body;
-          Doc.line;
-          Doc.text "end";
-        ]
+  | Syn.Cst.ModuleExpression.Structure { syntax_node; item_syntax_nodes = _ } ->
+      (match nested_structure_items_from_syntax_node syntax_node with
+      | Some items ->
+          let body = render_structure_items ~source_node:syntax_node items in
+          Doc.concat
+            [
+              Doc.text "struct";
+              Doc.line;
+              Doc.indent 2 body;
+              Doc.line;
+              Doc.text "end";
+            ]
+      | None ->
+          doc_of_verbatim_syntax_node_from_current_source syntax_node)
   | Syn.Cst.ModuleExpression.Functor { parameters; body; _ } ->
       Doc.concat
         [
@@ -4169,8 +4191,8 @@ and render_module_expression_doc = function
         ]
   | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } ->
       Doc.concat [ Doc.lparen; render_module_expression_doc inner; Doc.rparen ]
-  | Syn.Cst.ModuleExpression.Attribute { module_expression; _ } ->
-      render_module_expression_doc module_expression
+  | Syn.Cst.ModuleExpression.Attribute { module_expression; attribute; _ } ->
+      Doc.concat [ render_module_expression_doc module_expression; Doc.space; render_attribute attribute ]
   | module_expression ->
       doc_of_node (Syn.Cst.ModuleExpression.syntax_node module_expression)
 
@@ -4408,6 +4430,10 @@ and split_leading_inline_comment_source gap_source =
 
 and render_structure_entry ~source ~source_offset ~span ~trailing_suffix item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
+  let should_preserve_verbatim =
+    string_contains_substring rendered_source "[@"
+    || string_contains_substring rendered_source "[%%expect"
+  in
   let trailing_suffix =
     match trailing_suffix with
     | None ->
@@ -4417,7 +4443,7 @@ and render_structure_entry ~source ~source_offset ~span ~trailing_suffix item =
   in
   let doc =
     let base_doc =
-      if structure_item_uses_verbatim_span item then
+      if should_preserve_verbatim || structure_item_uses_verbatim_span item then
         Doc.text rendered_source
       else
         render_structure_item item
@@ -4433,7 +4459,10 @@ and render_structure_entry ~source ~source_offset ~span ~trailing_suffix item =
 
 and render_signature_entry ~source ~source_offset ~span ~trailing_suffix item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
-  let should_preserve_verbatim = false in
+  let should_preserve_verbatim =
+    string_contains_substring rendered_source "[@"
+    || string_contains_substring rendered_source "[%%expect"
+  in
   let trailing_suffix =
     match trailing_suffix with
     | None ->

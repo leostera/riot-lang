@@ -32,6 +32,7 @@
 0420_typed_expression_parenthesized.ml
 0421_labeled_arg_poly_variant_then_label.ml
 0422_top_level_expression_double_semicolon_before_floating_attribute.ml
+0423_extended_index_operators.ml
 
 # 05xx labeled and optional arguments
 0500_labeled_and_optional_arguments.ml
@@ -57,6 +58,7 @@
 0801_module_with_exception_declarations.ml
 0810_local_module_parameter_spacing.ml
 0820_module_let_parameter_stability.ml
+0821_nested_module_body_attribute_relift_fallback.ml
 
 # 09xx trivia and mixed top-level preservation
 0900_trivia_and_mixed_top_level.ml

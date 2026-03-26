@@ -1,0 +1,9 @@
+module M = struct
+  type t = int [@@foo]
+  [@@@foo]
+end [@foo]
+
+module type S = sig
+  type t = int [@@foo]
+  [@@@foo]
+end [@foo]
