@@ -3,7 +3,6 @@ open Std
 type suite = {
   package_name : string;
   suite_name : string;
-  case_names : string list;
 }
 
 type request =
@@ -15,13 +14,7 @@ type request =
       query : string;
     }
 
-type selection =
-  | RunSuite of suite
-  | RunCases of {
-      suite : suite;
-      query : string;
-      matched_cases : string list;
-    }
+type execution = RunSuite | RunQuery of string
 
 let suite_identity suite = suite.package_name ^ ":" ^ suite.suite_name
 
@@ -47,28 +40,17 @@ let suite_matches_query ~query suite =
   || matches_query ~query suite.suite_name
   || matches_query ~query (suite_identity suite)
 
-let matched_case_names ~query suite =
-  List.filter (fun case_name -> matches_query ~query case_name) suite.case_names
-
-let select_one request suite =
+let execution_for_suite request suite =
   match request with
-  | All -> Some (RunSuite suite)
+  | All -> Some RunSuite
   | PackageAll package_name ->
-      if String.equal suite.package_name package_name then Some (RunSuite suite)
+      if String.equal suite.package_name package_name then Some RunSuite
       else None
   | Query query ->
-      if suite_matches_query ~query suite then Some (RunSuite suite)
-      else (
-        match matched_case_names ~query suite with
-        | [] -> None
-        | matched_cases -> Some (RunCases { suite; query; matched_cases }))
+      if suite_matches_query ~query suite then Some RunSuite
+      else Some (RunQuery query)
   | PackageQuery { package_name; query } ->
       if not (String.equal suite.package_name package_name) then None
-      else if String.equal query "" then Some (RunSuite suite)
-      else if matches_query ~query suite.suite_name then Some (RunSuite suite)
-      else (
-        match matched_case_names ~query suite with
-        | [] -> None
-        | matched_cases -> Some (RunCases { suite; query; matched_cases }))
-
-let select request suites = List.filter_map (select_one request) suites
+      else if String.equal query "" then Some RunSuite
+      else if matches_query ~query suite.suite_name then Some RunSuite
+      else Some (RunQuery query)

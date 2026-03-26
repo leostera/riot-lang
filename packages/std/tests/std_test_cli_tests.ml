@@ -53,7 +53,7 @@ let test_list_tests_lists_all_cases () =
 
 let test_run_tests_pattern_matches_suffix_substring () =
   let output =
-    run_sample_capture [ "run-tests"; "--pattern"; "_long"; "--format"; "json" ]
+    run_sample_capture [ "run-tests"; "_long"; "--format"; "json" ]
   in
   if not (Int.equal output.status 0) then
     Error ("expected filtered run to succeed, got " ^ Int.to_string output.status)
@@ -69,8 +69,7 @@ let test_run_tests_pattern_matches_suffix_substring () =
 
 let test_run_tests_pattern_matches_middle_substring () =
   let output =
-    run_sample_capture
-      [ "run-tests"; "--pattern"; "long_case"; "--format"; "json" ]
+    run_sample_capture [ "run-tests"; "long_case"; "--format"; "json" ]
   in
   if not (Int.equal output.status 0) then
     Error ("expected filtered run to succeed, got " ^ Int.to_string output.status)
@@ -82,6 +81,16 @@ let test_run_tests_pattern_matches_middle_substring () =
         ("unexpected filtered names for long_case: "
        ^ String.concat ", " names)
 
+let test_run_tests_returns_no_match_exit_code () =
+  let output =
+    run_sample_capture [ "run-tests"; "missing_case"; "--format"; "json" ]
+  in
+  if Int.equal output.status 3 then Ok ()
+  else
+    Error
+      ("expected no-match exit code 3, got "
+      ^ Int.to_string output.status)
+
 let meta_tests =
   [
     Test.case "list-tests lists all sample cases" test_list_tests_lists_all_cases;
@@ -91,6 +100,9 @@ let meta_tests =
     Test.case
       "run-tests pattern matches middle substring"
       test_run_tests_pattern_matches_middle_substring;
+    Test.case
+      "run-tests returns no-match exit code"
+      test_run_tests_returns_no_match_exit_code;
   ]
 
 let sample_main ~args =

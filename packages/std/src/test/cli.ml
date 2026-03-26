@@ -2,6 +2,8 @@ open Global
 open Collections
 open Arg_parser
 
+let no_matching_tests_exit_code = 3
+
 let list_tests tests =
   List.iter (fun (test : Test_case.t) -> println test.name) tests;
   Ok ()
@@ -17,9 +19,11 @@ let parse_format_to_reporter = function
 let run_tests_cmd =
   let open Arg in
   command "run-tests"
-  |> about "Run tests that match pattern"
+  |> about "Run tests that match query"
   |> args
        [
+         positional "query" |> required false
+         |> help "Test name substring to filter by";
          option "format" |> long "format"
          |> help "Output format: tap, json, junit, pretty, minimal"
          |> default "pretty"
@@ -29,7 +33,7 @@ let run_tests_cmd =
          |> help "Number of concurrent workers"
          |> default "1";
          option "pattern" |> long "pattern"
-         |> help "Test name substring to filter by";
+         |> help "Deprecated alias for the positional query argument";
        ]
 
 let list_tests_cmd = command "list-tests" |> about "List all tests"
@@ -66,8 +70,13 @@ let main ~name ~tests ~args =
               let concurrency =
                 get_int sub_matches "concurrency" |> Option.unwrap_or ~default:1
               in
+              let query =
+                match get_one sub_matches "query" with
+                | Some query -> Some query
+                | None -> get_one sub_matches "pattern"
+              in
               let target =
-                match get_one sub_matches "pattern" with
+                match query with
                 | None -> Runner.All
                 | Some query -> Runner.(FilterBySubstring query)
               in
@@ -79,6 +88,8 @@ let main ~name ~tests ~args =
               in
 
               let summary = Runner.run_tests ~config tests in
+              if Option.is_some query && Int.equal summary.total 0 then
+                exit no_matching_tests_exit_code;
               if summary.failed > 0 then exit 1;
               Ok ())
       | _ ->

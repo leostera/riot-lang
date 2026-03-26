@@ -9,24 +9,16 @@ let sample_suites =
       {
         package_name = "std";
         suite_name = "std_test_cli_tests";
-        case_names =
-          [
-            "list-tests lists all sample cases";
-            "run-tests pattern matches suffix substring";
-            "run-tests pattern matches middle substring";
-          ];
       };
     Test_selection.
       {
         package_name = "tty";
         suite_name = "stdout_tests";
-        case_names = [ "writes ansi output"; "handles resize" ];
       };
     Test_selection.
       {
         package_name = "foo";
         suite_name = "foo_tests";
-        case_names = [ "alpha_long"; "beta" ];
       };
   ]
 
@@ -52,48 +44,42 @@ let test_parse_request_supports_package_scoped_query () =
   | _ -> Error "expected pkg:query to be parsed as PackageQuery"
 
 let test_select_runs_full_suite_for_package_and_suite_matches () =
-  let selections =
-    Test_selection.select (Test_selection.Query "std") sample_suites
+  let std_execution =
+    Test_selection.execution_for_suite (Test_selection.Query "std")
+      (List.nth sample_suites 0)
   in
-  match selections with
-  | [
-   Test_selection.RunSuite { package_name = "std"; suite_name = "std_test_cli_tests"; _ };
-   Test_selection.RunSuite { package_name = "tty"; suite_name = "stdout_tests"; _ };
-  ] ->
+  let tty_execution =
+    Test_selection.execution_for_suite (Test_selection.Query "std")
+      (List.nth sample_suites 1)
+  in
+  match (std_execution, tty_execution) with
+  | (Some Test_selection.RunSuite, Some Test_selection.RunSuite) ->
       Ok ()
   | _ -> Error "expected std query to run matching suites in full"
 
-let test_select_filters_cases_for_case_only_matches () =
-  let selections =
-    Test_selection.select (Test_selection.Query "_long") sample_suites
+let test_select_runs_filtered_query_for_case_matches () =
+  let execution =
+    Test_selection.execution_for_suite (Test_selection.Query "_long")
+      (List.nth sample_suites 2)
   in
-  match selections with
-  | [
-   Test_selection.RunCases
-     {
-       suite = { package_name = "foo"; suite_name = "foo_tests"; _ };
-       query = "_long";
-       matched_cases = [ "alpha_long" ];
-     };
-  ] ->
+  match execution with
+  | Some (Test_selection.RunQuery "_long") ->
       Ok ()
-  | _ -> Error "expected _long query to select only matching cases"
+  | _ -> Error "expected _long query to delegate to suite-level filtering"
 
 let test_select_respects_package_scoped_query () =
-  let selections =
-    Test_selection.select
+  let std_execution =
+    Test_selection.execution_for_suite
       (Test_selection.PackageQuery { package_name = "std"; query = "list-tests" })
-      sample_suites
+      (List.nth sample_suites 0)
   in
-  match selections with
-  | [
-   Test_selection.RunCases
-     {
-       suite = { package_name = "std"; suite_name = "std_test_cli_tests"; _ };
-       query = "list-tests";
-       matched_cases = [ "list-tests lists all sample cases" ];
-     };
-  ] ->
+  let foo_execution =
+    Test_selection.execution_for_suite
+      (Test_selection.PackageQuery { package_name = "std"; query = "list-tests" })
+      (List.nth sample_suites 2)
+  in
+  match (std_execution, foo_execution) with
+  | (Some (Test_selection.RunQuery "list-tests"), None) ->
       Ok ()
   | _ -> Error "expected package-scoped query to stay inside the package"
 
@@ -108,8 +94,8 @@ let tests =
         test_parse_request_supports_package_scoped_query;
       case "test selection: run full suite for package and suite matches"
         test_select_runs_full_suite_for_package_and_suite_matches;
-      case "test selection: filter cases for case-only matches"
-        test_select_filters_cases_for_case_only_matches;
+      case "test selection: delegate case-only matches to suite queries"
+        test_select_runs_filtered_query_for_case_matches;
       case "test selection: respect package-scoped query"
         test_select_respects_package_scoped_query;
     ]

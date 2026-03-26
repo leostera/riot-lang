@@ -9,6 +9,7 @@
 3. Changes here have wide blast radius. Prefer additive evolution and stable signatures.
 4. If a utility is only useful for one package, keep it out of `std`.
 5. `std` owns its package-provided `tusk-fix` rules under `fix/`; keep those diagnostics aligned with the scheduler and `std` ownership rationale.
+6. `Std.Test.Cli` owns the portable test-binary contract (`list-tests`, `run-tests`, and query filtering). Keep individual test binaries on that runner instead of inventing local CLIs.
 
 ## Validate
 

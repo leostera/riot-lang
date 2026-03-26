@@ -2,6 +2,8 @@ open Std
 open Tusk_model
 open ArgParser
 
+let no_matching_tests_exit_code = 3
+
 type suite_binary = {
   package_name : string;
   suite_name : string;
@@ -35,11 +37,6 @@ let trailing_args matches =
   let args = ArgParser.trailing_args matches in
   match args with "--" :: rest -> rest | _ -> args
 
-let split_lines output =
-  output
-  |> String.split_on_char '\n'
-  |> List.filter (fun line -> not (String.equal line ""))
-
 let is_test_binary_name name =
   String.ends_with ~suffix:"_tests" name || String.ends_with ~suffix:"-tests" name
 
@@ -68,93 +65,71 @@ let find_suite_binary_path client (suite : suite_binary) =
   Local_session.find_artifact client ~package:suite.package_name ~kind:"binary"
     ~name:suite.suite_name
 
-let list_test_cases binary_path =
-  let cmd = Command.make binary_path ~args:[ "list-tests" ] in
-  match Command.output cmd with
-  | Ok output when Int.equal output.status 0 -> Ok (split_lines output.stdout)
-  | Ok output ->
-      Error
-        ("list-tests exited "
-        ^ Int.to_string output.status
-        ^ " for "
-        ^ binary_path)
-  | Error (Command.SystemError msg) ->
-      Error ("failed to list tests from " ^ binary_path ^ ": " ^ msg)
-
-let discover_suite client (suite : suite_binary) =
-  match find_suite_binary_path client suite with
-  | Error msg ->
-      Error
-        ("failed to locate test binary "
-        ^ suite.package_name
-        ^ "/"
-        ^ suite.suite_name
-        ^ ": "
-        ^ msg)
-  | Ok binary_path -> (
-      match list_test_cases binary_path with
-      | Ok case_names ->
-          Ok
-            Test_selection.
-              {
-                package_name = suite.package_name;
-                suite_name = suite.suite_name;
-                case_names;
-              }
-      | Error msg -> Error msg)
-
-let rec discover_suites client suites discovered =
-  match suites with
-  | [] -> Ok (List.rev discovered)
-  | suite :: rest -> (
-      match discover_suite client suite with
-      | Ok discovered_suite -> discover_suites client rest (discovered_suite :: discovered)
-      | Error _ as err -> err)
-
 let run_suite_binary ~extra_args binary_path =
   let cmd = Command.make binary_path ~args:("run-tests" :: extra_args) in
   Command.status cmd
 
-let run_selection client ~extra_args selection =
-  let suite_name =
-    match selection with
-    | Test_selection.RunSuite suite -> suite
-    | Test_selection.RunCases { suite; _ } -> suite
-  in
-  match
-    find_suite_binary_path client
-      { package_name = suite_name.package_name; suite_name = suite_name.suite_name }
-  with
+let run_suite_binary_capture ~extra_args binary_path =
+  let cmd = Command.make binary_path ~args:("run-tests" :: extra_args) in
+  Command.output cmd
+
+let print_command_output (output : Command.output) =
+  if not (String.equal output.stdout "") then
+    print output.stdout;
+  if not (String.equal output.stderr "") then
+    eprint output.stderr
+
+let print_run_label (suite : suite_binary) =
+  println "";
+  println ("Running " ^ suite.package_name ^ "/" ^ suite.suite_name ^ "...");
+  println ""
+
+let run_suite client ~extra_args (suite : suite_binary) =
+  match find_suite_binary_path client suite with
   | Error msg ->
       println ("error: " ^ msg);
       `Failed
   | Ok binary_path ->
-      let test_args =
-        match selection with
-        | Test_selection.RunSuite _ -> extra_args
-        | Test_selection.RunCases { query; _ } -> "--pattern" :: query :: extra_args
-      in
-      let run_label =
-        match selection with
-        | Test_selection.RunSuite suite ->
-            suite.package_name ^ "/" ^ suite.suite_name
-        | Test_selection.RunCases { suite; matched_cases; _ } ->
-            suite.package_name
-            ^ "/"
-            ^ suite.suite_name
-            ^ " ("
-            ^ Int.to_string (List.length matched_cases)
-            ^ " matching case(s))"
-      in
-      println "";
-      println ("Running " ^ run_label ^ "...");
-      println "";
-      match run_suite_binary ~extra_args:test_args binary_path with
+      print_run_label suite;
+      match run_suite_binary ~extra_args binary_path with
       | Ok 0 -> `Passed
       | Ok _ -> `Failed
       | Error (Command.SystemError msg) ->
           println ("error: " ^ msg);
           `Failed
+
+let run_query_suite client ~extra_args request (suite : suite_binary) =
+  let selection =
+    Test_selection.execution_for_suite request
+      Test_selection.
+        {
+          package_name = suite.package_name;
+          suite_name = suite.suite_name;
+        }
+  in
+  match selection with
+  | None -> `NoMatch
+  | Some execution -> (
+      match find_suite_binary_path client suite with
+      | Error msg ->
+          println ("error: " ^ msg);
+          `Failed
+      | Ok binary_path ->
+          let test_args =
+            match execution with
+            | Test_selection.RunSuite -> extra_args
+            | Test_selection.RunQuery query -> query :: extra_args
+          in
+          match run_suite_binary_capture ~extra_args:test_args binary_path with
+          | Ok output when Int.equal output.status no_matching_tests_exit_code ->
+              `NoMatch
+          | Ok output ->
+              print_run_label suite;
+              print_command_output output;
+              if Int.equal output.status 0 then `Passed else `Failed
+          | Error (Command.SystemError msg) ->
+              println ("error: " ^ msg);
+              `Failed)
 
 let print_fast_path_empty_hint package_filter =
   println "No test binaries found";
@@ -213,16 +188,7 @@ let run_fast_path ~workspace ~extra_args ~package_filter =
             let client = reconnect ~workspace in
             List.iter
               (fun (suite : suite_binary) ->
-                match
-                  run_selection client ~extra_args
-                    (Test_selection.RunSuite
-                       Test_selection.
-                         {
-                           package_name = suite.package_name;
-                           suite_name = suite.suite_name;
-                           case_names = [];
-                         })
-                with
+                match run_suite client ~extra_args suite with
                 | `Passed -> passed := !passed + 1
                 | `Failed -> failed := !failed + 1)
               package_suites;
@@ -243,35 +209,34 @@ let run_query_path ~workspace ~extra_args request =
     print_query_empty_hint request;
     Ok ())
   else
-    match Build.build_command ~scope:Build.Dev package_filter None with
+    match Build.build_command ~scope:Build.Dev None None with
     | Error _ -> Error (Failure "Build failed")
     | Ok () ->
         let client = reconnect ~workspace in
         let result =
-          match discover_suites client suite_binaries [] with
-          | Error msg ->
-              println ("error: " ^ msg);
-              Error (Failure "Failed to discover tests")
-          | Ok discovered_suites ->
-              let selections = Test_selection.select request discovered_suites in
-              if selections = [] then (
-                print_query_empty_hint request;
-                Ok ())
-              else
-                let total = List.length selections in
-                let passed = ref 0 in
-                let failed = ref 0 in
-                List.iter
-                  (fun selection ->
-                    match run_selection client ~extra_args selection with
-                    | `Passed -> passed := !passed + 1
-                    | `Failed -> failed := !failed + 1)
-                  selections;
-                print_summary ~label:"Test Summary:" ~total ~passed:!passed
-                  ~failed:!failed;
-                if !failed > 0 then
-                  Error (Failure (Int.to_string !failed ^ " test suite(s) failed"))
-                else Ok ()
+          let total = ref 0 in
+          let passed = ref 0 in
+          let failed = ref 0 in
+          List.iter
+            (fun suite ->
+              match run_query_suite client ~extra_args request suite with
+              | `NoMatch -> ()
+              | `Passed ->
+                  total := !total + 1;
+                  passed := !passed + 1
+              | `Failed ->
+                  total := !total + 1;
+                  failed := !failed + 1)
+            suite_binaries;
+          if !total = 0 then (
+            print_query_empty_hint request;
+            Ok ())
+          else (
+            print_summary ~label:"Test Summary:" ~total:!total ~passed:!passed
+              ~failed:!failed;
+            if !failed > 0 then
+              Error (Failure (Int.to_string !failed ^ " test suite(s) failed"))
+            else Ok ())
         in
         Local_session.close client;
         result
