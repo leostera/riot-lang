@@ -14,8 +14,48 @@ type action_spec = {
 
 type t = action_spec G.node
 
-let hash_file path =
-  match Fs.read path with
+let resolve_source_for_hash ~(package : Package.t) ~src_path =
+  let workspace_root_candidate =
+    let pkg_path_str = Path.to_string package.path in
+    let rel_path_str = Path.to_string package.relative_path in
+    if
+      String.length rel_path_str > 0
+      && String.ends_with ~suffix:rel_path_str pkg_path_str
+    then
+      let root_len = String.length pkg_path_str - String.length rel_path_str in
+      let raw_root = String.sub pkg_path_str 0 root_len in
+      let normalized_root =
+        if String.ends_with ~suffix:"/" raw_root then
+          String.sub raw_root 0 (String.length raw_root - 1)
+        else raw_root
+      in
+      if String.length normalized_root = 0 then Some (Path.v ".")
+      else Some (Path.v normalized_root)
+    else None
+  in
+  let candidates =
+    if Path.is_absolute src_path then [ src_path ]
+    else
+      let package_relative = [ Path.join package.path src_path ] in
+      let workspace_relative =
+        match workspace_root_candidate with
+        | Some root -> package_relative @ [ Path.join root src_path ]
+        | None -> package_relative
+      in
+      workspace_relative @ [ src_path ]
+  in
+  let rec first_existing = function
+    | [] -> src_path
+    | path :: rest -> (
+        match Fs.exists path with
+        | Ok true -> path
+        | Ok false | Error _ -> first_existing rest)
+  in
+  first_existing candidates
+
+let hash_file ~(package : Package.t) path =
+  let readable_path = resolve_source_for_hash ~package ~src_path:path in
+  match Fs.read readable_path with
   | Ok contents -> Crypto.hash_string contents
   | Error _ -> Crypto.hash_string (Path.to_string path)
 
@@ -52,7 +92,7 @@ let make ~actions ~outs ~srcs ~(package : Package.t) ~toolchain
 
   List.iter
     (fun source ->
-      let source_hash = hash_file source in
+      let source_hash = hash_file ~package source in
       Sha256.write hasher (Digest.bytes source_hash))
     sorted_srcs;
 

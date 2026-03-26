@@ -134,6 +134,54 @@ let test_action_graph_json_round_trip_preserves_package_paths_and_hashes () =
           else Error "package path/relative_path/hash did not round-trip"
       | _ -> Error "expected one decoded node")
 
+let test_action_hash_tracks_package_relative_source_contents () =
+  match
+    Fs.with_tempdir ~prefix:"action_hash_pkg_src" (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "packages" / Path.v "demo") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let source = Path.(src_dir / Path.v "demo.ml") in
+        let _ =
+          Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed"
+        in
+        let package =
+          make_package_with_paths ~name:"demo" ~path:package_root
+            ~relative_path:(Path.v "packages/demo")
+        in
+        let action =
+          Tusk_planner.Action.CompileImplementation
+            {
+              source = Path.v "src/demo.ml";
+              outputs =
+                [ Path.v "Demo.cmt"; Path.v "Demo.cmi"; Path.v "Demo.cmx" ];
+              includes = [ Path.v "." ];
+              flags = [];
+            }
+        in
+        let write contents =
+          Fs.write contents source |> Result.expect ~msg:"write source failed"
+        in
+        write "let value = 1\n";
+        let first =
+          Tusk_planner.Action_node.make ~actions:[ action ]
+            ~outs:[ Path.v "Demo.cmt"; Path.v "Demo.cmi"; Path.v "Demo.cmx" ]
+            ~srcs:[ Path.v "src/demo.ml" ] ~package ~toolchain:test_toolchain
+            ~dependency_hashes:(fun _ -> Crypto.hash_string "") ~deps:[]
+        in
+        write "let value = 2\n";
+        let second =
+          Tusk_planner.Action_node.make ~actions:[ action ]
+            ~outs:[ Path.v "Demo.cmt"; Path.v "Demo.cmi"; Path.v "Demo.cmx" ]
+            ~srcs:[ Path.v "src/demo.ml" ] ~package ~toolchain:test_toolchain
+            ~dependency_hashes:(fun _ -> Crypto.hash_string "") ~deps:[]
+        in
+        if Crypto.Hash.equal first.hash second.hash then
+          Error
+            "expected package-relative source edits to change the action hash"
+        else Ok ())
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let tests =
   Test.
     [
@@ -141,6 +189,8 @@ let tests =
         test_action_graph_json_round_trip_preserves_dependencies;
       case "action graph json round-trip preserves package paths and hashes"
         test_action_graph_json_round_trip_preserves_package_paths_and_hashes;
+      case "action hash tracks package-relative source contents"
+        test_action_hash_tracks_package_relative_source_contents;
     ]
 
 let name = "Planner Action Graph Tests"
