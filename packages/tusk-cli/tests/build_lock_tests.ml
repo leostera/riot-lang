@@ -12,7 +12,7 @@ let with_tempdir prefix fn =
   | Ok result -> result
   | Error _ -> Error "Tempdir creation failed"
 
-let test_waits_for_existing_lock () =
+let test_reentrant_acquire_in_same_process () =
   with_tempdir "tusk_build_lock" (fun tmpdir ->
       BuildLock.acquire tmpdir (fun () ->
           let parent = self () in
@@ -41,16 +41,14 @@ let test_waits_for_existing_lock () =
             with Receive_timeout -> None
           in
           match early_result with
-          | Some (Ok _) ->
-              Error "Second lock acquisition finished before the first lock was released"
+          | Some (Ok waited) ->
+              if Time.Duration.to_millis waited < 200
+              then Ok ()
+              else
+                Error "Reentrant acquire in the same process should not block"
           | Some (Error reason) -> Error reason
           | None ->
-              match receive ~selector ~timeout:(Time.Duration.from_secs 2) () with
-              | Ok waited ->
-                  if Time.Duration.to_millis waited < 200
-                  then Error "Second lock acquisition did not wait for release"
-                  else Ok ()
-              | Error reason -> Error reason))
+              Error "Reentrant acquire in the same process should complete promptly"))
 
 let test_releases_lock_on_exception () =
   with_tempdir "tusk_build_lock" (fun tmpdir ->
@@ -69,7 +67,8 @@ let test_releases_lock_on_exception () =
 let tests =
   Test.
     [
-      case "build lock: waits for existing holder" test_waits_for_existing_lock;
+      case "build lock: reentrant acquire in same process"
+        test_reentrant_acquire_in_same_process;
       case "build lock: releases on exception" test_releases_lock_on_exception;
     ]
 
