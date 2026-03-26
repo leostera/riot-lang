@@ -2506,7 +2506,8 @@ let rec render_expression expression =
   | Syn.Cst.Expression.Index index ->
       render_index_expression index
   | Syn.Cst.Expression.Typed { expression; type_; _ } ->
-      Doc.concat [ render_expression expression; colon; doc_of_core_type type_ ]
+      Doc.concat
+        [ Doc.lparen; render_expression expression; colon; doc_of_core_type type_; Doc.rparen ]
   | Syn.Cst.Expression.PolyVariant { syntax_node; payload; _ } ->
       let head = doc_of_nontrivia_direct_tokens syntax_node in
       (match payload with

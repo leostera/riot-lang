@@ -41,11 +41,14 @@ You are done with this task when `krasny` can format the entire codebase and
 the CST-hash of the source before and after formatting is the same (that is, there's no information loss).
 
 Current fail-fast progress (2026-03-26):
-- `--verify-workspace --fail-fast` now passes `910` files.
-- Current first failing file: `packages/syn/src/cst_builder.ml` (canonical formatted `format exited 1` due parse errors on second-pass formatted output).
+- `--verify-workspace --fail-fast` now passes `1288` files.
+- Current first failing file: `packages/syn/tests/fixtures/0400_attribute_item.ml` (syntax-hash mismatch; canonical hashes still diverge).
 - Newly fixed in this slice:
-  - `packages/swisstable/src/swisstable.ml` (previous syntax-hash mismatch after canonical formatting)
-  - nested structure/signature source slicing now uses `current_source` span slices instead of `Source.source_of_syntax_node`, preventing `ceibo` token-stream trivia reordering from leaking into formatter input
-  - focused comment-stability fixtures now round-trip without hash drift:
-    - `0908_trailing_inline_comment_in_module.ml`
-    - `0909_comment_stability_between_lets.ml`
+  - `packages/syn/src/cst_builder.ml` (previous canonical formatted `format exited 1`)
+  - `packages/syn/src/parser.ml` (previous `format exited 1` from parser failing on labeled-arg callsites with polymorphic-variant first labeled argument)
+  - typed expressions now always render parenthesized in `krasny`, preventing invalid output like `{...} : t` in expression position
+  - polymorphic variant payload parsing in `syn` no longer consumes following labeled arguments (`~...` / `?...`) as payload expressions
+  - workspace verification now skips intentionally malformed `syn` diagnostics fixtures under `packages/syn/tests/diagnostics/`
+  - new focused fixtures:
+    - `0420_typed_expression_parenthesized.ml`
+    - `0421_labeled_arg_poly_variant_then_label.ml`

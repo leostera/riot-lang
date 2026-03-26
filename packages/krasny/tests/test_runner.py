@@ -357,6 +357,9 @@ class WorkspaceVerifier:
                 continue
             if rel.startswith("packages/krasny/tests/fixtures/"):
                 continue
+            # syn diagnostics fixtures are intentionally malformed parser inputs.
+            if rel.startswith("packages/syn/tests/diagnostics/"):
+                continue
             if filter_pattern and filter_pattern not in rel:
                 continue
             files.append(self.context.workspace_root / rel)

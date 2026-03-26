@@ -29,6 +29,8 @@
 0417_local_open_operator_spacing.ml
 0418_keyword_operator_binding_pattern.ml
 0419_typed_constructor_payload.ml
+0420_typed_expression_parenthesized.ml
+0421_labeled_arg_poly_variant_then_label.ml
 
 # 05xx labeled and optional arguments
 0500_labeled_and_optional_arguments.ml

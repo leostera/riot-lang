@@ -4619,7 +4619,7 @@ and parse_primary_expr parser =
       
       (* Check if followed by argument expression *)
       let arg_expr =
-        if can_start_arg_expr parser then
+        if can_start_poly_variant_payload_expr parser then
           let arg = parse_primary_expr parser in
           [ Ceibo.Green.Node arg ]
         else []
@@ -4722,6 +4722,14 @@ and can_start_arg_expr parser =
       true
   (* Cannot - these are operators or other constructs *)
   | _ -> false
+
+and can_start_poly_variant_payload_expr parser =
+  match peek_kind parser with
+  | Token.Tilde
+  | Token.Question ->
+      false
+  | _ ->
+      can_start_arg_expr parser
 
 (** Parse postfix expressions: field access (.), array indexing (.), etc.
     This has higher precedence than application.
