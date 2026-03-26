@@ -3,20 +3,20 @@
 Goal: make `packages/syn/tests/fixtures` tight, high-signal, and cheap to maintain without weakening lossless or regression coverage.
 
 Current audit snapshot (2026-03-26):
-- `1087` source fixtures drive `2174` checked-in JSON expectations.
-- Source fixtures are about `97.4 KB`; expectation snapshots are about `18.0 MB`.
-- `806` fixtures are one-liners.
+- `1017` source fixtures drive `2037` checked-in JSON expectations.
+- Source fixtures are about `95.3 KB`; expectation snapshots are about `17.4 MB`.
+- `745` fixtures are one-liners.
 - Exact source duplicates have been fully removed (`0` exact duplicate source groups).
 - `0` near-duplicate families remain at `0.95` similarity.
-- Near-duplicate families at `0.88` similarity currently `54`.
-- `types-and-signatures` is still a high-density area: `174` fixtures, `0` exact-duplicate fixtures.
-- There are `8` reused numeric IDs: `0660`, `1052`, `9025`, `9026`, `9109`, `9130`, `9131`, `9137`.
+- Near-duplicate families at `0.88` similarity currently `0`.
+- `types-and-signatures` is now down to `165` fixtures, `0` exact-duplicate fixtures.
+- There are `0` reused numeric IDs.
 - There were `0` cases where an exact-duplicate family existed only to preserve different lossless output.
 
 Cleanup order:
 - [x] Delete the `89` exact duplicate fixture triplets first.
-- [ ] Collapse near-duplicate micro-fixture families into one canonical fixture plus one deliberate edge-case fixture where needed.
-- [ ] Aggressively prune the generator-era `0500-0900` type matrix, especially the overlapping arrow, tuple, polymorphic, recursive, and record-definition families.
+- [x] Collapse near-duplicate micro-fixture families into one canonical fixture plus one deliberate edge-case fixture where needed.
+- [x] Aggressively prune the generator-era `0500-0900` type matrix, especially the overlapping arrow, tuple, polymorphic, recursive, and record-definition families.
 - [ ] Rebalance the suite toward repo invariants: lossless parsing, `.ml` vs `.mli`, module/signature structure, and bug-driven regressions.
 - [x] Move fixture-generator scripts out of `packages/syn/tests/fixtures/`; they are tooling, not fixtures.
 - [x] Add a fixture audit script for `syn`, modeled after `packages/krasny/tests/fixture_audit.py`, so duplicates and near-duplicates stay visible.
@@ -26,15 +26,15 @@ Target organization:
 - [ ] Learn from the krasny fixtures organization
 
 Families that need the most attention:
-- [ ] Atom/operator microcases in `0000-0049`; many differ only by operator token or redundant parens.
-- [ ] List/tuple/record microcases in `0130-0240`; several are exact copies or near copies.
-- [ ] Type/declaration families in `0500-0900`; this is the biggest concentration of low-signal overlap.
-- [ ] Module/signature duplicates where identical sources were copied into later regression ranges.
-- [ ] Record-expression fixtures in `7000+`; several names imply span/newline differences but the source is byte-for-byte identical.
+- [x] Atom/operator microcases in `0000-0049`; many differ only by operator token or redundant parens.
+- [x] List/tuple/record microcases in `0130-0240`; several are exact copies or near copies.
+- [x] Type/declaration families in `0500-0900`; this is the biggest concentration of low-signal overlap.
+- [x] Module/signature duplicates where identical sources were copied into later regression ranges.
+- [x] Record-expression fixtures in `7000+`; several names imply span/newline differences but the source is byte-for-byte identical.
 
 Done criteria:
 - [x] No exact duplicate source fixtures remain.
-- [ ] No reused numeric fixture IDs remain if numbering is kept.
+- [x] No reused numeric fixture IDs remain if numbering is kept.
 - [ ] Each remaining fixture has a clear role: smoke, lossless, interface, regression, upstream, or real-world.
 - [ ] Lossless/trivia coverage is explicitly preserved rather than mixed into generic syntax buckets.
 - [ ] `.mli` coverage is intentionally represented rather than incidental.
