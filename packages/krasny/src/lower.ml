@@ -1993,7 +1993,6 @@ let expression_needs_parens_in_apply = function
   | Syn.Cst.Expression.Fun _
   | Syn.Cst.Expression.Function _
   | Syn.Cst.Expression.Infix _
-  | Syn.Cst.Expression.Typed _
   | Syn.Cst.Expression.Coerce _ ->
       true
   | _ ->
@@ -3100,7 +3099,6 @@ and render_match_expression ~keyword_token ~scrutinee ~with_token ~cases =
   in
   let scrutinee_requires_parens =
     match scrutinee with
-    | Syn.Cst.Expression.Typed _
     | Syn.Cst.Expression.Coerce _ ->
         true
     | _ ->
@@ -4276,8 +4274,14 @@ and is_open_signature_item = function
       false
 
 and source_of_relative_span ~source ~source_offset (span : Syn.Ceibo.Span.t) =
-  Source.source_between source ~start:(span.start - source_offset)
-    ~end_:(span.end_ - source_offset)
+  let source_length = String.length source in
+  let start =
+    Int.max 0 (Int.min (span.start - source_offset) source_length)
+  in
+  let end_ =
+    Int.max start (Int.min (span.end_ - source_offset) source_length)
+  in
+  Source.source_between source ~start ~end_
 
 and trailing_inline_comment_suffix ~source ~source_offset (span : Syn.Ceibo.Span.t) =
   let source_length = String.length source in
@@ -4710,9 +4714,20 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
           | _ ->
               pending
         in
+        let trailing_suffix =
+          match item, rest with
+          | Syn.Cst.StructureItem.Expression _, next :: _
+            when
+              Syn.Ceibo.Red.SyntaxNode.kind (Syn.Cst.StructureItem.syntax_node next)
+              = Syn.SyntaxKind.ATTRIBUTE_EXPR ->
+              Some (";;", cursor)
+          | _ ->
+              None
+        in
         let acc = flush_pending pending acc in
         loop []
-          (render_structure_entry ~source ~source_offset ~span:base_span ~trailing_suffix:None item :: acc)
+          (render_structure_entry ~source ~source_offset ~span:base_span ~trailing_suffix item
+          :: acc)
           base_span.end_
           rest
   in

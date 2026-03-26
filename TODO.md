@@ -41,14 +41,12 @@ You are done with this task when `krasny` can format the entire codebase and
 the CST-hash of the source before and after formatting is the same (that is, there's no information loss).
 
 Current fail-fast progress (2026-03-26):
-- `--verify-workspace --fail-fast` now passes `1288` files.
-- Current first failing file: `packages/syn/tests/fixtures/0400_attribute_item.ml` (syntax-hash mismatch; canonical hashes still diverge).
+- Latest completed fail-fast checkpoint reached `910` passing files before hitting `packages/syn/src/cst_builder.ml` (canonical `format exited 1`), and that file now round-trips canonically after fixes in this slice.
+- Follow-up unbuffered `--verify-workspace --fail-fast` reruns now progress well past the previous frontier with no new failure observed yet in the running window; next concrete first-failure file is still pending capture.
 - Newly fixed in this slice:
-  - `packages/syn/src/cst_builder.ml` (previous canonical formatted `format exited 1`)
-  - `packages/syn/src/parser.ml` (previous `format exited 1` from parser failing on labeled-arg callsites with polymorphic-variant first labeled argument)
-  - typed expressions now always render parenthesized in `krasny`, preventing invalid output like `{...} : t` in expression position
-  - polymorphic variant payload parsing in `syn` no longer consumes following labeled arguments (`~...` / `?...`) as payload expressions
-  - workspace verification now skips intentionally malformed `syn` diagnostics fixtures under `packages/syn/tests/diagnostics/`
-  - new focused fixtures:
-    - `0420_typed_expression_parenthesized.ml`
-    - `0421_labeled_arg_poly_variant_then_label.ml`
+  - `packages/syn/tests/fixtures/0400_attribute_item.ml` (previous syntax-hash mismatch / canonical divergence from dropped `;;` before floating attribute item)
+  - `packages/syn/src/cst_builder.ml` (canonical reformat parse break reintroduced by typed-expression paren policy drift)
+  - top-level expression items now keep `;;` when immediately followed by a floating attribute item (`[@@@...]`), preserving item boundaries and syntax-hash invariance
+  - typed expressions render as `(expr : type)` again, while avoiding unnecessary extra wrapping in apply/match scrutinee contexts to reduce double-parenthesization
+  - new focused fixture:
+    - `0422_top_level_expression_double_semicolon_before_floating_attribute.ml`
