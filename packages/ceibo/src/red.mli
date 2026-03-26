@@ -13,6 +13,9 @@ type ('kind, 'text) syntax_element =
   | Token of ('kind, 'text) syntax_token
 (** A syntax element is either a node or token *)
 
+val new_token : ('kind, 'text) Green.token -> Span.t -> ('kind, 'text) syntax_token
+(** Create a standalone red token at the given span *)
+
 module SyntaxNode : sig
   val green : ('kind, 'text) syntax_node -> ('kind, 'text) Green.node
   (** Get the underlying green node *)
@@ -35,6 +38,15 @@ module SyntaxNode : sig
   val children : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element array
   (** Get all children *)
 
+  val children_list : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element list
+  (** Get all children as a list *)
+
+  val direct_tokens : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
+  (** Get only the direct token children *)
+
+  val direct_nodes : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_node list
+  (** Get only the direct node children *)
+
   val kind : ('kind, 'text) syntax_node -> 'kind
   (** Get the syntax kind *)
 
@@ -55,6 +67,9 @@ module SyntaxNode : sig
 
   val postorder : ('kind, 'text) syntax_node -> (('kind, 'text) syntax_element -> unit) -> unit
   (** Traverse in postorder *)
+
+  val tokens : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
+  (** Get every token in the subtree in source order *)
 end
 
 module SyntaxToken : sig

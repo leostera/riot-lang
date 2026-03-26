@@ -271,6 +271,13 @@ module Red : sig
   val new_root : ('kind, 'text) Green.node -> ('kind, 'text) syntax_node
   (** `new_root green` creates a root red node at offset 0. *)
 
+  val new_token :
+    ('kind, 'text) Green.token -> Span.t -> ('kind, 'text) syntax_token
+  (** `new_token green span` creates a standalone red token at the given span.
+
+      This is mainly useful for synthetic CST helpers that need a lightweight
+      token wrapper without fabricating a full parsed tree. *)
+
   (** ## SyntaxNode Operations *)
 
   module SyntaxNode : sig
@@ -296,6 +303,18 @@ module Red : sig
     val children :
       ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element array
     (** `children node` returns all children. *)
+
+    val children_list :
+      ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element list
+    (** `children_list node` returns all children as a list. *)
+
+    val direct_tokens :
+      ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
+    (** `direct_tokens node` returns only the direct token children. *)
+
+    val direct_nodes :
+      ('kind, 'text) syntax_node -> ('kind, 'text) syntax_node list
+    (** `direct_nodes node` returns only the direct node children. *)
 
     val kind : ('kind, 'text) syntax_node -> 'kind
     (** `kind node` returns the kind from the underlying green node. *)
@@ -327,6 +346,10 @@ module Red : sig
       (('kind, 'text) syntax_element -> unit) ->
       unit
     (** `postorder node f` visits nodes in post-order. *)
+
+    val tokens :
+      ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
+    (** `tokens node` returns every token in the subtree in source order. *)
   end
 
   (** ## SyntaxToken Operations *)

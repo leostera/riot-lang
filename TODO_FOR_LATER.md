@@ -40,6 +40,15 @@ Done criteria:
 - [ ] `.mli` coverage is intentionally represented rather than incidental.
 - [ ] A fixture audit script can report category counts, exact duplicates, and near-duplicate families in one command.
 
+### ceibo Dedupe Follow-up
+
+- [x] Upstream `syn`'s red-tree helper surface into `packages/ceibo`:
+  `Red.new_token`, `SyntaxNode.children_list`, `SyntaxNode.direct_tokens`,
+  `SyntaxNode.direct_nodes`, and `SyntaxNode.tokens`.
+- [ ] Delete `packages/syn/src/ceibo` once tusk no longer generates or expects
+  `Syn__Ceibo__Aliases` / `Syn__Ceibo*` objects for the `syn` package when the
+  vendored subtree is absent.
+
 ## Verification Commands
 
 1. Rebuild `tusk` when build-system, parser, or lint-runtime changes affect the binary:

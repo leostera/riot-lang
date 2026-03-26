@@ -97,7 +97,7 @@ end
 module Green : sig
   (** ## Types *)
 
-  type ('kind, 'text) token
+  type ('kind, 'text) token = { kind : 'kind; text : 'text; width : int }
   (** Green token - leaf node containing source text.
 
       Tokens represent atomic elements like keywords, identifiers, and literals.
@@ -110,7 +110,11 @@ module Green : sig
       - The source text
       - Width (byte length for positioning) *)
 
-  type ('kind, 'text) node
+  type ('kind, 'text) node = {
+    kind : 'kind;
+    width : int;
+    children : ('kind, 'text) element array;
+  }
   (** Green node - interior node with children.
 
       Nodes represent grammatical constructions like expressions and
@@ -125,7 +129,7 @@ module Green : sig
 
       Most tree operations work on elements generically, not caring whether
       they're dealing with tokens or nodes. *)
-  type ('kind, 'text) element =
+  and ('kind, 'text) element =
     | Token of ('kind, 'text) token
     | Node of ('kind, 'text) node
 
