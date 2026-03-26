@@ -84,6 +84,12 @@ let parse_encoding_string value =
 
 let rec parse_content_type_string value =
   let rec parse_params str acc =
+    let str = String.trim str in
+    let str =
+      if String.starts_with ~prefix:";" str then
+        String.trim (String.sub str 1 (String.length str - 1))
+      else str
+    in
     match String.index_opt str '=' with
     | None -> List.rev acc
     | Some eq_idx ->
@@ -135,40 +141,51 @@ let rec parse_content_type_string value =
 and combine_rfc2231_params raw_params =
   let continuations = Collections.HashMap.create () in
   let regular = Cell.create [] in
+  let add_continuation ~name ~num ~decoded =
+    let parts =
+      match Collections.HashMap.get continuations name with
+      | Some p -> p
+      | None ->
+          let p = Cell.create [] in
+          let _ = Collections.HashMap.insert continuations name p in
+          p
+    in
+    Cell.set parts ((num, decoded) :: Cell.get parts)
+  in
+  let parse_key key value =
+    match String.rindex_opt key '*' with
+    | None -> `Regular (key, value)
+    | Some idx ->
+        let name = String.sub key 0 idx in
+        let suffix = String.sub key (idx + 1) (String.length key - idx - 1) in
+        if suffix = "" then `Encoded (name, value)
+        else
+          let is_encoded = String.ends_with ~suffix:"*" suffix in
+          let num_str =
+            if is_encoded then String.sub suffix 0 (String.length suffix - 1)
+            else suffix
+          in
+          match int_of_string_opt num_str with
+          | Some num -> `Continuation (name, num, is_encoded, value)
+          | None -> `Regular (key, value)
+  in
 
   List.iter
     (fun (key, value) ->
-      if String.ends_with ~suffix:"*" key then
-        let base_key = String.sub key 0 (String.length key - 1) in
-        if String.contains base_key "*" then
-          match String.rindex_opt base_key '*' with
-          | Some idx -> (
-              let name = String.sub base_key 0 idx in
-              let num_str =
-                String.sub base_key (idx + 1) (String.length base_key - idx - 1)
-              in
-              match int_of_string_opt num_str with
-              | Some num ->
-                  let parts =
-                    match Collections.HashMap.get continuations name with
-                    | Some p -> p
-                    | None ->
-                        let p = Cell.create [] in
-                        let _ =
-                          Collections.HashMap.insert continuations name p
-                        in
-                        p
-                  in
-                  let _charset, decoded = parse_rfc2231_value value in
-                  Cell.set parts ((num, decoded) :: Cell.get parts)
-              | None -> Cell.set regular ((key, value) :: Cell.get regular))
-          | None ->
-              let _charset, decoded = parse_rfc2231_value value in
-              Cell.set regular ((base_key, decoded) :: Cell.get regular)
-        else
+      match parse_key key value with
+      | `Regular (name, value) ->
+          Cell.set regular ((name, value) :: Cell.get regular)
+      | `Encoded (name, value) ->
           let _charset, decoded = parse_rfc2231_value value in
-          Cell.set regular ((base_key, decoded) :: Cell.get regular)
-      else Cell.set regular ((key, value) :: Cell.get regular))
+          Cell.set regular ((name, decoded) :: Cell.get regular)
+      | `Continuation (name, num, is_encoded, value) ->
+          let decoded =
+            if is_encoded then
+              let _charset, decoded = parse_rfc2231_value value in
+              decoded
+            else value
+          in
+          add_continuation ~name ~num ~decoded)
     raw_params;
 
   let combined = Cell.create (Cell.get regular) in
@@ -202,7 +219,7 @@ let parse_content_disposition value =
     | Some idx ->
         let dtype = String.trim (String.sub value 0 idx) in
         let rest = String.sub value (idx + 1) (String.length value - idx - 1) in
-        (dtype, snd (parse_content_type_string rest))
+        (dtype, snd (parse_content_type_string ("x;" ^ rest)))
   in
   let filename = List.assoc_opt "filename" params in
   match String.lowercase_ascii disp_type with
