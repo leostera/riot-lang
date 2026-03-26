@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "services/registry",
   "packages/blink",
   "packages/ceibo",
   "packages/colors",
