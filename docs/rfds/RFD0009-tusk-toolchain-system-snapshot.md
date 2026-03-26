@@ -239,7 +239,7 @@ For the host toolchain, initialization works like this:
 3. otherwise, look for `./ocaml/compiler`
 4. if `./ocaml/compiler` exists, symlink it into the expected
    `~/.tusk/toolchains/...` location
-5. otherwise, download a prebuilt tarball from `https://cdn.riot.ml/ocaml/`
+5. otherwise, download a prebuilt tarball from `https://cdn.ocaml.ai/ocaml/`
 
 For explicit non-host targets, the local `./ocaml/compiler` shortcut is not
 used. The code goes directly to the target-specific install-or-download path.
@@ -272,7 +272,7 @@ The download entrypoints are:
 Both point at:
 
 ```text
-https://cdn.riot.ml/ocaml/
+https://cdn.ocaml.ai/ocaml/
 ```
 
 The tarball naming convention expected by this repository is:
@@ -296,22 +296,33 @@ in `bootstrap.py` and `tusk_toolchain.ml`.
 What this repository does not currently define is the producer side of those
 tarballs.
 
-I could not find, in this repository:
+The repository now includes a local manual helper for the producer side of those
+tarballs:
 
-- a script that assembles the OCaml toolchain tarballs for `cdn.riot.ml/ocaml`
-- a GitHub Actions workflow that uploads those tarballs to the CDN bucket
-- a manifest describing which external system is responsible for publishing
+- `scripts/toolchain/publish-prebuilt-ocaml.sh`
+
+That script can build selected vendored compilers, package them with the
+existing `vendor/ocaml/cross/package.sh` naming convention, and upload them to
+an S3-compatible bucket such as Cloudflare R2.
+
+What this repository still does not currently define is an active automated
+publisher for those tarballs.
+
+The disabled workflow reference remains:
+
+- a GitHub Actions workflow under `.github/workflows/ocaml-publish-toolchains.yml.disabled`
+- no manifest describing which external system is responsible for publishing
   them
 
 By contrast, this repository does contain release/upload workflows for:
 
-- `tusk` release tarballs under `cdn.riot.ml/tusk`
-- the top-level install script at `cdn.riot.ml/install.sh`
+- `tusk` release tarballs under `cdn.ocaml.ai/tusk`
+- the top-level install script at `cdn.ocaml.ai/tusk/install.sh`
 - the `ghcr.io/leostera/riot/riot-builder` Docker image
 
 So the current architectural boundary is:
 
-- this repo consumes prebuilt OCaml toolchain tarballs from `cdn.riot.ml/ocaml`
+- this repo consumes prebuilt OCaml toolchain tarballs from `cdn.ocaml.ai/ocaml`
 - this repo can fall back to building OCaml from source during bootstrap via
   `riot-ocaml`
 - this repo does not currently document or automate the publication of those
@@ -321,7 +332,7 @@ The Docker builder image is related but separate. `docker/Dockerfile` bootstraps
 or downloads toolchains during the image build, then copies
 `/root/.tusk/toolchains` into the final `riot-builder` image so containerized
 builds start with a pre-seeded toolchain cache. That image pipeline does not
-publish the OCaml tarballs to `cdn.riot.ml/ocaml`.
+publish the OCaml tarballs to `cdn.ocaml.ai/ocaml`.
 
 ## 6. CLI surface
 

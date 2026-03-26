@@ -351,9 +351,9 @@ So the durable snapshot is:
 - if `./vendor/ocaml/compiler` exists, Riot can symlink that as the local host
   toolchain
 - otherwise Riot downloads a prebuilt host toolchain tarball from
-  `cdn.riot.ml`
+  `cdn.ocaml.ai`
 - if `target != host`, Riot downloads a prebuilt cross toolchain tarball from
-  `cdn.riot.ml`
+  `cdn.ocaml.ai`
 
 This means Riot currently distinguishes two very different stories:
 
@@ -362,6 +362,11 @@ This means Riot currently distinguishes two very different stories:
   artifacts, not as compiler installs built on demand from `vendor/ocaml`
 
 That is an important current boundary.
+
+Riot now also carries a local helper script,
+`scripts/toolchain/publish-prebuilt-ocaml.sh`, for manually building,
+packaging, and uploading a selected subset of those prebuilt tarballs to the
+configured CDN bucket while the automated publishing workflow remains disabled.
 
 ### 5.4 Build context propagation
 

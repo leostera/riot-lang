@@ -385,7 +385,7 @@ It is responsible for:
 - resolving toolchain paths under `~/.tusk/toolchains`
 - validating compiler binaries
 - linking to a local `./ocaml/compiler` tree when present
-- downloading prebuilt toolchains from `cdn.riot.ml`
+- downloading prebuilt toolchains from `cdn.ocaml.ai`
 - initializing cross-compilation toolchains for explicit targets
 
 ```mermaid

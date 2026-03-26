@@ -118,7 +118,7 @@ The current default version is taken from `OCAML_VERSION`, falling back to `5.5.
 Provisioning works in this order:
 
 1. if `bin/ocamlopt.opt` already exists, reuse the toolchain
-2. otherwise try downloading a prebuilt tarball from `https://cdn.riot.ml/ocaml/`
+2. otherwise try downloading a prebuilt tarball from `https://cdn.ocaml.ai/ocaml/`
 3. if download fails, build OCaml from source using `riot-ocaml`
 
 That makes `bootstrap.py` responsible both for bootstrapping the builder and for bootstrapping the compiler used by the builder.

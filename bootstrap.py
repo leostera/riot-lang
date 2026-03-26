@@ -12,6 +12,7 @@ import tarfile
 import tempfile
 
 OCAML_VERSION = os.getenv("OCAML_VERSION", "5.5.0")
+OCAML_CDN_BASE_URL = os.getenv("TUSK_OCAML_CDN_URL", "https://cdn.ocaml.ai/ocaml").rstrip("/")
 
 def detect_libc():
     """Detect whether we're on glibc (gnu) or musl"""
@@ -73,7 +74,7 @@ def ensure_toolchain(version):
     os.makedirs(toolchain_dir, exist_ok=True)
     
     # Try to download prebuilt binary first
-    binary_url = f"https://cdn.riot.ml/ocaml/ocaml-{version}-{host_triple}.tar.gz"
+    binary_url = f"{OCAML_CDN_BASE_URL}/ocaml-{version}-{host_triple}.tar.gz"
     print(f"Attempting to download prebuilt binary from: {binary_url}")
     
     try:
