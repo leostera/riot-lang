@@ -16,6 +16,9 @@ let make_workspace root =
       profile_overrides = [];
     }
 
+let read_file path =
+  Fs.read_to_string path |> Result.expect ~msg:"failed to read file"
+
 let make_package ~root ~name =
   let path = Path.(root / Path.v "packages" / Path.v name) in
   Tusk_model.Package.
@@ -45,6 +48,21 @@ let make_node ~package ~srcs =
             { destination = Path.v "out.txt"; content = "ok" };
         ]
       ~outs:[ Path.v "out.txt" ] ~srcs ~package
+      ~toolchain:(test_toolchain ())
+      ~dependency_hashes:(fun _ -> Crypto.hash_string "") ~deps:[]
+  in
+  Tusk_planner.Action_graph.add_node graph spec
+
+let make_cache_node ~package ~content =
+  let graph = Tusk_planner.Action_graph.create () in
+  let spec =
+    Tusk_planner.Action_node.make
+      ~actions:
+        [
+          Tusk_planner.Action.WriteFile
+            { destination = Path.v "out.txt"; content };
+        ]
+      ~outs:[ Path.v "out.txt" ] ~srcs:[] ~package
       ~toolchain:(test_toolchain ())
       ~dependency_hashes:(fun _ -> Crypto.hash_string "") ~deps:[]
   in
@@ -117,6 +135,49 @@ let test_execute_node_copies_workspace_relative_sources () =
   | Ok r -> r
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_execute_node_cache_hit_materializes_outputs () =
+  match
+    Fs.with_tempdir ~prefix:"action_exec_cache_hit" (fun tmpdir ->
+        let sandbox = Path.(tmpdir / Path.v "sandbox") in
+        let _ =
+          Fs.create_dir_all sandbox
+          |> Result.expect ~msg:"create sandbox failed"
+        in
+        let workspace = make_workspace tmpdir in
+        let store = Tusk_store.Store.create ~workspace in
+        let package = make_package ~root:tmpdir ~name:"kernel" in
+        let node = make_cache_node ~package ~content:"cached output" in
+        let completed = HashMap.create () in
+        let session_id = Tusk_model.Session_id.make () in
+        let toolchain = test_toolchain () in
+        let first =
+          Tusk_executor.Action_executor.execute_node ~completed ~store ~session_id
+            toolchain sandbox node
+        in
+        match first.status with
+        | Tusk_executor.Action_executor.Executed ->
+            let output = Path.(sandbox / Path.v "out.txt") in
+            let _ =
+              Fs.remove_file output
+              |> Result.expect ~msg:"remove cached output failed"
+            in
+            let second =
+              Tusk_executor.Action_executor.execute_node ~completed ~store
+                ~session_id toolchain sandbox node
+            in
+            (match second.status with
+            | Tusk_executor.Action_executor.Cached _ -> (
+                match Fs.exists output with
+                | Ok true ->
+                    if String.equal (read_file output) "cached output" then Ok ()
+                    else Error "cached output content mismatch"
+                | _ -> Error "expected cached output to be materialized")
+            | _ -> Error "expected second execution to hit cache")
+        | _ -> Error "expected first execution to populate cache")
+  with
+  | Ok r -> r
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let tests =
   Test.
     [
@@ -124,6 +185,8 @@ let tests =
         test_execute_node_copies_package_relative_sources;
       case "execute_node copies workspace-relative sources"
         test_execute_node_copies_workspace_relative_sources;
+      case "execute_node cache hit materializes outputs"
+        test_execute_node_cache_hit_materializes_outputs;
     ]
 
 let name = "tusk-executor:action-executor-source-copy"

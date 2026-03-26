@@ -14,7 +14,7 @@ type t = {
 }
 
 val create :
-  package:string -> build_hash:string -> files:(Path.t * int) list -> t
+  ?base_dir:Path.t -> package:string -> build_hash:string -> files:(Path.t * int) list -> t
 (** Create a manifest for stored files. Takes a list of (file_path, size) pairs
     and calculates hashes. *)
 

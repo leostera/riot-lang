@@ -143,13 +143,20 @@ let load ~path =
   | Error _ -> Error "Failed to read manifest file"
 
 (** Create a manifest for stored files *)
-let create ~package ~build_hash ~files =
+let create ?base_dir ~package ~build_hash ~files =
   let timestamp = Time.SystemTime.now () in
   let file_entries =
     List.filter_map
       (fun (path, size) ->
+        let readable_path =
+          if Path.is_absolute path then path
+          else
+            match base_dir with
+            | Some dir -> Path.(dir / path)
+            | None -> path
+        in
         (* Calculate hash of the file *)
-        match Std.Fs.read_to_string path with
+        match Std.Fs.read_to_string readable_path with
         | Ok file ->
             let hash = Std.Crypto.(Sha512.hash_string file |> Digest.hex) in
             Some { path; hash; size }

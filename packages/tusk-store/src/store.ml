@@ -120,7 +120,7 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
 
   (* Create and save manifest *)
   let manifest =
-    Manifest.create ~package
+    Manifest.create ~base_dir:temp_dir ~package
       ~build_hash:(Std.Crypto.Digest.hex hash)
       ~files:(List.rev stored_files_with_sizes)
   in
