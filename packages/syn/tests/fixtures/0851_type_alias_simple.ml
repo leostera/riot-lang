@@ -1,1 +1,0 @@
-type point = int * int
