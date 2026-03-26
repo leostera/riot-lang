@@ -18,6 +18,8 @@ let run_benchmarks_cmd =
   |> about "Run benchmarks"
   |> args
        [
+         positional "pattern" |> required false
+         |> help "Run only benchmarks whose names contain this substring";
          option "format" |> long "format"
          |> help "Output format (currently only 'default')"
          |> default "default";
@@ -32,6 +34,13 @@ let list_benchmarks_cmd =
 
 let get_suite_info name : Reporter.Intf.suite_info =
   { name }
+
+let benchmark_name = function
+  | Bench_runner.Single case -> case.Bench_case.name
+  | Bench_runner.Compare comp -> comp.Bench_comparison.description
+
+let matches_pattern ~pattern bench_item =
+  String.contains (benchmark_name bench_item) pattern
 
 (** Apply CLI overrides to benchmark items *)
 let apply_overrides ~iterations_override ~warmup_override benchmarks =
@@ -91,6 +100,7 @@ let main ~name ~benchmarks ~args =
       match get_subcommand matches with
       | Some ("list-benchmarks", _) -> list_benchmarks benchmarks
       | Some ("run-benchmarks", sub_matches) ->
+          let pattern = get_one sub_matches "pattern" in
           let _format =
             get_one sub_matches "format" |> Option.unwrap_or ~default:"default"
           in
@@ -101,7 +111,13 @@ let main ~name ~benchmarks ~args =
           let benchmarks_to_run =
             apply_overrides ~iterations_override ~warmup_override benchmarks
           in
-
+          let benchmarks_to_run =
+            match pattern with
+            | Some pattern ->
+                List.filter (matches_pattern ~pattern) benchmarks_to_run
+            | None ->
+                benchmarks_to_run
+          in
           let config =
             Bench_runner.
               { reporter = (module Reporter.Default); suite_info }

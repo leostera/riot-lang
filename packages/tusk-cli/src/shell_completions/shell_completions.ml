@@ -128,7 +128,7 @@ _tusk() {
 
     builtin_commands=(
         'build:Build packages'
-        'fix:Lint and apply safe fixes'
+        'fix:Lint code and optionally apply safe fixes'
         'run:Run a binary'
         'test:Run tests'
         'bench:Run benchmarks'
@@ -192,6 +192,17 @@ _tusk() {
                 local -a binaries
                 binaries=(${(f)"$(tusk completions --binaries 2>/dev/null)"})
                 compadd -a binaries
+            else
+                _arguments \
+                    '(-p --package)'{-p,--package}'[Run binary from package]:package:->packages'
+
+                case $state in
+                    packages)
+                        local -a packages
+                        packages=(${(f)"$(tusk completions --packages 2>/dev/null)"})
+                        _describe 'package' packages
+                        ;;
+                esac
             fi
             ;;
         build)
@@ -260,6 +271,7 @@ _tusk() {
             ;;
         fix)
             _arguments \
+                '--apply[Apply safe fixes to files]' \
                 '--check[Check for issues without modifying files]' \
                 '--format[Output format]:format:(text json)' \
                 ':path:_files'

@@ -9,15 +9,18 @@ let command =
   let open ArgParser in
   let open Arg in
   command "fix"
-  |> about "Lint OCaml code and apply safe fixes"
+  |> about "Lint OCaml code and optionally apply safe fixes"
   |> args
        [
          flag "list-rules" |> long "list-rules"
          |> help "List all available rules in the current tusk-fix runtime";
          flag "list-diagnostics" |> long "list-diagnostics"
          |> help "List all available diagnostics in the current tusk-fix runtime";
+         flag "apply" |> long "apply"
+         |> help "Apply safe fixes to files";
          flag "check" |> long "check"
-         |> help "Check for fixable issues without modifying files";
+         |> help
+              "Check for issues without modifying files (default; kept for compatibility)";
          option "limit" |> long "limit"
          |> help "Stop after surfacing at most N diagnostics";
          option "explain" |> long "explain"
@@ -427,11 +430,8 @@ let run matches =
     |> Result.expect ~msg:"Failed to get current directory"
   in
   let scope = Fix_config.load_scope ~cwd in
-  let mode =
-    if ArgParser.get_flag matches "check" then
-      Runner.Check
-    else Runner.Apply
-  in
+  let apply = ArgParser.get_flag matches "apply" in
+  let check = ArgParser.get_flag matches "check" in
   let format =
     match ArgParser.get_one matches "format" |> Option.unwrap_or ~default:"text" with
     | "json" -> Reporter.Json
@@ -446,25 +446,32 @@ let run matches =
   match limit with
   | Error _ as err -> err
   | Ok limit ->
-      match
-        ArgParser.get_flag matches "list-rules",
-        ArgParser.get_flag matches "list-diagnostics",
-        ArgParser.get_one matches "explain"
-      with
-      | true, _, _ -> list_rules format
-      | false, true, _ -> list_diagnostics format
-      | false, false, Some code -> explain_rule code
-      | false, false, None ->
-          let target = resolve_target matches in
-          let files =
-            resolve_files target
-            |> List.filter (fun file -> not (Fix_config.should_ignore_file scope file))
-          in
-          if List.length files = 0 then (
-            println "No OCaml files found.";
-            Ok ())
-          else
-            run_with_coordinator ~format ~mode ~scope ~limit files
+      if apply && check then
+        Error (Failure "cannot use both --apply and --check")
+      else (
+        let mode =
+          if apply then Runner.Apply else Runner.Check
+        in
+        match
+          ArgParser.get_flag matches "list-rules",
+          ArgParser.get_flag matches "list-diagnostics",
+          ArgParser.get_one matches "explain"
+        with
+        | true, _, _ -> list_rules format
+        | false, true, _ -> list_diagnostics format
+        | false, false, Some code -> explain_rule code
+        | false, false, None ->
+            let target = resolve_target matches in
+            let files =
+              resolve_files target
+              |> List.filter (fun file ->
+                     not (Fix_config.should_ignore_file scope file))
+            in
+            if List.length files = 0 then (
+              println "No OCaml files found.";
+              Ok ())
+            else
+              run_with_coordinator ~format ~mode ~scope ~limit files)
 
 let main ~args =
   match ArgParser.get_matches command args with

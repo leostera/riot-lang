@@ -81,8 +81,12 @@ let is_yield_call expr =
 
 let body_starts_with_yield expr =
   match unwrap_expression expr with
-  | Syn.Cst.Expression.Sequence { left; _ } ->
-      is_yield_call left
+  | Syn.Cst.Expression.Sequence { expressions; _ } -> (
+      match expressions with
+      | first :: _ ->
+          is_yield_call first
+      | [] ->
+          false)
   | other ->
       is_yield_call other
 

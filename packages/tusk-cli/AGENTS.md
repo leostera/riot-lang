@@ -11,7 +11,7 @@
 5. Built-in commands that own domain logic elsewhere should delegate into their package library.
 6. Commands that touch build artifacts must resolve the workspace root and honor `[tusk].target_dir` instead of assuming `_build` or `./target`.
 7. Keep rule-oriented and diagnostic-oriented fix surfaces distinct: `--list-rules` should describe rules, while `--list-diagnostics` should describe diagnostic codes.
-8. Keep `tusk test <query>` substring-based across package names, suite names, and test case names; preserve the no-query fast path separately from the query path, build the workspace once, and delegate case-level filtering to `Std.Test.Cli`.
+8. Keep `tusk test` and `tusk bench` on the build-once flow: build the workspace once, then delegate `run-tests [query]` / `run-benchmarks [query]` into every suite binary. Use `-p/--package` for package narrowing rather than CLI-side suite prefiltering.
 
 ## Validate
 

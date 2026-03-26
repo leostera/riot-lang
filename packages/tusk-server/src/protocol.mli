@@ -66,6 +66,7 @@ type request =
 (** Response types from the server *)
 type response =
   | Pong
+  | WorkspaceScanned
   | BuildStarted of { session_id : Session_id.t; started_at : Datetime.t }
   | BuildEvent of { session_id : Session_id.t; event : Telemetry.event }
   | BuildCompleted of {

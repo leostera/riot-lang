@@ -10,7 +10,8 @@ val main :
 (** Main entry point for benchmark binaries with CLI support.
     
     Accepts subcommands:
-    - [run-benchmarks]: Execute all benchmarks (default)
+    - [run-benchmarks [query]]: Execute all benchmarks, optionally filtering
+      benchmark names by substring
     - [list-benchmarks]: List all benchmark names
     
     Flags for [run-benchmarks]:

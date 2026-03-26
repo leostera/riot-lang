@@ -60,14 +60,6 @@ let benchmarks =
 
 let () =
   Miniriot.run
-    ~main:(fun ~args:_ ->
-      let config =
-        Bench.Runner.
-          {
-            reporter = (module Bench.Reporter.Default);
-            suite_info = { name = "Example Benchmarks" };
-          }
-      in
-      let _summary = Bench.Runner.run_benchmarks ~config benchmarks in
-      Ok ())
+    ~main:(fun ~args ->
+      Bench.Cli.main ~name:"Example Benchmarks" ~benchmarks ~args)
     ~args:Env.args ()

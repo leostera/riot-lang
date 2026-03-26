@@ -199,13 +199,6 @@ let () =
   println "HashMap vs Swisstable - Large Dataset Performance\n";
   Miniriot.run
     ~main:(fun ~args ->
-      let config =
-        Bench.Runner.
-          {
-            reporter = (module Reporter.Default);
-            suite_info = { name = "HashMap vs Swisstable - Large Datasets" };
-          }
-      in
-      let _summary = Bench.Runner.run_benchmarks ~config benchmarks in
-      Ok ())
+      Bench.Cli.main ~name:"HashMap vs Swisstable - Large Datasets"
+        ~benchmarks ~args)
     ~args:Env.args ()

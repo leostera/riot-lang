@@ -1947,12 +1947,24 @@ let render x y z =
                 ~actual:(List.length result.diagnostics);
               Test.assert_equal ~expected:source ~actual:(read_file file);
               Ok ()));
-    Test.case "cli applies safe fixes by default" (fun () ->
+    Test.case "cli checks by default without rewriting files" (fun () ->
         with_tempdir "tusk_fix_cli" (fun tmpdir ->
               let file = Path.(tmpdir / Path.v "sample.ml") in
               write_file file "type userProfile = int\n";
               let result =
                 with_cwd tmpdir (fun () -> run_cli [ Path.to_string file ])
+              in
+              Test.assert_error result;
+              Test.assert_equal ~expected:"type userProfile = int\n"
+                ~actual:(read_file file);
+              Ok ()));
+    Test.case "cli applies safe fixes only with --apply" (fun () ->
+        with_tempdir "tusk_fix_cli" (fun tmpdir ->
+              let file = Path.(tmpdir / Path.v "sample.ml") in
+              write_file file "type userProfile = int\n";
+              let result =
+                with_cwd tmpdir (fun () ->
+                    run_cli [ "--apply"; Path.to_string file ])
               in
               Test.assert_ok result;
               Test.assert_equal ~expected:"type user_profile = int\n"

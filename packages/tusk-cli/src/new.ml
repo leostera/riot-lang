@@ -36,10 +36,14 @@ let run matches =
     Local_session.connect_local ~workspace
   with
   | Ok client -> (
+      let package_kind = if is_library then "library" else "binary" in
+      println
+        ("Creating new " ^ package_kind ^ " '" ^ name ^ "' in '" ^ path ^ "'");
       match Local_session.new_package client ~path ~name ~is_library with
       | Ok (created_path, created_name) ->
           println
-            ("Package '" ^ created_name ^ "' created at '" ^ created_path ^ "'");
+            (String.capitalize_ascii package_kind ^ " '" ^ created_name
+           ^ "' created at '" ^ created_path ^ "'");
           Ok ()
       | Error e -> Error (Failure ("Package creation failed: " ^ e)))
   | Error _e -> Error (Failure "Failed to start local tusk session")

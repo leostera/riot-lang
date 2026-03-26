@@ -1,9 +1,11 @@
 open Std
-open Std.Collections
-open Std.Sync.Cell
-open Tusk_model
 open Tusk_model
 open ArgParser
+
+type suite_binary = {
+  package_name : string;
+  suite_name : string;
+}
 
 let reconnect ~workspace =
   Local_session.connect_local ~workspace
@@ -12,18 +14,17 @@ let reconnect ~workspace =
 let command =
   let open ArgParser in
   let open Arg in
-  command "bench" |> about "Run benchmarks with optional pattern matching"
+  command "bench" |> about "Run benchmarks with optional substring matching"
   |> ArgParser.allow_trailing_args
   |> args
        [
-          positional "pattern" |> required false
-          |> help
-               "Benchmark pattern: 'prefix' runs all benchmarks starting with prefix, \
-                'pkg:prefix' runs package-scoped benchmarks, 'pkg:...' runs all benchmarks \
-                in package. Examples: 'vector_', 'std:vector_', 'poneglyph:...'. Omit to \
-                run all benchmarks.";
+         positional "pattern" |> required false
+         |> help
+              "Benchmark query passed to every benchmark suite binary. Use \
+               -p/--package to limit execution to one package. Omit to run all \
+               benchmarks.";
          option "package" |> short 'p' |> long "package"
-         |> help "Run benchmarks from specific package (deprecated, use pattern)";
+         |> help "Run benchmarks from a specific package";
          flag "verbose" |> short 'v' |> long "verbose"
          |> help "Enable verbose output for benchmarks"
          |> count;
@@ -33,150 +34,127 @@ let trailing_args matches =
   let args = ArgParser.trailing_args matches in
   match args with "--" :: rest -> rest | _ -> args
 
+let is_benchmark_binary_name name =
+  String.ends_with ~suffix:"_bench" name || String.ends_with ~suffix:"-bench" name
+
+let compare_suite_binary left right =
+  String.compare
+    (left.package_name ^ ":" ^ left.suite_name)
+    (right.package_name ^ ":" ^ right.suite_name)
+
+let collect_suite_binaries (workspace : Workspace.t) ?package_filter () =
+  workspace.packages
+  |> List.filter Package.is_workspace_member
+  |> List.filter (fun (pkg : Package.t) ->
+         match package_filter with
+         | None -> true
+         | Some package_name -> String.equal pkg.name package_name)
+  |> List.concat_map (fun (pkg : Package.t) ->
+         List.filter_map
+           (fun (bin : Package.binary) ->
+             if is_benchmark_binary_name bin.name
+             then Some { package_name = pkg.name; suite_name = bin.name }
+             else None)
+           pkg.binaries)
+  |> List.sort compare_suite_binary
+
+let find_suite_binary_path client (suite : suite_binary) =
+  Local_session.find_artifact client ~package:suite.package_name ~kind:"binary"
+    ~name:suite.suite_name
+
+let run_suite_binary_capture ~extra_args binary_path =
+  let cmd = Command.make binary_path ~args:("run-benchmarks" :: extra_args) in
+  Command.output cmd
+
+let print_command_output (output : Command.output) =
+  if not (String.equal output.stdout "") then
+    print output.stdout;
+  if not (String.equal output.stderr "") then
+    eprint output.stderr
+
+let print_run_label (suite : suite_binary) =
+  println "";
+  println ("Running " ^ suite.package_name ^ "/" ^ suite.suite_name ^ "...");
+  println ""
+
+let print_empty_hint package_filter =
+  match package_filter with
+  | Some package_name ->
+      println ("No benchmark suites found in package '" ^ package_name ^ "'")
+  | None ->
+      println "No benchmark binaries found"
+
+let print_summary ~total ~passed ~failed =
+  println "";
+  println "Benchmark Summary:";
+  println ("  Total benchmark suites: " ^ Int.to_string total);
+  println ("  Passed: " ^ Int.to_string passed);
+  println ("  Failed: " ^ Int.to_string failed)
+
+let run_suite client ~extra_args query (suite : suite_binary) =
+  match find_suite_binary_path client suite with
+  | Error msg ->
+      println ("error: " ^ msg);
+      `Failed
+  | Ok binary_path ->
+      let bench_args =
+        match query with
+        | None -> extra_args
+        | Some query -> query :: extra_args
+      in
+      match run_suite_binary_capture ~extra_args:bench_args binary_path with
+      | Ok output ->
+          print_run_label suite;
+          print_command_output output;
+          if Int.equal output.status 0 then `Passed else `Failed
+      | Error (Command.SystemError msg) ->
+          println ("error: " ^ msg);
+          `Failed
+
+let run_all_suites ~workspace ~extra_args ~package_filter ~query =
+  let suite_binaries = collect_suite_binaries workspace ?package_filter () in
+  if suite_binaries = [] then (
+    print_empty_hint package_filter;
+    Ok ())
+  else
+    match Build.build_command ~scope:Build.Dev None None with
+    | Error _ -> Error (Failure "Build failed")
+    | Ok () ->
+        let client = reconnect ~workspace in
+        let result =
+          let total = ref 0 in
+          let passed = ref 0 in
+          let failed = ref 0 in
+          List.iter
+            (fun suite ->
+              total := !total + 1;
+              match run_suite client ~extra_args query suite with
+              | `Passed ->
+                  passed := !passed + 1
+              | `Failed ->
+                  failed := !failed + 1)
+            suite_binaries;
+          print_summary ~total:!total ~passed:!passed ~failed:!failed;
+          if !failed > 0 then
+            Error
+              (Failure (Int.to_string !failed ^ " benchmark suite(s) failed"))
+          else Ok ()
+        in
+        Local_session.close client;
+        result
+
 let run matches =
   let extra_args = trailing_args matches in
   let verbose = ArgParser.get_count matches "verbose" in
   let _ = verbose in
-
-  (* Parse pattern: [pkg][:bench_prefix] *)
   let pattern = ArgParser.get_one matches "pattern" in
   let legacy_package = ArgParser.get_one matches "package" in
-
   let cwd =
     Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
   in
   let (workspace, _load_errors) =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
   in
-  let client =
-    Local_session.connect_local ~workspace
-    |> Result.expect ~msg:"Failed to start local tusk session"
-  in
-
-  (* Parse pattern: [pkg]:bench_prefix or pkg:bench_prefix or pkg:... *)
-  let (package_filter, bench_prefix) =
-    match (pattern, legacy_package) with
-    | (Some p, _) -> (
-        match String.split_on_char ':' p with
-        | [ pkg; "..." ] -> (Some pkg, None) (* pkg:... means all benchmarks in package *)
-        | [ pkg; prefix ] -> (Some pkg, Some prefix)
-        | [ single ] -> (None, Some single) (* Treat as bench prefix across all packages *)
-        | _ -> (None, None))
-    | (None, Some pkg) -> (Some pkg, None)
-    | (None, None) -> (None, None)
-  in
-
-  let packages =
-    match package_filter with
-    | Some pkg_name ->
-        List.filter
-          (fun (pkg : Package.t) -> 
-            String.equal pkg.name pkg_name && Package.is_workspace_member pkg)
-          workspace.packages
-    | None -> 
-        (* Only benchmark workspace members, not external dependencies *)
-        List.filter Package.is_workspace_member workspace.packages
-  in
-
-  let bench_binaries =
-    List.concat_map
-      (fun (pkg : Package.t) ->
-        List.filter_map
-          (fun (bin : Package.binary) ->
-            let is_bench =
-              String.ends_with ~suffix:"_bench" bin.name
-            in
-            let matches_prefix =
-              match bench_prefix with
-              | None -> true
-              | Some prefix -> String.starts_with ~prefix bin.name
-            in
-            if is_bench && matches_prefix then Some (pkg.name, bin.name)
-            else None)
-          pkg.binaries)
-      packages
-  in
-
-  if List.length bench_binaries = 0 then (
-    Local_session.close client;
-    println "No benchmark binaries found";
-    (match (package_filter, bench_prefix) with
-    | (Some pkg, Some prefix) ->
-        println ("Hint: No benchmarks matching '" ^ pkg ^ ":*" ^ prefix ^ "*' found")
-    | (Some pkg, None) ->
-        println
-          ("Hint: Make sure package '" ^ pkg ^ "' has binaries ending in '_bench'")
-    | (None, Some prefix) -> println ("Hint: No benchmarks matching '*" ^ prefix ^ "*' found")
-    | (None, None) -> println "Hint: Benchmark binaries should end in '_bench'");
-    Ok ())
-  else
-    (* Group benchmark binaries by package *)
-    let benches_by_package =
-      List.fold_left
-        (fun acc (pkg, bench_name) ->
-          let existing =
-            HashMap.get acc pkg |> Option.unwrap_or ~default:[]
-          in
-          let _ = HashMap.insert acc pkg (bench_name :: existing) in
-          acc)
-        (HashMap.create ()) bench_binaries
-    in
-
-    let total = List.length bench_binaries in
-    let failed = ref 0 in
-    let passed = ref 0 in
-
-    (* Build each package once, then run all its benchmarks *)
-    HashMap.iter
-      (fun pkg bench_names ->
-        println "";
-        println ("Building package '" ^ pkg ^ "'...");
-        match
-          Build.build_command ~scope:Build.Dev (Some pkg) None
-        with
-        | Ok () ->
-            Local_session.close client;
-            let client = reconnect ~workspace in
-            List.iter
-              (fun bench_name ->
-                match
-                  Local_session.find_artifact client ~package:pkg ~kind:"binary"
-                    ~name:bench_name
-                with
-                | Ok path -> (
-                    let bench_args =
-                      match extra_args with
-                      | [] -> [ "run-benchmarks" ]
-                      | _ -> "run-benchmarks" :: extra_args
-                    in
-                    let cmd = Command.make path ~args:bench_args in
-                    println "";
-                    println ("Running " ^ pkg ^ "/" ^ bench_name ^ "...");
-                    println "";
-                    match Command.status cmd with
-                    | Ok 0 -> incr passed
-                    | Ok _code -> incr failed
-                    | Error (Command.SystemError msg) ->
-                        println ("error: " ^ msg);
-                        incr failed)
-                | Error msg ->
-                    println ("error: " ^ msg);
-                    incr failed)
-              bench_names
-        | Error _ ->
-            println ("error: build failed for package '" ^ pkg ^ "'");
-            (* Mark all benchmarks in this package as failed *)
-            failed := !failed + List.length bench_names)
-      benches_by_package;
-
-    Local_session.close client;
-
-    println "";
-    println "Benchmark Summary:";
-    println ("  Total benchmark suites: " ^ Int.to_string total);
-    println ("  Passed: " ^ Int.to_string !passed);
-    println ("  Failed: " ^ Int.to_string !failed);
-
-    if !failed > 0 then
-      Error (Failure (Int.to_string !failed ^ " benchmark suite(s) failed"))
-    else Ok ()
+  let request = Test_selection.parse_request ~pattern ~legacy_package in
+  run_all_suites ~workspace ~extra_args ~package_filter:request.package_filter
+    ~query:request.query

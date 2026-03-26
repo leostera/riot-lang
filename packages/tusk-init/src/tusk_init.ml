@@ -176,7 +176,7 @@ let create_default_package target_dir workspace_name is_library =
     if is_library then
       "[lib]\npath = \"src/" ^ module_name ^ ".ml\"\n"
     else
-      "[[bin]]\nname = \"" ^ workspace_name ^ "\"\npath = \"src/" ^ module_name ^ ".ml\"\n"
+      "[[bin]]\nname = \"" ^ workspace_name ^ "\"\npath = \"src/main.ml\"\n"
   in
   
   let pkg_toml_content = {|[package]
@@ -202,10 +202,17 @@ std = { path = "../../std" }
       "open Std\n\nlet () = println \"Hello, World!\"\n"
   in
   
-  let ml_path = Path.(src_dir / Path.v (module_name ^ ".ml")) in
+  let ml_path =
+    if is_library then Path.(src_dir / Path.v (module_name ^ ".ml"))
+    else Path.(src_dir / Path.v "main.ml")
+  in
   let* () = match Fs.write ml_content ml_path with
     | Ok () -> Ok ()
-    | Error _e -> Error (Failure ("Failed to create " ^ module_name ^ ".ml"))
+    | Error _e ->
+        Error
+          (Failure
+             ("Failed to create "
+            ^ (if is_library then module_name ^ ".ml" else "main.ml")))
   in
   
   (* Create .mli file *)
@@ -216,10 +223,14 @@ std = { path = "../../std" }
       ""
   in
   
-  let mli_path = Path.(src_dir / Path.v (module_name ^ ".mli")) in
-  let* () = match Fs.write mli_content mli_path with
-    | Ok () -> Ok ()
-    | Error _e -> Error (Failure ("Failed to create " ^ module_name ^ ".mli"))
+  let* () =
+    if is_library then
+      let mli_path = Path.(src_dir / Path.v (module_name ^ ".mli")) in
+      match Fs.write mli_content mli_path with
+      | Ok () -> Ok ()
+      | Error _e -> Error (Failure ("Failed to create " ^ module_name ^ ".mli"))
+    else
+      Ok ()
   in
   
   println ("✓ Created packages/" ^ workspace_name ^ "/");

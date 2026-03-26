@@ -81,15 +81,18 @@ let test_run_tests_pattern_matches_middle_substring () =
         ("unexpected filtered names for long_case: "
        ^ String.concat ", " names)
 
-let test_run_tests_returns_no_match_exit_code () =
+let test_run_tests_returns_success_with_zero_matches () =
   let output =
     run_sample_capture [ "run-tests"; "missing_case"; "--format"; "json" ]
   in
-  if Int.equal output.status 3 then Ok ()
+  if not (Int.equal output.status 0) then
+    Error
+      ("expected filtered run with no matches to succeed, got "
+      ^ Int.to_string output.status)
+  else if test_names_from_json output.stdout = [] then Ok ()
   else
     Error
-      ("expected no-match exit code 3, got "
-      ^ Int.to_string output.status)
+      "expected filtered run with no matches to report an empty test list"
 
 let meta_tests =
   [
@@ -101,8 +104,8 @@ let meta_tests =
       "run-tests pattern matches middle substring"
       test_run_tests_pattern_matches_middle_substring;
     Test.case
-      "run-tests returns no-match exit code"
-      test_run_tests_returns_no_match_exit_code;
+      "run-tests succeeds when the query matches no tests"
+      test_run_tests_returns_success_with_zero_matches;
   ]
 
 let sample_main ~args =

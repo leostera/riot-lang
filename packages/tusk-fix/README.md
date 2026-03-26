@@ -49,7 +49,7 @@ tusk run tusk -- fix --check packages/syn
 tusk run tusk -- fix --check --limit 10 packages/syn
 
 # apply safe fixes
-tusk run tusk -- fix packages/tusk-fix
+tusk run tusk -- fix --apply packages/tusk-fix
 
 # inspect the currently loaded rule and diagnostic surfaces
 tusk run tusk -- fix --list-rules

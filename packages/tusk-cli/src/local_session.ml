@@ -66,6 +66,16 @@ let send_request t request =
 
 let receive_response ~selector = receive ~selector ()
 
+let scan_workspace t ~current_dir =
+  send_request t
+    (Protocol.ScanWorkspace { client_pid = self (); current_dir });
+  let selector msg =
+    match msg with
+    | Protocol.ServerResponse Protocol.WorkspaceScanned -> `select (Ok ())
+    | _ -> `skip
+  in
+  receive_response ~selector
+
 module BuildLock = struct
   type nonrec t = {
     path : Path.t;

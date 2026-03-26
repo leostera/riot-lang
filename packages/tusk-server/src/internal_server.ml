@@ -145,15 +145,7 @@ and handle_scan_workspace state client_pid current_dir =
         Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime ws |> Result.expect ~msg:"Failed to create empty package graph"
   in
   let new_state = { state with workspace; package_graph; load_errors } in
-  send client_pid
-    (Protocol.ServerResponse
-       (Protocol.BuildCompleted
-          {
-            session_id = Session_id.make ();
-            completed_at = Datetime.now ();
-            stats = Protocol.BuildStats.make ();
-            results = [];
-          }));
+  send client_pid (Protocol.ServerResponse Protocol.WorkspaceScanned);
   loop new_state
 
 (** Handler for getting workspace configuration *)
@@ -406,7 +398,10 @@ and handle_new_package state client_pid path name is_library =
         |> String.concat ""
       in
 
-      let main_ml = Path.(src_dir / Path.v (module_name ^ ".ml")) in
+      let main_ml =
+        if is_library then Path.(src_dir / Path.v (module_name ^ ".ml"))
+        else Path.(src_dir / Path.v "main.ml")
+      in
       let main_mli = Path.(src_dir / Path.v (module_name ^ ".mli")) in
 
       let ml_content =
@@ -423,8 +418,12 @@ and handle_new_package state client_pid path name is_library =
       let package_toml = Path.(path / Path.v "tusk.toml") in
       let toml_content =
         "[package]\nname = \"" ^ name
-        ^ "\"\nversion = \"0.1.0\"\n\n[dependencies]\nstd = \"*\"\n# Add dependencies here\n\n"
-        ^ (if is_library then "" else "[package.bin]\nmain = \"" ^ name ^ "\"")
+        ^ "\"\nversion = \"0.1.0\"\n\n"
+        ^ (if is_library then
+             "[lib]\npath = \"src/" ^ module_name ^ ".ml\"\n\n"
+           else
+             "[[bin]]\nname = \"" ^ name ^ "\"\npath = \"src/main.ml\"\n\n")
+        ^ "[dependencies]\nstd = \"*\"\n# Add dependencies here\n"
         ^ "\n"
       in
 

@@ -2,8 +2,6 @@ open Global
 open Collections
 open Arg_parser
 
-let no_matching_tests_exit_code = 3
-
 let list_tests tests =
   List.iter (fun (test : Test_case.t) -> println test.name) tests;
   Ok ()
@@ -88,8 +86,6 @@ let main ~name ~tests ~args =
               in
 
               let summary = Runner.run_tests ~config tests in
-              if Option.is_some query && Int.equal summary.total 0 then
-                exit no_matching_tests_exit_code;
               if summary.failed > 0 then exit 1;
               Ok ())
       | _ ->
