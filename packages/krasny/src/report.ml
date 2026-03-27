@@ -37,22 +37,28 @@ let summary_to_json (summary : Runner.summary) =
       ("duration_secs", Float (Time.Duration.to_secs_float summary.duration));
     ]
 
+let timestamp_field () =
+  ("timestamp", Data.Json.String (Datetime.now_utc () |> Datetime.to_iso8601))
+
 let event_to_json ~root = function
   | Start { concurrency } ->
       Data.Json.Object
         [
+          timestamp_field ();
           ("type", Data.Json.String "start");
           ("concurrency", Data.Json.Int concurrency);
         ]
   | File result -> (
       match file_result_to_json ~root result with
       | Data.Json.Object fields ->
-          Data.Json.Object (("type", Data.Json.String "file") :: fields)
+          Data.Json.Object
+            (timestamp_field () :: ("type", Data.Json.String "file") :: fields)
       | _ -> panic "expected JSON object")
   | Summary summary -> (
       match summary_to_json summary with
       | Data.Json.Object fields ->
-          Data.Json.Object (("type", Data.Json.String "summary") :: fields)
+          Data.Json.Object
+            (timestamp_field () :: ("type", Data.Json.String "summary") :: fields)
       | _ -> panic "expected JSON object")
 
 let write_line ~writer line = IO.write_all writer ~buf:(line ^ "\n")

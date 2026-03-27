@@ -41,6 +41,14 @@ let capture_json_event ~root event =
   |> Result.expect ~msg:"failed to serialize json event";
   IO.Buffer.contents buffer |> String.trim
 
+let assert_json_timestamp_field json =
+  match Data.Json.get_field "timestamp" json with
+  | Some (Data.Json.String timestamp) ->
+      Test.assert_true (String.contains timestamp "T");
+      Test.assert_true (String.ends_with ~suffix:"Z" timestamp)
+  | Some _ -> panic "timestamp field should be a JSON string"
+  | None -> panic "timestamp field missing"
+
 let assert_idempotent ~source ~msg =
   let first =
     parse_ml source |> Krasny.format |> Result.expect ~msg
@@ -203,6 +211,7 @@ let optional_fun = fun ?(y = 0) -> y + 1
             Test.assert_equal
               ~expected:(Some (String "file"))
               ~actual:(get_field "type" json);
+            assert_json_timestamp_field json;
             Test.assert_equal
               ~expected:(Some (String "needs.ml"))
               ~actual:(get_field "file" json);
@@ -250,6 +259,7 @@ let optional_fun = fun ?(y = 0) -> y + 1
             Test.assert_equal
               ~expected:(Some (String "start"))
               ~actual:(get_field "type" start_json);
+            assert_json_timestamp_field start_json;
             Test.assert_equal
               ~expected:(Some (Int 3))
               ~actual:(get_field "concurrency" start_json);

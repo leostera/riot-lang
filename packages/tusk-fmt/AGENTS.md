@@ -9,7 +9,7 @@
 2. `tusk-fmt` should only orchestrate workspace roots, flags, and exit codes.
 3. Reserve stdout for formatting results and JSONL events; send unsupported-mode guidance to stderr.
 4. Keep `--check` output streaming per file; do not buffer the full workspace before emitting results.
-5. Keep `--json` machine-readable, line-delimited, and incrementally emitted as `start`/`file`/`summary` events.
+5. Keep `--json` machine-readable, line-delimited, timestamped, and incrementally emitted as `start`/`file`/`summary` events.
 6. Do not reintroduce an `ocamlformat` dependency here; `krasny` is the formatter backend.
 
 ## Validate
