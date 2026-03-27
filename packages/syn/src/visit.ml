@@ -519,7 +519,11 @@ and descend_type_declaration walk ctx (declaration : Cst.TypeDeclaration.t) =
   let ctx =
     walk.type_definition ctx (Cst.TypeDeclaration.type_definition declaration)
   in
-  List.fold_left walk.type_constraint ctx (Cst.TypeDeclaration.constraints declaration)
+  let ctx =
+    List.fold_left walk.type_constraint ctx (Cst.TypeDeclaration.constraints declaration)
+  in
+  List.fold_left walk.type_declaration ctx
+    (Cst.TypeDeclaration.and_declarations declaration)
 
 and descend_type_extension walk ctx (declaration : Cst.TypeExtension.t) =
   let ctx =

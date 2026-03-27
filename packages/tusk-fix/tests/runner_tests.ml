@@ -418,8 +418,26 @@ let tests =
         Test.assert_equal ~expected:0
           ~actual:(List.length result.diagnostics);
         Ok ());
+    Test.case "no-unnecessary-rec skips anonymous bindings safely" (fun () ->
+        let source = "let () = Miniriot.run ~main:(fun ~args -> Bench.Cli.main ~name:\"bench\" ~benchmarks:Bench.[] ~args) ~args:Env.args ()\n" in
+        let pipeline =
+          Tusk_fix.Pipeline.make
+            ~rules:[ Tusk_fix.Rules.No_unnecessary_rec.make () ]
+            ()
+        in
+        let result = Tusk_fix.Pipeline.run pipeline source in
+        Test.assert_equal ~expected:[]
+          ~actual:(diagnostic_rule_ids result.diagnostics);
+        Ok ());
     Test.case "rule explanations explain unnecessary rec" (fun () ->
         assert_explanation_contains ~rule_id:"no-unnecessary-rec" ~snippet:"Remove rec");
+    Test.case "default pipeline handles mutual type declarations safely"
+      (fun () ->
+        let source = "type first = One and second = Two\n" in
+        let result = Tusk_fix.Pipeline.run (Tusk_fix.Pipeline.default ()) source in
+        Test.assert_equal ~expected:[]
+          ~actual:(diagnostic_rule_ids result.diagnostics);
+        Ok ());
     Test.case "no-useless-let-return flags redundant passthrough bindings" (fun () ->
         let source = "let render x = let value = parse x in value\n" in
         let pipeline =

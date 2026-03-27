@@ -2367,6 +2367,7 @@ module TypeDeclaration = struct
     type_definition : TypeDefinition.t;
     private_flag : private_flag;
     constraints : type_constraint list;
+    and_declarations : t list;
     is_destructive_substitution : bool;
   }
 
@@ -2376,6 +2377,7 @@ module TypeDeclaration = struct
   let type_definition decl = decl.type_definition
   let private_flag decl = decl.private_flag
   let constraints decl = decl.constraints
+  let and_declarations decl = decl.and_declarations
   let is_destructive_substitution decl = decl.is_destructive_substitution
   let is_private decl = PrivateFlag.is_private decl.private_flag
 
@@ -2402,16 +2404,6 @@ module TypeExtension = struct
     match Ident.last_segment decl.type_name with
     | Some token -> token
     | None -> panic "TypeExtension.name_token: missing type name token"
-end
-
-module TypeMutualDeclaration = struct
-  type t = {
-    syntax_node : syntax_node;
-    declarations : TypeDeclaration.t list;
-  }
-
-  let syntax_node decl = decl.syntax_node
-  let declarations decl = decl.declarations
 end
 
 module LetBinding = struct
@@ -2567,7 +2559,6 @@ type include_statement = {
 module StructureItem = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
-    | TypeMutualDeclaration of TypeMutualDeclaration.t
     | TypeExtension of TypeExtension.t
     | LetBinding of LetBinding.t
     | Expression of Expression.t
@@ -2586,7 +2577,6 @@ module StructureItem = struct
 
   let syntax_node = function
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
-    | TypeMutualDeclaration decl -> TypeMutualDeclaration.syntax_node decl
     | TypeExtension decl -> TypeExtension.syntax_node decl
     | LetBinding binding -> LetBinding.syntax_node binding
     | Expression expr -> Expression.syntax_node expr
@@ -2608,7 +2598,6 @@ end
 module SignatureItem = struct
   type t =
     | TypeDeclaration of TypeDeclaration.t
-    | TypeMutualDeclaration of TypeMutualDeclaration.t
     | TypeExtension of TypeExtension.t
     | Attribute of attribute
     | Extension of extension
@@ -2625,7 +2614,6 @@ module SignatureItem = struct
 
   let syntax_node = function
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
-    | TypeMutualDeclaration decl -> TypeMutualDeclaration.syntax_node decl
     | TypeExtension decl -> TypeExtension.syntax_node decl
     | Attribute attribute -> attribute.syntax_node
     | Extension extension -> extension.syntax_node

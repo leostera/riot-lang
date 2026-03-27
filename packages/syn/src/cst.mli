@@ -3709,6 +3709,7 @@ module TypeDeclaration : sig
     type_definition : TypeDefinition.t;
     private_flag : private_flag;
     constraints : type_constraint list;
+    and_declarations : t list;
     is_destructive_substitution : bool;
   }
 
@@ -3723,6 +3724,7 @@ module TypeDeclaration : sig
       `type color = private Red | Blue`.
   *)
   val constraints : t -> TypeConstraint.t list
+  val and_declarations : t -> t list
   (** `true` for interface destructive substitutions such as `type t := string`. *)
   val is_destructive_substitution : t -> bool
   val is_private : t -> bool
@@ -3751,16 +3753,6 @@ module TypeExtension : sig
   val type_params : t -> TypeParameter.t list
   val constructors : t -> VariantConstructor.t list
   val name_token : t -> Token.t
-end
-
-module TypeMutualDeclaration : sig
-  type t = {
-    syntax_node : syntax_node;
-    declarations : TypeDeclaration.t list;
-  }
-
-  val syntax_node : t -> syntax_node
-  val declarations : t -> TypeDeclaration.t list
 end
 
 (** Helper view over `let_binding`.
@@ -4065,8 +4057,6 @@ module StructureItem : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
         (** A `type` declaration item. *)
-    | TypeMutualDeclaration of TypeMutualDeclaration.t
-        (** A grouped `type ... and ...` declaration item. *)
     | TypeExtension of TypeExtension.t
         (** A `type ... += ...` extension item. *)
     | LetBinding of LetBinding.t
@@ -4110,8 +4100,6 @@ module SignatureItem : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
         (** A `type` declaration item. *)
-    | TypeMutualDeclaration of TypeMutualDeclaration.t
-        (** A grouped `type ... and ...` declaration item. *)
     | TypeExtension of TypeExtension.t
         (** A `type ... += ...` extension item. *)
     | Attribute of attribute

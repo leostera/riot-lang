@@ -11,7 +11,7 @@
     },
     "items": [
       {
-        "tag": "type_mutual_declaration",
+        "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_MUTUAL_DECL",
@@ -20,36 +20,45 @@
               "end": 55
             }
           },
-          "declarations": [
-            {
+          "type_name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 5,
+                "end": 9
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "foo",
+              "span": {
+                "start": 5,
+                "end": 8
+              }
+            }
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "alias",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 11,
+                "end": 15
+              }
+            },
+            "manifest": {
+              "tag": "constr",
               "syntax_node": {
-                "kind": "TYPE_DECL",
+                "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 0,
+                  "start": 11,
                   "end": 15
                 }
               },
-              "type_name": {
+              "constructor_path": {
                 "tag": "ident",
-                "syntax_node": {
-                  "kind": "MODULE_PATH",
-                  "span": {
-                    "start": 5,
-                    "end": 9
-                  }
-                },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "foo",
-                  "span": {
-                    "start": 5,
-                    "end": 8
-                  }
-                }
-              },
-              "type_params": [],
-              "type_definition": {
-                "tag": "alias",
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
@@ -57,38 +66,19 @@
                     "end": 15
                   }
                 },
-                "manifest": {
-                  "tag": "constr",
-                  "syntax_node": {
-                    "kind": "TYPE_CONSTR",
-                    "span": {
-                      "start": 11,
-                      "end": 15
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "TYPE_CONSTR",
-                      "span": {
-                        "start": 11,
-                        "end": 15
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "int",
-                      "span": {
-                        "start": 11,
-                        "end": 14
-                      }
-                    }
-                  },
-                  "arguments": []
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "int",
+                  "span": {
+                    "start": 11,
+                    "end": 14
+                  }
                 }
               },
-              "is_destructive_substitution": false
-            },
+              "arguments": []
+            }
+          },
+          "and_declarations": [
             {
               "syntax_node": {
                 "kind": "TYPE_DECL",
@@ -164,7 +154,8 @@
               },
               "is_destructive_substitution": false
             }
-          ]
+          ],
+          "is_destructive_substitution": false
         }
       }
     ]

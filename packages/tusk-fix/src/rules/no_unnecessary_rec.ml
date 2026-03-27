@@ -19,13 +19,19 @@ stand out only where recursion is real.
 |}
 
 let self_references_binding binding =
-  let name = Syn.Cst.LetBinding.name binding in
-  let value_node = Syn.Cst.LetBinding.value_syntax_node binding in
-  Traversal.find_tokens
-    (fun token -> String.equal (Syn.Ceibo.Red.SyntaxToken.text token) name)
-    value_node
-  |> List.length
-  |> fun count -> count > 0
+  match Syn.Cst.LetBinding.binding_name_token binding with
+  | None ->
+      (* Anonymous or pattern bindings cannot be checked for self-reference by name.
+         Keep the rule conservative and skip them instead of crashing the run. *)
+      true
+  | Some name_token ->
+      let name = Syn.Cst.Token.text name_token in
+      let value_node = Syn.Cst.LetBinding.value_syntax_node binding in
+      Traversal.find_tokens
+        (fun token -> String.equal (Syn.Ceibo.Red.SyntaxToken.text token) name)
+        value_node
+      |> List.length
+      |> fun count -> count > 0
 
 let rec_token binding =
   Traversal.find_tokens

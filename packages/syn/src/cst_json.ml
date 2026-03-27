@@ -1717,10 +1717,14 @@ let type_definition_to_json = function
           ("fields", Json.Array (List.map row_field_to_json (Cst.PolyVariant.fields poly_variant)));
         ]
 
-let type_declaration_to_json decl =
+let rec type_declaration_to_json decl =
   let constraints =
     Cst.TypeDeclaration.constraints decl
     |> List.map type_constraint_to_json
+  in
+  let and_declarations =
+    Cst.TypeDeclaration.and_declarations decl
+    |> List.map type_declaration_to_json
   in
   Json.Object
     ([
@@ -1743,6 +1747,9 @@ let type_declaration_to_json decl =
     (if constraints = [] then []
      else [ ("constraints", Json.Array constraints) ])
     @
+    (if and_declarations = [] then []
+     else [ ("and_declarations", Json.Array and_declarations) ])
+    @
     [ ( "is_destructive_substitution",
         Json.Bool (Cst.TypeDeclaration.is_destructive_substitution decl) );
     ])
@@ -1760,17 +1767,6 @@ let type_extension_to_json decl =
         Json.Array
           (List.map variant_constructor_to_json
              (Cst.TypeExtension.constructors decl)) );
-    ]
-
-let type_mutual_declaration_to_json decl =
-  Json.Object
-    [
-      ( "syntax_node",
-        syntax_node_to_json (Cst.TypeMutualDeclaration.syntax_node decl) );
-      ( "declarations",
-        Json.Array
-          (List.map type_declaration_to_json
-             (Cst.TypeMutualDeclaration.declarations decl)) );
     ]
 
 let module_declaration_to_json decl =
@@ -2174,12 +2170,6 @@ let structure_item_to_json = function
           ("tag", Json.String "type_declaration");
           ("item", type_declaration_to_json decl);
         ]
-  | Cst.StructureItem.TypeMutualDeclaration decl ->
-      Json.Object
-        [
-          ("tag", Json.String "type_mutual_declaration");
-          ("item", type_mutual_declaration_to_json decl);
-        ]
   | Cst.StructureItem.TypeExtension decl ->
       Json.Object
         [
@@ -2277,12 +2267,6 @@ let signature_item_to_json = function
         [
           ("tag", Json.String "type_declaration");
           ("item", type_declaration_to_json decl);
-        ]
-  | Cst.SignatureItem.TypeMutualDeclaration decl ->
-      Json.Object
-        [
-          ("tag", Json.String "type_mutual_declaration");
-          ("item", type_mutual_declaration_to_json decl);
         ]
   | Cst.SignatureItem.TypeExtension decl ->
       Json.Object

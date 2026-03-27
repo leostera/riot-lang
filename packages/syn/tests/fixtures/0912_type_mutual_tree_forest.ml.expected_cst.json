@@ -11,7 +11,7 @@
     },
     "items": [
       {
-        "tag": "type_mutual_declaration",
+        "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_MUTUAL_DECL",
@@ -20,65 +20,55 @@
               "end": 56
             }
           },
-          "declarations": [
-            {
-              "syntax_node": {
-                "kind": "TYPE_DECL",
-                "span": {
-                  "start": 0,
-                  "end": 33
-                }
-              },
-              "type_name": {
-                "tag": "ident",
+          "type_name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 5,
+                "end": 10
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "tree",
+              "span": {
+                "start": 5,
+                "end": 9
+              }
+            }
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "variant",
+            "syntax_node": {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 0,
+                "end": 33
+              }
+            },
+            "constructors": [
+              {
                 "syntax_node": {
-                  "kind": "MODULE_PATH",
+                  "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 5,
-                    "end": 10
-                  }
-                },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "tree",
-                  "span": {
-                    "start": 5,
-                    "end": 9
-                  }
-                }
-              },
-              "type_params": [],
-              "type_definition": {
-                "tag": "variant",
-                "syntax_node": {
-                  "kind": "TYPE_DECL",
-                  "span": {
-                    "start": 0,
+                    "start": 12,
                     "end": 33
                   }
                 },
-                "constructors": [
-                  {
-                    "syntax_node": {
-                      "kind": "TYPE_VARIANT_CONSTR",
-                      "span": {
-                        "start": 12,
-                        "end": 33
-                      }
-                    },
-                    "constructor_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Node",
-                      "span": {
-                        "start": 12,
-                        "end": 16
-                      }
-                    }
+                "constructor_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Node",
+                  "span": {
+                    "start": 12,
+                    "end": 16
                   }
-                ]
-              },
-              "is_destructive_substitution": false
-            },
+                }
+              }
+            ]
+          },
+          "and_declarations": [
             {
               "syntax_node": {
                 "kind": "TYPE_DECL",
@@ -177,7 +167,8 @@
               },
               "is_destructive_substitution": false
             }
-          ]
+          ],
+          "is_destructive_substitution": false
         }
       }
     ]

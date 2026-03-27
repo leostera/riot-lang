@@ -219,18 +219,18 @@ let tests =
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
         match structure_items cst with
-        | Syn.Cst.StructureItem.TypeMutualDeclaration decl :: _ -> (
-            match Syn.Cst.TypeMutualDeclaration.declarations decl with
-            | [ first; second ] ->
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
+            match Syn.Cst.TypeDeclaration.and_declarations decl with
+            | [ second ] ->
                 Test.assert_equal ~expected:(Some "node")
-                  ~actual:(Syn.Cst.Ident.name (Syn.Cst.TypeDeclaration.type_name first));
+                  ~actual:(Syn.Cst.Ident.name (Syn.Cst.TypeDeclaration.type_name decl));
                 Test.assert_equal ~expected:(Some "forest")
                   ~actual:(Syn.Cst.Ident.name (Syn.Cst.TypeDeclaration.type_name second));
                 Ok ()
             | _ ->
                 Error "expected two grouped type declarations")
         | _ ->
-            Error "expected grouped mutual type declaration");
+            Error "expected grouped type declaration");
     Test.case "cst type declarations expose direct type parameters" (fun () ->
         let result =
           parse_ml "type ('a, 'error) resultish = int\n"

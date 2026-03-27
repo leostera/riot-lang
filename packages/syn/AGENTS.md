@@ -19,6 +19,7 @@
 13. Keep expression attributes orthogonal to expression shape; attach them via `Expression.attributes` instead of wrapper nodes or postfix-shell `Apply` artifacts.
 14. Keep record-expression fields parsetree-like: always lift a field value expression, and preserve punning with explicit metadata instead of `None`.
 15. Keep packed first-class module expressions direct: `Expression.ModulePack.module_expression` should be the packed payload itself, and any `: S` ascription should stay in `Expression.ModulePack.module_type` instead of being rewritten as an inner `ModuleExpression.Constraint`.
+16. Keep grouped `type ... and ...` items on `TypeDeclaration.and_declarations`; do not reintroduce a separate `TypeMutualDeclaration` CST node.
 
 ## Validate
 

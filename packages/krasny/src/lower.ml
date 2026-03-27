@@ -1732,11 +1732,12 @@ let type_declaration_requires_verbatim decl =
   | _ ->
       false
 
-let type_mutual_declaration_requires_verbatim decl =
-  Syn.Cst.TypeMutualDeclaration.declarations decl
-  |> List.exists type_declaration_requires_verbatim
+let type_declaration_group_requires_verbatim decl =
+  type_declaration_requires_verbatim decl
+  || List.exists type_declaration_requires_verbatim
+       (Syn.Cst.TypeDeclaration.and_declarations decl)
 
-let render_type_declaration_with_keyword keyword decl =
+let render_single_type_declaration_with_keyword keyword decl =
   if type_declaration_requires_verbatim decl then
     doc_of_verbatim_syntax_node_span_from_current_source
       (Syn.Cst.TypeDeclaration.syntax_node decl)
@@ -1797,18 +1798,18 @@ let render_type_declaration_with_keyword keyword decl =
   in
   with_constraints
 
-let render_type_mutual_declaration decl =
-  if type_mutual_declaration_requires_verbatim decl then
+let render_type_declaration_with_keyword keyword decl =
+  let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
+  if and_declarations = [] then
+    render_single_type_declaration_with_keyword keyword decl
+  else if type_declaration_group_requires_verbatim decl then
     doc_of_verbatim_syntax_node_span_from_current_source
-      (Syn.Cst.TypeMutualDeclaration.syntax_node decl)
+      (Syn.Cst.TypeDeclaration.syntax_node decl)
   else
-    match Syn.Cst.TypeMutualDeclaration.declarations decl with
-    | [] ->
-        Doc.empty
-    | first :: rest ->
-        Doc.join blank_line
-          (render_type_declaration_with_keyword kw_type first
-          :: List.map (render_type_declaration_with_keyword kw_and) rest)
+    Doc.join blank_line
+      (render_single_type_declaration_with_keyword keyword decl
+      :: List.map (render_single_type_declaration_with_keyword kw_and)
+           and_declarations)
 
 let render_external_declaration (decl : Syn.Cst.external_declaration) =
   let primitive_names =
@@ -4662,8 +4663,7 @@ and render_signature_entry ~source ~source_offset ~span ~trailing_suffix item =
   in
   let tight_after =
     match item with
-    | Syn.Cst.SignatureItem.TypeDeclaration _
-    | Syn.Cst.SignatureItem.TypeMutualDeclaration _ ->
+    | Syn.Cst.SignatureItem.TypeDeclaration _ ->
         true
     | _ ->
         false
@@ -4678,8 +4678,6 @@ and render_structure_item = function
       render_let_binding binding
   | Syn.Cst.StructureItem.TypeDeclaration decl ->
       render_type_declaration_with_keyword kw_type decl
-  | Syn.Cst.StructureItem.TypeMutualDeclaration decl ->
-      render_type_mutual_declaration decl
   | Syn.Cst.StructureItem.ExternalDeclaration decl ->
       render_external_declaration decl
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
@@ -4741,8 +4739,6 @@ and render_signature_item item =
   match item with
   | Syn.Cst.SignatureItem.TypeDeclaration decl ->
       render_type_declaration_with_keyword kw_type decl
-  | Syn.Cst.SignatureItem.TypeMutualDeclaration decl ->
-      render_type_mutual_declaration decl
   | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
       render_module_declaration_with_keyword (Doc.text "module") decl
   | Syn.Cst.SignatureItem.RecursiveModuleDeclaration decl ->
@@ -4776,7 +4772,6 @@ and render_signature_item item =
 and structure_item_uses_verbatim_span = function
   | Syn.Cst.StructureItem.LetBinding _
   | Syn.Cst.StructureItem.TypeDeclaration _
-  | Syn.Cst.StructureItem.TypeMutualDeclaration _
   | Syn.Cst.StructureItem.ExternalDeclaration _
   | Syn.Cst.StructureItem.ModuleDeclaration _
   | Syn.Cst.StructureItem.RecursiveModuleDeclaration _
@@ -4838,7 +4833,6 @@ and span_of_syntax_node_nonwhitespace_bounds ?(preserve_leading_trivia = false) 
 
 and signature_item_uses_verbatim_span = function
   | Syn.Cst.SignatureItem.TypeDeclaration _
-  | Syn.Cst.SignatureItem.TypeMutualDeclaration _
   | Syn.Cst.SignatureItem.ModuleDeclaration _
   | Syn.Cst.SignatureItem.RecursiveModuleDeclaration _
   | Syn.Cst.SignatureItem.ModuleTypeDeclaration _
@@ -4895,8 +4889,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
       span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia:true syntax_node
     else
       match item with
-      | Syn.Cst.StructureItem.TypeDeclaration _
-      | Syn.Cst.StructureItem.TypeMutualDeclaration _ ->
+      | Syn.Cst.StructureItem.TypeDeclaration _ ->
           span_of_syntax_node_nonwhitespace_bounds syntax_node
       | _ ->
           span_of_syntax_node_nontrivia_bounds syntax_node

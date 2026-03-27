@@ -5428,23 +5428,23 @@ let type_declaration_from_node node =
                 type_definition = type_definition_from_node node;
                 private_flag = private_flag_from_type_declaration_node node;
                 constraints = lifted_constraints;
+                and_declarations = [];
                 is_destructive_substitution = has_destructive_substitution;
               }
       | None -> None)
   | None -> None
 
-let type_mutual_declaration_from_nodes ~group_syntax_node nodes =
+let grouped_type_declaration_from_nodes ~group_syntax_node nodes =
   let decls =
     nodes
     |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL)
     |> List.filter_map type_declaration_from_node
   in
-  if decls = [] then
-    None
-  else
-    Some
-      Cst.TypeMutualDeclaration.
-        { syntax_node = group_syntax_node; declarations = decls }
+  match decls with
+  | [] ->
+      None
+  | first :: rest ->
+      Some { first with syntax_node = group_syntax_node; and_declarations = rest }
 
 let type_extension_from_node node =
   let extension_type_params =
@@ -5995,8 +5995,8 @@ let rec structure_items_from_node node =
              (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL)
              child_nodes
       then
-        match type_mutual_declaration_from_nodes ~group_syntax_node:node child_nodes with
-        | Some decl -> [ Cst.StructureItem.TypeMutualDeclaration decl ]
+        match grouped_type_declaration_from_nodes ~group_syntax_node:node child_nodes with
+        | Some decl -> [ Cst.StructureItem.TypeDeclaration decl ]
         | None -> unsupported_item node
       else
         child_nodes |> List.concat_map structure_items_from_node
@@ -6158,8 +6158,8 @@ let rec signature_items_from_node node =
              (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL)
              child_nodes
       then
-        match type_mutual_declaration_from_nodes ~group_syntax_node:node child_nodes with
-        | Some decl -> [ Cst.SignatureItem.TypeMutualDeclaration decl ]
+        match grouped_type_declaration_from_nodes ~group_syntax_node:node child_nodes with
+        | Some decl -> [ Cst.SignatureItem.TypeDeclaration decl ]
         | None -> unsupported_item node
       else
         child_nodes |> List.concat_map signature_items_from_node
@@ -7173,8 +7173,8 @@ let validate_type_constraint ~context ({ left; right; _ } : Cst.type_constraint)
   validate_core_type ~context:("type_constraint.left" :: context) left;
   validate_core_type ~context:("type_constraint.right" :: context) right
 
-let validate_type_declaration ~context
-    ({ type_definition; constraints; _ } : Cst.TypeDeclaration.t) =
+let rec validate_type_declaration ~context
+    ({ type_definition; constraints; and_declarations; _ } : Cst.TypeDeclaration.t) =
   validate_type_definition ~context:("item.type_declaration" :: context)
     type_definition;
   List.iteri
@@ -7184,7 +7184,15 @@ let validate_type_declaration ~context
           (("item.type_declaration.constraint[" ^ Int.to_string index ^ "]")
           :: context)
         constraint_)
-    constraints
+    constraints;
+  List.iteri
+    (fun index declaration ->
+      validate_type_declaration
+        ~context:
+          (("item.type_declaration.and_declarations[" ^ Int.to_string index ^ "]")
+          :: context)
+        declaration)
+    and_declarations
 
 let validate_type_extension ~context ({ constructors; _ } : Cst.TypeExtension.t) =
   List.iteri
@@ -7243,9 +7251,6 @@ let validate_open_statement ~context stmt =
 let validate_structure_item ~context = function
   | Cst.StructureItem.TypeDeclaration decl ->
       validate_type_declaration ~context decl
-  | Cst.StructureItem.TypeMutualDeclaration decl ->
-      Cst.TypeMutualDeclaration.declarations decl
-      |> List.iter (validate_type_declaration ~context)
   | Cst.StructureItem.TypeExtension decl ->
       validate_type_extension ~context decl
   | Cst.StructureItem.LetBinding { binding_pattern; value; and_bindings; _ } ->
@@ -7291,9 +7296,6 @@ let validate_structure_item ~context = function
 let validate_signature_item ~context = function
   | Cst.SignatureItem.TypeDeclaration decl ->
       validate_type_declaration ~context decl
-  | Cst.SignatureItem.TypeMutualDeclaration decl ->
-      Cst.TypeMutualDeclaration.declarations decl
-      |> List.iter (validate_type_declaration ~context)
   | Cst.SignatureItem.TypeExtension decl ->
       validate_type_extension ~context decl
   | Cst.SignatureItem.Attribute _ | Cst.SignatureItem.Extension _ ->

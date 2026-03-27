@@ -11,7 +11,7 @@
     },
     "items": [
       {
-        "tag": "type_mutual_declaration",
+        "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_MUTUAL_DECL",
@@ -20,82 +20,72 @@
               "end": 106
             }
           },
-          "declarations": [
-            {
-              "syntax_node": {
-                "kind": "TYPE_DECL",
-                "span": {
-                  "start": 0,
-                  "end": 46
-                }
-              },
-              "type_name": {
-                "tag": "ident",
+          "type_name": {
+            "tag": "ident",
+            "syntax_node": {
+              "kind": "MODULE_PATH",
+              "span": {
+                "start": 5,
+                "end": 10
+              }
+            },
+            "name_token": {
+              "kind": "IDENT_EXPR",
+              "text": "node",
+              "span": {
+                "start": 5,
+                "end": 9
+              }
+            }
+          },
+          "type_params": [],
+          "type_definition": {
+            "tag": "variant",
+            "syntax_node": {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 0,
+                "end": 46
+              }
+            },
+            "constructors": [
+              {
                 "syntax_node": {
-                  "kind": "MODULE_PATH",
+                  "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 5,
-                    "end": 10
+                    "start": 12,
+                    "end": 24
                   }
                 },
-                "name_token": {
+                "constructor_name": {
                   "kind": "IDENT_EXPR",
-                  "text": "node",
+                  "text": "Leaf",
                   "span": {
-                    "start": 5,
-                    "end": 9
+                    "start": 12,
+                    "end": 16
                   }
                 }
               },
-              "type_params": [],
-              "type_definition": {
-                "tag": "variant",
+              {
                 "syntax_node": {
-                  "kind": "TYPE_DECL",
+                  "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 0,
+                    "start": 26,
                     "end": 46
                   }
                 },
-                "constructors": [
-                  {
-                    "syntax_node": {
-                      "kind": "TYPE_VARIANT_CONSTR",
-                      "span": {
-                        "start": 12,
-                        "end": 24
-                      }
-                    },
-                    "constructor_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Leaf",
-                      "span": {
-                        "start": 12,
-                        "end": 16
-                      }
-                    }
-                  },
-                  {
-                    "syntax_node": {
-                      "kind": "TYPE_VARIANT_CONSTR",
-                      "span": {
-                        "start": 26,
-                        "end": 46
-                      }
-                    },
-                    "constructor_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Branch",
-                      "span": {
-                        "start": 26,
-                        "end": 32
-                      }
-                    }
+                "constructor_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Branch",
+                  "span": {
+                    "start": 26,
+                    "end": 32
                   }
-                ]
-              },
-              "is_destructive_substitution": false
-            },
+                }
+              }
+            ]
+          },
+          "and_declarations": [
             {
               "syntax_node": {
                 "kind": "TYPE_DECL",
@@ -278,7 +268,8 @@
               },
               "is_destructive_substitution": false
             }
-          ]
+          ],
+          "is_destructive_substitution": false
         }
       }
     ]
