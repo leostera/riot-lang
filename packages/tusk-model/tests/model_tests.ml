@@ -152,7 +152,7 @@ let test_workspace_fmt_ignore_parses () =
 [workspace]
 members = ["packages/demo"]
 
-[fmt]
+[tusk.fmt]
 ignore = ["fixtures", "generated"]
 |}
     |> Result.expect ~msg:"expected workspace TOML to parse"
@@ -172,7 +172,7 @@ let test_package_fmt_ignore_loads () =
 name = "demo"
 version = "0.1.0"
 
-[fmt]
+[tusk.fmt]
 ignore = ["tests/fixtures", "vendor"]
 |}
         manifest_path
@@ -182,6 +182,19 @@ ignore = ["tests/fixtures", "vendor"]
         ~expected:[ "tests/fixtures"; "vendor" ]
         ~actual:config.ignore_patterns;
       Ok ())
+
+let test_legacy_fmt_ignore_still_loads () =
+  let toml =
+    Std.Data.Toml.parse
+      {|
+[fmt]
+ignore = ["fixtures"]
+|}
+    |> Result.expect ~msg:"expected legacy fmt TOML to parse"
+  in
+  let config = Tusk_model.Fmt_config.of_toml toml in
+  Test.assert_equal ~expected:[ "fixtures" ] ~actual:config.ignore_patterns;
+  Ok ()
 
 let tests =
   Test.
@@ -195,6 +208,8 @@ let tests =
         test_explicit_binaries_override_autodiscovery;
       case "fmt config: workspace ignore parses" test_workspace_fmt_ignore_parses;
       case "fmt config: package ignore loads" test_package_fmt_ignore_loads;
+      case "fmt config: legacy top-level fmt still loads"
+        test_legacy_fmt_ignore_still_loads;
     ]
 
 let name = "Tusk Model Tests"

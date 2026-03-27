@@ -7,17 +7,30 @@ type t = {
 
 let empty = { ignore_patterns = [] }
 
+let parse_fmt_table = function
+  | Toml.Table fmt_items -> (
+      match List.assoc_opt "ignore" fmt_items with
+      | Some (Toml.Array items) ->
+          {
+            ignore_patterns = List.filter_map Toml.get_string items;
+          }
+      | _ -> empty)
+  | _ -> empty
+
 let of_toml = function
   | Toml.Table items -> (
-      match List.assoc_opt "fmt" items with
-      | Some (Toml.Table fmt_items) -> (
-          match List.assoc_opt "ignore" fmt_items with
-          | Some (Toml.Array items) ->
-              {
-                ignore_patterns = List.filter_map Toml.get_string items;
-              }
-          | _ -> empty)
-      | _ -> empty)
+      match List.assoc_opt "tusk" items with
+      | Some (Toml.Table tusk_items) -> (
+          match List.assoc_opt "fmt" tusk_items with
+          | Some fmt_table -> parse_fmt_table fmt_table
+          | None -> (
+              match List.assoc_opt "fmt" items with
+              | Some fmt_table -> parse_fmt_table fmt_table
+              | None -> empty))
+      | _ -> (
+          match List.assoc_opt "fmt" items with
+          | Some fmt_table -> parse_fmt_table fmt_table
+          | None -> empty))
   | _ -> empty
 
 let load path =
