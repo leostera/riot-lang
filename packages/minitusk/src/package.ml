@@ -95,9 +95,9 @@ let read path =
         let uses_stdlib, uses_unix, uses_dynlink =
           match Toml.find "dependencies" items with
           | Some (Toml.Table dep_items) ->
-              let has_stdlib = Toml.find "stdlib" dep_items <> None in
-              let has_unix = Toml.find "unix" dep_items <> None in
-              let has_dynlink = Toml.find "dynlink" dep_items <> None in
+              let has_stdlib = Toml.find "stdlib" dep_items != None in
+              let has_unix = Toml.find "unix" dep_items != None in
+              let has_dynlink = Toml.find "dynlink" dep_items != None in
               (has_stdlib, has_unix, has_dynlink)
           | _ -> (false, false, false)
         in

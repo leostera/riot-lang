@@ -113,7 +113,7 @@ let execute_action ~project_root ~package ~cc_flags ~ld_flags ~uses_stdlib ~uses
       Printf.printf "  DEBUG: Writing generated file %s\n" path;
       (* Create parent directory if needed *)
       let dir = Filename.dirname path in
-      if dir <> "." && dir <> "" then Io.mkdir_p dir;
+      if dir != "." && dir != "" then Io.mkdir_p dir;
       Io.write_file path content
   | CopyFile { src; dst } ->
       (* src is relative from project root, dst preserves directory structure *)
@@ -121,7 +121,7 @@ let execute_action ~project_root ~package ~cc_flags ~ld_flags ~uses_stdlib ~uses
       Printf.printf "  DEBUG: Copying %s -> %s\n" src_absolute dst;
       (* Create parent directory if needed *)
       let dst_dir = Filename.dirname dst in
-      if dst_dir <> "." && dst_dir <> "" then Io.mkdir_p dst_dir;
+      if dst_dir != "." && dst_dir != "" then Io.mkdir_p dst_dir;
       Io.copy_file src_absolute dst
   | CompileInterface { sandbox_dir; src_file; output; includes; opens } -> (
       (* Build flags for open modules *)
@@ -506,7 +506,7 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
 
   (* Add final archive creation if we have any .cmo or .o files *)
   let () =
-    if !cmo_files <> [] || !o_files <> [] then (
+    if !cmo_files != [] || !o_files != [] then (
       let archive_name = Dep_graph.Module_name.cma dep_graph.package_name in
       (* cmo_files should now be in correct linking order after edge fixes *)
       let all_objects = !cmo_files @ !o_files in

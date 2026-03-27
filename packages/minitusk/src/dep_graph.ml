@@ -1131,7 +1131,7 @@ let get_dependencies t =
   (* These are all packages that were built before us *)
   let all_packages = Build_results.get_package_names t.build_results in
   List.filter
-    (fun name -> name <> Module_name.to_string t.package_name)
+    (fun name -> name != Module_name.to_string t.package_name)
     all_packages
 
 let scan_native_dir t =

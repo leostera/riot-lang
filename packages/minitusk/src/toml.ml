@@ -54,7 +54,7 @@ let parse content =
 
   (* Skip to end of line *)
   let skip_to_eol () =
-    while (not (at_end ())) && current_char () <> '\n' do
+    while (not (at_end ())) && current_char () != '\n' do
       advance ()
     done;
     if not (at_end ()) then advance () (* skip \n *)
@@ -76,7 +76,7 @@ let parse content =
   (* Parse a quoted string *)
   let parse_quoted_string () =
     let start_pos = !pos in
-    if current_char () <> '"' then
+    if current_char () != '"' then
       raise
         (Parse_exception
            (Unexpected_char
@@ -121,7 +121,7 @@ let parse content =
   (* Parse an array *)
   let rec parse_array () =
     let start_pos = !pos in
-    if current_char () <> '[' then
+    if current_char () != '[' then
       raise
         (Parse_exception
            (Unexpected_char
@@ -159,7 +159,7 @@ let parse content =
   (* Parse an inline table { key = value, ... } *)
   and parse_inline_table () =
     let start_pos = !pos in
-    if current_char () <> '{' then
+    if current_char () != '{' then
       raise
         (Parse_exception
            (Unexpected_char
@@ -189,8 +189,8 @@ let parse content =
           let key_start = !pos in
           while
             (not (at_end ()))
-            && current_char () <> '='
-            && current_char () <> '}'
+            && current_char () != '='
+            && current_char () != '}'
           do
             advance ()
           done;
@@ -198,7 +198,7 @@ let parse content =
             String.trim (String.sub content key_start (!pos - key_start))
           in
           skip_ws ();
-          if at_end () || current_char () <> '=' then
+          if at_end () || current_char () != '=' then
             raise
               (Parse_exception
                  (Parse_error
@@ -265,7 +265,7 @@ let parse content =
   let parse_key () =
     skip_ws ();
     let start = !pos in
-    while (not (at_end ())) && current_char () <> '=' do
+    while (not (at_end ())) && current_char () != '=' do
       advance ()
     done;
     String.trim (String.sub content start (!pos - start))
@@ -273,7 +273,7 @@ let parse content =
 
   (* Parse section header [name] or [[name]] *)
   let parse_section_header () =
-    if current_char () <> '[' then
+    if current_char () != '[' then
       raise
         (Parse_exception
            (Unexpected_char
@@ -289,7 +289,7 @@ let parse content =
       skip_ws ());
 
     let start = !pos in
-    while (not (at_end ())) && current_char () <> ']' do
+    while (not (at_end ())) && current_char () != ']' do
       advance ()
     done;
     if at_end () then
@@ -306,7 +306,7 @@ let parse content =
     (* If array of tables, expect another ] *)
     if is_array then (
       skip_ws ();
-      if current_char () <> ']' then
+      if current_char () != ']' then
         raise
           (Parse_exception
              (Parse_error
@@ -359,7 +359,7 @@ let parse content =
       | _ ->
           (* Parse key = value *)
           let key = parse_key () in
-          if at_end () || current_char () <> '=' then
+          if at_end () || current_char () != '=' then
             skip_to_eol () (* Skip malformed lines *)
           else (
             advance ();
@@ -411,7 +411,7 @@ let parse content =
             in
             let updated_table = insert_nested_table rest value existing_table in
             (* Replace or add the key with updated nested table *)
-            let acc_without_key = List.filter (fun (k, _) -> k <> key) acc in
+            let acc_without_key = List.filter (fun (k, _) -> k != key) acc in
             (key, Table updated_table) :: acc_without_key
       in
 

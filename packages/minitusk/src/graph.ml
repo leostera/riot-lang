@@ -152,7 +152,7 @@ let topo_sort graph =
   done;
 
   (* Check for cycles *)
-  if !processed <> Hashtbl.length graph.nodes then (
+  if !processed != Hashtbl.length graph.nodes then (
     (* Find nodes that are part of cycles (those with in-degree > 0) *)
     let cycle_nodes = ref [] in
     Hashtbl.iter
