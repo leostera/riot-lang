@@ -65,4 +65,6 @@ Current fail-fast progress (2026-03-26):
   - `vendor/ocaml/runtime/build_config.h` currently contains `#define OCAML_STDLIB_DIR "/usr/local/lib/ocaml"`
   - `vendor/ocaml/Makefile` still generates `runtime/build_config.h` from `$(TARGET_LIBDIR)` rather than forcing `../lib/ocaml`
   - manually exporting `OCAMLLIB=$(pwd)/vendor/ocaml/cross/aarch64-apple-darwin/lib/ocaml` makes the native compiler resolve the expected stdlib path, which points at the rebase/build config rather than the release wrapper as the root issue
+- Related fallout:
+  - `./docker/build.sh` is also currently broken and should be revisited after the relocatable OCaml regression is fixed
 - When we come back to this, inspect the rebased relocatable patches first before doing more work on the publishing scripts.
