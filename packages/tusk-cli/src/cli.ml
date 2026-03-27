@@ -57,19 +57,26 @@ let set_verbosity verbose =
   | _ -> Log.(set_level Trace)
 
 (** Get workspace or return None *)
-let get_workspace () =
+let get_workspace_scan () =
   match Env.current_dir () with
   | Error _ -> None
   | Ok cwd -> (
       match Tusk_model.Workspace_manager.scan cwd with
       | Error _ -> None
-      | Ok (workspace, _load_errors) -> Some workspace)
+      | Ok (workspace, load_errors) -> Some (workspace, load_errors))
+
+let get_workspace () = Option.map fst (get_workspace_scan ())
 
 (** Try to execute a package command if it exists *)
-let try_command cmd_name remaining_args =
-  match get_workspace () with
+let try_command ?workspace_scan cmd_name remaining_args =
+  let workspace_scan =
+    match workspace_scan with
+    | Some workspace_scan -> Some workspace_scan
+    | None -> get_workspace_scan ()
+  in
+  match workspace_scan with
   | None -> None
-  | Some workspace -> (
+  | Some (workspace, load_errors) -> (
       (* Parse package:command format *)
       match String.split_on_char ':' cmd_name with
       | [package_name; command_name] -> (
@@ -84,7 +91,10 @@ let try_command cmd_name remaining_args =
               Log.info ("Command binary path: " ^ Path.to_string cmd.command_binary);
               (* Build the package first to ensure command is up to date *)
               Log.info ("Building package: " ^ cmd.package_name);
-              (match Build.build_command (Some cmd.package_name) None with
+              (match
+                 Build.build_command ~workspace ~load_errors
+                   (Some cmd.package_name) None
+               with
               | Error err ->
                   Log.error ("Failed to build package: " ^ Exception.to_string err);
                   Some (Error err)
@@ -126,7 +136,8 @@ format = "full"
   Tusk_model.Tusk_dirs.ensure_created () |> Result.expect ~msg:"Could not create tusk dirs";
 
   (* Try to load workspace for command discovery (silently fail if not in workspace) *)
-  let workspace_opt = get_workspace () in
+  let workspace_scan_opt = get_workspace_scan () in
+  let workspace_opt = Option.map fst workspace_scan_opt in
   
   (* Check if first arg is a package command (format: package:command) before ArgParser *)
   match args with
@@ -134,7 +145,7 @@ format = "full"
       Completions.run_install_args rest
   | _ :: cmd :: rest when String.contains cmd ":" -> (
       (* This looks like a package command, try to execute it directly *)
-      match try_command cmd rest with
+      match try_command ?workspace_scan:workspace_scan_opt cmd rest with
       | Some result -> result
       | None ->
           (* Not a valid package command, fall through to normal parsing *)
@@ -160,12 +171,14 @@ format = "full"
 
       match ArgParser.get_subcommand matches with
       | Some ("build", build_matches) -> 
-          (match workspace_opt with
-          | Some workspace -> 
+          (match workspace_scan_opt with
+          | Some (workspace, load_errors) -> 
               (match ensure_toolchain workspace with
-              | Ok () -> Build.run build_matches
+              | Ok () -> Build.run ~workspace ~load_errors build_matches
               | Error _ as e -> e)
-          | None -> Build.run build_matches)
+          | None ->
+              eprintln "❌ Not in a tusk workspace";
+              Error (Failure "Not in a tusk workspace"))
       | Some ("run", run_matches) -> 
           (match workspace_opt with
           | Some workspace -> 
@@ -214,7 +227,7 @@ format = "full"
             | cmd_arg :: rest when cmd_arg = cmd -> rest
             | _ -> []
           in
-          match try_command cmd remaining_args with
+          match try_command ?workspace_scan:workspace_scan_opt cmd remaining_args with
           | Some result -> result
           | None ->
               ArgParser.print_error (ArgParser.UnknownSubcommand cmd);

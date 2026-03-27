@@ -33,7 +33,7 @@ let run matches =
   in
 
   match
-    Local_session.connect_local ~workspace
+    Local_session.connect_local ~workspace ()
   with
   | Ok client -> (
       let package_kind = if is_library then "library" else "binary" in

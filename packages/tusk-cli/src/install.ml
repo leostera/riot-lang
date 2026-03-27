@@ -21,7 +21,7 @@ let build_package package_name =
   let (workspace, _load_errors) =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Operation failed"
   in
-  let client_result = Local_session.connect_local ~workspace in
+  let client_result = Local_session.connect_local ~workspace () in
   if Result.is_error client_result then false
   else
     let client = client_result |> Result.expect ~msg:"Operation failed" in
@@ -89,7 +89,7 @@ let run matches =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
   in
   let client =
-    Local_session.connect_local ~workspace
+    Local_session.connect_local ~workspace ()
     |> Result.expect ~msg:"Failed to start local tusk session"
   in
 

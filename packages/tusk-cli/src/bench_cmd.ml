@@ -8,7 +8,7 @@ type suite_binary = {
 }
 
 let reconnect ~workspace =
-  Local_session.connect_local ~workspace
+  Local_session.connect_local ~workspace ()
   |> Result.expect ~msg:"Failed to start local tusk session"
 
 let command =

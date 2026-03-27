@@ -4,7 +4,7 @@ open Tusk_model
 open ArgParser
 
 let reconnect ~workspace =
-  Local_session.connect_local ~workspace
+  Local_session.connect_local ~workspace ()
   |> Result.expect ~msg:"Failed to start local tusk session"
 
 let command =
@@ -79,7 +79,7 @@ let run matches =
           |> Result.expect ~msg:"Failed to scan workspace"
         in
         let client =
-          Local_session.connect_local ~workspace
+          Local_session.connect_local ~workspace ()
           |> Result.expect ~msg:"Failed to start local tusk session"
         in
         let _ =

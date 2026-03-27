@@ -58,8 +58,11 @@ type streaming_event =
 type build_target = BuildPackage of string | BuildPackages of string list | BuildAll
 type build_scope = Runtime | Dev
 
-let connect_local ~workspace =
-  match Tusk_server.start_local ~workspace ~config:Tusk_server.Server_config.default with
+let connect_local ?(load_errors = []) ~workspace () =
+  match
+    Tusk_server.start_local ~workspace ~load_errors
+      ~config:Tusk_server.Server_config.default ()
+  with
   | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
   | Error exn -> Error (Exception.to_string exn)
 

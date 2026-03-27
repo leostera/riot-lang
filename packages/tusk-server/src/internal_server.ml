@@ -15,13 +15,8 @@ type server_state = {
   active_target : string;
 }
 
-let build_state ~(workspace : Workspace.t) ~config =
+let build_state ~(workspace : Workspace.t) ~load_errors ~config =
   let _ = config in
-  let (workspace, load_errors) =
-    Workspace_manager.scan workspace.root
-    |> Result.expect ~msg:"tusk_server: workspace scan failed"
-  in
-
   if List.length load_errors > 0 then (
     Log.warn
       ("Workspace loaded with " ^ Int.to_string (List.length load_errors)
@@ -487,22 +482,9 @@ and handle_build state client_pid target scope target_arch session_id =
       | Some arch -> ", arch: " ^ arch
       | None -> ""));
 
-  (* Rescan workspace to pick up any tusk.toml changes *)
-  let (workspace, load_errors) =
-    Workspace_manager.scan state.workspace.root
-    |> Result.expect ~msg:"tusk_server: workspace scan failed"
-  in
-  let package_graph = 
-    match Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime workspace with
-    | Ok graph -> graph
-    | Error _ -> 
-        let ws = Workspace.make ~root:workspace.root ~packages:[] () in
-        Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime ws |> Result.expect ~msg:"Failed to create empty package graph"
-  in
-  let updated_state = { state with workspace; package_graph; load_errors } in
   let active_profile =
     Tusk_model.Profile.(
-      apply_overrides debug workspace.profile_overrides |> fun p -> p.name)
+      apply_overrides debug state.workspace.profile_overrides |> fun p -> p.name)
   in
   let active_target =
     match target_arch with
@@ -513,7 +495,7 @@ and handle_build state client_pid target scope target_arch session_id =
     | None -> Tusk_model.Tusk_dirs.host_target ()
   in
   let updated_state =
-    { updated_state with active_profile; active_target }
+    { state with active_profile; active_target }
   in
 
   let server_pid = self () in
@@ -525,9 +507,9 @@ and handle_build state client_pid target scope target_arch session_id =
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state
 
-let start_local ~workspace ~config =
+let start_local ~workspace ?(load_errors = []) ~config () =
   try
-    let state = build_state ~workspace ~config in
+    let state = build_state ~workspace ~load_errors ~config in
     let server_pid =
       spawn (fun () ->
           let _ = loop state in

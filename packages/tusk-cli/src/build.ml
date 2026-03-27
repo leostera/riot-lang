@@ -101,18 +101,9 @@ let command =
          |> help "Build for all configured targets";
        ]
 
-let run_build_request ?(scope = Runtime) request target_arch =
-  let cwd =
-    Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
-  in
-  let (workspace, _load_errors) =
-    Workspace_manager.scan cwd
-    |> Result.expect
-         ~msg:"Failed to scan workspace. Is this a valid tusk project?"
-  in
-
+let run_build_request ~workspace ~load_errors ?(scope = Runtime) request target_arch =
   let client =
-    Local_session.connect_local ~workspace
+    Local_session.connect_local ~workspace ~load_errors ()
     |> Result.expect ~msg:"Failed to start local tusk session"
   in
   let displayed_packages = HashSet.create () in
@@ -249,34 +240,38 @@ let run_build_request ?(scope = Runtime) request target_arch =
   | Local_session.BuildStarted _ | Local_session.BuildEvent _ ->
       Error (Failure "Unexpected response from server")
 
-let build_command ?(scope = Runtime) package_opt target_arch =
+let build_command ?workspace ?load_errors ?(scope = Runtime) package_opt target_arch =
+  let (workspace, load_errors) =
+    match (workspace, load_errors) with
+    | Some workspace, Some load_errors -> (workspace, load_errors)
+    | _ ->
+        let cwd =
+          Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
+        in
+        Workspace_manager.scan cwd
+        |> Result.expect
+             ~msg:"Failed to scan workspace. Is this a valid tusk project?"
+  in
   let request =
     match package_opt with
     | Some pkg -> Local_session.BuildPackage pkg
     | None -> Local_session.BuildAll
   in
-  run_build_request ~scope request target_arch
+  run_build_request ~workspace ~load_errors ~scope request target_arch
 
-let build_packages_command ?(scope = Runtime) package_names target_arch =
+let build_packages_command ~workspace ~load_errors ?(scope = Runtime) package_names target_arch =
   let request =
     match package_names with
     | [] -> Local_session.BuildAll
     | [ package_name ] -> Local_session.BuildPackage package_name
     | packages -> Local_session.BuildPackages packages
   in
-  run_build_request ~scope request target_arch
+  run_build_request ~workspace ~load_errors ~scope request target_arch
 
-let run matches =
+let run ~workspace ~load_errors matches =
   let open ArgParser in
   let package_names = get_many matches "package" in
-  
-  (* Get workspace to resolve targets *)
-  let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-  let (workspace, _load_errors) =
-    Workspace_manager.scan cwd
-    |> Result.expect ~msg:"Failed to scan workspace. Is this a valid tusk project?"
-  in
-  
+
   (* Resolve target(s) from flags *)
   let targets = match resolve_targets workspace matches with
     | Ok targets -> targets
@@ -320,7 +315,7 @@ let run matches =
     | Some arch -> out ("🔨 Cross-compiling for " ^ arch)
     | None -> ());
     
-    build_packages_command package_names target_arch
+    build_packages_command ~workspace ~load_errors package_names target_arch
   ) else (
     out "❌ No targets specified";
     Error (Failure "No targets")
