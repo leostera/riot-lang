@@ -53,3 +53,16 @@ Current fail-fast progress (2026-03-26):
   - new focused fixtures:
     - `0910_docstring_before_local_open_let.ml`
     - `1100_tagged_quoted_string_literal.ml`
+
+### Parked Release/Toolchain Follow-Up
+
+- Vendored OCaml cross-compiler publication is currently blocked by a relocatability regression after the OCaml 5.5 rebase.
+- Current repro on Apple Silicon macOS:
+  - `./scripts/release/ocaml.sh aarch64-apple-darwin-x-aarch64-unknown-linux-gnu`
+  - fails in `make crossopt` with `Error: Unbound module Stdlib`
+- Key evidence gathered:
+  - `vendor/ocaml/cross/aarch64-apple-darwin/bin/ocamlc -config` reports `standard_library_default: /usr/local/lib/ocaml`
+  - `vendor/ocaml/runtime/build_config.h` currently contains `#define OCAML_STDLIB_DIR "/usr/local/lib/ocaml"`
+  - `vendor/ocaml/Makefile` still generates `runtime/build_config.h` from `$(TARGET_LIBDIR)` rather than forcing `../lib/ocaml`
+  - manually exporting `OCAMLLIB=$(pwd)/vendor/ocaml/cross/aarch64-apple-darwin/lib/ocaml` makes the native compiler resolve the expected stdlib path, which points at the rebase/build config rather than the release wrapper as the root issue
+- When we come back to this, inspect the rebased relocatable patches first before doing more work on the publishing scripts.
