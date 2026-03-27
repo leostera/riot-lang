@@ -10,8 +10,9 @@
 3. Reserve stdout for formatting results and JSONL events; send unsupported-mode guidance to stderr.
 4. Keep `--check` output streaming per file; do not buffer the full workspace before emitting results.
 5. Keep `--verify` as a safety preflight over krasny's syntax-hash roundtrip logic. It should report files that would reformat safely separately from files that are unsafe to format.
-6. Keep `--json` machine-readable, line-delimited, timestamped, and incrementally emitted as `start`/`file`/`summary` events.
-7. Do not reintroduce an `ocamlformat` dependency here; `krasny` is the formatter backend.
+6. Keep no-flag `tusk fmt` as the in-place rewrite path, with the same streaming per-file reporting shape as `--check` and `--verify`.
+7. Keep `--json` machine-readable, line-delimited, timestamped, and incrementally emitted as `start`/`file`/`summary` events.
+8. Do not reintroduce an `ocamlformat` dependency here; `krasny` is the formatter backend.
 
 ## Validate
 

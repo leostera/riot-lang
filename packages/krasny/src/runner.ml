@@ -5,12 +5,14 @@ open Std.Collections
 type run_mode =
   | Check
   | Verify
+  | Format
 
 type file_status =
   | Already_formatted
   | Needs_formatting
   | Would_reformat
   | Unsafe_to_format
+  | Formatted
   | Failed
 
 type file_result = {
@@ -27,6 +29,7 @@ type summary = {
   needs_formatting : int;
   would_reformat : int;
   unsafe_to_format : int;
+  formatted_files : int;
   failed_files : int;
   duration : Time.Duration.t;
 }
@@ -302,6 +305,14 @@ let format_file ~mode file =
                            ("semantic-hash mismatch after formatting (original: "
                           ^ original_hash ^ ", formatted: " ^ formatted_hash
                           ^ ")"))
+              | Format -> (
+                  match Fs.write formatted file with
+                  | Ok () ->
+                      finalize file start ~status:Formatted
+                        ~needs_formatting:false ~error:None
+                  | Error err ->
+                      finalize file start ~status:Failed ~needs_formatting:false
+                        ~error:(Some (IO.error_message err)))
           in
           result
       | Error err ->
@@ -512,6 +523,12 @@ let summarize ~duration files =
             total_files = acc.total_files + 1;
             unsafe_to_format = acc.unsafe_to_format + 1;
           }
+      | Formatted ->
+          {
+            acc with
+            total_files = acc.total_files + 1;
+            formatted_files = acc.formatted_files + 1;
+          }
       | Already_formatted ->
           {
             acc with
@@ -524,6 +541,7 @@ let summarize ~duration files =
       needs_formatting = 0;
       would_reformat = 0;
       unsafe_to_format = 0;
+      formatted_files = 0;
       failed_files = 0;
       duration;
     }
@@ -539,6 +557,7 @@ let run_streaming ~mode ?(concurrency = System.available_parallelism)
     match mode with
     | Check -> check_file
     | Verify -> verify_file
+    | Format -> format_file ~mode:Format
   in
   let _dispatcher =
     spawn (fun () ->
@@ -571,6 +590,9 @@ let run_checks_streaming ?concurrency ?should_ignore ~roots ~on_result () =
 let run_verify_streaming ?concurrency ?should_ignore ~roots ~on_result () =
   run_streaming ~mode:Verify ?concurrency ?should_ignore ~roots ~on_result ()
 
+let run_format_streaming ?concurrency ?should_ignore ~roots ~on_result () =
+  run_streaming ~mode:Format ?concurrency ?should_ignore ~roots ~on_result ()
+
 let run_batch ~mode ?(concurrency = System.available_parallelism)
     ?(should_ignore = fun _ -> false) files =
   let concurrency = max 1 concurrency in
@@ -579,6 +601,7 @@ let run_batch ~mode ?(concurrency = System.available_parallelism)
     match mode with
     | Check -> check_file
     | Verify -> verify_file
+    | Format -> format_file ~mode:Format
   in
   let files =
     files
@@ -598,3 +621,6 @@ let run_checks ?concurrency ?should_ignore files =
 
 let run_verify ?concurrency ?should_ignore files =
   run_batch ~mode:Verify ?concurrency ?should_ignore files
+
+let run_format ?concurrency ?should_ignore files =
+  run_batch ~mode:Format ?concurrency ?should_ignore files

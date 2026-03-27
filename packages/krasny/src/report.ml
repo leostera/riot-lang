@@ -21,6 +21,7 @@ let file_result_to_json ~root (result : Runner.file_result) =
     | Runner.Needs_formatting -> "needs_formatting"
     | Runner.Would_reformat -> "would_reformat"
     | Runner.Unsafe_to_format -> "unsafe_to_format"
+    | Runner.Formatted -> "formatted"
     | Runner.Failed -> "failed"
   in
   Object
@@ -41,6 +42,7 @@ let summary_to_json (summary : Runner.summary) =
       ("needs_formatting", Int summary.needs_formatting);
       ("would_reformat", Int summary.would_reformat);
       ("unsafe_to_format", Int summary.unsafe_to_format);
+      ("formatted_files", Int summary.formatted_files);
       ("failed_files", Int summary.failed_files);
       ("duration_secs", Float (Time.Duration.to_secs_float summary.duration));
     ]
@@ -56,7 +58,10 @@ let event_to_json ~root = function
           ("type", Data.Json.String "start");
           ( "mode",
             Data.Json.String
-              (match mode with Runner.Check -> "check" | Runner.Verify -> "verify")
+              (match mode with
+              | Runner.Check -> "check"
+              | Runner.Verify -> "verify"
+              | Runner.Format -> "format")
           );
           ("concurrency", Data.Json.Int concurrency);
         ]
@@ -83,6 +88,7 @@ let write_text_file_result ~writer ~root (result : Runner.file_result) =
     | Runner.Already_formatted, _ -> ("\027[1;32m✓\027[0m", " (already formatted)")
     | Runner.Needs_formatting, _ -> ("\027[1;33m!\027[0m", " (needs formatting)")
     | Runner.Would_reformat, _ -> ("\027[1;32m✓\027[0m", " (would reformat safely)")
+    | Runner.Formatted, _ -> ("\027[1;32m✓\027[0m", " (formatted)")
     | Runner.Unsafe_to_format, Some error ->
         ("\027[1;31m✗\027[0m", " (unsafe to format: " ^ error ^ ")")
     | Runner.Unsafe_to_format, None -> ("\027[1;31m✗\027[0m", " (unsafe to format)")
@@ -90,25 +96,36 @@ let write_text_file_result ~writer ~root (result : Runner.file_result) =
   let path = relative_to_root ~root result.file in
   write_line ~writer (status_char ^ " " ^ path ^ suffix)
 
-let write_text_summary ~writer (summary : Runner.summary) =
+let write_text_summary ~writer ~mode (summary : Runner.summary) =
   let status_char =
     if
-      summary.needs_formatting = 0
-      && summary.unsafe_to_format = 0
-      && summary.failed_files = 0
+      match mode with
+      | Runner.Check ->
+          summary.needs_formatting = 0 && summary.failed_files = 0
+      | Runner.Verify ->
+          summary.unsafe_to_format = 0 && summary.failed_files = 0
+      | Runner.Format ->
+          summary.failed_files = 0
     then
       "\027[1;32m✓\027[0m"
     else
       "\027[1;31m✗\027[0m"
   in
   let duration = Time.Duration.to_secs_string ~precision:2 summary.duration in
+  let verb =
+    match mode with
+    | Runner.Check -> "Checked"
+    | Runner.Verify -> "Verified"
+    | Runner.Format -> "Formatted"
+  in
   let line =
-    status_char ^ " Checked " ^ Int.to_string summary.total_files ^ " files in "
+    status_char ^ " " ^ verb ^ " " ^ Int.to_string summary.total_files ^ " files in "
     ^ duration ^ "s (" ^ Int.to_string summary.already_formatted
     ^ " already formatted, " ^ Int.to_string summary.needs_formatting
     ^ " need formatting, " ^ Int.to_string summary.would_reformat
     ^ " would reformat safely, " ^ Int.to_string summary.unsafe_to_format
-    ^ " unsafe to format, " ^ Int.to_string summary.failed_files ^ " failed)"
+    ^ " unsafe to format, " ^ Int.to_string summary.formatted_files
+    ^ " formatted, " ^ Int.to_string summary.failed_files ^ " failed)"
   in
   write_line ~writer line
 

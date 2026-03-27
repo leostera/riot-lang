@@ -340,6 +340,45 @@ let optional_fun = fun ?(y = 0) -> y + 1
               ~expected:(Some (String "would_reformat"))
               ~actual:(get_field "status" json);
             Ok ()));
+    Test.case "format rewrites files in place and reports formatted status"
+      (fun () ->
+        with_tempdir "krasny_runner_format" (fun tmpdir ->
+            let formatted = Path.(tmpdir / Path.v "formatted.ml") in
+            let needs = Path.(tmpdir / Path.v "needs.ml") in
+            Fs.write "let x = 1 + 2\n" formatted
+            |> Result.expect ~msg:"write formatted";
+            Fs.write "let x = 1 + 2\nlet f x = x + 1\n" needs
+            |> Result.expect ~msg:"write needs";
+            let result = Krasny.Runner.run_format [ formatted; needs ] in
+            Test.assert_equal ~expected:2 ~actual:result.summary.total_files;
+            Test.assert_equal
+              ~expected:1
+              ~actual:result.summary.already_formatted;
+            Test.assert_equal ~expected:1 ~actual:result.summary.formatted_files;
+            Test.assert_equal ~expected:0 ~actual:result.summary.failed_files;
+            let formatted_source =
+              Fs.read needs |> Result.expect ~msg:"read formatted output"
+            in
+            Test.assert_equal
+              ~expected:"let x = 1 + 2\n\nlet f x = x + 1\n"
+              ~actual:formatted_source;
+            let file_result =
+              result.files
+              |> List.find_opt (fun file_result ->
+                     String.equal (Path.to_string file_result.Krasny.Runner.file)
+                       (Path.to_string needs))
+              |> Option.expect ~msg:"format result missing"
+            in
+            let json =
+              capture_json_event ~root:tmpdir (Krasny.Report.File file_result)
+              |> Data.Json.of_string
+              |> Result.expect ~msg:"parse event json"
+            in
+            let open Data.Json in
+            Test.assert_equal
+              ~expected:(Some (String "formatted"))
+              ~actual:(get_field "status" json);
+            Ok ()));
     Test.case "streaming runner skips ignored files" (fun () ->
         with_tempdir "krasny_runner_ignore" (fun tmpdir ->
             let keep = Path.(tmpdir / Path.v "keep.ml") in

@@ -16,6 +16,7 @@ val write_text_file_result :
 
 val write_text_summary :
   writer:('dst, 'err) IO.Writer.t ->
+  mode:Runner.run_mode ->
   Runner.summary ->
   (unit, 'err) result
 

@@ -3,12 +3,14 @@ open Std
 type run_mode =
   | Check
   | Verify
+  | Format
 
 type file_status =
   | Already_formatted
   | Needs_formatting
   | Would_reformat
   | Unsafe_to_format
+  | Formatted
   | Failed
 
 type file_result = {
@@ -25,6 +27,7 @@ type summary = {
   needs_formatting : int;
   would_reformat : int;
   unsafe_to_format : int;
+  formatted_files : int;
   failed_files : int;
   duration : Time.Duration.t;
 }
@@ -58,5 +61,14 @@ val run_verify_streaming :
   unit ->
   run_result
 
+val run_format_streaming :
+  ?concurrency:int ->
+  ?should_ignore:(Path.t -> bool) ->
+  roots:Path.t list ->
+  on_result:(file_result -> unit) ->
+  unit ->
+  run_result
+
 val run_checks : ?concurrency:int -> ?should_ignore:(Path.t -> bool) -> Path.t list -> run_result
 val run_verify : ?concurrency:int -> ?should_ignore:(Path.t -> bool) -> Path.t list -> run_result
+val run_format : ?concurrency:int -> ?should_ignore:(Path.t -> bool) -> Path.t list -> run_result
