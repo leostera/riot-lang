@@ -1,7 +1,7 @@
 open Std
 
 type event =
-  | Start of { total_files : int; concurrency : int }
+  | Start of { concurrency : int }
   | File of Runner.file_result
   | Summary of Runner.summary
 
@@ -38,11 +38,10 @@ let summary_to_json (summary : Runner.summary) =
     ]
 
 let event_to_json ~root = function
-  | Start { total_files; concurrency } ->
+  | Start { concurrency } ->
       Data.Json.Object
         [
           ("type", Data.Json.String "start");
-          ("total_files", Data.Json.Int total_files);
           ("concurrency", Data.Json.Int concurrency);
         ]
   | File result -> (

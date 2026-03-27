@@ -20,4 +20,11 @@ val collect_ocaml_files : roots:Path.t list -> Path.t list
 
 val check_file : Path.t -> file_result
 
+val run_checks_streaming :
+  ?concurrency:int ->
+  roots:Path.t list ->
+  on_result:(file_result -> unit) ->
+  unit ->
+  run_result
+
 val run_checks : ?concurrency:int -> Path.t list -> run_result

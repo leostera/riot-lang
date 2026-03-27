@@ -210,6 +210,51 @@ let optional_fun = fun ?(y = 0) -> y + 1
               ~expected:(Some (String "needs_formatting"))
               ~actual:(get_field "status" json);
             Ok ()));
+    Test.case "streaming runner scans roots and streams file results" (fun () ->
+        with_tempdir "krasny_runner_stream" (fun tmpdir ->
+            let formatted = Path.(tmpdir / Path.v "formatted.ml") in
+            let nested_dir = Path.(tmpdir / Path.v "nested") in
+            let needs = Path.(nested_dir / Path.v "needs.mli") in
+            Fs.create_dir_all nested_dir |> Result.expect ~msg:"create nested";
+            Fs.write "let x = 1 + 2\n" formatted
+            |> Result.expect ~msg:"write formatted";
+            Fs.write "val x : int\n" needs
+            |> Result.expect ~msg:"write needs";
+            let seen = cell [] in
+            let result =
+              Krasny.Runner.run_checks_streaming ~concurrency:1 ~roots:[ tmpdir ]
+                ~on_result:(fun file_result ->
+                  seen := Path.to_string file_result.file :: !seen)
+                ()
+            in
+            let actual = List.sort String.compare !seen in
+            let expected =
+              [ Path.to_string formatted; Path.to_string needs ]
+              |> List.sort String.compare
+            in
+            Test.assert_equal ~expected ~actual;
+            Test.assert_equal ~expected:2 ~actual:result.summary.total_files;
+            Test.assert_equal
+              ~expected:2
+              ~actual:result.summary.already_formatted;
+            Test.assert_equal
+              ~expected:0
+              ~actual:result.summary.needs_formatting;
+            Test.assert_equal ~expected:0 ~actual:result.summary.failed_files;
+            let start_json =
+              capture_json_event ~root:tmpdir (Krasny.Report.Start { concurrency = 3 })
+              |> Data.Json.of_string
+              |> Result.expect ~msg:"parse start json"
+            in
+            let open Data.Json in
+            Test.assert_equal
+              ~expected:(Some (String "start"))
+              ~actual:(get_field "type" start_json);
+            Test.assert_equal
+              ~expected:(Some (Int 3))
+              ~actual:(get_field "concurrency" start_json);
+            Test.assert_equal ~expected:None ~actual:(get_field "total_files" start_json);
+            Ok ()));
   ]
 
 let () =
