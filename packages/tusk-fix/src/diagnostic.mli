@@ -60,3 +60,6 @@ val group_diagnostics : t list -> grouped list
 
 val grouped_to_formatted_output :
   file:Path.t -> source:string -> grouped -> string
+
+val grouped_list_to_formatted_output :
+  file:Path.t -> source:string -> grouped list -> string

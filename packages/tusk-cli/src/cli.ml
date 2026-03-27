@@ -103,9 +103,9 @@ let ensure_toolchain workspace =
   match Tusk_toolchain.init ~config:toolchain_config with
   | Ok _ -> Ok ()
   | Error msg ->
-      println "\n❌ ERROR: Toolchain initialization failed!\n";
-      println msg;
-      println "";
+      eprintln "\n❌ ERROR: Toolchain initialization failed!\n";
+      eprintln msg;
+      eprintln "";
       Error (Failure "Toolchain not available")
 
 let main ~args =

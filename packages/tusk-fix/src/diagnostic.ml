@@ -1,4 +1,7 @@
 open Std
+open Std.Collections
+
+module Array = Std.Collections.Array
 
 type severity = Tusk_fix_api.Diagnostic.severity =
   | Error
@@ -37,6 +40,11 @@ let severity_to_colored_string = function
   | Warning -> "\027[1;33mwarning\027[0m"
   | Info -> "\027[1;36minfo\027[0m"
   | Hint -> "\027[1;90mhint\027[0m"
+
+type source_layout = {
+  lines : string array;
+  line_starts : int array;
+}
 
 let message = Tusk_fix_api.Diagnostic.message
 
@@ -84,34 +92,50 @@ let to_colored_string diag =
   in
   String.concat "\n" lines
 
-let extract_code_snippet source (span : Syn.Ceibo.Span.t) =
-  let lines = String.split_on_char '\n' source in
-  let line_lengths = List.map String.length lines in
-  let rec line_at index = function
-    | [] -> None
-    | line :: _ when index = 0 -> Some line
-    | _ :: rest when index > 0 -> line_at (index - 1) rest
-    | _ -> None
+let make_source_layout source =
+  let lines = String.split_on_char '\n' source |> Array.of_list in
+  let line_starts = Array.make (Array.length lines) 0 in
+  let offset = ref 0 in
+  for index = 0 to Array.length lines - 1 do
+    line_starts.(index) <- !offset;
+    offset := !offset + String.length lines.(index) + 1
+  done;
+  { lines; line_starts }
+
+let line_for_pos layout pos =
+  let rec search low high best =
+    if low > high then
+      best
+    else
+      let mid = (low + high) / 2 in
+      if layout.line_starts.(mid) <= pos then
+        search (mid + 1) high mid
+      else
+        search low (mid - 1) best
   in
-  let rec find_line line_lengths_list pos line_num acc_len =
-    match line_lengths_list with
-    | [] -> (line_num, 0)
-    | len :: rest ->
-        if pos <= acc_len + len then (line_num, pos - acc_len)
-        else find_line rest pos (line_num + 1) (acc_len + len + 1)
-    (* +1 for newline *)
+  let last_index = Array.length layout.line_starts - 1 in
+  let line_idx = if last_index < 0 then 0 else search 0 last_index 0 in
+  let start_offset =
+    if Array.length layout.line_starts = 0 then 0 else layout.line_starts.(line_idx)
   in
-  let start_pos = span.start in
-  let end_pos =
-    if span.end_ <= span.start then span.start + 1 else span.end_
-  in
-  let start_line, start_col = find_line line_lengths start_pos 1 0 in
-  let end_line, end_col = find_line line_lengths end_pos 1 0 in
-  let line_idx = start_line - 1 in
-  match line_at line_idx lines with
-  | Some code_line ->
+  line_idx, Int.max 0 (pos - start_offset)
+
+let extract_code_snippet_from_layout layout (span : Syn.Ceibo.Span.t) =
+  if Array.length layout.lines = 0 then
+    None
+  else
+    let start_pos = span.start in
+    let end_pos =
+      if span.end_ <= span.start then span.start + 1 else span.end_
+    in
+    let start_idx, start_col = line_for_pos layout start_pos in
+    let end_idx, end_col = line_for_pos layout end_pos in
+    if start_idx < 0 || start_idx >= Array.length layout.lines then
+      None
+    else
+      let code_line = layout.lines.(start_idx) in
       let marker_width =
-        if start_line = end_line then
+        if start_idx = end_idx then
           let width = end_col - start_col in
           if width <= 0 then 1 else width
         else
@@ -124,8 +148,10 @@ let extract_code_snippet source (span : Syn.Ceibo.Span.t) =
         ^ String.make marker_width '^'
         ^ "\027[0m"
       in
-      Some (code_line, pointer_line, start_line)
-  | None -> None
+      Some (code_line, pointer_line, start_idx + 1)
+
+let extract_code_snippet source span =
+  extract_code_snippet_from_layout (make_source_layout source) span
 
 let to_formatted_output ~file ~source diag =
   let header = Path.to_string file ^ ":" in
@@ -225,6 +251,7 @@ let group_diagnostics (diags : t list) : grouped list =
   |> Iter.Iterator.to_list
 
 let grouped_to_formatted_output ~file ~source grouped =
+  let layout = make_source_layout source in
   let header = Path.to_string file ^ ":" in
   let basic_info =
     [
@@ -242,7 +269,7 @@ let grouped_to_formatted_output ~file ~source grouped =
   let lines_with_snippets =
     List.fold_left
       (fun acc span ->
-        match extract_code_snippet source span with
+        match extract_code_snippet_from_layout layout span with
         | Some (code_line, pointer_line, line_num) ->
             acc
             @ [
@@ -267,3 +294,53 @@ let grouped_to_formatted_output ~file ~source grouped =
     @ [ ""; explain_hint grouped.severity grouped.rule_id ]
   in
   header ^ "\n" ^ String.concat "\n" lines_with_explain ^ "\n"
+
+let grouped_to_formatted_output_with_layout ~file ~layout grouped =
+  let header = Path.to_string file ^ ":" in
+  let basic_info =
+    [
+      colored_header_label grouped.severity grouped.rule_id;
+      "";
+      grouped.message;
+    ]
+  in
+  let spans =
+    List.sort
+      (fun (left : Syn.Ceibo.Span.t) (right : Syn.Ceibo.Span.t) ->
+        Int.compare left.start right.start)
+      grouped.spans
+  in
+  let lines_with_snippets =
+    List.fold_left
+      (fun acc span ->
+        match extract_code_snippet_from_layout layout span with
+        | Some (code_line, pointer_line, line_num) ->
+            acc
+            @ [
+                "";
+                "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
+                "  \027[1;90m"
+                ^ String.make (String.length (string_of_int line_num)) ' '
+                ^ " |\027[0m " ^ pointer_line;
+              ]
+        | None -> acc @ [ "  at " ^ Syn.Ceibo.Span.to_string span ])
+      basic_info spans
+  in
+  let lines_with_suggestion =
+    match grouped.suggestion, grouped.fix with
+    | Some sugg, _ -> lines_with_snippets @ [ ""; "  \027[1;90m→\027[0m " ^ sugg ]
+    | None, Some fix ->
+        lines_with_snippets @ [ ""; "  \027[1;90m→\027[0m " ^ Fix.title fix ]
+    | None, None -> lines_with_snippets
+  in
+  let lines_with_explain =
+    lines_with_suggestion
+    @ [ ""; explain_hint grouped.severity grouped.rule_id ]
+  in
+  header ^ "\n" ^ String.concat "\n" lines_with_explain ^ "\n"
+
+let grouped_list_to_formatted_output ~file ~source grouped =
+  let layout = make_source_layout source in
+  grouped
+  |> List.map (grouped_to_formatted_output_with_layout ~file ~layout)
+  |> String.concat ""

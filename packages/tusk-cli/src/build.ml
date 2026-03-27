@@ -5,6 +5,8 @@ open Tusk_server
 
 type build_scope = Runtime | Dev
 
+let out = eprintln
+
 (** Helper functions for target resolution *)
 
 let ensure_toolchains_for_targets workspace targets =
@@ -18,22 +20,22 @@ let ensure_toolchains_for_targets workspace targets =
   ) targets in
   
   if List.length missing > 0 then (
-    println "";
-    println ("📥 Installing " ^ Int.to_string (List.length missing) ^ " missing toolchain(s)...");
-    println "";
+    out "";
+    out ("📥 Installing " ^ Int.to_string (List.length missing) ^ " missing toolchain(s)...");
+    out "";
     
     let host = Tusk_toolchain.get_host_triple () in
     List.iter (fun target ->
       match Tusk_toolchain.download_and_install_toolchain config.version ~host ~target with
-      | Ok () -> println ("  ✓ " ^ target)
+      | Ok () -> out ("  ✓ " ^ target)
       | Error msg -> 
-          println ("  ✗ " ^ target ^ ": " ^ msg);
-          println "";
-          println ("❌ Failed to install toolchain for " ^ target);
+          out ("  ✗ " ^ target ^ ": " ^ msg);
+          out "";
+          out ("❌ Failed to install toolchain for " ^ target);
           exit 1
     ) missing;
     
-    println ""
+    out ""
   )
 
 let get_configured_targets workspace =
@@ -153,7 +155,7 @@ let build_command ?(scope = Runtime) package_opt target_arch =
             | _ -> ());
 
             let msg = Event_formatter.format ~displayed_packages event in
-            if msg != "" then println msg
+            if msg != "" then out msg
         | Local_session.BuildCompleted _ -> ()
         | Local_session.BuildFailed { errors; _ } ->
             (* Track failed packages *)
@@ -165,30 +167,30 @@ let build_command ?(scope = Runtime) package_opt target_arch =
                   let formatted_message =
                     format_execution_error_message error.package.name message
                   in
-                  println "";
-                  println ("\027[1;31mError\027[0m: " ^ formatted_message)
+                  out "";
+                  out ("\027[1;31mError\027[0m: " ^ formatted_message)
               | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.PlanningFailed _) ->
-                  println "";
-                  println ("\027[1;31mError\027[0m: Planning failed for " ^ error.package.name)
+                  out "";
+                  out ("\027[1;31mError\027[0m: Planning failed for " ^ error.package.name)
               | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ActionExecutionFailed { message }) ->
-                  println "";
-                  println ("\027[1;31mError\027[0m: Action execution failed for " ^ error.package.name ^ ": " ^ message)
+                  out "";
+                  out ("\027[1;31mError\027[0m: Action execution failed for " ^ error.package.name ^ ": " ^ message)
               | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ActionOutputsNotCreated Module.{ missing }) ->
-                  println "";
-                  println ("\027[1;31mError\027[0m: Action outputs not created for " ^ error.package.name)
+                  out "";
+                  out ("\027[1;31mError\027[0m: Action outputs not created for " ^ error.package.name)
               | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ActionDependenciesFailed _) ->
-                  println "";
-                  println ("\027[1;31mError\027[0m: Action dependencies failed for " ^ error.package.name)
+                  out "";
+                  out ("\027[1;31mError\027[0m: Action dependencies failed for " ^ error.package.name)
               | _ -> ()
             ) errors
         | Local_session.PlanningFailed { reason; _ } ->
             (* Planning failed before build started - this is a fatal error *)
-            println "";
-            println ("\027[1;31mPlanning Failed\027[0m: " ^ reason);
+            out "";
+            out ("\027[1;31mPlanning Failed\027[0m: " ^ reason);
             failed_count := !failed_count + 1
         | Local_session.CycleDetected { cycle_nodes; _ } ->
-            println "      \027[1;31mError\027[0m: Cyclic dependency detected:";
-            println ("         " ^ String.concat " ->\n         " cycle_nodes))
+            out "      \027[1;31mError\027[0m: Cyclic dependency detected:";
+            out ("         " ^ String.concat " ->\n         " cycle_nodes))
   in
   
   let final_event = match result with
@@ -196,18 +198,18 @@ let build_command ?(scope = Runtime) package_opt target_arch =
       Local_session.close client;
       (match err with
       | Local_session.PackageNotFound { package_name; available_packages } ->
-          println ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
-          println "";
-          println "Available packages:";
-          List.iter (fun pkg -> println ("  • " ^ pkg)) available_packages;
+          out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
+          out "";
+          out "Available packages:";
+          List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages;
           exit 1
       | Local_session.BuildAlreadyRunning { lock_path } ->
-          println ("\027[1;31mError\027[0m: another tusk build is already running");
-          println ("Lock file: " ^ Path.to_string lock_path);
-          println "Wait for the current build to finish and try again.";
+          out ("\027[1;31mError\027[0m: another tusk build is already running");
+          out ("Lock file: " ^ Path.to_string lock_path);
+          out "Wait for the current build to finish and try again.";
           exit 1
       | Local_session.UnexpectedEvent Module.{ reason } ->
-          println ("\027[1;31mError\027[0m: " ^ reason);
+          out ("\027[1;31mError\027[0m: " ^ reason);
           exit 1)
   | Ok event ->
       Local_session.close client;
@@ -224,16 +226,16 @@ let build_command ?(scope = Runtime) package_opt target_arch =
   let total_count = !built_count + !cached_count in
   
   if !failed_count = 0 && !skipped_count = 0 then
-    println ("    \027[1;32mFinished\027[0m in " ^ formatted_duration ^ "s (" ^ 
+    out ("    \027[1;32mFinished\027[0m in " ^ formatted_duration ^ "s (" ^ 
       Int.to_string total_count ^ " built)")
   else if !failed_count > 0 then
-    println
+    out
       ("    \027[1;31mFinished\027[0m in " ^ formatted_duration ^ "s ("
       ^ Int.to_string total_count ^ " built, "
       ^ Int.to_string !failed_count ^ " failed, "
       ^ Int.to_string !skipped_count ^ " skipped)")
   else
-    println
+    out
       ("    \027[1;33mFinished\027[0m in " ^ formatted_duration ^ "s ("
       ^ Int.to_string total_count ^ " built, "
       ^ Int.to_string !skipped_count ^ " skipped)");
@@ -261,21 +263,21 @@ let run matches =
   let targets = match resolve_targets workspace matches with
     | Ok targets -> targets
     | Error msg ->
-        println ("❌ " ^ msg);
+        out ("❌ " ^ msg);
         exit 1
   in
   
   (* For now, only support single target - multi-target requires executor changes *)
   if List.length targets > 1 then (
-    println "";
-    println "❌ Multiple targets matched. Please specify a single target.";
-    println "";
-    println "Matched targets:";
-    List.iter (fun t -> println ("  • " ^ t)) targets;
-    println "";
-    println "Use one of these flags to build for a specific target:";
-    List.iter (fun t -> println ("  tusk build -x " ^ t)) targets;
-    println "";
+    out "";
+    out "❌ Multiple targets matched. Please specify a single target.";
+    out "";
+    out "Matched targets:";
+    List.iter (fun t -> out ("  • " ^ t)) targets;
+    out "";
+    out "Use one of these flags to build for a specific target:";
+    List.iter (fun t -> out ("  tusk build -x " ^ t)) targets;
+    out "";
     Error (Failure "Multiple targets matched")
   ) else if List.length targets = 1 then (
     let target = List.hd targets in
@@ -289,19 +291,19 @@ let run matches =
     (match Tusk_toolchain.init_for_target ~config ~target with
     | Ok _ -> ()
     | Error msg ->
-        println ("❌ Failed to initialize toolchain for " ^ target);
-        println msg;
+        out ("❌ Failed to initialize toolchain for " ^ target);
+        out msg;
         exit 1);
     
     (* Determine if we're cross-compiling *)
     let target_arch = if target = host then None else Some target in
     
     (match target_arch with
-    | Some arch -> println ("🔨 Cross-compiling for " ^ arch)
+    | Some arch -> out ("🔨 Cross-compiling for " ^ arch)
     | None -> ());
     
     build_command package_opt target_arch
   ) else (
-    println "❌ No targets specified";
+    out "❌ No targets specified";
     Error (Failure "No targets")
   )

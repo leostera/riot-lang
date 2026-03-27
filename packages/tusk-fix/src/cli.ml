@@ -72,17 +72,16 @@ let relative_to_cwd path =
 
 let print_diagnostics result =
   let grouped = Diagnostic.group_diagnostics result.Runner.diagnostics in
-  List.iter
-    (fun grouped_diag ->
-      print
-        (Diagnostic.grouped_to_formatted_output ~file:result.file
-           ~source:result.final_source grouped_diag))
-    grouped
+  if List.length grouped > 0 then
+    print
+      (Diagnostic.grouped_list_to_formatted_output ~file:result.file
+         ~source:result.final_source grouped)
 
 let print_parse_diagnostics result =
   if List.length result.Runner.parse_diagnostics > 0 then
-    Syn.DiagnosticReporter.print ~file:(Path.to_string result.file)
-      ~source:result.final_source result.parse_diagnostics
+    print
+      (Syn.DiagnosticReporter.format ~file:(Path.to_string result.file)
+         ~source:result.final_source result.parse_diagnostics)
 
 let diagnostic_count result =
   List.length result.Runner.parse_diagnostics + List.length result.diagnostics
@@ -149,6 +148,14 @@ let print_text_result mode result =
           (prefix ^ rel ^ " (" ^ Int.to_string (List.length result.diagnostics)
          ^ " " ^ suffix ^ ")");
         print_diagnostics result)
+
+let sort_file_results results =
+  List.sort
+    (fun left right ->
+      String.compare
+        (Path.to_string left.Runner.file)
+        (Path.to_string right.Runner.file))
+    results
 
 let print_text_summary mode summary =
   println "";
@@ -401,16 +408,15 @@ let run_with_coordinator ~format ~mode ~scope ~limit files =
       ("Scanning " ^ Int.to_string (List.length files) ^ " files with "
      ^ Int.to_string concurrency ^ " workers...");
   let outcome =
-    run_result_with ~mode ~scope ~limit ~files ~on_result:(fun result ->
-        match format with
-        | Reporter.Text -> print_text_result mode result
-        | Reporter.Json -> ())
+    run_result_with ~mode ~scope ~limit ~files ~on_result:(fun _ -> ())
   in
   (match format with
   | Reporter.Json ->
       print (Data.Json.to_string (Runner.run_result_to_json outcome.result));
       print "\n"
   | Reporter.Text ->
+      sort_file_results outcome.result.files
+      |> List.iter (print_text_result mode);
       if outcome.limit_reached then (
         println "";
         println
