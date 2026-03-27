@@ -23,8 +23,8 @@ The Tusk CLI provides a one-shot interface to the Tusk build system. Each comman
 ### Project Management
 
 - `tusk new <name>` - Create a new package
-- `tusk fmt` - Format OCaml code
-- `tusk fmt --check` - Check if code needs formatting
+- `tusk fmt --check` - Check OCaml formatting with krasny
+- `tusk fmt --check --json` - Emit JSONL formatting events
 
 ## Dependencies
 
@@ -32,6 +32,7 @@ This package depends on:
 - `std` - Standard library
 - `miniriot` - Actor runtime
 - `tusk-model` - Core data models
+- `tusk-fmt` - Formatting command wrapper
 - `tusk-server` - Local build session runtime
 - `tusk-planner` - Build planning
 - `tusk-executor` - Build execution

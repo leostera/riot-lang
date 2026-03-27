@@ -11,8 +11,7 @@ let build_cli workspace_opt =
     Clean.command;
     Completions.command;
     Fix_cmd.command;
-    (* Fmt.command; *)
-    (* TODO: Replace with tusk-fmt package *)
+    Tusk_fmt.command;
     Tusk_init.command;
     Install.command;
     New.command;
@@ -201,12 +200,7 @@ format = "full"
               | Error _ as e -> e)
           | None -> Bench_cmd.run bench_matches)
       | Some ("fmt", fmt_matches) -> 
-          (match workspace_opt with
-          | Some workspace -> 
-              (match ensure_toolchain workspace with
-              | Ok () -> Fmt.run fmt_matches
-              | Error _ as e -> e)
-          | None -> Fmt.run fmt_matches)
+          Tusk_fmt.run ?workspace:workspace_opt fmt_matches
       | Some ("clean", clean_matches) -> Clean.run clean_matches
       | Some ("completions", completions_matches) ->
           Completions.run completions_matches

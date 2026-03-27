@@ -282,6 +282,11 @@ _tusk() {
                 '--json[Emit machine-readable JSON output]' \
                 ':path:_files'
             ;;
+        fmt)
+            _arguments \
+                '--check[Check if files need formatting]' \
+                '--json[Emit machine-readable JSONL events]'
+            ;;
         clean|install|new|doc|lsp|version)
             # These commands have their own completion logic
             # Can be extended later

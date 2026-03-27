@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-type format_error =
+type format_error = Format_core.format_error =
   | Cannot_build_cst of Syn.build_cst_error
 
 module Doc = Doc
@@ -9,25 +9,11 @@ module Solver = Solver
 module Printer = Printer
 module Source = Source
 module Lower = Lower
+module Runner = Runner
+module Report = Report
 
-let format (result : Syn.Parser.parse_result) =
-  match Syn.build_cst result with
-  | Error err ->
-      Error (Cannot_build_cst err)
-  | Ok source_file ->
-      let original_source = Source.source_of_result result in
-      Ok
-        (match Lower.source_file ~source:original_source source_file with
-        | Some rendered ->
-            let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
-            if String.ends_with ~suffix:"\n" original_source
-               && String.ends_with ~suffix:"\n" rendered
-            then
-              rendered
-            else if String.ends_with ~suffix:"\n" original_source then
-              rendered ^ "\n"
-            else rendered
-        | None -> original_source)
+let format_error_to_string = Format_core.format_error_to_string
+let format = Format_core.format
 
 (* TODO(@leostera): rewrite this hasher to use Crypto.Sha521.create () *)
 let hash_green_tree tree =

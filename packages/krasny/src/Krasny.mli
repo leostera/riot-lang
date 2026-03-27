@@ -5,8 +5,12 @@ open Std
     `krasny` formats typed CSTs. If parsing required recovery or the current CST
     builder cannot lift the file, formatting fails instead of attempting to
     pretty-print a broken file. *)
-type format_error =
+type format_error = Format_core.format_error =
   | Cannot_build_cst of Syn.build_cst_error
+
+val format_error_to_string : format_error -> string
+(** `format_error_to_string err` renders formatter failures into a concise
+    human-readable string. *)
 
 (** `format result` renders a parse result into formatted OCaml source.
 
@@ -26,3 +30,7 @@ val write :
   writer:('dst, 'err) IO.Writer.t ->
   Syn.Parser.parse_result ->
   (unit, [ `Format of format_error | `Write of 'err ]) result
+
+module Runner : module type of Runner
+
+module Report : module type of Report

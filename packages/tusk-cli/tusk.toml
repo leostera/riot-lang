@@ -19,3 +19,4 @@ tusk-server = { path = "../tusk-server" }
 tusk-store = { path = "../tusk-store" }
 tusk-toolchain = { path = "../tusk-toolchain" }
 tusk-fix = { path = "../tusk-fix" }
+tusk-fmt = { path = "../tusk-fmt" }

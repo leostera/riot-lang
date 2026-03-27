@@ -1,0 +1,11 @@
+[package]
+name = "tusk-fmt"
+version = "0.1.0"
+
+[lib]
+path = "src/tusk_fmt.ml"
+
+[dependencies]
+std = { path = "../std" }
+tusk-model = { path = "../tusk-model" }
+krasny = { path = "../krasny" }
