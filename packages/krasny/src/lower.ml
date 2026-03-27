@@ -2338,6 +2338,16 @@ let expression_needs_parens_in_apply = function
   | _ ->
       false
 
+let rec expression_needs_parens_in_labeled_argument = function
+  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
+      expression_needs_parens_in_labeled_argument inner
+  | Syn.Cst.Expression.Apply _ ->
+      true
+  | Syn.Cst.Expression.PolyVariant { payload = Some _; _ } ->
+      true
+  | expression ->
+      expression_needs_parens_in_apply expression
+
 let rec expression_needs_parens_in_constructor = function
   | Syn.Cst.Expression.Parenthesized
       { inner = Syn.Cst.Expression.PolyVariant { payload = Some _; _ }; _ } ->
@@ -3159,24 +3169,36 @@ and render_apply_argument = function
       | None ->
           Doc.concat [ doc_of_token sigil_token; doc_of_token label_token ]
       | Some value ->
+          let value =
+            if expression_needs_parens_in_labeled_argument value then
+              Doc.concat [ Doc.lparen; render_expression value; Doc.rparen ]
+            else
+              render_expression value
+          in
           Doc.concat
             [
               doc_of_token sigil_token;
               doc_of_token label_token;
               Doc.text ":";
-              render_expression value;
+              value;
             ])
   | Syn.Cst.Optional { sigil_token; label_token; value; _ } ->
       (match value with
       | None ->
           Doc.concat [ doc_of_token sigil_token; doc_of_token label_token ]
       | Some value ->
+          let value =
+            if expression_needs_parens_in_labeled_argument value then
+              Doc.concat [ Doc.lparen; render_expression value; Doc.rparen ]
+            else
+              render_expression value
+          in
           Doc.concat
             [
               doc_of_token sigil_token;
               doc_of_token label_token;
               Doc.text ":";
-              render_expression value;
+              value;
             ])
 
 and syntax_node_of_apply_argument = function
@@ -4290,11 +4312,7 @@ and render_local_binding
   in
   let header = render_binding_header ~keyword_token ~rec_token pattern in
   let parameter_doc = parameters |> List.map render_parameter |> Doc.join Doc.space in
-  let keep_header_parameters =
-    not (parameters = [])
-    && (Option.is_some type_annotation
-       || pattern_supports_binding_header_parameters pattern)
-  in
+  let keep_header_parameters = false in
   let header =
     if keep_header_parameters then
       Doc.concat [ header; Doc.space; parameter_doc ]

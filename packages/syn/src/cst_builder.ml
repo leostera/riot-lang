@@ -2913,6 +2913,78 @@ let rec apply_argument_from_node node =
       | _ -> unsupported_expression node)
   | _ -> Cst.Positional (expression_from_node node)
 
+and collect_apply_arguments acc = function
+  | Cst.Expression.Apply { callee; argument; _ } ->
+      collect_apply_arguments (argument :: acc) callee
+  | expression ->
+      (expression, acc)
+
+and rebuild_apply_chain ~syntax_node callee = function
+  | [] ->
+      callee
+  | arguments ->
+      List.fold_left
+        (fun callee argument ->
+          Cst.Expression.Apply
+            {
+              syntax_node;
+              callee;
+              argument;
+              attributes = [];
+            })
+        callee arguments
+
+and normalize_greedy_labeled_argument ~syntax_node ~callee argument =
+  let rebuild value extra_arguments make_argument =
+    let callee =
+      Cst.Expression.Apply
+        {
+          syntax_node;
+          callee;
+          argument = make_argument value;
+          attributes = [];
+        }
+    in
+    rebuild_apply_chain ~syntax_node callee extra_arguments
+  in
+  match argument with
+  | Cst.Labeled ({ value = Some value; _ } as labeled_argument) -> (
+      let head, extra_arguments = collect_apply_arguments [] value in
+      match extra_arguments with
+      | _ :: _ ->
+          rebuild head extra_arguments (fun value ->
+              Cst.Labeled { labeled_argument with value = Some value })
+      | [] ->
+          Cst.Expression.Apply
+            {
+              syntax_node;
+              callee;
+              argument;
+              attributes = [];
+            })
+  | Cst.Optional ({ value = Some value; _ } as optional_argument) -> (
+      let head, extra_arguments = collect_apply_arguments [] value in
+      match extra_arguments with
+      | _ :: _ ->
+          rebuild head extra_arguments (fun value ->
+              Cst.Optional { optional_argument with value = Some value })
+      | [] ->
+          Cst.Expression.Apply
+            {
+              syntax_node;
+              callee;
+              argument;
+              attributes = [];
+            })
+  | _ ->
+      Cst.Expression.Apply
+        {
+          syntax_node;
+          callee;
+          argument;
+          attributes = [];
+        }
+
 (* Let-binding annotations do not have dedicated expression nodes, so the CST
    reconstructs typed/polymorphic wrappers around the bound value. *)
 and expression_with_type_annotation ~syntax_node ~expression type_node =
@@ -3380,13 +3452,9 @@ and expression_from_node node =
                   attributes = [];
                 }
           | _ ->
-              Cst.Expression.Apply
-                {
-                  syntax_node = node;
-                  callee = expression_from_node callee_node;
-                  argument = apply_argument_from_node argument_node;
-                  attributes = [];
-                })
+              normalize_greedy_labeled_argument ~syntax_node:node
+                ~callee:(expression_from_node callee_node)
+                (apply_argument_from_node argument_node))
       | _ -> unsupported_expression node)
   | Syntax_kind.POLY_VARIANT_EXPR -> (
       match poly_variant_tag_token node with

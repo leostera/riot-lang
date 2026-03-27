@@ -492,25 +492,25 @@
               }
             },
             "callee": {
-              "tag": "field_access",
+              "tag": "apply",
               "syntax_node": {
-                "kind": "FIELD_ACCESS_EXPR",
+                "kind": "APPLY_EXPR",
                 "span": {
                   "start": 183,
-                  "end": 197
+                  "end": 237
                 }
               },
-              "receiver": {
-                "tag": "path",
+              "callee": {
+                "tag": "field_access",
                 "syntax_node": {
-                  "kind": "IDENT_EXPR",
+                  "kind": "FIELD_ACCESS_EXPR",
                   "span": {
                     "start": 183,
-                    "end": 189
+                    "end": 197
                   }
                 },
-                "path": {
-                  "tag": "ident",
+                "receiver": {
+                  "tag": "path",
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
@@ -518,60 +518,60 @@
                       "end": 189
                     }
                   },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "Client",
-                    "span": {
-                      "start": 183,
-                      "end": 189
+                  "path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 183,
+                        "end": 189
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Client",
+                      "span": {
+                        "start": 183,
+                        "end": 189
+                      }
                     }
+                  }
+                },
+                "field_name": {
+                  "kind": "IDENT_EXPR",
+                  "text": "create",
+                  "span": {
+                    "start": 190,
+                    "end": 196
                   }
                 }
               },
-              "field_name": {
-                "kind": "IDENT_EXPR",
-                "text": "create",
-                "span": {
-                  "start": 190,
-                  "end": 196
-                }
-              }
-            },
-            "argument": {
-              "tag": "labeled",
-              "syntax_node": {
-                "kind": "LABELED_ARG",
-                "span": {
-                  "start": 197,
-                  "end": 237
-                }
-              },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "~",
-                "span": {
-                  "start": 197,
-                  "end": 198
-                }
-              },
-              "label_token": {
-                "kind": "IDENT_EXPR",
-                "text": "transport",
-                "span": {
-                  "start": 198,
-                  "end": 207
-                }
-              },
-              "value": {
-                "tag": "apply",
+              "argument": {
+                "tag": "labeled",
                 "syntax_node": {
-                  "kind": "APPLY_EXPR",
+                  "kind": "LABELED_ARG",
                   "span": {
-                    "start": 208,
+                    "start": 197,
                     "end": 237
                   }
                 },
-                "callee": {
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "~",
+                  "span": {
+                    "start": 197,
+                    "end": 198
+                  }
+                },
+                "label_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "transport",
+                  "span": {
+                    "start": 198,
+                    "end": 207
+                  }
+                },
+                "value": {
                   "tag": "first_class_module",
                   "syntax_node": {
                     "kind": "FIRST_CLASS_MODULE_EXPR",
@@ -654,20 +654,20 @@
                     }
                   },
                   "module_type": null
-                },
-                "argument": {
-                  "tag": "positional",
-                  "value": {
-                    "tag": "literal",
-                    "literal": {
-                      "tag": "unit",
-                      "syntax_node": {
-                        "kind": "UNIT_LITERAL",
-                        "span": {
-                          "start": 235,
-                          "end": 237
-                        }
-                      }
+                }
+              }
+            },
+            "argument": {
+              "tag": "positional",
+              "value": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "unit",
+                  "syntax_node": {
+                    "kind": "UNIT_LITERAL",
+                    "span": {
+                      "start": 235,
+                      "end": 237
                     }
                   }
                 }
