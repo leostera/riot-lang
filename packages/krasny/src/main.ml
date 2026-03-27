@@ -27,7 +27,7 @@ let handle_syntax_hash file =
       let result = parse_file ~file ~source in
       print (Krasny.syntax_hash result)
 
-let () =
+let main ~args =
   let cmd =
     let open ArgParser in
     let open Arg in
@@ -52,11 +52,11 @@ let () =
                 ];
          ]
   in
-  match ArgParser.get_matches cmd Env.args with
+  match ArgParser.get_matches cmd args with
   | Error err ->
       ArgParser.print_error err;
       ArgParser.print_help cmd;
-      exit 1
+      Error (Failure "invalid CLI arguments")
   | Ok matches -> (
       match ArgParser.get_subcommand matches with
       | Some ("format", sub_matches) ->
@@ -64,13 +64,17 @@ let () =
             ArgParser.get_one sub_matches "FILE"
             |> Option.expect ~msg:"FILE required"
           in
-          handle_format file
+          handle_format file;
+          Ok ()
       | Some ("syntax-hash", sub_matches) ->
           let file =
             ArgParser.get_one sub_matches "FILE"
             |> Option.expect ~msg:"FILE required"
           in
-          handle_syntax_hash file
+          handle_syntax_hash file;
+          Ok ()
       | _ ->
           ArgParser.print_help cmd;
-          exit 1)
+          Error (Failure "missing subcommand"))
+
+let () = Miniriot.run ~main ~args:Env.args ()

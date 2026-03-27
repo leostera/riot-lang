@@ -136,7 +136,7 @@ let handle_explain sub_matches =
       Log.error ("Unknown error code: " ^ error_code);
       exit 1
 
-let () =
+let main ~args =
   (* Parse command line arguments *)
   let cmd =
     let open ArgParser in
@@ -196,18 +196,30 @@ let () =
          ]
   in
 
-  match ArgParser.get_matches cmd Env.args with
+  match ArgParser.get_matches cmd args with
   | Error err ->
       ArgParser.print_error err;
       ArgParser.print_help cmd;
-      exit 1
+      Error (Failure "invalid CLI arguments")
   | Ok matches -> (
       match ArgParser.get_subcommand matches with
-      | Some ("tokenize", sub_matches) -> handle_token_stream sub_matches
-      | Some ("parse", sub_matches) -> handle_parse sub_matches
-      | Some ("print-ceibo", sub_matches) -> handle_print_ceibo sub_matches
-      | Some ("print-cst", sub_matches) -> handle_print_cst sub_matches
-      | Some ("explain", sub_matches) -> handle_explain sub_matches
+      | Some ("tokenize", sub_matches) ->
+          handle_token_stream sub_matches;
+          Ok ()
+      | Some ("parse", sub_matches) ->
+          handle_parse sub_matches;
+          Ok ()
+      | Some ("print-ceibo", sub_matches) ->
+          handle_print_ceibo sub_matches;
+          Ok ()
+      | Some ("print-cst", sub_matches) ->
+          handle_print_cst sub_matches;
+          Ok ()
+      | Some ("explain", sub_matches) ->
+          handle_explain sub_matches;
+          Ok ()
       | _ ->
           ArgParser.print_help cmd;
-          exit 1)
+          Error (Failure "missing subcommand"))
+
+let () = Miniriot.run ~main ~args:Env.args ()

@@ -10,7 +10,8 @@ let colon = Doc.concat [ Doc.space; Doc.colon; Doc.space ]
 let annotation_colon = Doc.concat [ Doc.colon; Doc.space ]
 let multiline_list_threshold = 10
 let star = Doc.text "*"
-let current_source = ref None
+
+type ctx = { source : string option }
 
 type pending_trivia_entry =
   | TriviaDoc of int * Doc.t
@@ -50,14 +51,14 @@ let doc_of_verbatim_syntax_node node =
   |> List.map (fun token -> Doc.text (Syn.Ceibo.Red.SyntaxToken.text token))
   |> Doc.concat
 
-let doc_of_verbatim_syntax_node_from_current_source node =
-  match !current_source with
+let doc_of_verbatim_syntax_node_from_current_source ctx node =
+  match ctx.source with
   | Some source ->
       Doc.text (Source.source_of_node_from_source source node)
   | None ->
       doc_of_verbatim_syntax_node node
 
-let doc_of_verbatim_syntax_node_span_from_current_source node =
+let doc_of_verbatim_syntax_node_span_from_current_source ctx node =
   let trim_trailing_layout text =
     let rec find_last_non_layout index =
       if index < 0 then
@@ -126,7 +127,7 @@ let doc_of_verbatim_syntax_node_span_from_current_source node =
     | None ->
         text
   in
-  match !current_source with
+  match ctx.source with
   | Some source ->
       let span = Syn.Ceibo.Red.SyntaxNode.span node in
       let source_length = String.length source in
@@ -758,8 +759,8 @@ let render_pending_trivia ?(strip_trailing_breaks = true) pending =
   | None, Some _ ->
       None
 
-let render_trivia_between_spans ~start ~end_ =
-  match !current_source with
+let render_trivia_between_spans ctx ~start ~end_ =
+  match ctx.source with
   | None ->
       None
   | Some source ->
@@ -826,7 +827,7 @@ let render_interleaved_node_docs ~source_node ~should_consume_node ~node_docs =
   in
   loop [] [] node_docs (children_in_source_order source_node)
 
-let doc_of_core_type type_ =
+let doc_of_core_type ctx type_ =
   let syntax_node = Syn.Cst.CoreType.syntax_node type_ in
   let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
   let span =
@@ -851,7 +852,7 @@ let doc_of_core_type type_ =
           end_ = (Syn.Ceibo.Red.SyntaxToken.span last).end_;
         }
   in
-  match !current_source with
+  match ctx.source with
   | Some source ->
       Doc.text (Source.source_of_span source span)
   | None ->
@@ -859,13 +860,13 @@ let doc_of_core_type type_ =
       |> trim_trailing_layout_whitespace
       |> Doc.text
 
-let doc_of_module_expression expression =
-  doc_of_verbatim_syntax_node_from_current_source (Syn.Cst.ModuleExpression.syntax_node expression)
+let doc_of_module_expression ctx expression =
+  doc_of_verbatim_syntax_node_from_current_source ctx
+    (Syn.Cst.ModuleExpression.syntax_node expression)
 
-let doc_of_module_type module_type =
-  doc_of_verbatim_syntax_node_from_current_source (Syn.Cst.ModuleType.syntax_node module_type)
-
-let render_module_expression_hook = ref doc_of_module_expression
+let doc_of_module_type ctx module_type =
+  doc_of_verbatim_syntax_node_from_current_source ctx
+    (Syn.Cst.ModuleType.syntax_node module_type)
 
 let render_attribute (attribute : Syn.Cst.attribute) =
   Doc.concat
@@ -1737,9 +1738,9 @@ let type_declaration_group_requires_verbatim decl =
   || List.exists type_declaration_requires_verbatim
        (Syn.Cst.TypeDeclaration.and_declarations decl)
 
-let render_single_type_declaration_with_keyword keyword decl =
+let render_single_type_declaration_with_keyword ctx keyword decl =
   if type_declaration_requires_verbatim decl then
-    doc_of_verbatim_syntax_node_span_from_current_source
+    doc_of_verbatim_syntax_node_span_from_current_source ctx
       (Syn.Cst.TypeDeclaration.syntax_node decl)
   else
   let type_name =
@@ -1798,17 +1799,17 @@ let render_single_type_declaration_with_keyword keyword decl =
   in
   with_constraints
 
-let render_type_declaration_with_keyword keyword decl =
+let render_type_declaration_with_keyword ctx keyword decl =
   let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
   if and_declarations = [] then
-    render_single_type_declaration_with_keyword keyword decl
+    render_single_type_declaration_with_keyword ctx keyword decl
   else if type_declaration_group_requires_verbatim decl then
-    doc_of_verbatim_syntax_node_span_from_current_source
+    doc_of_verbatim_syntax_node_span_from_current_source ctx
       (Syn.Cst.TypeDeclaration.syntax_node decl)
   else
     Doc.join blank_line
-      (render_single_type_declaration_with_keyword keyword decl
-      :: List.map (render_single_type_declaration_with_keyword kw_and)
+      (render_single_type_declaration_with_keyword ctx keyword decl
+      :: List.map (render_single_type_declaration_with_keyword ctx kw_and)
            and_declarations)
 
 let render_external_declaration (decl : Syn.Cst.external_declaration) =
@@ -2431,7 +2432,32 @@ let doc_with_expression_attributes expression doc =
   | attributes ->
       Doc.concat [ doc; Doc.space; join_map Doc.space render_attribute attributes ]
 
-let rec render_expression expression =
+type lowerer = {
+  render_structure_items :
+    ?source:string ->
+    source_node:Syn.Cst.syntax_node ->
+    Syn.Cst.StructureItem.t list ->
+    Doc.t;
+  render_signature_items :
+    ?source:string ->
+    source_node:Syn.Cst.syntax_node ->
+    Syn.Cst.SignatureItem.t list ->
+    Doc.t;
+}
+
+let make_lowerer ctx =
+  let doc_of_verbatim_syntax_node_from_current_source =
+    doc_of_verbatim_syntax_node_from_current_source ctx
+  in
+  let doc_of_verbatim_syntax_node_span_from_current_source =
+    doc_of_verbatim_syntax_node_span_from_current_source ctx
+  in
+  let render_trivia_between_spans = render_trivia_between_spans ctx in
+  let doc_of_core_type = doc_of_core_type ctx in
+  let doc_of_module_expression = doc_of_module_expression ctx in
+  let doc_of_module_type = doc_of_module_type ctx in
+  let render_type_declaration_with_keyword = render_type_declaration_with_keyword ctx in
+  let rec render_expression expression =
   let doc =
     match expression with
   | Syn.Cst.Expression.Path { path; _ } ->
@@ -3691,7 +3717,7 @@ and render_let_module_expression
         Doc.space;
         doc_of_token module_name_token;
         equals;
-        (!render_module_expression_hook) module_expression;
+        render_module_expression_doc module_expression;
         Doc.space;
         kw_in;
       ]
@@ -3794,16 +3820,36 @@ and render_let_operator_expression
 
 and render_sequence_expression ({ separator_token; expressions; _ } : Syn.Cst.sequence_expression) =
   let expression_count = List.length expressions in
-  expressions
-  |> List.mapi (fun index expression ->
-         let suffix =
-           if index < expression_count - 1 || expression_count = 1 then
-             doc_of_token separator_token
-           else
-             Doc.empty
-         in
-         Doc.concat [ render_expression expression; suffix ])
-  |> Doc.join Doc.line
+  let rec render_sequence_items previous_expression index = function
+    | [] ->
+        []
+    | expression :: rest ->
+        let leading_trivia =
+          match previous_expression with
+          | None ->
+              None
+          | Some previous_expression ->
+              render_trivia_between_spans
+                ~start:
+                  (nontrivia_bounds_span_of_syntax_node
+                     (Syn.Cst.Expression.syntax_node previous_expression))
+                    .end_
+                ~end_:
+                  (nontrivia_bounds_span_of_syntax_node
+                     (Syn.Cst.Expression.syntax_node expression))
+                    .start
+        in
+        let suffix =
+          if index < expression_count - 1 || expression_count = 1 then
+            doc_of_token separator_token
+          else
+            Doc.empty
+        in
+        Doc.concat
+          [ doc_with_leading_trivia leading_trivia (render_expression expression); suffix ]
+        :: render_sequence_items (Some expression) (index + 1) rest
+  in
+  render_sequence_items None 0 expressions |> Doc.join Doc.line
 
 and render_binding_header ~keyword_token ~rec_token pattern =
   let rec_part =
@@ -4176,7 +4222,7 @@ and render_let_binding_group_item (binding : Syn.Cst.let_binding) =
     ~equals_token:binding.equals_token ~pattern:binding.binding_pattern
     ~parameters:binding.parameters ~value:binding.value
 
-let render_let_binding (binding : Syn.Cst.let_binding) =
+and render_let_binding (binding : Syn.Cst.let_binding) =
   let first = render_let_binding_group_item binding in
   let trailing =
     binding.and_bindings
@@ -4185,15 +4231,15 @@ let render_let_binding (binding : Syn.Cst.let_binding) =
   in
   Doc.concat (first :: trailing)
 
-let nested_structure_items_from_syntax_node syntax_node =
+and nested_structure_items_from_syntax_node syntax_node =
   Syn.CstBuilder.structure_items_from_syntax_node syntax_node
   |> Result.to_option
 
-let nested_signature_items_from_syntax_node syntax_node =
+and nested_signature_items_from_syntax_node syntax_node =
   Syn.CstBuilder.signature_items_from_syntax_node syntax_node
   |> Result.to_option
 
-let rec render_module_type_constraint ~keyword (constraint_ : Syn.Cst.module_type_constraint) =
+and render_module_type_constraint ~keyword (constraint_ : Syn.Cst.module_type_constraint) =
   let separator =
     if constraint_.is_destructive then
       Doc.concat [ Doc.space; Doc.text ":="; Doc.space ]
@@ -5046,7 +5092,7 @@ and render_structure_items ?source ~source_node items =
     | Some source ->
         source
     | None ->
-        (match !current_source with
+        (match ctx.source with
         | Some full_source ->
             Source.source_of_span full_source (Syn.Ceibo.Red.SyntaxNode.span source_node)
         | None ->
@@ -5137,7 +5183,7 @@ and render_signature_items ?source ~source_node items =
     | Some source ->
         source
     | None ->
-        (match !current_source with
+        (match ctx.source with
         | Some full_source ->
             Source.source_of_span full_source (Syn.Ceibo.Red.SyntaxNode.span source_node)
         | None ->
@@ -5151,31 +5197,21 @@ and render_signature_items ?source ~source_node items =
         (Syn.Ceibo.Red.SyntaxNode.span source_node).start
   in
   render_signature_top_level_items ~source ~source_offset ~source_node ~items
-
-let () = render_module_expression_hook := render_module_expression_doc
+  in
+  { render_structure_items; render_signature_items }
 
 let source_file ~source source_file =
-  let previous_source = !current_source in
-  current_source := Some source;
-  let restore_source () = current_source := previous_source in
-  try
-    let result =
-      match source_file with
-      | Syn.Cst.Implementation implementation ->
-          Some
-            (render_structure_items
-               ~source
-               ~source_node:(Syn.Cst.SourceFile.syntax_node (Syn.Cst.Implementation implementation))
-               implementation.items)
-      | Syn.Cst.Interface interface ->
-          Some
-            (render_signature_items
-               ~source
-               ~source_node:(Syn.Cst.SourceFile.syntax_node (Syn.Cst.Interface interface))
-               interface.items)
-    in
-    restore_source ();
-    result
-  with exn ->
-    restore_source ();
-    raise exn
+  let lowerer = make_lowerer { source = Some source } in
+  match source_file with
+  | Syn.Cst.Implementation implementation ->
+      Some
+        (lowerer.render_structure_items
+           ~source
+           ~source_node:(Syn.Cst.SourceFile.syntax_node (Syn.Cst.Implementation implementation))
+           implementation.items)
+  | Syn.Cst.Interface interface ->
+      Some
+        (lowerer.render_signature_items
+           ~source
+           ~source_node:(Syn.Cst.SourceFile.syntax_node (Syn.Cst.Interface interface))
+           interface.items)
