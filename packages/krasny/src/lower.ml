@@ -4684,7 +4684,9 @@ and render_structure_entry ~source ~source_offset ~span ~trailing_suffix item =
   let tight_after = false in
   (doc, is_open_structure_item item, false, tight_after, false, is_module_alias_structure_item item)
 
-and render_signature_entry ~source ~source_offset ~span ~trailing_suffix item =
+and render_signature_entry
+    ?(include_trailing_comment = false)
+    ~source ~source_offset ~span ~trailing_suffix item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
   let should_preserve_verbatim =
     string_contains_substring rendered_source "[@"
@@ -4698,14 +4700,28 @@ and render_signature_entry ~source ~source_offset ~span ~trailing_suffix item =
         Some (Doc.text suffix_text)
   in
   let doc =
-    if should_preserve_verbatim || signature_item_uses_verbatim_span item then
-      Doc.text rendered_source
-    else
-      match trailing_suffix with
-      | None ->
-          render_signature_item item
-      | Some suffix ->
-          Doc.concat [ render_signature_item item; suffix ]
+    let base_doc =
+      if should_preserve_verbatim || signature_item_uses_verbatim_span item then
+        Doc.text rendered_source
+      else
+        render_signature_item item
+    in
+    let base_doc =
+      match include_trailing_comment with
+      | true -> (
+          match trailing_comment_suffix_doc (Syn.Cst.SignatureItem.syntax_node item) with
+          | Some suffix ->
+              Doc.concat [ base_doc; suffix ]
+          | None ->
+              base_doc)
+      | false ->
+          base_doc
+    in
+    match trailing_suffix with
+    | None ->
+        base_doc
+    | Some suffix ->
+        Doc.concat [ base_doc; suffix ]
   in
   let tight_after =
     match item with
@@ -5107,7 +5123,8 @@ and render_structure_items ?source ~source_node items =
   in
   render_structure_top_level_items ~source ~source_offset ~source_node ~items
 
-and render_signature_top_level_items ~source ~source_offset ~source_node ~items =
+and render_signature_top_level_items
+    ~source ~source_offset ~source_node ~include_last_trailing_comment ~items =
   let flush_pending pending acc =
     match render_pending_trivia pending with
     | None ->
@@ -5170,7 +5187,10 @@ and render_signature_top_level_items ~source ~source_offset ~source_node ~items 
         let pending = parse_between pending ~start:cursor ~end_:base_span.start in
         let acc = flush_pending pending acc in
         loop []
-          (render_signature_entry ~source ~source_offset ~span:base_span ~trailing_suffix:None item :: acc)
+          (render_signature_entry
+             ~include_trailing_comment:(include_last_trailing_comment && rest = [])
+             ~source ~source_offset ~span:base_span ~trailing_suffix:None item
+          :: acc)
           rest base_span.end_
   in
   let source_node_span = Syn.Ceibo.Red.SyntaxNode.span source_node in
@@ -5196,7 +5216,12 @@ and render_signature_items ?source ~source_node items =
     | None ->
         (Syn.Ceibo.Red.SyntaxNode.span source_node).start
   in
-  render_signature_top_level_items ~source ~source_offset ~source_node ~items
+  let include_last_trailing_comment =
+    not
+      (Syn.Ceibo.Red.SyntaxNode.kind source_node = Syn.SyntaxKind.SOURCE_FILE)
+  in
+  render_signature_top_level_items ~source ~source_offset ~source_node
+    ~include_last_trailing_comment ~items
   in
   { render_structure_items; render_signature_items }
 

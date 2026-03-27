@@ -40,6 +40,7 @@
 0427_let_in_sequence_after_multiline_apply.ml
 0428_top_level_phrase_separator_after_supported_item.ml
 0429_qualified_local_open_record_literal.ml
+0430_signature_last_docstring.ml
 
 # 05xx labeled and optional arguments
 0500_labeled_and_optional_arguments.ml
