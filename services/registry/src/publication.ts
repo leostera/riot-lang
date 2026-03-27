@@ -1,5 +1,6 @@
 import { buildPublicationManifest } from "./manifest.ts";
 import { HttpError } from "./errors.ts";
+import { indexPublishedRelease } from "./indexing.ts";
 import { isFullSha, isSemverLikeTag } from "./locator.ts";
 import {
   manifestKey,
@@ -7,6 +8,7 @@ import {
   publishedReleaseKey,
   readPackageClaim,
   readPublishedRelease,
+  readPublicationManifest,
   readSelectorResolution,
   sourceArchiveKey,
   writePackageClaim,
@@ -149,9 +151,12 @@ export async function publishPackageRelease(
   );
 
   let releaseCreated = false;
+  let indexChanged = false;
   if (existingRelease === null) {
     const releaseRecord = buildPublishedReleaseRecord(manifest, now);
     await writePublishedRelease(env.ML_PKGS_CDN, releaseRecord);
+    const indexResult = await indexPublishedRelease(env, releaseRecord, manifest);
+    indexChanged = indexResult.changed;
     await env.PACKAGE_PUBLISHED_QUEUE.send({
       type: "package.published",
       ...releaseRecord,
@@ -159,6 +164,8 @@ export async function publishPackageRelease(
     releaseCreated = true;
   } else {
     assertMatchingRelease(existingRelease, manifest);
+    const indexResult = await indexPublishedRelease(env, existingRelease, manifest);
+    indexChanged = indexResult.changed;
   }
 
   return {
@@ -169,6 +176,7 @@ export async function publishPackageRelease(
     releaseKey: publishedReleaseKey(manifest.package_name, manifest.package_version),
     claimCreated: existingClaim === null,
     releaseCreated,
+    indexChanged,
   };
 }
 
@@ -213,12 +221,12 @@ async function readMaterializationManifest(
   env: Env,
   key: string,
 ): Promise<PackagePublicationManifest> {
-  const object = await env.ML_PKGS_CDN.get(key);
-  if (object === null) {
+  const manifest = await readPublicationManifest(env.ML_PKGS_CDN, key);
+  if (manifest === null) {
     throw new Error(`Expected manifest ${key} to exist.`);
   }
 
-  return await object.json<PackagePublicationManifest>();
+  return manifest;
 }
 
 function assertPublishableManifest(manifest: PackagePublicationManifest): void {

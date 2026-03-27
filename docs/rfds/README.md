@@ -18,7 +18,6 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0018` - Syn Matchers, Traversal, and Visitor
 - `RFD0019` - Tusk Fix Syntax-Directed Rewrites
 - `RFD0020` - Krasny Pretty Printer
-- `RFD0022` - Riot Package Registry
 
 ## Accepted
 
@@ -44,6 +43,8 @@ There are currently no RFDs marked `rejected`.
 - `RFD0016` - Tusk Foreign Dependency Model Snapshot
 - `RFD0017` - OCaml Cross-Compilation Snapshot
 - `RFD0021` - Docker Stack Snapshot
+- `RFD0022` - Riot Package Registry
+- `RFD0023` - Riot Package Index
 
 ## Notes
 

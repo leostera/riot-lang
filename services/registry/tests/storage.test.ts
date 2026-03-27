@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { requestLogKey } from "../src/storage.ts";
-import type { RequestLogEntry } from "../src/types.ts";
+import { packageIndexKey, requestLogKey } from "../src/storage.ts";
+import type { IndexConfig, RequestLogEntry } from "../src/types.ts";
 
 describe("registry storage", () => {
   test("request logs are partitioned by UTC hour", () => {
@@ -17,5 +17,17 @@ describe("registry storage", () => {
     };
 
     expect(requestLogKey(entry)).toBe("requests/2026/03/27/12/01HZXTEST.json");
+  });
+
+  test("package documents use cargo-style sharding", () => {
+    const config: IndexConfig = {
+      cdnBaseUrl: "https://cdn.pkgs.ml",
+      indexBasePath: "index/v1",
+    };
+
+    expect(packageIndexKey(config, "x")).toBe("index/v1/1/x.json");
+    expect(packageIndexKey(config, "io")).toBe("index/v1/2/io.json");
+    expect(packageIndexKey(config, "mcp")).toBe("index/v1/3/m/mcp.json");
+    expect(packageIndexKey(config, "kernel")).toBe("index/v1/ke/rn/kernel.json");
   });
 });

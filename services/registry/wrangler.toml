@@ -5,6 +5,7 @@ workers_dev = false
 
 [vars]
 CDN_BASE_URL = "https://cdn.pkgs.ml"
+INDEX_BASE_PATH = "index/v1"
 
 [[routes]]
 pattern = "registry.pkgs.ml"
@@ -22,6 +23,10 @@ preview_bucket_name = "ml-pkgs-cdn"
 [[queues.producers]]
 binding = "PACKAGE_PUBLISHED_QUEUE"
 queue = "riot-package-published"
+
+[[queues.producers]]
+binding = "PACKAGE_INDEXED_QUEUE"
+queue = "riot-package-indexed"
 
 [[migrations]]
 tag = "v1"

@@ -56,5 +56,6 @@ function serializePublishedRelease(publication: PublishedPackageRelease): Record
     release_key: publication.releaseKey,
     claim_created: publication.claimCreated,
     release_created: publication.releaseCreated,
+    index_changed: publication.indexChanged,
   };
 }

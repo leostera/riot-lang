@@ -332,6 +332,7 @@ async function publishThroughCoordinator(
     release_key: string;
     claim_created: boolean;
     release_created: boolean;
+    index_changed: boolean;
   };
 
   return {
@@ -347,6 +348,7 @@ async function publishThroughCoordinator(
     releaseKey: payload.release_key,
     claimCreated: payload.claim_created,
     releaseCreated: payload.release_created,
+    indexChanged: payload.index_changed,
   };
 }
 

@@ -1,8 +1,10 @@
 export interface Env {
   ML_PKGS_CDN: R2Bucket;
   PACKAGE_PUBLISHED_QUEUE: Queue<PackagePublishedEvent>;
+  PACKAGE_INDEXED_QUEUE: Queue<PackageIndexedEvent>;
   PUBLICATION_COORDINATOR: DurableObjectNamespace;
   CDN_BASE_URL?: string;
+  INDEX_BASE_PATH?: string;
   GITHUB_TOKEN?: string;
   GITHUB_API_BASE_URL?: string;
   ROOT_AUTH_TOKEN?: string;
@@ -19,7 +21,10 @@ export interface PackageLocator {
 
 export interface RegistryConfig {
   cdnBaseUrl: string;
+  indexBasePath: string;
 }
+
+export type IndexConfig = RegistryConfig;
 
 export interface PackagePublicationManifest {
   package_locator: string;
@@ -63,6 +68,46 @@ export interface PackagePublishedEvent extends PublishedReleaseRecord {
   type: "package.published";
 }
 
+export interface PackageIndexedEvent {
+  type: "package.indexed";
+  package_name: string;
+  package_version: string;
+  package_locator: string;
+  resolved_sha: string;
+  package_index_key: string;
+  package_index_url: string;
+  latest: string;
+  indexed_at: string;
+}
+
+export interface IndexConfigDocument {
+  schema_version: 1;
+  kind: "sparse";
+  package_path_strategy: "cargo-lowercase-v1";
+  index_base_url: string;
+  artifact_base_url: string;
+}
+
+export interface IndexedPackageRelease {
+  version: string;
+  published_at: string;
+  canonical_locator: string;
+  repo_url: string;
+  subdir: string;
+  sha: string;
+  manifest_key: string;
+  source_key: string;
+  dependencies: Array<Record<string, unknown>>;
+}
+
+export interface PackageIndexDocument {
+  schema_version: 1;
+  name: string;
+  latest: string;
+  updated_at: string;
+  releases: IndexedPackageRelease[];
+}
+
 export interface SelectorResolutionRecord {
   package_locator: string;
   selector: string;
@@ -103,4 +148,5 @@ export interface PublishedPackageRelease extends ResolvedPublication {
   releaseKey: string;
   claimCreated: boolean;
   releaseCreated: boolean;
+  indexChanged: boolean;
 }

@@ -2,8 +2,10 @@ import { describe, expect, test } from "bun:test";
 
 import { handleRequest } from "../src/routes.ts";
 import {
+  indexConfigKey,
   manifestKey,
   packageClaimKey,
+  packageIndexKey,
   publishedReleaseKey,
   selectorResolutionKey,
   sourceArchiveKey,
@@ -88,7 +90,7 @@ describe("riot package registry routes", () => {
   });
 
   test("resolve materializes an uncached package from GitHub without emitting publish events", async () => {
-    const { env, bucket, queue } = makeEnv();
+    const { env, bucket, queue, indexedQueue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
       "tusk.toml": [
@@ -149,7 +151,7 @@ describe("riot package registry routes", () => {
   });
 
   test("semver-like tags freeze after first materialization", async () => {
-    const { env, bucket, queue } = makeEnv();
+    const { env, bucket, queue, indexedQueue } = makeEnv();
     const firstArchive = await makeTarGz({
       "tusk.toml": ['[package]', 'name = "minttea"', 'version = "0.4.2"', "public = true"].join(
         "\n",
@@ -304,7 +306,7 @@ describe("riot package registry routes", () => {
   });
 
   test("publish creates claim and release records and emits package.published", async () => {
-    const { env, bucket, queue } = makeEnv();
+    const { env, bucket, queue, indexedQueue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
       "tusk.toml": [
@@ -361,6 +363,12 @@ describe("riot package registry routes", () => {
 
     expect(await bucket.text(packageClaimKey("minttea"))).not.toBeNull();
     expect(await bucket.text(publishedReleaseKey("minttea", "0.4.2"))).not.toBeNull();
+    expect(await bucket.text(indexConfigKey({ cdnBaseUrl: "https://cdn.pkgs.ml", indexBasePath: "index/v1" }))).not.toBeNull();
+    expect(
+      await bucket.text(
+        packageIndexKey({ cdnBaseUrl: "https://cdn.pkgs.ml", indexBasePath: "index/v1" }, "minttea"),
+      ),
+    ).not.toBeNull();
     expect(queue.messages).toHaveLength(1);
     expect(queue.messages[0]).toMatchObject({
       type: "package.published",
@@ -369,10 +377,21 @@ describe("riot package registry routes", () => {
       package_locator: "github.com/leostera/minttea",
       resolved_sha: SHA,
     });
+    expect(indexedQueue.messages).toHaveLength(1);
+    expect(indexedQueue.messages[0]).toMatchObject({
+      type: "package.indexed",
+      package_name: "minttea",
+      package_version: "0.4.2",
+      package_locator: "github.com/leostera/minttea",
+      resolved_sha: SHA,
+      package_index_key: "index/v1/mi/nt/minttea.json",
+      package_index_url: "https://cdn.pkgs.ml/index/v1/mi/nt/minttea.json",
+      latest: "0.4.2",
+    });
   });
 
   test("publish is idempotent for an already-published release", async () => {
-    const { env, bucket, queue } = makeEnv();
+    const { env, bucket, queue, indexedQueue } = makeEnv();
     const archive = await makeTarGz({
       "tusk.toml": [
         "[package]",
@@ -427,10 +446,11 @@ describe("riot package registry routes", () => {
     });
 
     expect(queue.messages).toHaveLength(1);
+    expect(indexedQueue.messages).toHaveLength(1);
   });
 
   test("publish rejects requests without root auth", async () => {
-    const { env, bucket, queue } = makeEnv();
+    const { env, bucket, queue, indexedQueue } = makeEnv();
     const ctx = new FakeExecutionContext();
 
     const response = await handleRequest(
@@ -447,12 +467,13 @@ describe("riot package registry routes", () => {
       error: "unauthorized",
     });
     expect(queue.messages).toHaveLength(0);
+    expect(indexedQueue.messages).toHaveLength(0);
     expect(bucket.keys().filter((key) => key.startsWith("claims/"))).toHaveLength(0);
     expect(bucket.keys().filter((key) => key.startsWith("releases/"))).toHaveLength(0);
   });
 
   test("publish rejects non-public packages after materialization", async () => {
-    const { env, bucket, queue } = makeEnv();
+    const { env, bucket, queue, indexedQueue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
       "tusk.toml": ['[package]', 'name = "minttea"', 'version = "0.4.2"', "public = false"].join(
@@ -492,12 +513,13 @@ describe("riot package registry routes", () => {
 
     expect(await bucket.text(`packages/github.com/leostera/minttea/${SHA}.manifest.json`)).not.toBeNull();
     expect(queue.messages).toHaveLength(0);
+    expect(indexedQueue.messages).toHaveLength(0);
     expect(await bucket.text(packageClaimKey("minttea"))).toBeNull();
     expect(await bucket.text(publishedReleaseKey("minttea", "0.4.2"))).toBeNull();
   });
 
   test("publish rejects package name conflicts from different locators", async () => {
-    const { env, bucket, queue } = makeEnv();
+    const { env, bucket, queue, indexedQueue } = makeEnv();
     const firstArchive = await makeTarGz({
       "tusk.toml": [
         "[package]",
@@ -568,6 +590,7 @@ describe("riot package registry routes", () => {
     });
 
     expect(queue.messages).toHaveLength(1);
+    expect(indexedQueue.messages).toHaveLength(1);
     expect(await bucket.text(packageClaimKey("minttea"))).not.toBeNull();
     expect(await bucket.text(publishedReleaseKey("minttea", "0.5.0"))).toBeNull();
   });

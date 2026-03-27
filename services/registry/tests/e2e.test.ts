@@ -8,6 +8,8 @@ const publishPackageLocator = process.env.REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR ?
 const liveTest = baseUrl === null ? test.skip : test;
 const rootAuthToken = process.env.REGISTRY_E2E_ROOT_AUTH_TOKEN ?? null;
 const livePublishTest = baseUrl === null || rootAuthToken === null ? test.skip : test;
+const cdnBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
+const indexBasePath = trimSlashes(process.env.REGISTRY_INDEX_E2E_BASE_PATH) ?? "index/v1";
 
 describe("riot package registry live e2e", () => {
   liveTest("root route returns service metadata", async () => {
@@ -84,6 +86,91 @@ describe("riot package registry live e2e", () => {
     expect(typeof publication.release.created).toBe("boolean");
     expect(publication.manifest.url).toContain(`/package/${publishPackageLocator}/-/manifest/`);
     expect(publication.source_archive.url).toContain(`/package/${publishPackageLocator}/-/source/`);
+
+    const config = await pollJson<Record<string, unknown>>(
+      `${cdnBaseUrl}/${indexBasePath}/config.json`,
+      (value) => value !== null && value.kind === "sparse",
+    );
+    expect(config.index_base_url).toBe(`${cdnBaseUrl}/${indexBasePath}`);
+
+    const packageDocument = await pollJson<Record<string, unknown>>(
+      `${cdnBaseUrl}/${packageIndexKey(publication.package_name)}`,
+      (value) => {
+        if (value === null || value.name !== publication.package_name || !Array.isArray(value.releases)) {
+          return false;
+        }
+
+        return value.releases.some(
+          (release) =>
+            release !== null &&
+            typeof release === "object" &&
+            "version" in release &&
+            "sha" in release &&
+            release.version === publication.package_version &&
+            release.sha === publication.resolved_sha,
+        );
+      },
+    );
+
+    expect(packageDocument.latest).toBe(publication.package_version);
+  });
+
+  livePublishTest("published package exposes a complete sparse-index install fast path", async () => {
+    const publication = await publishPackage();
+
+    const config = await pollJson<IndexConfigPayload>(
+      `${cdnBaseUrl}/${indexBasePath}/config.json`,
+      (value) => value !== null && value.kind === "sparse",
+    );
+
+    expect(config).toEqual({
+      schema_version: 1,
+      kind: "sparse",
+      package_path_strategy: "cargo-lowercase-v1",
+      index_base_url: `${cdnBaseUrl}/${indexBasePath}`,
+      artifact_base_url: cdnBaseUrl,
+    });
+
+    const packageDocumentUrl = `${cdnBaseUrl}/${packageIndexKey(publication.package_name)}`;
+    const packageDocument = await pollJson<PackageIndexDocumentPayload>(
+      packageDocumentUrl,
+      (value) =>
+        value !== null &&
+        value.name === publication.package_name &&
+        Array.isArray(value.releases) &&
+        value.releases.some(
+          (release) =>
+            release.version === publication.package_version &&
+            release.sha === publication.resolved_sha,
+        ),
+    );
+
+    expect(packageDocument.name).toBe(publication.package_name);
+    expect(packageDocument.latest).toBe(publication.package_version);
+
+    const indexedRelease = packageDocument.releases.find(
+      (release) =>
+        release.version === publication.package_version &&
+        release.sha === publication.resolved_sha,
+    );
+
+    expect(indexedRelease).toBeDefined();
+    expect(indexedRelease?.canonical_locator).toBe(publication.package);
+    expect(indexedRelease?.repo_url).toBe(publication.source_url);
+    expect(indexedRelease?.subdir).toBe(publication.package_subdir);
+
+    const manifestResponse = await fetch(`${cdnBaseUrl}/${indexedRelease!.manifest_key}`);
+    expect(manifestResponse.status).toBe(200);
+    expect(manifestResponse.headers.get("content-type")).toContain("application/json");
+
+    const manifest = (await manifestResponse.json()) as Record<string, unknown>;
+    expect(manifest.package_locator).toBe(publication.package);
+    expect(manifest.package_name).toBe(publication.package_name);
+    expect(manifest.package_version).toBe(publication.package_version);
+    expect(manifest.resolved_sha).toBe(publication.resolved_sha);
+
+    const sourceResponse = await fetch(`${cdnBaseUrl}/${indexedRelease!.source_key}`);
+    expect(sourceResponse.status).toBe(200);
   });
 });
 
@@ -129,6 +216,60 @@ function trimTrailingSlash(value: string | undefined): string | null {
   return value.endsWith("/") ? value.slice(0, -1) : value;
 }
 
+function trimSlashes(value: string | undefined): string | null {
+  if (value === undefined || value.length === 0) {
+    return null;
+  }
+
+  return value.replace(/^\/+|\/+$/g, "");
+}
+
+function packageIndexKey(packageName: string): string {
+  const normalized = packageName.toLowerCase();
+
+  if (normalized.length === 1) {
+    return `${indexBasePath}/1/${normalized}.json`;
+  }
+
+  if (normalized.length === 2) {
+    return `${indexBasePath}/2/${normalized}.json`;
+  }
+
+  if (normalized.length === 3) {
+    return `${indexBasePath}/3/${normalized[0]}/${normalized}.json`;
+  }
+
+  return `${indexBasePath}/${normalized.slice(0, 2)}/${normalized.slice(2, 4)}/${normalized}.json`;
+}
+
+async function pollJson<T>(
+  url: string,
+  accept: (value: T | null) => boolean,
+  timeoutMs = 15000,
+  intervalMs = 500,
+): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  let lastStatus = 0;
+
+  while (Date.now() <= deadline) {
+    const response = await fetch(url);
+    lastStatus = response.status;
+
+    if (response.status === 200) {
+      const payload = (await response.json()) as T;
+      if (accept(payload)) {
+        return payload;
+      }
+    } else if (response.status !== 404) {
+      throw new Error(`Unexpected status ${response.status} while polling ${url}.`);
+    }
+
+    await Bun.sleep(intervalMs);
+  }
+
+  throw new Error(`Timed out waiting for indexed package at ${url}. Last status was ${lastStatus}.`);
+}
+
 interface ResolvePayload {
   package: string;
   source_url: string;
@@ -160,4 +301,32 @@ interface PublishPayload extends ResolvePayload {
     manifest: boolean;
     source: boolean;
   };
+}
+
+interface IndexConfigPayload {
+  schema_version: number;
+  kind: string;
+  package_path_strategy: string;
+  index_base_url: string;
+  artifact_base_url: string;
+}
+
+interface PackageIndexDocumentPayload {
+  schema_version: number;
+  name: string;
+  latest: string;
+  updated_at: string;
+  releases: PackageIndexReleasePayload[];
+}
+
+interface PackageIndexReleasePayload {
+  version: string;
+  published_at: string;
+  canonical_locator: string;
+  repo_url: string;
+  subdir: string;
+  sha: string;
+  manifest_key: string;
+  source_key: string;
+  dependencies: unknown[];
 }

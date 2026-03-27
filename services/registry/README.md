@@ -14,6 +14,7 @@ Wrangler reads `.env` during local development, and the Worker expects at least:
 
 ```dotenv
 CDN_BASE_URL=https://cdn.pkgs.ml
+INDEX_BASE_PATH=index/v1
 GITHUB_TOKEN=
 ROOT_AUTH_TOKEN=
 ```
@@ -26,8 +27,8 @@ those upstreams. This is useful for on-premise or private testing setups.
 - `GET /` returns service metadata.
 - `GET /package/<locator>/-/resolve?ref=<selector>` materializes or reuses a source-backed package snapshot.
 - `GET /package/<locator>/-/manifest/<sha>.json` reads immutable manifests from R2.
-- `GET /package/<locator>/-/source/<sha>.tar.gz` reads source archives from R2.
-- `POST /package/<locator>/-/publish?ref=<selector>` publishes a named package release and requires `Authorization: Bearer <ROOT_AUTH_TOKEN>`.
+- `GET /package/<locator>/-/source/<sha>.tar.gz` redirects to immutable source archives on `cdn.pkgs.ml`.
+- `POST /package/<locator>/-/publish?ref=<selector>` publishes a named package release, synchronously updates the sparse package index under `cdn.pkgs.ml/index/v1`, and requires `Authorization: Bearer <ROOT_AUTH_TOKEN>`.
 
 The Worker logs every request into `ml-pkgs-cdn/requests/...`.
 
@@ -41,6 +42,8 @@ REGISTRY_E2E_BASE_URL=https://registry.pkgs.ml
 REGISTRY_E2E_PACKAGE_LOCATOR=github.com/leostera/riot-new/packages/kernel
 REGISTRY_E2E_ROOT_AUTH_TOKEN=
 REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR=github.com/owner/repo/path/to/public-package
+REGISTRY_INDEX_E2E_CDN_BASE_URL=https://cdn.pkgs.ml
+REGISTRY_INDEX_E2E_BASE_PATH=index/v1
 ```
 
 Then run:

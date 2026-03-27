@@ -154,15 +154,19 @@ export function makeEnv(overrides: Partial<Env> = {}): {
   env: Env;
   bucket: FakeR2Bucket;
   queue: FakeQueue;
+  indexedQueue: FakeQueue;
 } {
   const bucket = new FakeR2Bucket();
   const queue = new FakeQueue();
+  const indexedQueue = new FakeQueue();
 
   const env: Env = {
     ML_PKGS_CDN: bucket as unknown as R2Bucket,
     PACKAGE_PUBLISHED_QUEUE: queue as unknown as Queue,
+    PACKAGE_INDEXED_QUEUE: indexedQueue as unknown as Queue,
     PUBLICATION_COORDINATOR: undefined as unknown as DurableObjectNamespace,
     CDN_BASE_URL: "https://cdn.pkgs.ml",
+    INDEX_BASE_PATH: "index/v1",
     GITHUB_TOKEN: "",
     ROOT_AUTH_TOKEN: "root-secret",
     ...overrides,
@@ -176,6 +180,7 @@ export function makeEnv(overrides: Partial<Env> = {}): {
     env,
     bucket,
     queue,
+    indexedQueue,
   };
 }
 

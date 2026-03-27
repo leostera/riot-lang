@@ -2,7 +2,7 @@
 
 - Feature Name: `riot_package_registry`
 - Start Date: `2026-03-27`
-- Status: `presented`
+- Status: `implemented`
 - RFD PR: [leostera/riot#0000](https://github.com/leostera/riot/pull/0000)
 - Riot Issue: [leostera/riot#0000](https://github.com/leostera/riot/issues/0000)
 
@@ -14,14 +14,15 @@ source-backed package materialization and publish control-plane service.
 It resolves a provider-backed package locator plus optional selector into a
 concrete Git commit SHA, stores the corresponding source archive durably in
 `ml-pkgs-cdn`, writes one immutable source manifest, logs every request, and
-supports an explicit authenticated publish flow that claims package names and
-emits `package.published`.
+supports an explicit authenticated publish flow that claims package names,
+updates the sparse package index synchronously, and emits `package.published`
+and `package.indexed`.
 
 The registry is intentionally narrow.
 It is not responsible for package search, dependency solving, version
 selection, lockfile generation, or a mutable global package index.
-Those concerns move downstream into workers that consume publish events and
-materialize read-optimized indexes for `tusk`.
+Riot initially updates the sparse package index synchronously during publish so
+that a successful publish is immediately installable.
 
 GitHub is the first supported upstream provider.
 The external model stays provider-neutral so additional source providers can be
@@ -65,7 +66,8 @@ The registry therefore needs a deliberately smaller responsibility:
 - materialize immutable source-backed package records
 - make those records durable
 - explicitly publish named package releases when an authenticated author asks
-- tell downstream systems when named package publication happened
+- make successful publishes immediately visible in the sparse package index
+- tell downstream systems when named package publication and indexing happened
 
 That boundary keeps the protocol small, the caching story understandable, and
 future indexers replaceable.
@@ -82,7 +84,7 @@ future indexers replaceable.
   Riot treats that subdirectory as the package boundary.
 - A later request for the same package at the same resolved SHA reuses the
   stored archive and manifest without consulting GitHub again.
-- Downstream systems consume `package.published` to build secondary indexes,
+- Downstream systems consume `package.indexed` to build secondary indexes,
   docs, or compatibility reports without expanding the registry's
   responsibility.
 
@@ -196,9 +198,9 @@ The intended flow is:
    - the package name is unclaimed or already owned by this publisher
 6. the registry records the package-name claim and the release binding from
    `minttea@0.4.2` to the canonical source locator and SHA
-7. the registry emits one `package.published` event
-8. downstream indexers update the public package index so later users can run
-   `tusk add minttea`
+7. the registry synchronously updates the sparse package index
+8. the registry emits `package.published` and `package.indexed`
+9. later users can immediately run `tusk add minttea`
 
 ### Example: package in a subdirectory
 
@@ -245,9 +247,9 @@ flowchart TD
   M --> N[materialize source package]
   N --> O[validate public name and semver]
   O --> P[record name claim and release binding]
-  P --> Q[emit package.published]
-  Q --> R[downstream indexer workers]
-  R --> S[mutable package indexes]
+  P --> Q[write sparse package index]
+  Q --> R[emit package.published and package.indexed]
+  R --> S[downstream search docs and checks]
 ```
 
 ## Reference-level explanation
