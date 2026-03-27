@@ -16,7 +16,7 @@ let () =
         |> ArgParser.Arg.long "url"
         |> ArgParser.Arg.value_name "URL"
         |> ArgParser.Arg.default "https://leostera.com"
-        |> ArgParser.Arg.help "URL to request";
+        |> ArgParser.Arg.help "URL to request"
       ] in
       let matches =
         match ArgParser.get_matches cmd args with

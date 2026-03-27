@@ -119,7 +119,7 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
         in
         assert_idempotent ~source ~msg:"collection expressions should stay stable";
         Ok ());
-    Test.case "format preserves trailing semicolons in list apply arguments" (fun () ->
+    Test.case "format canonicalizes multiline list apply arguments" (fun () ->
         let source =
           {|let cmd =
   f [
@@ -128,25 +128,36 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
   ]
 |}
         in
-        let parsed = parse_ml source in
         let formatted =
-          Krasny.format parsed
+          parse_ml source |> Krasny.format
           |> Result.expect ~msg:"list arguments should format"
         in
         Test.assert_equal
-          ~expected:
-            {|let cmd =
+          ~expected:{|let cmd = f [ first_item; second_item; ]
+|}
+          ~actual:formatted;
+        Ok ());
+    Test.case "verify treats redundant parens and list trailing separators as safe"
+      (fun () ->
+        with_tempdir "krasny_runner_verify_semantic_hash" (fun tmpdir ->
+            let parens = Path.(tmpdir / Path.v "parens.ml") in
+            let listy = Path.(tmpdir / Path.v "listy.ml") in
+            Fs.write "let x = configure ~style:(Style.Grow)\n" parens
+            |> Result.expect ~msg:"write parens";
+            Fs.write
+              {|let cmd =
   f [
     first_item;
     second_item;
   ]
 |}
-          ~actual:formatted;
-        let reparsed = parse_ml formatted in
-        Test.assert_equal
-          ~expected:(Krasny.syntax_hash parsed)
-          ~actual:(Krasny.syntax_hash reparsed);
-        Ok ());
+              listy
+            |> Result.expect ~msg:"write listy";
+            let result = Krasny.Runner.run_verify [ parens; listy ] in
+            Test.assert_equal ~expected:2 ~actual:result.summary.total_files;
+            Test.assert_equal ~expected:2 ~actual:result.summary.would_reformat;
+            Test.assert_equal ~expected:0 ~actual:result.summary.unsafe_to_format;
+            Ok ()));
     Test.case "format keeps function and match lowering idempotent" (fun () ->
         let source =
           {|let f = function x, y -> x + y

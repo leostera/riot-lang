@@ -116,6 +116,147 @@ let syntax_hash (result : Syn.Parser.parse_result) =
   write_element (Syn.Ceibo.Green.Node result.tree);
   IO.Buffer.contents buffer |> Crypto.hash_string |> Crypto.Digest.hex
 
+let is_trivia_kind = function
+  | Syn.SyntaxKind.WHITESPACE -> true
+  | _ -> false
+
+let is_comment_like_kind = function
+  | Syn.SyntaxKind.COMMENT
+  | Syn.SyntaxKind.DOCSTRING ->
+      true
+  | _ ->
+      false
+
+let is_redundant_paren_inner_kind = function
+  | Syn.SyntaxKind.IDENT_EXPR
+  | Syn.SyntaxKind.PATH_EXPR
+  | Syn.SyntaxKind.CONSTRUCTOR_EXPR
+  | Syn.SyntaxKind.POLY_VARIANT_EXPR
+  | Syn.SyntaxKind.INT_LITERAL
+  | Syn.SyntaxKind.FLOAT_LITERAL
+  | Syn.SyntaxKind.STRING_LITERAL
+  | Syn.SyntaxKind.CHAR_LITERAL
+  | Syn.SyntaxKind.BOOL_LITERAL
+  | Syn.SyntaxKind.UNIT_LITERAL
+  | Syn.SyntaxKind.LIST_EXPR
+  | Syn.SyntaxKind.ARRAY_EXPR
+  | Syn.SyntaxKind.RECORD_EXPR
+  | Syn.SyntaxKind.RECORD_UPDATE_EXPR
+  | Syn.SyntaxKind.TUPLE_EXPR
+  | Syn.SyntaxKind.PAREN_EXPR ->
+      true
+  | _ ->
+      false
+
+let semantic_hash (result : Syn.Parser.parse_result) =
+  let buffer = IO.Buffer.create 1024 in
+  let rec should_skip_token ~parent_kind token =
+    let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
+    let token_text =
+      Syn.Ceibo.Green.text (Syn.Ceibo.Green.Token token)
+      |> Option.expect ~msg:"green token text"
+    in
+    if is_trivia_kind token_kind then
+      true
+    else
+      match parent_kind with
+      | Some Syn.SyntaxKind.PAREN_EXPR ->
+          String.equal token_text "(" || String.equal token_text ")"
+      | Some Syn.SyntaxKind.LIST_EXPR ->
+          String.equal token_text "["
+          || String.equal token_text "]"
+          || String.equal token_text ";"
+      | Some Syn.SyntaxKind.ARRAY_EXPR ->
+          String.equal token_text "[|"
+          || String.equal token_text "|]"
+          || String.equal token_text ";"
+      | _ ->
+          false
+  and redundant_paren_child node =
+    let has_comment_like =
+          Array.exists
+        (function
+          | Syn.Ceibo.Green.Token token ->
+              let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
+              is_comment_like_kind token_kind
+          | Syn.Ceibo.Green.Node _ ->
+              false)
+        (Syn.Ceibo.Green.children node)
+    in
+    if has_comment_like then
+      None
+    else
+      let meaningful_children =
+        Syn.Ceibo.Green.children node
+        |> Array.to_list
+        |> List.filter (function
+               | Syn.Ceibo.Green.Token token ->
+                   let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
+                   let token_text =
+                     Syn.Ceibo.Green.text (Syn.Ceibo.Green.Token token)
+                     |> Option.expect ~msg:"green token text"
+                   in
+                   not (is_trivia_kind token_kind)
+                   && not (String.equal token_text "(" || String.equal token_text ")")
+               | Syn.Ceibo.Green.Node _ ->
+                   true)
+      in
+      match meaningful_children with
+      | [ Syn.Ceibo.Green.Node inner as child ]
+        when
+          is_redundant_paren_inner_kind
+            (Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Node inner)) ->
+          Some child
+      | [ Syn.Ceibo.Green.Token token as child ]
+        when
+          is_redundant_paren_inner_kind
+            (Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token)) ->
+          Some child
+      | _ ->
+          None
+  and write_token token =
+    let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
+    let token_text =
+      Syn.Ceibo.Green.text (Syn.Ceibo.Green.Token token)
+      |> Option.expect ~msg:"green token text"
+    in
+    IO.Buffer.add_string buffer "T(";
+    IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string token_kind);
+    IO.Buffer.add_string buffer ":";
+    IO.Buffer.add_string buffer token_text;
+    IO.Buffer.add_string buffer ")"
+  and write_child ~parent_kind = function
+    | Syn.Ceibo.Green.Token token ->
+        if not (should_skip_token ~parent_kind token) then
+          write_token token
+    | Syn.Ceibo.Green.Node _ as element ->
+        write_element element
+  and write_node node =
+    let node_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Node node) in
+    IO.Buffer.add_string buffer "N(";
+    IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string node_kind);
+    IO.Buffer.add_string buffer "[";
+    Array.iter (write_child ~parent_kind:(Some node_kind)) (Syn.Ceibo.Green.children node);
+    IO.Buffer.add_string buffer "])"
+  and write_element = function
+    | Syn.Ceibo.Green.Token token ->
+        let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
+        if not (is_trivia_kind token_kind) then
+          write_token token
+    | Syn.Ceibo.Green.Node node ->
+        let node_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Node node) in
+        if Syn.SyntaxKind.(node_kind = PAREN_EXPR) then
+          match redundant_paren_child node with
+          | Some child ->
+              write_child ~parent_kind:(Some Syn.SyntaxKind.PAREN_EXPR) child
+          | None ->
+              write_node node
+        else
+          write_node node
+  in
+  write_node result.tree;
+  IO.Buffer.contents buffer |> Crypto.hash_string |> Crypto.Digest.hex
+
 let finalize file start ~status ~needs_formatting ~error =
   {
     file;
@@ -145,9 +286,9 @@ let format_file ~mode file =
                   finalize file start ~status:Needs_formatting
                     ~needs_formatting:true ~error:None
               | Verify ->
-                  let original_hash = syntax_hash parsed in
+                  let original_hash = semantic_hash parsed in
                   let reparsed = Syn.parse ~filename:file formatted in
-                  let formatted_hash = syntax_hash reparsed in
+                  let formatted_hash = semantic_hash reparsed in
                   if String.equal original_hash formatted_hash then
                     finalize file start ~status:Would_reformat
                       ~needs_formatting:true ~error:None
@@ -156,7 +297,7 @@ let format_file ~mode file =
                       ~needs_formatting:true
                       ~error:
                         (Some
-                           ("syntax-hash mismatch after formatting (original: "
+                           ("semantic-hash mismatch after formatting (original: "
                           ^ original_hash ^ ", formatted: " ^ formatted_hash
                           ^ ")"))
           in
