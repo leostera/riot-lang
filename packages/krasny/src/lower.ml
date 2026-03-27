@@ -4267,8 +4267,10 @@ and render_local_binding
         type_annotation_from_pattern
   in
   let lifted_parameters, lifted_body_expression =
-    match parameters, value with
-    | [], Syn.Cst.Expression.Fun fun_ when not source_has_explicit_fun ->
+    match parameters, value, type_annotation with
+    | _, _, Some _ ->
+        ([], None)
+    | [], Syn.Cst.Expression.Fun fun_, None when not source_has_explicit_fun ->
         let fun_parameters, fun_body = flatten_fun_expression fun_ in
         (match fun_body with
         | Syn.Cst.Expression body_expression ->
@@ -4304,7 +4306,7 @@ and render_local_binding
     | None ->
         header
     | Some type_ ->
-        Doc.concat [ header; annotation_colon; render_core_type type_ ]
+        Doc.concat [ header; colon; render_core_type type_ ]
   in
   let force_multiline_body =
     local_context
