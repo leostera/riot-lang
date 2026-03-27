@@ -36,11 +36,23 @@ type state = private
 type t
 (** Opaque process type *)
 
+type reduction_result =
+  | Continue
+  | Yield
+(** Result of spending one cooperative scheduling reduction. *)
+
 val make : (unit -> (unit, exit_reason) result) -> t
 (** Create a new process from a function *)
 
 val init : t -> unit
 (** Initialize a process, making it ready to run *)
+
+val reset_reductions : t -> int -> unit
+(** Reset the process-local reduction budget to a new positive value. *)
+
+val use_reduction : t -> reduction_result
+(** Spend one process-local reduction and report whether the process should
+    perform a real scheduler yield. *)
 
 val pid : t -> Pid.t
 (** Get the process ID *)

@@ -403,9 +403,8 @@ let spawn t fn =
   let worker_id = pick_spawn_worker t in
   spawn_on_worker t ~worker_id fn
 
-let get_current_process t =
+let get_current_process () =
   let ctx = get_context () in
-  let _ = t in
   match ctx.current_process with
   | None -> panic "No process currently running"
   | Some proc -> proc
@@ -651,7 +650,14 @@ let handle_run_proc t ctx slot =
     let next =
       try
         match
-          Proc_state.run ~reductions:100 ~perform:(perform t proc) (Process.cont proc)
+          Proc_state.run
+            ~consume_reduction:(fun () ->
+              match Process.use_reduction proc with
+              | Process.Continue ->
+                  false
+              | Process.Yield ->
+                  true)
+            ~perform:(perform t proc) (Process.cont proc)
         with
         | Some cont -> cont
         | None ->

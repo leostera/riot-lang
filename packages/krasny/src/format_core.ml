@@ -23,15 +23,19 @@ let format_error_to_string = function
       err.message ^ context
 
 let format (result : Syn.Parser.parse_result) =
+  yield ();
   match Syn.build_cst result with
   | Error err ->
       Error (Cannot_build_cst err)
   | Ok source_file ->
       let original_source = Source.source_of_result result in
+      yield ();
       Ok
         (match Lower.source_file ~source:original_source source_file with
         | Some rendered ->
+            yield ();
             let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
+            yield ();
             if String.ends_with ~suffix:"\n" original_source
                && String.ends_with ~suffix:"\n" rendered
             then

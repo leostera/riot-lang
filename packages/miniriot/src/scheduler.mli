@@ -49,7 +49,7 @@ val add_timer :
 val cancel_timer : t -> Timer.id -> unit
 (** Cancel a timer in the reactor-owned timer wheel. *)
 
-val get_current_process : t -> Process.t
+val get_current_process : unit -> Process.t
 (** Return the current process for the calling worker domain context. *)
 
 val get_process : t -> Pid.t -> Process.t option

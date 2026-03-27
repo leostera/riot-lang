@@ -22,7 +22,8 @@ module Runtime : sig
   val increment_reduction_count : unit -> unit
   (** Increment (actually decrement) the reduction count and yield if necessary.
       Due to how OCaml's bytecode works, we decrement from an initial value
-      towards zero rather than counting up. *)
+      towards zero rather than counting up. The compiler-injected path shares
+      the same process-local reduction budget as manual [yield] calls. *)
 end
 
 module Pid = Pid
@@ -145,6 +146,8 @@ val spawn : (unit -> (unit, Process.exit_reason) result) -> Pid.t
 val spawn_link : (unit -> (unit, Process.exit_reason) result) -> Pid.t
 val send : Pid.t -> Message.t -> unit
 val yield : unit -> unit
+(** Spend one process-local cooperative reduction and yield to the scheduler
+    when the budget is exhausted. *)
 
 type 'msg selector = Message.t -> [ `select of 'msg | `skip ]
 

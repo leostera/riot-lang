@@ -4910,6 +4910,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
   in
   let items = List.sort compare_structure_items_by_span items in
   let rec loop pending acc cursor items =
+    yield ();
     match items with
     | [] ->
         let pending = parse_between pending ~start:cursor ~end_:source_end in
@@ -5112,6 +5113,7 @@ and render_signature_top_level_items ~source ~source_offset ~source_node ~items 
   in
   let items = List.sort compare_signature_items_by_span items in
   let rec loop pending acc items cursor =
+    yield ();
     match items with
     | [] ->
         let pending = parse_between pending ~start:cursor ~end_:source_end in

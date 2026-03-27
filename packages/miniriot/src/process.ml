@@ -33,6 +33,12 @@ type state =
   | Exited of (unit, exit_reason) result
   | Finalized
 
+type reduction_result =
+  | Continue
+  | Yield
+
+let default_reduction_budget = 100
+
 type t = {
   pid : Pid.t;
   state : state atomic_ref;
@@ -54,6 +60,7 @@ type t = {
   mutable monitors : (monitor_ref * Pid.t) list;
   mutable monitored_by : (Pid.t * monitor_ref) list;
   trap_exit : bool atomic_ref;
+  mutable reductions_remaining : int;
 }
 
 let monitor_ref_counter = Sync.Atomic.make 0
@@ -88,13 +95,27 @@ let make fn =
     monitors = [];
     monitored_by = [];
     trap_exit = Sync.Atomic.make false;
+    reductions_remaining = default_reduction_budget;
   }
 
 let init t =
   let fn = Option.unwrap t.fn in
   t.cont <- Some (Proc_state.make fn Proc_effect.Yield);
   t.fn <- None;
+  t.reductions_remaining <- default_reduction_budget;
   Sync.Atomic.set t.state Runnable
+
+let reset_reductions t remaining =
+  t.reductions_remaining <- if remaining <= 0 then 1 else remaining
+
+let use_reduction t =
+  let remaining = t.reductions_remaining - 1 in
+  if remaining > 0 then (
+    t.reductions_remaining <- remaining;
+    Continue)
+  else (
+    t.reductions_remaining <- default_reduction_budget;
+    Yield)
 
 let with_lock t f =
   Mutex.lock t.lock;

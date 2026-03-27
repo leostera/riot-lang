@@ -10780,6 +10780,7 @@ and parse ~cst_kind ~parse_item ~source ~tokens =
 
   (* Parse items until EOF *)
   let rec parse_items acc =
+    yield ();
     if is_eof parser then List.rev acc
     else if peek_kind parser = Token.EOF then List.rev acc
     else if peek_kind parser = Token.Semi then

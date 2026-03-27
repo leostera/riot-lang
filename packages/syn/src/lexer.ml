@@ -970,19 +970,20 @@ let next cursor delim_stack =
         let end_ = Cursor.position cursor in
         { Token.kind = Token.Unknown c; span = Ceibo.Span.make ~start ~end_ }
 
-let rec lex_all cursor delim_stack acc =
-  let token = next cursor delim_stack in
-  let new_stack =
-    match token.Token.kind with
-    | Token.OpenDelim d -> d :: delim_stack
-    | Token.CloseDelim _ -> (
-        match delim_stack with _ :: rest -> rest | [] -> delim_stack)
-    | _ -> delim_stack
-  in
-  match token.Token.kind with
-  | Token.EOF -> List.rev (token :: acc)
-  | _ -> lex_all cursor new_stack (token :: acc)
-
 let tokenize source =
   let cursor = create source in
-  lex_all cursor [] []
+  let rec lex_all delim_stack acc =
+    yield ();
+    let token = next cursor delim_stack in
+    let new_stack =
+      match token.Token.kind with
+      | Token.OpenDelim d -> d :: delim_stack
+      | Token.CloseDelim _ -> (
+          match delim_stack with _ :: rest -> rest | [] -> delim_stack)
+      | _ -> delim_stack
+    in
+    match token.Token.kind with
+    | Token.EOF -> List.rev (token :: acc)
+    | _ -> lex_all new_stack (token :: acc)
+  in
+  lex_all [] []

@@ -19,15 +19,17 @@ module Process = struct
     type t = Proc.monitor_ref
   end
 
-  let set_flags flags =
+  let with_current_relations f =
     let t = Scheduler.get_scheduler () in
-    let current = Scheduler.get_current_process t in
+    let current = Scheduler.get_current_process () in
+    Scheduler.with_relations_lock t (fun () -> f t current)
+
+  let set_flags flags =
+    let current = Scheduler.get_current_process () in
     Proc.set_flags current flags
 
   let link pid =
-    let t = Scheduler.get_scheduler () in
-    Scheduler.with_relations_lock t (fun () ->
-        let current = Scheduler.get_current_process t in
+    with_current_relations (fun t current ->
         match Scheduler.get_process t pid with
         | None ->
             panic
@@ -38,9 +40,7 @@ module Process = struct
             Proc.link target (Proc.pid current))
 
   let unlink pid =
-    let t = Scheduler.get_scheduler () in
-    Scheduler.with_relations_lock t (fun () ->
-        let current = Scheduler.get_current_process t in
+    with_current_relations (fun t current ->
         match Scheduler.get_process t pid with
         | None -> ()
         | Some target ->
@@ -48,9 +48,7 @@ module Process = struct
             Proc.unlink target (Proc.pid current))
 
   let monitor pid =
-    let t = Scheduler.get_scheduler () in
-    Scheduler.with_relations_lock t (fun () ->
-        let current = Scheduler.get_current_process t in
+    with_current_relations (fun t current ->
         match Scheduler.get_process t pid with
         | None ->
             panic
@@ -62,9 +60,7 @@ module Process = struct
             ref)
 
   let demonitor ref =
-    let t = Scheduler.get_scheduler () in
-    Scheduler.with_relations_lock t (fun () ->
-        let current = Scheduler.get_current_process t in
+    with_current_relations (fun t current ->
         let monitored_pid = Proc.monitored_pid_for_ref current ref in
         Proc.demonitor current ref;
         match monitored_pid with
@@ -120,6 +116,14 @@ module Timer = struct
 end
 
 include Effects
+
+let yield () =
+  let current = Scheduler.get_current_process () in
+  match Process.use_reduction current with
+  | Process.Continue ->
+      ()
+  | Process.Yield ->
+      Effects.yield ()
 
 module Timer_id = Timer_id
 

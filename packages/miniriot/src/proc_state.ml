@@ -56,16 +56,19 @@ let make fn eff =
   let k = Effect.Shallow.fiber fn in
   Suspended (k, eff)
 
-let run : type a. reductions:int -> perform:perform -> a t -> a t option =
- fun ~reductions ~perform t ->
+let run :
+    type a.
+    consume_reduction:(unit -> bool) ->
+    perform:perform ->
+    a t ->
+    a t option =
+ fun ~consume_reduction ~perform t ->
   let exception Yield of a t in
   let exception Unwind in
-  let reductions = Cell.create reductions in
   let t = Cell.create t in
   try
     while true do
-      if !reductions = 0 then raise_notrace (Yield !t);
-      reductions := !reductions - 1;
+      if consume_reduction () then raise_notrace (Yield !t);
       match !t with
       | Finished _ as finished -> raise_notrace (Yield finished)
       | Unhandled (fn, v) -> raise_notrace (Yield (continue_with fn v))
