@@ -67,4 +67,8 @@ Current fail-fast progress (2026-03-26):
   - manually exporting `OCAMLLIB=$(pwd)/vendor/ocaml/cross/aarch64-apple-darwin/lib/ocaml` makes the native compiler resolve the expected stdlib path, which points at the rebase/build config rather than the release wrapper as the root issue
 - Related fallout:
   - `./docker/build.sh` is also currently broken and should be revisited after the relocatable OCaml regression is fixed
+  - deploying `services/registry/wrangler.toml` from a Docker image is blocked on the same chain:
+    1. fix the broken Docker builder / `./docker/build.sh`
+    2. which depends on published prebuilt OCaml toolchains
+    3. which depends on restoring the relocatable OCaml fixes after the 5.5 rebase
 - When we come back to this, inspect the rebased relocatable patches first before doing more work on the publishing scripts.
