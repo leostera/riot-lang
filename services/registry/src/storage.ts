@@ -19,7 +19,8 @@ export function requestLogKey(entry: RequestLogEntry): string {
   const year = timestamp.getUTCFullYear().toString().padStart(4, "0");
   const month = (timestamp.getUTCMonth() + 1).toString().padStart(2, "0");
   const day = timestamp.getUTCDate().toString().padStart(2, "0");
-  return `requests/${year}/${month}/${day}/${entry.request_id}.json`;
+  const hour = timestamp.getUTCHours().toString().padStart(2, "0");
+  return `requests/${year}/${month}/${day}/${hour}/${entry.request_id}.json`;
 }
 
 export function selectorResolutionKey(locator: PackageLocator, selector: string): string {

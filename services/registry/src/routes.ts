@@ -244,14 +244,12 @@ async function handleSource(
     throw new HttpError(400, "invalid_sha", "Source archive requests require a full commit SHA.");
   }
 
-  const object = await env.ML_PKGS_CDN.get(sourceArchiveKey(locator, sha));
+  const object = await env.ML_PKGS_CDN.head(sourceArchiveKey(locator, sha));
   if (object === null) {
     throw new HttpError(404, "source_not_found", "Source archive was not found.");
   }
 
-  const headers = immutableHeaders("application/gzip");
-  object.writeHttpMetadata(headers);
-  return new Response(object.body, { headers });
+  return Response.redirect(prettySourceUrl(getConfig(env), locator, sha), 307);
 }
 
 function trimSlashes(value: string): string {

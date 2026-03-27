@@ -6,6 +6,48 @@ interface GitHubCommitResponse {
   sha?: string;
 }
 
+interface GitHubRepositoryResponse {
+  private?: boolean;
+}
+
+export async function assertGitHubRepositoryAccess(
+  env: Env,
+  locator: PackageLocator,
+): Promise<void> {
+  ensureGitHubLocator(locator);
+
+  const response = await fetchFromGitHub(
+    env,
+    `/repos/${locator.owner}/${locator.repo}`,
+    {
+      headers: {
+        accept: "application/vnd.github+json",
+      },
+    },
+  );
+
+  if (response.status === 404) {
+    throw new HttpError(
+      404,
+      "github_repo_not_found",
+      `GitHub could not find or access repository ${locator.owner}/${locator.repo}.`,
+    );
+  }
+
+  if (!response.ok) {
+    throw githubRepositoryError(response, locator);
+  }
+
+  const payload = (await response.json()) as GitHubRepositoryResponse;
+  if (payload.private === true && !hasGitHubToken(env)) {
+    throw new HttpError(
+      403,
+      "private_upstream_requires_token",
+      `Repository ${locator.owner}/${locator.repo} is private and requires GITHUB_TOKEN to publish.`,
+    );
+  }
+}
+
 export async function resolveGitHubSelector(
   env: Env,
   locator: PackageLocator,
@@ -76,6 +118,11 @@ function ensureGitHubLocator(locator: PackageLocator): void {
   }
 }
 
+function hasGitHubToken(env: Env): boolean {
+  const token = env.GITHUB_TOKEN?.trim();
+  return token !== undefined && token.length > 0;
+}
+
 async function fetchFromGitHub(
   env: Env,
   path: string,
@@ -118,5 +165,21 @@ function githubError(response: Response, selector: string): HttpError {
     502,
     "github_request_failed",
     `GitHub returned status ${response.status} while resolving selector ${selector}.`,
+  );
+}
+
+function githubRepositoryError(response: Response, locator: PackageLocator): HttpError {
+  if (response.status >= 500) {
+    return new HttpError(
+      502,
+      "github_unavailable",
+      `GitHub failed while reading repository metadata for ${locator.owner}/${locator.repo}.`,
+    );
+  }
+
+  return new HttpError(
+    502,
+    "github_request_failed",
+    `GitHub returned status ${response.status} while reading repository metadata for ${locator.owner}/${locator.repo}.`,
   );
 }

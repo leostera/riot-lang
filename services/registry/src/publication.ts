@@ -2,13 +2,15 @@ import { buildPublicationManifest } from "./manifest.ts";
 import { isFullSha, isSemverLikeTag } from "./locator.ts";
 import { manifestKey, readSelectorResolution, sourceArchiveKey, writeSelectorResolution } from "./storage.ts";
 import type { Env, PackageLocator, PackagePublishedEvent, ResolvedPublication } from "./types.ts";
-import { fetchGitHubTarball, resolveGitHubSelector } from "./github.ts";
+import { assertGitHubRepositoryAccess, fetchGitHubTarball, resolveGitHubSelector } from "./github.ts";
 
 export async function ensurePublication(
   env: Env,
   locator: PackageLocator,
   selector: string,
 ): Promise<ResolvedPublication> {
+  await assertGitHubRepositoryAccess(env, locator);
+
   const publishedAt = new Date().toISOString();
   const freezeSelector = isSemverLikeTag(selector);
   const selectorRecord = freezeSelector

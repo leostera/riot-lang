@@ -350,7 +350,8 @@ ml-pkgs-cdn/
     YYYY/
       MM/
         DD/
-          <request-id>.json
+          HH/
+            <request-id>.json
 ```
 
 Example:
@@ -358,7 +359,7 @@ Example:
 ```text
 s3://ml-pkgs-cdn/sources/github.com/leostera/minttea/7f4c...a91.tar.gz
 s3://ml-pkgs-cdn/packages/github.com/leostera/minttea/7f4c...a91.manifest.json
-s3://ml-pkgs-cdn/requests/2026/03/27/01HV....json
+s3://ml-pkgs-cdn/requests/2026/03/27/12/01HV....json
 ```
 
 If the package is in a subdirectory:
@@ -468,7 +469,9 @@ for a publication, Riot should continue serving that publication successfully.
 The registry does not refresh existing publications from GitHub.
 Publication is append-only.
 
-Private repositories are out of scope for this RFD.
+Private upstreams may be supported when the registry is configured with a
+GitHub token that can read them. Whether those publications are served
+publicly remains an operator policy decision outside the registry contract.
 
 ## Drawbacks
 [drawbacks]: #drawbacks

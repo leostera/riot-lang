@@ -17,6 +17,9 @@ CDN_BASE_URL=https://cdn.pkgs.ml
 GITHUB_TOKEN=
 ```
 
+If `GITHUB_TOKEN` can read private repositories, the registry can publish from
+those upstreams. This is useful for on-premise or private testing setups.
+
 ## Current scaffold
 
 - `GET /` returns service metadata.
@@ -25,4 +28,3 @@ GITHUB_TOKEN=
 - `GET /package/<locator>/-/source/<sha>.tar.gz` reads source archives from R2.
 
 The Worker logs every request into `ml-pkgs-cdn/requests/...`.
-Upstream GitHub resolution and publication are still the next step.
