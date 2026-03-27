@@ -3,6 +3,7 @@ module Build_ctx = Build_ctx
 module Error = Error
 module Event = Event
 module Fix_provider = Fix_provider
+module Fmt_config = Fmt_config
 module Module_name = Module_name
 module Module = Module
 module Namespace = Namespace

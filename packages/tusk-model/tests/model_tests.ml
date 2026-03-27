@@ -145,6 +145,44 @@ path = "examples/test_https_httpbin.ml"
               duplicate, got: ["
             ^ String.concat ", " binary_names ^ "]"))
 
+let test_workspace_fmt_ignore_parses () =
+  let toml =
+    Std.Data.Toml.parse
+      {|
+[workspace]
+members = ["packages/demo"]
+
+[fmt]
+ignore = ["fixtures", "generated"]
+|}
+    |> Result.expect ~msg:"expected workspace TOML to parse"
+  in
+  let config = Tusk_model.Fmt_config.of_toml toml in
+  Test.assert_equal
+    ~expected:[ "fixtures"; "generated" ]
+    ~actual:config.ignore_patterns;
+  Ok ()
+
+let test_package_fmt_ignore_loads () =
+  with_tempdir "tusk_model_fmt_config" (fun tmpdir ->
+      let manifest_path = Path.(tmpdir / Path.v "tusk.toml") in
+      Fs.write
+        {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[fmt]
+ignore = ["tests/fixtures", "vendor"]
+|}
+        manifest_path
+      |> Result.expect ~msg:"expected package manifest to write";
+      let config = Tusk_model.Fmt_config.load manifest_path in
+      Test.assert_equal
+        ~expected:[ "tests/fixtures"; "vendor" ]
+        ~actual:config.ignore_patterns;
+      Ok ())
+
 let tests =
   Test.
     [
@@ -155,6 +193,8 @@ let tests =
         test_dev_scope_keeps_only_dev_outputs;
       case "package: explicit binaries suppress autodiscovery duplicates"
         test_explicit_binaries_override_autodiscovery;
+      case "fmt config: workspace ignore parses" test_workspace_fmt_ignore_parses;
+      case "fmt config: package ignore loads" test_package_fmt_ignore_loads;
     ]
 
 let name = "Tusk Model Tests"

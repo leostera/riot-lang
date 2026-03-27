@@ -62,7 +62,7 @@ let rec walk_dir dir =
                  else
                    [])
 
-let collect_ocaml_files ~roots =
+let collect_ocaml_files ?(should_ignore = fun _ -> false) ~roots () =
   roots
   |> List.concat_map (fun root ->
          match Fs.is_dir root with
@@ -72,6 +72,7 @@ let collect_ocaml_files ~roots =
                [ root ]
              else
                [])
+  |> List.filter (fun path -> not (should_ignore path))
   |> List.sort_uniq compare_paths
 
 let check_file file =
@@ -101,6 +102,7 @@ let check_file file =
 type scanner_state = {
   owner : Pid.t;
   scanner_ref : unit Ref.t;
+  should_ignore : Path.t -> bool;
   seen : string HashSet.t;
   mutable pending : Path.t list;
 }
@@ -132,7 +134,7 @@ let rec next_discovered_file state =
               state.pending <- sorted_directory_entries path @ state.pending;
               next_discovered_file state)
         | Ok false | Error _ ->
-            if is_ocaml_source path then
+            if is_ocaml_source path && not (state.should_ignore path) then
               Some path
             else
               next_discovered_file state)
@@ -146,9 +148,17 @@ let rec scanner_loop state =
       send state.owner (ScannerComplete state.scanner_ref);
       Ok ()
 
-let start_scanner ~owner ~roots ~scanner_ref =
+let start_scanner ~owner ~roots ~scanner_ref ~should_ignore =
   let seen = HashSet.create () in
-  let state = { owner; scanner_ref; seen; pending = List.sort compare_paths roots } in
+  let state =
+    {
+      owner;
+      scanner_ref;
+      should_ignore;
+      seen;
+      pending = List.sort compare_paths roots;
+    }
+  in
   spawn (fun () -> scanner_loop state)
 
 type dispatch_state = {
@@ -236,7 +246,7 @@ let rec dispatch_loop state =
         dispatch_ready_workers state;
         dispatch_loop state
 
-let start_dispatcher ~owner ~run_ref ~concurrency ~roots =
+let start_dispatcher ~owner ~run_ref ~concurrency ~roots ~should_ignore =
   let dispatcher_owner = self () in
   let scanner_ref = Ref.make () in
   let result_ref = Ref.make () in
@@ -244,7 +254,9 @@ let start_dispatcher ~owner ~run_ref ~concurrency ~roots =
     let result = check_file task in
     send owner (DispatchFileChecked { result_ref; result })
   in
-  let _scanner = start_scanner ~owner:dispatcher_owner ~roots ~scanner_ref in
+  let _scanner =
+    start_scanner ~owner:dispatcher_owner ~roots ~scanner_ref ~should_ignore
+  in
   let pool =
     WorkerPool.DynamicWorkerPool.start ~concurrency ~owner:dispatcher_owner
       ~worker_fn ()
@@ -291,14 +303,15 @@ let summarize ~duration files =
     }
     files
 
-let run_checks_streaming ?(concurrency = System.available_parallelism) ~roots
-    ~on_result () =
+let run_checks_streaming ?(concurrency = System.available_parallelism)
+    ?(should_ignore = fun _ -> false) ~roots ~on_result () =
   let concurrency = max 1 concurrency in
   let run_ref = Ref.make () in
   let owner = self () in
   let start = Time.Instant.now () in
   let _dispatcher =
-    spawn (fun () -> start_dispatcher ~owner ~run_ref ~concurrency ~roots)
+    spawn (fun () ->
+        start_dispatcher ~owner ~run_ref ~concurrency ~roots ~should_ignore)
   in
   let rec collect results_rev =
     let selector :
@@ -320,10 +333,15 @@ let run_checks_streaming ?(concurrency = System.available_parallelism) ~roots
   in
   collect []
 
-let run_checks ?(concurrency = System.available_parallelism) files =
+let run_checks ?(concurrency = System.available_parallelism)
+    ?(should_ignore = fun _ -> false) files =
   let concurrency = max 1 concurrency in
   let start = Time.Instant.now () in
-  let files = List.sort compare_paths files in
+  let files =
+    files
+    |> List.filter (fun path -> not (should_ignore path))
+    |> List.sort compare_paths
+  in
   let results =
     WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files ~fn:check_file ()
     |> List.map snd

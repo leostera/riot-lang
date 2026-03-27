@@ -174,7 +174,7 @@ let optional_fun = fun ?(y = 0) -> y + 1
             Fs.write "let built = 1\n" Path.(build_dir / Path.v "built.ml")
             |> Result.expect ~msg:"write build";
             let files =
-              Krasny.Runner.collect_ocaml_files ~roots:[ tmpdir ]
+              Krasny.Runner.collect_ocaml_files ~roots:[ tmpdir ] ()
               |> List.map Path.to_string
             in
             let expected =
@@ -225,6 +225,30 @@ let optional_fun = fun ?(y = 0) -> y + 1
             Test.assert_equal
               ~expected:(Some (String "needs_formatting"))
               ~actual:(get_field "status" json);
+            Ok ()));
+    Test.case "streaming runner skips ignored files" (fun () ->
+        with_tempdir "krasny_runner_ignore" (fun tmpdir ->
+            let keep = Path.(tmpdir / Path.v "keep.ml") in
+            let fixtures_dir = Path.(tmpdir / Path.v "tests" / Path.v "fixtures") in
+            let ignored = Path.(fixtures_dir / Path.v "fixture.ml") in
+            Fs.create_dir_all fixtures_dir
+            |> Result.expect ~msg:"create fixtures dir";
+            Fs.write "let kept = 1\n" keep |> Result.expect ~msg:"write keep";
+            Fs.write "let ignored = 1\n" ignored
+            |> Result.expect ~msg:"write ignored";
+            let seen = cell [] in
+            let result =
+              Krasny.Runner.run_checks_streaming ~concurrency:1 ~roots:[ tmpdir ]
+                ~should_ignore:(fun path ->
+                  String.contains (Path.to_string path) "fixtures")
+                ~on_result:(fun file_result ->
+                  seen := Path.to_string file_result.file :: !seen)
+                ()
+            in
+            Test.assert_equal
+              ~expected:[ Path.to_string keep ]
+              ~actual:(List.rev !seen);
+            Test.assert_equal ~expected:1 ~actual:result.summary.total_files;
             Ok ()));
     Test.case "streaming runner scans roots and streams file results" (fun () ->
         with_tempdir "krasny_runner_stream" (fun tmpdir ->
