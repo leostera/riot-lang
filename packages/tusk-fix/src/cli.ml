@@ -25,9 +25,8 @@ let command =
          |> help "Stop after surfacing at most N diagnostics";
          option "explain" |> long "explain"
          |> help "Explain a rule id (e.g. riot:snake-case-type-names or std:no-stdlib)";
-         option "format" |> long "format"
-         |> possible_values [ "text"; "json" ]
-         |> help "Output format (text or json)";
+         flag "json" |> long "json"
+         |> help "Emit machine-readable JSON output";
          positional "path"
          |> required false
          |> help
@@ -185,6 +184,37 @@ let print_text_summary mode summary =
          ^ Int.to_string summary.applied_fixes ^ " safe fixes across "
          ^ Int.to_string summary.changed_files ^ " files; "
          ^ Int.to_string summary.remaining_diagnostics ^ " issues remain")
+
+let json_object_with_type type_name json =
+  let open Data.Json in
+  match json with
+  | Object fields -> Object (("type", String type_name) :: fields)
+  | _ -> panic "expected JSON object"
+
+let start_event_to_json ~mode ~total_files ~concurrency =
+  let open Data.Json in
+  Object
+    [
+      ("type", String "start");
+      ("mode", String (match mode with Runner.Check -> "check" | Runner.Apply -> "apply"));
+      ("total_files", Int total_files);
+      ("concurrency", Int concurrency);
+    ]
+
+let file_event_to_json result =
+  json_object_with_type "file" (Runner.file_result_to_json result)
+
+let summary_event_to_json ~limit_reached summary =
+  let open Data.Json in
+  match Runner.summary_to_json summary with
+  | Object fields ->
+      Object
+        (("type", String "summary") :: ("limit_reached", Bool limit_reached) :: fields)
+  | _ -> panic "expected summary JSON object"
+
+let print_json_event json =
+  print (Data.Json.to_string json);
+  print "\n"
 
 let explain_rule rule_id =
   match Explanations.explain rule_id with
@@ -406,14 +436,20 @@ let run_with_coordinator ~format ~mode ~scope ~limit files =
   if format = Reporter.Text then
     println
       ("Scanning " ^ Int.to_string (List.length files) ^ " files with "
-     ^ Int.to_string concurrency ^ " workers...");
+     ^ Int.to_string concurrency ^ " workers...")
+  else
+    print_json_event
+      (start_event_to_json ~mode ~total_files:(List.length files) ~concurrency);
   let outcome =
-    run_result_with ~mode ~scope ~limit ~files ~on_result:(fun _ -> ())
+    run_result_with ~mode ~scope ~limit ~files ~on_result:(fun result ->
+        if format = Reporter.Json then
+          print_json_event (file_event_to_json result))
   in
   (match format with
   | Reporter.Json ->
-      print (Data.Json.to_string (Runner.run_result_to_json outcome.result));
-      print "\n"
+      print_json_event
+        (summary_event_to_json ~limit_reached:outcome.limit_reached
+           outcome.result.summary)
   | Reporter.Text ->
       sort_file_results outcome.result.files
       |> List.iter (print_text_result mode);
@@ -438,11 +474,7 @@ let run matches =
   let scope = Fix_config.load_scope ~cwd in
   let apply = ArgParser.get_flag matches "apply" in
   let check = ArgParser.get_flag matches "check" in
-  let format =
-    match ArgParser.get_one matches "format" |> Option.unwrap_or ~default:"text" with
-    | "json" -> Reporter.Json
-    | _ -> Reporter.Text
-  in
+  let format = if ArgParser.get_flag matches "json" then Reporter.Json else Reporter.Text in
   let limit =
     match ArgParser.get_int matches "limit" with
     | Some n when n > 0 -> Ok (Some n)

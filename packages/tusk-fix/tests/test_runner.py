@@ -73,8 +73,7 @@ class TestRunner:
             str(self.tusk_binary),
             "fix",
             "--check",
-            "--format",
-            "json",
+            "--json",
             str(target),
         ]
         try:
@@ -91,21 +90,51 @@ class TestRunner:
         if result.returncode not in (0, 1):
             return None
 
-        payload = self.extract_json_payload(result.stdout)
-        if payload is None:
+        events = self.extract_json_events(result.stdout)
+        if events is None:
             return None
 
-        try:
-            return json.loads(payload)
-        except json.JSONDecodeError:
+        return self.aggregate_json_events(events)
+
+    def extract_json_events(self, stdout: str) -> list[dict] | None:
+        events: list[dict] = []
+        for line in stdout.splitlines():
+            text = line.strip()
+            if not text:
+                continue
+            try:
+                payload = json.loads(text)
+            except json.JSONDecodeError:
+                return None
+            if not isinstance(payload, dict):
+                return None
+            events.append(payload)
+        return events
+
+    def aggregate_json_events(self, events: list[dict]) -> dict | None:
+        files: list[dict] = []
+        summary: dict | None = None
+
+        for event in events:
+            event_type = event.get("type")
+            if event_type == "file":
+                file_result = dict(event)
+                file_result.pop("type", None)
+                files.append(file_result)
+            elif event_type == "summary":
+                summary = dict(event)
+                summary.pop("type", None)
+                summary.pop("limit_reached", None)
+            elif event_type == "start":
+                continue
+            else:
+                return None
+
+        if summary is None:
             return None
 
-    def extract_json_payload(self, stdout: str) -> str | None:
-        start = stdout.find("{")
-        end = stdout.rfind("}")
-        if start == -1 or end == -1 or end < start:
-            return None
-        return stdout[start : end + 1]
+        files.sort(key=lambda item: item.get("file", ""))
+        return {"summary": summary, "files": files}
 
     def normalize(self, value):
         if isinstance(value, dict):

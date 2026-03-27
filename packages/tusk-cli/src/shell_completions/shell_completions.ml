@@ -273,7 +273,7 @@ _tusk() {
             _arguments \
                 '--apply[Apply safe fixes to files]' \
                 '--check[Check for issues without modifying files]' \
-                '--format[Output format]:format:(text json)' \
+                '--json[Emit machine-readable JSON output]' \
                 ':path:_files'
             ;;
         clean|install|new|doc|lsp|version)

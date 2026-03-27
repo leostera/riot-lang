@@ -5,7 +5,7 @@ This directory contains end-to-end fixtures for `tusk fix` plus OCaml unit tests
 ## Structure
 
 - `000*_*.ml`: fixture inputs
-- `*.ml.expected`: pretty-printed JSON snapshots from `tusk fix --check --format json`
+- `*.ml.expected`: pretty-printed snapshots aggregated from `tusk fix --check --json` JSONL events
 - `test_runner.py`: fixture runner modeled after `syn`'s runner
 - `run_tests.sh`: shell wrapper around the Python runner
 - `regenerate_expected.sh`: refresh fixture snapshots
