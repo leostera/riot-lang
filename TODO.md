@@ -13,7 +13,7 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Make Krasny able to format the entire codebase without losing information
 
-- [ ] `tusk fix --apply` can apply the `packages/std/fix/no_double_list_rev.ml` safely
+- [x] `tusk fix --apply` can apply the `packages/std/fix/no_double_list_rev.ml` safely
 
 - [ ] Start building `tusk fmt` to parallely scan the codebase and call
 `krasny` on every input -- we can start with a `tusk fmt --check` flag that
