@@ -56,7 +56,7 @@ thing up and running!
 To get a feel for Riot quickly:
 
 ```sh
-curl -sSL https://cdn.riot.ml/tusk/install.sh | sh
+curl -sSL https://cdn.ocaml.ai/tusk/install.sh | sh
 tusk --help
 ```
 

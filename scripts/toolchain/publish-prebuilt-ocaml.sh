@@ -33,6 +33,10 @@ BUCKET="${RIOT_CDN_BUCKET:-${OCAML_CDN_BUCKET:-}}"
 ENDPOINT_URL="${RIOT_CDN_ENDPOINT_URL:-${OCAML_CDN_ENDPOINT_URL:-}}"
 BUCKET_PREFIX="${RIOT_CDN_BUCKET_PREFIX:-${OCAML_CDN_BUCKET_PREFIX:-ocaml}}"
 OBJECT_ACL="${RIOT_CDN_OBJECT_ACL:-${OCAML_CDN_OBJECT_ACL:-}}"
+AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-${RIOT_CDN_ACCESS_KEY_ID:-${OCAML_CDN_ACCESS_KEY_ID:-}}}"
+AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-${RIOT_CDN_SECRET_ACCESS_KEY:-${OCAML_CDN_SECRET_ACCESS_KEY:-}}}"
+AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN:-${RIOT_CDN_SESSION_TOKEN:-${OCAML_CDN_SESSION_TOKEN:-}}}"
+AWS_REGION_VALUE="${AWS_REGION:-${AWS_DEFAULT_REGION:-${RIOT_CDN_REGION:-${OCAML_CDN_REGION:-}}}}"
 
 BUILD_COMPILERS=1
 UPLOAD_ARTIFACTS=1
@@ -77,6 +81,10 @@ Environment:
   RIOT_CDN_BUCKET_PREFIX / OCAML_CDN_BUCKET_PREFIX
   RIOT_CDN_PUBLIC_BASE_URL / OCAML_CDN_PUBLIC_BASE_URL
   RIOT_CDN_OBJECT_ACL / OCAML_CDN_OBJECT_ACL
+  RIOT_CDN_ACCESS_KEY_ID / OCAML_CDN_ACCESS_KEY_ID
+  RIOT_CDN_SECRET_ACCESS_KEY / OCAML_CDN_SECRET_ACCESS_KEY
+  RIOT_CDN_SESSION_TOKEN / OCAML_CDN_SESSION_TOKEN
+  RIOT_CDN_REGION / OCAML_CDN_REGION
   RIOT_CDN_ENV_FILE / OCAML_CDN_ENV_FILE
 
 Examples:
@@ -103,6 +111,43 @@ run_cmd() {
   if [ "$DRY_RUN" -eq 0 ]; then
     "$@"
   fi
+}
+
+join_object_key() {
+  local prefix="$1"
+  local name="$2"
+
+  prefix="${prefix#/}"
+  prefix="${prefix%/}"
+
+  if [ -n "$prefix" ]; then
+    printf '%s/%s' "$prefix" "$name"
+  else
+    printf '%s' "$name"
+  fi
+}
+
+configure_aws_env() {
+  if [ -n "$AWS_ACCESS_KEY_ID" ]; then
+    export AWS_ACCESS_KEY_ID
+  fi
+  if [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
+    export AWS_SECRET_ACCESS_KEY
+  fi
+  if [ -n "$AWS_SESSION_TOKEN" ]; then
+    export AWS_SESSION_TOKEN
+  fi
+
+  if [ -z "$AWS_REGION_VALUE" ] && printf '%s' "$ENDPOINT_URL" | grep -q 'cloudflarestorage.com'; then
+    AWS_REGION_VALUE="auto"
+  fi
+
+  if [ -n "$AWS_REGION_VALUE" ]; then
+    export AWS_REGION="$AWS_REGION_VALUE"
+    export AWS_DEFAULT_REGION="$AWS_REGION_VALUE"
+  fi
+
+  export AWS_EC2_METADATA_DISABLED="${AWS_EC2_METADATA_DISABLED:-true}"
 }
 
 write_sha256_file() {
@@ -215,6 +260,9 @@ done
 if [ "$UPLOAD_ARTIFACTS" -eq 1 ]; then
   command -v aws >/dev/null 2>&1 || die "aws CLI is required for uploads"
   [ -n "$BUCKET" ] || die "--bucket or RIOT_CDN_BUCKET / OCAML_CDN_BUCKET is required for uploads"
+  configure_aws_env
+  [ -n "${AWS_ACCESS_KEY_ID:-}" ] || die "RIOT_CDN_ACCESS_KEY_ID / AWS_ACCESS_KEY_ID is required for uploads"
+  [ -n "${AWS_SECRET_ACCESS_KEY:-}" ] || die "RIOT_CDN_SECRET_ACCESS_KEY / AWS_SECRET_ACCESS_KEY is required for uploads"
 fi
 
 run_cmd mkdir -p "$OUTPUT_DIR"
@@ -273,7 +321,7 @@ if [ "$UPLOAD_ARTIFACTS" -eq 0 ]; then
 fi
 
 for artifact_path in "${artifacts[@]}"; do
-  object_key="${BUCKET_PREFIX%/}/$(basename "$artifact_path")"
+  object_key="$(join_object_key "$BUCKET_PREFIX" "$(basename "$artifact_path")")"
   upload_args=(s3 cp "$artifact_path" "s3://$BUCKET/$object_key")
   if [ -n "$ENDPOINT_URL" ]; then
     upload_args+=(--endpoint-url "$ENDPOINT_URL")
@@ -287,7 +335,7 @@ for artifact_path in "${artifacts[@]}"; do
 done
 
 for checksum_path in "${checksums[@]}"; do
-  object_key="${BUCKET_PREFIX%/}/$(basename "$checksum_path")"
+  object_key="$(join_object_key "$BUCKET_PREFIX" "$(basename "$checksum_path")")"
   upload_args=(s3 cp "$checksum_path" "s3://$BUCKET/$object_key")
   if [ -n "$ENDPOINT_URL" ]; then
     upload_args+=(--endpoint-url "$ENDPOINT_URL")

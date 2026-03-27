@@ -314,10 +314,17 @@ The disabled workflow reference remains:
 - no manifest describing which external system is responsible for publishing
   them
 
-By contrast, this repository does contain release/upload workflows for:
+By contrast, this repository now includes local manual helpers for publishing:
+
+- `tusk` release tarballs via `scripts/release/publish-tusk.sh`
+- the top-level install script at `cdn.ocaml.ai/tusk/install.sh`
+- prebuilt OCaml tarballs via `scripts/toolchain/publish-prebuilt-ocaml.sh`
+
+The disabled workflow references remain:
 
 - `tusk` release tarballs under `cdn.ocaml.ai/tusk`
-- the top-level install script at `cdn.ocaml.ai/tusk/install.sh`
+- the install script upload job in `.github/workflows/release.yml.disabled`
+- the OCaml tarball upload jobs in `.github/workflows/ocaml-publish-toolchains.yml.disabled`
 - the `ghcr.io/leostera/riot/riot-builder` Docker image
 
 So the current architectural boundary is:
