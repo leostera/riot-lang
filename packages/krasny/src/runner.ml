@@ -96,6 +96,10 @@ let is_trivia_kind = function
   | Syn.SyntaxKind.WHITESPACE -> true
   | _ -> false
 
+let is_docstring_kind = function
+  | Syn.SyntaxKind.DOCSTRING -> true
+  | _ -> false
+
 let is_comment_like_kind = function
   | Syn.SyntaxKind.COMMENT
   | Syn.SyntaxKind.DOCSTRING ->
@@ -127,13 +131,14 @@ let is_redundant_paren_inner_kind = function
 
 let syntax_hash (result : Syn.Parser.parse_result) =
   let buffer = IO.Buffer.create 1024 in
+  let docstring_buffer = IO.Buffer.create 256 in
   let rec should_skip_token ~parent_kind token =
     let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
     let token_text =
       Syn.Ceibo.Green.text (Syn.Ceibo.Green.Token token)
       |> Option.expect ~msg:"green token text"
     in
-    if is_trivia_kind token_kind then
+    if is_trivia_kind token_kind || is_docstring_kind token_kind then
       true
     else
       match parent_kind with
@@ -210,9 +215,19 @@ let syntax_hash (result : Syn.Parser.parse_result) =
     IO.Buffer.add_string buffer ":";
     IO.Buffer.add_string buffer token_text;
     IO.Buffer.add_string buffer ")"
+  and write_docstring token =
+    let token_text =
+      Syn.Ceibo.Green.text (Syn.Ceibo.Green.Token token)
+      |> Option.expect ~msg:"green token text"
+    in
+    IO.Buffer.add_string docstring_buffer "D(";
+    IO.Buffer.add_string docstring_buffer token_text;
+    IO.Buffer.add_string docstring_buffer ")"
   and write_child ~parent_kind = function
     | Syn.Ceibo.Green.Token token ->
-        if not (should_skip_token ~parent_kind token) then
+        if is_docstring_kind (Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token)) then
+          write_docstring token
+        else if not (should_skip_token ~parent_kind token) then
           write_token token
     | Syn.Ceibo.Green.Node _ as element ->
         write_element element
@@ -240,6 +255,8 @@ let syntax_hash (result : Syn.Parser.parse_result) =
           write_node node
   in
   write_node result.tree;
+  IO.Buffer.add_string buffer "|DOCS|";
+  IO.Buffer.add_string buffer (IO.Buffer.contents docstring_buffer);
   IO.Buffer.contents buffer |> Crypto.Sha256.hash_string |> Crypto.Digest.hex
 
 let finalize file start ~status ~needs_formatting ~error =

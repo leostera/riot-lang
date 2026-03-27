@@ -41,6 +41,7 @@
 0428_top_level_phrase_separator_after_supported_item.ml
 0429_qualified_local_open_record_literal.ml
 0430_signature_last_docstring.ml
+0431_type_mutual_docstring_between_members.mli
 
 # 05xx labeled and optional arguments
 0500_labeled_and_optional_arguments.ml
