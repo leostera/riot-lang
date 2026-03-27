@@ -33,9 +33,6 @@ let empty_result file error =
     error;
   }
 
-let has_errors diagnostics =
-  List.exists (fun diag -> Diagnostic.severity diag = Diagnostic.Error) diagnostics
-
 let run_pipeline pipeline file source =
   Pipeline.run pipeline ~filename:file source
 
@@ -52,7 +49,6 @@ let run_file ?pipeline ?pipeline_for_file ~mode file =
         (Some ("Failed to read " ^ Path.to_string file))
   | Ok source -> (
       let initial = run_pipeline pipeline file source in
-      let safe_fixes = List.filter_map Diagnostic.fix initial.diagnostics in
       match mode with
       | Check ->
           {
@@ -64,55 +60,39 @@ let run_file ?pipeline ?pipeline_for_file ~mode file =
             changed = false;
             error = None;
           }
-      | Apply ->
-          if
-            List.length initial.parse_diagnostics > 0
-            || has_errors initial.diagnostics
-            || List.length safe_fixes = 0
-          then
-            {
-              file;
-              final_source = source;
-              diagnostics = initial.diagnostics;
-              parse_diagnostics = initial.parse_diagnostics;
-              applied_fixes = [];
-              changed = false;
-              error = None;
-            }
-          else
-            match Fix.apply_fixes ~source safe_fixes with
-            | Error reason ->
-                empty_result file
-                  (Some
-                     ("Failed to apply fixes for " ^ Path.to_string file ^ ": "
-                    ^ reason))
-            | Ok updated_source ->
-                if String.equal updated_source source then
+      | Apply -> (
+          match Tusk_fix_api.Source_runner.apply_safe_fixes ~source initial with
+          | Error reason ->
+              empty_result file
+                (Some
+                   ("Failed to apply fixes for " ^ Path.to_string file ^ ": "
+                  ^ reason))
+          | Ok None ->
+              {
+                file;
+                final_source = source;
+                diagnostics = initial.diagnostics;
+                parse_diagnostics = initial.parse_diagnostics;
+                applied_fixes = [];
+                changed = false;
+                error = None;
+              }
+          | Ok (Some (updated_source, applied_fixes)) -> (
+              match Fs.write updated_source file with
+              | Error _ ->
+                  empty_result file
+                    (Some ("Failed to write " ^ Path.to_string file))
+              | Ok () ->
+                  let final = run_pipeline pipeline file updated_source in
                   {
                     file;
-                    final_source = source;
-                    diagnostics = initial.diagnostics;
-                    parse_diagnostics = initial.parse_diagnostics;
-                    applied_fixes = [];
-                    changed = false;
+                    final_source = updated_source;
+                    diagnostics = final.diagnostics;
+                    parse_diagnostics = final.parse_diagnostics;
+                    applied_fixes;
+                    changed = true;
                     error = None;
-                  }
-                else
-                  match Fs.write updated_source file with
-                  | Error _ ->
-                      empty_result file
-                        (Some ("Failed to write " ^ Path.to_string file))
-                  | Ok () ->
-                      let final = run_pipeline pipeline file updated_source in
-                      {
-                        file;
-                        final_source = updated_source;
-                        diagnostics = final.diagnostics;
-                        parse_diagnostics = final.parse_diagnostics;
-                        applied_fixes = safe_fixes;
-                        changed = true;
-                        error = None;
-                      })
+                  })))
 
 let summarize files =
   List.fold_left

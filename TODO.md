@@ -21,6 +21,21 @@ will just print out if the input would have been formatted or not, and exists
 with 0 if no formatting was needed, or 1 if at least 1 file needed to be
 formatted
 
+### Recent Tusk-Fix Progress
+
+- `tusk-fix-api` now owns the pure source-level fix engine via `Source_runner` and `Rule_test`.
+- `tusk-fix` delegates its parse/run/apply pipeline to that shared core instead of owning a separate source execution path.
+- We now have direct in-process tests for:
+  - applying a real safe built-in rule fix (`snake_case_type_names`)
+  - applying multiple non-overlapping fixes from multiple rules
+  - rejecting overlapping fixes from multiple rules
+- Verified directly through the built test binary:
+  - `_build/debug/aarch64-apple-darwin/out/tusk-fix/fix_tests run-tests rule-test`
+- Verified the delegated real CLI path still works:
+  - `tusk fix --apply <scratch-file>` rewrites `List.rev (List.rev ys)` to `ys`
+
+- [ ] Once all of the above are ready, make sure you've committed all the files and now run in two stages: 1) `tusk fix --apply` to apply all fixes. Verify everything still works. Commit. And 2) `tusk fmt` to reformat all the files. Verify everything still works. Commit.
+
 ### Krasny formats the whole codebase
 
 You are done with this task when we can run: `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast` and there are no failures. - A polling loop script is available at `scripts/verify_fail_fast_loop.sh` and defaults to writing `krasny_verify_results.log` at repo root for live frontier tracking.

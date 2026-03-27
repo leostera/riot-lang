@@ -38,6 +38,12 @@ module Rules : module type of Rules
 module Traversal : module type of Traversal
 (** CST traversal helpers *)
 
+module Source_runner : module type of Tusk_fix_api.Source_runner
+(** Pure rule execution and safe-fix application on source strings *)
+
+module Rule_test : module type of Tusk_fix_api.Rule_test
+(** Test helper for running rules, applying fixes, and rerunning on updated source *)
+
 module Rule_query : module type of Rule_query
 (** Rule-oriented CST query helpers built on top of `Syn.Visit` *)
 

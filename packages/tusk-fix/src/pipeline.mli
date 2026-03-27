@@ -1,7 +1,7 @@
 open Std
 
 type t
-type result = {
+type result = Tusk_fix_api.Source_runner.result = {
   tree : Rule.green_tree;
   diagnostics : Diagnostic.t list;
   parse_diagnostics : Syn.Diagnostic.t list;

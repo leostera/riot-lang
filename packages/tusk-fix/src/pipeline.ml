@@ -1,7 +1,7 @@
 open Std
 
 type t = { rules : Rule.t list }
-type result = {
+type result = Tusk_fix_api.Source_runner.result = {
   tree : Rule.green_tree;
   diagnostics : Diagnostic.t list;
   parse_diagnostics : Syn.Diagnostic.t list;
@@ -94,36 +94,7 @@ let builtin_rules () =
   |> List.map (fun factory -> factory.make ())
 
 let run pipeline ?filename source =
-  let parse_result =
-    match filename with
-    | Some filename -> Syn.parse ~filename source
-    | None -> Syn.parse_implementation source
-  in
-  (* Skip linting if there are parse errors *)
-  let lint_diagnostics =
-    if List.length parse_result.diagnostics > 0 then
-      []
-    else
-      match Syn.build_cst parse_result with
-      | Error _ ->
-          []
-      | Ok cst ->
-          let red_tree = Syn.Ceibo.Red.new_root parse_result.tree in
-          let file_path =
-            match filename with
-            | Some filename -> Path.to_string filename
-            | None -> "<stdin>"
-          in
-          let ctx = Rule.{ file_path; cst } in
-          pipeline.rules
-          |> List.map (fun rule -> Rule.run rule ctx red_tree)
-          |> List.concat
-  in
-  {
-    tree = parse_result.tree;
-    diagnostics = lint_diagnostics;
-    parse_diagnostics = parse_result.diagnostics;
-  }
+  Tusk_fix_api.Source_runner.run ~rules:pipeline.rules ?filename source
 
 let default_rules () = 
   let package_rules = package_rules () in
