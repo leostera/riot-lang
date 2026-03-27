@@ -20,8 +20,6 @@ type summary = {
 type run_result = { files : file_result list; summary : summary }
 
 type Message.t +=
-  | ScannerRequest of unit Ref.t
-  | ScannerStop of unit Ref.t
   | ScannerDiscovered of { scanner_ref : unit Ref.t; file : Path.t }
   | ScannerComplete of unit Ref.t
   | DispatchFileChecked of {
@@ -140,38 +138,13 @@ let rec next_discovered_file state =
               next_discovered_file state)
 
 let rec scanner_loop state =
-  let selector : [ `Request | `Stop ] selector = function
-    | ScannerRequest scanner_ref when Ref.equal state.scanner_ref scanner_ref ->
-        `select `Request
-    | ScannerStop scanner_ref when Ref.equal state.scanner_ref scanner_ref ->
-        `select `Stop
-    | _ -> `skip
-  in
-  match receive ~selector () with
-  | `Stop -> Ok ()
-  | `Request -> (
-      match next_discovered_file state with
-      | Some file ->
-          send state.owner
-            (ScannerDiscovered { scanner_ref = state.scanner_ref; file });
-          scanner_loop state
-      | None ->
-          send state.owner (ScannerComplete state.scanner_ref);
-          scanner_done_loop state)
-
-and scanner_done_loop state =
-  let selector : [ `Request | `Stop ] selector = function
-    | ScannerRequest scanner_ref when Ref.equal state.scanner_ref scanner_ref ->
-        `select `Request
-    | ScannerStop scanner_ref when Ref.equal state.scanner_ref scanner_ref ->
-        `select `Stop
-    | _ -> `skip
-  in
-  match receive ~selector () with
-  | `Stop -> Ok ()
-  | `Request ->
+  match next_discovered_file state with
+  | Some file ->
+      send state.owner (ScannerDiscovered { scanner_ref = state.scanner_ref; file });
+      scanner_loop state
+  | None ->
       send state.owner (ScannerComplete state.scanner_ref);
-      scanner_done_loop state
+      Ok ()
 
 let start_scanner ~owner ~roots ~scanner_ref =
   let seen = HashSet.create () in
@@ -181,14 +154,11 @@ let start_scanner ~owner ~roots ~scanner_ref =
 type dispatch_state = {
   owner : Pid.t;
   run_ref : unit Ref.t;
-  scanner : Pid.t;
   scanner_ref : unit Ref.t;
   pool : Path.t WorkerPool.DynamicWorkerPool.t;
   result_ref : file_result Ref.t;
   pending_files : Path.t Queue.t;
   idle_workers : Path.t WorkerPool.DynamicWorkerPool.worker Queue.t;
-  buffer_limit : int;
-  mutable pending_requests : int;
   mutable tasks_in_flight : int;
   mutable discovery_complete : bool;
 }
@@ -212,28 +182,13 @@ let dispatch_ready_workers state =
   in
   loop ()
 
-let refill_scanner state =
-  if state.discovery_complete then
-    ()
-  else
-    let buffered =
-      Queue.len state.pending_files + state.tasks_in_flight + state.pending_requests
-    in
-    let missing = max 0 (state.buffer_limit - buffered) in
-    for _ = 1 to missing do
-      state.pending_requests <- state.pending_requests + 1;
-      send state.scanner (ScannerRequest state.scanner_ref)
-    done
-
 let is_dispatch_complete state =
   state.discovery_complete
-  && state.pending_requests = 0
   && state.tasks_in_flight = 0
   && Queue.is_empty state.pending_files
 
 let rec dispatch_loop state =
   if is_dispatch_complete state then (
-    send state.scanner (ScannerStop state.scanner_ref);
     send state.owner (StreamCompleted state.run_ref);
     Ok ())
   else
@@ -267,23 +222,18 @@ let rec dispatch_loop state =
     | `WorkerReady worker ->
         Queue.push state.idle_workers worker;
         dispatch_ready_workers state;
-        refill_scanner state;
         dispatch_loop state
     | `ScannerDiscovered file ->
-        state.pending_requests <- max 0 (state.pending_requests - 1);
         Queue.push state.pending_files file;
         dispatch_ready_workers state;
-        refill_scanner state;
         dispatch_loop state
     | `ScannerComplete ->
-        state.pending_requests <- max 0 (state.pending_requests - 1);
         state.discovery_complete <- true;
         dispatch_loop state
     | `FileChecked result ->
         state.tasks_in_flight <- max 0 (state.tasks_in_flight - 1);
         send state.owner (StreamFileResult { run_ref = state.run_ref; result });
         dispatch_ready_workers state;
-        refill_scanner state;
         dispatch_loop state
 
 let start_dispatcher ~owner ~run_ref ~concurrency ~roots =
@@ -294,7 +244,7 @@ let start_dispatcher ~owner ~run_ref ~concurrency ~roots =
     let result = check_file task in
     send owner (DispatchFileChecked { result_ref; result })
   in
-  let scanner = start_scanner ~owner:dispatcher_owner ~roots ~scanner_ref in
+  let _scanner = start_scanner ~owner:dispatcher_owner ~roots ~scanner_ref in
   let pool =
     WorkerPool.DynamicWorkerPool.start ~concurrency ~owner:dispatcher_owner
       ~worker_fn ()
@@ -303,19 +253,15 @@ let start_dispatcher ~owner ~run_ref ~concurrency ~roots =
     {
       owner;
       run_ref;
-      scanner;
       scanner_ref;
       pool;
       result_ref;
       pending_files = Queue.create ();
       idle_workers = Queue.create ();
-      buffer_limit = max 1 (concurrency * 2);
-      pending_requests = 0;
       tasks_in_flight = 0;
       discovery_complete = false;
     }
   in
-  refill_scanner state;
   dispatch_loop state
 
 let summarize ~duration files =
