@@ -1,0 +1,17 @@
+name = "riot-registry"
+main = "worker.ts"
+# Set this to today's date
+compatibility_date = "2026-03-26"
+
+[[containers]]
+class_name = "RiotRegistry"
+image = "./Dockerfile"
+max_instances = 2
+
+[[durable_objects.bindings]]
+class_name = "RiotRegistry"
+name = "RIOT_REGISTRY_CONTAINER"
+
+[[migrations]]
+new_sqlite_classes = [ "RiotRegistry" ]
+tag = "v1"
