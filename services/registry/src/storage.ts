@@ -4,7 +4,6 @@ import type {
   RequestLogEntry,
   SelectorResolutionRecord,
 } from "./types.ts";
-import { publicLocatorPath } from "./locator.ts";
 
 export function sourceArchiveKey(locator: PackageLocator, sha: string): string {
   return `sources/${locator.provider}/${locator.owner}/${locator.repo}/${sha}.tar.gz`;
@@ -40,7 +39,7 @@ export function prettyManifestUrl(
   locator: PackageLocator,
   sha: string,
 ): string {
-  return `${config.cdnBaseUrl}/packages/${publicLocatorPath(locator)}/-/${sha}.manifest.json`;
+  return `${config.cdnBaseUrl}/${manifestKey(locator, sha)}`;
 }
 
 export function prettySourceUrl(
@@ -48,7 +47,7 @@ export function prettySourceUrl(
   locator: PackageLocator,
   sha: string,
 ): string {
-  return `${config.cdnBaseUrl}/packages/${publicLocatorPath(locator)}/-/${sha}.tar.gz`;
+  return `${config.cdnBaseUrl}/${sourceArchiveKey(locator, sha)}`;
 }
 
 export async function readSelectorResolution(

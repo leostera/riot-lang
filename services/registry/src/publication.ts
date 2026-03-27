@@ -1,7 +1,13 @@
 import { buildPublicationManifest } from "./manifest.ts";
 import { isFullSha, isSemverLikeTag } from "./locator.ts";
 import { manifestKey, readSelectorResolution, sourceArchiveKey, writeSelectorResolution } from "./storage.ts";
-import type { Env, PackageLocator, PackagePublishedEvent, ResolvedPublication } from "./types.ts";
+import type {
+  Env,
+  PackageLocator,
+  PackagePublicationManifest,
+  PackagePublishedEvent,
+  ResolvedPublication,
+} from "./types.ts";
 import { assertGitHubRepositoryAccess, fetchGitHubTarball, resolveGitHubSelector } from "./github.ts";
 
 export async function ensurePublication(
@@ -27,11 +33,22 @@ export async function ensurePublication(
   const existingManifest = await env.ML_PKGS_CDN.head(targetManifestKey);
 
   let archiveBytes: Uint8Array<ArrayBuffer> | null = null;
+  let manifest: PackagePublicationManifest | null = null;
   let sourceCreated = false;
   let manifestCreated = false;
 
   if (existingSource === null) {
     archiveBytes = await fetchGitHubTarball(env, locator, resolvedSha);
+    if (existingManifest === null) {
+      manifest = await buildPublicationManifest({
+        locator,
+        selector,
+        resolvedSha,
+        archiveBytes,
+        publishedAt,
+      });
+    }
+
     await env.ML_PKGS_CDN.put(sourceKey, archiveBytes, {
       httpMetadata: {
         contentType: "application/gzip",
@@ -50,13 +67,15 @@ export async function ensurePublication(
       archiveBytes = new Uint8Array(await sourceObject.arrayBuffer());
     }
 
-    const manifest = await buildPublicationManifest({
-      locator,
-      selector,
-      resolvedSha,
-      archiveBytes,
-      publishedAt,
-    });
+    if (manifest === null) {
+      manifest = await buildPublicationManifest({
+        locator,
+        selector,
+        resolvedSha,
+        archiveBytes,
+        publishedAt,
+      });
+    }
 
     await env.ML_PKGS_CDN.put(targetManifestKey, JSON.stringify(manifest, null, 2), {
       httpMetadata: {

@@ -6,7 +6,8 @@
     "check": "tsc --noEmit",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "bun test"
+    "test": "bun test",
+    "test:e2e": "bun test tests/e2e.test.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",

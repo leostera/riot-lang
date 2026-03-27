@@ -95,12 +95,12 @@ describe("riot package registry routes", () => {
       manifest: {
         key: `packages/github.com/leostera/minttea/${SHA}.manifest.json`,
         url: `https://registry.test/package/github.com/leostera/minttea/-/manifest/${SHA}.json`,
-        cdn_url: `https://cdn.pkgs.ml/packages/leostera/minttea/-/${SHA}.manifest.json`,
+        cdn_url: `https://cdn.pkgs.ml/packages/github.com/leostera/minttea/${SHA}.manifest.json`,
       },
       source_archive: {
         key: `sources/github.com/leostera/minttea/${SHA}.tar.gz`,
         url: `https://registry.test/package/github.com/leostera/minttea/-/source/${SHA}.tar.gz`,
-        cdn_url: `https://cdn.pkgs.ml/packages/leostera/minttea/-/${SHA}.tar.gz`,
+        cdn_url: `https://cdn.pkgs.ml/sources/github.com/leostera/minttea/${SHA}.tar.gz`,
       },
       cache: {
         manifest: true,
@@ -163,12 +163,12 @@ describe("riot package registry routes", () => {
         manifest: {
           key: `packages/github.com/leostera/minttea/${SHA}.manifest.json`,
           url: `https://registry.test/package/github.com/leostera/minttea/-/manifest/${SHA}.json`,
-          cdn_url: `https://cdn.pkgs.ml/packages/leostera/minttea/-/${SHA}.manifest.json`,
+          cdn_url: `https://cdn.pkgs.ml/packages/github.com/leostera/minttea/${SHA}.manifest.json`,
         },
         source_archive: {
           key: `sources/github.com/leostera/minttea/${SHA}.tar.gz`,
           url: `https://registry.test/package/github.com/leostera/minttea/-/source/${SHA}.tar.gz`,
-          cdn_url: `https://cdn.pkgs.ml/packages/leostera/minttea/-/${SHA}.tar.gz`,
+          cdn_url: `https://cdn.pkgs.ml/sources/github.com/leostera/minttea/${SHA}.tar.gz`,
         },
         cache: {
           manifest: false,
@@ -263,7 +263,7 @@ describe("riot package registry routes", () => {
     expect(queue.messages).toHaveLength(1);
   });
 
-  test("missing package manifests still cache the source archive without publishing", async () => {
+  test("missing package manifests do not cache source archives or publish packages", async () => {
     const { env, bucket, queue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
@@ -299,7 +299,7 @@ describe("riot package registry routes", () => {
       });
     });
 
-    expect(await bucket.text(`sources/github.com/leostera/minttea/${SHA}.tar.gz`)).not.toBeNull();
+    expect(await bucket.text(`sources/github.com/leostera/minttea/${SHA}.tar.gz`)).toBeNull();
     expect(await bucket.text(`packages/github.com/leostera/minttea/widgets/core/${SHA}.manifest.json`)).toBeNull();
     expect(queue.messages).toHaveLength(0);
   });
@@ -545,7 +545,7 @@ describe("riot package registry routes", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      `https://cdn.pkgs.ml/packages/leostera/minttea/-/${SHA}.tar.gz`,
+      `https://cdn.pkgs.ml/sources/github.com/leostera/minttea/${SHA}.tar.gz`,
     );
   });
 

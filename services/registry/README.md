@@ -28,3 +28,21 @@ those upstreams. This is useful for on-premise or private testing setups.
 - `GET /package/<locator>/-/source/<sha>.tar.gz` reads source archives from R2.
 
 The Worker logs every request into `ml-pkgs-cdn/requests/...`.
+
+## Live smoke tests
+
+Set a live registry base URL in `.env` to run end-to-end smoke tests against a
+deployed Worker:
+
+```dotenv
+REGISTRY_E2E_BASE_URL=https://registry.pkgs.ml
+REGISTRY_E2E_PACKAGE_LOCATOR=github.com/leostera/riot-new/packages/kernel
+```
+
+Then run:
+
+```bash
+bun run test:e2e
+```
+
+The live tests are skipped when `REGISTRY_E2E_BASE_URL` is not set.
