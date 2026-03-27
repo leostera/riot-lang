@@ -34,6 +34,26 @@ type configuration_snapshot = {
   transform_domain_events_into_renderable_view_models : (message list -> (string * int) list) option;
 }
 
+type fpclass = Stdlib.fpclass =
+  | FP_normal
+  | FP_subnormal
+  | FP_zero
+
+type nonrec 'a option = 'a option =
+  | None
+  | Some of 'a
+
+type ('a, 'e) std_result = ('a, 'e) Stdlib.result =
+  | Ok of 'a
+  | Error of 'e
+
+type point_alias = Base.point = private { x : int; y : int; }
+
+type color_alias = Tty.Color.t = private
+  | RGB of int * int * int
+  | ANSI of int
+  | No_color
+
 type color = | Red | Green | Blue | Cyan | Magenta | Yellow | Black
 
 type 'a tree = | Leaf of 'a | Node of 'a tree * 'a tree

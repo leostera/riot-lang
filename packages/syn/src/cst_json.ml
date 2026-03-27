@@ -1745,6 +1745,12 @@ let rec type_declaration_to_json decl =
          type_definition_to_json (Cst.TypeDeclaration.type_definition decl) );
      ]
     @
+    (match Cst.TypeDeclaration.manifest_alias decl with
+    | None ->
+        []
+    | Some manifest_alias ->
+        [ ("manifest_alias", core_type_to_json manifest_alias) ])
+    @
     (match Cst.TypeDeclaration.private_flag decl with
     | Cst.PrivateFlag.Public ->
         []
@@ -1756,6 +1762,11 @@ let rec type_declaration_to_json decl =
     @
     (if and_declarations = [] then []
      else [ ("and_declarations", Json.Array and_declarations) ])
+    @
+    (if Cst.TypeDeclaration.is_nonrec decl then
+       [ ("is_nonrec", Json.Bool true) ]
+     else []
+    )
     @
     [ ( "is_destructive_substitution",
         Json.Bool (Cst.TypeDeclaration.is_destructive_substitution decl) );

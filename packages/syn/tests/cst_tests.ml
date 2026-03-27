@@ -208,6 +208,69 @@ let tests =
                 |> Option.map Syn.Cst.Token.text);
             Ok ()
         | _ -> Error "expected private and public type declarations");
+    Test.case "cst type declarations preserve nonrec and manifest aliases"
+      (fun () ->
+        let result =
+          parse_ml
+            "type nonrec 'a option = 'a option = None | Some of 'a\n\
+             type point = Base.point = private { x : int; y : int }\n\
+             type color = Tty.Color.t = private RGB | No_color\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let declarations =
+          structure_items cst
+          |> List.filter_map (function
+               | Syn.Cst.StructureItem.TypeDeclaration decl -> Some decl
+               | _ -> None)
+        in
+        match declarations with
+        | option_decl :: point_decl :: color_decl :: _ -> (
+            Test.assert_true (Syn.Cst.TypeDeclaration.is_nonrec option_decl);
+            (match Syn.Cst.TypeDeclaration.manifest_alias option_decl with
+            | Some
+                (Syn.Cst.CoreType.Constr
+                  { constructor_path; arguments; _ }) ->
+                Test.assert_equal ~expected:(Some "option")
+                  ~actual:(Syn.Cst.Ident.name constructor_path);
+                Test.assert_equal ~expected:1 ~actual:(List.length arguments)
+            | _ ->
+                panic "expected option manifest alias");
+            (match Syn.Cst.TypeDeclaration.type_definition option_decl with
+            | Syn.Cst.TypeDefinition.Variant _ -> ()
+            | _ -> panic "expected variant body for option alias");
+            (match Syn.Cst.TypeDeclaration.manifest_alias point_decl with
+            | Some
+                (Syn.Cst.CoreType.Constr
+                  { constructor_path; _ }) ->
+                Test.assert_true
+                  (Syn.Cst.Ident.equal constructor_path
+                     (Syn.Cst.Ident.from_string "Base.point"))
+            | _ ->
+                panic "expected point manifest alias");
+            (match Syn.Cst.TypeDeclaration.type_definition point_decl with
+            | Syn.Cst.TypeDefinition.Record _ -> ()
+            | _ -> panic "expected record body for point alias");
+            Test.assert_true (Syn.Cst.TypeDeclaration.is_private point_decl);
+            (match Syn.Cst.TypeDeclaration.manifest_alias color_decl with
+            | Some
+                (Syn.Cst.CoreType.Constr
+                  { constructor_path; _ }) ->
+                Test.assert_true
+                  (Syn.Cst.Ident.equal constructor_path
+                     (Syn.Cst.Ident.from_string "Tty.Color.t"))
+            | _ ->
+                panic "expected color manifest alias");
+            (match Syn.Cst.TypeDeclaration.type_definition color_decl with
+            | Syn.Cst.TypeDefinition.Variant _ -> ()
+            | _ -> panic "expected variant body for color alias");
+            Test.assert_true (Syn.Cst.TypeDeclaration.is_private color_decl);
+            Ok ())
+        | _ ->
+            Error "expected manifest alias declarations");
     Test.case "cst mutual type declarations preserve grouped bindings"
       (fun () ->
         let result =

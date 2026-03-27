@@ -145,6 +145,61 @@
               }
             ]
           },
+          "manifest_alias": {
+            "tag": "constr",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 65,
+                "end": 76
+              }
+            },
+            "constructor_path": {
+              "tag": "qualified",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 65,
+                  "end": 76
+                }
+              },
+              "prefix": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 65,
+                    "end": 76
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Base",
+                  "span": {
+                    "start": 65,
+                    "end": 69
+                  }
+                }
+              },
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 69,
+                  "end": 70
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "point",
+                "span": {
+                  "start": 70,
+                  "end": 75
+                }
+              }
+            },
+            "arguments": []
+          },
           "private_flag": {
             "tag": "private",
             "private_token": {

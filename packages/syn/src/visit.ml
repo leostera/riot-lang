@@ -517,6 +517,13 @@ and descend_type_declaration walk ctx (declaration : Cst.TypeDeclaration.t) =
     List.fold_left walk.type_parameter ctx (Cst.TypeDeclaration.type_params declaration)
   in
   let ctx =
+    match Cst.TypeDeclaration.manifest_alias declaration with
+    | Some manifest_alias ->
+        walk.core_type ctx manifest_alias
+    | None ->
+        ctx
+  in
+  let ctx =
     walk.type_definition ctx (Cst.TypeDeclaration.type_definition declaration)
   in
   let ctx =

@@ -119,6 +119,87 @@
               }
             ]
           },
+          "manifest_alias": {
+            "tag": "constr",
+            "syntax_node": {
+              "kind": "TYPE_CONSTR",
+              "span": {
+                "start": 66,
+                "end": 78
+              }
+            },
+            "constructor_path": {
+              "tag": "qualified",
+              "syntax_node": {
+                "kind": "TYPE_CONSTR",
+                "span": {
+                  "start": 66,
+                  "end": 78
+                }
+              },
+              "prefix": {
+                "tag": "qualified",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 66,
+                    "end": 78
+                  }
+                },
+                "prefix": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 66,
+                      "end": 78
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Tty",
+                    "span": {
+                      "start": 66,
+                      "end": 69
+                    }
+                  }
+                },
+                "dot_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 69,
+                    "end": 70
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Color",
+                  "span": {
+                    "start": 70,
+                    "end": 75
+                  }
+                }
+              },
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 75,
+                  "end": 76
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "span": {
+                  "start": 76,
+                  "end": 77
+                }
+              }
+            },
+            "arguments": []
+          },
           "private_flag": {
             "tag": "private",
             "private_token": {

@@ -108,6 +108,7 @@
               ]
             }
           },
+          "is_nonrec": true,
           "is_destructive_substitution": false
         }
       }

@@ -3707,9 +3707,11 @@ module TypeDeclaration : sig
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
+    manifest_alias : core_type option;
     private_flag : private_flag;
     constraints : type_constraint list;
     and_declarations : t list;
+    is_nonrec : bool;
     is_destructive_substitution : bool;
   }
 
@@ -3717,6 +3719,10 @@ module TypeDeclaration : sig
   val type_name : t -> Ident.t
   val type_params : t -> TypeParameter.t list
   val type_definition : t -> TypeDefinition.t
+  (** Preserves the leading manifest alias in declarations such as
+      `type t = Base.t = A | B`.
+  *)
+  val manifest_alias : t -> core_type option
   val private_flag : t -> private_flag
   (** Preserves whether the declaration was written with `private`.
 
@@ -3725,6 +3731,8 @@ module TypeDeclaration : sig
   *)
   val constraints : t -> TypeConstraint.t list
   val and_declarations : t -> t list
+  (** `true` for `type nonrec t = ...`. *)
+  val is_nonrec : t -> bool
   (** `true` for interface destructive substitutions such as `type t := string`. *)
   val is_destructive_substitution : t -> bool
   val is_private : t -> bool

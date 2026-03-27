@@ -5375,6 +5375,41 @@ let is_type_extension_node node =
   |> List.exists (fun syntax_token ->
          String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "+"))
 
+let is_type_definition_body_kind = function
+  | Syntax_kind.TYPE_VARIANT_CONSTR
+  | Syntax_kind.TYPE_RECORD
+  | Syntax_kind.TYPE_POLY_VARIANT
+  | Syntax_kind.TYPE_EXTENSIBLE
+  | Syntax_kind.OBJECT_TYPE
+  | Syntax_kind.FIRST_CLASS_MODULE_TYPE ->
+      true
+  | _ ->
+      false
+
+let type_manifest_alias_from_node node =
+  let direct_children = direct_non_trivia_nodes node in
+  if not (List.exists (fun child -> is_type_definition_body_kind (Ceibo.Red.SyntaxNode.kind child)) direct_children)
+  then
+    None
+  else
+    let rec loop = function
+      | [] ->
+          None
+      | child :: _ when is_type_definition_body_kind (Ceibo.Red.SyntaxNode.kind child) ->
+          None
+      | child :: rest ->
+          if can_lift_core_type_node child then
+            Some (core_type_from_node child)
+          else
+            loop rest
+    in
+    loop direct_children
+
+let type_declaration_has_nonrec node =
+  direct_non_trivia_tokens node
+  |> List.exists (fun syntax_token ->
+         String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "nonrec")
+
 let type_definition_from_node node =
   if Ceibo.Red.SyntaxNode.kind node = Syntax_kind.TYPE_EXTENSIBLE then
     Cst.TypeDefinition.Extensible { syntax_node = node }
@@ -5403,19 +5438,71 @@ let type_definition_from_node node =
         in
         Cst.TypeDefinition.Record { syntax_node = record_node; fields }
     | None -> (
+    match
+      direct_children
+      |> List.find_opt (fun child ->
+             Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_POLY_VARIANT)
+    with
+    | Some poly_variant_node ->
+        Cst.TypeDefinition.PolyVariant (poly_variant_from_node poly_variant_node)
+    | None -> (
         match
           direct_children
           |> List.find_opt (fun child ->
-                 Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_POLY_VARIANT)
+                 let kind = Ceibo.Red.SyntaxNode.kind child in
+                 kind = Syntax_kind.TYPE_EXTENSIBLE
+                 || kind = Syntax_kind.OBJECT_TYPE
+                 || kind = Syntax_kind.FIRST_CLASS_MODULE_TYPE)
         with
-        | Some poly_variant_node ->
-            Cst.TypeDefinition.PolyVariant (poly_variant_from_node poly_variant_node)
+        | Some first ->
+            let kind = Ceibo.Red.SyntaxNode.kind first in
+            if kind = Syntax_kind.TYPE_EXTENSIBLE then
+              Cst.TypeDefinition.Extensible { syntax_node = first }
+            else if kind = Syntax_kind.OBJECT_TYPE then
+              Cst.TypeDefinition.Object
+                {
+                  syntax_node = first;
+                  fields =
+                    direct_non_trivia_nodes first
+                    |> List.filter (fun child ->
+                           Ceibo.Red.SyntaxNode.kind child = Syntax_kind.OBJECT_TYPE_FIELD)
+                    |> List.map (fun field_node ->
+                           match
+                             first_ident_token_in_subtree field_node,
+                             direct_non_trivia_nodes field_node
+                             |> List.find_opt can_lift_core_type_node
+                           with
+                           | Some field_name, Some field_type_node ->
+                               {
+                                 Cst.syntax_node = field_node;
+                                 field_name;
+                                 field_type = core_type_from_node field_type_node;
+                               }
+                           | _ ->
+                               bail
+                                 ~message:
+                                   "expected object type field name and type during Ceibo -> CST lifting"
+                                 ~syntax_node:field_node
+                                 ~context:[ "type_definition.object_field" ]);
+                }
+            else if kind = Syntax_kind.FIRST_CLASS_MODULE_TYPE then
+              Cst.TypeDefinition.FirstClassModule
+                {
+                  syntax_node = first;
+                  module_type =
+                    module_type_from_first_class_module_type_node first;
+                }
+            else
+              bail
+                ~message:
+                  "unsupported type definition body during Ceibo -> CST lifting"
+                ~syntax_node:first ~context:[ "type_definition.body" ]
         | None ->
-            let remaining_nodes =
-              direct_children
-              |> List.filter (fun child ->
-                     let kind = Ceibo.Red.SyntaxNode.kind child in
-                     kind != Syntax_kind.TYPE_PARAM
+        let remaining_nodes =
+          direct_children
+          |> List.filter (fun child ->
+                 let kind = Ceibo.Red.SyntaxNode.kind child in
+                 kind != Syntax_kind.TYPE_PARAM
                      && kind != Syntax_kind.IDENT_EXPR
                      && kind != Syntax_kind.MODULE_PATH
                      && not (kind = Syntax_kind.ATTRIBUTE_EXPR && not (can_lift_core_type_node child)))
@@ -5426,41 +5513,6 @@ let type_definition_from_node node =
                 let kind = Ceibo.Red.SyntaxNode.kind first in
                 if kind = Syntax_kind.TYPE_EXTENSIBLE then
                   Cst.TypeDefinition.Extensible { syntax_node = first }
-                else if kind = Syntax_kind.OBJECT_TYPE then
-                  Cst.TypeDefinition.Object
-                    {
-                      syntax_node = first;
-                      fields =
-                        direct_non_trivia_nodes first
-                        |> List.filter (fun child ->
-                               Ceibo.Red.SyntaxNode.kind child
-                               = Syntax_kind.OBJECT_TYPE_FIELD)
-                        |> List.map (fun field_node ->
-                               match
-                                 first_ident_token_in_subtree field_node,
-                                 direct_non_trivia_nodes field_node
-                                 |> List.find_opt can_lift_core_type_node
-                               with
-                               | Some field_name, Some field_type_node ->
-                                   {
-                                     Cst.syntax_node = field_node;
-                                     field_name;
-                                     field_type = core_type_from_node field_type_node;
-                                   }
-                               | _ ->
-                                   bail
-                                     ~message:
-                                       "expected object type field name and type during Ceibo -> CST lifting"
-                                     ~syntax_node:field_node
-                                     ~context:[ "type_definition.object_field" ]);
-                    }
-                else if kind = Syntax_kind.FIRST_CLASS_MODULE_TYPE then
-                  Cst.TypeDefinition.FirstClassModule
-                    {
-                      syntax_node = first;
-                      module_type =
-                        module_type_from_first_class_module_type_node first;
-                    }
                 else if can_lift_core_type_node first then
                   Cst.TypeDefinition.Alias
                     { syntax_node = first; manifest = core_type_from_node first }
@@ -5468,7 +5520,7 @@ let type_definition_from_node node =
                   bail
                     ~message:
                       "unsupported type definition shape during Ceibo -> CST lifting"
-                    ~syntax_node:first ~context:[ "type_definition" ])
+                    ~syntax_node:first ~context:[ "type_definition" ]))
 
 let type_declaration_from_node node =
   let lifted_type_params =
@@ -5499,9 +5551,11 @@ let type_declaration_from_node node =
                 type_name = lifted_type_name;
                 type_params = lifted_type_params;
                 type_definition = type_definition_from_node node;
+                manifest_alias = type_manifest_alias_from_node node;
                 private_flag = private_flag_from_type_declaration_node node;
                 constraints = lifted_constraints;
                 and_declarations = [];
+                is_nonrec = type_declaration_has_nonrec node;
                 is_destructive_substitution = has_destructive_substitution;
               }
       | None -> None)
@@ -7332,7 +7386,10 @@ let validate_type_constraint ~context ({ left; right; _ } : Cst.type_constraint)
   validate_core_type ~context:("type_constraint.right" :: context) right
 
 let rec validate_type_declaration ~context
-    ({ type_definition; constraints; and_declarations; _ } : Cst.TypeDeclaration.t) =
+    ({ type_definition; manifest_alias; constraints; and_declarations; _ } : Cst.TypeDeclaration.t) =
+  Option.iter
+    (validate_core_type ~context:("item.type_declaration.manifest_alias" :: context))
+    manifest_alias;
   validate_type_definition ~context:("item.type_declaration" :: context)
     type_definition;
   List.iteri

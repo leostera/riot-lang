@@ -1858,6 +1858,12 @@ let render_single_type_declaration_with_keyword ctx keyword decl =
     Syn.Cst.TypeDeclaration.type_definition decl
   in
   let params = render_type_parameters (Syn.Cst.TypeDeclaration.type_params decl) in
+  let keyword =
+    if Syn.Cst.TypeDeclaration.is_nonrec decl then
+      Doc.concat [ keyword; Doc.space; Doc.text "nonrec" ]
+    else
+      keyword
+  in
   let header =
     if params = Doc.empty then
       Doc.concat [ keyword; Doc.space; doc_of_ident type_name ]
@@ -1872,7 +1878,11 @@ let render_single_type_declaration_with_keyword ctx keyword decl =
         ]
   in
   let header =
-    header
+    match Syn.Cst.TypeDeclaration.manifest_alias decl with
+    | Some manifest_alias ->
+        Doc.concat [ header; equals; render_core_type manifest_alias ]
+    | None ->
+        header
   in
   let definition =
     match Syn.Cst.TypeDeclaration.private_flag decl with

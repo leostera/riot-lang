@@ -2365,9 +2365,11 @@ module TypeDeclaration = struct
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
+    manifest_alias : core_type option;
     private_flag : private_flag;
     constraints : type_constraint list;
     and_declarations : t list;
+    is_nonrec : bool;
     is_destructive_substitution : bool;
   }
 
@@ -2375,9 +2377,11 @@ module TypeDeclaration = struct
   let type_name decl = decl.type_name
   let type_params decl = decl.type_params
   let type_definition decl = decl.type_definition
+  let manifest_alias decl = decl.manifest_alias
   let private_flag decl = decl.private_flag
   let constraints decl = decl.constraints
   let and_declarations decl = decl.and_declarations
+  let is_nonrec decl = decl.is_nonrec
   let is_destructive_substitution decl = decl.is_destructive_substitution
   let is_private decl = PrivateFlag.is_private decl.private_flag
 
