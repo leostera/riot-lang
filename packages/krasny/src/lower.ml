@@ -5022,6 +5022,8 @@ and render_structure_item = function
           Doc.space;
           render_open_target open_.target;
         ]
+  | Syn.Cst.StructureItem.Docstring docstring ->
+      doc_of_token (Syn.Cst.Docstring.token docstring)
   | Syn.Cst.StructureItem.Expression expression ->
       render_expression expression
   | item ->
@@ -5081,6 +5083,8 @@ and render_signature_item item =
           Doc.space;
           render_open_target open_.target;
         ]
+  | Syn.Cst.SignatureItem.Docstring docstring ->
+      doc_of_token (Syn.Cst.Docstring.token docstring)
   | Syn.Cst.SignatureItem.ValueDeclaration decl ->
       Doc.concat
         [
@@ -5104,6 +5108,7 @@ and structure_item_uses_verbatim_span = function
   | Syn.Cst.StructureItem.ModuleTypeDeclaration _
   | Syn.Cst.StructureItem.IncludeStatement _
   | Syn.Cst.StructureItem.OpenStatement _
+  | Syn.Cst.StructureItem.Docstring _
   | Syn.Cst.StructureItem.Expression _ ->
       false
   | _ ->
@@ -5164,6 +5169,7 @@ and signature_item_uses_verbatim_span = function
   | Syn.Cst.SignatureItem.ModuleTypeDeclaration _
   | Syn.Cst.SignatureItem.IncludeStatement _
   | Syn.Cst.SignatureItem.OpenStatement _
+  | Syn.Cst.SignatureItem.Docstring _
   | Syn.Cst.SignatureItem.ValueDeclaration _
   | Syn.Cst.SignatureItem.ExternalDeclaration _ ->
       false

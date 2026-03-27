@@ -3913,6 +3913,23 @@ module OpenStatement : sig
   val has_bang : t -> bool
 end
 
+(** A standalone docstring item.
+
+    This models top-level docstrings that are not attached to any adjacent
+    definition and instead contribute directly to the surrounding module or
+    signature documentation.
+*)
+module Docstring : sig
+  type t = {
+    syntax_node : syntax_node;
+    docstring_token : Token.t;
+  }
+
+  val syntax_node : t -> syntax_node
+  val token : t -> Token.t
+  val text : t -> string
+end
+
 (** A `val` declaration item.
 
     `name_token` preserves the declared value name exactly as written, including
@@ -4079,6 +4096,8 @@ module StructureItem : sig
         (** A `module type` declaration item. *)
     | OpenStatement of OpenStatement.t
         (** An `open` item. *)
+    | Docstring of Docstring.t
+        (** A standalone top-level docstring item. *)
     | ValueDeclaration of value_declaration
         (** A `val` declaration item. *)
     | ExternalDeclaration of external_declaration
@@ -4118,6 +4137,8 @@ module SignatureItem : sig
         (** A `module type` declaration item. *)
     | OpenStatement of OpenStatement.t
         (** An `open` item. *)
+    | Docstring of Docstring.t
+        (** A standalone top-level docstring item. *)
     | ValueDeclaration of value_declaration
         (** A `val` declaration item. *)
     | ExternalDeclaration of external_declaration

@@ -2998,6 +2998,31 @@ let tests =
                 Error "expected interface open target to remain a module path")
         | _ ->
             Error "expected first item to be an interface open statement");
+    Test.case "cst preserves standalone top-level docstrings after open statements"
+      (fun () ->
+        let result =
+          parse_mli
+            "open Std\n\
+             \n\
+             (** Module overview. *)\n\
+             \n\
+             val create : unit -> t\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.OpenStatement _
+          :: Syn.Cst.SignatureItem.Docstring docstring
+          :: Syn.Cst.SignatureItem.ValueDeclaration _ :: _ ->
+            Test.assert_equal ~expected:"(** Module overview. *)"
+              ~actual:(Syn.Cst.Docstring.text docstring);
+            Ok ()
+        | _ ->
+            Error
+              "expected open statement, standalone docstring, and value declaration");
     Test.case "cst implementation open statements lift non-path module expressions"
       (fun () ->
         let result =

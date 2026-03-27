@@ -11,6 +11,26 @@
     },
     "items": [
       {
+        "tag": "docstring",
+        "item": {
+          "syntax_node": {
+            "kind": "DOCSTRING",
+            "span": {
+              "start": 45,
+              "end": 118
+            }
+          },
+          "docstring_token": {
+            "kind": "DOCSTRING",
+            "text": "(***********************************************************************)",
+            "span": {
+              "start": 45,
+              "end": 118
+            }
+          }
+        }
+      },
+      {
         "tag": "module_declaration",
         "item": {
           "syntax_node": {
@@ -197,6 +217,26 @@
         }
       },
       {
+        "tag": "docstring",
+        "item": {
+          "syntax_node": {
+            "kind": "DOCSTRING",
+            "span": {
+              "start": 12130,
+              "end": 12203
+            }
+          },
+          "docstring_token": {
+            "kind": "DOCSTRING",
+            "text": "(***********************************************************************)",
+            "span": {
+              "start": 12130,
+              "end": 12203
+            }
+          }
+        }
+      },
+      {
         "tag": "module_declaration",
         "item": {
           "syntax_node": {
@@ -294,6 +334,26 @@
                 }
               }
             ]
+          }
+        }
+      },
+      {
+        "tag": "docstring",
+        "item": {
+          "syntax_node": {
+            "kind": "DOCSTRING",
+            "span": {
+              "start": 12672,
+              "end": 12745
+            }
+          },
+          "docstring_token": {
+            "kind": "DOCSTRING",
+            "text": "(***********************************************************************)",
+            "span": {
+              "start": 12672,
+              "end": 12745
+            }
           }
         }
       },
@@ -1963,6 +2023,26 @@
                 }
               }
             ]
+          }
+        }
+      },
+      {
+        "tag": "docstring",
+        "item": {
+          "syntax_node": {
+            "kind": "DOCSTRING",
+            "span": {
+              "start": 16282,
+              "end": 16361
+            }
+          },
+          "docstring_token": {
+            "kind": "DOCSTRING",
+            "text": "(*****************************************************************************)",
+            "span": {
+              "start": 16282,
+              "end": 16361
+            }
           }
         }
       },

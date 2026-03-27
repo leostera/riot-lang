@@ -64,6 +64,51 @@ let synthetic_token ~kind ~text ~start_offset ~end_offset =
   in
   token syntax_token
 
+let synthetic_syntax_node_wrapping_token docstring_syntax_token =
+  let token_span = Ceibo.Red.SyntaxToken.span docstring_syntax_token in
+  let prefix_width = Int.max 0 token_span.start in
+  let prefix_token =
+    Ceibo.Green.make_token ~kind:Syntax_kind.WHITESPACE
+      ~text:(String.make prefix_width ' ') ~width:prefix_width
+  in
+  let wrapped_token =
+    Ceibo.Green.Token (Ceibo.Red.SyntaxToken.green docstring_syntax_token)
+  in
+  let wrapped_node =
+    Ceibo.Green.make_node ~kind:(Ceibo.Red.SyntaxToken.kind docstring_syntax_token)
+      ~children:[| wrapped_token |]
+  in
+  let root =
+    Ceibo.Green.make_node ~kind:Syntax_kind.SOURCE_FILE
+      ~children:
+        [|
+          Ceibo.Green.Token prefix_token;
+          Ceibo.Green.Node wrapped_node;
+        |]
+  in
+  match Ceibo.Red.SyntaxNode.child (Ceibo.Red.new_root root) 1 with
+  | Some (Ceibo.Red.Node node) ->
+      node
+  | _ ->
+      panic "synthetic_syntax_node_wrapping_token: missing wrapped child node"
+
+let docstring_from_token docstring_syntax_token =
+  Cst.Docstring.
+    {
+      syntax_node = synthetic_syntax_node_wrapping_token docstring_syntax_token;
+      docstring_token = Cst.Token.{ syntax_token = docstring_syntax_token };
+    }
+
+let trailing_docstring_items_from_node ~after_offset node =
+  Ceibo.Red.SyntaxNode.children_list node
+  |> List.filter_map (function
+       | Ceibo.Red.Token syntax_token
+         when Ceibo.Red.SyntaxToken.kind syntax_token = Syntax_kind.DOCSTRING
+              && (Ceibo.Red.SyntaxToken.span syntax_token).start >= after_offset ->
+           Some (docstring_from_token syntax_token)
+       | _ ->
+           None)
+
 let substring text start length =
   let text_length = String.length text in
   if length <= 0 || start >= text_length then
@@ -269,6 +314,18 @@ let direct_non_trivia_tokens node =
 let subtree_non_trivia_tokens node =
   Ceibo.Red.SyntaxNode.tokens node
   |> List.filter (fun tok -> not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)))
+
+let span_of_syntax_node_nontrivia_bounds syntax_node =
+  let full_span = Ceibo.Red.SyntaxNode.span syntax_node in
+  match subtree_non_trivia_tokens syntax_node with
+  | [] ->
+      full_span
+  | first :: rest ->
+      let last = List.fold_left (fun _ token -> token) first rest in
+      {
+        Ceibo.Span.start = (Ceibo.Red.SyntaxToken.span first).start;
+        end_ = (Ceibo.Red.SyntaxToken.span last).end_;
+      }
 
 let expression_grouping_from_node node =
   match direct_non_trivia_tokens node with
@@ -5885,6 +5942,60 @@ let open_statement_from_node node =
                 bang_token = bang_token_opt;
               })
 
+let docstring_items_after_open_statement node (stmt : Cst.OpenStatement.t) =
+  let after_offset =
+    match Cst.OpenStatement.target stmt with
+    | Cst.OpenStatement.Path path -> (
+        match Cst.Ident.last_segment path with
+        | Some last_segment ->
+            (Cst.Token.span last_segment).end_
+        | None ->
+            (Ceibo.Red.SyntaxNode.span node).end_)
+    | Cst.OpenStatement.ModuleExpression module_expression ->
+        span_of_syntax_node_nontrivia_bounds
+          (Cst.ModuleExpression.syntax_node module_expression)
+        |> fun span -> span.end_
+  in
+  trailing_docstring_items_from_node ~after_offset node
+
+let docstring_items_after_module_declaration node
+    (decl : Cst.ModuleDeclaration.t) =
+  let after_offset =
+    match Cst.ModuleDeclaration.module_expression decl with
+    | Some module_expression ->
+        span_of_syntax_node_nontrivia_bounds
+          (Cst.ModuleExpression.syntax_node module_expression)
+        |> fun span -> span.end_
+    | None -> (
+        match Cst.ModuleDeclaration.module_type decl with
+        | Some module_type ->
+            span_of_syntax_node_nontrivia_bounds
+              (Cst.ModuleType.syntax_node module_type)
+            |> fun span -> span.end_
+        | None -> (
+            match List.rev (Cst.ModuleDeclaration.functor_parameters decl) with
+            | parameter :: _ ->
+                span_of_syntax_node_nontrivia_bounds
+                  parameter.Cst.syntax_node
+                |> fun span -> span.end_
+            | [] ->
+                (Cst.Token.span (Cst.ModuleDeclaration.module_name_token decl)).end_))
+  in
+  trailing_docstring_items_from_node ~after_offset node
+
+let docstring_items_after_module_type_declaration node
+    (decl : Cst.ModuleTypeDeclaration.t) =
+  let after_offset =
+    match Cst.ModuleTypeDeclaration.module_type decl with
+    | Some module_type ->
+        span_of_syntax_node_nontrivia_bounds
+          (Cst.ModuleType.syntax_node module_type)
+        |> fun span -> span.end_
+    | None ->
+        (Cst.Token.span (Cst.ModuleTypeDeclaration.module_type_name_token decl)).end_
+  in
+  trailing_docstring_items_from_node ~after_offset node
+
 let declaration_name_token_from_node node =
   let operator_token_from_node node =
     direct_non_trivia_tokens node
@@ -6105,15 +6216,27 @@ let rec structure_items_from_node node =
               [ Cst.StructureItem.RecursiveModuleDeclaration recursive_decl ]
           | None ->
               unsupported_item node)
-      | Some decl -> [ Cst.StructureItem.ModuleDeclaration decl ]
+      | Some decl ->
+          Cst.StructureItem.ModuleDeclaration decl
+          :: List.map
+               (fun doc -> Cst.StructureItem.Docstring doc)
+               (docstring_items_after_module_declaration node decl)
       | None -> unsupported_item node)
   | Syntax_kind.MODULE_TYPE_DECL -> (
       match module_type_declaration_from_node node with
-      | Some decl -> [ Cst.StructureItem.ModuleTypeDeclaration decl ]
+      | Some decl ->
+          Cst.StructureItem.ModuleTypeDeclaration decl
+          :: List.map
+               (fun doc -> Cst.StructureItem.Docstring doc)
+               (docstring_items_after_module_type_declaration node decl)
       | None -> unsupported_item node)
   | Syntax_kind.OPEN_STMT -> (
       match open_statement_from_node node with
-      | Some stmt -> [ Cst.StructureItem.OpenStatement stmt ]
+      | Some stmt ->
+          Cst.StructureItem.OpenStatement stmt
+          :: List.map
+               (fun doc -> Cst.StructureItem.Docstring doc)
+               (docstring_items_after_open_statement node stmt)
       | None -> unsupported_item node)
   | Syntax_kind.VAL_DECL -> (
       match value_declaration_from_node node with
@@ -6197,15 +6320,27 @@ let rec signature_items_from_node node =
               [ Cst.SignatureItem.RecursiveModuleDeclaration recursive_decl ]
           | None ->
               unsupported_item node)
-      | Some decl -> [ Cst.SignatureItem.ModuleDeclaration decl ]
+      | Some decl ->
+          Cst.SignatureItem.ModuleDeclaration decl
+          :: List.map
+               (fun doc -> Cst.SignatureItem.Docstring doc)
+               (docstring_items_after_module_declaration node decl)
       | None -> unsupported_item node)
   | Syntax_kind.MODULE_TYPE_DECL -> (
       match module_type_declaration_from_node node with
-      | Some decl -> [ Cst.SignatureItem.ModuleTypeDeclaration decl ]
+      | Some decl ->
+          Cst.SignatureItem.ModuleTypeDeclaration decl
+          :: List.map
+               (fun doc -> Cst.SignatureItem.Docstring doc)
+               (docstring_items_after_module_type_declaration node decl)
       | None -> unsupported_item node)
   | Syntax_kind.OPEN_STMT -> (
       match open_statement_from_node node with
-      | Some stmt -> [ Cst.SignatureItem.OpenStatement stmt ]
+      | Some stmt ->
+          Cst.SignatureItem.OpenStatement stmt
+          :: List.map
+               (fun doc -> Cst.SignatureItem.Docstring doc)
+               (docstring_items_after_open_statement node stmt)
       | None -> unsupported_item node)
   | Syntax_kind.VAL_DECL -> (
       match value_declaration_from_node node with
@@ -6432,11 +6567,18 @@ let annotation_payload_from_shell_lift shell_node =
 let () =
   Cell.set annotation_payload_from_shell_impl annotation_payload_from_shell_lift
 
-let build_source_file_body tree items_from_node =
+let build_source_file_body ~docstring_item_of_docstring tree items_from_node =
   let root = Ceibo.Red.new_root tree in
   let file_items =
-    direct_non_trivia_nodes root
-    |> List.concat_map items_from_node
+    Ceibo.Red.SyntaxNode.children_list root
+    |> List.concat_map (function
+         | Ceibo.Red.Node node when not (is_trivia (Ceibo.Red.SyntaxNode.kind node)) ->
+             items_from_node node
+         | Ceibo.Red.Token syntax_token
+           when Ceibo.Red.SyntaxToken.kind syntax_token = Syntax_kind.DOCSTRING ->
+             [ docstring_item_of_docstring (docstring_from_token syntax_token) ]
+         | _ ->
+             [])
   in
   (root, file_items)
 
@@ -7294,6 +7436,8 @@ let validate_structure_item ~context = function
       validate_class_type_declaration ~context decl
   | Cst.StructureItem.Attribute _ | Cst.StructureItem.Extension _ ->
       ()
+  | Cst.StructureItem.Docstring _ ->
+      ()
   | Cst.StructureItem.ValueDeclaration { type_; _ } ->
       validate_core_type ~context:("item.value_declaration.type" :: context) type_
   | Cst.StructureItem.ExternalDeclaration { type_; _ } ->
@@ -7315,6 +7459,8 @@ let validate_signature_item ~context = function
   | Cst.SignatureItem.TypeExtension decl ->
       validate_type_extension ~context decl
   | Cst.SignatureItem.Attribute _ | Cst.SignatureItem.Extension _ ->
+      ()
+  | Cst.SignatureItem.Docstring _ ->
       ()
   | Cst.SignatureItem.ClassDeclaration decl ->
       validate_class_declaration ~context decl
@@ -7357,12 +7503,16 @@ let lift ~kind tree =
     match kind with
     | `Implementation ->
         let syntax_node, items =
-          build_source_file_body tree structure_items_from_node
+          build_source_file_body
+            ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc)
+            tree structure_items_from_node
         in
         Cst.Implementation { syntax_node; items }
     | `Interface ->
         let syntax_node, items =
-          build_source_file_body tree signature_items_from_node
+          build_source_file_body
+            ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc)
+            tree signature_items_from_node
         in
         Cst.Interface { syntax_node; items }
   in

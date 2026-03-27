@@ -33,6 +33,13 @@ let option_to_json to_json = function
 
 let token_to_json token = syntax_token_to_json (Cst.Token.syntax_token token)
 
+let docstring_to_json (docstring : Cst.Docstring.t) =
+  Json.Object
+    [
+      ("syntax_node", syntax_node_to_json (Cst.Docstring.syntax_node docstring));
+      ("docstring_token", token_to_json (Cst.Docstring.token docstring));
+    ]
+
 let expression_grouping_to_json = function
   | Cst.Parens ->
       Json.String "parens"
@@ -2236,6 +2243,12 @@ let structure_item_to_json = function
           ("tag", Json.String "open_statement");
           ("item", open_statement_to_json stmt);
         ]
+  | Cst.StructureItem.Docstring docstring ->
+      Json.Object
+        [
+          ("tag", Json.String "docstring");
+          ("item", docstring_to_json docstring);
+        ]
   | Cst.StructureItem.ValueDeclaration decl ->
       Json.Object
         [
@@ -2321,6 +2334,12 @@ let signature_item_to_json = function
         [
           ("tag", Json.String "open_statement");
           ("item", open_statement_to_json stmt);
+        ]
+  | Cst.SignatureItem.Docstring docstring ->
+      Json.Object
+        [
+          ("tag", Json.String "docstring");
+          ("item", docstring_to_json docstring);
         ]
   | Cst.SignatureItem.ValueDeclaration decl ->
       Json.Object

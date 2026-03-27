@@ -974,6 +974,8 @@ and descend_structure_item walk ctx (item : Cst.StructureItem.t) =
       walk.module_type_declaration ctx declaration
   | Cst.StructureItem.OpenStatement statement ->
       walk.open_statement ctx statement
+  | Cst.StructureItem.Docstring _ ->
+      ctx
   | Cst.StructureItem.ValueDeclaration declaration ->
       walk.value_declaration ctx declaration
   | Cst.StructureItem.ExternalDeclaration declaration ->
@@ -1005,6 +1007,8 @@ and descend_signature_item walk ctx (item : Cst.SignatureItem.t) =
       walk.module_type_declaration ctx declaration
   | Cst.SignatureItem.OpenStatement statement ->
       walk.open_statement ctx statement
+  | Cst.SignatureItem.Docstring _ ->
+      ctx
   | Cst.SignatureItem.ValueDeclaration declaration ->
       walk.value_declaration ctx declaration
   | Cst.SignatureItem.ExternalDeclaration declaration ->

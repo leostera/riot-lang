@@ -2518,6 +2518,17 @@ module OpenStatement = struct
   let has_bang stmt = Option.is_some stmt.bang_token
 end
 
+module Docstring = struct
+  type t = {
+    syntax_node : syntax_node;
+    docstring_token : Token.t;
+  }
+
+  let syntax_node doc = doc.syntax_node
+  let token doc = doc.docstring_token
+  let text doc = Token.text doc.docstring_token
+end
+
 type value_declaration = {
   syntax_node : syntax_node;
   name_token : Token.t;
@@ -2570,6 +2581,7 @@ module StructureItem = struct
     | RecursiveModuleDeclaration of RecursiveModuleDeclaration.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t
+    | Docstring of Docstring.t
     | ValueDeclaration of value_declaration
     | ExternalDeclaration of external_declaration
     | IncludeStatement of include_statement
@@ -2589,6 +2601,7 @@ module StructureItem = struct
         RecursiveModuleDeclaration.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
     | OpenStatement stmt -> OpenStatement.syntax_node stmt
+    | Docstring doc -> Docstring.syntax_node doc
     | ValueDeclaration decl -> decl.syntax_node
     | ExternalDeclaration decl -> decl.syntax_node
     | IncludeStatement stmt -> stmt.syntax_node
@@ -2607,6 +2620,7 @@ module SignatureItem = struct
     | RecursiveModuleDeclaration of RecursiveModuleDeclaration.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t
+    | Docstring of Docstring.t
     | ValueDeclaration of value_declaration
     | ExternalDeclaration of external_declaration
     | IncludeStatement of include_statement
@@ -2624,6 +2638,7 @@ module SignatureItem = struct
         RecursiveModuleDeclaration.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
     | OpenStatement stmt -> OpenStatement.syntax_node stmt
+    | Docstring doc -> Docstring.syntax_node doc
     | ValueDeclaration decl -> decl.syntax_node
     | ExternalDeclaration decl -> decl.syntax_node
     | IncludeStatement stmt -> stmt.syntax_node
