@@ -137,11 +137,12 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
 |}
           ~actual:formatted;
         Ok ());
-    Test.case "verify treats redundant parens and list trailing separators as safe"
+    Test.case "verify treats normalized punctuation and parens as safe"
       (fun () ->
         with_tempdir "krasny_runner_verify_semantic_hash" (fun tmpdir ->
             let parens = Path.(tmpdir / Path.v "parens.ml") in
             let listy = Path.(tmpdir / Path.v "listy.ml") in
+            let recordy = Path.(tmpdir / Path.v "recordy.ml") in
             Fs.write "let x = configure ~style:(Style.Grow)\n" parens
             |> Result.expect ~msg:"write parens";
             Fs.write
@@ -153,9 +154,20 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
 |}
               listy
             |> Result.expect ~msg:"write listy";
-            let result = Krasny.Runner.run_verify [ parens; listy ] in
-            Test.assert_equal ~expected:2 ~actual:result.summary.total_files;
-            Test.assert_equal ~expected:2 ~actual:result.summary.would_reformat;
+            Fs.write
+              {record_fixture|let explanation =
+  Api.Explanation.
+    {
+      rule_id = package_rule_id;
+      message = "Use != instead of <> for inequality.";
+      body = {|body|};
+    }
+|record_fixture}
+              recordy
+            |> Result.expect ~msg:"write recordy";
+            let result = Krasny.Runner.run_verify [ parens; listy; recordy ] in
+            Test.assert_equal ~expected:3 ~actual:result.summary.total_files;
+            Test.assert_equal ~expected:3 ~actual:result.summary.would_reformat;
             Test.assert_equal ~expected:0 ~actual:result.summary.unsafe_to_format;
             Ok ()));
     Test.case "format keeps function and match lowering idempotent" (fun () ->

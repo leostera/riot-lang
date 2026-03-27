@@ -541,12 +541,28 @@ let ident_path_from_node node =
       bail ~message:"expected identifier path segment during Ceibo -> CST lifting"
         ~syntax_node:node ~context:[ "module_path"; "ident" ]
 
-let module_path_like_from_node node =
+let rec module_path_like_from_node node =
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.MODULE_PATH | Syntax_kind.MODULE_TYPE_PATH ->
       module_path_from_node node
   | Syntax_kind.IDENT_EXPR ->
       ident_path_from_node node
+  | Syntax_kind.FIELD_ACCESS_EXPR -> (
+      match
+        direct_non_trivia_nodes node,
+        List.rev (direct_non_trivia_tokens node)
+      with
+      | receiver_node :: _, name_syntax_token :: dot_syntax_token :: _ ->
+          let prefix = module_path_like_from_node receiver_node in
+          Cst.Ident.Qualified
+            {
+              syntax_node = node;
+              prefix;
+              dot_token = token dot_syntax_token;
+              name_token = token name_syntax_token;
+            }
+      | _ ->
+          module_path_from_tokens ~syntax_node:node (direct_non_trivia_tokens node))
   | _ ->
       module_path_from_tokens ~syntax_node:node (direct_non_trivia_tokens node)
 

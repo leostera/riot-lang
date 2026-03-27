@@ -170,6 +170,9 @@ let semantic_hash (result : Syn.Parser.parse_result) =
           String.equal token_text "[|"
           || String.equal token_text "|]"
           || String.equal token_text ";"
+      | Some Syn.SyntaxKind.RECORD_EXPR
+      | Some Syn.SyntaxKind.RECORD_UPDATE_EXPR ->
+          String.equal token_text ";"
       | _ ->
           false
   and redundant_paren_child node =
