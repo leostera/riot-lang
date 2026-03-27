@@ -338,6 +338,14 @@ let nontrivia_direct_tokens syntax_node =
          | _ ->
              true)
 
+let syntax_node_has_trailing_direct_token ~closing ~separator syntax_node =
+  match List.rev (nontrivia_direct_tokens syntax_node) with
+  | closing_token :: separator_token :: _ ->
+      String.equal (Syn.Ceibo.Red.SyntaxToken.text closing_token) closing
+      && String.equal (Syn.Ceibo.Red.SyntaxToken.text separator_token) separator
+  | _ ->
+      false
+
 let nontrivia_bounds_span_of_syntax_node syntax_node =
   let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
   let nontrivia_tokens =
@@ -2517,8 +2525,17 @@ let make_lowerer ctx =
       else if List.exists is_comment_like_token (Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node) then
         render_list_expression_with_comments syntax_node elements
       else if List.length elements >= multiline_list_threshold then
-        render_multiline_list_expression elements
+        render_multiline_list_expression ~has_trailing_separator:(syntax_node_has_trailing_direct_token ~closing:"]" ~separator:";" syntax_node) elements
       else
+        let rendered_elements =
+          join_map (Doc.concat [ Doc.semi; Doc.break () ]) render_expression elements
+        in
+        let rendered_elements =
+          if syntax_node_has_trailing_direct_token ~closing:"]" ~separator:";" syntax_node then
+            Doc.concat [ rendered_elements; Doc.semi ]
+          else
+            rendered_elements
+        in
         Doc.group
           (Doc.concat
              [
@@ -2527,8 +2544,7 @@ let make_lowerer ctx =
                  (Doc.concat
                     [
                       Doc.break ~flat:" " ();
-                      join_map (Doc.concat [ Doc.semi; Doc.break () ]) render_expression
-                        elements;
+                      rendered_elements;
                     ]);
                Doc.break ~flat:" " ();
                Doc.rbracket;
@@ -2785,9 +2801,15 @@ and render_local_open_expression
   else
     Doc.concat [ module_doc; Doc.text ".("; body_doc; Doc.rparen ]
 
-and render_multiline_list_expression elements =
+and render_multiline_list_expression ~has_trailing_separator elements =
   let body =
     join_map (Doc.concat [ Doc.semi; Doc.line ]) render_expression elements
+  in
+  let body =
+    if has_trailing_separator then
+      Doc.concat [ body; Doc.semi ]
+    else
+      body
   in
   Doc.concat
     [
@@ -2886,6 +2908,21 @@ and render_apply_argument = function
           Doc.line;
           Doc.rparen;
         ]
+  | Syn.Cst.Positional
+      (Syn.Cst.Expression.Parenthesized
+        { opening_token; closing_token; grouping = Syn.Cst.Parens; inner; _ }) ->
+      let rendered_inner = render_expression inner in
+      if expression_prefers_multiline_layout inner || Doc.is_multiline rendered_inner then
+        Doc.concat
+          [
+            doc_of_token opening_token;
+            Doc.line;
+            Doc.indent 2 rendered_inner;
+            Doc.line;
+            doc_of_token closing_token;
+          ]
+      else
+        Doc.concat [ doc_of_token opening_token; rendered_inner; doc_of_token closing_token ]
   | Syn.Cst.Positional expression ->
       if expression_needs_parens_in_apply expression then
         Doc.concat [ Doc.lparen; render_expression expression; Doc.rparen ]
@@ -2896,24 +2933,62 @@ and render_apply_argument = function
       | None ->
           Doc.concat [ doc_of_token sigil_token; doc_of_token label_token ]
       | Some value ->
+          let rendered_value =
+            match value with
+            | Syn.Cst.Expression.Parenthesized
+                { opening_token; closing_token; grouping = Syn.Cst.Parens; inner; _ } ->
+                let rendered_inner = render_expression inner in
+                if expression_prefers_multiline_layout inner || Doc.is_multiline rendered_inner then
+                  Doc.concat
+                    [
+                      doc_of_token opening_token;
+                      Doc.line;
+                      Doc.indent 2 rendered_inner;
+                      Doc.line;
+                      doc_of_token closing_token;
+                    ]
+                else
+                  Doc.concat [ doc_of_token opening_token; rendered_inner; doc_of_token closing_token ]
+            | _ ->
+                render_expression value
+          in
           Doc.concat
             [
               doc_of_token sigil_token;
               doc_of_token label_token;
               Doc.text ":";
-              render_expression value;
+              rendered_value;
             ])
   | Syn.Cst.Optional { sigil_token; label_token; value; _ } ->
       (match value with
       | None ->
           Doc.concat [ doc_of_token sigil_token; doc_of_token label_token ]
       | Some value ->
+          let rendered_value =
+            match value with
+            | Syn.Cst.Expression.Parenthesized
+                { opening_token; closing_token; grouping = Syn.Cst.Parens; inner; _ } ->
+                let rendered_inner = render_expression inner in
+                if expression_prefers_multiline_layout inner || Doc.is_multiline rendered_inner then
+                  Doc.concat
+                    [
+                      doc_of_token opening_token;
+                      Doc.line;
+                      Doc.indent 2 rendered_inner;
+                      Doc.line;
+                      doc_of_token closing_token;
+                    ]
+                else
+                  Doc.concat [ doc_of_token opening_token; rendered_inner; doc_of_token closing_token ]
+            | _ ->
+                render_expression value
+          in
           Doc.concat
             [
               doc_of_token sigil_token;
               doc_of_token label_token;
               Doc.text ":";
-              render_expression value;
+              rendered_value;
             ])
 
 and syntax_node_of_apply_argument = function

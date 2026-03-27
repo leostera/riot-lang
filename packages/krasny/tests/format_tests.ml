@@ -119,6 +119,34 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
         in
         assert_idempotent ~source ~msg:"collection expressions should stay stable";
         Ok ());
+    Test.case "format preserves trailing semicolons in list apply arguments" (fun () ->
+        let source =
+          {|let cmd =
+  f [
+    first_item;
+    second_item;
+  ]
+|}
+        in
+        let parsed = parse_ml source in
+        let formatted =
+          Krasny.format parsed
+          |> Result.expect ~msg:"list arguments should format"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let cmd =
+  f [
+    first_item;
+    second_item;
+  ]
+|}
+          ~actual:formatted;
+        let reparsed = parse_ml formatted in
+        Test.assert_equal
+          ~expected:(Krasny.syntax_hash parsed)
+          ~actual:(Krasny.syntax_hash reparsed);
+        Ok ());
     Test.case "format keeps function and match lowering idempotent" (fun () ->
         let source =
           {|let f = function x, y -> x + y

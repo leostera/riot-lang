@@ -1,5 +1,6 @@
 # 01xx atoms and basic expressions
 0100_atoms_and_basic_expressions.ml
+0101_apply_list_trailing_separator.ml
 
 # 02xx operators and parens
 0200_operators_and_parens.ml
@@ -92,3 +93,5 @@
 9109_real_syn_keyword.ml
 9110_real_syn_error.ml
 9111_real_syn_syntax_kind.ml
+9112_real_blink_simple_https.ml
+9113_real_gooey_debug_grow.ml

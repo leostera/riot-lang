@@ -1,0 +1,5 @@
+let cmd =
+  f [
+    first_item;
+    second_item;
+  ]
