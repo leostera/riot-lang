@@ -65,6 +65,9 @@ let rec walk_dir dir =
 let collect_ocaml_files ?(should_ignore = fun _ -> false) ~roots () =
   roots
   |> List.concat_map (fun root ->
+         if should_ignore root then
+           []
+         else
          match Fs.is_dir root with
          | Ok true -> walk_dir root
          | Ok false | Error _ ->
@@ -128,7 +131,7 @@ let rec next_discovered_file state =
         let _ = HashSet.insert state.seen path_string in
         match Fs.is_dir path with
         | Ok true ->
-            if should_skip_directory path then
+            if should_skip_directory path || state.should_ignore path then
               next_discovered_file state
             else (
               state.pending <- sorted_directory_entries path @ state.pending;

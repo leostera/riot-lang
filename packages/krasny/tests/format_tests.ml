@@ -184,6 +184,25 @@ let optional_fun = fun ?(y = 0) -> y + 1
             let actual = List.sort String.compare files in
             Test.assert_equal ~expected ~actual;
             Ok ()));
+    Test.case "runner skips ignored subtrees during collection" (fun () ->
+        with_tempdir "krasny_runner_ignore_tree" (fun tmpdir ->
+            let keep = Path.(tmpdir / Path.v "keep.ml") in
+            let fixtures_dir = Path.(tmpdir / Path.v "tests" / Path.v "fixtures") in
+            let ignored = Path.(fixtures_dir / Path.v "fixture.ml") in
+            Fs.create_dir_all fixtures_dir
+            |> Result.expect ~msg:"create fixtures dir";
+            Fs.write "let kept = 1\n" keep |> Result.expect ~msg:"write keep";
+            Fs.write "let ignored = 1\n" ignored
+            |> Result.expect ~msg:"write ignored";
+            let files =
+              Krasny.Runner.collect_ocaml_files ~roots:[ tmpdir ]
+                ~should_ignore:(fun path ->
+                  String.contains (Path.to_string path) "fixtures")
+                ()
+              |> List.map Path.to_string
+            in
+            Test.assert_equal ~expected:[ Path.to_string keep ] ~actual:files;
+            Ok ()));
     Test.case "runner reports formatting status and emits json events" (fun () ->
         with_tempdir "krasny_runner_check" (fun tmpdir ->
             let formatted = Path.(tmpdir / Path.v "formatted.ml") in
