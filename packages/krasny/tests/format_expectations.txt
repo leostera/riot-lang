@@ -83,6 +83,7 @@
 0909_comment_stability_between_lets.ml
 0910_docstring_before_local_open_let.ml
 0911_comment_before_sequence_let.ml
+0912_banner_comments_followed_by_plain_comment.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

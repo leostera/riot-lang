@@ -5250,7 +5250,15 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
     parse_trivia_between_offsets source ~start:(start - source_offset)
       ~end_:(end_ - source_offset) pending
   in
-  let items = List.sort compare_structure_items_by_span items in
+  let items =
+    items
+    |> List.filter (function
+         | Syn.Cst.StructureItem.Docstring _ ->
+             false
+         | _ ->
+             true)
+    |> List.sort compare_structure_items_by_span
+  in
   let rec loop pending acc cursor items =
     yield ();
     match items with
@@ -5500,7 +5508,15 @@ and render_signature_top_level_items
     parse_trivia_between_offsets source ~start:(start - source_offset)
       ~end_:(end_ - source_offset) pending
   in
-  let items = List.sort compare_signature_items_by_span items in
+  let items =
+    items
+    |> List.filter (function
+         | Syn.Cst.SignatureItem.Docstring _ ->
+             false
+         | _ ->
+             true)
+    |> List.sort compare_signature_items_by_span
+  in
   let rec loop pending acc items cursor =
     yield ();
     match items with
