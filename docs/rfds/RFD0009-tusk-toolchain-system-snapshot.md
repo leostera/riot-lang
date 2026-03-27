@@ -299,7 +299,7 @@ tarballs.
 The repository now includes a local manual helper for the producer side of those
 tarballs:
 
-- `scripts/toolchain/publish-prebuilt-ocaml.sh`
+- `scripts/release/ocaml.sh`
 
 That script can build selected vendored compilers, package them with the
 existing `vendor/ocaml/cross/package.sh` naming convention, and upload them to
@@ -316,9 +316,9 @@ The disabled workflow reference remains:
 
 By contrast, this repository now includes local manual helpers for publishing:
 
-- `tusk` release tarballs via `scripts/release/publish-tusk.sh`
+- `tusk` release tarballs via `scripts/release/tusk.sh`
 - the top-level install script at `cdn.ocaml.ai/tusk/install.sh`
-- prebuilt OCaml tarballs via `scripts/toolchain/publish-prebuilt-ocaml.sh`
+- prebuilt OCaml tarballs via `scripts/release/ocaml.sh`
 
 The disabled workflow references remain:
 

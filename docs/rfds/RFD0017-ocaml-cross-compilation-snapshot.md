@@ -364,7 +364,7 @@ This means Riot currently distinguishes two very different stories:
 That is an important current boundary.
 
 Riot now also carries a local helper script,
-`scripts/toolchain/publish-prebuilt-ocaml.sh`, for manually building,
+`scripts/release/ocaml.sh`, for manually building,
 packaging, and uploading a selected subset of those prebuilt tarballs to the
 configured CDN bucket while the automated publishing workflow remains disabled.
 
