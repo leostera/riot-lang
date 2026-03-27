@@ -1,5 +1,5 @@
 ------------------------- MODULE MiniriotRuntime -------------------------
-EXTENDS Integers, FiniteSets, Sequences, TLC, QueueUtils
+EXTENDS Integers, FiniteSets, Sequences, TLC, QueueUtils, MiniriotCommon
 
 \* This is a bounded, readable design model for the current `packages/miniriot`
 \* runtime.  It is intentionally more semantic than the OCaml implementation:
@@ -32,36 +32,7 @@ CONSTANTS
   MaxMailboxLen,
   MaxRunQueueLen
 
-ProcessStates == {
-  "Absent",
-  "Uninitialized",
-  "Runnable",
-  "Running",
-  "WaitingMessage",
-  "WaitingIO",
-  "Exited",
-  "Finalized"
-}
-
-AliveStates == {
-  "Uninitialized",
-  "Runnable",
-  "Running",
-  "WaitingMessage",
-  "WaitingIO"
-}
-
-BlockedOps == { "None", "Receive", "Syscall" }
-
-TimerModes == { "OneShot", "Interval" }
-
-TimerKinds == { "None", "WakeProcess", "SendMessage" }
-
 ExitValues == ExitReasons \cup { ExitOk }
-
-ExitSignal(from, reason) == << "EXIT", from, reason >>
-
-DownSignal(target, ref, reason) == << "DOWN", target, ref, reason >>
 
 SystemExitMessages ==
   { ExitSignal(from, reason) : from \in Processes, reason \in ExitValues }
@@ -156,73 +127,20 @@ CanAppendMailbox(p) == Len(mailbox[p]) < MaxMailboxLen
 CanAppendRunQueue(w) == Len(workerQueue[w]) < MaxRunQueueLen
 
 QueueMembershipCount(p) ==
-  Cardinality({ w \in Workers : Contains(workerQueue[w], p) })
+  QueueMembershipCountInQueues(p, workerQueue, Workers)
 
-\* Selective receive scans the saved queue first.  If there is a matching saved
-\* message we simply remove the first matching element.  That is equivalent to
-\* the implementation's "pop skipped messages and append them to the tail of the
-\* save queue" loop, but much easier to read.
 ReceiveScan(saved, inbox, accepted) ==
-  IF FirstMatchingIndex(saved, accepted) # 0
-  THEN
-    LET i == FirstMatchingIndex(saved, accepted) IN
-    [ matched    |-> TRUE,
-      message    |-> saved[i],
-      newSave    |-> RemoveIndex(saved, i),
-      newMailbox |-> inbox ]
-  ELSE
-    LET j == FirstMatchingIndex(inbox, accepted) IN
-    IF j = 0
-    THEN
-      [ matched    |-> FALSE,
-        message    |-> NoMessage,
-        newSave    |-> saved \o inbox,
-        newMailbox |-> <<>> ]
-    ELSE
-      [ matched    |-> TRUE,
-        message    |-> inbox[j],
-        newSave    |-> saved \o Prefix(inbox, j - 1),
-        newMailbox |-> Suffix(inbox, j + 1) ]
+  SelectiveReceiveScan(saved, inbox, accepted, NoMessage)
 
 EnqueueOnOwner(pid, owners, queues, queuedFlags) ==
-  IF queuedFlags[pid]
-  THEN
-    [ queues      |-> queues,
-      queuedFlags |-> queuedFlags ]
-  ELSE
-    [ queues |->
-        [ w \in Workers |->
-            IF w = owners[pid] THEN Enqueue(queues[w], pid) ELSE queues[w] ],
-      queuedFlags |->
-        [ queuedFlags EXCEPT ![pid] = TRUE ] ]
+  EnqueueOnOwnerQueue(pid, owners, queues, queuedFlags, Workers)
 
 RemoveFromAllWorkerQueues(pid, queues) ==
-  [ w \in Workers |->
-      IF Contains(queues[w], pid)
-      THEN RemoveIndex(queues[w], FirstIndexOf(queues[w], pid))
-      ELSE queues[w] ]
+  RemoveFromAllQueues(pid, queues, Workers)
 
-RemoveSymmetricLink(linkMap, p, q) ==
-  [ x \in Processes |->
-      IF x = p THEN linkMap[x] \ { q }
-      ELSE IF x = q THEN linkMap[x] \ { p }
-      ELSE linkMap[x] ]
+ClearReceiveTimerIds(map, pid) == ClearKey(map, pid, NoTimer)
 
-RemoveOutgoingMonitor(monitorMap, observer, ref, target) ==
-  [ x \in Processes |->
-      IF x = observer
-      THEN monitorMap[x] \ { << ref, target >> }
-      ELSE monitorMap[x] ]
-
-RemoveIncomingMonitor(monitoredByMap, target, observer, ref) ==
-  [ x \in Processes |->
-      IF x = target
-      THEN monitoredByMap[x] \ { << observer, ref >> }
-      ELSE monitoredByMap[x] ]
-
-ClearReceiveTimerIds(map, pid) == [map EXCEPT ![pid] = NoTimer]
-
-ClearSyscallTimerIds(map, pid) == [map EXCEPT ![pid] = NoTimer]
+ClearSyscallTimerIds(map, pid) == ClearKey(map, pid, NoTimer)
 
 TypeOK ==
   /\ procState \in [Processes -> ProcessStates]
@@ -255,6 +173,9 @@ TypeOK ==
 
 QueueFlagsAgree ==
   \A p \in Processes : slotQueued[p] <=> QueueMembershipCount(p) = 1
+
+\* Bounded smoke-run cutoff used only by the tiny integration config.
+SmokeDepthBound == TLCGet("level") < 5
 
 RunningSlotsAreExclusive ==
   \A p \in Processes : slotExecuting[p] => procState[p] = "Running"
