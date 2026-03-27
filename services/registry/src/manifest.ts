@@ -11,7 +11,7 @@ export async function buildPublicationManifest(args: {
   selector: string;
   resolvedSha: string;
   archiveBytes: Uint8Array<ArrayBuffer>;
-  publishedAt: string;
+  materializedAt: string;
 }): Promise<PackagePublicationManifest> {
   const tuskTomlPath = toRepoRelativeTuskTomlPath(args.locator);
   const tuskToml = await readRepoFileFromTarGz(args.archiveBytes, tuskTomlPath);
@@ -32,6 +32,7 @@ export async function buildPublicationManifest(args: {
     "package.version",
     args.locator.normalized,
   );
+  const packagePublic = readBoolean(packageSection.public, "package.public", args.locator.normalized);
 
   return {
     package_locator: args.locator.normalized,
@@ -41,10 +42,11 @@ export async function buildPublicationManifest(args: {
     resolved_sha: args.resolvedSha,
     package_name: packageName,
     package_version: packageVersion,
+    package_public: packagePublic,
     dependencies: extractDependencies(parsed.dependencies),
     source_archive_key: sourceArchiveKey(args.locator, args.resolvedSha),
     manifest_key: manifestKey(args.locator, args.resolvedSha),
-    published_at: args.publishedAt,
+    materialized_at: args.materializedAt,
   };
 }
 
@@ -106,5 +108,21 @@ function expectString(value: unknown, field: string, locator: string): string {
     422,
     "invalid_package_manifest",
     `Field ${field} in ${locator} must be a non-empty string.`,
+  );
+}
+
+function readBoolean(value: unknown, field: string, locator: string): boolean {
+  if (value === undefined) {
+    return false;
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  throw new HttpError(
+    422,
+    "invalid_package_manifest",
+    `Field ${field} in ${locator} must be a boolean when present.`,
   );
 }

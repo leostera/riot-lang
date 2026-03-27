@@ -5,6 +5,7 @@ export interface Env {
   CDN_BASE_URL?: string;
   GITHUB_TOKEN?: string;
   GITHUB_API_BASE_URL?: string;
+  ROOT_AUTH_TOKEN?: string;
 }
 
 export interface PackageLocator {
@@ -28,13 +29,37 @@ export interface PackagePublicationManifest {
   resolved_sha: string;
   package_name: string;
   package_version: string;
+  package_public: boolean;
+  dependencies: Array<Record<string, unknown>>;
+  source_archive_key: string;
+  manifest_key: string;
+  materialized_at: string;
+}
+
+export interface PackageClaimRecord {
+  package_name: string;
+  package_locator: string;
+  source_url: string;
+  package_subdir: string;
+  claimed_at: string;
+  updated_at: string;
+}
+
+export interface PublishedReleaseRecord {
+  package_name: string;
+  package_version: string;
+  package_locator: string;
+  source_url: string;
+  package_subdir: string;
+  selector: string;
+  resolved_sha: string;
   dependencies: Array<Record<string, unknown>>;
   source_archive_key: string;
   manifest_key: string;
   published_at: string;
 }
 
-export interface PackagePublishedEvent extends PackagePublicationManifest {
+export interface PackagePublishedEvent extends PublishedReleaseRecord {
   type: "package.published";
 }
 
@@ -69,4 +94,13 @@ export interface ResolvedPublication {
   manifestKey: string;
   manifestCreated: boolean;
   sourceCreated: boolean;
+}
+
+export interface PublishedPackageRelease extends ResolvedPublication {
+  packageName: string;
+  packageVersion: string;
+  claimKey: string;
+  releaseKey: string;
+  claimCreated: boolean;
+  releaseCreated: boolean;
 }

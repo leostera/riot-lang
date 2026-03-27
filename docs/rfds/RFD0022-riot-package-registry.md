@@ -10,17 +10,17 @@
 [summary]: #summary
 
 This RFD proposes a new `services/registry` package that acts as Riot's
-on-demand external package publication service.
+source-backed package materialization and publish control-plane service.
 It resolves a provider-backed package locator plus optional selector into a
 concrete Git commit SHA, stores the corresponding source archive durably in
-`ml-pkgs-cdn`, writes one immutable package publication manifest, logs every
-request, and emits a `package.published` event on the first successful
-publication.
+`ml-pkgs-cdn`, writes one immutable source manifest, logs every request, and
+supports an explicit authenticated publish flow that claims package names and
+emits `package.published`.
 
 The registry is intentionally narrow.
 It is not responsible for package search, dependency solving, version
-selection, lockfile generation, or a mutable global index.
-Those concerns move downstream into workers that consume publication events and
+selection, lockfile generation, or a mutable global package index.
+Those concerns move downstream into workers that consume publish events and
 materialize read-optimized indexes for `tusk`.
 
 GitHub is the first supported upstream provider.
@@ -37,11 +37,11 @@ The new registry needs to satisfy four concrete constraints:
 1. it must be cheap enough to run mostly at rest on Cloudflare Workers and only
    spend compute when packages are actively fetched
 2. it must be durable enough that every fetch attempt is recorded and every
-   successful publication survives upstream source deletion
+   successful source materialization survives upstream source deletion
 3. it must be reliable enough that once Riot has published a package, Riot can
    continue serving it even if GitHub is unavailable later
-4. it must be extensible enough that a successful publication can fan out into
-   downstream systems such as build pipelines, documentation generation,
+4. it must be extensible enough that a successful explicit publish can fan out
+   into downstream systems such as build pipelines, documentation generation,
    compatibility testing, and future package indexes
 
 There is a second design pressure here: avoid inventing too much protocol too
@@ -62,32 +62,34 @@ state, which the registry should not own.
 
 The registry therefore needs a deliberately smaller responsibility:
 
-- publish immutable source-backed package records
+- materialize immutable source-backed package records
 - make those records durable
-- tell downstream systems that publication happened
+- explicitly publish named package releases when an authenticated author asks
+- tell downstream systems when named package publication happened
 
 That boundary keeps the protocol small, the caching story understandable, and
 future indexers replaceable.
 
 ### Use cases this RFD addresses
 
-- A user runs `tusk add leostera/minttea` and Riot resolves that shorthand to
-  a GitHub-backed package, materializes the sources if needed, and returns a
-  concrete immutable publication.
-- A user fetches a semver-tagged package version and Riot keeps serving the
-  published package even if that tag later moves upstream.
+- A user runs `tusk add github.com/leostera/minttea` and Riot materializes the
+  source package if needed, then installs it as a source dependency without
+  claiming any public package name.
+- An authenticated author runs `tusk publish` from a package workspace and Riot
+  binds that package's public name and semantic version to a concrete source
+  materialization.
 - A package lives in a repository subdirectory rather than the repo root, and
   Riot treats that subdirectory as the package boundary.
 - A later request for the same package at the same resolved SHA reuses the
   stored archive and manifest without consulting GitHub again.
-- Downstream systems consume a `package.published` event to build secondary
-  indexes, docs, or compatibility reports without expanding the registry's
+- Downstream systems consume `package.published` to build secondary indexes,
+  docs, or compatibility reports without expanding the registry's
   responsibility.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-The registry should be understood in terms of four named concepts:
+The registry should be understood in terms of five named concepts:
 
 - `source URL`
   The canonical upstream package identity, such as
@@ -100,15 +102,18 @@ The registry should be understood in terms of four named concepts:
 - `selector`
   The user-facing ref that Riot is asked to resolve, such as `main`,
   `0.4.2`, or a commit SHA.
-- `publication`
+- `source materialization`
   The immutable record produced after Riot resolves a selector to a concrete
   SHA, stores the source archive, inspects the package metadata, and writes a
   manifest for that package at that SHA.
+- `published release`
+  An explicit authenticated binding from a public package name and semver
+  version to a concrete source materialization.
 
 ### Contributor model
 
-Contributors should think about `services/registry` as a publication service,
-not as a package manager.
+Contributors should think about `services/registry` as a source materialization
+and publish control-plane service, not as a package manager.
 
 The registry accepts:
 
@@ -119,11 +124,14 @@ and returns:
 
 - a resolved SHA
 - a durable source archive
-- a durable publication manifest
+- a durable source manifest
 
-Once a publication exists, Riot should be able to serve it from object storage
-alone.
+Once a source materialization exists, Riot should be able to serve it from
+object storage alone.
 The registry should not need to refresh it from GitHub.
+
+An authenticated publish operation may later bind a public package name and
+semantic version to that materialization.
 
 Downstream systems may later build mutable views such as:
 
@@ -133,18 +141,17 @@ Downstream systems may later build mutable views such as:
 
 But those are not registry responsibilities.
 
-### Example: `tusk add leostera/minttea`
+### Example: `tusk add github.com/leostera/minttea`
 
 Assume:
 
-- `leostera/minttea` is shorthand for
-  `https://github.com/leostera/minttea`
 - the package lives at the repository root
 - no explicit selector is provided
 
 The intended flow is:
 
-1. `tusk` normalizes `leostera/minttea` into the canonical source URL and
+1. `tusk` normalizes `github.com/leostera/minttea` into the canonical source
+   URL and
    package locator `github.com/leostera/minttea`
 2. `tusk` asks the registry to resolve that package with selector `main`
 3. the registry resolves `main` to the current commit SHA on GitHub
@@ -152,16 +159,46 @@ The intended flow is:
    in `ml-pkgs-cdn`
 5. on a miss, the registry downloads the archive from GitHub and stores it in
    `ml-pkgs-cdn`
-6. the registry checks whether the package publication manifest for that
+6. the registry checks whether the package source manifest for that
    locator and SHA already exists
 7. on a miss, the registry inspects the package files inside the archive,
-   extracts package metadata, writes the immutable manifest, and emits one
-   `package.published` event
-8. the registry returns the publication data to `tusk`
+   extracts package metadata, and writes the immutable source manifest
+8. the registry returns the source materialization data to `tusk`
 
 If `main` later moves, a later `resolve` call may return a different SHA.
 That is acceptable because `main` is a mutable selector.
-The publication at the old SHA stays immutable and available.
+The source materialization at the old SHA stays immutable and available.
+
+This flow does not claim a package name and does not update the public package
+index.
+
+### Example: `tusk publish`
+
+Assume the contributor is inside a package workspace whose `tusk.toml`
+contains:
+
+```toml
+name = "minttea"
+version = "0.4.2"
+public = true
+```
+
+The intended flow is:
+
+1. the contributor authenticates with `tusk login`
+2. the contributor runs `tusk publish`
+3. `tusk` determines the canonical package locator for the current package
+4. the registry materializes the package at the requested selector if needed
+5. the registry validates that the package is publishable:
+   - `public = true`
+   - `name` exists
+   - `version` is valid semver
+   - the package name is unclaimed or already owned by this publisher
+6. the registry records the package-name claim and the release binding from
+   `minttea@0.4.2` to the canonical source locator and SHA
+7. the registry emits one `package.published` event
+8. downstream indexers update the public package index so later users can run
+   `tusk add minttea`
 
 ### Example: package in a subdirectory
 
@@ -172,38 +209,45 @@ If the package is actually
 The important distinction is:
 
 - the source archive is repo-scoped
-- the publication manifest is package-scoped
+- the source manifest is package-scoped
 
-That means Riot may reuse one repo archive for multiple package publications in
+That means Riot may reuse one repo archive for multiple package source
+materializations in
 different subdirectories of that repo.
 
 ### Example: repo root request without a package
 
 If `https://github.com/leostera/minttea` does not contain a root `tusk.toml`,
 then the repo root is not a valid install target.
-The registry may still cache the repo archive in `sources/`, but it must not
-write a package publication manifest for the root package locator and must not
-emit `package.published`.
+The registry must not write a source manifest for the root package locator and
+must return an error.
+If Riot had to fetch the archive to answer that request, it must not persist
+that fresh archive either.
 
 ### Flow diagram
 
 ```mermaid
 flowchart TD
-  A[tusk add leostera/minttea] --> B[normalize to package locator]
+  A[tusk add github.com/leostera/minttea] --> B[normalize to package locator]
   B --> C[resolve selector to SHA]
   C --> D{repo archive in R2?}
   D -->|no| E[fetch archive from GitHub]
   E --> F[store archive in ml-pkgs-cdn/sources]
   D -->|yes| F
-  F --> G{publication manifest exists?}
+  F --> G{source manifest exists?}
   G -->|no| H[inspect package metadata]
-  H --> I[write immutable manifest]
-  I --> J[emit package.published]
-  G -->|yes| K[reuse publication]
-  J --> L[return publication to tusk]
-  K --> L
-  I --> M[downstream indexer workers]
-  M --> N[mutable indexes and future solver inputs]
+  H --> I[write immutable source manifest]
+  G -->|yes| J[reuse materialization]
+  I --> K[return materialization to tusk]
+  J --> K
+
+  L[tusk publish] --> M[authenticate publisher]
+  M --> N[materialize source package]
+  N --> O[validate public name and semver]
+  O --> P[record name claim and release binding]
+  P --> Q[emit package.published]
+  Q --> R[downstream indexer workers]
+  R --> S[mutable package indexes]
 ```
 
 ## Reference-level explanation
@@ -216,9 +260,11 @@ flowchart TD
 - package locator normalization for supported providers
 - selector resolution to concrete SHAs
 - source archive caching
-- package manifest creation
+- source manifest creation
+- authenticated publish validation
+- package-name claim and release binding records
 - request logging
-- first-publication event emission
+- explicit publish event emission
 
 `services/registry` does not own:
 
@@ -230,7 +276,7 @@ flowchart TD
 - documentation generation
 - build execution
 
-Those concerns are downstream consumers of publication events.
+Those concerns are downstream consumers of publish events.
 
 ## 2. Identity model
 
@@ -274,13 +320,13 @@ If no selector is provided, the registry resolves `main`.
 
 ### 3.2 Immutable selectors
 
-The following selectors are treated as immutable publication inputs:
+The following selectors are treated as immutable source-materialization inputs:
 
 - full commit SHAs
 - semver-like tags such as `0.4.2`
 
-Once Riot has published such a selector to a concrete SHA, the resulting
-publication is immutable forever.
+Once Riot has materialized such a selector to a concrete SHA, the resulting
+source materialization is immutable forever.
 
 ### 3.3 Mutable selectors
 
@@ -293,9 +339,9 @@ Selectors such as:
 are resolved anew on each request.
 They may produce different SHAs over time.
 
-The registry does not store mutable selectors as canonical publication
+The registry does not store mutable selectors as canonical source
 identities.
-It stores only the resulting SHA publication.
+It stores only the resulting SHA materialization.
 
 ### 3.4 No selector rewriting
 
@@ -312,16 +358,21 @@ The minimal HTTP surface should look like:
 GET /package/<locator>/-/resolve?ref=<selector>
 GET /package/<locator>/-/manifest/<sha>.json
 GET /package/<locator>/-/source/<sha>.tar.gz
+POST /package/<locator>/-/publish?ref=<selector>
 ```
 
 The `/-/` separator is intentional.
 It keeps protocol operations separate from the package path itself.
 
-The first endpoint is the only endpoint that may need to consult GitHub.
-The manifest and source endpoints are publication reads and should be served
-from stored objects.
+The first and fourth endpoints may need to consult GitHub.
+The manifest and source endpoints are source-materialization reads and should
+be served from stored objects.
 
 The source endpoint may redirect to the underlying CDN object.
+
+The publish endpoint requires authentication.
+Authentication issuance, login UX, and account registration are outside the
+scope of this RFD; the registry only consumes an authenticated publisher token.
 
 ## 5. Storage layout
 
@@ -346,6 +397,13 @@ ml-pkgs-cdn/
           <package-subdir-if-any>/
             <sha>.manifest.json
 
+  claims/
+    <package-name>.json
+
+  releases/
+    <package-name>/
+      <version>.json
+
   requests/
     YYYY/
       MM/
@@ -359,6 +417,8 @@ Example:
 ```text
 s3://ml-pkgs-cdn/sources/github.com/leostera/minttea/7f4c...a91.tar.gz
 s3://ml-pkgs-cdn/packages/github.com/leostera/minttea/7f4c...a91.manifest.json
+s3://ml-pkgs-cdn/claims/minttea.json
+s3://ml-pkgs-cdn/releases/minttea/0.4.2.json
 s3://ml-pkgs-cdn/requests/2026/03/27/12/01HV....json
 ```
 
@@ -369,7 +429,7 @@ s3://ml-pkgs-cdn/sources/github.com/leostera/minttea/7f4c...a91.tar.gz
 s3://ml-pkgs-cdn/packages/github.com/leostera/minttea/widgets/core/7f4c...a91.manifest.json
 ```
 
-## 6. Publication flow
+## 6. Source materialization flow
 
 For a `resolve` request:
 
@@ -382,15 +442,42 @@ For a `resolve` request:
    `packages/.../<sha>.manifest.json`
 6. on a miss, inspect the package files and write the manifest
 7. log the request outcome
-8. emit `package.published` only if step 6 created a new publication
-9. return the publication data to the caller
+8. return the source materialization data to the caller
 
 The archive fetch should prefer provider-native source archives first rather
 than running Riot's own archive normalization pipeline in v1.
 
-## 7. Package manifest
+This flow must not claim a public package name and must not emit
+`package.published`.
 
-The package publication manifest is immutable and SHA-scoped.
+## 7. Explicit publish flow
+
+For a `publish` request:
+
+1. authenticate the caller
+2. materialize the requested package locator and selector if needed
+3. read the source manifest for the resolved SHA
+4. validate publish invariants:
+   - `public = true`
+   - `name` exists
+   - `version` is valid semver
+   - the package name is unclaimed or already owned by this publisher
+   - if the package name is already claimed, the canonical package locator
+     matches the existing claim
+   - if the semantic version already exists, it resolves to the same SHA and
+     canonical package locator
+5. write or update the mutable package claim record
+6. write the immutable published release binding for `<package-name>/<version>`
+7. log the request outcome
+8. emit `package.published` only if step 6 created a new published release
+9. return the published release data to the caller
+
+This is the only flow that creates named package releases for the future public
+package index.
+
+## 8. Package manifest
+
+The package source manifest is immutable and SHA-scoped.
 At minimum it should contain:
 
 - package locator
@@ -400,13 +487,15 @@ At minimum it should contain:
 - resolved SHA
 - package name from `tusk.toml`
 - package version from `tusk.toml`
+- `public` flag from `tusk.toml`
 - direct dependency list from `tusk.toml`
 - source archive location
-- publication timestamp
+- materialization timestamp
 
-The manifest is the durable source-of-truth record for one package publication.
+The manifest is the durable source-of-truth record for one package
+materialization.
 
-## 8. Request logging
+## 9. Request logging
 
 Every request must be logged, including failures.
 
@@ -422,31 +511,42 @@ A request log entry should contain at least:
 
 This request log is append-only input for future statistics and auditing.
 
-## 9. Event semantics
+## 10. Event semantics
 
-The registry emits one queue message with semantic type `package.published`
-only on the first successful creation of a new immutable publication manifest.
+The registry emits queue messages with two different meanings:
 
-Cache hits must not re-emit the event.
-Failed requests must not emit the event.
+- `source.materialized`
+  Optional internal event emitted on the first successful creation of a new
+  immutable source manifest.
+- `package.published`
+  Event emitted only on the first successful creation of a new named published
+  release binding.
 
-The event payload should contain enough data for downstream workers to operate
-without re-reading GitHub immediately, including:
+Cache hits must not re-emit either event.
+Failed requests must not emit either event.
 
+`package.published` should contain enough data for downstream workers to
+operate without re-reading GitHub immediately, including:
+
+- public package name
+- package version
 - package locator
 - canonical source URL
 - package subdirectory
 - requested selector
 - resolved SHA
 - package name
-- package version
 - direct dependencies
 - source archive location
 - manifest location
 
-## 10. Downstream indexing boundary
+Whether `source.materialized` is needed in v1 is an implementation detail.
+The public package index must be built from explicit publish semantics, not
+from arbitrary source materialization.
 
-This RFD intentionally stops at publication.
+## 11. Downstream indexing boundary
+
+This RFD intentionally stops at source materialization and explicit publish.
 
 Downstream workers may consume `package.published` and produce:
 
@@ -459,19 +559,22 @@ Downstream workers may consume `package.published` and produce:
 
 `tusk` should eventually consume those derived indexes and perform dependency
 resolution locally.
-The registry itself remains a publication service rather than a solver.
+The registry itself remains a materialization and publish service rather than a
+solver.
 
-## 11. Availability model
+## 12. Availability model
 
 If GitHub is unavailable but Riot has already stored the archive and manifest
-for a publication, Riot should continue serving that publication successfully.
+for a source materialization, Riot should continue serving that materialization
+successfully.
 
-The registry does not refresh existing publications from GitHub.
-Publication is append-only.
+The registry does not refresh existing source materializations from GitHub.
+Source materialization is append-only.
 
 Private upstreams may be supported when the registry is configured with a
 GitHub token that can read them. Whether those publications are served
-publicly remains an operator policy decision outside the registry contract.
+publicly as named published releases remains an operator policy decision
+outside the registry contract.
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -487,10 +590,16 @@ full package registry:
 That means a second system is required to build indexes for dependency
 resolution and user-facing browsing.
 
-The SHA-scoped publication model also means mutable refs such as `main` do not
+The SHA-scoped source-materialization model also means mutable refs such as `main` do not
 have a stable artifact identity of their own.
-Clients must understand that mutable selectors resolve to publications rather
-than naming publications directly.
+Clients must understand that mutable selectors resolve to source
+materializations rather than naming them directly.
+
+This design also introduces an authenticated publish path and a global public
+package-name namespace.
+That increases control-plane complexity compared to a pure source-only model,
+but it gives Riot a cleaner package-manager UX for named installs such as
+`tusk add minttea`.
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -498,7 +607,7 @@ than naming publications directly.
 ### Why keep the registry dumb?
 
 Because the hot path should do the minimum amount of work necessary to turn an
-upstream source reference into a durable immutable Riot publication.
+upstream source reference into a durable immutable Riot source materialization.
 
 This keeps:
 
@@ -513,6 +622,22 @@ Dependency solving depends on local workspace state and future lockfile
 semantics.
 Putting that logic in the registry would make the server responsible for hidden
 client-specific context and would force the protocol to grow around it.
+
+### Why explicit publish instead of implicit publish from `tusk add`?
+
+Because `tusk add` should not have hidden global side effects such as claiming
+package names or creating public releases.
+
+Implicit publishing would make install behavior depend on global registry state
+and on who happened to request a source package first.
+That is confusing for users and dangerous for name ownership.
+
+Explicit authenticated `tusk publish` keeps:
+
+- source installs side-effect free
+- public package-name claims deliberate
+- ownership policy auditable
+- named package installs simple
 
 ### Why not use opaque package ids?
 
@@ -531,10 +656,16 @@ Riot's package identity model differs in an important way:
 Riot should borrow Go proxy ideas about immutability and small protocol
 surfaces, not copy the exact protocol wholesale.
 
+### Why not make the package name the only identity?
+
+Because Riot still wants source-backed provenance and direct source installs.
+Named published packages should point back to a canonical source locator and a
+concrete SHA, not replace them.
+
 ### Why not make a global mutable index part of the registry?
 
 That would reintroduce coordination, invalidation, and write-amplification
-problems into the publication service.
+problems into the registry service.
 The event-driven indexer boundary keeps those concerns out of the registry.
 
 ## Prior art
@@ -544,8 +675,8 @@ The event-driven indexer boundary keeps those concerns out of the registry.
 
 Go's module proxy protocol is intentionally small.
 That small surface is a major reason it caches well and is easy to mirror.
-Riot should adopt that instinct for protocol minimalism, even though Riot's
-package identity model differs.
+Riot should adopt that instinct for protocol minimalism in its source
+materialization path, even though Riot's named publish flow differs.
 
 ### `goproxy`
 
@@ -572,19 +703,19 @@ better treated as separate concerns.
 
 Both registries separate immutable artifact serving from richer metadata and
 administrative APIs.
-That separation reinforces the core direction of this RFD: keep the package
-read path simple and durable, and move richer behaviors out of the publication
+That separation reinforces the core direction of this RFD: keep the source read
+path simple and durable, and move richer behaviors out of the materialization
 service.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-- What exact dependency schema should the publication manifest use once Riot
-  needs source-explicit dependency identities for downstream solving?
-- Should semver-tagged selector aliases also be duplicated into object storage
-  as convenience keys, or should the registry only store the canonical SHA
-  objects?
+- What exact dependency schema should the source manifest use once Riot needs
+  source-explicit dependency identities for downstream solving?
 - What exact response schema should `/resolve` use?
+- What exact request and response schema should `publish` use?
+- Where should package-name ownership and authentication policy live if Riot
+  later supports organizations and teams?
 - How should future repo discovery surface package sets while keeping install
   targets package-specific?
 - Should Riot support additional provider-specific archive normalization rules
@@ -593,7 +724,7 @@ service.
 ## Future possibilities
 [future-possibilities]: #future-possibilities
 
-This publication layer is designed to support future systems without needing to
+This registry layer is designed to support future systems without needing to
 change its core boundary.
 
 Natural follow-on work includes:
@@ -603,9 +734,10 @@ Natural follow-on work includes:
 - package discovery endpoints backed by derived indexes
 - automated build, documentation, and compatibility jobs driven by
   `package.published`
-- prebuilt package artifacts derived from source publications
-- transparency or checksum layers over Riot-managed publications
+- prebuilt package artifacts derived from source materializations
+- transparency or checksum layers over Riot-managed materializations and
+  published releases
 
-The key constraint should remain: those future systems consume publications,
-but they do not turn the registry itself into a general-purpose package
-manager.
+The key constraint should remain: those future systems consume explicit
+published releases and underlying source materializations, but they do not turn
+the registry itself into a general-purpose package manager.

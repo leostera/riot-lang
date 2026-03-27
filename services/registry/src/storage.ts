@@ -1,5 +1,7 @@
 import type {
+  PackageClaimRecord,
   PackageLocator,
+  PublishedReleaseRecord,
   RegistryConfig,
   RequestLogEntry,
   SelectorResolutionRecord,
@@ -24,6 +26,14 @@ export function requestLogKey(entry: RequestLogEntry): string {
 
 export function selectorResolutionKey(locator: PackageLocator, selector: string): string {
   return `selectors/${locator.normalized}/${encodeSelector(selector)}.json`;
+}
+
+export function packageClaimKey(packageName: string): string {
+  return `claims/${encodePathSegment(packageName)}.json`;
+}
+
+export function publishedReleaseKey(packageName: string, version: string): string {
+  return `releases/${encodePathSegment(packageName)}/${encodePathSegment(version)}.json`;
 }
 
 export function manifestRoutePath(locator: PackageLocator, sha: string): string {
@@ -75,6 +85,61 @@ export async function writeSelectorResolution(
   });
 }
 
+export async function readPackageClaim(
+  bucket: R2Bucket,
+  packageName: string,
+): Promise<PackageClaimRecord | null> {
+  const object = await bucket.get(packageClaimKey(packageName));
+  if (object === null) {
+    return null;
+  }
+
+  return (await object.json()) as PackageClaimRecord;
+}
+
+export async function writePackageClaim(
+  bucket: R2Bucket,
+  record: PackageClaimRecord,
+): Promise<void> {
+  await bucket.put(packageClaimKey(record.package_name), JSON.stringify(record, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function readPublishedRelease(
+  bucket: R2Bucket,
+  packageName: string,
+  version: string,
+): Promise<PublishedReleaseRecord | null> {
+  const object = await bucket.get(publishedReleaseKey(packageName, version));
+  if (object === null) {
+    return null;
+  }
+
+  return (await object.json()) as PublishedReleaseRecord;
+}
+
+export async function writePublishedRelease(
+  bucket: R2Bucket,
+  record: PublishedReleaseRecord,
+): Promise<void> {
+  await bucket.put(
+    publishedReleaseKey(record.package_name, record.package_version),
+    JSON.stringify(record, null, 2),
+    {
+      httpMetadata: {
+        contentType: "application/json; charset=utf-8",
+      },
+    },
+  );
+}
+
 function encodeSelector(selector: string): string {
   return encodeURIComponent(selector);
+}
+
+function encodePathSegment(value: string): string {
+  return encodeURIComponent(value);
 }

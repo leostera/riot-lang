@@ -164,6 +164,7 @@ export function makeEnv(overrides: Partial<Env> = {}): {
     PUBLICATION_COORDINATOR: undefined as unknown as DurableObjectNamespace,
     CDN_BASE_URL: "https://cdn.pkgs.ml",
     GITHUB_TOKEN: "",
+    ROOT_AUTH_TOKEN: "root-secret",
     ...overrides,
   };
 

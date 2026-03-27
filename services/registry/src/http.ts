@@ -14,7 +14,7 @@ export function methodNotAllowed(allowed: string[]): Response {
   return json(
     {
       error: "method_not_allowed",
-      message: "Only GET is currently supported.",
+      message: `Allowed methods: ${allowed.join(", ")}.`,
     },
     {
       status: 405,

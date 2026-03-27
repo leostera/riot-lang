@@ -43,7 +43,7 @@ export async function assertGitHubRepositoryAccess(
     throw new HttpError(
       403,
       "private_upstream_requires_token",
-      `Repository ${locator.owner}/${locator.repo} is private and requires GITHUB_TOKEN to publish.`,
+      `Repository ${locator.owner}/${locator.repo} is private and requires GITHUB_TOKEN to access.`,
     );
   }
 }

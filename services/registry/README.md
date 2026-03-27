@@ -15,17 +15,19 @@ Wrangler reads `.env` during local development, and the Worker expects at least:
 ```dotenv
 CDN_BASE_URL=https://cdn.pkgs.ml
 GITHUB_TOKEN=
+ROOT_AUTH_TOKEN=
 ```
 
 If `GITHUB_TOKEN` can read private repositories, the registry can publish from
 those upstreams. This is useful for on-premise or private testing setups.
 
-## Current scaffold
+## Current surface
 
 - `GET /` returns service metadata.
-- `GET /package/<locator>/-/resolve?ref=<selector>` resolves already-cached SHA publications.
+- `GET /package/<locator>/-/resolve?ref=<selector>` materializes or reuses a source-backed package snapshot.
 - `GET /package/<locator>/-/manifest/<sha>.json` reads immutable manifests from R2.
 - `GET /package/<locator>/-/source/<sha>.tar.gz` reads source archives from R2.
+- `POST /package/<locator>/-/publish?ref=<selector>` publishes a named package release and requires `Authorization: Bearer <ROOT_AUTH_TOKEN>`.
 
 The Worker logs every request into `ml-pkgs-cdn/requests/...`.
 
@@ -37,6 +39,8 @@ deployed Worker:
 ```dotenv
 REGISTRY_E2E_BASE_URL=https://registry.pkgs.ml
 REGISTRY_E2E_PACKAGE_LOCATOR=github.com/leostera/riot-new/packages/kernel
+REGISTRY_E2E_ROOT_AUTH_TOKEN=
+REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR=github.com/owner/repo/path/to/public-package
 ```
 
 Then run:
@@ -46,3 +50,9 @@ bun run test:e2e
 ```
 
 The live tests are skipped when `REGISTRY_E2E_BASE_URL` is not set.
+The live publish smoke test is skipped unless `REGISTRY_E2E_ROOT_AUTH_TOKEN` is
+set. If `REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR` is omitted, it defaults to
+`REGISTRY_E2E_PACKAGE_LOCATOR`.
+
+`bun run test` only runs the local unit suite. The live registry smoke tests are
+kept behind `bun run test:e2e`.

@@ -7,7 +7,7 @@ import {
   normalizeLocator,
   packageSubdir,
 } from "./locator.ts";
-import { readCachedPublication } from "./publication.ts";
+import { readCachedMaterialization } from "./publication.ts";
 import { writeRequestLog } from "./request-log.ts";
 import {
   manifestKey,
@@ -17,7 +17,7 @@ import {
   sourceArchiveKey,
   sourceRoutePath,
 } from "./storage.ts";
-import type { Env, PackageLocator, RequestLogEntry } from "./types.ts";
+import type { Env, PackageLocator, PublishedPackageRelease, RequestLogEntry } from "./types.ts";
 
 export async function handleRequest(
   request: Request,
@@ -65,15 +65,15 @@ async function routeRequest(
   env: Env,
   logEntry: RequestLogEntry,
 ): Promise<Response> {
-  if (request.method !== "GET") {
-    logEntry.route = "method_not_allowed";
-    return methodNotAllowed(["GET"]);
-  }
-
   const url = new URL(request.url);
   const path = trimSlashes(url.pathname);
 
   if (path === "") {
+    if (request.method !== "GET") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET"]);
+    }
+
     logEntry.route = "root";
     return json({
       service: "riot-package-registry",
@@ -81,6 +81,7 @@ async function routeRequest(
         resolve: "/package/<locator>/-/resolve?ref=<selector>",
         manifest: "/package/<locator>/-/manifest/<sha>.json",
         source: "/package/<locator>/-/source/<sha>.tar.gz",
+        publish: "/package/<locator>/-/publish?ref=<selector>",
       },
       cdn_base_url: getConfig(env).cdnBaseUrl,
     });
@@ -102,6 +103,11 @@ async function routeRequest(
   logEntry.package_locator = locator.normalized;
 
   if (operationPath === "resolve") {
+    if (request.method !== "GET") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET"]);
+    }
+
     logEntry.route = "resolve";
     const selector = url.searchParams.get("ref") ?? "main";
     logEntry.selector = selector;
@@ -109,6 +115,11 @@ async function routeRequest(
   }
 
   if (operationPath.startsWith("manifest/") && operationPath.endsWith(".json")) {
+    if (request.method !== "GET") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET"]);
+    }
+
     logEntry.route = "manifest";
     const sha = operationPath.slice("manifest/".length, -".json".length);
     logEntry.resolved_sha = sha;
@@ -116,10 +127,27 @@ async function routeRequest(
   }
 
   if (operationPath.startsWith("source/") && operationPath.endsWith(".tar.gz")) {
+    if (request.method !== "GET") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET"]);
+    }
+
     logEntry.route = "source";
     const sha = operationPath.slice("source/".length, -".tar.gz".length);
     logEntry.resolved_sha = sha;
     return await handleSource(env, locator, sha);
+  }
+
+  if (operationPath === "publish") {
+    if (request.method !== "POST") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["POST"]);
+    }
+
+    logEntry.route = "publish";
+    const selector = url.searchParams.get("ref") ?? "main";
+    logEntry.selector = selector;
+    return await handlePublish(request, env, locator, selector, logEntry);
   }
 
   throw new HttpError(404, "not_found", "Package route does not exist.");
@@ -134,8 +162,8 @@ async function handleResolve(
 ): Promise<Response> {
   const config = getConfig(env);
   const publication =
-    (await readCachedPublication(env, locator, selector)) ??
-    (await publishThroughCoordinator(env, locator, selector));
+    (await readCachedMaterialization(env, locator, selector)) ??
+    (await materializeThroughCoordinator(env, locator, selector));
 
   const requestUrl = new URL(request.url);
   logEntry.resolved_sha = publication.resolvedSha;
@@ -163,7 +191,53 @@ async function handleResolve(
   });
 }
 
-async function publishThroughCoordinator(
+async function handlePublish(
+  request: Request,
+  env: Env,
+  locator: PackageLocator,
+  selector: string,
+  logEntry: RequestLogEntry,
+): Promise<Response> {
+  requireRootAuth(request, env);
+
+  const publishResult = await publishThroughCoordinator(env, locator, selector);
+  const requestUrl = new URL(request.url);
+  logEntry.resolved_sha = publishResult.resolvedSha;
+
+  return json({
+    package: locator.normalized,
+    source_url: canonicalSourceUrl(locator),
+    package_subdir: packageSubdir(locator),
+    selector,
+    resolved_sha: publishResult.resolvedSha,
+    package_name: publishResult.packageName,
+    package_version: publishResult.packageVersion,
+    manifest: {
+      key: publishResult.manifestKey,
+      url: `${requestUrl.origin}${manifestRoutePath(locator, publishResult.resolvedSha)}`,
+      cdn_url: prettyManifestUrl(getConfig(env), locator, publishResult.resolvedSha),
+    },
+    source_archive: {
+      key: publishResult.sourceKey,
+      url: `${requestUrl.origin}${sourceRoutePath(locator, publishResult.resolvedSha)}`,
+      cdn_url: prettySourceUrl(getConfig(env), locator, publishResult.resolvedSha),
+    },
+    claim: {
+      key: publishResult.claimKey,
+      created: publishResult.claimCreated,
+    },
+    release: {
+      key: publishResult.releaseKey,
+      created: publishResult.releaseCreated,
+    },
+    materialization: {
+      manifest: !publishResult.manifestCreated,
+      source: !publishResult.sourceCreated,
+    },
+  });
+}
+
+async function materializeThroughCoordinator(
   env: Env,
   locator: PackageLocator,
   selector: string,
@@ -183,6 +257,7 @@ async function publishThroughCoordinator(
       "content-type": "application/json; charset=utf-8",
     },
     body: JSON.stringify({
+      operation: "materialize",
       locator: locator.normalized,
       selector,
     }),
@@ -213,6 +288,65 @@ async function publishThroughCoordinator(
     manifestKey: payload.manifest_key,
     sourceCreated: payload.source_created,
     manifestCreated: payload.manifest_created,
+  };
+}
+
+async function publishThroughCoordinator(
+  env: Env,
+  locator: PackageLocator,
+  selector: string,
+): Promise<PublishedPackageRelease> {
+  const id = env.PUBLICATION_COORDINATOR.idFromName("global");
+  const stub = env.PUBLICATION_COORDINATOR.get(id);
+  const response = await stub.fetch("https://publication-coordinator.internal/publish", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify({
+      operation: "publish",
+      locator: locator.normalized,
+      selector,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json()) as { error?: string; message?: string };
+    throw new HttpError(
+      response.status,
+      payload.error ?? "publish_failed",
+      payload.message ?? "Package publish failed.",
+    );
+  }
+
+  const payload = (await response.json()) as {
+    selector: string;
+    resolved_sha: string;
+    source_key: string;
+    manifest_key: string;
+    source_created: boolean;
+    manifest_created: boolean;
+    package_name: string;
+    package_version: string;
+    claim_key: string;
+    release_key: string;
+    claim_created: boolean;
+    release_created: boolean;
+  };
+
+  return {
+    selector: payload.selector,
+    resolvedSha: payload.resolved_sha,
+    sourceKey: payload.source_key,
+    manifestKey: payload.manifest_key,
+    sourceCreated: payload.source_created,
+    manifestCreated: payload.manifest_created,
+    packageName: payload.package_name,
+    packageVersion: payload.package_version,
+    claimKey: payload.claim_key,
+    releaseKey: payload.release_key,
+    claimCreated: payload.claim_created,
+    releaseCreated: payload.release_created,
   };
 }
 
@@ -254,6 +388,21 @@ async function handleSource(
 
 function trimSlashes(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
+}
+
+function requireRootAuth(request: Request, env: Env): void {
+  if (typeof env.ROOT_AUTH_TOKEN !== "string" || env.ROOT_AUTH_TOKEN.length === 0) {
+    throw new HttpError(
+      503,
+      "publish_auth_not_configured",
+      "Publish auth is not configured for this registry.",
+    );
+  }
+
+  const authorization = request.headers.get("authorization");
+  if (authorization !== `Bearer ${env.ROOT_AUTH_TOKEN}`) {
+    throw new HttpError(401, "unauthorized", "Publish requests require valid root auth.");
+  }
 }
 
 function normalizeError(error: unknown): HttpError {

@@ -3,6 +3,8 @@ import { describe, expect, test } from "bun:test";
 import { handleRequest } from "../src/routes.ts";
 import {
   manifestKey,
+  packageClaimKey,
+  publishedReleaseKey,
   selectorResolutionKey,
   sourceArchiveKey,
 } from "../src/storage.ts";
@@ -31,6 +33,7 @@ describe("riot package registry routes", () => {
         resolve: "/package/<locator>/-/resolve?ref=<selector>",
         manifest: "/package/<locator>/-/manifest/<sha>.json",
         source: "/package/<locator>/-/source/<sha>.tar.gz",
+        publish: "/package/<locator>/-/publish?ref=<selector>",
       },
       cdn_base_url: "https://cdn.pkgs.ml",
     });
@@ -42,41 +45,16 @@ describe("riot package registry routes", () => {
     expect(logEntry.status).toBe(200);
   });
 
-  test("resolve returns cached SHA publication metadata for GitHub shorthand locators", async () => {
+  test("resolve returns cached SHA materialization metadata for GitHub shorthand locators", async () => {
     const { env, bucket } = makeEnv();
     const ctx = new FakeExecutionContext();
 
-    await bucket.put(
-      manifestKey(
-        {
-          raw: "leostera/minttea",
-          normalized: "github.com/leostera/minttea",
-          provider: "github.com",
-          owner: "leostera",
-          repo: "minttea",
-          subpath: null,
-        },
-        SHA,
-      ),
-      JSON.stringify({ ok: true }),
-      { httpMetadata: { contentType: "application/json; charset=utf-8" } },
-    );
-
-    await bucket.put(
-      sourceArchiveKey(
-        {
-          raw: "leostera/minttea",
-          normalized: "github.com/leostera/minttea",
-          provider: "github.com",
-          owner: "leostera",
-          repo: "minttea",
-          subpath: null,
-        },
-        SHA,
-      ),
-      "tarball",
-      { httpMetadata: { contentType: "application/gzip" } },
-    );
+    await bucket.put(manifestKey(locator("leostera/minttea"), SHA), JSON.stringify({ ok: true }), {
+      httpMetadata: { contentType: "application/json; charset=utf-8" },
+    });
+    await bucket.put(sourceArchiveKey(locator("leostera/minttea"), SHA), "tarball", {
+      httpMetadata: { contentType: "application/gzip" },
+    });
 
     const response = await handleRequest(
       new Request(`https://registry.test/package/leostera/minttea/-/resolve?ref=${SHA}`),
@@ -107,16 +85,9 @@ describe("riot package registry routes", () => {
         source: true,
       },
     });
-
-    const logKey = onlyRequestLogKey(bucket.keys());
-    const logEntry = JSON.parse((await bucket.text(logKey)) ?? "null");
-    expect(logEntry.route).toBe("resolve");
-    expect(logEntry.package_locator).toBe("github.com/leostera/minttea");
-    expect(logEntry.resolved_sha).toBe(SHA);
-    expect(logEntry.success).toBe(true);
   });
 
-  test("resolve publishes an uncached package from GitHub and emits a queue event", async () => {
+  test("resolve materializes an uncached package from GitHub without emitting publish events", async () => {
     const { env, bucket, queue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
@@ -124,6 +95,7 @@ describe("riot package registry routes", () => {
         "[package]",
         'name = "minttea"',
         'version = "0.4.2"',
+        "public = true",
         "",
         "[dependencies]",
         'std = { path = "../std" }',
@@ -135,11 +107,9 @@ describe("riot package registry routes", () => {
       if (url.pathname === "/repos/leostera/minttea") {
         return Response.json({ private: false });
       }
-
       if (url.pathname === "/repos/leostera/minttea/commits/main") {
         return Response.json({ sha: SHA });
       }
-
       if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
         return new Response(archive, { status: 200 });
       }
@@ -154,22 +124,12 @@ describe("riot package registry routes", () => {
       await ctx.drain();
 
       expect(response.status).toBe(200);
-      expect(await readJson(response)).toEqual({
+      expect((await readJson(response)) as Record<string, unknown>).toMatchObject({
         package: "github.com/leostera/minttea",
         source_url: "https://github.com/leostera/minttea",
         package_subdir: ".",
         selector: "main",
         resolved_sha: SHA,
-        manifest: {
-          key: `packages/github.com/leostera/minttea/${SHA}.manifest.json`,
-          url: `https://registry.test/package/github.com/leostera/minttea/-/manifest/${SHA}.json`,
-          cdn_url: `https://cdn.pkgs.ml/packages/github.com/leostera/minttea/${SHA}.manifest.json`,
-        },
-        source_archive: {
-          key: `sources/github.com/leostera/minttea/${SHA}.tar.gz`,
-          url: `https://registry.test/package/github.com/leostera/minttea/-/source/${SHA}.tar.gz`,
-          cdn_url: `https://cdn.pkgs.ml/sources/github.com/leostera/minttea/${SHA}.tar.gz`,
-        },
         cache: {
           manifest: false,
           source: false,
@@ -182,34 +142,23 @@ describe("riot package registry routes", () => {
     );
     expect(manifest.package_name).toBe("minttea");
     expect(manifest.package_version).toBe("0.4.2");
+    expect(manifest.package_public).toBe(true);
     expect(manifest.dependencies).toEqual([{ name: "std", path: "../std" }]);
-
     expect(await bucket.text(`sources/github.com/leostera/minttea/${SHA}.tar.gz`)).not.toBeNull();
-    expect(queue.messages).toHaveLength(1);
-    expect(queue.messages[0]).toMatchObject({
-      type: "package.published",
-      package_locator: "github.com/leostera/minttea",
-      selector: "main",
-      resolved_sha: SHA,
-      package_name: "minttea",
-    });
-
-    const logKey = onlyRequestLogKey(bucket.keys());
-    const logEntry = JSON.parse((await bucket.text(logKey)) ?? "null");
-    expect(logEntry.route).toBe("resolve");
-    expect(logEntry.selector).toBe("main");
-    expect(logEntry.resolved_sha).toBe(SHA);
-    expect(logEntry.success).toBe(true);
-    expect(logEntry.status).toBe(200);
+    expect(queue.messages).toHaveLength(0);
   });
 
-  test("semver-like tags freeze after first publication", async () => {
+  test("semver-like tags freeze after first materialization", async () => {
     const { env, bucket, queue } = makeEnv();
     const firstArchive = await makeTarGz({
-      "tusk.toml": ['[package]', 'name = "minttea"', 'version = "0.4.2"'].join("\n"),
+      "tusk.toml": ['[package]', 'name = "minttea"', 'version = "0.4.2"', "public = true"].join(
+        "\n",
+      ),
     });
     const secondArchive = await makeTarGz({
-      "tusk.toml": ['[package]', 'name = "minttea"', 'version = "9.9.9"'].join("\n"),
+      "tusk.toml": ['[package]', 'name = "minttea"', 'version = "9.9.9"', "public = true"].join(
+        "\n",
+      ),
     });
     let commitLookupCount = 0;
 
@@ -218,16 +167,13 @@ describe("riot package registry routes", () => {
       if (url.pathname === "/repos/leostera/minttea") {
         return Response.json({ private: false });
       }
-
       if (url.pathname === "/repos/leostera/minttea/commits/0.4.2") {
         commitLookupCount += 1;
         return Response.json({ sha: commitLookupCount === 1 ? SHA : NEXT_SHA });
       }
-
       if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
         return new Response(firstArchive, { status: 200 });
       }
-
       if (url.pathname === `/repos/leostera/minttea/tarball/${NEXT_SHA}`) {
         return new Response(secondArchive, { status: 200 });
       }
@@ -260,10 +206,10 @@ describe("riot package registry routes", () => {
 
     expect(commitLookupCount).toBe(1);
     expect(await bucket.text(selectorResolutionKey(locator("leostera/minttea"), "0.4.2"))).not.toBeNull();
-    expect(queue.messages).toHaveLength(1);
+    expect(queue.messages).toHaveLength(0);
   });
 
-  test("missing package manifests do not cache source archives or publish packages", async () => {
+  test("resolve rejects package paths without tusk.toml and does not cache fresh archives", async () => {
     const { env, bucket, queue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
@@ -275,11 +221,9 @@ describe("riot package registry routes", () => {
       if (url.pathname === "/repos/leostera/minttea") {
         return Response.json({ private: false });
       }
-
       if (url.pathname === "/repos/leostera/minttea/commits/main") {
         return Response.json({ sha: SHA });
       }
-
       if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
         return new Response(archive, { status: 200 });
       }
@@ -304,7 +248,7 @@ describe("riot package registry routes", () => {
     expect(queue.messages).toHaveLength(0);
   });
 
-  test("resolve publishes a package from a repository subdirectory", async () => {
+  test("resolve materializes a package from a repository subdirectory", async () => {
     const { env, bucket, queue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
@@ -312,6 +256,7 @@ describe("riot package registry routes", () => {
         "[package]",
         'name = "minttea-core"',
         'version = "1.2.3"',
+        "public = true",
         "",
         "[dependencies]",
         'std = { path = "../../../std" }',
@@ -323,11 +268,9 @@ describe("riot package registry routes", () => {
       if (url.pathname === "/repos/leostera/minttea") {
         return Response.json({ private: false });
       }
-
       if (url.pathname === "/repos/leostera/minttea/commits/main") {
         return Response.json({ sha: SHA });
       }
-
       if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
         return new Response(archive, { status: 200 });
       }
@@ -357,10 +300,276 @@ describe("riot package registry routes", () => {
     expect(manifest.source_url).toBe("https://github.com/leostera/minttea");
     expect(manifest.package_name).toBe("minttea-core");
     expect(manifest.package_subdir).toBe("widgets/core");
-    expect(queue.messages[0]).toMatchObject({
-      package_locator: "github.com/leostera/minttea/widgets/core",
-      package_name: "minttea-core",
+    expect(queue.messages).toHaveLength(0);
+  });
+
+  test("publish creates claim and release records and emits package.published", async () => {
+    const { env, bucket, queue } = makeEnv();
+    const ctx = new FakeExecutionContext();
+    const archive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = true",
+      ].join("\n"),
     });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
+        return new Response(archive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const response = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: {
+            authorization: "Bearer root-secret",
+          },
+        }),
+        env,
+        ctx,
+      );
+      await ctx.drain();
+
+      expect(response.status).toBe(200);
+      expect((await readJson(response)) as Record<string, unknown>).toMatchObject({
+        package: "github.com/leostera/minttea",
+        source_url: "https://github.com/leostera/minttea",
+        package_name: "minttea",
+        package_version: "0.4.2",
+        resolved_sha: SHA,
+        claim: {
+          key: "claims/minttea.json",
+          created: true,
+        },
+        release: {
+          key: "releases/minttea/0.4.2.json",
+          created: true,
+        },
+      });
+    });
+
+    expect(await bucket.text(packageClaimKey("minttea"))).not.toBeNull();
+    expect(await bucket.text(publishedReleaseKey("minttea", "0.4.2"))).not.toBeNull();
+    expect(queue.messages).toHaveLength(1);
+    expect(queue.messages[0]).toMatchObject({
+      type: "package.published",
+      package_name: "minttea",
+      package_version: "0.4.2",
+      package_locator: "github.com/leostera/minttea",
+      resolved_sha: SHA,
+    });
+  });
+
+  test("publish is idempotent for an already-published release", async () => {
+    const { env, bucket, queue } = makeEnv();
+    const archive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = true",
+      ].join("\n"),
+    });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
+        return new Response(archive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const firstCtx = new FakeExecutionContext();
+      const first = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        firstCtx,
+      );
+      await firstCtx.drain();
+
+      const secondCtx = new FakeExecutionContext();
+      const second = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        secondCtx,
+      );
+      await secondCtx.drain();
+
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(200);
+      expect((await readJson(second)) as Record<string, unknown>).toMatchObject({
+        claim: { created: false },
+        release: { created: false },
+      });
+    });
+
+    expect(queue.messages).toHaveLength(1);
+  });
+
+  test("publish rejects requests without root auth", async () => {
+    const { env, bucket, queue } = makeEnv();
+    const ctx = new FakeExecutionContext();
+
+    const response = await handleRequest(
+      new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+        method: "POST",
+      }),
+      env,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(response.status).toBe(401);
+    expect(await readJson(response)).toMatchObject({
+      error: "unauthorized",
+    });
+    expect(queue.messages).toHaveLength(0);
+    expect(bucket.keys().filter((key) => key.startsWith("claims/"))).toHaveLength(0);
+    expect(bucket.keys().filter((key) => key.startsWith("releases/"))).toHaveLength(0);
+  });
+
+  test("publish rejects non-public packages after materialization", async () => {
+    const { env, bucket, queue } = makeEnv();
+    const ctx = new FakeExecutionContext();
+    const archive = await makeTarGz({
+      "tusk.toml": ['[package]', 'name = "minttea"', 'version = "0.4.2"', "public = false"].join(
+        "\n",
+      ),
+    });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
+        return new Response(archive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const response = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        ctx,
+      );
+      await ctx.drain();
+
+      expect(response.status).toBe(422);
+      expect(await readJson(response)).toMatchObject({
+        error: "package_not_public",
+      });
+    });
+
+    expect(await bucket.text(`packages/github.com/leostera/minttea/${SHA}.manifest.json`)).not.toBeNull();
+    expect(queue.messages).toHaveLength(0);
+    expect(await bucket.text(packageClaimKey("minttea"))).toBeNull();
+    expect(await bucket.text(publishedReleaseKey("minttea", "0.4.2"))).toBeNull();
+  });
+
+  test("publish rejects package name conflicts from different locators", async () => {
+    const { env, bucket, queue } = makeEnv();
+    const firstArchive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = true",
+      ].join("\n"),
+    });
+    const secondArchive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.5.0"',
+        "public = true",
+      ].join("\n"),
+    });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/othertea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === "/repos/leostera/othertea/commits/main") {
+        return Response.json({ sha: NEXT_SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
+        return new Response(firstArchive, { status: 200 });
+      }
+      if (url.pathname === `/repos/leostera/othertea/tarball/${NEXT_SHA}`) {
+        return new Response(secondArchive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const firstCtx = new FakeExecutionContext();
+      const first = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        firstCtx,
+      );
+      await firstCtx.drain();
+      expect(first.status).toBe(200);
+
+      const secondCtx = new FakeExecutionContext();
+      const second = await handleRequest(
+        new Request("https://registry.test/package/leostera/othertea/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        secondCtx,
+      );
+      await secondCtx.drain();
+
+      expect(second.status).toBe(409);
+      expect(await readJson(second)).toMatchObject({
+        error: "package_name_taken",
+      });
+    });
+
+    expect(queue.messages).toHaveLength(1);
+    expect(await bucket.text(packageClaimKey("minttea"))).not.toBeNull();
+    expect(await bucket.text(publishedReleaseKey("minttea", "0.5.0"))).toBeNull();
   });
 
   test("github selector misses surface as 404 without publishing", async () => {
@@ -372,7 +581,6 @@ describe("riot package registry routes", () => {
       if (url.pathname === "/repos/leostera/minttea") {
         return Response.json({ private: false });
       }
-
       if (url.pathname === "/repos/leostera/minttea/commits/missing-tag") {
         return new Response("not found", { status: 404 });
       }
@@ -459,13 +667,15 @@ describe("riot package registry routes", () => {
     expect(bucket.keys().filter((key) => key.startsWith("sources/"))).toHaveLength(0);
   });
 
-  test("private repositories publish when github token is configured", async () => {
+  test("private repositories materialize when github token is configured", async () => {
     const { env, bucket, queue } = makeEnv({
       GITHUB_TOKEN: "secret-token",
     });
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
-      "tusk.toml": ['[package]', 'name = "minttea"', 'version = "0.4.2"'].join("\n"),
+      "tusk.toml": ['[package]', 'name = "minttea"', 'version = "0.4.2"', "public = true"].join(
+        "\n",
+      ),
     });
 
     await withMockedFetch(async (input, init) => {
@@ -476,11 +686,9 @@ describe("riot package registry routes", () => {
       if (url.pathname === "/repos/leostera/minttea") {
         return Response.json({ private: true });
       }
-
       if (url.pathname === "/repos/leostera/minttea/commits/main") {
         return Response.json({ sha: SHA });
       }
-
       if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
         return new Response(archive, { status: 200 });
       }
@@ -501,7 +709,7 @@ describe("riot package registry routes", () => {
     });
 
     expect(await bucket.text(`packages/github.com/leostera/minttea/${SHA}.manifest.json`)).not.toBeNull();
-    expect(queue.messages).toHaveLength(1);
+    expect(queue.messages).toHaveLength(0);
   });
 
   test("manifest route returns immutable JSON from R2", async () => {
