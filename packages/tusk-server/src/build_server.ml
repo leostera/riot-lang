@@ -61,6 +61,7 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
     match target with
     | Protocol.All -> Tusk_planner.Workspace_planner.All
     | Protocol.Package name -> Tusk_planner.Workspace_planner.Package name
+    | Protocol.Packages names -> Tusk_planner.Workspace_planner.Packages names
   in
 
   (* Check for package load errors first *)
@@ -218,6 +219,15 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
                   {
                     session_id;
                     package_name = name;
+                    available_packages = available;
+                  }))
+      | Tusk_planner.Workspace_planner.PackagesNotFound { names; available } ->
+          send client_pid
+            (Protocol.ServerResponse
+               (Protocol.PackagesNotFound
+                  {
+                    session_id;
+                    package_names = names;
                     available_packages = available;
                   }))
       | Tusk_planner.Workspace_planner.CycleDetected { cycle } ->

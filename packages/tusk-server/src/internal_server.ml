@@ -480,7 +480,9 @@ and handle_build state client_pid target scope target_arch session_id =
     ("Server: handle_build called for target: "
     ^ (match target with
       | Protocol.All -> "All"
-      | Protocol.Package p -> "Package(" ^ p ^ ")")
+      | Protocol.Package p -> "Package(" ^ p ^ ")"
+      | Protocol.Packages names ->
+          "Packages(" ^ String.concat "," names ^ ")")
     ^ (match target_arch with
       | Some arch -> ", arch: " ^ arch
       | None -> ""));

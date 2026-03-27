@@ -87,6 +87,29 @@ type Telemetry.event +=
       failed_count : int;
     }
 
+let target_to_json target =
+  Data.Json.String
+    (match target with
+    | Workspace_planner.All -> "all"
+    | Workspace_planner.Package pkg -> pkg
+    | Workspace_planner.Packages pkgs -> "packages:" ^ String.concat "," pkgs)
+
+let target_of_json = function
+  | Data.Json.String "all" -> Ok Workspace_planner.All
+  | Data.Json.String target_str
+    when String.starts_with ~prefix:"packages:" target_str ->
+      let prefix_len = String.length "packages:" in
+      let packages_str =
+        String.sub target_str prefix_len (String.length target_str - prefix_len)
+      in
+      let packages =
+        if String.equal packages_str "" then []
+        else String.split_on_char ',' packages_str
+      in
+      Ok (Workspace_planner.Packages packages)
+  | Data.Json.String pkg -> Ok (Workspace_planner.Package pkg)
+  | _ -> Error (Data.Json.String "Invalid target")
+
 let to_json : Telemetry.event -> Data.Json.t option = function
   | BuildStarted { session_id; package; target } ->
       Some
@@ -95,11 +118,7 @@ let to_json : Telemetry.event -> Data.Json.t option = function
              ("type", Data.Json.String "BuildStarted");
              ("session_id", Data.Json.String (Session_id.to_string session_id));
              ("package", Package.to_json package);
-             ( "target",
-               Data.Json.String
-                 (match target with
-                 | Workspace_planner.All -> "all"
-                 | Workspace_planner.Package pkg -> pkg) );
+             ("target", target_to_json target);
            ])
   | CompilationStarted { session_id; package; target } ->
       Some
@@ -108,11 +127,7 @@ let to_json : Telemetry.event -> Data.Json.t option = function
              ("type", Data.Json.String "CompilationStarted");
              ("session_id", Data.Json.String (Session_id.to_string session_id));
              ("package", Package.to_json package);
-             ( "target",
-               Data.Json.String
-                 (match target with
-                 | Workspace_planner.All -> "all"
-                 | Workspace_planner.Package pkg -> pkg) );
+             ("target", target_to_json target);
            ])
   | BuildCompleted { session_id; package; target; status; duration } ->
       Some
@@ -120,11 +135,7 @@ let to_json : Telemetry.event -> Data.Json.t option = function
            [
              ("type", Data.Json.String "BuildCompleted");
              ("package", Package.to_json package);
-             ( "target",
-               Data.Json.String
-                 (match target with
-                 | Workspace_planner.All -> "all"
-                 | Workspace_planner.Package pkg -> pkg) );
+             ("target", target_to_json target);
              ( "status",
                Data.Json.String
                  (match status with `Fresh -> "fresh" | `Cached -> "cached") );
@@ -174,11 +185,7 @@ let to_json : Telemetry.event -> Data.Json.t option = function
              ("type", Data.Json.String "BuildFailed");
              ("session_id", Data.Json.String (Session_id.to_string session_id));
              ("package", Package.to_json package);
-             ( "target",
-               Data.Json.String
-                 (match target with
-                 | Workspace_planner.All -> "all"
-                 | Workspace_planner.Package pkg -> pkg) );
+             ("target", target_to_json target);
              ("error", error_json);
            ])
   | BuildSkipped { session_id; package; target; reason } ->
@@ -188,11 +195,7 @@ let to_json : Telemetry.event -> Data.Json.t option = function
              ("type", Data.Json.String "BuildSkipped");
              ("session_id", Data.Json.String (Session_id.to_string session_id));
              ("package", Package.to_json package);
-             ( "target",
-               Data.Json.String
-                 (match target with
-                 | Workspace_planner.All -> "all"
-                 | Workspace_planner.Package pkg -> pkg) );
+             ("target", target_to_json target);
              ("reason", Data.Json.String reason);
            ])
   | ActionStarted { session_id; package; action } ->
@@ -265,11 +268,7 @@ let to_json : Telemetry.event -> Data.Json.t option = function
            [
              ("type", Data.Json.String "WorkspaceStarted");
              ("session_id", Data.Json.String (Session_id.to_string session_id));
-             ( "target",
-               Data.Json.String
-                 (match target with
-                 | Workspace_planner.All -> "all"
-                 | Workspace_planner.Package pkg -> pkg) );
+             ("target", target_to_json target);
              ("package_count", Data.Json.Int package_count);
            ])
   | WorkspaceCompleted
@@ -279,11 +278,7 @@ let to_json : Telemetry.event -> Data.Json.t option = function
            [
              ("type", Data.Json.String "WorkspaceCompleted");
              ("session_id", Data.Json.String (Session_id.to_string session_id));
-             ( "target",
-               Data.Json.String
-                 (match target with
-                 | Workspace_planner.All -> "all"
-                 | Workspace_planner.Package pkg -> pkg) );
+             ("target", target_to_json target);
              ( "total_duration_ms",
                Data.Json.Int (Time.Duration.to_millis total_duration) );
              ("cached_count", Data.Json.Int cached_count);
@@ -306,32 +301,26 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
           match
             (List.assoc_opt "session_id" fields, List.assoc_opt "package" fields, List.assoc_opt "target" fields)
           with
-          | Some (Data.Json.String session_id_str), Some package_json, Some (Data.Json.String target_str) -> (
+          | Some (Data.Json.String session_id_str), Some package_json, Some target_json -> (
               match Package.from_json package_json with
               | Ok package ->
                   let session_id = Session_id.of_string session_id_str in
-                  let target =
-                    match target_str with
-                    | "all" -> Workspace_planner.All
-                    | pkg -> Workspace_planner.Package pkg
-                  in
-                  Ok (BuildStarted { session_id; package; target })
+                  (match target_of_json target_json with
+                  | Ok target -> Ok (BuildStarted { session_id; package; target })
+                  | Error e -> Error e)
               | Error e -> Error (Data.Json.String e))
           | _ -> Error (Data.Json.String "Invalid BuildStarted event"))
       | Some (Data.Json.String "CompilationStarted") -> (
           match
             (List.assoc_opt "session_id" fields, List.assoc_opt "package" fields, List.assoc_opt "target" fields)
           with
-          | Some (Data.Json.String session_id_str), Some package_json, Some (Data.Json.String target_str) -> (
+          | Some (Data.Json.String session_id_str), Some package_json, Some target_json -> (
               match Package.from_json package_json with
               | Ok package ->
                   let session_id = Session_id.of_string session_id_str in
-                  let target =
-                    match target_str with
-                    | "all" -> Workspace_planner.All
-                    | pkg -> Workspace_planner.Package pkg
-                  in
-                  Ok (CompilationStarted { session_id; package; target })
+                  (match target_of_json target_json with
+                  | Ok target -> Ok (CompilationStarted { session_id; package; target })
+                  | Error e -> Error e)
               | Error e -> Error (Data.Json.String e))
           | _ -> Error (Data.Json.String "Invalid CompilationStarted event"))
       | Some (Data.Json.String "BuildCompleted") -> (
@@ -342,21 +331,19 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
               List.assoc_opt "duration_ms" fields )
           with
           | ( Some package_json,
-              Some (Data.Json.String target_str),
+              Some target_json,
               Some (Data.Json.String status_str),
               Some (Data.Json.Int duration_ms) ) -> (
               match Package.from_json package_json with
               | Ok package ->
-                  let target =
-                    match target_str with
-                    | "all" -> Workspace_planner.All
-                    | pkg -> Workspace_planner.Package pkg
-                  in
-                  let status =
-                    match status_str with "cached" -> `Cached | _ -> `Fresh
-                  in
-                  let duration = Time.Duration.from_millis duration_ms in
-                  Ok (BuildCompleted { session_id = get_session_id fields; package; target; status; duration })
+                  (match target_of_json target_json with
+                  | Ok target ->
+                      let status =
+                        match status_str with "cached" -> `Cached | _ -> `Fresh
+                      in
+                      let duration = Time.Duration.from_millis duration_ms in
+                      Ok (BuildCompleted { session_id = get_session_id fields; package; target; status; duration })
+                  | Error e -> Error e)
               | Error e -> Error (Data.Json.String e))
           | _ -> Error (Data.Json.String "Invalid BuildCompleted event"))
       | Some (Data.Json.String "BuildFailed") -> (
@@ -366,15 +353,10 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
               List.assoc_opt "error" fields )
           with
           | ( Some package_json,
-              Some (Data.Json.String target_str),
+              Some target_json,
               Some error_json ) -> (
               match Package.from_json package_json with
               | Ok package ->
-                  let target =
-                    match target_str with
-                    | "all" -> Workspace_planner.All
-                    | pkg -> Workspace_planner.Package pkg
-                  in
                   (* Deserialize structured error *)
                   let error_result =
                     match error_json with
@@ -505,9 +487,11 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
                             Ok (ExecutionFailed { message = "Unknown error type" }))
                     | _ -> Ok (ExecutionFailed { message = "Invalid error format" })
                   in
-                  (match error_result with
-                  | Ok error -> Ok (BuildFailed { session_id = get_session_id fields; package; target; error })
-                  | Error e -> Error e)
+                  (match (target_of_json target_json, error_result) with
+                  | Ok target, Ok error ->
+                      Ok (BuildFailed { session_id = get_session_id fields; package; target; error })
+                  | Error e, _ -> Error e
+                  | _, Error e -> Error e)
               | Error e -> Error (Data.Json.String e))
           | _ -> Error (Data.Json.String "Invalid BuildFailed event"))
       | Some (Data.Json.String "BuildSkipped") -> (
@@ -517,16 +501,14 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
               List.assoc_opt "reason" fields )
           with
           | ( Some package_json,
-              Some (Data.Json.String target_str),
+              Some target_json,
               Some (Data.Json.String reason) ) -> (
               match Package.from_json package_json with
               | Ok package ->
-                  let target =
-                    match target_str with
-                    | "all" -> Workspace_planner.All
-                    | pkg -> Workspace_planner.Package pkg
-                  in
-                  Ok (BuildSkipped { session_id = get_session_id fields; package; target; reason })
+                  (match target_of_json target_json with
+                  | Ok target ->
+                      Ok (BuildSkipped { session_id = get_session_id fields; package; target; reason })
+                  | Error e -> Error e)
               | Error e -> Error (Data.Json.String e))
           | _ -> Error (Data.Json.String "Invalid BuildSkipped event"))
       | Some (Data.Json.String "WorkspaceStarted") -> (
@@ -536,12 +518,10 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
           with
           | ( Some (Data.Json.String target_str),
               Some (Data.Json.Int package_count) ) ->
-              let target =
-                match target_str with
-                | "all" -> Workspace_planner.All
-                | pkg -> Workspace_planner.Package pkg
-              in
-              Ok (WorkspaceStarted { session_id = get_session_id fields; target; package_count })
+              (match target_of_json (Data.Json.String target_str) with
+              | Ok target ->
+                  Ok (WorkspaceStarted { session_id = get_session_id fields; target; package_count })
+              | Error e -> Error e)
           | _ -> Error (Data.Json.String "Invalid WorkspaceStarted event"))
       | Some (Data.Json.String "WorkspaceCompleted") -> (
           match
@@ -556,24 +536,22 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
               Some (Data.Json.Int cached_count),
               Some (Data.Json.Int built_count),
               Some (Data.Json.Int failed_count) ) ->
-              let target =
-                match target_str with
-                | "all" -> Workspace_planner.All
-                | pkg -> Workspace_planner.Package pkg
-              in
-              let total_duration =
-                Time.Duration.from_millis total_duration_ms
-              in
-              Ok
-                (WorkspaceCompleted
-                   {
-                     session_id = get_session_id fields;
-                     target;
-                     total_duration;
-                     cached_count;
-                     built_count;
-                     failed_count;
-                   })
+              (match target_of_json (Data.Json.String target_str) with
+              | Ok target ->
+                  let total_duration =
+                    Time.Duration.from_millis total_duration_ms
+                  in
+                  Ok
+                    (WorkspaceCompleted
+                       {
+                         session_id = get_session_id fields;
+                         target;
+                         total_duration;
+                         cached_count;
+                         built_count;
+                         failed_count;
+                       })
+              | Error e -> Error e)
           | _ -> Error (Data.Json.String "Invalid WorkspaceCompleted event"))
       (* Action events still can't be deserialized - they need Action_node.t *)
       | Some (Data.Json.String "ActionStarted")

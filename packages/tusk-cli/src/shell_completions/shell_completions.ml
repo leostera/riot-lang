@@ -206,12 +206,18 @@ _tusk() {
             fi
             ;;
         build)
-            # Check if we're completing the package name (position 3)
-            if [[ $CURRENT -eq 3 ]]; then
-                local -a packages
-                packages=(${(f)"$(tusk completions --packages 2>/dev/null)"})
-                compadd -a packages
-            fi
+            _arguments \
+                '(-x --target)'{-x,--target}'[Build for target architecture]:target:' \
+                '--all-targets[Build for all configured targets]' \
+                '*:package:->packages'
+
+            case $state in
+                packages)
+                    local -a packages
+                    packages=(${(f)"$(tusk completions --packages 2>/dev/null)"})
+                    _describe 'package' packages
+                    ;;
+            esac
             ;;
         test)
             # Check if we're completing the test pattern (position 3)

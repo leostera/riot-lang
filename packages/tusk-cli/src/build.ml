@@ -91,8 +91,8 @@ let command =
   command "build" |> about "Build packages"
   |> args
        [
-         positional "package" |> required false
-         |> help "Package to build (or omit to build all packages)";
+         positional "package" |> required false |> multiple
+         |> help "Packages to build (or omit to build all packages)";
          option "target"
          |> short 'x'
          |> long "target"
@@ -101,7 +101,7 @@ let command =
          |> help "Build for all configured targets";
        ]
 
-let build_command ?(scope = Runtime) package_opt target_arch =
+let run_build_request ?(scope = Runtime) request target_arch =
   let cwd =
     Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
   in
@@ -114,12 +114,6 @@ let build_command ?(scope = Runtime) package_opt target_arch =
   let client =
     Local_session.connect_local ~workspace
     |> Result.expect ~msg:"Failed to start local tusk session"
-  in
-
-  let request =
-    match package_opt with
-    | Some pkg -> Local_session.BuildPackage pkg
-    | None -> Local_session.BuildAll
   in
   let displayed_packages = HashSet.create () in
 
@@ -138,7 +132,7 @@ let build_command ?(scope = Runtime) package_opt target_arch =
         | Dev -> Local_session.Dev)
       ?target_arch (fun event ->
         match event with
-        | Local_session.BuildStarted session_id -> ()
+        | Local_session.BuildStarted _ -> ()
         | Local_session.BuildEvent event ->
             (* Track stats from events *)
             (match event with
@@ -203,6 +197,13 @@ let build_command ?(scope = Runtime) package_opt target_arch =
           out "Available packages:";
           List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages;
           exit 1
+      | Local_session.PackagesNotFound { package_names; available_packages } ->
+          out ("\027[1;31mError\027[0m: Packages not found: "
+            ^ String.concat ", " package_names);
+          out "";
+          out "Available packages:";
+          List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages;
+          exit 1
       | Local_session.BuildAlreadyRunning { lock_path } ->
           out ("\027[1;31mError\027[0m: another tusk build is already running");
           out ("Lock file: " ^ Path.to_string lock_path);
@@ -248,9 +249,26 @@ let build_command ?(scope = Runtime) package_opt target_arch =
   | Local_session.BuildStarted _ | Local_session.BuildEvent _ ->
       Error (Failure "Unexpected response from server")
 
+let build_command ?(scope = Runtime) package_opt target_arch =
+  let request =
+    match package_opt with
+    | Some pkg -> Local_session.BuildPackage pkg
+    | None -> Local_session.BuildAll
+  in
+  run_build_request ~scope request target_arch
+
+let build_packages_command ?(scope = Runtime) package_names target_arch =
+  let request =
+    match package_names with
+    | [] -> Local_session.BuildAll
+    | [ package_name ] -> Local_session.BuildPackage package_name
+    | packages -> Local_session.BuildPackages packages
+  in
+  run_build_request ~scope request target_arch
+
 let run matches =
   let open ArgParser in
-  let package_opt = get_one matches "package" in
+  let package_names = get_many matches "package" in
   
   (* Get workspace to resolve targets *)
   let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
@@ -302,7 +320,7 @@ let run matches =
     | Some arch -> out ("🔨 Cross-compiling for " ^ arch)
     | None -> ());
     
-    build_command package_opt target_arch
+    build_packages_command package_names target_arch
   ) else (
     out "❌ No targets specified";
     Error (Failure "No targets")

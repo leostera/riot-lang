@@ -21,6 +21,10 @@ type error =
       package_name : string;
       available_packages : string list;
     }
+  | PackagesNotFound of {
+      package_names : string list;
+      available_packages : string list;
+    }
   | BuildAlreadyRunning of { lock_path : Path.t }
   | UnexpectedEvent of { reason : string }
 
@@ -51,7 +55,7 @@ type streaming_event =
       cycle_nodes : string list;
     }
 
-type build_target = BuildPackage of string | BuildAll
+type build_target = BuildPackage of string | BuildPackages of string list | BuildAll
 type build_scope = Runtime | Dev
 
 let connect_local ~workspace =
@@ -180,6 +184,11 @@ let rec handle_streaming_events t session_id callback =
           { session_id = event_session_id; package_name; available_packages }) ->
         `select
           (`PackageNotFound (event_session_id, package_name, available_packages))
+    | Protocol.ServerResponse
+        (Protocol.PackagesNotFound
+          { session_id = event_session_id; package_names; available_packages }) ->
+        `select
+          (`PackagesNotFound (event_session_id, package_names, available_packages))
     | _ -> `skip
   in
   match receive_response ~selector with
@@ -235,12 +244,17 @@ let rec handle_streaming_events t session_id callback =
       if same_session session_id event_session_id then
         Error (PackageNotFound { package_name; available_packages })
       else handle_streaming_events t session_id callback
+  | `PackagesNotFound (event_session_id, package_names, available_packages) ->
+      if same_session session_id event_session_id then
+        Error (PackagesNotFound { package_names; available_packages })
+      else handle_streaming_events t session_id callback
 
 let build_streaming t target ?(scope = Runtime) ?target_arch callback =
   BuildLock.acquire t.workspace_root (fun () ->
       let target =
         match target with
         | BuildPackage package -> Protocol.Package package
+        | BuildPackages packages -> Protocol.Packages packages
         | BuildAll -> Protocol.All
       in
       let session_id = Session_id.make () in
@@ -268,6 +282,11 @@ let build_streaming t target ?(scope = Runtime) ?target_arch callback =
               { session_id = event_session_id; package_name; available_packages })
           when same_session session_id event_session_id ->
             `select (Error (PackageNotFound { package_name; available_packages }))
+        | Protocol.ServerResponse
+            (Protocol.PackagesNotFound
+              { session_id = event_session_id; package_names; available_packages })
+          when same_session session_id event_session_id ->
+            `select (Error (PackagesNotFound { package_names; available_packages }))
         | _ -> `skip
       in
       match receive_response ~selector with

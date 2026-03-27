@@ -273,8 +273,12 @@ and print_help cmd =
   if List.length options > 0 then Buffer.add_string usage_buf " [OPTIONS]";
   List.iter
     (fun arg ->
-      if arg.required then Buffer.add_string usage_buf (" <" ^ arg.name ^ ">")
-      else Buffer.add_string usage_buf (" [" ^ arg.name ^ "]"))
+      let name =
+        if arg.multiple then arg.name ^ "..."
+        else arg.name
+      in
+      if arg.required then Buffer.add_string usage_buf (" <" ^ name ^ ">")
+      else Buffer.add_string usage_buf (" [" ^ name ^ "]"))
     positionals;
   if cmd.allow_trailing then Buffer.add_string usage_buf " [-- ARGS...]";
   if List.length cmd.subcommands > 0 then
@@ -286,17 +290,26 @@ and print_help cmd =
     println "\nArguments:";
     let max_arg_width : int =
       List.fold_left
-        (fun (acc : int) (arg : unit arg) -> max acc (String.length arg.name))
+        (fun (acc : int) (arg : unit arg) ->
+          let name =
+            if arg.multiple then arg.name ^ "..."
+            else arg.name
+          in
+          max acc (String.length name))
         0
         positionals
     in
     List.iter
       (fun (arg : unit arg) ->
-        let arg_str =
-          if arg.required then "<" ^ arg.name ^ ">"
-          else "[" ^ arg.name ^ "]"
+        let name =
+          if arg.multiple then arg.name ^ "..."
+          else arg.name
         in
-        let padding_len = max 2 (max_arg_width - String.length arg.name + 4) in
+        let arg_str =
+          if arg.required then "<" ^ name ^ ">"
+          else "[" ^ name ^ "]"
+        in
+        let padding_len = max 2 (max_arg_width - String.length name + 4) in
         let padding = String.make padding_len ' ' in
         let help_str = match arg.help with Some h -> h | None -> "" in
         println ("  " ^ arg_str ^ padding ^ help_str))
@@ -427,8 +440,12 @@ let usage_string cmd =
   in
   List.iter
     (fun arg ->
-      if arg.required then Buffer.add_string buf (" <" ^ arg.name ^ ">")
-      else Buffer.add_string buf (" [" ^ arg.name ^ "]"))
+      let name =
+        if arg.multiple then arg.name ^ "..."
+        else arg.name
+      in
+      if arg.required then Buffer.add_string buf (" <" ^ name ^ ">")
+      else Buffer.add_string buf (" [" ^ name ^ "]"))
     positionals;
 
   (* Add subcommands indicator *)

@@ -265,31 +265,31 @@ let get_package_node pg package =
   | Some node -> Some node.value
   | None -> None
 
-let filter_for_package pg pkg_name =
-  let target_key =
-    if
-      Option.is_some
-        (HashMap.get pg.name_to_node
-           (package_key ~package_name:pkg_name Dev))
-    then
-      package_key ~package_name:pkg_name Dev
-    else if
-      Option.is_some
-        (HashMap.get pg.name_to_node
-           (package_key ~package_name:pkg_name Runtime))
-    then package_key ~package_name:pkg_name Runtime
-    else package_key ~package_name:pkg_name Runtime
+let target_node_for_package pg pkg_name =
+  let key_for scope = package_key ~package_name:pkg_name scope in
+  match HashMap.get pg.name_to_node (key_for Dev) with
+  | Some node -> Some node
+  | None -> HashMap.get pg.name_to_node (key_for Runtime)
+
+let filter_for_packages pg pkg_names =
+  let target_nodes =
+    List.filter_map (target_node_for_package pg) pkg_names
   in
-  match HashMap.get pg.name_to_node target_key with
-  | None -> { graph = G.make (); name_to_node = HashMap.create () }
-  | Some target_node ->
-      let reachable_ids = G.reachable_from pg.graph [ target_node ] in
+  match target_nodes with
+  | [] -> { graph = G.make (); name_to_node = HashMap.create () }
+  | _ ->
+      let reachable_ids = G.reachable_from pg.graph target_nodes in
       let reachable_set = HashSet.create () in
+      List.iter
+        (fun (node : package_node G.node) ->
+          let _ = HashSet.insert reachable_set node.id in
+          ())
+        target_nodes;
       List.iter
         (fun id ->
           let _ = HashSet.insert reachable_set id in
           ())
-        (target_node.id :: reachable_ids);
+        reachable_ids;
 
       let filtered_graph = G.make () in
       let filtered_name_to_node = HashMap.create () in
@@ -297,7 +297,9 @@ let filter_for_package pg pkg_name =
       G.iter pg.graph ~fn:(fun id node ->
           if HashSet.contains reachable_set id then
             let new_node = G.add_node filtered_graph node.value in
-            let _ = HashMap.insert filtered_name_to_node (get_key node.value) new_node in
+            let _ =
+              HashMap.insert filtered_name_to_node (get_key node.value) new_node
+            in
             ());
 
       G.iter pg.graph ~fn:(fun id node ->
@@ -309,11 +311,11 @@ let filter_for_package pg pkg_name =
                   (fun dep_id ->
                     if HashSet.contains reachable_set dep_id then
                       match G.get_node pg.graph dep_id with
-                      | Some dep_node ->
-                          (match
-                             HashMap.get filtered_name_to_node
-                               (get_key dep_node.value)
-                           with
+                      | Some dep_node -> (
+                          match
+                            HashMap.get filtered_name_to_node
+                              (get_key dep_node.value)
+                          with
                           | Some new_dep_node ->
                               G.add_edge new_node ~depends_on:new_dep_node
                           | None -> ())
@@ -321,6 +323,8 @@ let filter_for_package pg pkg_name =
                   node.deps);
 
       { graph = filtered_graph; name_to_node = filtered_name_to_node }
+
+let filter_for_package pg pkg_name = filter_for_packages pg [ pkg_name ]
 
 let get_graph_node pg node_id = G.get_node pg.graph node_id
 

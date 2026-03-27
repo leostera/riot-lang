@@ -3,7 +3,7 @@ open Std
 open Tusk_model
 
 type build_scope = Runtime | Dev
-type target = All | Package of string
+type target = All | Package of string | Packages of string list
 
 module BuildStats : sig
   type t
@@ -115,6 +115,11 @@ type response =
   | PackageNotFound of {
       session_id : Session_id.t;
       package_name : string;
+      available_packages : string list;
+    }
+  | PackagesNotFound of {
+      session_id : Session_id.t;
+      package_names : string list;
       available_packages : string list;
     }
 

@@ -87,6 +87,11 @@ val filter_for_package : t -> string -> t
 (** Filter the graph to only include the specified package and its transitive
     dependencies. Returns an empty graph if package not found. *)
 
+val filter_for_packages : t -> string list -> t
+(** Filter the graph to include the specified packages and all of their
+    transitive dependencies. Returns an empty graph if none of the packages
+    are found. *)
+
 val topological_sort : t -> package_node list
 (** Return packages in topological order (dependencies before dependents).
     Raises Cycle_detected if there are circular dependencies. *)

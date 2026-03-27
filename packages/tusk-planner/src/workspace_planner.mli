@@ -4,7 +4,7 @@ open Tusk_model
 (** Workspace-level planner - builds package dependency graph and orders
     packages for execution *)
 
-type target = All | Package of string
+type target = All | Package of string | Packages of string list
 
 type package_plan = {
   packages : Package.t list;
@@ -14,6 +14,7 @@ type package_plan = {
 
 type plan_error =
   | PackageNotFound of { name : string; available : string list }
+  | PackagesNotFound of { names : string list; available : string list }
   | CycleDetected of { cycle : string list }
   | MissingDependencies of { missing : Package_graph.missing_dependency list }
   | PackageLoadFailed of { errors : Workspace_manager.load_error list }

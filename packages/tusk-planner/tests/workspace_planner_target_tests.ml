@@ -94,6 +94,27 @@ let plan_single_package_includes_only_transitive_closure () =
         ~actual:names;
       Ok ()
 
+let plan_multiple_packages_includes_union_of_dependencies () =
+  let workspace =
+    make_workspace
+      [
+        make_package "std";
+        make_package ~dependencies:[ "std" ] "kernel";
+        make_package ~dependencies:[ "kernel" ] "a";
+        make_package ~dependencies:[ "std" ] "b";
+        make_package ~dependencies:[ "a" ] "app";
+        make_package ~dependencies:[ "b" ] "tool";
+        make_package ~dependencies:[ "std" ] "unrelated";
+      ]
+  in
+  match plan_workspace workspace (Packages [ "app"; "tool" ]) Runtime with
+  | Error _ -> Error "expected successful multi-package plan"
+  | Ok plan ->
+      let names = package_names plan |> List.sort_uniq String.compare in
+      Test.assert_equal ~expected:[ "a"; "app"; "b"; "kernel"; "std"; "tool" ]
+        ~actual:names;
+      Ok ()
+
 let plan_unknown_package_reports_available_packages () =
   let workspace =
     make_workspace [ make_package "std"; make_package ~dependencies:[ "std" ] "app" ]
@@ -106,6 +127,20 @@ let plan_unknown_package_reports_available_packages () =
         ~actual:(List.sort String.compare available);
       Ok ()
   | Error _ -> Error "expected PackageNotFound"
+
+let plan_multiple_unknown_packages_reports_all_missing_names () =
+  let workspace =
+    make_workspace [ make_package "std"; make_package ~dependencies:[ "std" ] "app" ]
+  in
+  match plan_workspace workspace (Packages [ "missing-a"; "app"; "missing-b" ]) Runtime with
+  | Ok _ -> Error "expected PackagesNotFound"
+  | Error (PackagesNotFound { names; available }) ->
+      Test.assert_equal ~expected:[ "missing-a"; "missing-b" ]
+        ~actual:names;
+      Test.assert_equal ~expected:[ "app"; "std" ]
+        ~actual:(List.sort String.compare available);
+      Ok ()
+  | Error _ -> Error "expected PackagesNotFound"
 
 let plan_reports_missing_dependencies_before_sorting () =
   let workspace =
@@ -131,8 +166,12 @@ let tests =
         plan_all_runtime_returns_workspace_like_order;
       case "plan single package includes only transitive closure"
         plan_single_package_includes_only_transitive_closure;
+      case "plan multiple packages includes union of dependencies"
+        plan_multiple_packages_includes_union_of_dependencies;
       case "plan unknown package reports available packages"
         plan_unknown_package_reports_available_packages;
+      case "plan multiple unknown packages report all missing names"
+        plan_multiple_unknown_packages_reports_all_missing_names;
       case "plan reports missing dependencies before sorting"
         plan_reports_missing_dependencies_before_sorting;
     ]
