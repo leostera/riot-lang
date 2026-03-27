@@ -1,15 +1,15 @@
 open Std
 
-type target = Tusk_fix_api.Fix.target =
+type target = Fixme.Fix.target =
   | Node of Syn.Cst.syntax_node
   | Token of Syn.Cst.syntax_token
 
-type replacement = Tusk_fix_api.Fix.replacement =
+type replacement = Fixme.Fix.replacement =
   | Source_of_node of Syn.Cst.syntax_node
   | Source_of_token of Syn.Cst.syntax_token
   | Text of string
 
-type operation = Tusk_fix_api.Fix.operation =
+type operation = Fixme.Fix.operation =
   | Delete of {
       target : target;
     }
@@ -30,30 +30,30 @@ type operation = Tusk_fix_api.Fix.operation =
       right : target;
     }
 
-type fix = Tusk_fix_api.Fix.fix = {
+type fix = Fixme.Fix.fix = {
   title : string;
   operations : operation list;
 }
 
-let source_of_node = Tusk_fix_api.Fix.source_of_node
-let source_of_token = Tusk_fix_api.Fix.source_of_token
-let text = Tusk_fix_api.Fix.text
-let delete = Tusk_fix_api.Fix.delete
-let delete_node = Tusk_fix_api.Fix.delete_node
-let replace = Tusk_fix_api.Fix.replace
-let replace_node = Tusk_fix_api.Fix.replace_node
-let replace_node_with_text = Tusk_fix_api.Fix.replace_node_with_text
-let replace_token_with_text = Tusk_fix_api.Fix.replace_token_with_text
-let insert_before = Tusk_fix_api.Fix.insert_before
-let insert_after = Tusk_fix_api.Fix.insert_after
-let swap = Tusk_fix_api.Fix.swap
-let make = Tusk_fix_api.Fix.make
-let title = Tusk_fix_api.Fix.title
-let operations = Tusk_fix_api.Fix.operations
-let apply_operation = Tusk_fix_api.Fix.apply_operation
-let apply_fix = Tusk_fix_api.Fix.apply_fix
-let apply_fixes = Tusk_fix_api.Fix.apply_fixes
-let validate_fix = Tusk_fix_api.Fix.validate_fix
+let source_of_node = Fixme.Fix.source_of_node
+let source_of_token = Fixme.Fix.source_of_token
+let text = Fixme.Fix.text
+let delete = Fixme.Fix.delete
+let delete_node = Fixme.Fix.delete_node
+let replace = Fixme.Fix.replace
+let replace_node = Fixme.Fix.replace_node
+let replace_node_with_text = Fixme.Fix.replace_node_with_text
+let replace_token_with_text = Fixme.Fix.replace_token_with_text
+let insert_before = Fixme.Fix.insert_before
+let insert_after = Fixme.Fix.insert_after
+let swap = Fixme.Fix.swap
+let make = Fixme.Fix.make
+let title = Fixme.Fix.title
+let operations = Fixme.Fix.operations
+let apply_operation = Fixme.Fix.apply_operation
+let apply_fix = Fixme.Fix.apply_fix
+let apply_fixes = Fixme.Fix.apply_fixes
+let validate_fix = Fixme.Fix.validate_fix
 
 let target_to_json = function
   | Node node ->

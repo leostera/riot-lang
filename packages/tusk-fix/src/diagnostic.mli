@@ -1,12 +1,12 @@
 open Std
 
-type severity = Tusk_fix_api.Diagnostic.severity =
+type severity = Fixme.Diagnostic.severity =
   | Error
   | Warning
   | Info
   | Hint
 
-type kind = Tusk_fix_api.Diagnostic.kind =
+type kind = Fixme.Diagnostic.kind =
   | Known of {
       rule_id : string;
       message : string;
@@ -16,7 +16,7 @@ type kind = Tusk_fix_api.Diagnostic.kind =
       message : string;
     }
 
-type t = Tusk_fix_api.Diagnostic.t = {
+type t = Fixme.Diagnostic.t = {
   severity : severity;
   kind : kind;
   span : Syn.Ceibo.Span.t;

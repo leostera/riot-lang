@@ -104,15 +104,15 @@ let generated_provider plan provider =
 let plan ~workspace_root ~target_dir_root providers =
   let hash = provider_hash providers in
   let generated_dir =
-    Path.(target_dir_root / Path.v "tusk-fix" / Path.v "fused" / Path.v hash)
+    Path.(target_dir_root / Path.v "tusk-fix" / Path.v "fixme-runner" / Path.v hash)
   in
   let workspace_root = Path.(generated_dir / Path.v "workspace") in
   let build_dir_root = Path.(generated_dir / Path.v "build") in
-  let package_dir = Path.(workspace_root / Path.v "packages" / Path.v "tusk-fix-fused") in
+  let package_dir = Path.(workspace_root / Path.v "packages" / Path.v "fixme-runner") in
   let src_dir = Path.(package_dir / Path.v "src") in
   let providers_dir = Path.(generated_dir / Path.v "providers") in
-  let binary_name = "tusk-fix-fused" in
-  let package_name = "tusk-fix-fused" in
+  let binary_name = "fixme-runner" in
+  let package_name = "fixme-runner" in
   let plan =
     {
       provider_hash = hash;
@@ -124,9 +124,9 @@ let plan ~workspace_root ~target_dir_root providers =
       package_toml_path = Path.(package_dir / Path.v "tusk.toml");
       src_dir;
       providers_dir;
-      library_path = Path.(src_dir / Path.v "tusk_fix_fused.ml");
+      library_path = Path.(src_dir / Path.v "fixme_runner.ml");
       main_path = Path.(src_dir / Path.v "main.ml");
-      registry_path = Path.(generated_dir / Path.v "fused_registry.ml");
+      registry_path = Path.(generated_dir / Path.v "fixme_registry.ml");
       binary_path =
         Path.(
           build_dir_root
@@ -194,7 +194,7 @@ let workspace_toml_source plan =
   String.concat "\n"
     [
       "[workspace]";
-      "members = [\"packages/tusk-fix-fused\"]";
+      "members = [\"packages/fixme-runner\"]";
       "";
       "[tusk]";
       "target_dir = \""
@@ -234,7 +234,7 @@ let dependency_entries workspace_root providers =
       ("std", Path.(workspace_root / Path.v "packages" / Path.v "std"));
       ("syn", Path.(workspace_root / Path.v "packages" / Path.v "syn"));
       ("tusk-fix", Path.(workspace_root / Path.v "packages" / Path.v "tusk-fix"));
-      ("tusk-fix-api", Path.(workspace_root / Path.v "packages" / Path.v "tusk-fix-api"));
+      ("fixme", Path.(workspace_root / Path.v "packages" / Path.v "fixme"));
     ]
     @ provider_build_deps
     @ List.map (fun ({ provider; _ } : generated_provider) ->
@@ -261,7 +261,7 @@ let package_toml_source workspace_root plan =
       "version = \"0.1.0\"";
       "";
       "[lib]";
-      "path = \"src/tusk_fix_fused.ml\"";
+      "path = \"src/fixme_runner.ml\"";
       "";
       "[[bin]]";
       "name = \"" ^ plan.binary_name ^ "\"";
@@ -293,7 +293,7 @@ let main_source =
       "open Std";
       "";
       "let () =";
-      "  Miniriot.run ~main:Tusk_fix_fused.main ~args:Env.args ()";
+      "  Miniriot.run ~main:Fixme_runner.main ~args:Env.args ()";
       "";
     ]
 
@@ -322,7 +322,7 @@ let ensure_directories plan =
     (fun path ->
       Fs.create_dir_all path
       |> Result.expect
-           ~msg:("failed to create generated fused runtime dir " ^ Path.to_string path))
+           ~msg:("failed to create generated fixme runner dir " ^ Path.to_string path))
     [ plan.workspace_root; plan.package_dir; plan.src_dir; plan.providers_dir ]
 
 let remove_if_exists path remove =
@@ -331,8 +331,8 @@ let remove_if_exists path remove =
   | _ -> ()
 
 let cleanup_stale_sources plan =
-  remove_if_exists Path.(plan.src_dir / Path.v "fused_registry.ml") Fs.remove_file;
-  remove_if_exists Path.(plan.src_dir / Path.v "providers") Fs.remove_dir_all
+  remove_if_exists plan.registry_path Fs.remove_file;
+  remove_if_exists plan.providers_dir Fs.remove_dir_all
 
 let write_file path content =
   Fs.write content path
@@ -351,15 +351,15 @@ let materialize_toolchain workspace_root plan =
       Fs.copy ~src:source_path ~dst:plan.toolchain_toml_path
       |> Result.expect
            ~msg:
-             ("failed to copy " ^ Path.to_string source_path ^ " into fused runtime")
+             ("failed to copy " ^ Path.to_string source_path ^ " into fixme runner")
   | Some (`Generate compiler_path) ->
       write_file plan.toolchain_toml_path (toolchain_toml_source compiler_path)
   | None -> ()
 
 let materialize ~workspace_root ~target_dir_root providers =
   let plan = plan ~workspace_root ~target_dir_root providers in
-  ensure_directories plan;
   cleanup_stale_sources plan;
+  ensure_directories plan;
   write_file plan.workspace_toml_path (workspace_toml_source plan);
   materialize_toolchain workspace_root plan;
   write_file plan.package_toml_path (package_toml_source workspace_root plan);

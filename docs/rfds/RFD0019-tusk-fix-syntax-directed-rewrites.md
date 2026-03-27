@@ -9,7 +9,7 @@
 ## Summary
 [summary]: #summary
 
-This RFD proposes changing the public `tusk-fix-api` fix authoring surface from
+This RFD proposes changing the public `fixme` fix authoring surface from
 raw text edits to syntax-directed rewrite operations.
 
 Rules should describe rewrites in terms of CST-backed syntax objects:
@@ -98,7 +98,7 @@ these bytes.”
 
 ## 1. Public API shape
 
-The public `tusk-fix-api` surface should move toward a shape like:
+The public `fixme` surface should move toward a shape like:
 
 ```ocaml
 module Fix : sig

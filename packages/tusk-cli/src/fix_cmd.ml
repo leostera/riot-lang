@@ -26,12 +26,12 @@ let raw_fix_args () =
   | _binary :: rest -> rest
   | [] -> []
 
-let build_fused_runtime scope =
+let build_fixme_runner scope =
   let workspace_root = Tusk_fix.Config.workspace_root scope in
   let target_dir_root = Tusk_fix.Config.target_dir_root scope in
   let providers = Tusk_fix.Config.providers (Some scope) in
   let plan =
-    Tusk_fix.Fused_runtime.materialize ~workspace_root ~target_dir_root providers
+    Tusk_fix.Fixme_runner.materialize ~workspace_root ~target_dir_root providers
   in
   let result =
     with_current_dir plan.workspace_root (fun () ->
@@ -47,8 +47,8 @@ let run matches =
   | Some scope when List.length (Tusk_fix.Config.providers (Some scope)) > 0 ->
       let args = raw_fix_args () in
       let command_binary =
-        build_fused_runtime scope
-        |> Result.expect ~msg:"Failed to build fused tusk-fix runtime"
+        build_fixme_runner scope
+        |> Result.expect ~msg:"Failed to build fixme runner"
       in
       Command_executor.execute ~command_binary ~args
   | _ -> Tusk_fix.Cli.run matches

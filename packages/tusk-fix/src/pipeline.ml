@@ -1,7 +1,7 @@
 open Std
 
 type t = { rules : Rule.t list }
-type result = Tusk_fix_api.Source_runner.result = {
+type result = Fixme.Source_runner.result = {
   tree : Rule.green_tree;
   diagnostics : Diagnostic.t list;
   parse_diagnostics : Syn.Diagnostic.t list;
@@ -94,7 +94,7 @@ let builtin_rules () =
   |> List.map (fun factory -> factory.make ())
 
 let run pipeline ?filename source =
-  Tusk_fix_api.Source_runner.run ~rules:pipeline.rules ?filename source
+  Fixme.Source_runner.run ~rules:pipeline.rules ?filename source
 
 let default_rules () = 
   let package_rules = package_rules () in

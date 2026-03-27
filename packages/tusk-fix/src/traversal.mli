@@ -1,4 +1,4 @@
-include module type of Tusk_fix_api.Traversal
+include module type of Fixme.Traversal
 
 type binding_site = {
   syntax_node : Syn.Cst.syntax_node;

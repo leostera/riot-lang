@@ -1,1 +1,1 @@
-val make : unit -> Tusk_fix_api.Rule.t
+val make : unit -> Fixme.Rule.t

@@ -1,13 +1,12 @@
 [workspace]
 members = [
-  "services/registry",
   "packages/blink",
   "packages/ceibo",
   "packages/colors",
+  "packages/fixme",
   "packages/gooey",
   "packages/hello-foreign",
   "packages/http",
-  "packages/propane",
   "packages/jsonrpc",
   "packages/kernel",
   "packages/krasny",
@@ -17,6 +16,7 @@ members = [
   "packages/minitusk",
   "packages/minttea",
   "packages/postgres",
+  "packages/propane",
   "packages/pubgrub",
   "packages/sqlite",
   "packages/sqlx",
@@ -31,7 +31,6 @@ members = [
   "packages/tusk-eval",
   "packages/tusk-executor",
   "packages/tusk-fix",
-  "packages/tusk-fix-api",
   "packages/tusk-init",
   "packages/tusk-model",
   "packages/tusk-planner",
@@ -39,6 +38,7 @@ members = [
   "packages/tusk-server",
   "packages/tusk-store",
   "packages/tusk-toolchain",
+  "services/registry",
 ]
 
 [dependencies]

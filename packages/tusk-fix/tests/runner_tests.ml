@@ -2121,7 +2121,7 @@ let render x y z =
                   Test.assert_equal ~expected:[ "demo:demo-rule" ] ~actual:provider.rules;
                   Ok ()
               | _ -> Error "expected one discovered provider"));
-    Test.case "fused runtime includes provider build dependencies" (fun () ->
+    Test.case "fixme runner includes provider build dependencies" (fun () ->
         with_tempdir "tusk_fix_provider_build_deps" (fun tmpdir ->
               let workspace_toml = Path.(tmpdir / Path.v "tusk.toml") in
               let provider_dir = Path.(tmpdir / Path.v "packages" / Path.v "demo") in
@@ -2152,14 +2152,14 @@ let render x y z =
                 ]
               in
               let plan =
-                Tusk_fix.Fused_runtime.materialize ~workspace_root:tmpdir
+                Tusk_fix.Fixme_runner.materialize ~workspace_root:tmpdir
                   ~target_dir_root:Path.(tmpdir / Path.v "_build")
                   providers
               in
               let package_toml = read_file plan.package_toml_path in
               Test.assert_true (String.contains package_toml "helper = { path = \"");
               Ok ()));
-    Test.case "fused runtime registry source lists discovered providers" (fun () ->
+    Test.case "fixme runner registry source lists discovered providers" (fun () ->
         let providers =
           [
             Tusk_model.Fix_provider.
@@ -2180,11 +2180,11 @@ let render x y z =
               };
           ]
         in
-        let source = Tusk_fix.Fused_runtime.registry_source providers in
+        let source = Tusk_fix.Fixme_runner.registry_source providers in
         Test.assert_true (String.contains source "Provider_std_std");
         Test.assert_true (String.contains source "Provider_suri_suri");
         Ok ());
-    Test.case "fused runtime binary path uses generated build dir" (fun () ->
+    Test.case "fixme runner binary path uses generated build dir" (fun () ->
         let provider =
           Tusk_model.Fix_provider.
             {
@@ -2196,7 +2196,7 @@ let render x y z =
             }
         in
         let plan =
-          Tusk_fix.Fused_runtime.plan
+          Tusk_fix.Fixme_runner.plan
             ~workspace_root:(Path.v "/workspace")
             ~target_dir_root:Path.(Path.v "/workspace" / Path.v "_build")
             [ provider ]

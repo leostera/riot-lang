@@ -28,7 +28,7 @@ and now run in two stages:
 
 ### Recent Tusk-Fix Progress
 
-- `tusk-fix-api` now owns the pure source-level fix engine via `Source_runner` and `Rule_test`.
+- `fixme` now owns the pure source-level fix engine via `Source_runner` and `Rule_test`.
 - `tusk-fix` delegates its parse/run/apply pipeline to that shared core instead of owning a separate source execution path.
 - We now have direct in-process tests for:
   - applying a real safe built-in rule fix (`snake_case_type_names`)

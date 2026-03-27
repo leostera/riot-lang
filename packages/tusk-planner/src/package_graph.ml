@@ -212,7 +212,7 @@ let create ~scope (workspace : Workspace.t) : (t, create_error) result =
          They should not pull build-time libraries into the normal runtime graph
          or we recreate cycles like:
 
-           std.runtime -> std.build -> tusk-fix-api.runtime -> syn.runtime -> std.runtime
+           std.runtime -> std.build -> fixme.runtime -> syn.runtime -> std.runtime
 
          A dedicated Build graph can still wire these edges when build-only
          tooling is the target. *)

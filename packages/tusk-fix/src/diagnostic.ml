@@ -3,13 +3,13 @@ open Std.Collections
 
 module Array = Std.Collections.Array
 
-type severity = Tusk_fix_api.Diagnostic.severity =
+type severity = Fixme.Diagnostic.severity =
   | Error
   | Warning
   | Info
   | Hint
 
-type kind = Tusk_fix_api.Diagnostic.kind =
+type kind = Fixme.Diagnostic.kind =
   | Known of {
       rule_id : string;
       message : string;
@@ -19,7 +19,7 @@ type kind = Tusk_fix_api.Diagnostic.kind =
       message : string;
     }
 
-type t = Tusk_fix_api.Diagnostic.t = {
+type t = Fixme.Diagnostic.t = {
   severity : severity;
   kind : kind;
   span : Syn.Ceibo.Span.t;
@@ -27,7 +27,7 @@ type t = Tusk_fix_api.Diagnostic.t = {
   fix : Fix.fix option;
 }
 
-let make = Tusk_fix_api.Diagnostic.make
+let make = Fixme.Diagnostic.make
 
 let severity_to_string = function
   | Error -> "error"
@@ -46,9 +46,9 @@ type source_layout = {
   line_starts : int array;
 }
 
-let message = Tusk_fix_api.Diagnostic.message
+let message = Fixme.Diagnostic.message
 
-let rule_id = Tusk_fix_api.Diagnostic.rule_id
+let rule_id = Fixme.Diagnostic.rule_id
 
 let header_label severity rule_id =
   "[" ^ severity_to_string severity ^ "] " ^ rule_id
@@ -195,11 +195,11 @@ let to_json diag =
     ]
 
 (* Accessor functions *)
-let kind = Tusk_fix_api.Diagnostic.kind
-let severity = Tusk_fix_api.Diagnostic.severity
-let span = Tusk_fix_api.Diagnostic.span
-let suggestion = Tusk_fix_api.Diagnostic.suggestion
-let fix = Tusk_fix_api.Diagnostic.fix
+let kind = Fixme.Diagnostic.kind
+let severity = Fixme.Diagnostic.severity
+let span = Fixme.Diagnostic.span
+let suggestion = Fixme.Diagnostic.suggestion
+let fix = Fixme.Diagnostic.fix
 
 (* Grouped diagnostics *)
 type grouped = {

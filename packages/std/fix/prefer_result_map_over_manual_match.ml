@@ -1,6 +1,6 @@
 open Std
 
-module Api = Tusk_fix_api
+module Api = Fixme
 
 let package_name = "std"
 let package_rule_id = package_name ^ ":prefer-result-map-over-manual-match"

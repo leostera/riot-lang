@@ -1,6 +1,6 @@
 open Std
 
-module Api = Tusk_fix_api
+module Api = Fixme
 
 let package_name = "miniriot"
 let package_rule_id = package_name ^ ":loop-yield"

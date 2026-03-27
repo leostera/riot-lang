@@ -38,10 +38,10 @@ module Rules : module type of Rules
 module Traversal : module type of Traversal
 (** CST traversal helpers *)
 
-module Source_runner : module type of Tusk_fix_api.Source_runner
+module Source_runner : module type of Fixme.Source_runner
 (** Pure rule execution and safe-fix application on source strings *)
 
-module Rule_test : module type of Tusk_fix_api.Rule_test
+module Rule_test : module type of Fixme.Rule_test
 (** Test helper for running rules, applying fixes, and rerunning on updated source *)
 
 module Rule_query : module type of Rule_query
@@ -68,5 +68,5 @@ module Explanation : module type of Explanation
 module Explanations : module type of Explanations
 (** Explanation lookup for loaded built-in and provider rules *)
 
-module Fused_runtime : module type of Fused_runtime
-(** Build-time fused runtime planning for package-provided rules *)
+module Fixme_runner : module type of Fixme_runner
+(** Build-time fixme runner planning for package-provided rules *)

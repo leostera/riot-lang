@@ -10,8 +10,8 @@
 [summary]: #summary
 
 This RFD extends `tusk-fix` so workspace packages can ship their own lint rules
-and explanations, with those rules fused at build time into one synthetic
-runtime.
+and explanations, with those rules compiled at build time into one synthetic
+`fixme-runner`.
 
 The central design should be:
 
@@ -31,8 +31,8 @@ The resulting system should have these properties:
     - `src/tusk_fix_rules.ml`
 - rule ids should be automatically namespaced as `<package>:<rule>`
 - diagnostic codes should be automatically namespaced as `<package>:<code>`
-- `tusk fix` should generate a fused runtime under `_build`
-- that runtime should rebuild like any other `tusk` package and use normal
+- `tusk fix` should generate a `fixme-runner` under `_build`
+- that runner should rebuild like any other `tusk` package and use normal
   caching
 
 `std:no-stdlib` should be a good first concrete package-owned rule using this
@@ -60,8 +60,8 @@ transport overhead, and poor streaming behavior.
 
 So the requirement is:
 
-`tusk-fix` must let packages own rules without giving up a fused in-process
-runtime.
+`tusk-fix` must let packages own rules without giving up a generated in-process
+`fixme-runner`.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -83,8 +83,8 @@ preferring build-only `fix/` locations:
 
 The provider source should not be compiled as part of the owning package's
 normal runtime build. Instead, `tusk fix` should discover all providers in the
-workspace, generate a synthetic fused package, build it, and run that one
-binary.
+workspace, generate a synthetic `fixme-runner` package, build it, and run that
+one binary.
 
 From the user side, the command surface stays simple:
 
@@ -100,8 +100,8 @@ From the runtime side, the shape is:
 flowchart TD
   A[tusk fix] --> B[load workspace]
   B --> C[discover providers]
-  C --> D[generate fused runtime]
-  D --> E[build tusk-fix-fused]
+  C --> D[generate fixme-runner]
+  D --> E[build fixme-runner]
   E --> F[parse each file once]
   F --> G[run all enabled rules in-process]
 ```
@@ -135,19 +135,19 @@ Likewise, provider-defined diagnostic code `f0001` should become `std:f0001`.
 
 ## 2. Provider authoring
 
-Shared rule-authoring types should live in `tusk-fix-api`.
+Shared rule-authoring types should live in `fixme`.
 
 Provider implementations should prefer `fix/` over `src/` so build-only rule
 code does not participate in the package's runtime dependency graph. Legacy
 `src/` discovery may exist as a compatibility fallback, but it should not be
 the preferred authoring location.
 
-The fused runtime should still expose the richer `Tusk_fix` runtime surface,
+The generated `fixme-runner` should still expose the richer `Tusk_fix` runtime surface,
 but provider authors should write against the shared rule API plus `syn`
 helpers.
 
 Provider-owning packages should place rule-authoring dependencies such as
-`tusk-fix-api` in `[build-dependencies]`, not `[dependencies]`.
+`fixme` in `[build-dependencies]`, not `[dependencies]`.
 
 Conceptually, a provider module looks like:
 
@@ -164,7 +164,7 @@ let diagnostic_codes () =
 ```
 
 Provider support modules that live next to the entrypoint should be copied into
-the generated fused runtime as sibling embedded modules.
+the generated `fixme-runner` as sibling embedded modules.
 
 ## 3. Fusion model
 
@@ -172,7 +172,7 @@ the generated fused runtime as sibling embedded modules.
 on:
 
 - `tusk-fix`
-- `tusk-fix-api`
+- `fixme`
 - `syn`
 - `std`
 - each provider-owning package
@@ -183,12 +183,12 @@ and emits generated source that:
 - embeds provider support modules
 - registers providers before CLI execution
 
-The resulting fused runtime should be rebuilt like any other `tusk` package, so
-it inherits normal build caching behavior.
+The resulting `fixme-runner` should be rebuilt like any other `tusk` package,
+so it inherits normal build caching behavior.
 
 ## 4. Runtime model
 
-Per file, the fused runtime should:
+Per file, the `fixme-runner` should:
 
 1. parse once with `syn`
 2. run all enabled built-in and package rules in-process
@@ -228,8 +228,8 @@ That should make package-provided explanations first-class.
 
 `std` wants to own `std:no-stdlib`, but direct normal dependency layering like:
 
-- `std -> tusk-fix-api`
-- `tusk-fix-api -> syn`
+- `std -> fixme`
+- `fixme -> syn`
 - `syn -> ceibo`
 - `ceibo -> std`
 
@@ -246,7 +246,7 @@ Package-provided rules should integrate with dependency classes like this:
 - normal package builds should not traverse provider build-time dependencies
 - generated fused tooling such as `tusk fix` should resolve provider packages
   through the `Build` graph
-- provider authors should be able to depend on `tusk-fix-api`, `syn`, and other
+- provider authors should be able to depend on `fixme`, `syn`, and other
   rule-authoring support libraries without contaminating runtime package
   products
 - packages should still own their rule ids and diagnostic code namespaces even

@@ -6,7 +6,7 @@ It is built on top of `syn`:
 
 - Ceibo provides exact lossless syntax and spans
 - `Syn.Cst` provides typed structure for clean parses
-- `tusk-fix-api` provides the shared rule-authoring surface
+- `fixme` provides the shared rule-authoring surface
 
 ## Current model
 
@@ -19,7 +19,7 @@ The pipeline is:
 5. report remaining issues in text or JSON
 
 Rules can be built in or provided by workspace packages. Package-provided rules
-are fused into a generated runtime under `_build`, so `tusk-fix` does not spawn
+are compiled into a generated `fixme-runner` under `_build`, so `tusk-fix` does not spawn
 one subprocess per rule.
 
 ## Rule ids
@@ -62,7 +62,7 @@ tusk run tusk -- fix --explain std:no-stdlib
 
 ## Rule authoring
 
-Rules are defined with `tusk-fix-api` and run against:
+Rules are defined with `fixme` and run against:
 
 - the file path
 - the optional typed CST for clean parses

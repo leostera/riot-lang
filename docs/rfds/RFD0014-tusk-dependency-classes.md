@@ -42,11 +42,11 @@ There are two concrete pressures on the build model now.
 The first is package-provided `tusk-fix` rules.
 
 `std` wants to own `std:no-stdlib`, and provider authoring wants shared types
-from `tusk-fix-api`. But `tusk-fix-api` depends on `syn`, `syn` depends on
-`ceibo`, and `ceibo` depends on `std`. If `std` models `tusk-fix-api` as a
+from `fixme`. But `fixme` depends on `syn`, `syn` depends on
+`ceibo`, and `ceibo` depends on `std`. If `std` models `fixme` as a
 normal dependency, the normal package graph gets a false cycle:
 
-- `std -> tusk-fix-api -> syn -> ceibo -> std`
+- `std -> fixme -> syn -> ceibo -> std`
 
 That dependency is real for build-time tooling, but not for the runtime `std`
 library artifact.
@@ -80,7 +80,7 @@ std = { path = "../std" }
 propane = { path = "../propane" }
 
 [build-dependencies]
-tusk-fix-api = { path = "../tusk-fix-api" }
+fixme = { path = "../fixme" }
 ```
 
 The intended meaning is:
@@ -237,7 +237,7 @@ Likewise, when the selected target graph is `Build`, build dependencies should
 resolve to dependency runtime artifacts, not dependency build phases. That
 matches the real use cases we are solving:
 
-- `std.build` needs the compiled runtime artifact of `tusk-fix-api`
+- `std.build` needs the compiled runtime artifact of `fixme`
 - fused tooling and future build hooks need access to package code built for
   use as tools
 - they should not yet consume a separate `dep.build` artifact surface
@@ -248,7 +248,7 @@ recursively traverse `build_dependencies`. That keeps:
 
 - `pkg.build -> pkg.runtime` ordering intact
 - build-time tooling out of normal runtime and dev package products
-- false cycles like `std.runtime -> std.build -> tusk-fix-api.runtime -> ...`
+- false cycles like `std.runtime -> std.build -> fixme.runtime -> ...`
   out of the runtime graph
 
 Cycle detection must happen inside the selected graph, not across all declared
@@ -412,10 +412,10 @@ This model is required for both of these:
 
 ```toml
 [build-dependencies]
-tusk-fix-api = { path = "../tusk-fix-api" }
+fixme = { path = "../fixme" }
 ```
 
-This puts `tusk-fix-api` on `std.build`, not on `std.runtime`, assuming the
+This puts `fixme` on `std.build`, not on `std.runtime`, assuming the
 provider implementation itself also lives outside `src/` in a build-only
 location like `fix/`.
 

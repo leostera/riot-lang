@@ -1,1 +1,1 @@
-include module type of Tusk_fix_api.Rule
+include module type of Fixme.Rule

@@ -1,9 +1,9 @@
 [package]
-name = "tusk-fix-api"
+name = "fixme"
 version = "0.1.0"
 
 [lib]
-path = "src/tusk_fix_api.ml"
+path = "src/fixme.ml"
 
 [dependencies]
 std = { path = "../std" }

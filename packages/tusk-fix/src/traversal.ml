@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-include Tusk_fix_api.Traversal
+include Fixme.Traversal
 
 type binding_site = {
   syntax_node : Syn.Cst.syntax_node;

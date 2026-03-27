@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-module Api = Tusk_fix_api
+module Api = Fixme
 
 let package_name = "std"
 let package_rule_id = package_name ^ ":prefer-iter-over-ignored-map"

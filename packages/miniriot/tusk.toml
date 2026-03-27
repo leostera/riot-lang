@@ -15,7 +15,7 @@ path = "src/miniriot.ml"
 kernel = { path = "../kernel" }
 
 [build-dependencies]
-tusk-fix-api = { path = "../tusk-fix-api" }
+fixme = { path = "../fixme" }
 
 [dev-dependencies]
 propane = { path = "../propane" }

@@ -61,7 +61,7 @@ let run_file ?pipeline ?pipeline_for_file ~mode file =
             error = None;
           }
       | Apply -> (
-          match Tusk_fix_api.Source_runner.apply_safe_fixes ~source initial with
+          match Fixme.Source_runner.apply_safe_fixes ~source initial with
           | Error reason ->
               empty_result file
                 (Some

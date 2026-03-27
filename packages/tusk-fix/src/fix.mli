@@ -1,15 +1,15 @@
 open Std
 
-type target = Tusk_fix_api.Fix.target =
+type target = Fixme.Fix.target =
   | Node of Syn.Cst.syntax_node
   | Token of Syn.Cst.syntax_token
 
-type replacement = Tusk_fix_api.Fix.replacement =
+type replacement = Fixme.Fix.replacement =
   | Source_of_node of Syn.Cst.syntax_node
   | Source_of_token of Syn.Cst.syntax_token
   | Text of string
 
-type operation = Tusk_fix_api.Fix.operation =
+type operation = Fixme.Fix.operation =
   | Delete of {
       target : target;
     }
@@ -30,7 +30,7 @@ type operation = Tusk_fix_api.Fix.operation =
       right : target;
     }
 
-type fix = Tusk_fix_api.Fix.fix = {
+type fix = Fixme.Fix.fix = {
   title : string;
   operations : operation list;
 }

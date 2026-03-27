@@ -1,6 +1,6 @@
-# tusk-fix-api AGENTS
+# fixme AGENTS
 
-`tusk-fix-api` is the shared rule-authoring surface used by `tusk-fix` and fused package providers.
+`fixme` is the shared rule-authoring surface used by `tusk-fix` and generated fixme-runner providers.
 
 ## Rules
 
@@ -8,8 +8,8 @@
 2. Prefer types and helpers that rule providers can use without pulling in the whole `tusk-fix` runtime.
 3. Put formatting, JSON rendering, and coordinator/runtime behavior in `tusk-fix`, not here.
 4. Keep rule ids and diagnostic messages as lightweight strings; do not reintroduce a built-in diagnostic-code registry here.
-5. Changes here affect both built-in rules and fused package rules; preserve compatibility where possible.
+5. Changes here affect both built-in rules and generated fixme-runner providers; preserve compatibility where possible.
 
 ## Validate
 
-`timeout 30 tusk build tusk-fix-api`
+`timeout 30 tusk build fixme`

@@ -247,7 +247,7 @@ std = { path = "packages/std" }
 propane = { path = "packages/propane" }
 
 [build-dependencies]
-tusk-fix-api = { path = "packages/tusk-fix-api" }
+fixme = { path = "packages/fixme" }
 |}
       |> Result.expect ~msg:"expected test toml to parse"
     in
@@ -265,7 +265,7 @@ tusk-fix-api = { path = "packages/tusk-fix-api" }
       && List.map
            (fun (dep : Package.dependency) -> dep.Package.name)
            manifest.build_dependencies
-         = [ "tusk-fix-api" ]
+         = [ "fixme" ]
     then Ok ()
     else Error "expected workspace dependency classes to parse"
   [@test]

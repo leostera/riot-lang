@@ -1090,7 +1090,7 @@ std = { workspace = true }
 propane = { workspace = true }
 
 [build-dependencies]
-tusk-fix-api = { path = "../tusk-fix-api" }
+fixme = { path = "../fixme" }
 |}
       |> Result.expect ~msg:"expected package toml to parse"
     in
@@ -1108,7 +1108,7 @@ tusk-fix-api = { path = "../tusk-fix-api" }
       && List.map (fun (dep : dependency) -> dep.name) pkg.dev_dependencies
          = [ "propane" ]
       && List.map (fun (dep : dependency) -> dep.name) pkg.build_dependencies
-         = [ "tusk-fix-api" ]
+         = [ "fixme" ]
     then Ok ()
     else Error "expected dependency classes to round-trip"
   [@test]
@@ -1122,7 +1122,7 @@ tusk-fix-api = { path = "../tusk-fix-api" }
         relative_path = Path.v "packages/example";
         dependencies = [ { name = "std"; source = Workspace } ];
         dev_dependencies = [ { name = "propane"; source = Workspace } ];
-        build_dependencies = [ { name = "tusk-fix-api"; source = Workspace } ];
+        build_dependencies = [ { name = "fixme"; source = Workspace } ];
         foreign_dependencies = [];
         binaries = [];
         library = None;
@@ -1142,7 +1142,7 @@ tusk-fix-api = { path = "../tusk-fix-api" }
     in
     if
       build_graph = [ "std"; "propane" ]
-      && all = [ "std"; "propane"; "tusk-fix-api" ]
+      && all = [ "std"; "propane"; "fixme" ]
     then Ok ()
     else Error "expected build graph dependencies to exclude build-only deps"
   [@test]
