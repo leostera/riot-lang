@@ -20,8 +20,8 @@ let create () =
 let queue t msg =
   Mutex.lock t.producer_lock;
   t.inbox_rev <- msg :: t.inbox_rev;
-  Mutex.unlock t.producer_lock;
-  ignore (Atomic.fetch_and_add t.size 1)
+  ignore (Atomic.fetch_and_add t.size 1);
+  Mutex.unlock t.producer_lock
 
 let pop_outbox t =
   match t.outbox with

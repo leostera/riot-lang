@@ -150,6 +150,8 @@ let create_process_slot proc ~owner_worker =
     process = proc;
     owner_worker = Atomic.make owner_worker;
     queued = Atomic.make false;
+    executing = Atomic.make false;
+    pending = Atomic.make false;
   }
 
 let slot_process slot = slot.process
@@ -158,6 +160,10 @@ let slot_owner_worker slot = Atomic.get slot.owner_worker
 let set_slot_owner_worker slot worker_id = Atomic.set slot.owner_worker worker_id
 let mark_slot_dequeued slot = Atomic.set slot.queued false
 let try_mark_slot_queued slot = Atomic.compare_and_set slot.queued false true
+let try_mark_slot_executing slot = Atomic.compare_and_set slot.executing false true
+let clear_slot_executing slot = Atomic.set slot.executing false
+let mark_slot_pending slot = Atomic.set slot.pending true
+let take_slot_pending slot = Atomic.exchange slot.pending false
 
 let shard_for_pid registry pid =
   let idx = Pid.to_int pid mod Array.length registry.shards in
@@ -625,51 +631,77 @@ let handle_run_proc t ctx slot =
   let pid_str = Pid.to_string (Process.pid proc) in
   Process.mark_as_running proc;
   ctx.current_process <- Some proc;
-  let next =
-    match Proc_state.run ~reductions:100 ~perform:(perform t proc) (Process.cont proc) with
-    | Some cont -> cont
-    | None ->
+  try
+    let next =
+      try
+        match
+          Proc_state.run ~reductions:100 ~perform:(perform t proc) (Process.cont proc)
+        with
+        | Some cont -> cont
+        | None ->
+            eprintln
+              ("[Scheduler] ERROR: Proc_state.run returned None for process "
+             ^ pid_str);
+            panic "Proc_state.run returned None"
+      with exn ->
         eprintln
-          ("[Scheduler] ERROR: Proc_state.run returned None for process "
-         ^ pid_str);
-        panic "Proc_state.run returned None"
-  in
-  Process.set_cont proc next;
-  ctx.current_process <- None;
+          ("[Scheduler] ERROR: Proc_state.run raised for process " ^ pid_str
+         ^ ": " ^ Exception.to_string exn);
+        raise exn
+    in
+    Process.set_cont proc next;
+    ctx.current_process <- None;
+    clear_slot_executing slot;
+    let pending = take_slot_pending slot in
 
-  match next with
-  | Proc_state.Finished (Ok reason) ->
-      Process.mark_as_exited proc reason;
-      handle_exit_proc t proc reason
-  | Proc_state.Finished (Error { exn; backtrace }) ->
-      eprintln
-        ("[Scheduler] Process " ^ pid_str ^ " finished with exception: "
-       ^ Exception.to_string exn);
-      eprintln "[Scheduler] Backtrace:";
-      eprintln (Exception.raw_backtrace_to_string backtrace);
-      Process.mark_as_exited proc (Error exn);
-      handle_exit_proc t proc (Error exn)
-  | _ when Process.is_waiting proc || Process.is_waiting_io proc -> ()
-  | _ ->
-      if Process.is_alive proc then (
-        Process.mark_as_runnable proc;
-        enqueue_owned_process t slot)
+    match next with
+    | Proc_state.Finished (Ok reason) ->
+        Process.mark_as_exited proc reason;
+        handle_exit_proc t proc reason
+    | Proc_state.Finished (Error { exn; backtrace }) ->
+        eprintln
+          ("[Scheduler] Process " ^ pid_str ^ " finished with exception: "
+         ^ Exception.to_string exn);
+        eprintln "[Scheduler] Backtrace:";
+        eprintln (Exception.raw_backtrace_to_string backtrace);
+        Process.mark_as_exited proc (Error exn);
+        handle_exit_proc t proc (Error exn)
+    | _ when Process.is_waiting proc || Process.is_waiting_io proc ->
+        if pending && Process.is_alive proc then enqueue_owned_process t slot
+    | _ ->
+        if Process.is_alive proc then (
+          Process.mark_as_runnable proc;
+          enqueue_owned_process t slot)
+  with exn ->
+    ctx.current_process <- None;
+    clear_slot_executing slot;
+    raise exn
 
 let step_process t ctx slot =
   let proc = slot_process slot in
   match Process.state proc with
   | Uninitialized ->
-      Process.init proc;
-      handle_run_proc t ctx slot
+      if try_mark_slot_executing slot then (
+        Process.init proc;
+        handle_run_proc t ctx slot
+      ) else
+        mark_slot_pending slot
   | Finalized -> ()
   | Waiting_message ->
-      if Process.has_messages proc
-         && Process.try_mark_runnable_from_waiting_message proc
+      if Process.has_messages proc && Process.try_mark_runnable_from_waiting_message proc
       then
-        handle_run_proc t ctx slot
+        if try_mark_slot_executing slot then
+          handle_run_proc t ctx slot
+        else
+          mark_slot_pending slot
   | Waiting_io _ -> ()
   | Exited reason -> handle_exit_proc t proc reason
-  | Running | Runnable -> handle_run_proc t ctx slot
+  | Running -> mark_slot_pending slot
+  | Runnable ->
+      if try_mark_slot_executing slot then
+        handle_run_proc t ctx slot
+      else
+        mark_slot_pending slot
 
 let pop_local (worker : worker) =
   Mutex.lock worker.lock;

@@ -10,6 +10,11 @@ type process_slot = {
      process internals. *)
   owner_worker : Scheduler_id.t Atomic.t;
   queued : bool Atomic.t;
+  (* A slot can be requested again while a worker is already stepping its
+     continuation. Preserve that wakeup so it can be re-enqueued once the
+     current step finishes instead of dropping or double-running the process. *)
+  executing : bool Atomic.t;
+  pending : bool Atomic.t;
 }
 
 type worker = {
