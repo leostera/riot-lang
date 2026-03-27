@@ -4174,6 +4174,126 @@ and split_typed_binding_pattern = function
   | pattern ->
       (pattern, None)
 
+and render_arrow_parameter_type_doc parameter_type =
+  match parameter_type with
+  | Syn.Cst.CoreType.Arrow _ ->
+      Doc.concat [ Doc.lparen; render_core_type parameter_type; Doc.rparen ]
+  | _ ->
+      render_core_type parameter_type
+
+and render_binding_annotation_parameter = function
+  | Syn.Cst.Parameter.Positional { pattern; _ } -> (
+      match split_typed_binding_pattern pattern with
+      | _, Some type_ ->
+          Some (render_arrow_parameter_type_doc type_)
+      | _, None ->
+          None)
+  | Syn.Cst.Parameter.Labeled { sigil_token; label_token; binding_pattern; _ } -> (
+      match binding_pattern with
+      | Some pattern -> (
+          match split_typed_binding_pattern pattern with
+          | _, Some type_ ->
+              Some
+                (Doc.concat
+                   [
+                     doc_of_token label_token;
+                     Doc.colon;
+                     render_arrow_parameter_type_doc type_;
+                   ])
+          | _, None ->
+              None)
+      | None ->
+          None)
+  | Syn.Cst.Parameter.Optional { sigil_token; label_token; binding_pattern; _ } -> (
+      match binding_pattern with
+      | Some pattern -> (
+          match split_typed_binding_pattern pattern with
+          | _, Some type_ ->
+              Some
+                (Doc.concat
+                   [
+                     doc_of_token sigil_token;
+                     doc_of_token label_token;
+                     Doc.colon;
+                     render_arrow_parameter_type_doc type_;
+                   ])
+          | _, None ->
+              None)
+      | None ->
+          None)
+  | Syn.Cst.Parameter.LocallyAbstract _ ->
+      None
+
+and synthesize_binding_type_annotation parameters result_type =
+  let rec collect binders remaining_parameters parameter_docs = function
+    | [] ->
+        Some (binders, List.rev remaining_parameters, List.rev parameter_docs)
+    | Syn.Cst.Parameter.LocallyAbstract { binders = new_binders; _ } :: rest ->
+        collect (binders @ new_binders) remaining_parameters parameter_docs rest
+    | parameter :: rest -> (
+        match render_binding_annotation_parameter parameter with
+        | Some parameter_doc ->
+            collect binders (parameter :: remaining_parameters)
+              (parameter_doc :: parameter_docs) rest
+        | None ->
+            None)
+  in
+  match collect [] [] [] parameters with
+  | None ->
+      None
+  | Some (binders, remaining_parameters, parameter_docs) ->
+      let result_doc = render_core_type result_type in
+      let type_doc =
+        Doc.group
+          (join_map
+             (Doc.concat [ Doc.space; Doc.arrow; Doc.break () ])
+             (fun doc -> doc)
+             (parameter_docs @ [ result_doc ]))
+      in
+      let type_doc =
+        match binders with
+        | [] ->
+            type_doc
+        | binders ->
+            Doc.concat
+              [
+                kw_type;
+                Doc.space;
+                join_map (Doc.concat [ Doc.space ]) render_type_binder binders;
+                Doc.text ".";
+                Doc.space;
+                type_doc;
+              ]
+      in
+      Some (type_doc, remaining_parameters)
+
+and render_unsugared_binding_parameter = function
+  | Syn.Cst.Parameter.Positional { pattern; _ } ->
+      let pattern, _ = split_typed_binding_pattern pattern in
+      render_pattern pattern
+  | Syn.Cst.Parameter.Labeled { sigil_token; label_token; binding_name_token; _ } ->
+      Doc.concat
+        [
+          doc_of_token sigil_token;
+          Option.unwrap_or
+            (Option.map doc_of_token binding_name_token)
+            ~default:(doc_of_token label_token);
+        ]
+  | Syn.Cst.Parameter.Optional
+      ({ sigil_token; label_token; binding_name_token; has_default; _ } as parameter) ->
+      if has_default then
+        render_parameter (Syn.Cst.Parameter.Optional parameter)
+      else
+        Doc.concat
+          [
+            doc_of_token sigil_token;
+            Option.unwrap_or
+              (Option.map doc_of_token binding_name_token)
+              ~default:(doc_of_token label_token);
+          ]
+  | Syn.Cst.Parameter.LocallyAbstract parameter ->
+      render_parameter (Syn.Cst.Parameter.LocallyAbstract parameter)
+
 and render_binding_value ~leading_body_trivia ~force_multiline_body ~parameters ~value =
   match parameters with
   | [] ->
@@ -4244,7 +4364,8 @@ and render_binding_value ~leading_body_trivia ~force_multiline_body ~parameters 
                Doc.indent 2 (Doc.concat [ Doc.break (); body ]);
              ])
 
-and render_binding_value_with_parameter_doc ~force_multiline_body ~parameter_doc ~value =
+and render_binding_value_with_parameter_doc ~leading_body_trivia ~force_multiline_body
+    ~parameter_doc ~value =
   let body =
     match value with
     | Syn.Cst.Expression.Tuple { elements; _ } ->
@@ -4252,6 +4373,7 @@ and render_binding_value_with_parameter_doc ~force_multiline_body ~parameter_doc
     | _ ->
         render_expression value
   in
+  let body = doc_with_leading_trivia leading_body_trivia body in
   if force_multiline_body || function_body_prefers_multiline value || Doc.is_multiline body then
     Doc.concat
       [
@@ -4310,9 +4432,34 @@ and render_local_binding
     | None ->
         value
   in
+  let rendered_type_annotation, parameters, synthesized_type_annotation =
+    match type_annotation with
+    | None ->
+        (None, parameters, false)
+    | Some type_ when parameters = [] ->
+        (Some (render_core_type type_), parameters, false)
+    | Some type_ -> (
+        match synthesize_binding_type_annotation parameters type_ with
+        | Some (type_doc, remaining_parameters) ->
+            (Some type_doc, remaining_parameters, true)
+        | None ->
+            (Some (render_core_type type_), parameters, false))
+  in
   let header = render_binding_header ~keyword_token ~rec_token pattern in
-  let parameter_doc = parameters |> List.map render_parameter |> Doc.join Doc.space in
-  let keep_header_parameters = false in
+  let parameter_doc =
+    parameters
+    |> List.map
+         (if synthesized_type_annotation then
+            render_unsugared_binding_parameter
+          else
+            render_parameter)
+    |> Doc.join Doc.space
+  in
+  let keep_header_parameters =
+    not (parameters = [])
+    && Option.is_some rendered_type_annotation
+    && not synthesized_type_annotation
+  in
   let header =
     if keep_header_parameters then
       Doc.concat [ header; Doc.space; parameter_doc ]
@@ -4320,11 +4467,11 @@ and render_local_binding
       header
   in
   let header =
-    match type_annotation with
+    match rendered_type_annotation with
     | None ->
         header
-    | Some type_ ->
-        Doc.concat [ header; colon; render_core_type type_ ]
+    | Some type_doc ->
+        Doc.concat [ header; colon; type_doc ]
   in
   let force_multiline_body =
     local_context
@@ -4382,6 +4529,9 @@ and render_local_binding
             render_block_expression value
           else
             render_expression value
+        else if synthesized_type_annotation then
+          render_binding_value_with_parameter_doc ~leading_body_trivia:leading_value_trivia
+            ~force_multiline_body ~parameter_doc ~value
         else
           render_binding_value ~leading_body_trivia:leading_value_trivia
             ~force_multiline_body ~parameters ~value
