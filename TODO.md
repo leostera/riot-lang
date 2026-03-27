@@ -13,16 +13,17 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Make Krasny able to format the entire codebase without losing information
 
-<!--
-these tasks are for later
-- [ ] Work on implementing the remaining lints
-- [ ] Work on fixing the broken tests
-- [ ] Fix `syn`'s fixture mess
--->
+- [ ] `tusk fix --apply` can apply the `packages/std/fix/no_double_list_rev.ml` safely
+
+- [ ] Start building `tusk fmt` to parallely scan the codebase and call
+`krasny` on every input -- we can start with a `tusk fmt --check` flag that
+will just print out if the input would have been formatted or not, and exists
+with 0 if no formatting was needed, or 1 if at least 1 file needed to be
+formatted
 
 ### Krasny formats the whole codebase
 
-You are done with this task when we can run: `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast` and there are no failures.
+You are done with this task when we can run: `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast` and there are no failures. - A polling loop script is available at `scripts/verify_fail_fast_loop.sh` and defaults to writing `krasny_verify_results.log` at repo root for live frontier tracking.
 
 Otherwise, if you find a failure, you will:
 1. call `syn print-cst <file>`
@@ -39,20 +40,6 @@ Otherwise, if you find a failure, you will:
 
 You are done with this task when `krasny` can format the entire codebase and
 the CST-hash of the source before and after formatting is the same (that is, there's no information loss).
-
-Current fail-fast progress (2026-03-26):
-- The latest whole-workspace rerun now has `1` known remaining failure:
-  - `packages/syn/tests/fixtures/ocaml_prefix_op.ml` (canonical formatted `format exited 1`)
-- The current fail-fast frontier is `packages/syn/tests/fixtures/ocaml_prefix_op.ml`.
-- A polling loop script is available at `scripts/verify_fail_fast_loop.sh` and defaults to writing `krasny_verify_results.log` at repo root for live frontier tracking.
-- Newly fixed in this slice:
-  - `packages/tusk-fix/src/rules/prefer_multiline_string_literals.ml` (previous `format exited 1`)
-  - `packages/tusk-init/src/tusk_init.ml` (previous syntax-hash mismatch)
-  - `syn` now lexes tagged quoted string literals without dropping their delimiters or payload text
-  - `krasny` now lowers binding-operator expressions structurally instead of replaying raw `LET_OPERATOR_EXPR` source, so following docstrings stop getting duplicated into prior function bodies and inline `let*` bindings render with ` = ` spacing
-  - new focused fixtures:
-    - `0910_docstring_before_local_open_let.ml`
-    - `1100_tagged_quoted_string_literal.ml`
 
 ### Parked Release/Toolchain Follow-Up
 
