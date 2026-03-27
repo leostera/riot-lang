@@ -23,6 +23,7 @@ let file_result_to_json ~root (result : Runner.file_result) =
       ("file", String (relative_to_root ~root result.file));
       ("status", String status);
       ("needs_formatting", Bool result.needs_formatting);
+      ("duration_ms", Int (Time.Duration.to_millis result.duration));
       ("error", match result.error with Some error -> String error | None -> Null);
     ]
 

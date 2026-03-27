@@ -6,6 +6,7 @@ type file_result = {
   file : Path.t;
   needs_formatting : bool;
   error : string option;
+  duration : Time.Duration.t;
 }
 
 type summary = {
@@ -76,24 +77,28 @@ let collect_ocaml_files ~roots =
   |> List.sort_uniq compare_paths
 
 let check_file file =
+  let start = Time.Instant.now () in
+  let finalize ~needs_formatting ~error =
+    {
+      file;
+      needs_formatting;
+      error;
+      duration = Time.Instant.elapsed start;
+    }
+  in
   match Fs.read file with
   | Error _ ->
-      {
-        file;
-        needs_formatting = false;
-        error = Some ("Failed to read " ^ Path.to_string file);
-      }
+      finalize ~needs_formatting:false
+        ~error:(Some ("Failed to read " ^ Path.to_string file))
   | Ok source ->
       let parsed = Syn.parse ~filename:file source in
       (match Format_core.format parsed with
       | Ok formatted ->
-          { file; needs_formatting = not (String.equal source formatted); error = None }
+          finalize ~needs_formatting:(not (String.equal source formatted))
+            ~error:None
       | Error err ->
-          {
-            file;
-            needs_formatting = false;
-            error = Some (Format_core.format_error_to_string err);
-          })
+          finalize ~needs_formatting:false
+            ~error:(Some (Format_core.format_error_to_string err)))
 
 type scanner_state = {
   owner : Pid.t;

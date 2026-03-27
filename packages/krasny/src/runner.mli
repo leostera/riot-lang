@@ -4,6 +4,7 @@ type file_result = {
   file : Path.t;
   needs_formatting : bool;
   error : string option;
+  duration : Time.Duration.t;
 }
 
 type summary = {

@@ -49,6 +49,12 @@ let assert_json_timestamp_field json =
   | Some _ -> panic "timestamp field should be a JSON string"
   | None -> panic "timestamp field missing"
 
+let assert_json_duration_ms_field json =
+  match Data.Json.get_field "duration_ms" json with
+  | Some (Data.Json.Int duration_ms) -> Test.assert_true (duration_ms >= 0)
+  | Some _ -> panic "duration_ms field should be a JSON int"
+  | None -> panic "duration_ms field missing"
+
 let assert_idempotent ~source ~msg =
   let first =
     parse_ml source |> Krasny.format |> Result.expect ~msg
@@ -212,6 +218,7 @@ let optional_fun = fun ?(y = 0) -> y + 1
               ~expected:(Some (String "file"))
               ~actual:(get_field "type" json);
             assert_json_timestamp_field json;
+            assert_json_duration_ms_field json;
             Test.assert_equal
               ~expected:(Some (String "needs.ml"))
               ~actual:(get_field "file" json);
