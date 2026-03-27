@@ -7,3 +7,5 @@ let of_tcp_client = fun ~hostname tcp -> of_tcp_socket ~mode:(`Client hostname) 
 
 let of_tcp_server = fun ~cert_file ~key_file tcp ->
   of_tcp_socket ~mode:(`Server (cert_file, key_file)) tcp
+
+let run = fun ~main ~args -> Scheduler.run ~config ~main:(fun () -> main ~args) |> exit

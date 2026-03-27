@@ -2339,6 +2339,14 @@ let expression_needs_parens_in_apply = function
       false
 
 let rec expression_needs_parens_in_labeled_argument = function
+  | Syn.Cst.Expression.Parenthesized
+      {
+        inner =
+          ( Syn.Cst.Expression.Fun _
+          | Syn.Cst.Expression.Function _ );
+        _;
+      } ->
+      false
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
       expression_needs_parens_in_labeled_argument inner
   | Syn.Cst.Expression.Apply _ ->
