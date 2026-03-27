@@ -14,6 +14,12 @@ let paren_string = "hello"
 
 let paren_bool = flag
 
+let paren_apply_identifier = f x
+
+let paren_apply_constructor = f A
+
+let paren_apply_poly_variant = f `A
+
 let prefix_neg = -x
 
 let prefix_not = not value
