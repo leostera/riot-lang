@@ -451,22 +451,10 @@ let install_syscall_timeout t proc secs =
 let handle_receive k t proc ~selector ~timeout =
   let open Proc_state in
 
-  let timeout_fired =
+  let timeout_expired =
     match Process.receive_timeout proc with
     | None -> false
-    | Some timer_id ->
-        if Process.take_receive_timeout_fired proc then (
-          Process.clear_receive_timeout proc;
-          cancel_timer t timer_id;
-          true)
-        else if Process.has_empty_mailbox proc then
-          false
-        else (
-          (* A message woke this process before the timer fired.
-             Cancel the timeout and keep receiving. *)
-          Process.clear_receive_timeout proc;
-          cancel_timer t timer_id;
-          false)
+    | Some _ -> Process.take_receive_timeout_fired proc
   in
 
   let park_for_receive () =
@@ -478,43 +466,60 @@ let handle_receive k t proc ~selector ~timeout =
         k Suspend
       else (
         ignore (Process.try_mark_runnable_from_waiting_message proc);
-        clear_receive_timeout t proc;
         k Delay)
     else
       k Delay
   in
 
-  if timeout_fired && Process.has_empty_mailbox proc then
+  let continue_with selected =
+    clear_receive_timeout t proc;
+    k (Continue selected)
+  in
+
+  let timeout_receive () =
+    clear_receive_timeout t proc;
     k (Discontinue Effects.Exception.Receive_timeout)
-  else if Process.has_empty_mailbox proc then
-    park_for_receive ()
-  else
-    let rec scan_saved remaining =
-      if remaining = 0 then
-        scan_mailbox (Process.mailbox_count proc)
+  in
+
+  let rec scan_saved remaining =
+    if remaining = 0 then
+      scan_mailbox (Process.mailbox_count proc)
+    else
+      match Process.next_saved_message proc with
+      | None -> scan_mailbox (Process.mailbox_count proc)
+      | Some msg -> (
+          match selector Message.(msg.msg) with
+          | `select selected -> Some selected
+          | `skip ->
+              Process.add_to_save_queue proc msg;
+              scan_saved (remaining - 1))
+  and scan_mailbox remaining =
+    if remaining = 0 then
+      None
+    else
+      match Process.next_mailbox_message proc with
+      | None -> None
+      | Some msg -> (
+          match selector Message.(msg.msg) with
+          | `select selected -> Some selected
+          | `skip ->
+              Process.add_to_save_queue proc msg;
+              scan_mailbox (remaining - 1))
+  in
+
+  let selected =
+    if Process.has_empty_mailbox proc then
+      None
+    else
+      scan_saved (Process.save_queue_count proc)
+  in
+  match selected with
+  | Some selected -> continue_with selected
+  | None ->
+      if timeout_expired then
+        timeout_receive ()
       else
-        match Process.next_saved_message proc with
-        | None -> scan_mailbox (Process.mailbox_count proc)
-        | Some msg -> (
-            match selector Message.(msg.msg) with
-            | `select selected -> k (Continue selected)
-            | `skip ->
-                Process.add_to_save_queue proc msg;
-                scan_saved (remaining - 1))
-    and scan_mailbox remaining =
-      if remaining = 0 then
         park_for_receive ()
-      else
-        match Process.next_mailbox_message proc with
-        | None -> park_for_receive ()
-        | Some msg -> (
-            match selector Message.(msg.msg) with
-            | `select selected -> k (Continue selected)
-            | `skip ->
-                Process.add_to_save_queue proc msg;
-                scan_mailbox (remaining - 1))
-    in
-    scan_saved (Process.save_queue_count proc)
 
 let handle_syscall k t proc name interest source timeout =
   let open Proc_state in
@@ -586,10 +591,20 @@ let handle_exit_proc t proc reason =
           | None -> ()
           | Some monitor_slot ->
               let monitor_proc = slot_process monitor_slot in
+              Process.demonitor monitor_proc monitor_ref;
               Process.send_message monitor_proc
                 (Process.Messages.DOWN { ref = monitor_ref; pid; reason });
               wake_process t monitor_slot)
         (Process.get_monitored_by proc);
+
+      List.iter
+        (fun (monitor_ref, monitored_pid) ->
+          match get_process_slot t monitored_pid with
+          | None -> ()
+          | Some monitored_slot ->
+              let monitored_proc = slot_process monitored_slot in
+              Process.remove_monitored_by monitored_proc pid monitor_ref)
+        (Process.get_monitors proc);
 
       List.iter
         (fun linked_pid ->
@@ -597,6 +612,7 @@ let handle_exit_proc t proc reason =
           | None -> ()
           | Some linked_slot ->
               let linked_proc = slot_process linked_slot in
+              Process.unlink linked_proc pid;
               if Process.get_trap_exit linked_proc then (
                 Process.send_message linked_proc
                   (Process.Messages.EXIT { from = pid; reason });
@@ -832,11 +848,8 @@ let process_timers t =
             send_internal t target_pid msg);
         match timer.mode with
         | Timer.One_shot -> ()
-        | Timer.Interval interval ->
-            ignore
-              (Timer_wheel.add_timer t.timer_wheel
-                 ~now:(Time.monotonic_time_nanos ()) ~duration_nanos:interval
-                 ~mode:timer.mode ~action:timer.action))
+        | Timer.Interval _ ->
+            Timer_wheel.reschedule_timer t.timer_wheel ~now timer)
       expired
 
 let handle_reactor_command t cmd =

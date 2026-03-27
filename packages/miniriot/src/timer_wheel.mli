@@ -15,6 +15,9 @@ val add_timer :
   Timer.id
 (** Add a timer to the wheel. Returns the timer ID for cancellation. *)
 
+val reschedule_timer : t -> now:int64 -> Timer.t -> unit
+(** Reinsert an existing interval timer without changing its ID. *)
+
 val cancel_timer : t -> Timer.id -> unit
 (** Cancel a timer by its ID *)
 

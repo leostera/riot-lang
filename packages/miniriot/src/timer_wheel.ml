@@ -58,15 +58,21 @@ let calculate_slot t expires_at =
     (* Timer is too far in the future - put in overflow *)
     None
 
+let schedule_timer t timer =
+  HashMap.insert t.timers_by_id timer.Timer.id timer;
+
+  match calculate_slot t timer.Timer.expires_at with
+  | Some slot -> t.slots.(slot) <- timer :: t.slots.(slot)
+  | None -> t.overflow := timer :: !(t.overflow)
+
 let add_timer t ~now ~duration_nanos ~mode ~action =
   let timer = Timer.make ~now ~duration_nanos ~mode ~action in
-  HashMap.insert t.timers_by_id timer.id timer;
-
-  (match calculate_slot t timer.Timer.expires_at with
-  | Some slot -> t.slots.(slot) <- timer :: t.slots.(slot)
-  | None -> t.overflow := timer :: !(t.overflow));
-
+  schedule_timer t timer;
   timer.id
+
+let reschedule_timer t ~now timer =
+  Timer.reschedule timer ~now;
+  schedule_timer t timer
 
 let cancel_timer t timer_id =
   match HashMap.get t.timers_by_id timer_id with
