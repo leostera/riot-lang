@@ -219,6 +219,8 @@ let optional_fun = fun ?(y = 0) -> y + 1
             Test.assert_equal
               ~expected:1
               ~actual:result.summary.needs_formatting;
+            Test.assert_equal ~expected:0 ~actual:result.summary.would_reformat;
+            Test.assert_equal ~expected:0 ~actual:result.summary.unsafe_to_format;
             Test.assert_equal ~expected:0 ~actual:result.summary.failed_files;
             let needs_result =
               result.files
@@ -243,6 +245,40 @@ let optional_fun = fun ?(y = 0) -> y + 1
               ~actual:(get_field "file" json);
             Test.assert_equal
               ~expected:(Some (String "needs_formatting"))
+              ~actual:(get_field "status" json);
+            Ok ()));
+    Test.case "verify reports files that would reformat safely" (fun () ->
+        with_tempdir "krasny_runner_verify" (fun tmpdir ->
+            let formatted = Path.(tmpdir / Path.v "formatted.ml") in
+            let needs = Path.(tmpdir / Path.v "needs.ml") in
+            Fs.write "let x = 1 + 2\n" formatted
+            |> Result.expect ~msg:"write formatted";
+            Fs.write "let x = 1 + 2\nlet f x = x + 1\n" needs
+            |> Result.expect ~msg:"write needs";
+            let result = Krasny.Runner.run_verify [ formatted; needs ] in
+            Test.assert_equal ~expected:2 ~actual:result.summary.total_files;
+            Test.assert_equal
+              ~expected:1
+              ~actual:result.summary.already_formatted;
+            Test.assert_equal ~expected:0 ~actual:result.summary.needs_formatting;
+            Test.assert_equal ~expected:1 ~actual:result.summary.would_reformat;
+            Test.assert_equal ~expected:0 ~actual:result.summary.unsafe_to_format;
+            Test.assert_equal ~expected:0 ~actual:result.summary.failed_files;
+            let needs_result =
+              result.files
+              |> List.find_opt (fun file_result ->
+                     String.equal (Path.to_string file_result.Krasny.Runner.file)
+                       (Path.to_string needs))
+              |> Option.expect ~msg:"verify result missing"
+            in
+            let json =
+              capture_json_event ~root:tmpdir (Krasny.Report.File needs_result)
+              |> Data.Json.of_string
+              |> Result.expect ~msg:"parse event json"
+            in
+            let open Data.Json in
+            Test.assert_equal
+              ~expected:(Some (String "would_reformat"))
               ~actual:(get_field "status" json);
             Ok ()));
     Test.case "streaming runner skips ignored files" (fun () ->
@@ -299,9 +335,12 @@ let optional_fun = fun ?(y = 0) -> y + 1
             Test.assert_equal
               ~expected:0
               ~actual:result.summary.needs_formatting;
+            Test.assert_equal ~expected:0 ~actual:result.summary.would_reformat;
+            Test.assert_equal ~expected:0 ~actual:result.summary.unsafe_to_format;
             Test.assert_equal ~expected:0 ~actual:result.summary.failed_files;
             let start_json =
-              capture_json_event ~root:tmpdir (Krasny.Report.Start { concurrency = 3 })
+              capture_json_event ~root:tmpdir
+                (Krasny.Report.Start { mode = Krasny.Runner.Check; concurrency = 3 })
               |> Data.Json.of_string
               |> Result.expect ~msg:"parse start json"
             in
@@ -313,6 +352,9 @@ let optional_fun = fun ?(y = 0) -> y + 1
             Test.assert_equal
               ~expected:(Some (Int 3))
               ~actual:(get_field "concurrency" start_json);
+            Test.assert_equal
+              ~expected:(Some (String "check"))
+              ~actual:(get_field "mode" start_json);
             Test.assert_equal ~expected:None ~actual:(get_field "total_files" start_json);
             Ok ()));
   ]

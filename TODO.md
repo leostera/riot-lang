@@ -19,7 +19,9 @@ This file is _yours_. Keep it up to date after every big change.
 `krasny` on every input -- we can start with a `tusk fmt --check` flag that
 will just print out if the input would have been formatted or not, and exists
 with 0 if no formatting was needed, or 1 if at least 1 file needed to be
-formatted
+formatted.
+  - `tusk fmt --check` now streams per-file results and exits 1 when files need formatting.
+  - `tusk fmt --verify` now streams per-file verification results and exits 1 only when files are unsafe to format or fail to format.
 
 - [ ] Once all of the above are ready, make sure you've committed all the files
 and now run in two stages: 

@@ -2,8 +2,20 @@ open Std
 open Std.Iter
 open Std.Collections
 
+type run_mode =
+  | Check
+  | Verify
+
+type file_status =
+  | Already_formatted
+  | Needs_formatting
+  | Would_reformat
+  | Unsafe_to_format
+  | Failed
+
 type file_result = {
   file : Path.t;
+  status : file_status;
   needs_formatting : bool;
   error : string option;
   duration : Time.Duration.t;
@@ -13,6 +25,8 @@ type summary = {
   total_files : int;
   already_formatted : int;
   needs_formatting : int;
+  would_reformat : int;
+  unsafe_to_format : int;
   failed_files : int;
   duration : Time.Duration.t;
 }
@@ -78,29 +92,81 @@ let collect_ocaml_files ?(should_ignore = fun _ -> false) ~roots () =
   |> List.filter (fun path -> not (should_ignore path))
   |> List.sort_uniq compare_paths
 
-let check_file file =
-  let start = Time.Instant.now () in
-  let finalize ~needs_formatting ~error =
-    {
-      file;
-      needs_formatting;
-      error;
-      duration = Time.Instant.elapsed start;
-    }
+let syntax_hash (result : Syn.Parser.parse_result) =
+  let buffer = IO.Buffer.create 1024 in
+  let rec write_element = function
+    | Syn.Ceibo.Green.Token _ as element -> (
+        match Syn.Ceibo.Green.kind element with
+        | Syn.SyntaxKind.WHITESPACE -> ()
+        | kind ->
+            IO.Buffer.add_string buffer "T(";
+            IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string kind);
+            IO.Buffer.add_string buffer ":";
+            IO.Buffer.add_string buffer
+              (Syn.Ceibo.Green.text element |> Option.expect ~msg:"token text");
+            IO.Buffer.add_string buffer ")")
+    | Syn.Ceibo.Green.Node node as element ->
+        IO.Buffer.add_string buffer "N(";
+        IO.Buffer.add_string buffer
+          (Syn.SyntaxKind.to_string (Syn.Ceibo.Green.kind element));
+        IO.Buffer.add_string buffer "[";
+        Array.iter write_element (Syn.Ceibo.Green.children node);
+        IO.Buffer.add_string buffer "])"
   in
+  write_element (Syn.Ceibo.Green.Node result.tree);
+  IO.Buffer.contents buffer |> Crypto.hash_string |> Crypto.Digest.hex
+
+let finalize file start ~status ~needs_formatting ~error =
+  {
+    file;
+    status;
+    needs_formatting;
+    error;
+    duration = Time.Instant.elapsed start;
+  }
+
+let format_file ~mode file =
+  let start = Time.Instant.now () in
   match Fs.read file with
   | Error _ ->
-      finalize ~needs_formatting:false
+      finalize file start ~status:Failed ~needs_formatting:false
         ~error:(Some ("Failed to read " ^ Path.to_string file))
   | Ok source ->
       let parsed = Syn.parse ~filename:file source in
-      (match Format_core.format parsed with
+      match Format_core.format parsed with
       | Ok formatted ->
-          finalize ~needs_formatting:(not (String.equal source formatted))
-            ~error:None
+          let result =
+            if String.equal source formatted then
+              finalize file start ~status:Already_formatted
+                ~needs_formatting:false ~error:None
+            else
+              match mode with
+              | Check ->
+                  finalize file start ~status:Needs_formatting
+                    ~needs_formatting:true ~error:None
+              | Verify ->
+                  let original_hash = syntax_hash parsed in
+                  let reparsed = Syn.parse ~filename:file formatted in
+                  let formatted_hash = syntax_hash reparsed in
+                  if String.equal original_hash formatted_hash then
+                    finalize file start ~status:Would_reformat
+                      ~needs_formatting:true ~error:None
+                  else
+                    finalize file start ~status:Unsafe_to_format
+                      ~needs_formatting:true
+                      ~error:
+                        (Some
+                           ("syntax-hash mismatch after formatting (original: "
+                          ^ original_hash ^ ", formatted: " ^ formatted_hash
+                          ^ ")"))
+          in
+          result
       | Error err ->
-          finalize ~needs_formatting:false
-            ~error:(Some (Format_core.format_error_to_string err)))
+          finalize file start ~status:Failed ~needs_formatting:false
+            ~error:(Some (Format_core.format_error_to_string err))
+
+let check_file file = format_file ~mode:Check file
+let verify_file file = format_file ~mode:Verify file
 
 type scanner_state = {
   owner : Pid.t;
@@ -249,12 +315,12 @@ let rec dispatch_loop state =
         dispatch_ready_workers state;
         dispatch_loop state
 
-let start_dispatcher ~owner ~run_ref ~concurrency ~roots ~should_ignore =
+let start_dispatcher ~owner ~run_ref ~concurrency ~roots ~should_ignore ~check_fn =
   let dispatcher_owner = self () in
   let scanner_ref = Ref.make () in
   let result_ref = Ref.make () in
   let worker_fn ~owner ~task =
-    let result = check_file task in
+    let result = check_fn task in
     send owner (DispatchFileChecked { result_ref; result })
   in
   let _scanner =
@@ -282,16 +348,28 @@ let start_dispatcher ~owner ~run_ref ~concurrency ~roots ~should_ignore =
 let summarize ~duration files =
   List.fold_left
     (fun acc result ->
-      match result.error, result.needs_formatting with
-      | Some _, _ ->
+      match result.status with
+      | Failed ->
           { acc with total_files = acc.total_files + 1; failed_files = acc.failed_files + 1 }
-      | None, true ->
+      | Needs_formatting ->
           {
             acc with
             total_files = acc.total_files + 1;
             needs_formatting = acc.needs_formatting + 1;
           }
-      | None, false ->
+      | Would_reformat ->
+          {
+            acc with
+            total_files = acc.total_files + 1;
+            would_reformat = acc.would_reformat + 1;
+          }
+      | Unsafe_to_format ->
+          {
+            acc with
+            total_files = acc.total_files + 1;
+            unsafe_to_format = acc.unsafe_to_format + 1;
+          }
+      | Already_formatted ->
           {
             acc with
             total_files = acc.total_files + 1;
@@ -301,20 +379,28 @@ let summarize ~duration files =
       total_files = 0;
       already_formatted = 0;
       needs_formatting = 0;
+      would_reformat = 0;
+      unsafe_to_format = 0;
       failed_files = 0;
       duration;
     }
     files
 
-let run_checks_streaming ?(concurrency = System.available_parallelism)
+let run_streaming ~mode ?(concurrency = System.available_parallelism)
     ?(should_ignore = fun _ -> false) ~roots ~on_result () =
   let concurrency = max 1 concurrency in
   let run_ref = Ref.make () in
   let owner = self () in
   let start = Time.Instant.now () in
+  let check_fn =
+    match mode with
+    | Check -> check_file
+    | Verify -> verify_file
+  in
   let _dispatcher =
     spawn (fun () ->
-        start_dispatcher ~owner ~run_ref ~concurrency ~roots ~should_ignore)
+        start_dispatcher ~owner ~run_ref ~concurrency ~roots ~should_ignore
+          ~check_fn)
   in
   let rec collect results_rev =
     let selector :
@@ -336,19 +422,36 @@ let run_checks_streaming ?(concurrency = System.available_parallelism)
   in
   collect []
 
-let run_checks ?(concurrency = System.available_parallelism)
+let run_checks_streaming ?concurrency ?should_ignore ~roots ~on_result () =
+  run_streaming ~mode:Check ?concurrency ?should_ignore ~roots ~on_result ()
+
+let run_verify_streaming ?concurrency ?should_ignore ~roots ~on_result () =
+  run_streaming ~mode:Verify ?concurrency ?should_ignore ~roots ~on_result ()
+
+let run_batch ~mode ?(concurrency = System.available_parallelism)
     ?(should_ignore = fun _ -> false) files =
   let concurrency = max 1 concurrency in
   let start = Time.Instant.now () in
+  let check_fn =
+    match mode with
+    | Check -> check_file
+    | Verify -> verify_file
+  in
   let files =
     files
     |> List.filter (fun path -> not (should_ignore path))
     |> List.sort compare_paths
   in
   let results =
-    WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files ~fn:check_file ()
+    WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files ~fn:check_fn ()
     |> List.map snd
     |> List.sort (fun left right -> compare_paths left.file right.file)
   in
   let duration = Time.Instant.elapsed start in
   { files = results; summary = summarize ~duration results }
+
+let run_checks ?concurrency ?should_ignore files =
+  run_batch ~mode:Check ?concurrency ?should_ignore files
+
+let run_verify ?concurrency ?should_ignore files =
+  run_batch ~mode:Verify ?concurrency ?should_ignore files

@@ -285,6 +285,7 @@ _tusk() {
         fmt)
             _arguments \
                 '--check[Check if files need formatting]' \
+                '--verify[Verify formatting would preserve syntax hashes]' \
                 '--json[Emit machine-readable JSONL events]'
             ;;
         clean|install|new|doc|lsp|version)

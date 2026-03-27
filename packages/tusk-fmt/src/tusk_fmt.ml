@@ -9,6 +9,8 @@ let command =
        [
          flag "check" |> long "check"
          |> help "Check if files need formatting";
+         flag "verify" |> long "verify"
+         |> help "Verify formatting would preserve syntax hashes";
          flag "json" |> long "json"
          |> help "Emit machine-readable JSONL events";
        ]
@@ -134,8 +136,8 @@ let write_json_event ~root event =
   Krasny.Report.write_json_event ~writer:output_writer ~root event
   |> Result.expect ~msg:"failed to write fmt JSON event"
 
-let write_json_start ~root ~concurrency =
-  write_json_event ~root (Krasny.Report.Start { concurrency })
+let write_json_start ~root ~mode ~concurrency =
+  write_json_event ~root (Krasny.Report.Start { mode; concurrency })
 
 let write_json_file ~root file_result =
   write_json_event ~root (Krasny.Report.File file_result)
@@ -147,8 +149,8 @@ let write_text_summary (summary : Krasny.Runner.summary) =
   Krasny.Report.write_text_summary ~writer:output_writer summary
   |> Result.expect ~msg:"failed to write fmt summary"
 
-let stream_result_writer ~json ~root ~concurrency =
-  if json then write_json_start ~root ~concurrency;
+let stream_result_writer ~json ~root ~mode ~concurrency =
+  if json then write_json_start ~root ~mode ~concurrency;
   fun file_result ->
     if json then
       write_json_file ~root file_result
@@ -156,31 +158,59 @@ let stream_result_writer ~json ~root ~concurrency =
       write_text_file ~root file_result
 
 let unsupported_mode () =
-  eprintln "tusk fmt currently only supports --check";
-  Error (Failure "tusk fmt currently only supports --check")
+  eprintln "tusk fmt currently only supports --check or --verify";
+  Error (Failure "tusk fmt currently only supports --check or --verify")
 
 let run ?workspace fmt_matches =
-  if not (get_flag fmt_matches "check") then
-    unsupported_mode ()
-  else
-    let root = resolve_root workspace in
-    let json = get_flag fmt_matches "json" in
-    let concurrency = default_concurrency () in
-    let fmt_scope = load_fmt_scope workspace in
-    let result : Krasny.Runner.run_result =
-      Krasny.Runner.run_checks_streaming ~concurrency
-        ~should_ignore:(should_ignore_file fmt_scope)
-        ~roots:(resolve_search_roots workspace)
-        ~on_result:(stream_result_writer ~json ~root ~concurrency) ()
-    in
-    if json then
-      write_json_summary ~root result.summary
-    else
-      write_text_summary result.summary;
-    if
-      result.summary.needs_formatting = 0
-      && result.summary.failed_files = 0
-    then
-      Ok ()
-    else
-      Error (Failure "Formatting check failed")
+  let check = get_flag fmt_matches "check" in
+  let verify = get_flag fmt_matches "verify" in
+  match check, verify with
+  | true, true ->
+      eprintln "tusk fmt cannot use both --check and --verify";
+      Error (Failure "tusk fmt cannot use both --check and --verify")
+  | false, false ->
+      unsupported_mode ()
+  | _ ->
+      let mode =
+        if check then
+          Krasny.Runner.Check
+        else
+          Krasny.Runner.Verify
+      in
+      let root = resolve_root workspace in
+      let json = get_flag fmt_matches "json" in
+      let concurrency = default_concurrency () in
+      let fmt_scope = load_fmt_scope workspace in
+      let on_result = stream_result_writer ~json ~root ~mode ~concurrency in
+      let result : Krasny.Runner.run_result =
+        match mode with
+        | Krasny.Runner.Check ->
+            Krasny.Runner.run_checks_streaming ~concurrency
+              ~should_ignore:(should_ignore_file fmt_scope)
+              ~roots:(resolve_search_roots workspace) ~on_result ()
+        | Krasny.Runner.Verify ->
+            Krasny.Runner.run_verify_streaming ~concurrency
+              ~should_ignore:(should_ignore_file fmt_scope)
+              ~roots:(resolve_search_roots workspace) ~on_result ()
+      in
+      if json then
+        write_json_summary ~root result.summary
+      else
+        write_text_summary result.summary;
+      match mode with
+      | Krasny.Runner.Check ->
+          if
+            result.summary.needs_formatting = 0
+            && result.summary.failed_files = 0
+          then
+            Ok ()
+          else
+            Error (Failure "Formatting check failed")
+      | Krasny.Runner.Verify ->
+          if
+            result.summary.unsafe_to_format = 0
+            && result.summary.failed_files = 0
+          then
+            Ok ()
+          else
+            Error (Failure "Formatting verification failed")
