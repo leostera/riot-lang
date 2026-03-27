@@ -1,0 +1,39 @@
+---
+import SearchForm from "./SearchForm.astro";
+
+interface Props {
+  showSearch?: boolean;
+  searchQuery?: string;
+}
+
+const { showSearch = false, searchQuery = "" } = Astro.props;
+---
+
+<header class="site-header">
+  <div class="shell top-nav">
+    <a href="/" class="brand">
+      <span class="brand-mark">ml</span>
+      <span class="brand-copy">
+        <span class="brand-title">pkgs.ml</span>
+        <span class="brand-subtitle">OCaml package discovery</span>
+      </span>
+    </a>
+
+    <nav class="primary-nav">
+      <a href="/">Explore</a>
+      <a href="/#categories">Categories</a>
+      <a href="/#recent">Recent updates</a>
+      <a href="https://search.pkgs.ml/?q=kernel" target="_blank" rel="noreferrer">API</a>
+    </nav>
+
+    <div class="nav-actions">
+      {showSearch ? (
+        <div class="nav-search">
+          <SearchForm query={searchQuery} />
+        </div>
+      ) : null}
+      <a href="/login" class="button button-ghost">Log in</a>
+      <a href="/login" class="button button-primary">Publish a package</a>
+    </div>
+  </div>
+</header>

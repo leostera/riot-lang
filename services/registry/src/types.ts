@@ -35,6 +35,11 @@ export interface PackagePublicationManifest {
   package_name: string;
   package_version: string;
   package_public: boolean;
+  package_description?: string;
+  package_license?: string;
+  package_homepage?: string;
+  package_repository?: string;
+  package_root_module?: string;
   dependencies: Array<Record<string, unknown>>;
   source_archive_key: string;
   manifest_key: string;
@@ -58,6 +63,11 @@ export interface PublishedReleaseRecord {
   package_subdir: string;
   selector: string;
   resolved_sha: string;
+  package_description?: string;
+  package_license?: string;
+  package_homepage?: string;
+  package_repository?: string;
+  package_root_module?: string;
   dependencies: Array<Record<string, unknown>>;
   source_archive_key: string;
   manifest_key: string;
@@ -95,6 +105,11 @@ export interface IndexedPackageRelease {
   repo_url: string;
   subdir: string;
   sha: string;
+  description?: string;
+  license?: string;
+  homepage?: string;
+  repository?: string;
+  root_module?: string;
   manifest_key: string;
   source_key: string;
   dependencies: Array<Record<string, unknown>>;

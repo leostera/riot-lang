@@ -46,6 +46,11 @@ describe("registry indexing", () => {
           repo_url: "https://github.com/leostera/riot-new",
           subdir: "packages/kernel",
           sha: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+          description: "Actor runtime kernel primitives for Riot",
+          license: "Apache-2.0",
+          homepage: "https://riot.ml",
+          repository: "https://github.com/leostera/riot-new",
+          root_module: "Kernel",
           manifest_key:
             "packages/github.com/leostera/riot-new/packages/kernel/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
           source_key:
@@ -96,7 +101,7 @@ describe("registry indexing", () => {
     expect(indexedQueue.messages).toHaveLength(2);
   });
 
-  test("reprocessing the same release is idempotent and does not emit package.indexed again", async () => {
+  test("reprocessing the same release is idempotent and still emits package.indexed for downstream consumers", async () => {
     const { env, bucket, indexedQueue } = makeEnv();
     const release = makeReleaseRecord();
     const manifest = makeManifest(release);
@@ -111,10 +116,21 @@ describe("registry indexing", () => {
     expect(first.changed).toBe(true);
     expect(second.changed).toBe(false);
     expect(document.releases).toHaveLength(1);
-    expect(indexedQueue.messages).toHaveLength(1);
+    expect(indexedQueue.messages).toHaveLength(2);
+    expect(indexedQueue.messages[1]).toMatchObject({
+      type: "package.indexed",
+      package_name: "kernel",
+      package_version: "0.0.1",
+      package_locator: "github.com/leostera/riot-new/packages/kernel",
+      resolved_sha: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+      package_index_key: "index/v1/ke/rn/kernel.json",
+      package_index_url: "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json",
+      latest: "0.0.1",
+      indexed_at: "2026-03-27T15:27:35Z",
+    });
   });
 
-  test("conflicting reindex of the same version fails fast", async () => {
+  test("reindexing the same version replaces stale release metadata", async () => {
     const { env, bucket } = makeEnv();
     const release = makeReleaseRecord();
     const manifest = makeManifest(release);
@@ -136,6 +152,8 @@ describe("registry indexing", () => {
             repo_url: "https://github.com/leostera/riot-new",
             subdir: "packages/kernel",
             sha: "different",
+            description: "Old description",
+            license: "MIT",
             manifest_key: manifest.manifest_key,
             source_key: release.source_archive_key,
             dependencies: [{ name: "std", path: "../std" }],
@@ -149,9 +167,21 @@ describe("registry indexing", () => {
       },
     );
 
-    await expect(indexPublishedRelease(env, release, manifest)).rejects.toThrow(
-      "Package release kernel@0.0.1 conflicts with the existing index document.",
-    );
+    const result = await indexPublishedRelease(env, release, manifest);
+
+    expect(result.changed).toBe(true);
+
+    const document = JSON.parse(
+      (await bucket.text(packageIndexKey(getConfig(env), "kernel"))) ?? "null",
+    ) as PackageIndexDocument;
+
+    expect(document.releases).toHaveLength(1);
+    expect(document.releases[0]).toMatchObject({
+      version: "0.0.1",
+      sha: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+      description: "Actor runtime kernel primitives for Riot",
+      license: "Apache-2.0",
+    });
   });
 });
 
@@ -166,6 +196,11 @@ function makeReleaseRecord(
     package_subdir: "packages/kernel",
     selector: "main",
     resolved_sha: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+    package_description: "Actor runtime kernel primitives for Riot",
+    package_license: "Apache-2.0",
+    package_homepage: "https://riot.ml",
+    package_repository: "https://github.com/leostera/riot-new",
+    package_root_module: "Kernel",
     dependencies: [{ name: "std", path: "../std" }],
     source_archive_key: "sources/github.com/leostera/riot-new/2aef0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
     manifest_key:
@@ -188,6 +223,11 @@ function makeManifest(
     package_name: release.package_name,
     package_version: release.package_version,
     package_public: true,
+    package_description: release.package_description,
+    package_license: release.package_license,
+    package_homepage: release.package_homepage,
+    package_repository: release.package_repository,
+    package_root_module: release.package_root_module,
     dependencies: release.dependencies,
     source_archive_key: release.source_archive_key,
     manifest_key: release.manifest_key,

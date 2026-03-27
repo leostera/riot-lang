@@ -1,0 +1,204 @@
+---
+import SearchForm from "./SearchForm.astro";
+
+const categories = [
+  {
+    title: "Web programming",
+    description: "Frameworks, HTTP clients, HTTP servers, and real-time primitives.",
+    tags: ["HTTP", "Server", "WebSocket"],
+  },
+  {
+    title: "Actors and concurrency",
+    description: "Schedulers, mailboxes, timers, and concurrent runtime building blocks.",
+    tags: ["Actors", "Runtime", "Mailbox"],
+  },
+  {
+    title: "Developer tooling",
+    description: "Build planning, formatters, linters, and workspace automation.",
+    tags: ["Build", "CLI", "Formatting"],
+  },
+  {
+    title: "Data and storage",
+    description: "JSON, SQL, SQLite, Postgres, and other persistence packages.",
+    tags: ["JSON", "SQLite", "Postgres"],
+  },
+];
+
+const featured = [
+  {
+    name: "kernel",
+    version: "0.0.1",
+    description: "Low-level runtime and event loop primitives for the Riot stack.",
+  },
+  {
+    name: "miniriot",
+    version: "0.0.1",
+    description: "Actor runtime building blocks and scheduler infrastructure.",
+  },
+  {
+    name: "suri",
+    version: "0.0.1",
+    description: "Web framework components for routing, middleware, and live views.",
+  },
+];
+
+const recent = [
+  { name: "kernel", note: "Core runtime updates and release metadata." },
+  { name: "package-search", note: "Search indexing and FTS-backed discovery." },
+  { name: "registry", note: "Publishing, indexing, and source snapshots." },
+];
+---
+
+<section class="hero">
+  <div class="shell hero-grid">
+    <div class="hero-copy">
+      <div class="eyebrow">OCaml package discovery</div>
+      <h1>Find, explore, and publish OCaml packages</h1>
+      <p>
+        Search packages, browse categories, and discover the libraries, tools, and
+        frameworks that power the growing OCaml ecosystem.
+      </p>
+
+      <SearchForm
+        large
+        placeholder="Search by package name, keyword, owner, or repository..."
+      />
+
+      <div class="popular-links">
+        <span>Popular:</span>
+        <a href="/?q=kernel">kernel</a>
+        <a href="/?q=miniriot">miniriot</a>
+        <a href="/?q=suri">suri</a>
+        <a href="/?q=sqlite">sqlite</a>
+      </div>
+    </div>
+
+    <div class="hero-sidecards">
+      <article class="sidecard">
+        <div class="sidecard-label">Registry</div>
+        <div class="sidecard-title">Published packages</div>
+        <p>Source-backed releases, stable install docs, and searchable metadata.</p>
+      </article>
+      <article class="sidecard">
+        <div class="sidecard-label">Discovery</div>
+        <div class="sidecard-title">Categories and search</div>
+        <p>Browse by package name, repository, owner, description, and release history.</p>
+      </article>
+      <article class="sidecard">
+        <div class="sidecard-label">Publishing</div>
+        <div class="sidecard-title">Explicit package publishing</div>
+        <p>Claim package names, publish semver releases, and make them instantly visible.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section-block" id="categories">
+  <div class="shell">
+    <div class="section-header">
+      <div>
+        <h2>Popular categories</h2>
+        <p>Jump into the ecosystem through common areas of development.</p>
+      </div>
+    </div>
+
+    <div class="category-grid">
+      {categories.map((category) => (
+        <article class="category-card">
+          <h3>{category.title}</h3>
+          <p>{category.description}</p>
+          <div class="tag-row">
+            {category.tags.map((tag) => <span>{tag}</span>)}
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<section class="section-block">
+  <div class="shell content-grid">
+    <div class="main-feed">
+      <section class="content-card">
+        <div class="section-header">
+          <div>
+            <h2>Featured packages</h2>
+            <p>Useful packages to start exploring the registry.</p>
+          </div>
+        </div>
+
+        <div class="result-list">
+          {featured.map((item) => (
+            <article class="result-card">
+              <div class="result-main">
+                <div class="result-title-row">
+                  <a href={`/p/${item.name}`} class="result-name">{item.name}</a>
+                  <span class="version-pill">v{item.version}</span>
+                </div>
+                <p>{item.description}</p>
+              </div>
+              <div class="result-meta">
+                <a class="mini-link" href={`/p/${item.name}`}>Details</a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section class="content-card" id="recent">
+        <div class="section-header">
+          <div>
+            <h2>Recently updated</h2>
+            <p>Fresh registry activity and package updates.</p>
+          </div>
+        </div>
+
+        <ul class="simple-list">
+          {recent.map((item) => (
+            <li>
+              <div>
+                <a href={`/?q=${encodeURIComponent(item.name)}`}>{item.name}</a>
+                <p>{item.note}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+
+    <aside class="sidebar">
+      <section class="content-card">
+        <h3>Browse</h3>
+        <ul class="sidebar-links">
+          <li><a href="/">All packages</a></li>
+          <li><a href="/#categories">Categories</a></li>
+          <li><a href="/#recent">Recently updated</a></li>
+          <li><a href="https://search.pkgs.ml/?q=kernel" target="_blank" rel="noreferrer">Search API</a></li>
+        </ul>
+      </section>
+
+      <section class="content-card">
+        <h3>For publishers</h3>
+        <p>
+          Publish your package, manage its metadata, and make it discoverable
+          across the registry and search.
+        </p>
+        <a href="/login" class="button button-primary button-block">Learn about publishing</a>
+      </section>
+
+      <section class="content-card">
+        <h3>Developer signals</h3>
+        <div class="signal-grid">
+          <div class="signal-card">
+            <div class="sidecard-label">Package cards</div>
+            <div>Name, version, description, repository, and source locator.</div>
+          </div>
+          <div class="signal-card">
+            <div class="sidecard-label">Registry metadata</div>
+            <div>Indexed releases, dependencies, categories, and package ownership.</div>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</section>

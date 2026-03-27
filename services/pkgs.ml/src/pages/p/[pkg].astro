@@ -1,0 +1,41 @@
+---
+import PackageDocsScaffold from "../../../src/components/PackageDocsScaffold.astro";
+import PackageHero from "../../../src/components/PackageHero.astro";
+import SiteLayout from "../../../src/layouts/SiteLayout.astro";
+import { fetchPackageRelease } from "../../../src/lib/package-index.ts";
+
+const packageName = Astro.params.pkg ?? "";
+const resolved = await fetchPackageRelease(packageName);
+
+if (resolved === null) {
+  Astro.response.status = 404;
+}
+---
+
+<SiteLayout
+  title={resolved ? `${resolved.document.name} · pkgs.ml` : "Package not found · pkgs.ml"}
+  description={resolved?.release.description || "Package details on pkgs.ml"}
+  showNavSearch
+>
+  {
+    resolved ? (
+      <>
+        <PackageHero
+          document={resolved.document}
+          release={resolved.release}
+          selectedVersion={resolved.release.version}
+        />
+        <PackageDocsScaffold document={resolved.document} release={resolved.release} />
+      </>
+    ) : (
+      <section class="section-block">
+        <div class="shell">
+          <section class="content-card empty-state">
+            <h1>Package not found</h1>
+            <p>The package <code>{packageName}</code> has not been published yet.</p>
+          </section>
+        </div>
+      </section>
+    )
+  }
+</SiteLayout>

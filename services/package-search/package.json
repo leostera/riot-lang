@@ -1,22 +1,18 @@
 {
-  "name": "riot-package-registry",
+  "name": "riot-package-search",
   "private": true,
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "bun test tests/routes.test.ts tests/storage.test.ts tests/indexing.test.ts",
-    "test:e2e": "bun test tests/e2e.test.ts"
+    "test": "bun test tests/routes.test.ts tests/consumer.test.ts",
+    "test:e2e": "bun test ./tests/e2e.test.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
     "@types/bun": "latest",
     "typescript": "^5",
     "wrangler": "latest"
-  },
-  "dependencies": {
-    "smol-toml": "^1.6.1",
-    "spdx-expression-validate": "^2.0.0"
   }
 }

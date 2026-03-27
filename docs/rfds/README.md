@@ -45,6 +45,7 @@ There are currently no RFDs marked `rejected`.
 - `RFD0021` - Docker Stack Snapshot
 - `RFD0022` - Riot Package Registry
 - `RFD0023` - Riot Package Index
+- `RFD0024` - Riot Package Search
 
 ## Notes
 

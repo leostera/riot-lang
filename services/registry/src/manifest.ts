@@ -33,6 +33,31 @@ export async function buildPublicationManifest(args: {
     args.locator.normalized,
   );
   const packagePublic = readBoolean(packageSection.public, "package.public", args.locator.normalized);
+  const packageDescription = readOptionalString(
+    packageSection.description,
+    "package.description",
+    args.locator.normalized,
+  );
+  const packageLicense = readOptionalString(
+    packageSection.license,
+    "package.license",
+    args.locator.normalized,
+  );
+  const packageHomepage = readOptionalString(
+    packageSection.homepage,
+    "package.homepage",
+    args.locator.normalized,
+  );
+  const packageRepository = readOptionalString(
+    packageSection.repository,
+    "package.repository",
+    args.locator.normalized,
+  );
+  const packageRootModule = readOptionalString(
+    packageSection.root_module,
+    "package.root_module",
+    args.locator.normalized,
+  );
 
   return {
     package_locator: args.locator.normalized,
@@ -43,6 +68,11 @@ export async function buildPublicationManifest(args: {
     package_name: packageName,
     package_version: packageVersion,
     package_public: packagePublic,
+    package_description: packageDescription,
+    package_license: packageLicense,
+    package_homepage: packageHomepage,
+    package_repository: packageRepository,
+    package_root_module: packageRootModule,
     dependencies: extractDependencies(parsed.dependencies),
     source_archive_key: sourceArchiveKey(args.locator, args.resolvedSha),
     manifest_key: manifestKey(args.locator, args.resolvedSha),
@@ -124,5 +154,21 @@ function readBoolean(value: unknown, field: string, locator: string): boolean {
     422,
     "invalid_package_manifest",
     `Field ${field} in ${locator} must be a boolean when present.`,
+  );
+}
+
+function readOptionalString(value: unknown, field: string, locator: string): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === "string" && value.length > 0) {
+    return value;
+  }
+
+  throw new HttpError(
+    422,
+    "invalid_package_manifest",
+    `Field ${field} in ${locator} must be a non-empty string when present.`,
   );
 }

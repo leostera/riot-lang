@@ -15,5 +15,5 @@
     "noImplicitOverride": true,
     "resolveJsonModule": true
   },
-  "include": ["worker.ts", "src/**/*.ts", "src/**/*.d.ts", "tests/**/*.ts"]
+  "include": ["worker.ts", "src/**/*.ts", "tests/**/*.ts"]
 }

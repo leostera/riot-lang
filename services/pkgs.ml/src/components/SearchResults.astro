@@ -1,0 +1,63 @@
+---
+import type { SearchResponse } from "../lib/types.ts";
+import SearchForm from "./SearchForm.astro";
+
+interface Props {
+  query: string;
+  response: SearchResponse;
+}
+
+const { query, response } = Astro.props;
+---
+
+<section class="section-block section-tight">
+  <div class="shell">
+    <div class="search-page-header">
+      <div>
+        <h1>Search OCaml packages</h1>
+        <p>
+          {response.count} result{response.count === 1 ? "" : "s"} for <code>{query}</code>
+        </p>
+      </div>
+      <div class="search-page-form">
+        <SearchForm query={query} placeholder="Search packages, descriptions, owners, or repos..." />
+      </div>
+    </div>
+
+    {response.results.length === 0 ? (
+      <section class="content-card empty-state">
+        <h2>No packages matched</h2>
+        <p>Try a different package name, repository owner, or keyword.</p>
+      </section>
+    ) : (
+      <div class="result-list">
+        {response.results.map((result) => (
+          <article class="result-card result-card-large">
+            <div class="result-main">
+              <div class="result-title-row">
+                <a href={`/p/${result.package_name}`} class="result-name">{result.package_name}</a>
+                <span class="version-pill">v{result.latest_version}</span>
+              </div>
+
+              <p>{result.description || "No package description has been published yet."}</p>
+
+              <div class="result-facts">
+                <span>{result.repo_owner}/{result.repo_name}</span>
+                <span>{result.subdir || "repo root"}</span>
+                <span>{result.release_count} version{result.release_count === 1 ? "" : "s"}</span>
+                <span>{result.license || "License pending"}</span>
+              </div>
+            </div>
+
+            <div class="result-meta">
+              <a class="mini-link" href={`/p/${result.package_name}`}>Package page</a>
+              {result.repository ? (
+                <a class="mini-link" href={result.repository} target="_blank" rel="noreferrer">Repository</a>
+              ) : null}
+            </div>
+          </article>
+        ))}
+      </div>
+    )}
+  </div>
+</section>

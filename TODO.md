@@ -22,6 +22,14 @@ with 0 if no formatting was needed, or 1 if at least 1 file needed to be
 formatted.
   - `tusk fmt --check` now streams per-file results and exits 1 when files need formatting.
   - `tusk fmt --verify` now streams per-file verification results and exits 1 only when files are unsafe to format or fail to format.
+  - Active work loop for making `tusk fmt` safe:
+    1. run `tusk fmt --verify --json`
+    2. take the first `unsafe_to_format` file
+    3. inspect CST / ceibo / syntax-hash / formatted output
+    4. reduce to the smallest `krasny` fixture that still reproduces the unsafe rewrite
+    5. fix `krasny` or `syn`
+    6. rerun the focused fixture plus `tusk fmt --verify --json`
+    7. repeat until `unsafe_to_format = 0`, then we can safely enable real rewriting
 
 - [ ] Once all of the above are ready, make sure you've committed all the files
 and now run in two stages: 

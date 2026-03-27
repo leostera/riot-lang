@@ -18,6 +18,11 @@ export function buildIndexedRelease(
     repo_url: release.source_url,
     subdir: release.package_subdir,
     sha: release.resolved_sha,
+    description: release.package_description,
+    license: release.package_license,
+    homepage: release.package_homepage,
+    repository: release.package_repository,
+    root_module: release.package_root_module,
     manifest_key: release.manifest_key,
     source_key: release.source_archive_key,
     dependencies: release.dependencies,
@@ -69,9 +74,8 @@ export function upsertPackageDocument(args: {
     }
 
     if (!isSameIndexedRelease(existingRelease, args.release)) {
-      throw new Error(
-        `Package release ${args.packageName}@${args.release.version} conflicts with the existing index document.`,
-      );
+      releases[index] = args.release;
+      changed = true;
     }
   }
 
@@ -119,6 +123,11 @@ function assertMatchingManifest(
     release.source_url !== manifest.source_url ||
     release.package_subdir !== manifest.package_subdir ||
     release.resolved_sha !== manifest.resolved_sha ||
+    release.package_description !== manifest.package_description ||
+    release.package_license !== manifest.package_license ||
+    release.package_homepage !== manifest.package_homepage ||
+    release.package_repository !== manifest.package_repository ||
+    release.package_root_module !== manifest.package_root_module ||
     release.manifest_key !== manifest.manifest_key ||
     release.source_archive_key !== manifest.source_archive_key
   ) {
@@ -136,6 +145,11 @@ function isSameIndexedRelease(left: IndexedPackageRelease, right: IndexedPackage
     left.repo_url === right.repo_url &&
     left.subdir === right.subdir &&
     left.sha === right.sha &&
+    left.description === right.description &&
+    left.license === right.license &&
+    left.homepage === right.homepage &&
+    left.repository === right.repository &&
+    left.root_module === right.root_module &&
     left.manifest_key === right.manifest_key &&
     left.source_key === right.source_key &&
     JSON.stringify(left.dependencies) === JSON.stringify(right.dependencies)

@@ -1,0 +1,79 @@
+---
+import { buildPackageFacts } from "../lib/package-index.ts";
+import type { IndexedPackageRelease, PackageIndexDocument } from "../lib/types.ts";
+
+interface Props {
+  document: PackageIndexDocument;
+  release: IndexedPackageRelease;
+  selectedVersion: string;
+}
+
+const { document, release, selectedVersion } = Astro.props;
+const facts = buildPackageFacts(document, release);
+const breadcrumbBits = release.canonical_locator.split("/");
+const owner = breadcrumbBits[1] ?? "unknown";
+const repo = breadcrumbBits[2] ?? "repo";
+---
+
+<section class="section-block section-tight">
+  <div class="shell">
+    <nav class="breadcrumbs">
+      <a href="/">OCaml packages</a>
+      <span>/</span>
+      <a href={`/u/${owner}`}>{owner}</a>
+      <span>/</span>
+      <span>{repo}</span>
+      <span>/</span>
+      <span>{document.name}</span>
+    </nav>
+
+    <section class="package-hero">
+      <div class="package-hero-main">
+        <div class="package-title-row">
+          <h1>{document.name}</h1>
+          <span class="version-badge">v{selectedVersion}</span>
+        </div>
+
+        <p class="package-summary">
+          {release.description || "A published OCaml package with indexed metadata and source-backed releases."}
+        </p>
+
+        <div class="package-actions">
+          <a href={release.repo_url} target="_blank" rel="noreferrer">Repository</a>
+          {release.homepage ? (
+            <a href={release.homepage} target="_blank" rel="noreferrer">Homepage</a>
+          ) : null}
+          <a
+            href={`https://cdn.pkgs.ml/${release.source_key}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Source archive
+          </a>
+        </div>
+      </div>
+
+      <div class="package-hero-side">
+        <div class="fact-grid">
+          {facts.map((fact) => (
+            <div class:list={["fact-card", fact.code && "fact-card-code"]}>
+              <div class="fact-label">{fact.label}</div>
+              {fact.href ? (
+                <a href={fact.href} class="fact-value fact-link">{fact.value}</a>
+              ) : (
+                <div class="fact-value">{fact.value}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div class="package-meta-strip">
+        <span><strong>Owner:</strong> <a href={`/u/${owner}`}>@{owner}</a></span>
+        <span><strong>Locator:</strong> <code>{release.canonical_locator}</code></span>
+        <span><strong>Latest:</strong> v{document.latest}</span>
+        <span><strong>Release SHA:</strong> <code>{release.sha.slice(0, 12)}</code></span>
+      </div>
+    </section>
+  </div>
+</section>

@@ -1,0 +1,76 @@
+---
+import type { IndexedPackageRelease, PackageIndexDocument } from "../lib/types.ts";
+
+interface Props {
+  document: PackageIndexDocument;
+  release: IndexedPackageRelease;
+}
+
+const { document, release } = Astro.props;
+
+const referenceItems = [
+  "Modules",
+  "Types",
+  "Exceptions",
+  "Functions",
+];
+---
+
+<section class="section-block section-tight">
+  <div class="shell package-body-grid">
+    <aside class="docs-sidebar">
+      <div class="tab-strip">
+        <button class="tab-pill tab-pill-active" type="button">Pages</button>
+        <button class="tab-pill" type="button">Reference</button>
+      </div>
+
+      <div class="sidebar-group">
+        <div class="sidebar-heading">Modules</div>
+        <ul>
+          <li><a href="#pkg-module">{document.name}</a></li>
+          <li><a href="#pkg-submodule">{document.name}.Core</a></li>
+          <li><a href="#pkg-support">{document.name}.Support</a></li>
+        </ul>
+      </div>
+
+      {referenceItems.slice(1).map((item) => (
+        <div class="sidebar-group">
+          <div class="sidebar-heading">{item}</div>
+          <ul>
+            <li><a href={`#${item.toLowerCase()}`}>{document.name}.{item.toLowerCase()}</a></li>
+          </ul>
+        </div>
+      ))}
+    </aside>
+
+    <section class="docs-content">
+      <article class="docs-card">
+        <div class="docs-card-header">
+          <div>
+            <div class="sidecard-label">Documentation scaffold</div>
+            <h2>{document.name} module docs</h2>
+          </div>
+          <span class="version-pill">v{release.version}</span>
+        </div>
+
+        <p>
+          This is the reserved documentation area for generated package docs. The
+          left navigation is already structured for Pages and Reference content,
+          and the main column can expand later with rendered modules, types,
+          exceptions, and function docs.
+        </p>
+
+        <div class="docs-placeholder-grid">
+          <section class="placeholder-panel" id="pkg-module">
+            <h3>Pages</h3>
+            <p>Overview pages, guides, and examples will live here.</p>
+          </section>
+          <section class="placeholder-panel" id="pkg-submodule">
+            <h3>Reference</h3>
+            <p>Module and symbol documentation will fill the main reference panels here.</p>
+          </section>
+        </div>
+      </article>
+    </section>
+  </div>
+</section>

@@ -1,0 +1,27 @@
+name = "riot-pkgs-web"
+main = "@astrojs/cloudflare/entrypoints/server"
+compatibility_date = "2026-03-27"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+
+[[routes]]
+pattern = "pkgs.ml"
+custom_domain = true
+
+[assets]
+binding = "ASSETS"
+directory = "./dist"
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+persist = true
+head_sampling_rate = 1

@@ -314,6 +314,11 @@ describe("riot package registry routes", () => {
         'name = "minttea"',
         'version = "0.4.2"',
         "public = true",
+        'description = "Terminal UI toolkit for Riot"',
+        'license = "MIT"',
+        'homepage = "https://minttea.dev"',
+        'repository = "https://github.com/leostera/minttea"',
+        'root_module = "Minttea"',
       ].join("\n"),
     });
 
@@ -376,6 +381,11 @@ describe("riot package registry routes", () => {
       package_version: "0.4.2",
       package_locator: "github.com/leostera/minttea",
       resolved_sha: SHA,
+      package_description: "Terminal UI toolkit for Riot",
+      package_license: "MIT",
+      package_homepage: "https://minttea.dev",
+      package_repository: "https://github.com/leostera/minttea",
+      package_root_module: "Minttea",
     });
     expect(indexedQueue.messages).toHaveLength(1);
     expect(indexedQueue.messages[0]).toMatchObject({
@@ -388,6 +398,30 @@ describe("riot package registry routes", () => {
       package_index_url: "https://cdn.pkgs.ml/index/v1/mi/nt/minttea.json",
       latest: "0.4.2",
     });
+
+    const publishedRelease = JSON.parse(
+      (await bucket.text(publishedReleaseKey("minttea", "0.4.2"))) ?? "null",
+    );
+    expect(publishedRelease).toMatchObject({
+      package_description: "Terminal UI toolkit for Riot",
+      package_license: "MIT",
+      package_homepage: "https://minttea.dev",
+      package_repository: "https://github.com/leostera/minttea",
+      package_root_module: "Minttea",
+    });
+
+    const packageDocument = JSON.parse(
+      (await bucket.text(
+        packageIndexKey({ cdnBaseUrl: "https://cdn.pkgs.ml", indexBasePath: "index/v1" }, "minttea"),
+      )) ?? "null",
+    );
+    expect(packageDocument.releases[0]).toMatchObject({
+      description: "Terminal UI toolkit for Riot",
+      license: "MIT",
+      homepage: "https://minttea.dev",
+      repository: "https://github.com/leostera/minttea",
+      root_module: "Minttea",
+    });
   });
 
   test("publish is idempotent for an already-published release", async () => {
@@ -398,6 +432,8 @@ describe("riot package registry routes", () => {
         'name = "minttea"',
         'version = "0.4.2"',
         "public = true",
+        'description = "Terminal UI toolkit for Riot"',
+        'license = "MIT"',
       ].join("\n"),
     });
 
@@ -446,7 +482,114 @@ describe("riot package registry routes", () => {
     });
 
     expect(queue.messages).toHaveLength(1);
-    expect(indexedQueue.messages).toHaveLength(1);
+    expect(indexedQueue.messages).toHaveLength(2);
+    expect(indexedQueue.messages[1]).toMatchObject({
+      type: "package.indexed",
+      package_name: "minttea",
+      package_version: "0.4.2",
+      package_locator: "github.com/leostera/minttea",
+      resolved_sha: SHA,
+      package_index_key: "index/v1/mi/nt/minttea.json",
+      package_index_url: "https://cdn.pkgs.ml/index/v1/mi/nt/minttea.json",
+      latest: "0.4.2",
+    });
+  });
+
+  test("publish refreshes an existing release when the same package version is republished", async () => {
+    const { env, bucket, queue, indexedQueue } = makeEnv();
+    const firstArchive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = true",
+        'description = "Original description"',
+        'license = "MIT"',
+      ].join("\n"),
+    });
+    const secondArchive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = true",
+        'description = "Updated description"',
+        'license = "Apache-2.0"',
+      ].join("\n"),
+    });
+
+    let commitLookupCount = 0;
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        commitLookupCount += 1;
+        return Response.json({ sha: commitLookupCount === 1 ? SHA : NEXT_SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
+        return new Response(firstArchive, { status: 200 });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${NEXT_SHA}`) {
+        return new Response(secondArchive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const firstCtx = new FakeExecutionContext();
+      const first = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        firstCtx,
+      );
+      await firstCtx.drain();
+
+      const secondCtx = new FakeExecutionContext();
+      const second = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        secondCtx,
+      );
+      await secondCtx.drain();
+
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(200);
+      expect((await readJson(second)) as Record<string, unknown>).toMatchObject({
+        release: { created: false },
+        resolved_sha: NEXT_SHA,
+      });
+    });
+
+    expect(queue.messages).toHaveLength(1);
+    expect(indexedQueue.messages).toHaveLength(2);
+
+    const publishedRelease = JSON.parse(
+      (await bucket.text(publishedReleaseKey("minttea", "0.4.2"))) ?? "null",
+    );
+    expect(publishedRelease).toMatchObject({
+      resolved_sha: NEXT_SHA,
+      package_description: "Updated description",
+      package_license: "Apache-2.0",
+    });
+
+    const packageDocument = JSON.parse(
+      (await bucket.text(
+        packageIndexKey({ cdnBaseUrl: "https://cdn.pkgs.ml", indexBasePath: "index/v1" }, "minttea"),
+      )) ?? "null",
+    );
+    expect(packageDocument.releases[0]).toMatchObject({
+      version: "0.4.2",
+      sha: NEXT_SHA,
+      description: "Updated description",
+      license: "Apache-2.0",
+    });
   });
 
   test("publish rejects requests without root auth", async () => {
@@ -476,9 +619,14 @@ describe("riot package registry routes", () => {
     const { env, bucket, queue, indexedQueue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
-      "tusk.toml": ['[package]', 'name = "minttea"', 'version = "0.4.2"', "public = false"].join(
-        "\n",
-      ),
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = false",
+        'description = "Terminal UI toolkit for Riot"',
+        'license = "MIT"',
+      ].join("\n"),
     });
 
     await withMockedFetch(async (input) => {
@@ -526,6 +674,8 @@ describe("riot package registry routes", () => {
         'name = "minttea"',
         'version = "0.4.2"',
         "public = true",
+        'description = "Terminal UI toolkit for Riot"',
+        'license = "MIT"',
       ].join("\n"),
     });
     const secondArchive = await makeTarGz({
@@ -534,6 +684,8 @@ describe("riot package registry routes", () => {
         'name = "minttea"',
         'version = "0.5.0"',
         "public = true",
+        'description = "Other terminal UI toolkit"',
+        'license = "MIT"',
       ].join("\n"),
     });
 
@@ -593,6 +745,105 @@ describe("riot package registry routes", () => {
     expect(indexedQueue.messages).toHaveLength(1);
     expect(await bucket.text(packageClaimKey("minttea"))).not.toBeNull();
     expect(await bucket.text(publishedReleaseKey("minttea", "0.5.0"))).toBeNull();
+  });
+
+  test("publish rejects packages without a description", async () => {
+    const { env, bucket, queue, indexedQueue } = makeEnv();
+    const ctx = new FakeExecutionContext();
+    const archive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = true",
+        'license = "MIT"',
+      ].join("\n"),
+    });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
+        return new Response(archive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const response = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        ctx,
+      );
+      await ctx.drain();
+
+      expect(response.status).toBe(422);
+      expect(await readJson(response)).toMatchObject({
+        error: "missing_package_description",
+      });
+    });
+
+    expect(queue.messages).toHaveLength(0);
+    expect(indexedQueue.messages).toHaveLength(0);
+    expect(await bucket.text(packageClaimKey("minttea"))).toBeNull();
+    expect(await bucket.text(publishedReleaseKey("minttea", "0.4.2"))).toBeNull();
+  });
+
+  test("publish rejects packages with non-SPDX licenses", async () => {
+    const { env, bucket, queue, indexedQueue } = makeEnv();
+    const ctx = new FakeExecutionContext();
+    const archive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = true",
+        'description = "Terminal UI toolkit for Riot"',
+        'license = "not-a-license"',
+      ].join("\n"),
+    });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
+        return new Response(archive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const response = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        ctx,
+      );
+      await ctx.drain();
+
+      expect(response.status).toBe(422);
+      expect(await readJson(response)).toMatchObject({
+        error: "invalid_package_license",
+      });
+    });
+
+    expect(queue.messages).toHaveLength(0);
+    expect(indexedQueue.messages).toHaveLength(0);
+    expect(await bucket.text(packageClaimKey("minttea"))).toBeNull();
+    expect(await bucket.text(publishedReleaseKey("minttea", "0.4.2"))).toBeNull();
   });
 
   test("github selector misses surface as 404 without publishing", async () => {

@@ -1,3 +1,5 @@
+import spdxExpressionValidate from "spdx-expression-validate";
+
 import { buildPublicationManifest } from "./manifest.ts";
 import { HttpError } from "./errors.ts";
 import { indexPublishedRelease } from "./indexing.ts";
@@ -163,8 +165,15 @@ export async function publishPackageRelease(
     } satisfies PackagePublishedEvent);
     releaseCreated = true;
   } else {
-    assertMatchingRelease(existingRelease, manifest);
-    const indexResult = await indexPublishedRelease(env, existingRelease, manifest);
+    const releaseRecord = releaseMatchesManifest(existingRelease, manifest)
+      ? existingRelease
+      : buildPublishedReleaseRecord(manifest, now);
+
+    if (releaseRecord !== existingRelease) {
+      await writePublishedRelease(env.ML_PKGS_CDN, releaseRecord);
+    }
+
+    const indexResult = await indexPublishedRelease(env, releaseRecord, manifest);
     indexChanged = indexResult.changed;
   }
 
@@ -245,6 +254,30 @@ function assertPublishableManifest(manifest: PackagePublicationManifest): void {
       `Package ${manifest.package_locator} has non-semver version ${manifest.package_version}.`,
     );
   }
+
+  if (manifest.package_description === undefined) {
+    throw new HttpError(
+      422,
+      "missing_package_description",
+      `Package ${manifest.package_locator} must declare package.description to be publishable.`,
+    );
+  }
+
+  if (manifest.package_license === undefined) {
+    throw new HttpError(
+      422,
+      "missing_package_license",
+      `Package ${manifest.package_locator} must declare package.license to be publishable.`,
+    );
+  }
+
+  if (!spdxExpressionValidate(manifest.package_license)) {
+    throw new HttpError(
+      422,
+      "invalid_package_license",
+      `Package ${manifest.package_locator} must declare an SPDX-compatible package.license value.`,
+    );
+  }
 }
 
 function buildClaimRecord(
@@ -289,6 +322,11 @@ function buildPublishedReleaseRecord(
     package_subdir: manifest.package_subdir,
     selector: manifest.selector,
     resolved_sha: manifest.resolved_sha,
+    package_description: manifest.package_description,
+    package_license: manifest.package_license,
+    package_homepage: manifest.package_homepage,
+    package_repository: manifest.package_repository,
+    package_root_module: manifest.package_root_module,
     dependencies: manifest.dependencies,
     source_archive_key: manifest.source_archive_key,
     manifest_key: manifest.manifest_key,
@@ -296,20 +334,22 @@ function buildPublishedReleaseRecord(
   };
 }
 
-function assertMatchingRelease(
+function releaseMatchesManifest(
   existingRelease: PublishedReleaseRecord,
   manifest: PackagePublicationManifest,
-): void {
-  if (
-    existingRelease.package_locator !== manifest.package_locator ||
-    existingRelease.resolved_sha !== manifest.resolved_sha
-  ) {
-    throw new HttpError(
-      409,
-      "version_already_published",
-      `Version ${manifest.package_name}@${manifest.package_version} is already published.`,
-    );
-  }
+): boolean {
+  return (
+    existingRelease.package_locator === manifest.package_locator &&
+    existingRelease.resolved_sha === manifest.resolved_sha &&
+    existingRelease.package_description === manifest.package_description &&
+    existingRelease.package_license === manifest.package_license &&
+    existingRelease.package_homepage === manifest.package_homepage &&
+    existingRelease.package_repository === manifest.package_repository &&
+    existingRelease.package_root_module === manifest.package_root_module &&
+    JSON.stringify(existingRelease.dependencies) === JSON.stringify(manifest.dependencies) &&
+    existingRelease.source_archive_key === manifest.source_archive_key &&
+    existingRelease.manifest_key === manifest.manifest_key
+  );
 }
 
 function isValidSemver(value: string): boolean {

@@ -1,0 +1,24 @@
+{
+  "name": "riot-pkgs-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check && tsc --noEmit",
+    "deploy": "astro build && wrangler deploy",
+    "test": "bun test tests/package-index.test.ts"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^13.1.4",
+    "astro": "^6.1.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.8",
+    "@cloudflare/workers-types": "latest",
+    "@types/bun": "latest",
+    "typescript": "^5",
+    "wrangler": "latest"
+  }
+}

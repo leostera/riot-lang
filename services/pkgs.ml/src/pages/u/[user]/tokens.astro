@@ -1,0 +1,24 @@
+---
+import SiteLayout from "../../../src/layouts/SiteLayout.astro";
+
+const user = Astro.params.user ?? "user";
+---
+
+<SiteLayout title={`${user} tokens · pkgs.ml`} description="API token management on pkgs.ml" showNavSearch>
+  <section class="section-block">
+    <div class="shell">
+      <section class="content-card">
+        <div class="section-header">
+          <div>
+            <h2>{user} tokens</h2>
+            <p>Create and manage package publishing tokens from this account page.</p>
+          </div>
+        </div>
+        <p>
+          Token creation, rotation, and revocation will live here once account-backed auth
+          exists in the registry.
+        </p>
+      </section>
+    </div>
+  </section>
+</SiteLayout>

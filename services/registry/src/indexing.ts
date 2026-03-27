@@ -47,6 +47,18 @@ export async function indexPublishedRelease(
   const url = packageIndexUrl(config, releaseRecord.package_name);
 
   if (!changed) {
+    await env.PACKAGE_INDEXED_QUEUE.send({
+      type: "package.indexed",
+      package_name: releaseRecord.package_name,
+      package_version: releaseRecord.package_version,
+      package_locator: releaseRecord.package_locator,
+      resolved_sha: releaseRecord.resolved_sha,
+      package_index_key: key,
+      package_index_url: url,
+      latest: document.latest,
+      indexed_at: document.updated_at,
+    } satisfies PackageIndexedEvent);
+
     return {
       changed: false,
       latest: document.latest,

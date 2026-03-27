@@ -1,0 +1,25 @@
+---
+interface Props {
+  query?: string;
+  placeholder?: string;
+  large?: boolean;
+}
+
+const {
+  query = "",
+  placeholder = "Search packages, libraries, and tools",
+  large = false,
+} = Astro.props;
+---
+
+<form action="/" method="get" class:list={["search-form", large && "search-form-large"]}>
+  <input
+    type="search"
+    name="q"
+    value={query}
+    placeholder={placeholder}
+    class="search-input"
+    autocomplete="off"
+  />
+  <button type="submit" class="search-submit">Search</button>
+</form>
