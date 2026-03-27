@@ -1,17 +1,20 @@
 name = "riot-registry"
 main = "worker.ts"
-# Set this to today's date
-compatibility_date = "2026-03-26"
+compatibility_date = "2026-03-27"
+workers_dev = false
 
-[[containers]]
-class_name = "RiotRegistry"
-image = "./Dockerfile"
-max_instances = 2
+[vars]
+CDN_BASE_URL = "https://cdn.pkgs.ml"
 
-[[durable_objects.bindings]]
-class_name = "RiotRegistry"
-name = "RIOT_REGISTRY_CONTAINER"
+[[routes]]
+pattern = "registry.pkgs.ml"
+custom_domain = true
 
-[[migrations]]
-new_sqlite_classes = [ "RiotRegistry" ]
-tag = "v1"
+[[r2_buckets]]
+binding = "ML_PKGS_CDN"
+bucket_name = "ml-pkgs-cdn"
+preview_bucket_name = "ml-pkgs-cdn"
+
+[[queues.producers]]
+binding = "PACKAGE_PUBLISHED_QUEUE"
+queue = "riot-package-published"
