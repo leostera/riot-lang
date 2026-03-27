@@ -50,7 +50,7 @@ export function packageSubdir(locator: PackageLocator): string {
 }
 
 export function canonicalSourceUrl(locator: PackageLocator): string {
-  return `https://${locator.normalized}`;
+  return `https://${locator.provider}/${locator.owner}/${locator.repo}`;
 }
 
 export function isFullSha(value: string): boolean {

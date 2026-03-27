@@ -24,6 +24,8 @@ describe("riot package registry live e2e", () => {
     const publication = await resolvePublication();
 
     expect(publication.package).toBe(packageLocator);
+    expect(publication.source_url).toBe("https://github.com/leostera/riot-new");
+    expect(publication.package_subdir).toBe("packages/kernel");
     expect(publication.selector).toBe(selector);
     expect(publication.resolved_sha).toMatch(/^[0-9a-f]{40}$/);
     expect(publication.manifest.url).toContain(`/package/${packageLocator}/-/manifest/`);
@@ -39,6 +41,8 @@ describe("riot package registry live e2e", () => {
 
     const manifest = (await response.json()) as Record<string, unknown>;
     expect(manifest.package_locator).toBe(packageLocator);
+    expect(manifest.source_url).toBe("https://github.com/leostera/riot-new");
+    expect(manifest.package_subdir).toBe("packages/kernel");
     expect(manifest.resolved_sha).toBe(publication.resolved_sha);
     expect(typeof manifest.package_name).toBe("string");
     expect(typeof manifest.package_version).toBe("string");
@@ -82,6 +86,8 @@ function trimTrailingSlash(value: string | undefined): string | null {
 
 interface ResolvePayload {
   package: string;
+  source_url: string;
+  package_subdir: string;
   selector: string;
   resolved_sha: string;
   manifest: {

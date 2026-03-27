@@ -344,6 +344,7 @@ describe("riot package registry routes", () => {
       expect(response.status).toBe(200);
       expect((await readJson(response)) as Record<string, unknown>).toMatchObject({
         package: "github.com/leostera/minttea/widgets/core",
+        source_url: "https://github.com/leostera/minttea",
         package_subdir: "widgets/core",
         resolved_sha: SHA,
       });
@@ -353,6 +354,7 @@ describe("riot package registry routes", () => {
       (await bucket.text(`packages/github.com/leostera/minttea/widgets/core/${SHA}.manifest.json`)) ??
         "null",
     );
+    expect(manifest.source_url).toBe("https://github.com/leostera/minttea");
     expect(manifest.package_name).toBe("minttea-core");
     expect(manifest.package_subdir).toBe("widgets/core");
     expect(queue.messages[0]).toMatchObject({
