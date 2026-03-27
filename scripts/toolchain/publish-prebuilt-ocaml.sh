@@ -6,13 +6,33 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
 VENDORED_OCAML_DIR="$REPO_ROOT/vendor/ocaml"
 TARGETS_DIR="$VENDORED_OCAML_DIR/cross/targets"
+ENV_FILE="${RIOT_CDN_ENV_FILE:-${OCAML_CDN_ENV_FILE:-$REPO_ROOT/.env}}"
+
+load_env_file() {
+  local env_file="$1"
+
+  if [ ! -f "$env_file" ]; then
+    return 0
+  fi
+
+  echo "==> Loading environment from $env_file"
+
+  set +u
+  set -a
+  # shellcheck disable=SC1090
+  . "$env_file"
+  set +a
+  set -u
+}
+
+load_env_file "$ENV_FILE"
 
 OUTPUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/artifacts/ocaml}"
-PUBLIC_BASE_URL="${OCAML_CDN_PUBLIC_BASE_URL:-https://cdn.ocaml.ai/ocaml}"
-BUCKET="${OCAML_CDN_BUCKET:-}"
-ENDPOINT_URL="${OCAML_CDN_ENDPOINT_URL:-}"
-BUCKET_PREFIX="${OCAML_CDN_BUCKET_PREFIX:-ocaml}"
-OBJECT_ACL="${OCAML_CDN_OBJECT_ACL:-}"
+PUBLIC_BASE_URL="${RIOT_CDN_PUBLIC_BASE_URL:-${OCAML_CDN_PUBLIC_BASE_URL:-https://cdn.ocaml.ai/ocaml}}"
+BUCKET="${RIOT_CDN_BUCKET:-${OCAML_CDN_BUCKET:-}}"
+ENDPOINT_URL="${RIOT_CDN_ENDPOINT_URL:-${OCAML_CDN_ENDPOINT_URL:-}}"
+BUCKET_PREFIX="${RIOT_CDN_BUCKET_PREFIX:-${OCAML_CDN_BUCKET_PREFIX:-ocaml}}"
+OBJECT_ACL="${RIOT_CDN_OBJECT_ACL:-${OCAML_CDN_OBJECT_ACL:-}}"
 
 BUILD_COMPILERS=1
 UPLOAD_ARTIFACTS=1
@@ -36,9 +56,9 @@ Options:
   --output-dir PATH       Output directory for tarballs
                           (default: $OUTPUT_DIR)
   --bucket NAME           S3/R2 bucket name
-                          (default: \$OCAML_CDN_BUCKET)
+                          (default: \$RIOT_CDN_BUCKET or \$OCAML_CDN_BUCKET)
   --endpoint-url URL      S3-compatible endpoint URL
-                          (default: \$OCAML_CDN_ENDPOINT_URL)
+                          (default: \$RIOT_CDN_ENDPOINT_URL or \$OCAML_CDN_ENDPOINT_URL)
   --bucket-prefix PREFIX  Object key prefix inside the bucket
                           (default: $BUCKET_PREFIX)
   --public-base-url URL   Public base URL for printed artifact links
@@ -52,11 +72,12 @@ Options:
   --help                  Show this help text
 
 Environment:
-  OCAML_CDN_BUCKET
-  OCAML_CDN_ENDPOINT_URL
-  OCAML_CDN_BUCKET_PREFIX
-  OCAML_CDN_PUBLIC_BASE_URL
-  OCAML_CDN_OBJECT_ACL
+  RIOT_CDN_BUCKET / OCAML_CDN_BUCKET
+  RIOT_CDN_ENDPOINT_URL / OCAML_CDN_ENDPOINT_URL
+  RIOT_CDN_BUCKET_PREFIX / OCAML_CDN_BUCKET_PREFIX
+  RIOT_CDN_PUBLIC_BASE_URL / OCAML_CDN_PUBLIC_BASE_URL
+  RIOT_CDN_OBJECT_ACL / OCAML_CDN_OBJECT_ACL
+  RIOT_CDN_ENV_FILE / OCAML_CDN_ENV_FILE
 
 Examples:
   $0 --no-upload aarch64-apple-darwin
@@ -193,7 +214,7 @@ done
 
 if [ "$UPLOAD_ARTIFACTS" -eq 1 ]; then
   command -v aws >/dev/null 2>&1 || die "aws CLI is required for uploads"
-  [ -n "$BUCKET" ] || die "--bucket or OCAML_CDN_BUCKET is required for uploads"
+  [ -n "$BUCKET" ] || die "--bucket or RIOT_CDN_BUCKET / OCAML_CDN_BUCKET is required for uploads"
 fi
 
 run_cmd mkdir -p "$OUTPUT_DIR"
