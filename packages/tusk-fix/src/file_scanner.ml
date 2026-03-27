@@ -1,9 +1,25 @@
 open Std
+open Std.Collections
 
-type t = { root : Path.t; exclude_patterns : string list }
+type t = {
+  roots : Path.t list;
+  exclude_patterns : string list;
+  should_ignore : Path.t -> bool;
+}
 
-let create ~root ?(exclude_patterns = [ "."; "_build"; "target" ]) () =
-  { root; exclude_patterns }
+type state = {
+  scanner : t;
+  owner : Pid.t option;
+  seen : string HashSet.t;
+  mutable pending : Path.t list;
+}
+
+let create_many ~roots ?(exclude_patterns = [ "."; "_build"; "target" ])
+    ?(should_ignore = fun _ -> false) () =
+  { roots; exclude_patterns; should_ignore }
+
+let create ~root ?exclude_patterns ?should_ignore () =
+  create_many ~roots:[ root ] ?exclude_patterns ?should_ignore ()
 
 let is_non_source_test_path path =
   let path_str = Path.to_string path in
@@ -11,35 +27,95 @@ let is_non_source_test_path path =
   || String.contains path_str "/tests/generated/"
   || String.contains path_str "/tests/diagnostics/"
 
-let should_exclude t dir_name =
+let is_ocaml_source path =
+  let path_str = Path.to_string path in
+  String.ends_with ~suffix:".ml" path_str
+  || String.ends_with ~suffix:".mli" path_str
+
+let should_exclude scanner path =
+  let dir_name = Path.basename path in
   List.exists
     (fun pattern ->
       String.starts_with ~prefix:pattern dir_name
       || String.equal pattern dir_name)
-    t.exclude_patterns
+    scanner.exclude_patterns
 
-let rec walk_dir t dir =
+let sorted_directory_entries dir =
   match Fs.read_dir dir with
   | Error _ -> []
   | Ok entries ->
-      let entry_list = Iter.MutIterator.to_list entries in
-      List.concat_map
-        (fun entry ->
-          let entry_path = Path.(dir / entry) in
-          match Fs.is_dir entry_path with
-          | Ok true ->
-              let dir_name = Path.to_string entry in
-              if should_exclude t dir_name || is_non_source_test_path entry_path then
-                []
-              else walk_dir t entry_path
-          | Ok false | Error _ ->
-              let path_str = Path.to_string entry_path in
-              if
-                not (is_non_source_test_path entry_path)
-                && (String.ends_with ~suffix:".ml" path_str
-                   || String.ends_with ~suffix:".mli" path_str)
-              then [ entry_path ]
-              else [])
-        entry_list
+      entries
+      |> Iter.MutIterator.to_list
+      |> List.map (fun entry -> Path.(dir / entry))
+      |> List.sort (fun left right ->
+             String.compare (Path.to_string left) (Path.to_string right))
 
-let scan t = walk_dir t t.root
+let compare_paths left right =
+  String.compare (Path.to_string left) (Path.to_string right)
+
+let init_state ?owner scanner =
+  {
+    scanner;
+    owner;
+    seen = HashSet.create ();
+    pending = List.sort compare_paths scanner.roots;
+  }
+
+let rec next_discovered_file state =
+  match state.pending with
+  | [] -> None
+  | path :: rest ->
+      state.pending <- rest;
+      let path_string = Path.to_string path in
+      if HashSet.contains state.seen path_string then
+        next_discovered_file state
+      else (
+        let _ = HashSet.insert state.seen path_string in
+        match Fs.is_dir path with
+        | Ok true ->
+            if
+              should_exclude state.scanner path
+              || is_non_source_test_path path
+              || state.scanner.should_ignore path
+            then
+              next_discovered_file state
+            else (
+              state.pending <- sorted_directory_entries path @ state.pending;
+              next_discovered_file state)
+        | Ok false | Error _ ->
+            if
+              is_ocaml_source path
+              && not (is_non_source_test_path path)
+              && not (state.scanner.should_ignore path)
+            then
+              Some path
+            else
+              next_discovered_file state)
+
+let scan scanner =
+  let state = init_state scanner in
+  let rec collect acc =
+    match next_discovered_file state with
+    | Some file -> collect (file :: acc)
+    | None -> List.rev acc
+  in
+  collect []
+
+let rec scanner_loop state =
+  match next_discovered_file state with
+  | Some file ->
+      let owner =
+        Option.expect ~msg:"streaming file scanner requires an owner" state.owner
+      in
+      send owner (Messages.ScannerDiscovered file);
+      scanner_loop state
+  | None ->
+      let owner =
+        Option.expect ~msg:"streaming file scanner requires an owner" state.owner
+      in
+      send owner Messages.ScannerComplete;
+      Ok ()
+
+let start ~owner scanner =
+  let state = init_state ~owner scanner in
+  spawn (fun () -> scanner_loop state)

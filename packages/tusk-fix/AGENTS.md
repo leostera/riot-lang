@@ -16,6 +16,7 @@
 10. Prefer `Rule_query` and `Syn.Visit` over hand-written `match ctx.cst` boilerplate or bespoke recursive descent inside individual rules.
 11. Do not run rules on parse results alone; build a typed CST first and skip lint execution when `Syn.build_cst` fails.
 12. `tusk fix --json` owns the machine-readable contract. Keep it as JSONL events on stdout, and send human-oriented control output anywhere else.
+13. Apply `tusk.fix.ignore` during discovery, not after collection. Ignored subtrees should be pruned before they ever reach the worker queue.
 
 ## Validate
 

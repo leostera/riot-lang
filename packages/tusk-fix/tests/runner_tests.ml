@@ -2033,6 +2033,27 @@ let render x y z =
               Test.assert_equal ~expected:[ Path.to_string Path.(src_dir / Path.v "real.ml") ]
                 ~actual:files;
               Ok ()));
+    Test.case "scanner prunes ignored subtrees eagerly" (fun () ->
+        with_tempdir "tusk_fix_scan" (fun tmpdir ->
+              let ignored_dir = Path.(tmpdir / Path.v "ignored") in
+              let kept_dir = Path.(tmpdir / Path.v "src") in
+              Fs.create_dir_all ignored_dir |> Result.expect ~msg:"mkdir ignored";
+              Fs.create_dir_all kept_dir |> Result.expect ~msg:"mkdir src";
+              write_file Path.(ignored_dir / Path.v "bad.ml") "type userProfile = int\n";
+              write_file Path.(kept_dir / Path.v "real.ml") "let z = 3\n";
+              let files =
+                Tusk_fix.File_scanner.(
+                  scan
+                    (create ~root:tmpdir
+                       ~should_ignore:(fun path ->
+                         String.contains (Path.to_string path) "/ignored")
+                       ()))
+                |> List.map Path.to_string
+                |> List.sort String.compare
+              in
+              Test.assert_equal ~expected:[ Path.to_string Path.(kept_dir / Path.v "real.ml") ]
+                ~actual:files;
+              Ok ()));
     Test.case "config scope discovers fix providers from workspace packages" (fun () ->
         with_tempdir "tusk_fix_provider_scope" (fun tmpdir ->
               let workspace_toml = Path.(tmpdir / Path.v "tusk.toml") in

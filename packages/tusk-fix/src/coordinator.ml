@@ -1,8 +1,12 @@
 open Std
 open Std.Collections
 
+type input =
+  | Files of Path.t list
+  | Roots of Path.t list
+
 type config = {
-  files : Path.t list;
+  input : input;
   concurrency : int;
   limit : int option;
   mode : Runner.mode;
@@ -12,11 +16,13 @@ type config = {
 
 type state = {
   file_queue : Path.t Queue.t;
+  idle_workers : Pid.t Queue.t;
   busy_workers : (Pid.t, Path.t) HashMap.t;
   mutable results_rev : Runner.file_result list;
   mutable diagnostics_seen : int;
   mutable stop_requested : bool;
   mutable stopped_workers : int;
+  mutable discovery_complete : bool;
   limit : int option;
   total_workers : int;
   mode : Runner.mode;
@@ -27,37 +33,103 @@ type state = {
 let diagnostic_count result =
   List.length result.Runner.parse_diagnostics + List.length result.diagnostics
 
+let should_ignore_file scope file = Fix_config.should_ignore_file scope file
+
+let stop_worker state worker =
+  send worker Messages.Stop;
+  state.stopped_workers <- state.stopped_workers + 1
+
+let rec stop_idle_workers state =
+  match Queue.pop state.idle_workers with
+  | Some worker ->
+      stop_worker state worker;
+      stop_idle_workers state
+  | None -> ()
+
+let rec dispatch_ready_workers state =
+  match Queue.pop state.idle_workers with
+  | Some worker -> (
+      match Queue.pop state.file_queue with
+      | Some file_path ->
+          send worker (Messages.RunTask file_path);
+          let _ = HashMap.insert state.busy_workers worker file_path in
+          dispatch_ready_workers state
+      | None ->
+          Queue.push state.idle_workers worker)
+  | None -> ()
+
+let maybe_stop_waiting_workers state =
+  if state.stop_requested || (state.discovery_complete && Queue.is_empty state.file_queue)
+  then
+    stop_idle_workers state
+
+let is_complete state =
+  HashMap.is_empty state.busy_workers
+  && state.stopped_workers = state.total_workers
+  && state.discovery_complete
+  && (state.stop_requested || Queue.is_empty state.file_queue)
+
+let handle_complete state =
+  let summary = Runner.summarize (List.rev state.results_rev) in
+  send state.owner (Messages.AllComplete summary);
+  Ok ()
+
 let rec loop state =
   let selector msg =
     match msg with
+    | Messages.ScannerDiscovered file -> `select (`ScannerDiscovered file)
+    | Messages.ScannerComplete -> `select `ScannerComplete
     | Messages.WorkerReady worker -> `select (`WorkerReady worker)
     | Messages.StopRequested -> `select `StopRequested
     | Messages.FileResult r -> `select (`FileResult r)
     | _ -> `skip
   in
-
   if is_complete state then handle_complete state
   else
     match receive ~selector () with
+    | `ScannerDiscovered file -> handle_scanner_discovered state file
+    | `ScannerComplete -> handle_scanner_complete state
     | `WorkerReady worker -> handle_worker_ready state worker
     | `StopRequested -> handle_stop_requested state
     | `FileResult r -> handle_file_result state r
 
+and handle_scanner_discovered state file =
+  if not state.stop_requested then (
+    Queue.push state.file_queue file;
+    dispatch_ready_workers state);
+  loop state
+
+and handle_scanner_complete state =
+  state.discovery_complete <- true;
+  maybe_stop_waiting_workers state;
+  if is_complete state then
+    handle_complete state
+  else
+    loop state
+
 and handle_worker_ready state worker =
-  if state.stop_requested || Queue.is_empty state.file_queue then (
-    send worker Messages.Stop;
-    state.stopped_workers <- state.stopped_workers + 1;
+  if state.stop_requested then (
+    stop_worker state worker;
     if is_complete state then
       handle_complete state
     else
       loop state)
   else
     match Queue.pop state.file_queue with
-    | None -> loop state
     | Some file_path ->
         send worker (Messages.RunTask file_path);
         let _ = HashMap.insert state.busy_workers worker file_path in
         loop state
+    | None ->
+        if state.discovery_complete then (
+          stop_worker state worker;
+          if is_complete state then
+            handle_complete state
+          else
+            loop state)
+        else (
+          Queue.push state.idle_workers worker;
+          loop state)
 
 and handle_file_result state r =
   ignore (HashMap.remove state.busy_workers r.worker);
@@ -68,6 +140,8 @@ and handle_file_result state r =
       state.stop_requested <- true
   | _ -> ());
   send state.owner (Messages.FileResult r);
+  dispatch_ready_workers state;
+  maybe_stop_waiting_workers state;
   if is_complete state then
     handle_complete state
   else
@@ -75,24 +149,29 @@ and handle_file_result state r =
 
 and handle_stop_requested state =
   state.stop_requested <- true;
+  maybe_stop_waiting_workers state;
   if is_complete state then
     handle_complete state
   else
     loop state
 
-and handle_complete state =
-  let summary = Runner.summarize (List.rev state.results_rev) in
-  send state.owner (Messages.AllComplete summary);
-  Ok ()
-
-and is_complete state =
-  HashMap.is_empty state.busy_workers
-  && state.stopped_workers = state.total_workers
-  && (state.stop_requested || Queue.is_empty state.file_queue)
-
 let init config () =
   let file_queue = Queue.create () in
-  List.iter (fun f -> Queue.push file_queue f) config.files;
+  let idle_workers = Queue.create () in
+  let discovery_complete =
+    match config.input with
+    | Files files ->
+        List.iter (fun f -> Queue.push file_queue f) files;
+        true
+    | Roots roots ->
+        ignore
+          (File_scanner.start
+             ~owner:(self ())
+             (File_scanner.create_many ~roots
+                ~should_ignore:(should_ignore_file config.scope)
+                ()));
+        false
+  in
   for _ = 1 to config.concurrency do
     ignore
       (Worker.start
@@ -101,11 +180,13 @@ let init config () =
   let state =
     {
       file_queue;
+      idle_workers;
       busy_workers = HashMap.create ();
       results_rev = [];
       diagnostics_seen = 0;
       stop_requested = false;
       stopped_workers = 0;
+      discovery_complete;
       limit = config.limit;
       total_workers = config.concurrency;
       mode = config.mode;

@@ -53,13 +53,6 @@ let resolve_target matches =
   | Some path -> path
   | None -> default_path ()
 
-let resolve_files target =
-  match Fs.is_dir target with
-  | Ok true ->
-      let scanner = File_scanner.create ~root:target () in
-      File_scanner.scan scanner
-  | Ok false | Error _ -> [ target ]
-
 let relative_to_cwd path =
   let cwd =
     Env.current_dir ()
@@ -191,13 +184,12 @@ let json_object_with_type type_name json =
   | Object fields -> Object (("type", String type_name) :: fields)
   | _ -> panic "expected JSON object"
 
-let start_event_to_json ~mode ~total_files ~concurrency =
+let start_event_to_json ~mode ~concurrency =
   let open Data.Json in
   Object
     [
       ("type", String "start");
       ("mode", String (match mode with Runner.Check -> "check" | Runner.Apply -> "apply"));
-      ("total_files", Int total_files);
       ("concurrency", Int concurrency);
     ]
 
@@ -391,7 +383,10 @@ let recommended_concurrency ~limit =
 let run_result_with ~on_result ~mode ~scope ~limit ~files =
   let concurrency = recommended_concurrency ~limit in
   let owner = self () in
-  let coordinator = Coordinator.start { files; concurrency; limit; mode; scope; owner } in
+  let _coordinator =
+    Coordinator.start
+      { input = Coordinator.Files files; concurrency; limit; mode; scope; owner }
+  in
   let rec loop results_rev diagnostics_seen limit_reached =
     let selector = function
       | Messages.FileResult result -> `select (`FileResult result)
@@ -431,19 +426,62 @@ let run_result_with ~on_result ~mode ~scope ~limit ~files =
 let run_result ~mode ~scope ~limit ~files =
   run_result_with ~mode ~scope ~limit ~files ~on_result:(fun _ -> ())
 
-let run_with_coordinator ~format ~mode ~scope ~limit files =
+let run_with_coordinator ~format ~mode ~scope ~limit ~roots () =
   let concurrency = recommended_concurrency ~limit in
   if format = Reporter.Text then
-    println
-      ("Scanning " ^ Int.to_string (List.length files) ^ " files with "
-     ^ Int.to_string concurrency ^ " workers...")
+    println ("Scanning with " ^ Int.to_string concurrency ^ " workers...")
   else
-    print_json_event
-      (start_event_to_json ~mode ~total_files:(List.length files) ~concurrency);
+    print_json_event (start_event_to_json ~mode ~concurrency);
   let outcome =
-    run_result_with ~mode ~scope ~limit ~files ~on_result:(fun result ->
-        if format = Reporter.Json then
-          print_json_event (file_event_to_json result))
+    let owner = self () in
+    let _coordinator =
+      Coordinator.start
+        {
+          input = Coordinator.Roots roots;
+          concurrency;
+          limit;
+          mode;
+          scope;
+          owner;
+        }
+    in
+    let rec loop results_rev diagnostics_seen limit_reached =
+      let selector = function
+        | Messages.FileResult result -> `select (`FileResult result)
+        | Messages.AllComplete summary -> `select (`AllComplete summary)
+        | _ -> `skip
+      in
+      match receive ~selector () with
+      | `FileResult { Messages.result; _ } ->
+          let remaining_budget =
+            match limit with
+            | None -> None
+            | Some max_diagnostics -> Some (max_diagnostics - diagnostics_seen)
+          in
+          let result =
+            match remaining_budget with
+            | None -> result
+            | Some remaining -> clip_result_to_limit remaining result
+          in
+          let diagnostics_seen = diagnostics_seen + diagnostic_count result in
+          let limit_reached_now =
+            match limit with
+            | Some max_diagnostics when diagnostics_seen >= max_diagnostics -> true
+            | _ -> false
+          in
+          if format = Reporter.Json then
+            print_json_event (file_event_to_json result);
+          loop (result :: results_rev) diagnostics_seen
+            (limit_reached || limit_reached_now)
+      | `AllComplete _summary ->
+          let files = List.rev results_rev in
+          let summary = Runner.summarize files in
+          {
+            result = Runner.{ files; summary };
+            limit_reached;
+          }
+    in
+    loop [] 0 false
   in
   (match format with
   | Reporter.Json ->
@@ -451,15 +489,18 @@ let run_with_coordinator ~format ~mode ~scope ~limit files =
         (summary_event_to_json ~limit_reached:outcome.limit_reached
            outcome.result.summary)
   | Reporter.Text ->
-      sort_file_results outcome.result.files
-      |> List.iter (print_text_result mode);
-      if outcome.limit_reached then (
-        println "";
-        println
-          ("\027[1;33m!\027[0m Reached diagnostic limit "
-         ^ (limit |> Option.map Int.to_string |> Option.unwrap_or ~default:"0")
-         ^ "; stopped early"));
-      print_text_summary mode outcome.result.summary);
+      if outcome.result.summary.total_files = 0 then
+        println "No OCaml files found."
+      else (
+        sort_file_results outcome.result.files
+        |> List.iter (print_text_result mode);
+        if outcome.limit_reached then (
+          println "";
+          println
+            ("\027[1;33m!\027[0m Reached diagnostic limit "
+           ^ (limit |> Option.map Int.to_string |> Option.unwrap_or ~default:"0")
+           ^ "; stopped early"));
+        print_text_summary mode outcome.result.summary));
   if
     outcome.result.summary.failed_files > 0
     || outcome.result.summary.remaining_diagnostics > 0
@@ -500,16 +541,7 @@ let run matches =
         | false, false, Some code -> explain_rule code
         | false, false, None ->
             let target = resolve_target matches in
-            let files =
-              resolve_files target
-              |> List.filter (fun file ->
-                     not (Fix_config.should_ignore_file scope file))
-            in
-            if List.length files = 0 then (
-              println "No OCaml files found.";
-              Ok ())
-            else
-              run_with_coordinator ~format ~mode ~scope ~limit files)
+            run_with_coordinator ~format ~mode ~scope ~limit ~roots:[ target ] ())
 
 let main ~args =
   match ArgParser.get_matches command args with
