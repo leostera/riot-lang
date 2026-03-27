@@ -133,7 +133,7 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
           |> Result.expect ~msg:"list arguments should format"
         in
         Test.assert_equal
-          ~expected:{|let cmd = f [ first_item; second_item; ]
+          ~expected:{|let cmd = f [ first_item; second_item ]
 |}
           ~actual:formatted;
         Ok ());
@@ -143,6 +143,7 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
             let parens = Path.(tmpdir / Path.v "parens.ml") in
             let listy = Path.(tmpdir / Path.v "listy.ml") in
             let recordy = Path.(tmpdir / Path.v "recordy.ml") in
+            let varianty = Path.(tmpdir / Path.v "varianty.ml") in
             Fs.write "let x = configure ~style:(Style.Grow)\n" parens
             |> Result.expect ~msg:"write parens";
             Fs.write
@@ -165,9 +166,16 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
 |record_fixture}
               recordy
             |> Result.expect ~msg:"write recordy";
-            let result = Krasny.Runner.run_verify [ parens; listy; recordy ] in
-            Test.assert_equal ~expected:3 ~actual:result.summary.total_files;
-            Test.assert_equal ~expected:3 ~actual:result.summary.would_reformat;
+            Fs.write
+              "type severity = Error | Warning | Info | Hint\n\n\
+               type color = [ ansi | rgb | xyz ]\n"
+              varianty
+            |> Result.expect ~msg:"write varianty";
+            let result =
+              Krasny.Runner.run_verify [ parens; listy; recordy; varianty ]
+            in
+            Test.assert_equal ~expected:4 ~actual:result.summary.total_files;
+            Test.assert_equal ~expected:4 ~actual:result.summary.would_reformat;
             Test.assert_equal ~expected:0 ~actual:result.summary.unsafe_to_format;
             Ok ()));
     Test.case "format keeps function and match lowering idempotent" (fun () ->

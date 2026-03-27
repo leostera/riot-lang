@@ -43,7 +43,7 @@ let main ~args =
                   |> required true;
                 ];
            command "syntax-hash"
-           |> about "Compute a whitespace-insensitive concrete syntax hash"
+           |> about "Compute a normalized concrete syntax hash"
            |> args
                 [
                   positional "FILE"

@@ -31,6 +31,8 @@ type summary = {
 
 type run_result = { files : file_result list; summary : summary }
 
+val syntax_hash : Syn.Parser.parse_result -> string
+
 val collect_ocaml_files :
   ?should_ignore:(Path.t -> bool) ->
   roots:Path.t list ->

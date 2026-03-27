@@ -21,8 +21,9 @@ val format_error_to_string : format_error -> string
     formatting requires a successful CST lift. *)
 val format : Syn.Parser.parse_result -> (string, format_error) result
 
-(** `syntax_hash result` computes a whitespace-insensitive hash of the parsed
-    concrete syntax tree. *)
+(** `syntax_hash result` computes a normalized hash of the parsed concrete
+    syntax tree, ignoring formatting-only punctuation and wrappers that
+    `krasny` canonicalizes. *)
 val syntax_hash : Syn.Parser.parse_result -> string
 
 (** `write ~writer result` renders a parse result into the provided writer. *)

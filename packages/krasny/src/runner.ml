@@ -92,30 +92,6 @@ let collect_ocaml_files ?(should_ignore = fun _ -> false) ~roots () =
   |> List.filter (fun path -> not (should_ignore path))
   |> List.sort_uniq compare_paths
 
-let syntax_hash (result : Syn.Parser.parse_result) =
-  let buffer = IO.Buffer.create 1024 in
-  let rec write_element = function
-    | Syn.Ceibo.Green.Token _ as element -> (
-        match Syn.Ceibo.Green.kind element with
-        | Syn.SyntaxKind.WHITESPACE -> ()
-        | kind ->
-            IO.Buffer.add_string buffer "T(";
-            IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string kind);
-            IO.Buffer.add_string buffer ":";
-            IO.Buffer.add_string buffer
-              (Syn.Ceibo.Green.text element |> Option.expect ~msg:"token text");
-            IO.Buffer.add_string buffer ")")
-    | Syn.Ceibo.Green.Node node as element ->
-        IO.Buffer.add_string buffer "N(";
-        IO.Buffer.add_string buffer
-          (Syn.SyntaxKind.to_string (Syn.Ceibo.Green.kind element));
-        IO.Buffer.add_string buffer "[";
-        Array.iter write_element (Syn.Ceibo.Green.children node);
-        IO.Buffer.add_string buffer "])"
-  in
-  write_element (Syn.Ceibo.Green.Node result.tree);
-  IO.Buffer.contents buffer |> Crypto.hash_string |> Crypto.Digest.hex
-
 let is_trivia_kind = function
   | Syn.SyntaxKind.WHITESPACE -> true
   | _ -> false
@@ -130,6 +106,7 @@ let is_comment_like_kind = function
 let is_redundant_paren_inner_kind = function
   | Syn.SyntaxKind.IDENT_EXPR
   | Syn.SyntaxKind.PATH_EXPR
+  | Syn.SyntaxKind.FIELD_ACCESS_EXPR
   | Syn.SyntaxKind.CONSTRUCTOR_EXPR
   | Syn.SyntaxKind.POLY_VARIANT_EXPR
   | Syn.SyntaxKind.INT_LITERAL
@@ -148,7 +125,7 @@ let is_redundant_paren_inner_kind = function
   | _ ->
       false
 
-let semantic_hash (result : Syn.Parser.parse_result) =
+let syntax_hash (result : Syn.Parser.parse_result) =
   let buffer = IO.Buffer.create 1024 in
   let rec should_skip_token ~parent_kind token =
     let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
@@ -173,6 +150,11 @@ let semantic_hash (result : Syn.Parser.parse_result) =
       | Some Syn.SyntaxKind.RECORD_EXPR
       | Some Syn.SyntaxKind.RECORD_UPDATE_EXPR ->
           String.equal token_text ";"
+      | Some Syn.SyntaxKind.TYPE_RECORD ->
+          String.equal token_text ";"
+      | Some Syn.SyntaxKind.TYPE_DECL
+      | Some Syn.SyntaxKind.TYPE_POLY_VARIANT ->
+          String.equal token_text "|"
       | _ ->
           false
   and redundant_paren_child node =
@@ -258,7 +240,7 @@ let semantic_hash (result : Syn.Parser.parse_result) =
           write_node node
   in
   write_node result.tree;
-  IO.Buffer.contents buffer |> Crypto.hash_string |> Crypto.Digest.hex
+  IO.Buffer.contents buffer |> Crypto.Sha256.hash_string |> Crypto.Digest.hex
 
 let finalize file start ~status ~needs_formatting ~error =
   {
@@ -289,9 +271,9 @@ let format_file ~mode file =
                   finalize file start ~status:Needs_formatting
                     ~needs_formatting:true ~error:None
               | Verify ->
-                  let original_hash = semantic_hash parsed in
+                  let original_hash = syntax_hash parsed in
                   let reparsed = Syn.parse ~filename:file formatted in
-                  let formatted_hash = semantic_hash reparsed in
+                  let formatted_hash = syntax_hash reparsed in
                   if String.equal original_hash formatted_hash then
                     finalize file start ~status:Would_reformat
                       ~needs_formatting:true ~error:None
