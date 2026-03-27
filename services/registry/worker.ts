@@ -1,3 +1,5 @@
+export { PublicationCoordinator } from "./src/publication-coordinator.ts";
+
 import { handleRequest } from "./src/routes.ts";
 import type { Env } from "./src/types.ts";
 

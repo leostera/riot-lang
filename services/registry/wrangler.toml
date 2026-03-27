@@ -10,6 +10,10 @@ CDN_BASE_URL = "https://cdn.pkgs.ml"
 pattern = "registry.pkgs.ml"
 custom_domain = true
 
+[[durable_objects.bindings]]
+name = "PUBLICATION_COORDINATOR"
+class_name = "PublicationCoordinator"
+
 [[r2_buckets]]
 binding = "ML_PKGS_CDN"
 bucket_name = "ml-pkgs-cdn"
@@ -18,3 +22,7 @@ preview_bucket_name = "ml-pkgs-cdn"
 [[queues.producers]]
 binding = "PACKAGE_PUBLISHED_QUEUE"
 queue = "riot-package-published"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PublicationCoordinator"]

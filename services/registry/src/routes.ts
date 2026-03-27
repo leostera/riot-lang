@@ -4,10 +4,10 @@ import { immutableHeaders, json, methodNotAllowed } from "./http.ts";
 import {
   canonicalSourceUrl,
   isFullSha,
-  isSemverLikeTag,
   normalizeLocator,
   packageSubdir,
 } from "./locator.ts";
+import { readCachedPublication } from "./publication.ts";
 import { writeRequestLog } from "./request-log.ts";
 import {
   manifestKey,
@@ -133,62 +133,87 @@ async function handleResolve(
   logEntry: RequestLogEntry,
 ): Promise<Response> {
   const config = getConfig(env);
-
-  if (!isFullSha(selector)) {
-    const error =
-      isSemverLikeTag(selector) || selector === "main"
-        ? "selector_resolution_not_implemented"
-        : "selector_resolution_not_implemented";
-
-    return json(
-      {
-        error,
-        message:
-          "This scaffold only resolves already-published SHA selectors. GitHub ref resolution and first publication are the next step.",
-        package: locator.normalized,
-        selector,
-        source_url: canonicalSourceUrl(locator),
-      },
-      { status: 501 },
-    );
-  }
-
-  const sourceKey = sourceArchiveKey(locator, selector);
-  const manifestObject = await env.ML_PKGS_CDN.head(manifestKey(locator, selector));
-  const sourceObject = await env.ML_PKGS_CDN.head(sourceKey);
-
-  if (manifestObject === null || sourceObject === null) {
-    throw new HttpError(
-      404,
-      "publication_not_found",
-      "No cached publication exists for that locator and SHA.",
-    );
-  }
+  const publication =
+    (await readCachedPublication(env, locator, selector)) ??
+    (await publishThroughCoordinator(env, locator, selector));
 
   const requestUrl = new URL(request.url);
-  logEntry.resolved_sha = selector;
+  logEntry.resolved_sha = publication.resolvedSha;
 
   return json({
     package: locator.normalized,
     source_url: canonicalSourceUrl(locator),
     package_subdir: packageSubdir(locator),
     selector,
-    resolved_sha: selector,
+    resolved_sha: publication.resolvedSha,
     manifest: {
-      key: manifestKey(locator, selector),
-      url: `${requestUrl.origin}${manifestRoutePath(locator, selector)}`,
-      cdn_url: prettyManifestUrl(config, locator, selector),
+      key: publication.manifestKey,
+      url: `${requestUrl.origin}${manifestRoutePath(locator, publication.resolvedSha)}`,
+      cdn_url: prettyManifestUrl(config, locator, publication.resolvedSha),
     },
     source_archive: {
-      key: sourceKey,
-      url: `${requestUrl.origin}${sourceRoutePath(locator, selector)}`,
-      cdn_url: prettySourceUrl(config, locator, selector),
+      key: publication.sourceKey,
+      url: `${requestUrl.origin}${sourceRoutePath(locator, publication.resolvedSha)}`,
+      cdn_url: prettySourceUrl(config, locator, publication.resolvedSha),
     },
     cache: {
-      manifest: true,
-      source: true,
+      manifest: !publication.manifestCreated,
+      source: !publication.sourceCreated,
     },
   });
+}
+
+async function publishThroughCoordinator(
+  env: Env,
+  locator: PackageLocator,
+  selector: string,
+): Promise<{
+  selector: string;
+  resolvedSha: string;
+  sourceKey: string;
+  manifestKey: string;
+  sourceCreated: boolean;
+  manifestCreated: boolean;
+}> {
+  const id = env.PUBLICATION_COORDINATOR.idFromName("global");
+  const stub = env.PUBLICATION_COORDINATOR.get(id);
+  const response = await stub.fetch("https://publication-coordinator.internal/publish", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify({
+      locator: locator.normalized,
+      selector,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json()) as { error?: string; message?: string };
+    throw new HttpError(
+      response.status,
+      payload.error ?? "publication_failed",
+      payload.message ?? "Publication coordinator failed.",
+    );
+  }
+
+  const payload = (await response.json()) as {
+    selector: string;
+    resolved_sha: string;
+    source_key: string;
+    manifest_key: string;
+    source_created: boolean;
+    manifest_created: boolean;
+  };
+
+  return {
+    selector: payload.selector,
+    resolvedSha: payload.resolved_sha,
+    sourceKey: payload.source_key,
+    manifestKey: payload.manifest_key,
+    sourceCreated: payload.source_created,
+    manifestCreated: payload.manifest_created,
+  };
 }
 
 async function handleManifest(

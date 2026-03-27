@@ -1,3 +1,4 @@
+import { handlePublicationCoordinatorRequest } from "../src/publication-coordinator-handler.ts";
 import type { Env } from "../src/types.ts";
 
 interface StoredObject {
@@ -128,6 +129,27 @@ export class FakeExecutionContext implements ExecutionContext {
   }
 }
 
+class FakeDurableObjectNamespace {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    return await handlePublicationCoordinatorRequest(request, env);
+  }
+
+  idFromName(name: string): DurableObjectId {
+    return { toString: () => name } as DurableObjectId;
+  }
+
+  get(_id: DurableObjectId): DurableObjectStub {
+    return {
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        const request = input instanceof Request ? input : new Request(input, init);
+        return await this.fetch(request, this.env);
+      },
+    } as DurableObjectStub;
+  }
+
+  constructor(private readonly env: Env) {}
+}
+
 export function makeEnv(overrides: Partial<Env> = {}): {
   env: Env;
   bucket: FakeR2Bucket;
@@ -139,16 +161,59 @@ export function makeEnv(overrides: Partial<Env> = {}): {
   const env: Env = {
     ML_PKGS_CDN: bucket as unknown as R2Bucket,
     PACKAGE_PUBLISHED_QUEUE: queue as unknown as Queue,
+    PUBLICATION_COORDINATOR: undefined as unknown as DurableObjectNamespace,
     CDN_BASE_URL: "https://cdn.pkgs.ml",
     GITHUB_TOKEN: "",
     ...overrides,
   };
+
+  if (overrides.PUBLICATION_COORDINATOR === undefined) {
+    env.PUBLICATION_COORDINATOR = new FakeDurableObjectNamespace(env) as unknown as DurableObjectNamespace;
+  }
 
   return {
     env,
     bucket,
     queue,
   };
+}
+
+export async function withMockedFetch<T>(
+  mock: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
+  run: () => Promise<T>,
+): Promise<T> {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = mock as typeof fetch;
+
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+export async function makeTarGz(
+  files: Record<string, string>,
+  rootPrefix = "repo-root",
+): Promise<Uint8Array<ArrayBuffer>> {
+  const chunks: Uint8Array[] = [];
+
+  for (const [path, content] of Object.entries(files)) {
+    const body = new TextEncoder().encode(content);
+    const header = makeTarHeader(`${rootPrefix}/${path}`, body.byteLength);
+    chunks.push(header, body, new Uint8Array(padLength(body.byteLength)));
+  }
+
+  chunks.push(new Uint8Array(1024));
+
+  const tarBytes = concatBytes(chunks);
+  const stream = new Response(tarBytes).body;
+  if (stream === null) {
+    throw new Error("Tar archive stream was unexpectedly null.");
+  }
+
+  const gzipStream = stream.pipeThrough(new CompressionStream("gzip"));
+  return new Uint8Array(await new Response(gzipStream).arrayBuffer());
 }
 
 function encodeValue(value: string | ArrayBuffer | ArrayBufferView): Uint8Array {
@@ -182,4 +247,65 @@ function normalizeHttpMetadata(
   return {
     contentType: metadata.contentType,
   };
+}
+
+function makeTarHeader(path: string, size: number): Uint8Array {
+  const header = new Uint8Array(512);
+
+  writeTarString(header, 0, 100, path);
+  writeTarOctal(header, 100, 8, 0o644);
+  writeTarOctal(header, 108, 8, 0);
+  writeTarOctal(header, 116, 8, 0);
+  writeTarOctal(header, 124, 12, size);
+  writeTarOctal(header, 136, 12, 0);
+  header[156] = "0".charCodeAt(0);
+  writeTarString(header, 257, 6, "ustar");
+  writeTarString(header, 263, 2, "00");
+
+  for (let index = 148; index < 156; index += 1) {
+    header[index] = 0x20;
+  }
+
+  const checksum = header.reduce((sum, value) => sum + value, 0);
+  writeTarOctal(header, 148, 8, checksum);
+  return header;
+}
+
+function writeTarString(
+  header: Uint8Array,
+  offset: number,
+  length: number,
+  value: string,
+): void {
+  const bytes = new TextEncoder().encode(value);
+  header.set(bytes.subarray(0, length), offset);
+}
+
+function writeTarOctal(
+  header: Uint8Array,
+  offset: number,
+  length: number,
+  value: number,
+): void {
+  const encoded = value.toString(8).padStart(length - 1, "0");
+  writeTarString(header, offset, length - 1, encoded);
+  header[offset + length - 1] = 0;
+}
+
+function padLength(size: number): number {
+  const remainder = size % 512;
+  return remainder === 0 ? 0 : 512 - remainder;
+}
+
+function concatBytes(chunks: Uint8Array[]): Uint8Array<ArrayBuffer> {
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return result;
 }

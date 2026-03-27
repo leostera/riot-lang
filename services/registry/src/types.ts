@@ -1,8 +1,10 @@
 export interface Env {
   ML_PKGS_CDN: R2Bucket;
   PACKAGE_PUBLISHED_QUEUE: Queue<PackagePublishedEvent>;
+  PUBLICATION_COORDINATOR: DurableObjectNamespace;
   CDN_BASE_URL?: string;
   GITHUB_TOKEN?: string;
+  GITHUB_API_BASE_URL?: string;
 }
 
 export interface PackageLocator {
@@ -36,6 +38,14 @@ export interface PackagePublishedEvent extends PackagePublicationManifest {
   type: "package.published";
 }
 
+export interface SelectorResolutionRecord {
+  package_locator: string;
+  selector: string;
+  resolved_sha: string;
+  frozen: boolean;
+  recorded_at: string;
+}
+
 export interface RequestLogEntry {
   request_id: string;
   request_timestamp: string;
@@ -50,4 +60,13 @@ export interface RequestLogEntry {
   error_category?: string;
   error_message?: string;
   user_agent?: string | null;
+}
+
+export interface ResolvedPublication {
+  selector: string;
+  resolvedSha: string;
+  sourceKey: string;
+  manifestKey: string;
+  manifestCreated: boolean;
+  sourceCreated: boolean;
 }

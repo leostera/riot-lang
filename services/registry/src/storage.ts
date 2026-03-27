@@ -1,4 +1,9 @@
-import type { PackageLocator, RegistryConfig, RequestLogEntry } from "./types.ts";
+import type {
+  PackageLocator,
+  RegistryConfig,
+  RequestLogEntry,
+  SelectorResolutionRecord,
+} from "./types.ts";
 import { publicLocatorPath } from "./locator.ts";
 
 export function sourceArchiveKey(locator: PackageLocator, sha: string): string {
@@ -15,6 +20,10 @@ export function requestLogKey(entry: RequestLogEntry): string {
   const month = (timestamp.getUTCMonth() + 1).toString().padStart(2, "0");
   const day = timestamp.getUTCDate().toString().padStart(2, "0");
   return `requests/${year}/${month}/${day}/${entry.request_id}.json`;
+}
+
+export function selectorResolutionKey(locator: PackageLocator, selector: string): string {
+  return `selectors/${locator.normalized}/${encodeSelector(selector)}.json`;
 }
 
 export function manifestRoutePath(locator: PackageLocator, sha: string): string {
@@ -39,4 +48,33 @@ export function prettySourceUrl(
   sha: string,
 ): string {
   return `${config.cdnBaseUrl}/packages/${publicLocatorPath(locator)}/-/${sha}.tar.gz`;
+}
+
+export async function readSelectorResolution(
+  bucket: R2Bucket,
+  locator: PackageLocator,
+  selector: string,
+): Promise<SelectorResolutionRecord | null> {
+  const object = await bucket.get(selectorResolutionKey(locator, selector));
+  if (object === null) {
+    return null;
+  }
+
+  return (await object.json()) as SelectorResolutionRecord;
+}
+
+export async function writeSelectorResolution(
+  bucket: R2Bucket,
+  locator: PackageLocator,
+  record: SelectorResolutionRecord,
+): Promise<void> {
+  await bucket.put(selectorResolutionKey(locator, record.selector), JSON.stringify(record, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+function encodeSelector(selector: string): string {
+  return encodeURIComponent(selector);
 }

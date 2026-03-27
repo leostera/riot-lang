@@ -13,5 +13,8 @@
     "@types/bun": "latest",
     "typescript": "^5",
     "wrangler": "latest"
+  },
+  "dependencies": {
+    "smol-toml": "^1.6.1"
   }
 }
