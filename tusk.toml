@@ -45,7 +45,19 @@ members = [
 [dependencies]
 # Shared external dependencies across workspace members
 
+[tusk.fmt]
+ignore = [ 
+  "fixtures",
+  "diagnostics",
+  "expected"
+]
+
 [tusk.fix]
+ignore = [ 
+  "fixtures",
+  "diagnostics",
+  "expected"
+]
 rules = [
   "no-stdlib", 
   "-class-case-module-names",
