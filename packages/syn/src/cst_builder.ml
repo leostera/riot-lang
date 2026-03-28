@@ -2969,8 +2969,8 @@ and normalize_greedy_tuple_argument_value ~syntax_node ~callee make_argument = f
   | Cst.Expression.Tuple { elements = first :: second :: rest; _ } -> (
       let trailing = second :: rest in
       let payload, extra_arguments, infix_tail = split_greedy_argument_value first in
-      match payload, infix_tail with
-      | Cst.Expression.Parenthesized _ as payload, None ->
+      match extra_arguments, infix_tail with
+      | _ :: _, None ->
           let left =
             rebuild_apply_chain ~syntax_node
               (Cst.Expression.Apply

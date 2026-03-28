@@ -56,6 +56,7 @@
 0513_labeled_string_then_or_chain.ml
 0514_labeled_tuple_payload.ml
 0515_optional_arg_parenthesized_payload_then_unit_before_tuple.ml
+0516_labeled_arg_then_optional_then_unit_before_tuple.ml
 
 # 07xx types and signatures
 0700_types_and_type_declarations.ml
