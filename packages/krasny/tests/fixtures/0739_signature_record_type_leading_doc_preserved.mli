@@ -1,0 +1,12 @@
+open Std
+
+(** # SSE - Server-Sent Events Parser *)
+
+(** SSE event type *)
+type event = {
+  data : string;
+  event_type : string option;
+  id : string option;
+}
+
+val await : Connection.t -> event Iter.MutIterator.t
