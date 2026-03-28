@@ -2925,7 +2925,7 @@ let make_lowerer ctx =
           head
       | Some payload ->
           let payload =
-            if expression_needs_parens_in_apply payload then
+            if expression_needs_parens_in_constructor payload then
               Doc.concat [ Doc.lparen; render_expression payload; Doc.rparen ]
             else
               render_expression payload
