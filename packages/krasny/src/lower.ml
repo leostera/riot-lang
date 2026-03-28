@@ -5478,13 +5478,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
       ~end_:(end_ - source_offset) pending
   in
   let items =
-    items
-    |> List.filter (function
-         | Syn.Cst.StructureItem.Docstring _ ->
-             false
-         | _ ->
-             true)
-    |> List.sort compare_structure_items_by_span
+    items |> List.sort compare_structure_items_by_span
   in
   let rec loop pending acc cursor items =
     yield ();
@@ -5736,13 +5730,7 @@ and render_signature_top_level_items
       ~end_:(end_ - source_offset) pending
   in
   let items =
-    items
-    |> List.filter (function
-         | Syn.Cst.SignatureItem.Docstring _ ->
-             false
-         | _ ->
-             true)
-    |> List.sort compare_signature_items_by_span
+    items |> List.sort compare_signature_items_by_span
   in
   let rec loop pending acc items cursor =
     yield ();

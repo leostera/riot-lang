@@ -100,13 +100,14 @@ let docstring_from_token docstring_syntax_token =
     }
 
 let trailing_docstring_items_from_node ~after_offset node =
-  Ceibo.Red.SyntaxNode.children_list node
-  |> List.filter_map (function
-       | Ceibo.Red.Token syntax_token
-         when Ceibo.Red.SyntaxToken.kind syntax_token = Syntax_kind.DOCSTRING
-              && (Ceibo.Red.SyntaxToken.span syntax_token).start >= after_offset ->
+  Ceibo.Red.SyntaxNode.tokens node
+  |> List.filter_map (fun syntax_token ->
+         if
+           Ceibo.Red.SyntaxToken.kind syntax_token = Syntax_kind.DOCSTRING
+           && (Ceibo.Red.SyntaxToken.span syntax_token).start >= after_offset
+         then
            Some (docstring_from_token syntax_token)
-       | _ ->
+         else
            None)
 
 let substring text start length =
@@ -6157,17 +6158,7 @@ let open_statement_from_node node =
 
 let docstring_items_after_open_statement node (stmt : Cst.OpenStatement.t) =
   let after_offset =
-    match Cst.OpenStatement.target stmt with
-    | Cst.OpenStatement.Path path -> (
-        match Cst.Ident.last_segment path with
-        | Some last_segment ->
-            (Cst.Token.span last_segment).end_
-        | None ->
-            (Ceibo.Red.SyntaxNode.span node).end_)
-    | Cst.OpenStatement.ModuleExpression module_expression ->
-        span_of_syntax_node_nontrivia_bounds
-          (Cst.ModuleExpression.syntax_node module_expression)
-        |> fun span -> span.end_
+    span_of_syntax_node_nontrivia_bounds node |> fun span -> span.end_
   in
   trailing_docstring_items_from_node ~after_offset node
 

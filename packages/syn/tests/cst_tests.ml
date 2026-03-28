@@ -3086,6 +3086,31 @@ let tests =
         | _ ->
             Error
               "expected open statement, standalone docstring, and value declaration");
+    Test.case "cst preserves standalone implementation docstrings after open statements"
+      (fun () ->
+        let result =
+          parse_ml
+            "open Std\n\
+             \n\
+             (** Module overview. *)\n\
+             \n\
+             let create = fun () -> 1\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.OpenStatement _
+          :: Syn.Cst.StructureItem.Docstring docstring
+          :: Syn.Cst.StructureItem.LetBinding _ :: _ ->
+            Test.assert_equal ~expected:"(** Module overview. *)"
+              ~actual:(Syn.Cst.Docstring.text docstring);
+            Ok ()
+        | _ ->
+            Error
+              "expected open statement, standalone docstring, and let binding");
     Test.case "cst implementation open statements lift non-path module expressions"
       (fun () ->
         let result =
