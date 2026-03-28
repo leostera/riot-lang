@@ -1,12 +1,13 @@
 open Std
 open Syn
 
-let expect_some value ~msg =
+let expect_some = fun value ~msg ->
   match value with
   | Some value -> Ok value
   | None -> Error msg
 
 let sample_ml = Path.v "sample.ml"
+
 let sample_mli = Path.v "sample.mli"
 
 type parsed = {
@@ -15,36 +16,43 @@ type parsed = {
   cst : Syn.Cst.source_file option;
 }
 
-let with_optional_cst result =
+let with_optional_cst = fun result ->
   let cst =
     match Syn.build_cst result with
     | Ok cst -> Some cst
     | Error _ -> None
   in
-  {
-    tree = result.Syn.Parser.tree;
-    diagnostics = result.Syn.Parser.diagnostics;
-    cst;
-  }
+  {tree = result.Syn.Parser.tree; diagnostics = result.Syn.Parser.diagnostics; cst}
 
-let parse_ml source = Syn.parse ~filename:sample_ml source |> with_optional_cst
-let parse_mli source = Syn.parse ~filename:sample_mli source |> with_optional_cst
+let parse_ml = fun source -> Syn.parse ~filename:sample_ml source |> with_optional_cst
 
-let structure_items = function
+let parse_mli = fun source -> Syn.parse ~filename:sample_mli source |> with_optional_cst
+
+let structure_items =
+  function
   | Syn.Cst.Implementation { items; _ } -> items
   | Syn.Cst.Interface _ -> []
 
-let signature_items = function
+let ident_text = fun ident ->
+  Syn.Cst.Ident.last_segment ident
+  |> Option.map Syn.Cst.Token.text
+  |> Option.unwrap_or ~default:""
+
+let signature_items =
+  function
   | Syn.Cst.Interface { items; _ } -> items
   | Syn.Cst.Implementation _ -> []
 
-let top_level_let_bindings cst =
-  structure_items cst
-  |> List.filter_map (function
-       | Syn.Cst.StructureItem.LetBinding binding ->
-           Some binding
-       | _ ->
-           None)
+let top_level_let_bindings =
+  fun cst ->
+    structure_items cst |> List.filter_map
+      (
+        function
+        | Syn.Cst.StructureItem.LetBinding binding ->
+            Some binding
+        | _ ->
+            None
+      )
 
 let tests =
   [
@@ -1258,6 +1266,137 @@ let tests =
                 Error "expected nested signature items to reify successfully")
         | _ ->
             Error "expected module type declaration with signature body");
+    Test.case "cst builder normalizes nested signature grouped type docs and headings"
+      (fun () ->
+        let result =
+          parse_mli
+            "module Green : sig\n\
+             \  (** ## Types *)\n\
+             \n\
+             \  type ('kind, 'text) token = { kind : 'kind; text : 'text; width : int }\n\
+             \  (** Green token - leaf node containing source text. *)\n\
+             \n\
+             \  type ('kind, 'text) node = {\n\
+             \    kind : 'kind;\n\
+             \    children : ('kind, 'text) element array;\n\
+             \  }\n\
+             \  (** Green node - interior node with children. *)\n\
+             \n\
+             \  (** Element can be either a token or a node. *)\n\
+             \  and ('kind, 'text) element =\n\
+             \    | Token of ('kind, 'text) token\n\
+             \    | Node of ('kind, 'text) node\n\
+             \n\
+             \  (** ## Construction *)\n\
+             \n\
+             \  val make_token : kind:'kind -> text:'text -> width:int -> ('kind, 'text) token\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.ModuleDeclaration
+              {
+                module_type =
+                  Some (Syn.Cst.ModuleType.Signature { signature_syntax_node; _ });
+                _;
+              } ] -> (
+            match Syn.CstBuilder.signature_items_from_syntax_node signature_syntax_node with
+            | Ok [ Syn.Cst.SignatureItem.Docstring types_doc;
+                   Syn.Cst.SignatureItem.TypeDeclaration token_decl;
+                   Syn.Cst.SignatureItem.TypeDeclaration node_decl;
+                   Syn.Cst.SignatureItem.Docstring construction_doc;
+                   Syn.Cst.SignatureItem.ValueDeclaration _ ] ->
+                Test.assert_equal ~expected:"(** ## Types *)"
+                  ~actual:(Syn.Cst.Docstring.text types_doc);
+                Test.assert_equal ~expected:"(** ## Construction *)"
+                  ~actual:(Syn.Cst.Docstring.text construction_doc);
+                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia token_decl) with
+                | [ Syn.Cst.Trivia.Docstring doc ] ->
+                    Test.assert_equal
+                      ~expected:"(** Green token - leaf node containing source text. *)"
+                      ~actual:(Syn.Cst.Docstring.text doc)
+                | _ ->
+                    raise (Failure "expected token type leading docstring"));
+                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia node_decl) with
+                | [ Syn.Cst.Trivia.Docstring doc ] ->
+                    Test.assert_equal
+                      ~expected:"(** Green node - interior node with children. *)"
+                      ~actual:(Syn.Cst.Docstring.text doc)
+                | _ ->
+                    raise (Failure "expected node type leading docstring"));
+                (match Syn.Cst.TypeDeclaration.and_declarations node_decl with
+                | [ element_decl ] ->
+                    (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia element_decl) with
+                    | [ Syn.Cst.Trivia.Docstring doc ] ->
+                        Test.assert_equal
+                          ~expected:"(** Element can be either a token or a node. *)"
+                          ~actual:(Syn.Cst.Docstring.text doc)
+                    | _ ->
+                        raise (Failure "expected element type leading docstring"));
+                    Ok ()
+                | _ ->
+                    Error "expected grouped node/element declarations")
+            | Ok _ ->
+                Error "expected normalized nested signature type items"
+            | Error _ ->
+                Error "expected nested signature items to normalize successfully")
+        | _ ->
+            Error "expected module declaration with signature body");
+    Test.case "cst builder normalizes repeated nested signature type docs"
+      (fun () ->
+        let result =
+          parse_mli
+            "module Capabilities : sig\n\
+             \  (** {2 Capabilities} *)\n\
+             \n\
+             \  (** Empty for now, can be extended *)\n\
+             \  type tool_capability = unit\n\
+             \  type resource_capability = { subscribe : bool option }\n\
+             \  (** Empty for now, can be extended *)\n\
+             \  type prompt_capability = unit\n\
+             \  (** Empty for now, can be extended *)\n\
+             \  type sampling_capability = unit\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.ModuleDeclaration
+              {
+                module_type =
+                  Some (Syn.Cst.ModuleType.Signature { signature_syntax_node; _ });
+                _;
+              } ] -> (
+            match Syn.CstBuilder.signature_items_from_syntax_node signature_syntax_node with
+            | Ok [ Syn.Cst.SignatureItem.Docstring heading;
+                   Syn.Cst.SignatureItem.TypeDeclaration tool_decl;
+                   Syn.Cst.SignatureItem.TypeDeclaration resource_decl;
+                   Syn.Cst.SignatureItem.TypeDeclaration prompt_decl;
+                   Syn.Cst.SignatureItem.TypeDeclaration sampling_decl ] ->
+                Test.assert_equal ~expected:"(** {2 Capabilities} *)"
+                  ~actual:(Syn.Cst.Docstring.text heading);
+                Test.assert_equal ~expected:1
+                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia tool_decl)));
+                Test.assert_equal ~expected:0
+                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia resource_decl)));
+                Test.assert_equal ~expected:1
+                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia prompt_decl)));
+                Test.assert_equal ~expected:1
+                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia sampling_decl)));
+                Ok ()
+            | Ok _ ->
+                Error "expected normalized repeated nested type docs"
+            | Error _ ->
+                Error "expected nested signature capability docs to normalize successfully")
+        | _ ->
+            Error "expected capabilities module declaration with signature body");
     Test.case "cst module type declarations preserve with-constraint bodies"
       (fun () ->
         let result =
@@ -3111,7 +3250,267 @@ let tests =
         | _ ->
             Error
               "expected open statement, standalone docstring, and let binding");
-    Test.case "cst keeps banner comments as comments, not standalone docstrings"
+    Test.case "cst preserves standalone top-level comments after open statements"
+      (fun () ->
+        let result =
+          parse_mli
+            "open Std\n\
+             \n\
+             (* Module comment. *)\n\
+             \n\
+             val create : unit -> t\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.OpenStatement _
+          :: Syn.Cst.SignatureItem.Comment comment
+          :: Syn.Cst.SignatureItem.ValueDeclaration _ :: _ ->
+            Test.assert_equal ~expected:"(* Module comment. *)"
+              ~actual:(Syn.Cst.Comment.text comment);
+            Ok ()
+        | _ ->
+            Error
+              "expected open statement, standalone comment, and value declaration");
+    Test.case "cst preserves standalone implementation comments after open statements"
+      (fun () ->
+        let result =
+          parse_ml
+            "open Std\n\
+             \n\
+             (* Module comment. *)\n\
+             \n\
+             let create = fun () -> 1\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.OpenStatement _
+          :: Syn.Cst.StructureItem.Comment comment
+          :: Syn.Cst.StructureItem.LetBinding _ :: _ ->
+            Test.assert_equal ~expected:"(* Module comment. *)"
+              ~actual:(Syn.Cst.Comment.text comment);
+            Ok ()
+        | _ ->
+            Error
+              "expected open statement, standalone comment, and let binding");
+    Test.case "cst normalizes trailing value declaration docstrings onto the declaration"
+      (fun () ->
+        let result =
+          parse_mli
+            "val create : unit -> t\n\
+             (** Create a new builder *)\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.ValueDeclaration decl ] ->
+            let owned = Syn.Cst.ValueDeclaration.owned_trivia decl in
+            let leading = Syn.Cst.OwnedTrivia.leading owned in
+            let trailing = Syn.Cst.OwnedTrivia.trailing owned in
+            Test.assert_equal ~expected:1 ~actual:(List.length leading);
+            Test.assert_equal ~expected:0 ~actual:(List.length trailing);
+            (match leading with
+            | [ Syn.Cst.Trivia.Docstring docstring ] ->
+                Test.assert_equal ~expected:"(** Create a new builder *)"
+                  ~actual:(Syn.Cst.Docstring.text docstring);
+                Ok ()
+            | _ ->
+                Error "expected value declaration leading docstring")
+        | _ ->
+            Error "expected single value declaration item");
+    Test.case
+      "cst keeps trailing alias docstrings with the next type declaration"
+      (fun () ->
+        let result =
+          parse_mli
+            "(** Protocol version string *)\n\
+             type protocol_version = string\n\
+             (** JSON type alias *)\n\
+             type json = Data.Json.t\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.TypeDeclaration protocol_version;
+            Syn.Cst.SignatureItem.TypeDeclaration json ] ->
+            let protocol_owned =
+              Syn.Cst.TypeDeclaration.owned_trivia protocol_version
+            in
+            let json_owned = Syn.Cst.TypeDeclaration.owned_trivia json in
+            Test.assert_equal ~expected:1
+              ~actual:(List.length (Syn.Cst.OwnedTrivia.leading protocol_owned));
+            Test.assert_equal ~expected:1
+              ~actual:(List.length (Syn.Cst.OwnedTrivia.leading json_owned));
+            (match Syn.Cst.OwnedTrivia.leading protocol_owned with
+            | [ Syn.Cst.Trivia.Docstring doc ] ->
+                Test.assert_equal ~expected:"(** Protocol version string *)"
+                  ~actual:(Syn.Cst.Docstring.text doc)
+            | _ ->
+                raise (Failure "expected protocol_version leading docstring"));
+            (match Syn.Cst.OwnedTrivia.leading json_owned with
+            | [ Syn.Cst.Trivia.Docstring doc ] ->
+                Test.assert_equal ~expected:"(** JSON type alias *)"
+                  ~actual:(Syn.Cst.Docstring.text doc)
+            | _ ->
+                raise (Failure "expected json leading docstring"));
+            Ok ()
+        | _ ->
+            Error "expected two type declarations");
+    Test.case
+      "cst splits trailing variant docs between the current and next type"
+      (fun () ->
+        let result =
+          parse_mli
+            "type request_id =\n\
+             \  | String of string\n\
+             \  | Number of int\n\
+             \  (** JSON-RPC request ID *)\n\
+             (** JSON-RPC error code *)\n\
+             type error_code = int\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.TypeDeclaration request_id;
+            Syn.Cst.SignatureItem.TypeDeclaration error_code ] ->
+            let request_owned = Syn.Cst.TypeDeclaration.owned_trivia request_id in
+            let error_owned = Syn.Cst.TypeDeclaration.owned_trivia error_code in
+            (match Syn.Cst.OwnedTrivia.leading request_owned with
+            | [ Syn.Cst.Trivia.Docstring doc ] ->
+                Test.assert_equal ~expected:"(** JSON-RPC request ID *)"
+                  ~actual:(Syn.Cst.Docstring.text doc)
+            | _ ->
+                raise (Failure "expected request_id leading docstring"));
+            (match Syn.Cst.OwnedTrivia.leading error_owned with
+            | [ Syn.Cst.Trivia.Docstring doc ] ->
+                Test.assert_equal ~expected:"(** JSON-RPC error code *)"
+                  ~actual:(Syn.Cst.Docstring.text doc)
+            | _ ->
+                raise (Failure "expected error_code leading docstring"));
+            Ok ()
+        | _ ->
+            Error "expected request_id and error_code declarations");
+    Test.case
+      "cst sends trailing docs after already-documented variant types to the next type"
+      (fun () ->
+        let result =
+          parse_mli
+            "(** Method parameters *)\n\
+             type params =\n\
+             \  | Positional of Json.t list (** Positional parameters as JSON array *)\n\
+             \  | Named of (string * Json.t) list (** Named parameters as JSON object *)\n\
+             \  | NoParams (** No parameters *)\n\
+             (** Pre-request type used by ApplicationProtocol *)\n\
+             type prerequest = {\n\
+             \  method_ : string;\n\
+             }\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.TypeDeclaration params;
+            Syn.Cst.SignatureItem.TypeDeclaration prerequest ] ->
+            let params_owned = Syn.Cst.TypeDeclaration.owned_trivia params in
+            let prerequest_owned = Syn.Cst.TypeDeclaration.owned_trivia prerequest in
+            Test.assert_equal ~expected:1
+              ~actual:(List.length (Syn.Cst.OwnedTrivia.leading params_owned));
+            Test.assert_equal ~expected:1
+              ~actual:(List.length (Syn.Cst.OwnedTrivia.leading prerequest_owned));
+            (match Syn.Cst.OwnedTrivia.leading params_owned with
+            | [ Syn.Cst.Trivia.Docstring doc ] ->
+                Test.assert_equal ~expected:"(** Method parameters *)"
+                  ~actual:(Syn.Cst.Docstring.text doc)
+            | _ ->
+                raise (Failure "expected params leading docstring"));
+            (match Syn.Cst.OwnedTrivia.leading prerequest_owned with
+            | [ Syn.Cst.Trivia.Docstring doc ] ->
+                Test.assert_equal
+                  ~expected:"(** Pre-request type used by ApplicationProtocol *)"
+                  ~actual:(Syn.Cst.Docstring.text doc)
+            | _ ->
+                raise (Failure "expected prerequest leading docstring"));
+            Ok ()
+        | _ ->
+            Error "expected params and prerequest declarations");
+    Test.case
+      "cst keeps section docstrings after grouped type declarations standalone"
+      (fun () ->
+        let result =
+          parse_mli
+            "(** ## Types *)\n\
+             \n\
+             type ('kind, 'text) token = { kind : 'kind; text : 'text; width : int }\n\
+             (** Green token - leaf node containing source text. *)\n\
+             \n\
+             type ('kind, 'text) node = {\n\
+             \  kind : 'kind;\n\
+             \  children : ('kind, 'text) element array;\n\
+             }\n\
+             (** Green node - interior node with children. *)\n\
+             \n\
+             (** Element can be either a token or a node. *)\n\
+             and ('kind, 'text) element =\n\
+             \  | Token of ('kind, 'text) token\n\
+             \  | Node of ('kind, 'text) node\n\
+             \n\
+             (** ## Construction *)\n\
+             \n\
+             val make_token : kind:'kind -> text:'text -> width:int -> ('kind, 'text) token\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.Docstring types_doc;
+            Syn.Cst.SignatureItem.TypeDeclaration token_decl;
+            Syn.Cst.SignatureItem.TypeDeclaration node_decl;
+            Syn.Cst.SignatureItem.Docstring construction_doc;
+            Syn.Cst.SignatureItem.ValueDeclaration _ ] ->
+            Test.assert_equal ~expected:"(** ## Types *)"
+              ~actual:(Syn.Cst.Docstring.text types_doc);
+            Test.assert_equal ~expected:"token"
+              ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name token_decl));
+            Test.assert_equal ~expected:"node"
+              ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name node_decl));
+            Test.assert_equal ~expected:"(** ## Construction *)"
+              ~actual:(Syn.Cst.Docstring.text construction_doc);
+            (match Syn.Cst.TypeDeclaration.and_declarations node_decl with
+            | [ element_decl ] ->
+                Test.assert_equal ~expected:"element"
+                  ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name element_decl));
+                let element_owned = Syn.Cst.TypeDeclaration.owned_trivia element_decl in
+                Test.assert_equal ~expected:1
+                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading element_owned));
+                Test.assert_equal ~expected:0
+                  ~actual:(List.length (Syn.Cst.OwnedTrivia.trailing element_owned));
+                Ok ()
+            | _ ->
+                Error "expected grouped node/element type declarations")
+        | _ ->
+            Error
+              "expected types heading, two type declaration items, construction heading, and value declaration");
+    Test.case "cst keeps banner comments as standalone top-level comments"
       (fun () ->
         let result =
           parse_ml
@@ -3130,11 +3529,21 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.LetBinding _
+          :: Syn.Cst.StructureItem.Comment first
+          :: Syn.Cst.StructureItem.Comment second
+          :: Syn.Cst.StructureItem.Comment third
           :: Syn.Cst.StructureItem.LetBinding _ :: _ ->
+            Test.assert_equal
+              ~expected:"(*************************************************************************************************)"
+              ~actual:(Syn.Cst.Comment.text first);
+            Test.assert_equal ~expected:"(* Transformation *)"
+              ~actual:(Syn.Cst.Comment.text second);
+            Test.assert_equal
+              ~expected:"(*************************************************************************************************)"
+              ~actual:(Syn.Cst.Comment.text third);
             Ok ()
         | _ ->
-            Error
-              "expected banner comments to remain trivia instead of standalone docstrings");
+            Error "expected banner comments to remain first-class comment items");
     Test.case "cst implementation open statements lift non-path module expressions"
       (fun () ->
         let result =
@@ -6182,7 +6591,4 @@ let tests =
         | _ -> Error "expected local module in let body");
   ]
 
-let () =
-  Miniriot.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"syn-cst" ~tests ~args)
-    ~args:Env.args ()
+let () = Miniriot.run ~main:(fun ~args -> Test.Cli.main ~name:"syn-cst" ~tests ~args) ~args:Env.args ()
