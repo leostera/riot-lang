@@ -3205,7 +3205,8 @@ and render_apply_argument = function
                 ({
                    grouping = Syn.Cst.Parens;
                    inner =
-                     ( Syn.Cst.Expression.Tuple _
+                     ( Syn.Cst.Expression.Apply _
+                     | Syn.Cst.Expression.Tuple _
                      | Syn.Cst.Expression.PolyVariant { payload = Some _; _ } );
                    _;
                  } as expression) ->
@@ -3233,7 +3234,8 @@ and render_apply_argument = function
                 ({
                    grouping = Syn.Cst.Parens;
                    inner =
-                     ( Syn.Cst.Expression.Tuple _
+                     ( Syn.Cst.Expression.Apply _
+                     | Syn.Cst.Expression.Tuple _
                      | Syn.Cst.Expression.PolyVariant { payload = Some _; _ } );
                    _;
                  } as expression) ->
