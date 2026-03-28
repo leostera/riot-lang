@@ -3021,6 +3021,18 @@ and render_tuple_expression_bare elements =
   Doc.group
     (join_map (Doc.concat [ Doc.comma; Doc.break () ]) render_expression elements)
 
+and render_preserved_parenthesized_apply_payload
+    ({ opening_token; closing_token; inner; _ } : Syn.Cst.parenthesized_expression) =
+  let rendered_inner =
+    match inner with
+    | Syn.Cst.Expression.Tuple { elements; _ } ->
+        render_tuple_expression_bare elements
+    | _ ->
+        render_expression inner
+  in
+  Doc.concat
+    [ doc_of_token opening_token; rendered_inner; doc_of_token closing_token ]
+
 and render_local_open_expression
     ({ module_path; body; via_let_open; _ } : Syn.Cst.local_open_expression) =
   let module_doc = doc_of_ident module_path in
@@ -3167,6 +3179,16 @@ and render_apply_argument = function
           Doc.line;
           Doc.rparen;
         ]
+  | Syn.Cst.Positional
+      (Syn.Cst.Expression.Parenthesized
+        ({
+           grouping = Syn.Cst.Parens;
+           inner =
+             ( Syn.Cst.Expression.Tuple _
+             | Syn.Cst.Expression.PolyVariant { payload = Some _; _ } );
+           _;
+         } as expression)) ->
+      render_preserved_parenthesized_apply_payload expression
   | Syn.Cst.Positional expression ->
       if expression_needs_parens_in_apply expression then
         Doc.concat [ Doc.lparen; render_expression expression; Doc.rparen ]
@@ -3178,10 +3200,20 @@ and render_apply_argument = function
           Doc.concat [ doc_of_token sigil_token; doc_of_token label_token ]
       | Some value ->
           let value =
-            if expression_needs_parens_in_labeled_argument value then
-              Doc.concat [ Doc.lparen; render_expression value; Doc.rparen ]
-            else
-              render_expression value
+            match value with
+            | Syn.Cst.Expression.Parenthesized
+                ({
+                   grouping = Syn.Cst.Parens;
+                   inner =
+                     ( Syn.Cst.Expression.Tuple _
+                     | Syn.Cst.Expression.PolyVariant { payload = Some _; _ } );
+                   _;
+                 } as expression) ->
+                render_preserved_parenthesized_apply_payload expression
+            | _ when expression_needs_parens_in_labeled_argument value ->
+                Doc.concat [ Doc.lparen; render_expression value; Doc.rparen ]
+            | _ ->
+                render_expression value
           in
           Doc.concat
             [
@@ -3196,10 +3228,20 @@ and render_apply_argument = function
           Doc.concat [ doc_of_token sigil_token; doc_of_token label_token ]
       | Some value ->
           let value =
-            if expression_needs_parens_in_labeled_argument value then
-              Doc.concat [ Doc.lparen; render_expression value; Doc.rparen ]
-            else
-              render_expression value
+            match value with
+            | Syn.Cst.Expression.Parenthesized
+                ({
+                   grouping = Syn.Cst.Parens;
+                   inner =
+                     ( Syn.Cst.Expression.Tuple _
+                     | Syn.Cst.Expression.PolyVariant { payload = Some _; _ } );
+                   _;
+                 } as expression) ->
+                render_preserved_parenthesized_apply_payload expression
+            | _ when expression_needs_parens_in_labeled_argument value ->
+                Doc.concat [ Doc.lparen; render_expression value; Doc.rparen ]
+            | _ ->
+                render_expression value
           in
           Doc.concat
             [

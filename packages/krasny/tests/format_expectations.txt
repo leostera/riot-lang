@@ -45,6 +45,7 @@
 0430_signature_last_docstring.ml
 0431_type_mutual_docstring_between_members.mli
 0432_nested_poly_variant_payload.ml
+0433_apply_parenthesized_poly_variant_payload.ml
 
 # 05xx labeled and optional arguments
 0500_labeled_and_optional_arguments.ml
@@ -52,6 +53,7 @@
 0511_optional_parameter_default_preservation.ml
 0512_labeled_arg_literal_then_positional_before_infix.ml
 0513_labeled_string_then_or_chain.ml
+0514_labeled_tuple_payload.ml
 
 # 07xx types and signatures
 0700_types_and_type_declarations.ml
