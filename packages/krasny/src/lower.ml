@@ -4578,7 +4578,8 @@ and render_local_binding
   then
     let rendered_value =
       match value with
-      | Syn.Cst.Expression.Infix ({ operator_token; _ } as infix) ->
+      | Syn.Cst.Expression.Infix ({ operator_token; _ } as infix)
+        when parameters = [] || keep_header_parameters ->
           let operator = token_text operator_token in
           let parts = infix_chain operator (Syn.Cst.Expression.Infix infix) in
           join_map

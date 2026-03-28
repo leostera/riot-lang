@@ -13,6 +13,7 @@
 0340_typed_let_with_locally_abstract_type.ml
 0341_labeled_wildcard_after_positional_parameter.ml
 0342_constructor_pattern_before_labeled_parameters.ml
+0343_let_parameter_with_comment_pipeline.ml
 0350_typed_function_binding_headers.ml
 0360_local_open_record_pattern.ml
 0370_section_comment_order.ml
