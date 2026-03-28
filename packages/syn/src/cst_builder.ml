@@ -2937,8 +2937,29 @@ and rebuild_apply_chain ~syntax_node callee = function
 and split_greedy_argument_value value =
   match value with
   | Cst.Expression.Infix { left; operator_token; right; _ } ->
-      let head, extra_arguments = collect_apply_arguments [] left in
-      (head, extra_arguments, Some (operator_token, right))
+      let head, extra_arguments, tail = split_greedy_argument_value left in
+      let tail =
+        match tail with
+        | None ->
+            Some (operator_token, right)
+        | Some (tail_operator, tail_right) ->
+            Some
+              ( tail_operator,
+                Cst.Expression.Infix
+                  {
+                    syntax_node = Cst.Expression.syntax_node value;
+                    left = tail_right;
+                    operator_token;
+                    right;
+                    attributes = [];
+                  } )
+      in
+      (head, extra_arguments, tail)
+  | Cst.Expression.PolyVariant ({ payload = Some payload; _ } as poly_variant) ->
+      let head =
+        Cst.Expression.PolyVariant { poly_variant with payload = None }
+      in
+      (head, [ Cst.Positional payload ], None)
   | _ ->
       let head, extra_arguments = collect_apply_arguments [] value in
       (head, extra_arguments, None)

@@ -1,0 +1,8 @@
+type ('a, 'b) t =
+  | Client : {
+      x : int;
+    } -> ('a, 'b) t
+
+let send_request (type req res) (Client c as client : (req, res) t)
+    (request : req) : (unit, string) result =
+  body

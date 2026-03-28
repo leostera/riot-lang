@@ -4278,7 +4278,11 @@ and synthesize_binding_type_annotation parameters result_type =
 and render_unsugared_binding_parameter = function
   | Syn.Cst.Parameter.Positional { pattern; _ } ->
       let pattern, _ = split_typed_binding_pattern pattern in
-      render_pattern pattern
+      let pattern_doc = render_pattern pattern in
+      if pattern_is_simple_function_parameter pattern then
+        pattern_doc
+      else
+        Doc.concat [ Doc.lparen; pattern_doc; Doc.rparen ]
   | Syn.Cst.Parameter.Labeled { sigil_token; label_token; binding_name_token; _ } ->
       Doc.concat
         [
