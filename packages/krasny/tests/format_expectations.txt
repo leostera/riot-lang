@@ -96,6 +96,7 @@
 0911_comment_before_sequence_let.ml
 0912_banner_comments_followed_by_plain_comment.ml
 0913_structure_docstring_after_open.ml
+0914_docstring_then_plain_comment_before_let.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

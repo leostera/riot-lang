@@ -5414,6 +5414,21 @@ and signature_item_uses_verbatim_span = function
       true
 
 and render_structure_top_level_items ~source ~source_offset ~source_node ~items =
+  let find_substring_from source pattern start =
+    let source_length = String.length source in
+    let pattern_length = String.length pattern in
+    let rec loop index =
+      if pattern_length = 0 then
+        Some start
+      else if index + pattern_length > source_length then
+        None
+      else if String.equal (String.sub source index pattern_length) pattern then
+        Some index
+      else
+        loop (index + 1)
+    in
+    loop start
+  in
   let flush_pending pending acc =
     let strip_trailing_breaks =
       not (acc = [] && pending_nonbreak_count pending = 1)
@@ -5453,15 +5468,19 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         Doc.concat [ doc; separator; join_entries rest ]
   in
   let structure_item_span item =
-    let syntax_node = Syn.Cst.StructureItem.syntax_node item in
-    if structure_item_uses_verbatim_span item then
-      span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia:true syntax_node
-    else
-      match item with
-      | Syn.Cst.StructureItem.TypeDeclaration _ ->
-          span_of_syntax_node_nonwhitespace_bounds syntax_node
-      | _ ->
-          span_of_syntax_node_nontrivia_bounds syntax_node
+    match item with
+    | Syn.Cst.StructureItem.Docstring docstring ->
+        Syn.Cst.Token.span (Syn.Cst.Docstring.token docstring)
+    | _ ->
+        let syntax_node = Syn.Cst.StructureItem.syntax_node item in
+        if structure_item_uses_verbatim_span item then
+          span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia:true syntax_node
+        else
+          match item with
+          | Syn.Cst.StructureItem.TypeDeclaration _ ->
+              span_of_syntax_node_nonwhitespace_bounds syntax_node
+          | _ ->
+              span_of_syntax_node_nontrivia_bounds syntax_node
   in
   let compare_structure_items_by_span left right =
     let left_span = structure_item_span left in
@@ -5478,7 +5497,46 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
       ~end_:(end_ - source_offset) pending
   in
   let items =
-    items |> List.sort compare_structure_items_by_span
+    let rec resolve_docstring_spans search_start acc = function
+      | [] ->
+          List.rev acc
+      | item :: rest -> (
+          match item with
+          | Syn.Cst.StructureItem.Docstring docstring ->
+              let token = Syn.Cst.Docstring.token docstring in
+              let text = Syn.Cst.Token.text token in
+              let token_span =
+                match find_substring_from source text search_start with
+                | Some relative_start ->
+                    let relative_end = relative_start + String.length text in
+                    Syn.Ceibo.Span.make ~start:(source_offset + relative_start)
+                      ~end_:(source_offset + relative_end)
+                | None ->
+                    Syn.Cst.Token.span token
+              in
+              resolve_docstring_spans
+                (Int.max search_start (token_span.end_ - source_offset))
+                ((item, token_span) :: acc) rest
+          | _ ->
+              let span = structure_item_span item in
+              resolve_docstring_spans
+                (Int.max search_start (span.end_ - source_offset))
+                ((item, span) :: acc) rest)
+    in
+    resolve_docstring_spans 0 [] items
+    |> List.sort (fun (left, left_span) (right, right_span) ->
+           let left_span : Syn.Ceibo.Span.t = left_span in
+           let right_span : Syn.Ceibo.Span.t = right_span in
+           let order =
+             if not (Int.equal left_span.start right_span.start) then
+               Int.compare left_span.start right_span.start
+             else
+               Int.compare left_span.end_ right_span.end_
+           in
+           if not (Int.equal order 0) then
+             order
+           else
+             compare_structure_items_by_span left right)
   in
   let rec loop pending acc cursor items =
     yield ();
@@ -5501,8 +5559,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         in
         let acc = flush_pending pending acc in
         join_entries (List.rev acc)
-    | (Syn.Cst.StructureItem.Expression _ as item) :: rest ->
-        let base_span = structure_item_span item in
+    | ((Syn.Cst.StructureItem.Expression _ as item), (base_span : Syn.Ceibo.Span.t)) :: rest ->
         let pending = parse_between pending ~start:cursor ~end_:base_span.start in
         let moved_docstrings, pending =
           if acc = [] then
@@ -5520,8 +5577,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         in
         let rec collect_expression_run (prev_span : Syn.Ceibo.Span.t) acc remaining =
           match remaining with
-          | (Syn.Cst.StructureItem.Expression _ as next) :: tail ->
-              let next_span = structure_item_span next in
+          | ((Syn.Cst.StructureItem.Expression _ as next), (next_span : Syn.Ceibo.Span.t)) :: tail ->
               if
                 source_gap_has_only_phrase_separators ~source ~source_offset
                   ~start:prev_span.end_ ~end_:next_span.start
@@ -5537,8 +5593,8 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         in
         let next_boundary =
           match remaining with
-          | next :: _ ->
-              (structure_item_span next).start
+          | (_, (next_span : Syn.Ceibo.Span.t)) :: _ ->
+              next_span.start
           | [] ->
               source_end
         in
@@ -5581,8 +5637,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
                 assert false
         in
         loop [] (entry :: acc) next_cursor remaining
-    | item :: rest ->
-        let base_span = structure_item_span item in
+    | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
         let pending = parse_between pending ~start:cursor ~end_:base_span.start in
         let moved_docstrings, pending =
           if acc = [] then
@@ -5611,8 +5666,8 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         in
         let next_boundary =
           match rest with
-          | next :: _ ->
-              (structure_item_span next).start
+          | (_, (next_span : Syn.Ceibo.Span.t)) :: _ ->
+              next_span.start
           | [] ->
               source_end
         in
@@ -5626,7 +5681,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
               suffix
           | None ->
               (match item, rest with
-              | Syn.Cst.StructureItem.Expression _, next :: _
+              | Syn.Cst.StructureItem.Expression _, (next, _) :: _
                 when
                   Syn.Ceibo.Red.SyntaxNode.kind
                     (Syn.Cst.StructureItem.syntax_node next)
@@ -5676,6 +5731,21 @@ and render_structure_items ?source ~source_node items =
 
 and render_signature_top_level_items
     ~source ~source_offset ~source_node ~include_last_trailing_comment ~items =
+  let find_substring_from source pattern start =
+    let source_length = String.length source in
+    let pattern_length = String.length pattern in
+    let rec loop index =
+      if pattern_length = 0 then
+        Some start
+      else if index + pattern_length > source_length then
+        None
+      else if String.equal (String.sub source index pattern_length) pattern then
+        Some index
+      else
+        loop (index + 1)
+    in
+    loop start
+  in
   let flush_pending pending acc =
     match render_pending_trivia pending with
     | None ->
@@ -5705,15 +5775,19 @@ and render_signature_top_level_items
         Doc.concat [ doc; separator; join_entries rest ]
   in
   let signature_item_span item =
-    let syntax_node = Syn.Cst.SignatureItem.syntax_node item in
-    if signature_item_uses_verbatim_span item then
-      span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia:true syntax_node
-    else
-      match item with
-      | Syn.Cst.SignatureItem.TypeDeclaration _ ->
-          span_of_syntax_node_nonwhitespace_bounds syntax_node
-      | _ ->
-          span_of_syntax_node_nontrivia_bounds syntax_node
+    match item with
+    | Syn.Cst.SignatureItem.Docstring docstring ->
+        Syn.Cst.Token.span (Syn.Cst.Docstring.token docstring)
+    | _ ->
+        let syntax_node = Syn.Cst.SignatureItem.syntax_node item in
+        if signature_item_uses_verbatim_span item then
+          span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia:true syntax_node
+        else
+          match item with
+          | Syn.Cst.SignatureItem.TypeDeclaration _ ->
+              span_of_syntax_node_nonwhitespace_bounds syntax_node
+          | _ ->
+              span_of_syntax_node_nontrivia_bounds syntax_node
   in
   let compare_signature_items_by_span left right =
     let left_span = signature_item_span left in
@@ -5730,7 +5804,46 @@ and render_signature_top_level_items
       ~end_:(end_ - source_offset) pending
   in
   let items =
-    items |> List.sort compare_signature_items_by_span
+    let rec resolve_docstring_spans search_start acc = function
+      | [] ->
+          List.rev acc
+      | item :: rest -> (
+          match item with
+          | Syn.Cst.SignatureItem.Docstring docstring ->
+              let token = Syn.Cst.Docstring.token docstring in
+              let text = Syn.Cst.Token.text token in
+              let token_span =
+                match find_substring_from source text search_start with
+                | Some relative_start ->
+                    let relative_end = relative_start + String.length text in
+                    Syn.Ceibo.Span.make ~start:(source_offset + relative_start)
+                      ~end_:(source_offset + relative_end)
+                | None ->
+                    Syn.Cst.Token.span token
+              in
+              resolve_docstring_spans
+                (Int.max search_start (token_span.end_ - source_offset))
+                ((item, token_span) :: acc) rest
+          | _ ->
+              let span = signature_item_span item in
+              resolve_docstring_spans
+                (Int.max search_start (span.end_ - source_offset))
+                ((item, span) :: acc) rest)
+    in
+    resolve_docstring_spans 0 [] items
+    |> List.sort (fun (left, left_span) (right, right_span) ->
+           let left_span : Syn.Ceibo.Span.t = left_span in
+           let right_span : Syn.Ceibo.Span.t = right_span in
+           let order =
+             if not (Int.equal left_span.start right_span.start) then
+               Int.compare left_span.start right_span.start
+             else
+               Int.compare left_span.end_ right_span.end_
+           in
+           if not (Int.equal order 0) then
+             order
+           else
+             compare_signature_items_by_span left right)
   in
   let rec loop pending acc items cursor =
     yield ();
@@ -5753,8 +5866,7 @@ and render_signature_top_level_items
         in
         let acc = flush_pending pending acc in
         join_entries (List.rev acc)
-    | item :: rest ->
-        let base_span = signature_item_span item in
+    | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
         let pending = parse_between pending ~start:cursor ~end_:base_span.start in
         let moved_docstrings, pending =
           if acc = [] then
