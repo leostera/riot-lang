@@ -1,0 +1,9 @@
+(** The type of vectors containing elements of type `'a`. *)
+type 'a t
+(** # Creation *)
+
+(** Creates a new empty vector. *)
+val create : unit -> 'a t
+
+(** Creates a new empty vector with specified initial capacity. *)
+val with_capacity : int -> 'a t

@@ -520,7 +520,7 @@ let inherited_poly_variant_path_doc = fun syntax_node ->
   | segments ->
       Some (Doc.text (String.concat "" segments))
 
-let trailing_comment_suffix_doc = fun ?source syntax_node ->
+let trailing_comment_suffix_doc = fun ?source ?before syntax_node ->
   let source_position_is_column_zero =
     match source with
     | None ->
@@ -540,12 +540,19 @@ let trailing_comment_suffix_doc = fun ?source syntax_node ->
           Int.equal (find_line_start position) position
   in
   let node_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
+  let end_before =
+    match before with
+    | None ->
+        node_span.end_
+    | Some before ->
+        Int.min before node_span.end_
+  in
   let tokens_within_span =
     Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
     |> List.filter
       (fun syntax_token ->
         let span = Syn.Ceibo.Red.SyntaxToken.span syntax_token in
-        span.end_ <= node_span.end_)
+        span.end_ <= end_before)
   in
   let trailing_tokens =
     let rec collect = fun acc ->
@@ -955,6 +962,34 @@ let source_position_has_only_indentation_before = fun source position ->
   in
   loop line_start
 
+let source_position_indentation_before = fun source position ->
+  let source_length = String.length source in
+  let position = Int.max 0 (Int.min position source_length) in
+  let rec find_line_start index =
+    if index <= 0 then
+      0
+    else if Char.equal source.[index - 1] '\n' then
+      index
+    else
+      find_line_start (index - 1)
+  in
+  let line_start = find_line_start position in
+  let rec loop index =
+    if index >= position then
+      Some (position - line_start)
+    else
+      match source.[index] with
+      | ' '
+      | '\t' ->
+          loop (index + 1)
+      | _ ->
+          None
+  in
+  loop line_start
+
+let docstring_indentation = fun ~source syntax_node ->
+  source_position_indentation_before source (Syn.Ceibo.Red.SyntaxNode.span syntax_node).start
+
 let find_trailing_column_zero_docstring_start = fun ~source ~start ~end_ ->
   let source_length = String.length source in
   let start = Int.max 0 (Int.min start source_length) in
@@ -1013,6 +1048,46 @@ let find_trailing_docstring_start_any = fun ~source ~start ~end_ ->
       None
     else if source_position_has_only_indentation_before source index && is_docstring_at index then
       Some index
+    else
+      loop (index + 1)
+  in
+  loop start
+
+let find_trailing_docstring_start_at_indentation =
+  fun ~source ~indent ~include_sections ~start ~end_ ->
+  let source_length = String.length source in
+  let start = Int.max 0 (Int.min start source_length) in
+  let end_ = Int.max start (Int.min end_ source_length) in
+  let is_docstring_at index =
+    if index < 0 || index + 2 >= end_ || index + 2 >= source_length then
+      false
+    else if
+      not (Char.equal source.[index] '(')
+      || not (Char.equal source.[index + 1] '*')
+      || not (Char.equal source.[index + 2] '*')
+    then
+      false
+    else if index + 3 >= end_ || index + 3 >= source_length then
+      true
+    else
+      not (Char.equal source.[index + 3] '*')
+  in
+  let rec loop index =
+    if index >= end_ then
+      None
+    else if is_docstring_at index then
+      match source_position_indentation_before source index with
+      | Some actual_indent when actual_indent = indent ->
+          let pending = parse_trivia_between_offsets source ~start:index ~end_ [] in
+          (match List.sort compare_pending_trivia_by_position pending with
+          | TriviaDocstring (_, true, _) :: _ when not include_sections ->
+              loop (index + 1)
+          | TriviaDocstring _ :: _ ->
+              Some index
+          | _ ->
+              loop (index + 1))
+      | _ ->
+          loop (index + 1)
     else
       loop (index + 1)
   in
@@ -1960,7 +2035,7 @@ let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record 
             Doc.indent 2 (render_record_definition fields)
       )
 
-let render_variant_constructor = fun ?source ?(include_trailing_comment = true) ?(prefer_multiline_inline_record = false) constructor ->
+let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comment = true) ?(prefer_multiline_inline_record = false) constructor ->
   let head = Doc.concat [
     Doc.bar;
     Doc.space;
@@ -1986,7 +2061,7 @@ let render_variant_constructor = fun ?source ?(include_trailing_comment = true) 
         head
   in
   if include_trailing_comment then
-    match trailing_comment_suffix_doc ?source (Syn.Cst.VariantConstructor.syntax_node constructor) with
+    match trailing_comment_suffix_doc ?source ?before:end_before (Syn.Cst.VariantConstructor.syntax_node constructor) with
     | None ->
         body
     | Some suffix ->
@@ -2022,20 +2097,18 @@ let render_variant_definition = fun ?source ?end_before ~source_node constructor
   let constructor_count = List.length constructors in
   let constructor_docs = constructors
   |> List.mapi (fun index constructor ->
-    let include_trailing_comment =
+    let constructor_end_before =
       match end_before with
       | Some end_before when Int.equal index (constructor_count - 1) ->
-          let constructor_end =
-            (Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.VariantConstructor.syntax_node constructor)).end_
-          in
-          constructor_end <= end_before
+          Some end_before
       | _ ->
-          true
+          None
     in
     render_variant_constructor
       ?source
+      ?end_before:constructor_end_before
       ~prefer_multiline_inline_record:constructors_all_inline_records
-      ~include_trailing_comment
+      ~include_trailing_comment:true
       constructor) in
   let end_before =
     match end_before with
@@ -2175,9 +2248,15 @@ let type_declaration_nontrivia_end = fun ?before declaration ->
 
 let type_declaration_trailing_docstring_start = fun ~source declaration ->
   let declaration_end = type_declaration_nontrivia_end declaration in
+  let indent =
+    docstring_indentation ~source (Syn.Cst.TypeDeclaration.syntax_node declaration)
+    |> Option.unwrap_or ~default:0
+  in
   match
-    find_trailing_column_zero_docstring_start
+    find_trailing_docstring_start_at_indentation
       ~source
+      ~indent
+      ~include_sections:false
       ~start:declaration_end
       ~end_:((Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node declaration)).end_)
   with
@@ -2197,9 +2276,15 @@ let split_type_declaration_trailing_docstring_block = fun ~source declaration ->
   let full_end =
     (Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node declaration)).end_
   in
+  let indent =
+    docstring_indentation ~source (Syn.Cst.TypeDeclaration.syntax_node declaration)
+    |> Option.unwrap_or ~default:0
+  in
   match
-    find_trailing_column_zero_docstring_start
+    find_trailing_docstring_start_at_indentation
       ~source
+      ~indent
+      ~include_sections:true
       ~start:declaration_end
       ~end_:full_end
   with
@@ -2216,10 +2301,7 @@ let split_type_declaration_trailing_docstring_block = fun ~source declaration ->
           parse_trivia_between_offsets source ~start:block_start ~end_:full_end []
         in
         let moved_docstrings, remaining =
-          if pending_has_section_docstring trailing then
-            (None, trailing)
-          else
-            extract_docstring_block_from_start ~allow_terminal_docstrings:true trailing
+          extract_docstring_block_from_start ~allow_terminal_docstrings:true trailing
         in
         let remaining_start =
           match remaining with
@@ -2266,8 +2348,14 @@ let render_single_type_declaration_with_keyword = fun ?trailing_docstring_start_
             None
         | Some source ->
             let declaration_end = type_declaration_nontrivia_end decl in
-            find_trailing_docstring_start_any
+            let indent =
+              docstring_indentation ~source (Syn.Cst.TypeDeclaration.syntax_node decl)
+              |> Option.unwrap_or ~default:0
+            in
+            find_trailing_docstring_start_at_indentation
               ~source
+              ~indent
+              ~include_sections:true
               ~start:declaration_end
               ~end_:((Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node decl)).end_)
       )
@@ -2306,7 +2394,8 @@ let render_single_type_declaration_with_keyword = fun ?trailing_docstring_start_
     [ acc; Doc.line; Doc.indent 2 (render_type_constraint constraint_) ]) with_definition in
     with_constraints
 
-let render_type_declaration_with_keyword = fun ?(allow_terminal_docstrings = false) ctx keyword decl ->
+let render_type_declaration_with_keyword =
+  fun ?(allow_terminal_docstrings = false) ?(render_remaining_trivia = true) ctx keyword decl ->
   let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
   if and_declarations = [] then
     let doc = render_single_type_declaration_with_keyword ctx keyword decl in
@@ -2318,12 +2407,22 @@ let render_type_declaration_with_keyword = fun ?(allow_terminal_docstrings = fal
           let moved_docstrings, _remaining, _ =
             split_type_declaration_trailing_docstring_block ~source decl
           in
-          (
+          let doc =
             match moved_docstrings with
             | Some docstrings ->
                 doc_with_leading_trivia (Some docstrings) doc
             | None ->
-                doc)
+                doc
+          in
+          if render_remaining_trivia then
+            let _, remaining, _ = split_type_declaration_trailing_docstring_block ~source decl in
+            match render_pending_trivia remaining with
+            | Some trailing_doc ->
+                Doc.concat [ doc; blank_line; trailing_doc ]
+            | None ->
+                doc
+          else
+            doc
     )
   else if type_declaration_group_requires_verbatim decl then
     doc_of_verbatim_syntax_node_span_from_current_source ctx (Syn.Cst.TypeDeclaration.syntax_node decl)
@@ -2403,8 +2502,14 @@ let render_type_declaration_with_keyword = fun ?(allow_terminal_docstrings = fal
                   let next_decl_end = declaration_end next_decl rest_entries in
                   let next_trailing_docstring_start =
                     if rest_entries = [] then
-                      find_trailing_docstring_start_any
+                      let indent =
+                        docstring_indentation ~source (Syn.Cst.TypeDeclaration.syntax_node next_decl)
+                        |> Option.unwrap_or ~default:0
+                      in
+                      find_trailing_docstring_start_at_indentation
                         ~source
+                        ~indent
+                        ~include_sections:true
                         ~start:next_decl_end
                         ~end_:group_end
                     else
@@ -3084,8 +3189,14 @@ let make_lowerer ctx =
   let doc_of_core_type = doc_of_core_type ctx in
   let doc_of_module_expression = doc_of_module_expression ctx in
   let doc_of_module_type = doc_of_module_type ctx in
-  let render_type_declaration_with_keyword ?(allow_terminal_docstrings = false) keyword decl =
-    render_type_declaration_with_keyword ~allow_terminal_docstrings ctx keyword decl
+  let render_type_declaration_with_keyword
+      ?(allow_terminal_docstrings = false)
+      ?(render_remaining_trivia = true)
+      keyword decl =
+    render_type_declaration_with_keyword
+      ~allow_terminal_docstrings
+      ~render_remaining_trivia
+      ctx keyword decl
   in
   let rec render_expression expression =
   let doc =
@@ -5560,7 +5671,9 @@ and render_signature_entry
         match item with
         | Syn.Cst.SignatureItem.TypeDeclaration decl ->
             render_type_declaration_with_keyword
-              ~allow_terminal_docstrings:is_last_item kw_type decl
+              ~allow_terminal_docstrings:is_last_item
+              ~render_remaining_trivia:false
+              kw_type decl
         | _ ->
             render_signature_item item)
     in

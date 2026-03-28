@@ -1,0 +1,38 @@
+(** Model Context Protocol (MCP) implementation for OCaml *)
+
+open Std
+
+(** {1 Core Types} *)
+
+(** Protocol version string (e.g., "2024-11-05") *)
+type protocol_version = string
+(** JSON type alias *)
+type json = Data.Json.t
+(** {2 JSON-RPC Base Types} *)
+
+(** JSON-RPC request ID *)
+type request_id =
+  | String of string
+  | Number of int
+(** JSON-RPC error code *)
+type error_code = int
+(** JSON-RPC error *)
+type error = {
+  code : error_code;
+  message : string;
+  data : json option;
+}
+(** {2 Client/Server Info} *)
+
+type client_info = {
+  name : string;
+  version : string;
+}
+type server_info = {
+  name : string;
+  version : string;
+}
+(** {2 Capabilities} *)
+
+(** Empty for now, can be extended *)
+type tool_capability = unit
