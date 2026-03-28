@@ -3111,6 +3111,30 @@ let tests =
         | _ ->
             Error
               "expected open statement, standalone docstring, and let binding");
+    Test.case "cst keeps banner comments as comments, not standalone docstrings"
+      (fun () ->
+        let result =
+          parse_ml
+            "let to_list t = collect t []\n\
+             \n\
+             (*************************************************************************************************)\n\
+             (* Transformation *)\n\
+             (*************************************************************************************************)\n\
+             \n\
+             let iter_next = next\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding _
+          :: Syn.Cst.StructureItem.LetBinding _ :: _ ->
+            Ok ()
+        | _ ->
+            Error
+              "expected banner comments to remain trivia instead of standalone docstrings");
     Test.case "cst implementation open statements lift non-path module expressions"
       (fun () ->
         let result =
