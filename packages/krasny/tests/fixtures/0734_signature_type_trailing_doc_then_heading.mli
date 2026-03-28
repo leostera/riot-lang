@@ -1,0 +1,6 @@
+type stream_id = int
+(** Stream identifier *)
+
+(** Error codes *)
+type error_code =
+  | NoError

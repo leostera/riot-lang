@@ -1,0 +1,7 @@
+(** Request overview *)
+type request = {
+  id : int option;
+}
+(** Error codes *)
+type error =
+  | ParseError

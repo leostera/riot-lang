@@ -74,6 +74,9 @@
 0730_signature_operator_value_declarations.mli
 0731_signature_docstring_after_open.mli
 0732_signature_section_between_value_docstrings.mli
+0733_signature_value_docstring_then_section_then_type_docstrings.mli
+0734_signature_type_trailing_doc_then_heading.mli
+0735_signature_record_trailing_doc_then_heading.mli
 
 # 08xx modules, signatures, and functors
 0800_modules_signatures_and_functors.ml

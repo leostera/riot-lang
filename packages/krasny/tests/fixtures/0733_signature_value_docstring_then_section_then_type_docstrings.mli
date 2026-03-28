@@ -1,0 +1,9 @@
+val home_dir : unit -> string option
+(** Returns the user's home directory. *)
+
+(** # Environment Variables *)
+
+(** Type specifications for environment variable parsing *)
+type 't var_type =
+  | String : string var_type
+  | Int : int var_type
