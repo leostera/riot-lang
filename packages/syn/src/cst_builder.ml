@@ -6786,6 +6786,21 @@ let build_source_file_body ~docstring_item_of_docstring tree items_from_node =
   in
   (root, file_items)
 
+let build_items_from_payload_nodes
+    ~docstring_item_of_docstring payload_nodes items_from_node =
+  payload_nodes
+  |> List.concat_map (fun payload_node ->
+         Ceibo.Red.SyntaxNode.children_list payload_node
+         |> List.concat_map (function
+              | Ceibo.Red.Node node
+                when not (is_trivia (Ceibo.Red.SyntaxNode.kind node)) ->
+                  items_from_node node
+              | Ceibo.Red.Token syntax_token
+                when Ceibo.Red.SyntaxToken.kind syntax_token = Syntax_kind.DOCSTRING ->
+                  [ docstring_item_of_docstring (docstring_from_token syntax_token) ]
+              | _ ->
+                  []))
+
 let rec validate_pattern ~context = function
   | Cst.Pattern.Identifier _ | Cst.Pattern.Wildcard _ | Cst.Pattern.Literal _
   | Cst.Pattern.Extension _ ->
@@ -7753,7 +7768,17 @@ let signature_item_payload_nodes_from_node node =
       [ node ]
 
 let structure_items_from_syntax_node node =
-  match structure_item_payload_nodes_from_node node |> List.concat_map structure_items_from_node with
+  let items =
+    match Ceibo.Red.SyntaxNode.kind node with
+    | Syntax_kind.STRUCT_EXPR ->
+        build_items_from_payload_nodes
+          ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc)
+          [ node ]
+          structure_items_from_node
+    | _ ->
+        structure_items_from_node node
+  in
+  match items with
   | items -> Ok items
   | exception Bail error -> Error error
 
@@ -7767,7 +7792,27 @@ let structure_items_from_syntax_nodes nodes =
   | exception Bail error -> Error error
 
 let signature_items_from_syntax_node node =
-  match signature_item_payload_nodes_from_node node |> List.concat_map signature_items_from_node with
+  let items =
+    match Ceibo.Red.SyntaxNode.kind node with
+    | Syntax_kind.SIGNATURE ->
+        build_items_from_payload_nodes
+          ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc)
+          [ node ]
+          signature_items_from_node
+    | Syntax_kind.IDENT_EXPR -> (
+        match direct_non_trivia_tokens node with
+        | sig_kw :: _
+          when String.equal (Ceibo.Red.SyntaxToken.text sig_kw) "sig" ->
+            build_items_from_payload_nodes
+              ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc)
+              [ node ]
+              signature_items_from_node
+        | _ ->
+            signature_items_from_node node)
+    | _ ->
+        signature_items_from_node node
+  in
+  match items with
   | items -> Ok items
   | exception Bail error -> Error error
 

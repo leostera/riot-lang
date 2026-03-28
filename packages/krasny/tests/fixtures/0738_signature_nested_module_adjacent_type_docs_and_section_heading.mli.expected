@@ -2,8 +2,11 @@ module Green : sig
   (** ## Types *)
 
   (** Green token - leaf node containing source text. *)
-  type ('kind, 'text) token = { kind : 'kind; text : 'text; width : int }
-
+  type ('kind, 'text) token = {
+    kind : 'kind;
+    text : 'text;
+    width : int;
+  }
   (** Green node - interior node with children. *)
   type ('kind, 'text) node = {
     kind : 'kind;
@@ -16,6 +19,5 @@ module Green : sig
     | Node of ('kind, 'text) node
 
   (** ## Construction *)
-
   val make_token : kind:'kind -> text:'text -> width:int -> ('kind, 'text) token
 end

@@ -8,7 +8,6 @@ type id =
   | String of string
   | Number of int
   | Null
-
 (** Method parameters for JSON-RPC requests. *)
 type params =
   | Positional of Json.t list

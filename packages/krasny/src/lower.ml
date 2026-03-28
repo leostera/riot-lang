@@ -900,6 +900,23 @@ let pending_has_comment_or_section_docstring =
             false)
       pending
 
+let pending_has_only_section_docstrings =
+  fun pending ->
+    let saw_section = ref false in
+    let ok =
+      List.for_all
+        (function
+          | TriviaBreak _ ->
+              true
+          | TriviaDocstring (_, true, _) ->
+              saw_section := true;
+              true
+          | TriviaComment _ | TriviaDocstring _ ->
+              false)
+        pending
+    in
+    ok && !saw_section
+
 let source_position_is_line_start = fun source position ->
   let source_length = String.length source in
   let position = Int.max 0 (Int.min position source_length) in
@@ -912,6 +929,31 @@ let source_position_is_line_start = fun source position ->
       find_line_start (index - 1)
   in
   Int.equal (find_line_start position) position
+
+let source_position_has_only_indentation_before = fun source position ->
+  let source_length = String.length source in
+  let position = Int.max 0 (Int.min position source_length) in
+  let rec find_line_start index =
+    if index <= 0 then
+      0
+    else if Char.equal source.[index - 1] '\n' then
+      index
+    else
+      find_line_start (index - 1)
+  in
+  let line_start = find_line_start position in
+  let rec loop index =
+    if index >= position then
+      true
+    else
+      match source.[index] with
+      | ' '
+      | '\t' ->
+          loop (index + 1)
+      | _ ->
+          false
+  in
+  loop line_start
 
 let find_trailing_column_zero_docstring_start = fun ~source ~start ~end_ ->
   let source_length = String.length source in
@@ -934,7 +976,7 @@ let find_trailing_column_zero_docstring_start = fun ~source ~start ~end_ ->
   let rec loop index =
     if index >= end_ then
       None
-    else if source_position_is_line_start source index && is_docstring_at index then
+    else if source_position_has_only_indentation_before source index && is_docstring_at index then
       let pending = parse_trivia_between_offsets source ~start:index ~end_ [] in
       match List.sort compare_pending_trivia_by_position pending with
       | TriviaDocstring (_, true, _) :: _ ->
@@ -943,6 +985,34 @@ let find_trailing_column_zero_docstring_start = fun ~source ~start ~end_ ->
           Some index
       | _ ->
           loop (index + 1)
+    else
+      loop (index + 1)
+  in
+  loop start
+
+let find_trailing_docstring_start_any = fun ~source ~start ~end_ ->
+  let source_length = String.length source in
+  let start = Int.max 0 (Int.min start source_length) in
+  let end_ = Int.max start (Int.min end_ source_length) in
+  let is_docstring_at index =
+    if index < 0 || index + 2 >= end_ || index + 2 >= source_length then
+      false
+    else if
+      not (Char.equal source.[index] '(')
+      || not (Char.equal source.[index + 1] '*')
+      || not (Char.equal source.[index + 2] '*')
+    then
+      false
+    else if index + 3 >= end_ || index + 3 >= source_length then
+      true
+    else
+      not (Char.equal source.[index + 3] '*')
+  in
+  let rec loop index =
+    if index >= end_ then
+      None
+    else if source_position_has_only_indentation_before source index && is_docstring_at index then
+      Some index
     else
       loop (index + 1)
   in
@@ -1093,7 +1163,7 @@ let extract_trailing_top_level_docstring_block = fun ~source pending ->
     | TriviaBreak _ as entry :: rest ->
         consume_suffix found_docstring (entry :: acc) rest
     | TriviaDocstring (position, false, _) as entry :: rest
-      when source_position_is_line_start source position ->
+      when source_position_has_only_indentation_before source position ->
         consume_suffix true (entry :: acc) rest
     | rest ->
         (found_docstring, acc, rest)
@@ -1952,12 +2022,20 @@ let render_variant_definition = fun ?source ?end_before ~source_node constructor
   let constructor_count = List.length constructors in
   let constructor_docs = constructors
   |> List.mapi (fun index constructor ->
-    let _ = index in
-    let _ = constructor_count in
+    let include_trailing_comment =
+      match end_before with
+      | Some end_before when Int.equal index (constructor_count - 1) ->
+          let constructor_end =
+            (Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.VariantConstructor.syntax_node constructor)).end_
+          in
+          constructor_end <= end_before
+      | _ ->
+          true
+    in
     render_variant_constructor
       ?source
       ~prefer_multiline_inline_record:constructors_all_inline_records
-      ~include_trailing_comment:true
+      ~include_trailing_comment
       constructor) in
   let end_before =
     match end_before with
@@ -2152,7 +2230,7 @@ let split_type_declaration_trailing_docstring_block = fun ~source declaration ->
         in
         (moved_docstrings, remaining, remaining_start)
 
-let render_single_type_declaration_with_keyword = fun ctx keyword decl ->
+let render_single_type_declaration_with_keyword = fun ?trailing_docstring_start_override ctx keyword decl ->
   if type_declaration_requires_verbatim decl then
     doc_of_verbatim_syntax_node_span_from_current_source ctx (Syn.Cst.TypeDeclaration.syntax_node decl)
   else
@@ -2179,11 +2257,20 @@ let render_single_type_declaration_with_keyword = fun ctx keyword decl ->
           header
     in
   let trailing_docstring_start =
-    match ctx.source with
-    | None ->
-        None
-    | Some source ->
-        type_declaration_trailing_docstring_start ~source decl
+    match trailing_docstring_start_override with
+    | Some _ ->
+        trailing_docstring_start_override
+    | None -> (
+        match ctx.source with
+        | None ->
+            None
+        | Some source ->
+            let declaration_end = type_declaration_nontrivia_end decl in
+            find_trailing_docstring_start_any
+              ~source
+              ~start:declaration_end
+              ~end_:((Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node decl)).end_)
+      )
   in
   let definition =
     match Syn.Cst.TypeDeclaration.private_flag decl with
@@ -2228,25 +2315,15 @@ let render_type_declaration_with_keyword = fun ?(allow_terminal_docstrings = fal
       | None ->
           doc
       | Some source ->
-          let syntax_node = Syn.Cst.TypeDeclaration.syntax_node decl in
-          let moved_docstrings, remaining, _ =
+          let moved_docstrings, _remaining, _ =
             split_type_declaration_trailing_docstring_block ~source decl
           in
-          let doc =
+          (
             match moved_docstrings with
             | Some docstrings ->
                 doc_with_leading_trivia (Some docstrings) doc
             | None ->
-                doc
-          in
-          if not (pending_has_comment_or_section_docstring remaining) then
-            doc
-          else
-            match render_pending_trivia remaining with
-            | None ->
-                doc
-            | Some trailing_doc ->
-                Doc.concat [ doc; Doc.line; trailing_doc ]
+                doc)
     )
   else if type_declaration_group_requires_verbatim decl then
     doc_of_verbatim_syntax_node_span_from_current_source ctx (Syn.Cst.TypeDeclaration.syntax_node decl)
@@ -2314,18 +2391,30 @@ let render_type_declaration_with_keyword = fun ?(allow_terminal_docstrings = fal
                     | None ->
                         acc
                   in
-                  let acc =
-                    match render_pending_trivia remaining, acc with
-                    | Some trailing_doc, current :: rest ->
-                        Doc.concat [ current; Doc.line; trailing_doc ] :: rest
-                    | _ ->
-                        acc
-                  in
-                  Doc.join blank_line (List.rev acc)
+                let acc =
+                  match render_pending_trivia remaining, acc with
+                  | Some trailing_doc, current :: rest ->
+                      Doc.concat [ current; blank_line; trailing_doc ] :: rest
+                  | _ ->
+                      acc
+                in
+                Doc.join blank_line (List.rev acc)
               | (next_decl, next_keyword) :: rest_entries ->
-                  let next_doc = render_single_type_declaration_with_keyword ctx next_keyword next_decl in
-                  let next_span = Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node
-                  next_decl) in
+                  let next_decl_end = declaration_end next_decl rest_entries in
+                  let next_trailing_docstring_start =
+                    if rest_entries = [] then
+                      find_trailing_docstring_start_any
+                        ~source
+                        ~start:next_decl_end
+                        ~end_:group_end
+                    else
+                      None
+                  in
+                  let next_doc =
+                    render_single_type_declaration_with_keyword
+                      ?trailing_docstring_start_override:next_trailing_docstring_start
+                      ctx next_keyword next_decl
+                  in
                   let between = parse_trivia_between_offsets source ~start:current_end ~end_:(and_keyword_start
                   next_decl) [] in
                   let moved_docstrings, remaining =
@@ -2348,7 +2437,7 @@ let render_type_declaration_with_keyword = fun ?(allow_terminal_docstrings = fal
                     | Some between_doc ->
                         doc_with_leading_trivia (Some between_doc) next_doc
                   in
-                  build (next_doc :: acc) (declaration_end next_decl rest_entries) rest_entries
+                  build (next_doc :: acc) next_decl_end rest_entries
             in
             build [ first_doc ] (declaration_end first_decl rest) rest
 
@@ -5769,7 +5858,29 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
     | None ->
         acc
     | Some pending_doc ->
-        (pending_doc, false, true, false, not strip_trailing_breaks, false, false) :: acc
+        let is_section_block = pending_has_only_section_docstrings pending in
+        ( pending_doc,
+          false,
+          not is_section_block,
+          false,
+          not strip_trailing_breaks,
+          false,
+          false )
+        :: acc
+  in
+  let append_leading_doc = fun existing doc ->
+    match existing with
+    | None ->
+        Some doc
+    | Some existing ->
+        Some (Doc.concat [ existing; Doc.line; doc ])
+  in
+  let apply_leading_doc = fun leading_doc (doc, a, b, c, d, e, f) ->
+    match leading_doc with
+    | None ->
+        (doc, a, b, c, d, e, f)
+    | Some leading_doc ->
+        (doc_with_leading_trivia (Some leading_doc) doc, a, b, c, d, e, f)
   in
   let rec join_entries = function
     | [] ->
@@ -5865,7 +5976,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
            else
              compare_structure_items_by_span left right)
   in
-  let rec loop pending acc cursor items =
+  let rec loop pending leading_doc acc cursor items =
     yield ();
     match items with
     | [] ->
@@ -5885,6 +5996,13 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
               acc
         in
         let acc = flush_pending pending acc in
+        let acc =
+          match leading_doc with
+          | None ->
+              acc
+          | Some doc ->
+              (doc, false, false, false, false, false, false) :: acc
+        in
         join_entries (List.rev acc)
     | ((Syn.Cst.StructureItem.Expression _ as item), (base_span : Syn.Ceibo.Span.t)) :: rest ->
         let pending = parse_between pending ~start:cursor ~end_:base_span.start in
@@ -5963,7 +6081,8 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
             | _ ->
                 assert false
         in
-        loop [] (entry :: acc) next_cursor remaining
+        let entry = apply_leading_doc leading_doc entry in
+        loop [] None (entry :: acc) next_cursor remaining
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
         let pending = parse_between pending ~start:cursor ~end_:base_span.start in
         let is_attachable_docstring =
@@ -5991,7 +6110,37 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
             acc
         in
         if is_attachable_docstring then
-          loop [] acc base_span.end_ rest
+          let leading_doc =
+            match acc with
+            | (_, _, _, _, _, _, true) :: _ ->
+                leading_doc
+            | _ -> (
+                match item, rest with
+                | Syn.Cst.StructureItem.Docstring docstring, (next_item, _) :: _
+                  when structure_item_accepts_trailing_docstring next_item ->
+                      append_leading_doc leading_doc
+                        (doc_of_token (Syn.Cst.Docstring.token docstring))
+                | _ ->
+                    None)
+          in
+          let acc =
+            match acc with
+            | (_, _, _, _, _, _, true) :: _ ->
+                acc
+            | _ -> (
+                match item, rest with
+                | Syn.Cst.StructureItem.Docstring _, (next_item, _) :: _
+                  when structure_item_accepts_trailing_docstring next_item ->
+                      acc
+                | _ ->
+                    let acc = flush_pending pending acc in
+                    let entry =
+                      render_structure_entry ~source ~source_offset ~span:base_span
+                        ~trailing_suffix:None ~is_last_item:(rest = []) item
+                    in
+                    apply_leading_doc leading_doc entry :: acc)
+          in
+          loop [] leading_doc acc base_span.end_ rest
         else
           let moved_docstrings, pending =
             if acc = [] then
@@ -6056,10 +6205,11 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
             render_structure_entry ~source ~source_offset ~span:base_span ~trailing_suffix
               ~is_last_item:(rest = []) item
           in
-          loop [] (entry :: acc) next_cursor rest
+          let entry = apply_leading_doc leading_doc entry in
+          loop [] None (entry :: acc) next_cursor rest
   in
   let source_node_span = Syn.Ceibo.Red.SyntaxNode.span source_node in
-  loop [] [] source_node_span.start items
+  loop [] None [] source_node_span.start items
 
 and render_structure_items ?source ~source_node items =
   let source_opt = source in
@@ -6121,7 +6271,22 @@ and render_signature_top_level_items
     | None ->
         acc
     | Some pending_doc ->
-        (pending_doc, false, true, false, false, false, false) :: acc
+        let is_section_block = pending_has_only_section_docstrings pending in
+        (pending_doc, false, not is_section_block, false, false, false, false) :: acc
+  in
+  let append_leading_doc = fun existing doc ->
+    match existing with
+    | None ->
+        Some doc
+    | Some existing ->
+        Some (Doc.concat [ existing; Doc.line; doc ])
+  in
+  let apply_leading_doc = fun leading_doc (doc, a, b, c, d, e, f) ->
+    match leading_doc with
+    | None ->
+        (doc, a, b, c, d, e, f)
+    | Some leading_doc ->
+        (doc_with_leading_trivia (Some leading_doc) doc, a, b, c, d, e, f)
   in
   let rec join_entries = function
     | [] ->
@@ -6227,7 +6392,7 @@ and render_signature_top_level_items
            else
              compare_signature_items_by_span left right)
   in
-  let rec loop pending acc items cursor =
+  let rec loop pending leading_doc acc items cursor =
     yield ();
     match items with
     | [] ->
@@ -6247,6 +6412,13 @@ and render_signature_top_level_items
               acc
         in
         let acc = flush_pending pending acc in
+        let acc =
+          match leading_doc with
+          | None ->
+              acc
+          | Some doc ->
+              (doc, false, false, false, false, false, false) :: acc
+        in
         join_entries (List.rev acc)
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
         let pending = parse_between pending ~start:cursor ~end_:base_span.start in
@@ -6275,7 +6447,39 @@ and render_signature_top_level_items
             acc
         in
         if is_attachable_docstring then
-          loop [] acc rest base_span.end_
+          let leading_doc =
+            match acc with
+            | (_, _, _, _, _, _, true) :: _ ->
+                leading_doc
+            | _ -> (
+                match item, rest with
+                | Syn.Cst.SignatureItem.Docstring docstring, (next_item, _) :: _
+                  when signature_item_accepts_trailing_docstring next_item ->
+                      append_leading_doc leading_doc
+                        (doc_of_token (Syn.Cst.Docstring.token docstring))
+                | _ ->
+                    None)
+          in
+          let acc =
+            match acc with
+            | (_, _, _, _, _, _, true) :: _ ->
+                acc
+            | _ -> (
+                match item, rest with
+                | Syn.Cst.SignatureItem.Docstring _, (next_item, _) :: _
+                  when signature_item_accepts_trailing_docstring next_item ->
+                      acc
+                | _ ->
+                    let acc = flush_pending pending acc in
+                    let entry =
+                      render_signature_entry
+                        ~include_trailing_comment:(include_last_trailing_comment && rest = [])
+                        ~source ~source_offset ~span:base_span ~trailing_suffix:None
+                        ~is_last_item:(rest = []) item
+                    in
+                    apply_leading_doc leading_doc entry :: acc)
+          in
+          loop [] leading_doc acc rest base_span.end_
         else
           let moved_docstrings, pending =
             if acc = [] then
@@ -6298,10 +6502,11 @@ and render_signature_top_level_items
               ~source ~source_offset ~span:base_span ~trailing_suffix:None
               ~is_last_item:(rest = []) item
           in
-          loop [] (entry :: acc) rest base_span.end_
+          let entry = apply_leading_doc leading_doc entry in
+          loop [] None (entry :: acc) rest base_span.end_
   in
   let source_node_span = Syn.Ceibo.Red.SyntaxNode.span source_node in
-  loop [] [] items source_node_span.start
+  loop [] None [] items source_node_span.start
 
 and render_signature_items ?source ~source_node items =
   let source_opt = source in
