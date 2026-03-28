@@ -48,6 +48,7 @@
 0500_labeled_and_optional_arguments.ml
 0510_typed_labeled_parameter_arrow.ml
 0511_optional_parameter_default_preservation.ml
+0512_labeled_arg_literal_then_positional_before_infix.ml
 
 # 07xx types and signatures
 0700_types_and_type_declarations.ml

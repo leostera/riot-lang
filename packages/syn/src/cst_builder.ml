@@ -2934,6 +2934,15 @@ and rebuild_apply_chain ~syntax_node callee = function
             })
         callee arguments
 
+and split_greedy_argument_value value =
+  match value with
+  | Cst.Expression.Infix { left; operator_token; right; _ } ->
+      let head, extra_arguments = collect_apply_arguments [] left in
+      (head, extra_arguments, Some (operator_token, right))
+  | _ ->
+      let head, extra_arguments = collect_apply_arguments [] value in
+      (head, extra_arguments, None)
+
 and normalize_greedy_labeled_argument ~syntax_node ~callee argument =
   let rebuild value extra_arguments make_argument =
     let callee =
@@ -2947,64 +2956,54 @@ and normalize_greedy_labeled_argument ~syntax_node ~callee argument =
     in
     rebuild_apply_chain ~syntax_node callee extra_arguments
   in
-  let rebuild_infix value operator_token right make_argument =
-    let left =
-      Cst.Expression.Apply
-        {
-          syntax_node;
-          callee;
-          argument = make_argument value;
-          attributes = [];
-        }
-    in
-    Cst.Expression.Infix
-      {
-        syntax_node;
-        left;
-        operator_token;
-        right;
-        attributes = [];
-      }
+  let wrap_infix_tail left = function
+    | Some (operator_token, right) ->
+        Cst.Expression.Infix
+          {
+            syntax_node;
+            left;
+            operator_token;
+            right;
+            attributes = [];
+          }
+    | None ->
+        left
   in
   match argument with
   | Cst.Labeled ({ value = Some value; _ } as labeled_argument) -> (
-      match value with
-      | Cst.Expression.Infix { left; operator_token; right; _ } ->
-          rebuild_infix left operator_token right (fun value ->
-              Cst.Labeled { labeled_argument with value = Some value })
-      | _ ->
-          let head, extra_arguments = collect_apply_arguments [] value in
-          match extra_arguments with
-          | _ :: _ ->
-              rebuild head extra_arguments (fun value ->
-                  Cst.Labeled { labeled_argument with value = Some value })
-          | [] ->
-              Cst.Expression.Apply
-                {
-                  syntax_node;
-                  callee;
-                  argument;
-                  attributes = [];
-                })
+      let head, extra_arguments, infix_tail = split_greedy_argument_value value in
+      let left =
+        match extra_arguments with
+        | _ :: _ ->
+            rebuild head extra_arguments (fun value ->
+                Cst.Labeled { labeled_argument with value = Some value })
+        | [] ->
+            Cst.Expression.Apply
+              {
+                syntax_node;
+                callee;
+                argument = Cst.Labeled { labeled_argument with value = Some head };
+                attributes = [];
+              }
+      in
+      wrap_infix_tail left infix_tail)
   | Cst.Optional ({ value = Some value; _ } as optional_argument) -> (
-      match value with
-      | Cst.Expression.Infix { left; operator_token; right; _ } ->
-          rebuild_infix left operator_token right (fun value ->
-              Cst.Optional { optional_argument with value = Some value })
-      | _ ->
-          let head, extra_arguments = collect_apply_arguments [] value in
-          match extra_arguments with
-          | _ :: _ ->
-              rebuild head extra_arguments (fun value ->
-                  Cst.Optional { optional_argument with value = Some value })
-          | [] ->
-              Cst.Expression.Apply
-                {
-                  syntax_node;
-                  callee;
-                  argument;
-                  attributes = [];
-                })
+      let head, extra_arguments, infix_tail = split_greedy_argument_value value in
+      let left =
+        match extra_arguments with
+        | _ :: _ ->
+            rebuild head extra_arguments (fun value ->
+                Cst.Optional { optional_argument with value = Some value })
+        | [] ->
+            Cst.Expression.Apply
+              {
+                syntax_node;
+                callee;
+                argument = Cst.Optional { optional_argument with value = Some head };
+                attributes = [];
+              }
+      in
+      wrap_infix_tail left infix_tail)
   | _ ->
       Cst.Expression.Apply
         {
