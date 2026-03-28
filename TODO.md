@@ -5,85 +5,243 @@ This file is _yours_. Keep it up to date after every big change.
 ## How You Work
 
 1. Read this file from top to bottom and pick the next unchecked item that is unblocked.
-2. Work until its completed.
-3. Mark a task complete in this document only after the relevant verification has passed.
-4. DON'T FORGET TO GIT COMMIT AFTER EVERY SLICE! And use conevntional commit messages like: feat(pkg): <value delivered>
+2. Work until it is complete.
+3. Mark a task complete here only after the listed verification has passed.
+4. Commit after every slice with a conventional commit message.
+5. Prefer `ceibo` / `syn` changes over new `krasny/lower.ml` trivia heuristics.
 
-## TASKS
+## Mission
 
-- [ ] Make Krasny able to format the entire codebase without losing information
+- [ ] Make trivia, comments, and docstrings first-class at the token layer so the CST can derive reliable ownership and `krasny` can become a renderer again
 
-- [x] `tusk fix --apply` can apply the `packages/std/fix/no_double_list_rev.ml` safely
+## Non-Negotiables
 
-- [ ] Start building `tusk fmt` to parallely scan the codebase and call
-`krasny` on every input -- we can start with a `tusk fmt --check` flag that
-will just print out if the input would have been formatted or not, and exists
-with 0 if no formatting was needed, or 1 if at least 1 file needed to be
-formatted.
-  - `tusk fmt --check` now streams per-file results and exits 1 when files need formatting.
-  - `tusk fmt --verify` now streams per-file verification results and exits 1 only when files are unsafe to format or fail to format.
-  - Active work loop for making `tusk fmt` safe:
-    1. run `tusk fmt --verify --json`
-    2. take the first `unsafe_to_format` file
-    3. inspect CST / ceibo / syntax-hash / formatted output
-    4. reduce to the smallest `krasny` fixture that still reproduces the unsafe rewrite
-    5. fix `krasny` or `syn`
-    6. rerun the focused fixture plus `tusk fmt --verify --json`
-    7. repeat until `unsafe_to_format = 0`, then we can safely enable real rewriting
+- [ ] Use token `leading_trivia` only; do not add token `trailing_trivia`
+- [ ] Preserve trivia losslessly in `syn`, even when the source placement is weird
+- [ ] Keep token spans as token-body-only spans; trivia carries its own spans/text
+- [ ] Stop storing trivia as standalone syntax/tree children
+- [ ] Derive ownership from token order and item/member sequences, not source-gap archaeology
+- [ ] Normalize ugly comment placement in `krasny`, not in `syn`
 
-- [ ] Once all of the above are ready, make sure you've committed all the files
-and now run in two stages: 
-    1) `tusk fix --apply` to apply all fixes. Verify everything still works. Commit. 
-    2) `tusk fmt` to reformat all the files. Verify everything still works. Commit.
+## Ralph Loop
 
-### Recent Tusk-Fix Progress
+For every slice below:
 
-- `fixme` now owns the pure source-level fix engine via `Source_runner` and `Rule_test`.
-- `tusk-fix` delegates its parse/run/apply pipeline to that shared core instead of owning a separate source execution path.
-- We now have direct in-process tests for:
-  - applying a real safe built-in rule fix (`snake_case_type_names`)
-  - applying multiple non-overlapping fixes from multiple rules
-  - rejecting overlapping fixes from multiple rules
-- Verified directly through the built test binary:
-  - `_build/debug/aarch64-apple-darwin/out/tusk-fix/fix_tests run-tests rule-test`
-- Verified the delegated real CLI path still works:
-  - `tusk fix --apply <scratch-file>` rewrites `List.rev (List.rev ys)` to `ys`
+- [ ] Add or update the smallest regression first
+- [ ] Land the smallest code change that moves ownership closer to the token layer
+- [ ] Run focused tests first
+- [ ] Run the slice build command
+- [ ] Commit the slice
+- [ ] Update this file before starting the next slice
 
-### Krasny formats the whole codebase
+## Definition Of Done
 
-You are done with this task when we can run: `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast` and there are no failures. - A polling loop script is available at `scripts/verify_fail_fast_loop.sh` and defaults to writing `krasny_verify_results.log` at repo root for live frontier tracking.
+- [ ] `ceibo` stores trivia on tokens instead of as standalone tree children
+- [ ] `syn` lexer/parser consume token-attached trivia cleanly
+- [ ] Top-level CST item ownership comes from token boundaries
+- [ ] Nested `sig ... end` / `struct ... end` ownership uses the same model
+- [ ] Member ownership is reliable for constructors, fields, `and` groups, and nested modules
+- [ ] Doc kind is explicit in the CST
+- [ ] `krasny/lower.ml` no longer does normal-path trivia archaeology
+- [ ] `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast` passes
 
-Otherwise, if you find a failure, you will:
-1. call `syn print-cst <file>`
-2. call `syn print-ceibo <file>`
-3. call `krasy syntax-hash <file>`
-4. call `krasy format <file>`
-5. you will identify the failure and create a small fixture in packages/krasny/tests/fixtures/
-6. you will run `./packages/krasny/tests/test_runner.py --filter <new fixture>` to verify it fails
-7. you will enter the _fix loop_:
-   a. modify krasny or even syn if you need to
-   b. if needed, you may write new format_tests or cst_tests
-   c. rerun the fixture test runner
-   d. once the test passes, you run the --verify-workspace command and see if that file parsed correctly or if you must go on to the next format failure
+## Execution Plan
 
-You are done with this task when `krasny` can format the entire codebase and
-the CST-hash of the source before and after formatting is the same (that is, there's no information loss).
+### 1. Ceibo Token Trivia Model
 
-### Parked Release/Toolchain Follow-Up
+- [x] Introduce a first-class trivia type
+  - represent whitespace, comments, and docstrings distinctly
+  - keep raw text and spans on each trivia entry
+  - verification:
+    - focused token/trivia tests
+    - `timeout 120 tusk build ceibo syn`
 
-- Vendored OCaml cross-compiler publication is currently blocked by a relocatability regression after the OCaml 5.5 rebase.
-- Current repro on Apple Silicon macOS:
-  - `./scripts/release/ocaml.sh aarch64-apple-darwin-x-aarch64-unknown-linux-gnu`
-  - fails in `make crossopt` with `Error: Unbound module Stdlib`
-- Key evidence gathered:
-  - `vendor/ocaml/cross/aarch64-apple-darwin/bin/ocamlc -config` reports `standard_library_default: /usr/local/lib/ocaml`
-  - `vendor/ocaml/runtime/build_config.h` currently contains `#define OCAML_STDLIB_DIR "/usr/local/lib/ocaml"`
-  - `vendor/ocaml/Makefile` still generates `runtime/build_config.h` from `$(TARGET_LIBDIR)` rather than forcing `../lib/ocaml`
-  - manually exporting `OCAMLLIB=$(pwd)/vendor/ocaml/cross/aarch64-apple-darwin/lib/ocaml` makes the native compiler resolve the expected stdlib path, which points at the rebase/build config rather than the release wrapper as the root issue
-- Related fallout:
-  - `./docker/build.sh` is also currently broken and should be revisited after the relocatable OCaml regression is fixed
-  - deploying `services/registry/wrangler.toml` from a Docker image is blocked on the same chain:
-    1. fix the broken Docker builder / `./docker/build.sh`
-    2. which depends on published prebuilt OCaml toolchains
-    3. which depends on restoring the relocatable OCaml fixes after the 5.5 rebase
-- When we come back to this, inspect the rebased relocatable patches first before doing more work on the publishing scripts.
+- [x] Add `leading_trivia` to Ceibo tokens
+  - update green token representation
+  - update red token representation
+  - keep token spans token-body-only
+  - verification:
+    - focused token construction tests
+    - `timeout 120 tusk build ceibo syn`
+
+- [ ] Add EOF-owned trailing file trivia
+  - introduce an EOF token/sentinel whose `leading_trivia` owns trailing file trivia
+  - keep file-end comments/docstrings lossless
+  - verification:
+    - focused EOF/file-end tests
+    - `timeout 120 tusk build ceibo syn`
+
+- [ ] Update Ceibo docs/helpers to describe token-attached trivia
+  - remove assumptions that trivia exists as tree children
+  - verification:
+    - docs match the landed representation
+
+### 2. Remove Trivia-As-Children From Trees
+
+- [ ] Stop constructing standalone trivia children in the green tree
+  - tree children should be non-trivia syntax only
+  - verification:
+    - `timeout 120 tusk build ceibo syn`
+
+- [ ] Stop exposing standalone trivia children in the red tree
+  - traversal helpers should not rely on filtering trivia out of child lists
+  - verification:
+    - focused Ceibo traversal tests
+    - `timeout 120 tusk build ceibo syn`
+
+- [ ] Keep `syn print-ceibo` lossless after the representation change
+  - verification:
+    - direct before/after print-ceibo checks on files with mixed comments/docstrings
+    - `timeout 120 tusk build ceibo syn`
+
+### 3. Syn Lexer / Parser Migration
+
+- [ ] Make the lexer accumulate trivia onto the next real token
+  - `Whitespace` / `Comment` / `Docstring` stop behaving like ordinary parser tokens
+  - preserve exact trivia ordering
+  - verification:
+    - focused lexer tests with mixed blank lines/comments/docstrings
+    - `timeout 120 tusk build syn`
+
+- [ ] Remove explicit parser trivia consumption
+  - delete parser flows that splice trivia into green children
+  - keep offsets and diagnostics stable
+  - verification:
+    - focused parser tests on awkward comment placements
+    - `timeout 120 tusk build syn`
+
+- [ ] Update token cursor / parser helper APIs for token-attached trivia
+  - helpers should work on real tokens directly
+  - verification:
+    - focused parser helper tests if needed
+    - `timeout 120 tusk build syn`
+
+### 4. Rebuild Top-Level CST Ownership
+
+- [ ] Derive standalone comments/docstrings from token boundaries
+  - stop reparsing source gaps for top-level ownership
+  - verification:
+    - `timeout 180 tusk test syn:cst_tests`
+
+- [ ] Build a generic ordered-item ownership pass
+  - use one pass for structure items and signature items
+  - attach leading doc blocks
+  - preserve standalone headings/docs
+  - avoid double-owning comments/docstrings
+  - verification:
+    - focused CST tests for leading docs, standalone headings, repeated docs, mixed comments/docstrings
+    - `timeout 120 tusk build syn krasny`
+
+- [ ] Retire the old file-level span-exclusion/source-gap path where possible
+  - verification:
+    - targeted formatter fixtures for module overviews, section headings, repeated docstrings
+    - `timeout 120 tusk build syn krasny`
+
+### 5. Rebuild Nested Body Ownership
+
+- [ ] Reify nested `sig ... end` bodies as normalized item lists
+  - preserve original syntax nodes for losslessness/debugging
+  - verification:
+    - nested signature CST tests
+    - `timeout 120 tusk build syn krasny`
+
+- [ ] Reify nested `struct ... end` bodies as normalized item lists
+  - preserve original syntax nodes for losslessness/debugging
+  - verification:
+    - nested structure CST tests
+    - `timeout 120 tusk build syn krasny`
+
+- [ ] Use the same ordered-item ownership pass for nested and top-level bodies
+  - verification:
+    - nested CST tests for headings/docs/comments/repeated docs
+    - `timeout 120 tusk build syn krasny`
+
+### 6. Rebuild Member-Level Ownership
+
+- [ ] Make type declaration ownership come from token order
+  - avoid ad hoc span surgery around grouped `and` declarations
+  - verification:
+    - CST tests for grouped type docs/headings
+    - `timeout 120 tusk build syn krasny`
+
+- [ ] Make variant constructor ownership reliable
+  - constructor docs should not drift to the next type or the parent type header
+  - verification:
+    - CST tests for constructor docs vs next type docs
+    - targeted formatter fixtures in `jsonrpc.mli` / `mcp.mli`
+
+- [ ] Make record field ownership reliable
+  - field docs should stay with fields, not the enclosing type or following declarations
+  - verification:
+    - CST tests for record field docs
+    - targeted formatter fixtures in `sse.mli` / similar cases
+
+- [ ] Decide which grammars need explicit member-item streams
+  - candidates:
+    - variant constructors
+    - record fields
+    - object fields
+    - exception constructors
+  - verification:
+    - design documented in code/comments/tests
+
+- [ ] Add nested member-heading coverage
+  - headings/docs inside nested modules should not duplicate or drift
+  - verification:
+    - targeted CST tests for `ceibo.mli`
+
+### 7. Make Doc Kind Explicit
+
+- [ ] Represent ordinary docs vs section docs explicitly in the CST/trivia model
+  - stop reclassifying headings from raw text in normal paths
+  - verification:
+    - CST tests for ordinary docs vs section docs vs plain comments
+    - `timeout 120 tusk build syn krasny`
+
+### 8. Simplify Krasny
+
+- [ ] Delete top-level trivia archaeology from `krasny/lower.ml`
+  - remove normal-path source-gap parsing once CST ownership is correct
+  - verification:
+    - `timeout 180 tusk test krasny:format_tests`
+    - targeted workspace regressions
+
+- [ ] Delete nested-body trivia repair heuristics from `krasny/lower.ml`
+  - nested signatures/modules should render from CST ownership directly
+  - verification:
+    - `timeout 180 tusk test krasny:format_tests`
+    - targeted nested formatter fixtures
+
+- [ ] Keep only layout/rendering logic in `lower.ml`
+  - if `lower.ml` is still deciding ownership from spans/source gaps, the job is not done
+  - verification:
+    - code review of `lower.ml`
+    - focused formatter tests still pass
+
+### 9. Regression Inventory
+
+- [ ] Keep adding direct `syn:cst_tests` for ownership, not just formatter fixtures
+  - top-level module overviews
+  - first type after `open`
+  - repeated adjacent docstrings
+  - section headings between declarations
+  - constructor docs vs next type docs
+  - record field docs
+  - nested module headings
+  - plain comments mixed with docstrings
+
+- [ ] Keep formatter fixtures only for renderer problems after CST ownership is correct
+  - avoid new `lower.ml`-only fixtures for issues that belong in `syn:cst_tests`
+
+### 10. Final Validation
+
+- [ ] `timeout 120 tusk build ceibo syn krasny`
+- [ ] `timeout 180 tusk test syn:cst_tests`
+- [ ] `timeout 180 tusk test krasny:format_tests`
+- [ ] `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast`
+
+## Current Notes
+
+- [ ] Treat the existing `owned_trivia` expansion as a migration aid, not the final model
+- [ ] Current state: Ceibo green/red tokens now have token-attached `leading_trivia`, but the lexer/parser still populate `[]` and still store trivia as standalone tree children
+- [ ] The next concrete slice is EOF-owned trailing file trivia, with the lexer/parser still otherwise unchanged

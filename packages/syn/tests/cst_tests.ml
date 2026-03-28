@@ -33,29 +33,84 @@ let structure_items =
   | Syn.Cst.Implementation { items; _ } -> items
   | Syn.Cst.Interface _ -> []
 
-let ident_text = fun ident ->
-  Syn.Cst.Ident.last_segment ident
-  |> Option.map Syn.Cst.Token.text
-  |> Option.unwrap_or ~default:""
+let ident_text = fun ident -> Syn.Cst.Ident.last_segment ident
+|> Option.map Syn.Cst.Token.text
+|> Option.unwrap_or ~default:""
 
 let signature_items =
   function
   | Syn.Cst.Interface { items; _ } -> items
   | Syn.Cst.Implementation _ -> []
 
-let top_level_let_bindings =
-  fun cst ->
-    structure_items cst |> List.filter_map
-      (
-        function
-        | Syn.Cst.StructureItem.LetBinding binding ->
-            Some binding
-        | _ ->
-            None
-      )
+let owned_trivia_texts = fun owned ->
+  Syn.Cst.OwnedTrivia.leading owned
+  @ Syn.Cst.OwnedTrivia.inner owned
+  @ Syn.Cst.OwnedTrivia.trailing owned
+  |> List.map Syn.Cst.Trivia.text
+
+let top_level_let_bindings = fun cst ->
+  structure_items cst |> List.filter_map
+    (
+      function
+      | Syn.Cst.StructureItem.LetBinding binding ->
+          Some binding
+      | _ ->
+          None
+    )
 
 let tests =
   [
+    Test.case "ceibo tokens preserve leading trivia separately from token body width"
+      (fun () ->
+        let comment =
+          Ceibo.Green.make_trivia ~kind:Syn.SyntaxKind.COMMENT
+            ~text:"(* hi *)" ~width:8
+        in
+        let space =
+          Ceibo.Green.make_trivia ~kind:Syn.SyntaxKind.WHITESPACE
+            ~text:" " ~width:1
+        in
+        let token =
+          Ceibo.Green.make_token
+            ~leading_trivia:[ comment; space ]
+            ~kind:Syn.SyntaxKind.IDENT_EXPR ~text:"x" ~width:1
+        in
+        Test.assert_equal ~expected:1 ~actual:(Ceibo.Green.token_width token);
+        Test.assert_equal ~expected:10 ~actual:(Ceibo.Green.token_full_width token);
+        Test.assert_equal ~expected:10
+          ~actual:(Ceibo.Green.width (Ceibo.Green.Token token));
+        Test.assert_equal ~expected:2
+          ~actual:(List.length (Ceibo.Green.leading_trivia token));
+        Ok ());
+    Test.case "ceibo red tokens derive leading trivia spans before the token body"
+      (fun () ->
+        let comment =
+          Ceibo.Green.make_trivia ~kind:Syn.SyntaxKind.COMMENT
+            ~text:"(*hi*)" ~width:6
+        in
+        let space =
+          Ceibo.Green.make_trivia ~kind:Syn.SyntaxKind.WHITESPACE
+            ~text:" " ~width:1
+        in
+        let token =
+          Ceibo.Green.make_token
+            ~leading_trivia:[ comment; space ]
+            ~kind:Syn.SyntaxKind.IDENT_EXPR ~text:"x" ~width:1
+        in
+        let syntax_token =
+          Ceibo.Red.new_token token (Ceibo.Span.make ~start:7 ~end_:8)
+        in
+        let leading = Ceibo.Red.SyntaxToken.leading_trivia syntax_token in
+        match leading with
+        | [ comment; space ] ->
+            Test.assert_equal ~expected:(Ceibo.Span.make ~start:0 ~end_:6)
+              ~actual:(Ceibo.Red.SyntaxTrivia.span comment);
+            Test.assert_equal ~expected:(Ceibo.Span.make ~start:6 ~end_:7)
+              ~actual:(Ceibo.Red.SyntaxTrivia.span space);
+            Test.assert_equal ~expected:(Ceibo.Span.make ~start:7 ~end_:8)
+              ~actual:(Ceibo.Red.SyntaxToken.span syntax_token);
+            Ok ()
+        | _ -> Error "expected two trivia entries");
     Test.case "cst exists for diagnostics-free parse" (fun () ->
         let result = parse_ml "type userProfile = int\n" in
         Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
@@ -3300,6 +3355,55 @@ let tests =
         | _ ->
             Error
               "expected open statement, standalone comment, and let binding");
+    Test.case "cst open statements expose raw owned trivia for inline comments"
+      (fun () ->
+        let result = parse_ml "open (* keep me *) Std\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | [ Syn.Cst.StructureItem.OpenStatement stmt ] ->
+            Test.assert_equal ~expected:[ "(* keep me *)" ]
+              ~actual:
+                (owned_trivia_texts (Syn.Cst.OpenStatement.owned_trivia stmt));
+            Ok ()
+        | _ ->
+            Error "expected single open statement item");
+    Test.case "cst module declarations expose raw owned trivia for inline comments"
+      (fun () ->
+        let result = parse_ml "module (* keep me *) M = N\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | [ Syn.Cst.StructureItem.ModuleDeclaration decl ] ->
+            Test.assert_equal ~expected:[ "(* keep me *)" ]
+              ~actual:
+                (owned_trivia_texts (Syn.Cst.ModuleDeclaration.owned_trivia decl));
+            Ok ()
+        | _ ->
+            Error "expected single module declaration item");
+    Test.case "cst module type declarations expose raw owned trivia for inline comments"
+      (fun () ->
+        let result = parse_mli "module type (* keep me *) S = sig end\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ] ->
+            Test.assert_equal ~expected:[ "(* keep me *)" ]
+              ~actual:
+                (owned_trivia_texts
+                   (Syn.Cst.ModuleTypeDeclaration.owned_trivia decl));
+            Ok ()
+        | _ ->
+            Error "expected single module type declaration item");
     Test.case "cst normalizes trailing value declaration docstrings onto the declaration"
       (fun () ->
         let result =
@@ -6591,4 +6695,7 @@ let tests =
         | _ -> Error "expected local module in let body");
   ]
 
-let () = Miniriot.run ~main:(fun ~args -> Test.Cli.main ~name:"syn-cst" ~tests ~args) ~args:Env.args ()
+let () = Miniriot.run
+~main:(fun ~args -> Test.Cli.main ~name:"syn-cst" ~tests ~args)
+~args:Env.args
+()

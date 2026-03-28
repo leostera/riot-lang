@@ -11,66 +11,61 @@ type error = {
 
 exception Bail of error
 
-let bail = fun ~message ~syntax_node ~context ->
-  raise (Bail {
-    message;
-    syntax_kind = Ceibo.Red.SyntaxNode.kind syntax_node;
-    span = Ceibo.Red.SyntaxNode.span syntax_node;
-    context
-  })
+let bail = fun ~message ~syntax_node ~context -> raise (Bail {
+  message;
+  syntax_kind = Ceibo.Red.SyntaxNode.kind syntax_node;
+  span = Ceibo.Red.SyntaxNode.span syntax_node;
+  context
+})
 
-let unsupported_parameter = fun node ->
-  bail ~message:"unsupported parameter shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-    "parameter"
-  ]
+let unsupported_parameter = fun node -> bail ~message:"unsupported parameter shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+  "parameter"
+]
 
-let unsupported_pattern = fun node ->
-  bail ~message:"unsupported pattern shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-    "pattern"
-  ]
+let unsupported_pattern = fun node -> bail ~message:"unsupported pattern shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+  "pattern"
+]
 
-let unsupported_expression = fun node ->
-  bail ~message:"unsupported expression shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-    "expression"
-  ]
+let unsupported_expression = fun node -> bail ~message:"unsupported expression shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+  "expression"
+]
 
-let unsupported_module_expression = fun node ->
-  bail ~message:"unsupported module expression shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-    "module_expression"
-  ]
+let unsupported_module_expression = fun node -> bail ~message:"unsupported module expression shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+  "module_expression"
+]
 
-let unsupported_class_expression = fun node ->
-  bail ~message:"unsupported class expression shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-    "class_expression"
-  ]
+let unsupported_class_expression = fun node -> bail ~message:"unsupported class expression shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+  "class_expression"
+]
 
-let unsupported_class_type = fun node ->
-  bail ~message:"unsupported class type shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-    "class_type"
-  ]
+let unsupported_class_type = fun node -> bail ~message:"unsupported class type shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+  "class_type"
+]
 
-let unsupported_item = fun node ->
-  bail ~message:"unsupported structure item during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-    "item"
-  ]
+let unsupported_item = fun node -> bail ~message:"unsupported structure item during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+  "item"
+]
 
 let is_trivia = fun kind -> let open Syntax_kind in kind = WHITESPACE || kind = COMMENT || kind = DOCSTRING
 
 let token = fun syntax_tok -> Cst.Token.{syntax_token = syntax_tok}
 
 let synthetic_token = fun ~kind ~text ~start_offset ~end_offset ->
-  let green_token = Ceibo.Green.make_token ~kind ~text ~width:(String.length text) in
-  let syntax_token = Ceibo.Red.new_token
-  green_token
-  (Ceibo.Span.make ~start:start_offset ~end_:end_offset) in
+  let green_token =
+    Ceibo.Green.make_token ~leading_trivia:[] ~kind ~text
+      ~width:(String.length text)
+  in
+  let syntax_token = Ceibo.Red.new_token green_token (Ceibo.Span.make ~start:start_offset ~end_:end_offset) in
   token syntax_token
 
 let synthetic_syntax_node_wrapping_token = fun docstring_syntax_token ->
   let token_span = Ceibo.Red.SyntaxToken.span docstring_syntax_token in
   let prefix_width = Int.max 0 token_span.start in
-  let prefix_token = Ceibo.Green.make_token ~kind:Syntax_kind.WHITESPACE ~text:(String.make
-  prefix_width
-  ' ') ~width:prefix_width in
+  let prefix_token =
+    Ceibo.Green.make_token ~leading_trivia:[]
+      ~kind:Syntax_kind.WHITESPACE ~text:(String.make prefix_width ' ')
+      ~width:prefix_width
+  in
   let wrapped_token = Ceibo.Green.Token (Ceibo.Red.SyntaxToken.green docstring_syntax_token) in
   let wrapped_node = Ceibo.Green.make_node ~kind:(Ceibo.Red.SyntaxToken.kind docstring_syntax_token) ~children:[|
     wrapped_token
@@ -85,17 +80,15 @@ let synthetic_syntax_node_wrapping_token = fun docstring_syntax_token ->
   | _ ->
       panic "synthetic_syntax_node_wrapping_token: missing wrapped child node"
 
-let docstring_from_token = fun docstring_syntax_token ->
-  Cst.Docstring.{
-    syntax_node = synthetic_syntax_node_wrapping_token docstring_syntax_token;
-    docstring_token = Cst.Token.{syntax_token = docstring_syntax_token}
-  }
+let docstring_from_token = fun docstring_syntax_token -> Cst.Docstring.{
+  syntax_node = synthetic_syntax_node_wrapping_token docstring_syntax_token;
+  docstring_token = Cst.Token.{syntax_token = docstring_syntax_token}
+}
 
-let comment_from_token = fun comment_syntax_token ->
-  Cst.Comment.{
-    syntax_node = synthetic_syntax_node_wrapping_token comment_syntax_token;
-    comment_token = Cst.Token.{syntax_token = comment_syntax_token}
-  }
+let comment_from_token = fun comment_syntax_token -> Cst.Comment.{
+  syntax_node = synthetic_syntax_node_wrapping_token comment_syntax_token;
+  comment_token = Cst.Token.{syntax_token = comment_syntax_token}
+}
 
 let trivia_from_token = fun syntax_token ->
   match Ceibo.Red.SyntaxToken.kind syntax_token with
@@ -106,37 +99,35 @@ let trivia_from_token = fun syntax_token ->
   | _ ->
       None
 
-let span_contains = fun (outer : Ceibo.Span.t) (inner : Ceibo.Span.t) ->
-  inner.start >= outer.start && inner.end_ <= outer.end_
+let span_contains = fun (outer : Ceibo.Span.t) (inner : Ceibo.Span.t) -> inner.start >= outer.start
+&& inner.end_ <= outer.end_
 
-let standalone_trivia_items_from_node =
-  fun ~comment_item_of_comment ~docstring_item_of_docstring ~after_offset ~excluded_spans node ->
-    Ceibo.Red.SyntaxNode.tokens node |> List.filter_map
-      (fun syntax_token ->
-        let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
-        if
-          token_span.start < after_offset
-          || List.exists (fun excluded_span -> span_contains excluded_span token_span) excluded_spans
-        then
-          None
-        else
-          match Ceibo.Red.SyntaxToken.kind syntax_token with
-          | Syntax_kind.COMMENT ->
-              Some (comment_item_of_comment (comment_from_token syntax_token))
-          | Syntax_kind.DOCSTRING ->
-              Some (docstring_item_of_docstring (docstring_from_token syntax_token))
-          | _ ->
-              None)
-
-let standalone_trivia_item_from_token =
-  fun ~comment_item_of_comment ~docstring_item_of_docstring syntax_token ->
-    match Ceibo.Red.SyntaxToken.kind syntax_token with
-    | Syntax_kind.COMMENT ->
-        Some (comment_item_of_comment (comment_from_token syntax_token))
-    | Syntax_kind.DOCSTRING ->
-        Some (docstring_item_of_docstring (docstring_from_token syntax_token))
-    | _ ->
+let standalone_trivia_items_from_node = fun ~comment_item_of_comment ~docstring_item_of_docstring ~after_offset ~excluded_spans node ->
+  Ceibo.Red.SyntaxNode.tokens node |> List.filter_map
+    (fun syntax_token ->
+      let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
+      if
+        token_span.start < after_offset
+        || List.exists (fun excluded_span -> span_contains excluded_span token_span) excluded_spans
+      then
         None
+      else
+        match Ceibo.Red.SyntaxToken.kind syntax_token with
+        | Syntax_kind.COMMENT ->
+            Some (comment_item_of_comment (comment_from_token syntax_token))
+        | Syntax_kind.DOCSTRING ->
+            Some (docstring_item_of_docstring (docstring_from_token syntax_token))
+        | _ ->
+            None)
+
+let standalone_trivia_item_from_token = fun ~comment_item_of_comment ~docstring_item_of_docstring syntax_token ->
+  match Ceibo.Red.SyntaxToken.kind syntax_token with
+  | Syntax_kind.COMMENT ->
+      Some (comment_item_of_comment (comment_from_token syntax_token))
+  | Syntax_kind.DOCSTRING ->
+      Some (docstring_item_of_docstring (docstring_from_token syntax_token))
+  | _ ->
+      None
 
 let rec syntax_node_root = fun node ->
   match Ceibo.Red.SyntaxNode.parent node with
@@ -155,93 +146,79 @@ let source_text_from_syntax_tokens = fun syntax_tokens ->
   in
   let buffer = IO.Buffer.create source_length in
   let next_offset = ref 0 in
-  syntax_tokens
-  |> List.iter (fun syntax_token ->
-         let token_text = Ceibo.Red.SyntaxToken.text syntax_token in
-         let { Ceibo.Span.start; end_ } = Ceibo.Red.SyntaxToken.span syntax_token in
-         let token_length = Int.min (String.length token_text) (Int.max 0 (end_ - start)) in
-         let gap_length = Int.max 0 (start - !next_offset) in
-         if gap_length > 0 then
-           IO.Buffer.add_string buffer (String.make gap_length ' ');
-         if token_length > 0 then
-           IO.Buffer.add_substring buffer token_text 0 token_length;
-         next_offset := Int.max !next_offset end_);
+  syntax_tokens |> List.iter
+    (fun syntax_token ->
+      let token_text = Ceibo.Red.SyntaxToken.text syntax_token in
+      let { Ceibo.Span.start; end_ } = Ceibo.Red.SyntaxToken.span syntax_token in
+      let token_length = Int.min (String.length token_text) (Int.max 0 (end_ - start)) in
+      let gap_length = Int.max 0 (start - !next_offset) in
+      if gap_length > 0 then
+        IO.Buffer.add_string buffer (String.make gap_length ' ');
+      if token_length > 0 then
+        IO.Buffer.add_substring buffer token_text 0 token_length;
+      next_offset := Int.max !next_offset end_);
   IO.Buffer.contents buffer
 
-let source_text_of_syntax_node_tree = fun node ->
-  syntax_node_root node
-  |> Ceibo.Red.SyntaxNode.tokens
-  |> source_text_from_syntax_tokens
+let source_text_of_syntax_node_tree = fun node -> syntax_node_root node
+|> Ceibo.Red.SyntaxNode.tokens
+|> source_text_from_syntax_tokens
 
-let standalone_trivia_item_from_lexed_token =
-  fun ~source ~comment_item_of_comment ~docstring_item_of_docstring (lexed_token : Token.t) ->
-    let syntax_kind =
-      match lexed_token.kind with
-      | Token.Comment _ ->
-          Some Syntax_kind.COMMENT
-      | Token.Docstring _ ->
-          Some Syntax_kind.DOCSTRING
-      | _ ->
-          None
-    in
-    match syntax_kind with
-    | None ->
-        None
-    | Some kind ->
-        let { Ceibo.Span.start; end_ } = lexed_token.span in
-        let source_len = String.length source in
-        let safe_start = Int.max 0 start in
-        let safe_len =
-          if end_ <= safe_start || safe_start >= source_len then
-            0
-          else
-            Int.min (end_ - safe_start) (source_len - safe_start)
-        in
-        let text =
-          if safe_len = 0 then
-            ""
-          else
-            String.sub source safe_start safe_len
-        in
-        let syntax_token =
-          synthetic_token ~kind ~text ~start_offset:start ~end_offset:end_
-          |> Cst.Token.syntax_token
-        in
-        standalone_trivia_item_from_token ~comment_item_of_comment
-          ~docstring_item_of_docstring syntax_token
-
-let source_file_items_from_child =
-  fun ~comment_item_of_comment ~docstring_item_of_docstring ~owned_trivia_spans_of_item items_from_node ->
-    function
-    | Ceibo.Red.Node node when not (is_trivia (Ceibo.Red.SyntaxNode.kind node)) ->
-        let items = items_from_node node in
-        let owned_trivia_spans =
-          items |> List.concat_map owned_trivia_spans_of_item
-        in
-        let after_offset =
-          let full_span = Ceibo.Red.SyntaxNode.span node in
-          let nontrivia_tokens =
-            Ceibo.Red.SyntaxNode.tokens node
-            |> List.filter
-                 (fun tok -> not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)))
-          in
-          match nontrivia_tokens with
-          | [] ->
-              full_span.end_
-          | first :: rest ->
-              let last = List.fold_left (fun _ token -> token) first rest in
-              (Ceibo.Red.SyntaxToken.span last).end_
-        in
-        items
-        @ standalone_trivia_items_from_node ~comment_item_of_comment
-            ~docstring_item_of_docstring ~after_offset
-            ~excluded_spans:owned_trivia_spans node
-    | Ceibo.Red.Token syntax_token ->
-        standalone_trivia_item_from_token ~comment_item_of_comment
-          ~docstring_item_of_docstring syntax_token
-        |> Option.to_list
+let standalone_trivia_item_from_lexed_token = fun ~source ~comment_item_of_comment ~docstring_item_of_docstring (lexed_token : Token.t) ->
+  let syntax_kind =
+    match lexed_token.kind with
+    | Token.Comment _ ->
+        Some Syntax_kind.COMMENT
+    | Token.Docstring _ ->
+        Some Syntax_kind.DOCSTRING
     | _ ->
-        []
+        None
+  in
+  match syntax_kind with
+  | None ->
+      None
+  | Some kind ->
+      let { Ceibo.Span.start; end_ } = lexed_token.span in
+      let source_len = String.length source in
+      let safe_start = Int.max 0 start in
+      let safe_len =
+        if end_ <= safe_start || safe_start >= source_len then
+          0
+        else
+          Int.min (end_ - safe_start) (source_len - safe_start)
+      in
+      let text =
+        if safe_len = 0 then
+          ""
+        else
+          String.sub source safe_start safe_len
+      in
+      let syntax_token = synthetic_token ~kind ~text ~start_offset:start ~end_offset:end_
+      |> Cst.Token.syntax_token in
+      standalone_trivia_item_from_token ~comment_item_of_comment ~docstring_item_of_docstring syntax_token
+
+let source_file_items_from_child = fun ~comment_item_of_comment ~docstring_item_of_docstring ~owned_trivia_spans_of_item items_from_node ->
+  function
+  | Ceibo.Red.Node node when not (is_trivia (Ceibo.Red.SyntaxNode.kind node)) ->
+      let items = items_from_node node in
+      let owned_trivia_spans = items |> List.concat_map owned_trivia_spans_of_item in
+      let after_offset =
+        let full_span = Ceibo.Red.SyntaxNode.span node in
+        let nontrivia_tokens = Ceibo.Red.SyntaxNode.tokens node
+        |> List.filter (fun tok -> not (is_trivia (Ceibo.Red.SyntaxToken.kind tok))) in
+        match nontrivia_tokens with
+        | [] ->
+            full_span.end_
+        | first :: rest ->
+            let last = List.fold_left (fun _ token -> token) first rest in
+            (Ceibo.Red.SyntaxToken.span last).end_
+      in
+      items
+      @ standalone_trivia_items_from_node ~comment_item_of_comment ~docstring_item_of_docstring ~after_offset ~excluded_spans:owned_trivia_spans node
+  | Ceibo.Red.Token syntax_token ->
+      standalone_trivia_item_from_token ~comment_item_of_comment ~docstring_item_of_docstring syntax_token
+      |> Option.to_list
+  | _ ->
+      []
 
 let substring = fun text start length ->
   let text_length = String.length text in
@@ -487,17 +464,14 @@ let is_constant_syntax_kind =
   | _ ->
       false
 
-let direct_non_trivia_nodes = fun node ->
-  Ceibo.Red.SyntaxNode.direct_nodes node
-  |> List.filter (fun child -> not (is_trivia (Ceibo.Red.SyntaxNode.kind child)))
+let direct_non_trivia_nodes = fun node -> Ceibo.Red.SyntaxNode.direct_nodes node
+|> List.filter (fun child -> not (is_trivia (Ceibo.Red.SyntaxNode.kind child)))
 
-let direct_non_trivia_tokens = fun node ->
-  Ceibo.Red.SyntaxNode.direct_tokens node
-  |> List.filter (fun tok -> not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)))
+let direct_non_trivia_tokens = fun node -> Ceibo.Red.SyntaxNode.direct_tokens node
+|> List.filter (fun tok -> not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)))
 
-let subtree_non_trivia_tokens = fun node ->
-  Ceibo.Red.SyntaxNode.tokens node
-  |> List.filter (fun tok -> not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)))
+let subtree_non_trivia_tokens = fun node -> Ceibo.Red.SyntaxNode.tokens node
+|> List.filter (fun tok -> not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)))
 
 let span_of_syntax_node_nontrivia_bounds = fun syntax_node ->
   let full_span = Ceibo.Red.SyntaxNode.span syntax_node in
@@ -516,68 +490,60 @@ let owned_trivia_from_node_excluding_spans = fun node excluded_spans ->
   let leading_entries, inner_entries, trailing_entries =
     Ceibo.Red.SyntaxNode.tokens node
     |> List.filter_map
-         (fun syntax_token ->
-           let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
-           if List.exists (fun excluded -> span_contains excluded token_span) excluded_spans then
-             None
-           else
-             trivia_from_token syntax_token)
+      (fun syntax_token ->
+        let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
+        if List.exists (fun excluded -> span_contains excluded token_span) excluded_spans then
+          None
+        else
+          trivia_from_token syntax_token)
     |> List.fold_left
-         (fun (leading_acc, inner_acc, trailing_acc) (trivia : Cst.trivia) ->
-           let trivia_span = Cst.Token.span (Cst.Trivia.token trivia) in
-           if trivia_span.end_ <= bounds.start then
-             (trivia :: leading_acc, inner_acc, trailing_acc)
-           else if trivia_span.start >= bounds.end_ then
-             (leading_acc, inner_acc, trivia :: trailing_acc)
-           else
-             (leading_acc, trivia :: inner_acc, trailing_acc))
-         ([], [], [])
+      (fun (leading_acc, inner_acc, trailing_acc) (trivia : Cst.trivia) ->
+        let trivia_span = Cst.Token.span (Cst.Trivia.token trivia) in
+        if trivia_span.end_ <= bounds.start then
+          (trivia :: leading_acc, inner_acc, trailing_acc)
+        else if trivia_span.start >= bounds.end_ then
+          (leading_acc, inner_acc, trivia :: trailing_acc)
+        else
+          (leading_acc, trivia :: inner_acc, trailing_acc))
+      ([], [], [])
   in
   Cst.OwnedTrivia.{
     leading = List.rev leading_entries;
     inner = List.rev inner_entries;
-    trailing = List.rev trailing_entries;
+    trailing = List.rev trailing_entries
   }
 
 let owned_trivia_from_node_excluding_child_owned_spans = fun node child_owned_spans ->
-  let excluded_spans =
-    (direct_non_trivia_nodes node |> List.map span_of_syntax_node_nontrivia_bounds)
-    @ child_owned_spans
-  in
+  let excluded_spans = (direct_non_trivia_nodes node |> List.map span_of_syntax_node_nontrivia_bounds)
+  @ child_owned_spans in
   owned_trivia_from_node_excluding_spans node excluded_spans
 
-let owned_trivia_from_node = fun node ->
-  owned_trivia_from_node_excluding_child_owned_spans node []
+let owned_trivia_from_node = fun node -> owned_trivia_from_node_excluding_child_owned_spans node []
 
-let trivia_span = fun trivia ->
-  Cst.Trivia.token trivia |> Cst.Token.span
+let trivia_span = fun trivia -> Cst.Trivia.token trivia |> Cst.Token.span
 
 let trivia_same_span = fun left right ->
   let left_span = trivia_span left in
   let right_span = trivia_span right in
   left_span.start = right_span.start && left_span.end_ = right_span.end_
 
-let remove_matching_trivia = fun removed trivia ->
-  trivia
-  |> List.filter
-       (fun candidate ->
-         not (List.exists (fun entry -> trivia_same_span entry candidate) removed))
+let remove_matching_trivia = fun removed trivia -> trivia
+|> List.filter (fun candidate -> not
+(List.exists (fun entry -> trivia_same_span entry candidate) removed))
 
-let owned_trivia_without_matching = fun owned removed ->
-  Cst.OwnedTrivia.{
-    leading = remove_matching_trivia removed (Cst.OwnedTrivia.leading owned);
-    inner = remove_matching_trivia removed (Cst.OwnedTrivia.inner owned);
-    trailing = remove_matching_trivia removed (Cst.OwnedTrivia.trailing owned);
-  }
+let owned_trivia_without_matching = fun owned removed -> Cst.OwnedTrivia.{
+  leading = remove_matching_trivia removed (Cst.OwnedTrivia.leading owned);
+  inner = remove_matching_trivia removed (Cst.OwnedTrivia.inner owned);
+  trailing = remove_matching_trivia removed (Cst.OwnedTrivia.trailing owned)
+}
 
-let owned_trivia_spans = fun owned ->
-  Cst.OwnedTrivia.leading owned
-  @ Cst.OwnedTrivia.inner owned
-  @ Cst.OwnedTrivia.trailing owned
-  |> List.map trivia_span
+let owned_trivia_spans = fun owned -> Cst.OwnedTrivia.leading owned
+@ Cst.OwnedTrivia.inner owned
+@ Cst.OwnedTrivia.trailing owned
+|> List.map trivia_span
 
-let record_field_owned_trivia_spans = fun field ->
-  owned_trivia_spans (Cst.RecordField.owned_trivia field)
+let record_field_owned_trivia_spans = fun field -> owned_trivia_spans
+(Cst.RecordField.owned_trivia field)
 
 let rec variant_constructor_owned_trivia_spans = fun constructor ->
   let argument_spans =
@@ -588,9 +554,7 @@ let rec variant_constructor_owned_trivia_spans = fun constructor ->
     | None ->
         []
   in
-  owned_trivia_spans (Cst.VariantConstructor.owned_trivia constructor)
-  @ argument_spans
-
+  owned_trivia_spans (Cst.VariantConstructor.owned_trivia constructor) @ argument_spans
 and type_definition_owned_trivia_spans =
   function
   | Cst.TypeDefinition.Record { fields; _ } ->
@@ -605,20 +569,19 @@ and type_definition_owned_trivia_spans =
   | Cst.TypeDefinition.PolyVariant _ ->
       []
 
-let rec type_declaration_owned_trivia_spans = fun decl ->
-  owned_trivia_spans (Cst.TypeDeclaration.owned_trivia decl)
-  @ type_definition_owned_trivia_spans (Cst.TypeDeclaration.type_definition decl)
-  @ (Cst.TypeDeclaration.and_declarations decl
-    |> List.concat_map type_declaration_owned_trivia_spans)
+let rec type_declaration_owned_trivia_spans = fun decl -> owned_trivia_spans
+(Cst.TypeDeclaration.owned_trivia decl)
+@ type_definition_owned_trivia_spans (Cst.TypeDeclaration.type_definition decl)
+@ (Cst.TypeDeclaration.and_declarations decl |> List.concat_map type_declaration_owned_trivia_spans)
 
 let type_definition_owned_trivia_end = fun type_definition ->
-  type_definition_owned_trivia_spans type_definition
-  |> List.fold_left
-       (fun acc (span : Ceibo.Span.t) -> Int.max acc span.end_)
-       0
+  type_definition_owned_trivia_spans type_definition |> List.fold_left
+    (fun acc (span : Ceibo.Span.t) ->
+      Int.max acc span.end_)
+    0
 
-let value_declaration_owned_trivia_spans = fun decl ->
-  owned_trivia_spans (Cst.ValueDeclaration.owned_trivia decl)
+let value_declaration_owned_trivia_spans = fun decl -> owned_trivia_spans
+(Cst.ValueDeclaration.owned_trivia decl)
 
 let structure_item_owned_trivia_spans =
   function
@@ -666,61 +629,51 @@ let signature_item_owned_trivia_spans =
   | Cst.SignatureItem.ExceptionDeclaration _ ->
       []
 
-let trivia_indentation = fun ~source trivia ->
-  source_position_indentation_before source ((trivia_span trivia).start)
+let trivia_indentation = fun ~source trivia -> source_position_indentation_before
+source
+((trivia_span trivia).start)
 
-let owned_trivia_with_trailing = fun owned trailing_trivia ->
-  Cst.OwnedTrivia.{
-    leading = Cst.OwnedTrivia.leading owned;
-    inner = Cst.OwnedTrivia.inner owned;
-    trailing = trailing_trivia
-  }
+let owned_trivia_with_trailing = fun owned trailing_trivia -> Cst.OwnedTrivia.{
+  leading = Cst.OwnedTrivia.leading owned;
+  inner = Cst.OwnedTrivia.inner owned;
+  trailing = trailing_trivia
+}
 
-let owned_trivia_with_leading = fun owned leading_trivia ->
-  Cst.OwnedTrivia.{
-    leading = leading_trivia;
-    inner = Cst.OwnedTrivia.inner owned;
-    trailing = Cst.OwnedTrivia.trailing owned
-  }
+let owned_trivia_with_leading = fun owned leading_trivia -> Cst.OwnedTrivia.{
+  leading = leading_trivia;
+  inner = Cst.OwnedTrivia.inner owned;
+  trailing = Cst.OwnedTrivia.trailing owned
+}
 
-let owned_trivia_with_inner = fun owned inner_trivia ->
-  Cst.OwnedTrivia.{
-    leading = Cst.OwnedTrivia.leading owned;
-    inner = inner_trivia;
-    trailing = Cst.OwnedTrivia.trailing owned
-  }
+let owned_trivia_with_inner = fun owned inner_trivia -> Cst.OwnedTrivia.{
+  leading = Cst.OwnedTrivia.leading owned;
+  inner = inner_trivia;
+  trailing = Cst.OwnedTrivia.trailing owned
+}
 
-let owned_trivia_append_leading = fun owned leading_trivia ->
-  owned_trivia_with_leading owned (Cst.OwnedTrivia.leading owned @ leading_trivia)
+let owned_trivia_append_leading = fun owned leading_trivia -> owned_trivia_with_leading
+owned
+(Cst.OwnedTrivia.leading owned @ leading_trivia)
 
-let owned_trivia_append_trailing = fun owned trailing_trivia ->
-  owned_trivia_with_trailing owned (Cst.OwnedTrivia.trailing owned @ trailing_trivia)
+let owned_trivia_append_trailing = fun owned trailing_trivia -> owned_trivia_with_trailing
+owned
+(Cst.OwnedTrivia.trailing owned @ trailing_trivia)
 
 let append_type_declaration_leading_trivia = fun decl trivia ->
   if trivia = [] then
     decl
   else
-    let owned =
-      Cst.TypeDeclaration.owned_trivia decl
-      |> fun owned -> owned_trivia_without_matching owned trivia
-    in
-    {
-      decl with
-      owned_trivia = owned_trivia_append_leading owned trivia
-    }
+    let owned = Cst.TypeDeclaration.owned_trivia decl
+    |> fun owned -> owned_trivia_without_matching owned trivia in
+    {decl with owned_trivia = owned_trivia_append_leading owned trivia}
 
 let append_value_declaration_leading_trivia = fun decl trivia ->
   if trivia = [] then
     decl
   else
-    let owned =
-      Cst.ValueDeclaration.owned_trivia decl
-      |> fun owned -> owned_trivia_without_matching owned trivia
-    in
-    {
-      decl with
-      owned_trivia = owned_trivia_append_leading owned trivia
-    }
+    let owned = Cst.ValueDeclaration.owned_trivia decl
+    |> fun owned -> owned_trivia_without_matching owned trivia in
+    {decl with owned_trivia = owned_trivia_append_leading owned trivia}
 
 let sort_trivia_by_source = fun trivia ->
   List.sort
@@ -729,7 +682,7 @@ let sort_trivia_by_source = fun trivia ->
     trivia
 
 let dedup_trivia_by_span = fun trivia ->
-  let rec loop seen acc =
+  let rec loop = fun seen acc ->
     function
     | [] ->
         List.rev acc
@@ -746,8 +699,7 @@ let is_section_docstring_text = fun comment_text ->
     false
   else
     let body = String.sub comment_text 3 (len - 5) |> String.trim in
-    String.length body > 0
-    && (Char.equal body.[0] '{' || Char.equal body.[0] '#')
+    String.length body > 0 && (Char.equal body.[0] '{' || Char.equal body.[0] '#')
 
 let is_non_section_docstring_trivia =
   function
@@ -765,44 +717,37 @@ let is_section_docstring_trivia =
 
 let normalize_value_declaration_owned_trivia = fun decl ->
   let owned = Cst.ValueDeclaration.owned_trivia decl in
-  let moved_leading, kept_trailing =
-    Cst.OwnedTrivia.trailing owned
-    |> List.partition is_non_section_docstring_trivia
-  in
+  let moved_leading, kept_trailing = Cst.OwnedTrivia.trailing owned |> List.partition is_non_section_docstring_trivia in
   if moved_leading = [] then
     decl
   else
-    let leading =
-      sort_trivia_by_source (Cst.OwnedTrivia.leading owned @ moved_leading)
-    in
-    let owned =
-      owned
-      |> fun owned -> owned_trivia_with_trailing owned kept_trailing
-      |> fun owned -> owned_trivia_with_leading owned leading
-    in
-    { decl with owned_trivia = owned }
+    let leading = sort_trivia_by_source (Cst.OwnedTrivia.leading owned @ moved_leading) in
+    let owned = owned
+    |> fun owned -> owned_trivia_with_trailing owned kept_trailing
+    |> fun owned -> owned_trivia_with_leading owned leading in
+    {decl with owned_trivia = owned}
 
 let owned_trivia_has_docstrings = fun owned ->
-  Cst.OwnedTrivia.leading owned
-  @ Cst.OwnedTrivia.inner owned
-  @ Cst.OwnedTrivia.trailing owned
+  Cst.OwnedTrivia.leading owned @ Cst.OwnedTrivia.inner owned @ Cst.OwnedTrivia.trailing owned
   |> List.exists
-       (function
-        | Cst.Trivia.Docstring _ ->
-            true
-        | Cst.Trivia.Comment _ ->
-            false)
+    (
+      function
+      | Cst.Trivia.Docstring _ ->
+          true
+      | Cst.Trivia.Comment _ ->
+          false
+    )
 
 let split_member_trailing_trivia = fun ~source ~member_indent owned ->
   let keep, bubble =
     Cst.OwnedTrivia.trailing owned
     |> List.partition
-         (fun trivia ->
-           match trivia_indentation ~source trivia with
-           | Some indent ->
-               indent >= member_indent
-           | None ->
-               true)
+      (fun trivia ->
+        match trivia_indentation ~source trivia with
+        | Some indent ->
+            indent >= member_indent
+        | None ->
+            true)
   in
   (owned_trivia_with_trailing owned keep, bubble)
 
@@ -810,7 +755,7 @@ let has_blank_line_between_offsets = fun ~source ~start ~end_ ->
   let source_length = String.length source in
   let start = Int.max 0 (Int.min start source_length) in
   let end_ = Int.max start (Int.min end_ source_length) in
-  let rec loop index newline_count =
+  let rec loop = fun index newline_count ->
     if index >= end_ then
       false
     else if Char.equal source.[index] '\n' then
@@ -823,20 +768,20 @@ let has_blank_line_between_offsets = fun ~source ~start ~end_ ->
   in
   loop start 0
 
-let type_declaration_nontrivia_end = fun decl ->
-  span_of_syntax_node_nontrivia_bounds (Cst.TypeDeclaration.syntax_node decl)
-  |> fun span -> span.end_
+let type_declaration_nontrivia_end = fun decl -> span_of_syntax_node_nontrivia_bounds
+(Cst.TypeDeclaration.syntax_node decl)
+|> fun span -> span.end_
 
 let type_declaration_nontrivia_end_before = fun ?before decl ->
   let tokens =
     subtree_non_trivia_tokens (Cst.TypeDeclaration.syntax_node decl)
     |> List.filter
-         (fun token ->
-           match before with
-           | Some before ->
-               (Ceibo.Red.SyntaxToken.span token).end_ <= before
-           | None ->
-               true)
+      (fun token ->
+        match before with
+        | Some before ->
+            (Ceibo.Red.SyntaxToken.span token).end_ <= before
+        | None ->
+            true)
   in
   match List.rev tokens with
   | token :: _ ->
@@ -844,119 +789,83 @@ let type_declaration_nontrivia_end_before = fun ?before decl ->
   | [] ->
       (Ceibo.Red.SyntaxNode.span (Cst.TypeDeclaration.syntax_node decl)).end_
 
-let take_contiguous_type_docstring_block =
-  fun ~source ~decl_end trailing_trivia ->
-  let rec loop previous_end acc =
+let take_contiguous_type_docstring_block = fun ~source ~decl_end trailing_trivia ->
+  let rec loop = fun previous_end acc ->
     function
-    | ((Cst.Trivia.Docstring docstring) as trivia) :: rest
-      when not (is_section_docstring_text (Cst.Docstring.text docstring))
-      && not
-           (has_blank_line_between_offsets ~source
-              ~start:(Option.unwrap_or ~default:decl_end previous_end)
-              ~end_:(trivia_span trivia).start) ->
-          loop (Some (trivia_span trivia).end_) (trivia :: acc) rest
+    | ((Cst.Trivia.Docstring docstring) as trivia) :: rest when not
+    (is_section_docstring_text (Cst.Docstring.text docstring))
+    && not (has_blank_line_between_offsets ~source ~start:(Option.unwrap_or ~default:decl_end previous_end) ~end_:(trivia_span
+    trivia).start) ->
+        loop (Some (trivia_span trivia).end_) (trivia :: acc) rest
     | rest ->
         (List.rev acc, rest)
   in
   loop None [] trailing_trivia
 
-let owned_trivia_has_non_section_leading_docstrings = fun owned ->
-  Cst.OwnedTrivia.leading owned
-  |> List.exists is_non_section_docstring_trivia
+let owned_trivia_has_non_section_leading_docstrings = fun owned -> Cst.OwnedTrivia.leading owned
+|> List.exists is_non_section_docstring_trivia
 
 let move_last_constructor_type_docstrings_to_parent = fun constructors ->
   match List.rev constructors with
-  | [] | [ _ ] ->
+  | []
+  | [ _ ] ->
       constructors
   | last :: prev_rev ->
-      let previous_have_docstrings =
-        prev_rev
-        |> List.exists
-             (fun constructor ->
-               owned_trivia_has_docstrings (Cst.VariantConstructor.owned_trivia constructor))
-      in
+      let previous_have_docstrings = prev_rev
+      |> List.exists (fun constructor -> owned_trivia_has_docstrings
+      (Cst.VariantConstructor.owned_trivia constructor)) in
       if previous_have_docstrings then
         constructors
       else
         let owned = Cst.VariantConstructor.owned_trivia last in
-        let bubbled_docstrings, kept_trailing =
-          Cst.OwnedTrivia.trailing owned
-          |> List.partition is_non_section_docstring_trivia
-        in
+        let bubbled_docstrings, kept_trailing = Cst.OwnedTrivia.trailing owned |> List.partition is_non_section_docstring_trivia in
         if bubbled_docstrings = [] then
           constructors
         else
-          let last =
-            { last with owned_trivia = owned_trivia_with_trailing owned kept_trailing }
-          in
+          let last = {last with owned_trivia = owned_trivia_with_trailing owned kept_trailing} in
           List.rev (last :: prev_rev)
 
 let normalize_variant_constructor_owned_trivia = fun ~source constructor ->
-  let member_indent =
-    source_position_indentation_before source
-      ((Ceibo.Red.SyntaxNode.span (Cst.VariantConstructor.syntax_node constructor)).start)
-    |> Option.unwrap_or ~default:0
-  in
-  let normalized_owned_trivia, _bubble =
-    split_member_trailing_trivia ~source ~member_indent
-      (Cst.VariantConstructor.owned_trivia constructor)
-  in
-  { constructor with owned_trivia = normalized_owned_trivia }
+  let member_indent = source_position_indentation_before source ((Ceibo.Red.SyntaxNode.span
+  (Cst.VariantConstructor.syntax_node constructor)).start)
+  |> Option.unwrap_or ~default:0 in
+  let normalized_owned_trivia, _bubble = split_member_trailing_trivia ~source ~member_indent (Cst.VariantConstructor.owned_trivia
+  constructor) in
+  {constructor with owned_trivia = normalized_owned_trivia}
 
 let normalize_type_definition_owned_trivia = fun ~source ->
   function
   | Cst.TypeDefinition.Variant { syntax_node; constructors } ->
-      let normalized_constructors =
-        constructors
-        |> List.map (normalize_variant_constructor_owned_trivia ~source)
-        |> move_last_constructor_type_docstrings_to_parent
-      in
-      Cst.TypeDefinition.Variant {
-        syntax_node;
-        constructors = normalized_constructors
-      }
+      let normalized_constructors = constructors
+      |> List.map (normalize_variant_constructor_owned_trivia ~source)
+      |> move_last_constructor_type_docstrings_to_parent in
+      Cst.TypeDefinition.Variant {syntax_node; constructors = normalized_constructors}
   | type_definition ->
       type_definition
 
 let normalize_single_type_declaration_owned_trivia = fun ~source decl ->
-  let normalized_type_definition =
-    normalize_type_definition_owned_trivia ~source
-      (Cst.TypeDeclaration.type_definition decl)
-  in
-  let child_owned_spans =
-    type_definition_owned_trivia_spans normalized_type_definition
-  in
-  let owned =
-    Cst.TypeDeclaration.syntax_node decl
-    |> fun syntax_node ->
-    owned_trivia_from_node_excluding_child_owned_spans syntax_node child_owned_spans
-  in
-  { decl with type_definition = normalized_type_definition; owned_trivia = owned }
+  let normalized_type_definition = normalize_type_definition_owned_trivia ~source (Cst.TypeDeclaration.type_definition
+  decl) in
+  let child_owned_spans = type_definition_owned_trivia_spans normalized_type_definition in
+  let owned = Cst.TypeDeclaration.syntax_node decl
+  |> fun syntax_node -> owned_trivia_from_node_excluding_child_owned_spans syntax_node child_owned_spans in
+  {decl with type_definition = normalized_type_definition; owned_trivia = owned}
 
-let split_type_declaration_trailing_trivia =
-  fun ~source ~has_next_sibling ~has_next_type_sibling decl ->
+let split_type_declaration_trailing_trivia = fun ~source ~has_next_sibling ~has_next_type_sibling decl ->
   let owned = Cst.TypeDeclaration.owned_trivia decl in
-  let decl_indent =
-    source_position_indentation_before source
-      ((Ceibo.Red.SyntaxNode.span (Cst.TypeDeclaration.syntax_node decl)).start)
-    |> Option.unwrap_or ~default:0
-  in
-  let decl_end =
-    Int.max
-      (type_declaration_nontrivia_end decl)
-      (type_definition_owned_trivia_end (Cst.TypeDeclaration.type_definition decl))
-  in
+  let decl_indent = source_position_indentation_before source ((Ceibo.Red.SyntaxNode.span
+  (Cst.TypeDeclaration.syntax_node decl)).start)
+  |> Option.unwrap_or ~default:0 in
+  let decl_end = Int.max (type_declaration_nontrivia_end decl) (type_definition_owned_trivia_end
+  (Cst.TypeDeclaration.type_definition decl)) in
   let contiguous_docstrings, remaining_trailing =
-    if has_next_type_sibling
-       && owned_trivia_has_non_section_leading_docstrings owned then
+    if has_next_type_sibling && owned_trivia_has_non_section_leading_docstrings owned then
       ([], sort_trivia_by_source (Cst.OwnedTrivia.trailing owned))
     else
-      take_contiguous_type_docstring_block ~source ~decl_end
-        (sort_trivia_by_source (Cst.OwnedTrivia.trailing owned))
+      take_contiguous_type_docstring_block ~source ~decl_end (sort_trivia_by_source
+      (Cst.OwnedTrivia.trailing owned))
   in
-  let prefer_current_continuation =
-    not (owned_trivia_has_non_section_leading_docstrings owned)
-  in
+  let prefer_current_continuation = not (owned_trivia_has_non_section_leading_docstrings owned) in
   let current_docstrings, docstrings_for_next =
     if not has_next_sibling then
       (contiguous_docstrings, [])
@@ -971,141 +880,91 @@ let split_type_declaration_trailing_trivia =
   in
   let kept_trailing, next_trivia =
     if has_next_sibling then
-      remaining_trailing
-      |> List.partition
-           (fun trivia ->
-             match trivia_indentation ~source trivia with
-             | Some indent ->
-                 indent > decl_indent
-             | None ->
-                 true)
+      remaining_trailing |> List.partition
+        (fun trivia ->
+          match trivia_indentation ~source trivia with
+          | Some indent ->
+              indent > decl_indent
+          | None ->
+              true)
     else
       (remaining_trailing, [])
   in
-  let next_trivia =
-    sort_trivia_by_source (docstrings_for_next @ next_trivia)
-  in
-  let owned =
-    owned
-    |> fun owned ->
-    owned_trivia_append_leading owned
-      (sort_trivia_by_source current_docstrings)
-    |> fun owned -> owned_trivia_with_trailing owned kept_trailing
-  in
-  ({ decl with owned_trivia = owned }, next_trivia)
+  let next_trivia = sort_trivia_by_source (docstrings_for_next @ next_trivia) in
+  let owned = owned
+  |> fun owned -> owned_trivia_append_leading owned (sort_trivia_by_source current_docstrings)
+  |> fun owned -> owned_trivia_with_trailing owned kept_trailing in
+  ({decl with owned_trivia = owned}, next_trivia)
 
-let normalize_type_declaration_sequence =
-  fun ~source ~has_next_sibling ?(initial_leading = []) decls ->
+let normalize_type_declaration_sequence = fun ~source ~has_next_sibling ?(initial_leading = []) decls ->
   let rec loop = fun carried_leading bubbled_after_group acc ->
     function
     | [] ->
         (List.rev acc, bubbled_after_group)
     | [ decl ] ->
         let decl = normalize_single_type_declaration_owned_trivia ~source decl in
-        let decl =
-          append_type_declaration_leading_trivia decl
-            (sort_trivia_by_source carried_leading)
-        in
-        let decl, bubbled_to_next =
-          split_type_declaration_trailing_trivia ~source ~has_next_sibling
-            ~has_next_type_sibling:false decl
-        in
-        ( List.rev (decl :: acc),
-          sort_trivia_by_source (bubbled_after_group @ bubbled_to_next) )
+        let decl = append_type_declaration_leading_trivia decl (sort_trivia_by_source carried_leading) in
+        let decl, bubbled_to_next = split_type_declaration_trailing_trivia ~source ~has_next_sibling ~has_next_type_sibling:false decl in
+        (List.rev (decl :: acc), sort_trivia_by_source (bubbled_after_group @ bubbled_to_next))
     | decl :: rest ->
         let decl = normalize_single_type_declaration_owned_trivia ~source decl in
-        let decl =
-          append_type_declaration_leading_trivia decl
-            (sort_trivia_by_source carried_leading)
-        in
-        let decl, bubbled_to_next =
-          split_type_declaration_trailing_trivia ~source ~has_next_sibling:true
-            ~has_next_type_sibling:true decl
-        in
-        let carry_to_next, bubble_past_group =
-          bubbled_to_next
-          |> List.partition
-               (fun trivia -> not (is_section_docstring_trivia trivia))
-        in
-        loop carry_to_next
-          (sort_trivia_by_source (bubbled_after_group @ bubble_past_group))
-          (decl :: acc) rest
+        let decl = append_type_declaration_leading_trivia decl (sort_trivia_by_source carried_leading) in
+        let decl, bubbled_to_next = split_type_declaration_trailing_trivia ~source ~has_next_sibling:true ~has_next_type_sibling:true decl in
+        let carry_to_next, bubble_past_group = bubbled_to_next
+        |> List.partition (fun trivia -> not (is_section_docstring_trivia trivia)) in
+        loop carry_to_next (sort_trivia_by_source (bubbled_after_group @ bubble_past_group)) (decl
+        :: acc) rest
   in
   loop initial_leading [] [] decls
 
-let normalize_type_declaration_group =
-  fun ~source ~has_next_sibling ?(initial_leading = []) decl ->
+let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_leading = []) decl ->
   let append_leading_trivia = fun declaration trivia ->
     if trivia = [] then
       declaration
     else
       let owned = Cst.TypeDeclaration.owned_trivia declaration in
       {
-        declaration with
-        owned_trivia =
-          owned_trivia_append_leading owned (sort_trivia_by_source trivia)
+        declaration
+        with owned_trivia = owned_trivia_append_leading owned (sort_trivia_by_source trivia)
       }
   in
   let redistribute_group_inner_trivia = fun decls ->
     match decls with
-    | [] | [ _ ] ->
+    | []
+    | [ _ ] ->
         (decls, [])
     | first :: rest ->
         let first_owned = Cst.TypeDeclaration.owned_trivia first in
         let group_inner = sort_trivia_by_source (Cst.OwnedTrivia.inner first_owned) in
-        let first =
-          { first with owned_trivia = owned_trivia_with_inner first_owned [] }
-        in
-        let rec loop current acc remaining_inner =
+        let first = {first with owned_trivia = owned_trivia_with_inner first_owned []} in
+        let rec loop = fun current acc remaining_inner ->
           function
           | [] ->
               let current_end = type_declaration_nontrivia_end_before current in
-              let current_docstrings, leftover_inner =
-                take_contiguous_type_docstring_block ~source ~decl_end:current_end
-                  remaining_inner
-              in
+              let current_docstrings, leftover_inner = take_contiguous_type_docstring_block ~source ~decl_end:current_end remaining_inner in
               let current = append_leading_trivia current current_docstrings in
               (List.rev (current :: acc), leftover_inner)
           | next :: remaining ->
-              let next_start =
-                (Ceibo.Red.SyntaxNode.span (Cst.TypeDeclaration.syntax_node next)).start
-              in
-              let gap_inner, later_inner =
-                remaining_inner
-                |> List.partition
-                     (fun trivia -> (trivia_span trivia).end_ <= next_start)
-              in
-              let current_end =
-                type_declaration_nontrivia_end_before ~before:next_start current
-              in
-              let current_docstrings, bubble_to_next =
-                take_contiguous_type_docstring_block ~source ~decl_end:current_end
-                  gap_inner
-              in
+              let next_start = (Ceibo.Red.SyntaxNode.span (Cst.TypeDeclaration.syntax_node next)).start in
+              let gap_inner, later_inner = remaining_inner
+              |> List.partition (fun trivia -> (trivia_span trivia).end_ <= next_start) in
+              let current_end = type_declaration_nontrivia_end_before ~before:next_start current in
+              let current_docstrings, bubble_to_next = take_contiguous_type_docstring_block ~source ~decl_end:current_end gap_inner in
               let current = append_leading_trivia current current_docstrings in
               let next = append_leading_trivia next bubble_to_next in
               loop next (current :: acc) later_inner remaining
         in
         loop first [] group_inner rest
   in
-  let normalized_decls, bubbled_to_next =
-    normalize_type_declaration_sequence ~source ~has_next_sibling
-      ~initial_leading
-      (decl :: Cst.TypeDeclaration.and_declarations decl)
-  in
-  let normalized_decls, bubbled_from_group =
-    redistribute_group_inner_trivia normalized_decls
-  in
-  let bubbled_to_next =
-    bubbled_from_group @ bubbled_to_next
-    |> sort_trivia_by_source
-    |> dedup_trivia_by_span
-  in
+  let normalized_decls, bubbled_to_next = normalize_type_declaration_sequence ~source ~has_next_sibling ~initial_leading (decl
+  :: Cst.TypeDeclaration.and_declarations decl) in
+  let normalized_decls, bubbled_from_group = redistribute_group_inner_trivia normalized_decls in
+  let bubbled_to_next = bubbled_from_group @ bubbled_to_next |> sort_trivia_by_source |> dedup_trivia_by_span in
   match normalized_decls with
   | [] ->
       (decl, bubbled_to_next)
   | first :: rest ->
-      ({ first with and_declarations = rest }, bubbled_to_next)
+      ({first with and_declarations = rest}, bubbled_to_next)
 
 let structure_item_of_trivia = fun trivia ->
   match trivia with
@@ -1123,38 +982,18 @@ let signature_item_of_trivia = fun trivia ->
 
 let rec drop_matching_leading_structure_trivia = fun trivia items ->
   match trivia, items with
-  | (Cst.Trivia.Docstring left) :: rest_trivia,
-    Cst.StructureItem.Docstring right :: rest_items
-    when
-      trivia_same_span
-        (Cst.Trivia.Docstring left)
-        (Cst.Trivia.Docstring right) ->
+  | (Cst.Trivia.Docstring left) :: rest_trivia, Cst.StructureItem.Docstring right :: rest_items when trivia_same_span (Cst.Trivia.Docstring left) (Cst.Trivia.Docstring right) ->
       drop_matching_leading_structure_trivia rest_trivia rest_items
-  | (Cst.Trivia.Comment left) :: rest_trivia,
-    Cst.StructureItem.Comment right :: rest_items
-    when
-      trivia_same_span
-        (Cst.Trivia.Comment left)
-        (Cst.Trivia.Comment right) ->
+  | (Cst.Trivia.Comment left) :: rest_trivia, Cst.StructureItem.Comment right :: rest_items when trivia_same_span (Cst.Trivia.Comment left) (Cst.Trivia.Comment right) ->
       drop_matching_leading_structure_trivia rest_trivia rest_items
   | _ ->
       items
 
 let rec drop_matching_leading_signature_trivia = fun trivia items ->
   match trivia, items with
-  | (Cst.Trivia.Docstring left) :: rest_trivia,
-    Cst.SignatureItem.Docstring right :: rest_items
-    when
-      trivia_same_span
-        (Cst.Trivia.Docstring left)
-        (Cst.Trivia.Docstring right) ->
+  | (Cst.Trivia.Docstring left) :: rest_trivia, Cst.SignatureItem.Docstring right :: rest_items when trivia_same_span (Cst.Trivia.Docstring left) (Cst.Trivia.Docstring right) ->
       drop_matching_leading_signature_trivia rest_trivia rest_items
-  | (Cst.Trivia.Comment left) :: rest_trivia,
-    Cst.SignatureItem.Comment right :: rest_items
-    when
-      trivia_same_span
-        (Cst.Trivia.Comment left)
-        (Cst.Trivia.Comment right) ->
+  | (Cst.Trivia.Comment left) :: rest_trivia, Cst.SignatureItem.Comment right :: rest_items when trivia_same_span (Cst.Trivia.Comment left) (Cst.Trivia.Comment right) ->
       drop_matching_leading_signature_trivia rest_trivia rest_items
   | _ ->
       items
@@ -1168,8 +1007,8 @@ let type_declaration_starts_with_and = fun decl ->
 
 let rec take_leading_structure_docstrings =
   function
-  | Cst.StructureItem.Docstring docstring :: rest
-    when not (is_section_docstring_text (Cst.Docstring.text docstring)) ->
+  | Cst.StructureItem.Docstring docstring :: rest when not
+  (is_section_docstring_text (Cst.Docstring.text docstring)) ->
       let taken, remaining = take_leading_structure_docstrings rest in
       (Cst.Trivia.Docstring docstring :: taken, remaining)
   | items ->
@@ -1177,8 +1016,8 @@ let rec take_leading_structure_docstrings =
 
 let rec take_following_structure_docstrings =
   function
-  | Cst.StructureItem.Docstring docstring :: rest
-    when not (is_section_docstring_text (Cst.Docstring.text docstring)) ->
+  | Cst.StructureItem.Docstring docstring :: rest when not
+  (is_section_docstring_text (Cst.Docstring.text docstring)) ->
       let taken, remaining = take_following_structure_docstrings rest in
       (Cst.Trivia.Docstring docstring :: taken, remaining)
   | items ->
@@ -1186,8 +1025,8 @@ let rec take_following_structure_docstrings =
 
 let rec take_leading_signature_docstrings =
   function
-  | Cst.SignatureItem.Docstring docstring :: rest
-    when not (is_section_docstring_text (Cst.Docstring.text docstring)) ->
+  | Cst.SignatureItem.Docstring docstring :: rest when not
+  (is_section_docstring_text (Cst.Docstring.text docstring)) ->
       let taken, remaining = take_leading_signature_docstrings rest in
       (Cst.Trivia.Docstring docstring :: taken, remaining)
   | items ->
@@ -1195,8 +1034,8 @@ let rec take_leading_signature_docstrings =
 
 let rec take_following_signature_docstrings =
   function
-  | Cst.SignatureItem.Docstring docstring :: rest
-    when not (is_section_docstring_text (Cst.Docstring.text docstring)) ->
+  | Cst.SignatureItem.Docstring docstring :: rest when not
+  (is_section_docstring_text (Cst.Docstring.text docstring)) ->
       let taken, remaining = take_following_signature_docstrings rest in
       (Cst.Trivia.Docstring docstring :: taken, remaining)
   | items ->
@@ -1206,59 +1045,51 @@ let rec normalize_structure_items_owned_trivia = fun ~source ->
   function
   | [] ->
       []
-  | Cst.StructureItem.Docstring docstring :: rest
-    when not (is_section_docstring_text (Cst.Docstring.text docstring)) -> (
-      let attached_docstrings, remaining =
-        take_leading_structure_docstrings rest
-      in
-      let attached_docstrings =
-        Cst.Trivia.Docstring docstring :: attached_docstrings
-      in
+  | Cst.StructureItem.Docstring docstring :: rest when not
+  (is_section_docstring_text (Cst.Docstring.text docstring)) -> (
+      let attached_docstrings, remaining = take_leading_structure_docstrings rest in
+      let attached_docstrings = Cst.Trivia.Docstring docstring :: attached_docstrings in
       match remaining with
       | Cst.StructureItem.TypeDeclaration decl :: tail ->
           let normalized_decl, next_trivia =
             normalize_type_declaration_group ~source
-              ~has_next_sibling:(
+              ~has_next_sibling:((
                 match tail with
                 | [] ->
                     false
                 | _ ->
-                    true)
-              ~initial_leading:attached_docstrings decl
+                    true
+              ))
+              ~initial_leading:attached_docstrings
+              decl
           in
-          let tail =
-            drop_matching_leading_structure_trivia next_trivia tail
-          in
+          let tail = drop_matching_leading_structure_trivia next_trivia tail in
           Cst.StructureItem.TypeDeclaration normalized_decl
-          :: normalize_structure_items_owned_trivia ~source
-               (List.map structure_item_of_trivia next_trivia @ tail)
+          :: normalize_structure_items_owned_trivia ~source (List.map structure_item_of_trivia next_trivia
+          @ tail)
       | _ ->
-          Cst.StructureItem.Docstring docstring
-          :: normalize_structure_items_owned_trivia ~source rest
+          Cst.StructureItem.Docstring docstring :: normalize_structure_items_owned_trivia ~source rest
     )
   | Cst.StructureItem.TypeDeclaration decl :: rest ->
       let normalized_decl, next_trivia =
         normalize_type_declaration_group ~source
-          ~has_next_sibling:(
+          ~has_next_sibling:((
             match rest with
             | [] ->
                 false
             | _ ->
-                true) decl
+                true
+          ))
+          decl
       in
-      let rest =
-        drop_matching_leading_structure_trivia next_trivia rest
-      in
+      let rest = drop_matching_leading_structure_trivia next_trivia rest in
       Cst.StructureItem.TypeDeclaration normalized_decl
-      :: normalize_structure_items_owned_trivia ~source
-           (List.map structure_item_of_trivia next_trivia @ rest)
+      :: normalize_structure_items_owned_trivia ~source (List.map structure_item_of_trivia next_trivia
+      @ rest)
   | Cst.StructureItem.ValueDeclaration decl :: rest ->
       let decl = normalize_value_declaration_owned_trivia decl in
-      let attached_docstrings, rest =
-        take_following_structure_docstrings rest
-      in
-      Cst.StructureItem.ValueDeclaration
-        (append_value_declaration_leading_trivia decl attached_docstrings)
+      let attached_docstrings, rest = take_following_structure_docstrings rest in
+      Cst.StructureItem.ValueDeclaration (append_value_declaration_leading_trivia decl attached_docstrings)
       :: normalize_structure_items_owned_trivia ~source rest
   | item :: rest ->
       item :: normalize_structure_items_owned_trivia ~source rest
@@ -1267,59 +1098,51 @@ let rec normalize_signature_items_owned_trivia = fun ~source ->
   function
   | [] ->
       []
-  | Cst.SignatureItem.Docstring docstring :: rest
-    when not (is_section_docstring_text (Cst.Docstring.text docstring)) -> (
-      let attached_docstrings, remaining =
-        take_leading_signature_docstrings rest
-      in
-      let attached_docstrings =
-        Cst.Trivia.Docstring docstring :: attached_docstrings
-      in
+  | Cst.SignatureItem.Docstring docstring :: rest when not
+  (is_section_docstring_text (Cst.Docstring.text docstring)) -> (
+      let attached_docstrings, remaining = take_leading_signature_docstrings rest in
+      let attached_docstrings = Cst.Trivia.Docstring docstring :: attached_docstrings in
       match remaining with
       | Cst.SignatureItem.TypeDeclaration decl :: tail ->
           let normalized_decl, next_trivia =
             normalize_type_declaration_group ~source
-              ~has_next_sibling:(
+              ~has_next_sibling:((
                 match tail with
                 | [] ->
                     false
                 | _ ->
-                    true)
-              ~initial_leading:attached_docstrings decl
+                    true
+              ))
+              ~initial_leading:attached_docstrings
+              decl
           in
-          let tail =
-            drop_matching_leading_signature_trivia next_trivia tail
-          in
+          let tail = drop_matching_leading_signature_trivia next_trivia tail in
           Cst.SignatureItem.TypeDeclaration normalized_decl
-          :: normalize_signature_items_owned_trivia ~source
-               (List.map signature_item_of_trivia next_trivia @ tail)
+          :: normalize_signature_items_owned_trivia ~source (List.map signature_item_of_trivia next_trivia
+          @ tail)
       | _ ->
-          Cst.SignatureItem.Docstring docstring
-          :: normalize_signature_items_owned_trivia ~source rest
+          Cst.SignatureItem.Docstring docstring :: normalize_signature_items_owned_trivia ~source rest
     )
   | Cst.SignatureItem.TypeDeclaration decl :: rest ->
       let normalized_decl, next_trivia =
         normalize_type_declaration_group ~source
-          ~has_next_sibling:(
+          ~has_next_sibling:((
             match rest with
             | [] ->
                 false
             | _ ->
-                true) decl
+                true
+          ))
+          decl
       in
-      let rest =
-        drop_matching_leading_signature_trivia next_trivia rest
-      in
+      let rest = drop_matching_leading_signature_trivia next_trivia rest in
       Cst.SignatureItem.TypeDeclaration normalized_decl
-      :: normalize_signature_items_owned_trivia ~source
-           (List.map signature_item_of_trivia next_trivia @ rest)
+      :: normalize_signature_items_owned_trivia ~source (List.map signature_item_of_trivia next_trivia
+      @ rest)
   | Cst.SignatureItem.ValueDeclaration decl :: rest ->
       let decl = normalize_value_declaration_owned_trivia decl in
-      let attached_docstrings, rest =
-        take_following_signature_docstrings rest
-      in
-      Cst.SignatureItem.ValueDeclaration
-        (append_value_declaration_leading_trivia decl attached_docstrings)
+      let attached_docstrings, rest = take_following_signature_docstrings rest in
+      Cst.SignatureItem.ValueDeclaration (append_value_declaration_leading_trivia decl attached_docstrings)
       :: normalize_signature_items_owned_trivia ~source rest
   | item :: rest ->
       item :: normalize_signature_items_owned_trivia ~source rest
@@ -1446,8 +1269,7 @@ let literal_token_from_node = fun ~context node ->
   let direct_tokens = direct_non_trivia_tokens node in
   let find_literal_token = fun syntax_tokens ->
     syntax_tokens
-    |> List.find_opt (fun syntax_token -> is_literal_token_kind
-    (Ceibo.Red.SyntaxToken.kind syntax_token)) in
+    |> List.find_opt (fun syntax_token -> is_literal_token_kind (Ceibo.Red.SyntaxToken.kind syntax_token)) in
   match find_literal_token direct_tokens with
   | Some literal_syntax_token ->
       token literal_syntax_token
@@ -1463,8 +1285,7 @@ let constant_from_syntax_token = fun ~syntax_node syntax_token ->
   let literal_token = token syntax_token in
   match Ceibo.Red.SyntaxToken.kind syntax_token with
   | Syntax_kind.STRING_LITERAL ->
-      let delimiter, contents, terminated = string_delimiter_and_contents
-      (Cst.Token.text literal_token) in
+      let delimiter, contents, terminated = string_delimiter_and_contents (Cst.Token.text literal_token) in
       Cst.Constant.String {
         syntax_node;
         literal_token;
@@ -1477,8 +1298,7 @@ let constant_from_syntax_token = fun ~syntax_node syntax_token ->
       let base, prefix, digits, suffix = integer_parts (Cst.Token.text literal_token) in
       Cst.Constant.Int {syntax_node; literal_token; base; prefix; digits; suffix; attributes = []}
   | Syntax_kind.FLOAT_LITERAL ->
-      let integral_digits, fractional_digits, exponent, suffix = float_parts
-      (Cst.Token.text literal_token) in
+      let integral_digits, fractional_digits, exponent, suffix = float_parts (Cst.Token.text literal_token) in
       Cst.Constant.Float {
         syntax_node;
         literal_token;
@@ -1669,8 +1489,8 @@ let rec module_like_path_from_expression_node = fun node ->
         None
   | Syntax_kind.FIELD_ACCESS_EXPR -> (
       match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
-      | receiver_node :: _, name_syntax_token :: dot_syntax_token :: _ when token_starts_with_uppercase
-      (token name_syntax_token) -> (
+      | receiver_node :: _, name_syntax_token :: dot_syntax_token :: _ when token_starts_with_uppercase (token
+      name_syntax_token) -> (
           match module_like_path_from_expression_node receiver_node with
           | Some prefix ->
               Some (Cst.Ident.Qualified {
@@ -1725,7 +1545,8 @@ let annotation_name_from_tokens = fun ~syntax_node ~sigils syntax_tokens ->
     |> List.filter
       (fun syntax_token ->
         let text = Ceibo.Red.SyntaxToken.text syntax_token in
-        not (String.equal text "[" || String.equal text "]" || List.exists (String.equal text) sigils))
+        not
+        (String.equal text "[" || String.equal text "]" || List.exists (String.equal text) sigils))
   in
   module_path_from_tokens ~syntax_node name_tokens
 
@@ -1754,16 +1575,13 @@ let make_wrapped_fragment = fun ~prefix ~suffix ~start_offset text ->
   let padding = Int.max 0 (start_offset - String.length prefix) in
   String.make padding ' ' ^ prefix ^ text ^ suffix
 
-let payload_text_from_tokens =
-  fun all_tokens ~start_offset ~end_offset ->
-    all_tokens |> List.filter
-      (fun syntax_token ->
-        let span = Ceibo.Red.SyntaxToken.span syntax_token in
-        span.start >= start_offset && span.end_ <= end_offset) |> List.map Ceibo.Red.SyntaxToken.text |> String.concat
-    ""
+let payload_text_from_tokens = fun all_tokens ~start_offset ~end_offset ->
+  all_tokens |> List.filter
+    (fun syntax_token ->
+      let span = Ceibo.Red.SyntaxToken.span syntax_token in
+      span.start >= start_offset && span.end_ <= end_offset) |> List.map Ceibo.Red.SyntaxToken.text |> String.concat ""
 
-let annotation_payload_from_shell_impl : (Cst.syntax_node -> Cst.payload option) Cell.t = Cell.create
-(fun _ -> None)
+let annotation_payload_from_shell_impl : (Cst.syntax_node -> Cst.payload option) Cell.t = Cell.create (fun _ -> None)
 
 let annotation_payload_from_shell = fun shell_node -> (Cell.get annotation_payload_from_shell_impl) shell_node
 
@@ -1824,10 +1642,9 @@ let extension_from_node node : Cst.extension =
         "extension"
       ]
 
-let attributes_from_node = fun node ->
-  direct_non_trivia_nodes node
-  |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.ATTRIBUTE_EXPR)
-  |> List.map attribute_from_node
+let attributes_from_node = fun node -> direct_non_trivia_nodes node
+|> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.ATTRIBUTE_EXPR)
+|> List.map attribute_from_node
 
 let attribute_is_item_like = fun (attribute : Cst.attribute) ->
   match Cst.Token.text attribute.sigil_token with
@@ -1849,12 +1666,11 @@ let class_field_with_attributes = fun field attributes ->
     attribute
   }) field attributes
 
-let non_paren_tokens =
-  fun node ->
-    direct_non_trivia_tokens node |> List.filter
-      (fun syntax_token ->
-        let text = Ceibo.Red.SyntaxToken.text syntax_token in
-        not (String.equal text "(" || String.equal text ")"))
+let non_paren_tokens = fun node ->
+  direct_non_trivia_tokens node |> List.filter
+    (fun syntax_token ->
+      let text = Ceibo.Red.SyntaxToken.text syntax_token in
+      not (String.equal text "(" || String.equal text ")"))
 
 let is_type_syntax_kind =
   function
@@ -1887,8 +1703,7 @@ let rec peel_outer_type_attributes = fun node ->
   | Syntax_kind.ATTRIBUTE_EXPR -> (
       match direct_non_trivia_nodes node with
       | first_child :: rest -> (
-          match List.find_opt can_lift_core_type_node (first_child :: rest), List.find_opt (fun child -> Ceibo.Red.SyntaxNode.kind
-          child
+          match List.find_opt can_lift_core_type_node (first_child :: rest), List.find_opt (fun child -> Ceibo.Red.SyntaxNode.kind child
           = Syntax_kind.ATTRIBUTE_EXPR) rest with
           | Some payload_node, Some attribute_node ->
               let payload_node, attributes = peel_outer_type_attributes payload_node in
@@ -2317,9 +2132,8 @@ let is_binding_operator_expression_node = fun node ->
       )
   in
   match Ceibo.Red.SyntaxNode.kind node, non_trivia_children with
-  | Syntax_kind.LET_EXPR, Ceibo.Red.Token let_kw :: Ceibo.Red.Token operator_syntax_token :: Ceibo.Red.Node pattern_node :: Ceibo.Red.Token equals_syntax_token :: _ when String.equal
-  (Ceibo.Red.SyntaxToken.text let_kw)
-  "let"
+  | Syntax_kind.LET_EXPR, Ceibo.Red.Token let_kw :: Ceibo.Red.Token operator_syntax_token :: Ceibo.Red.Node pattern_node :: Ceibo.Red.Token equals_syntax_token :: _ when String.equal (Ceibo.Red.SyntaxToken.text
+  let_kw) "let"
   && is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind pattern_node)
   && String.equal (Ceibo.Red.SyntaxToken.text equals_syntax_token) "="
   && not (String.equal (Ceibo.Red.SyntaxToken.text operator_syntax_token) "rec")
@@ -2333,9 +2147,8 @@ let is_binding_operator_expression_node = fun node ->
 let binding_operator_pairs_from_tokens = fun node ->
   let rec loop = fun acc ->
     function
-    | keyword_syntax_token :: operator_syntax_token :: equals_syntax_token :: rest when (String.equal
-    (Ceibo.Red.SyntaxToken.text keyword_syntax_token)
-    "let"
+    | keyword_syntax_token :: operator_syntax_token :: equals_syntax_token :: rest when (String.equal (Ceibo.Red.SyntaxToken.text
+    keyword_syntax_token) "let"
     || String.equal (Ceibo.Red.SyntaxToken.text keyword_syntax_token) "and")
     && String.equal (Ceibo.Red.SyntaxToken.text equals_syntax_token) "=" ->
         loop ((token keyword_syntax_token, token operator_syntax_token) :: acc) rest
@@ -2406,33 +2219,30 @@ let constructor_pattern_existentials_from_node node : Cst.constructor_pattern_ex
   let binders = bare_type_binders_from_node ~context:[ "pattern.constructor.existentials" ] node in
   {Cst.syntax_node = node; binders}
 
-let constructor_pattern_existentials_from_children =
-  fun node ->
-    direct_non_trivia_nodes node |> List.find_map
-      (fun child ->
-        if Ceibo.Red.SyntaxNode.kind child = Syntax_kind.LOCALLY_ABSTRACT_TYPE_PARAM then
-          Some (constructor_pattern_existentials_from_node child)
-        else
-          None)
+let constructor_pattern_existentials_from_children = fun node ->
+  direct_non_trivia_nodes node |> List.find_map
+    (fun child ->
+      if Ceibo.Red.SyntaxNode.kind child = Syntax_kind.LOCALLY_ABSTRACT_TYPE_PARAM then
+        Some (constructor_pattern_existentials_from_node child)
+      else
+        None)
 
-let token_with_text =
-  fun node expected ->
-    subtree_non_trivia_tokens node |> List.find_opt
-      (fun syntax_token ->
-        String.equal (Ceibo.Red.SyntaxToken.text syntax_token) expected) |> Option.map token
+let token_with_text = fun node expected ->
+  subtree_non_trivia_tokens node |> List.find_opt
+    (fun syntax_token ->
+      String.equal (Ceibo.Red.SyntaxToken.text syntax_token) expected) |> Option.map token
 
-let direct_token_with_text =
-  fun node expected ->
-    direct_non_trivia_tokens node |> List.find_opt
-      (fun syntax_token ->
-        String.equal (Ceibo.Red.SyntaxToken.text syntax_token) expected) |> Option.map token
+let direct_token_with_text = fun node expected ->
+  direct_non_trivia_tokens node |> List.find_opt
+    (fun syntax_token ->
+      String.equal (Ceibo.Red.SyntaxToken.text syntax_token) expected) |> Option.map token
 
 let direct_required_token_with_text = fun ~context node expected ->
   match direct_token_with_text node expected with
   | Some token ->
       token
   | None ->
-      bail ~message:(("expected '" ^ expected ^ "' token during Ceibo -> CST lifting")) ~syntax_node:node ~context
+      bail ~message:((("expected '" ^ expected ^ "' token during Ceibo -> CST lifting"))) ~syntax_node:node ~context
 
 let rec take_tokens_until_equals = fun acc ->
   function
@@ -2443,29 +2253,24 @@ let rec take_tokens_until_equals = fun acc ->
       else
         take_tokens_until_equals (syntax_token :: acc) rest
 
-let operator_tokens_from_node =
-  fun node ->
-    direct_non_trivia_tokens node |> List.filter
-      (fun syntax_token ->
-        let text = Ceibo.Red.SyntaxToken.text syntax_token in
-        not (String.equal text "(" || String.equal text ")" || String.equal text " ")) |> List.map token
+let operator_tokens_from_node = fun node ->
+  direct_non_trivia_tokens node |> List.filter
+    (fun syntax_token ->
+      let text = Ceibo.Red.SyntaxToken.text syntax_token in
+      not (String.equal text "(" || String.equal text ")" || String.equal text " ")) |> List.map token
 
 let arrow_label_from_node = fun node ->
   let text = fun syntax_token -> Ceibo.Red.SyntaxToken.text syntax_token in
   match direct_non_trivia_tokens node with
   | label_syntax_token :: colon_syntax_token :: _ when String.equal (text colon_syntax_token) ":" ->
       Some (Cst.ArrowLabel.Named {sigil_token = None; label_token = token label_syntax_token})
-  | sigil_syntax_token :: label_syntax_token :: colon_syntax_token :: _ when String.equal
-  (text sigil_syntax_token)
-  "~"
+  | sigil_syntax_token :: label_syntax_token :: colon_syntax_token :: _ when String.equal (text sigil_syntax_token) "~"
   && String.equal (text colon_syntax_token) ":" ->
       Some (Cst.ArrowLabel.Named {
         sigil_token = Some (token sigil_syntax_token);
         label_token = token label_syntax_token
       })
-  | sigil_syntax_token :: label_syntax_token :: colon_syntax_token :: _ when String.equal
-  (text sigil_syntax_token)
-  "?"
+  | sigil_syntax_token :: label_syntax_token :: colon_syntax_token :: _ when String.equal (text sigil_syntax_token) "?"
   && String.equal (text colon_syntax_token) ":" ->
       Some (Cst.ArrowLabel.OptionalNamed {
         sigil_token = token sigil_syntax_token;
@@ -2536,7 +2341,8 @@ and module_type_from_node = fun node ->
             syntax_node = node;
             base = module_type_from_node base_node;
             constraints = constraint_nodes
-            |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_CONSTRAINT)
+            |> List.filter
+            (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_CONSTRAINT)
             |> List.map module_type_constraint_from_node
           }
       | [] ->
@@ -2571,9 +2377,7 @@ and module_type_from_node = fun node ->
   | Syntax_kind.ATTRIBUTE_EXPR -> (
       match direct_non_trivia_nodes node with
       | first_child :: rest -> (
-          match List.find_opt can_lift_module_type_node (first_child :: rest), List.find_opt
-          is_attribute_node
-          rest with
+          match List.find_opt can_lift_module_type_node (first_child :: rest), List.find_opt is_attribute_node rest with
           | Some payload_node, Some attribute_node ->
               Cst.ModuleType.Attribute {
                 syntax_node = node;
@@ -2741,9 +2545,7 @@ and class_type_field_from_node = fun node ->
   | Syntax_kind.ATTRIBUTE_EXPR -> (
       match direct_non_trivia_nodes node with
       | first_child :: rest -> (
-          match List.find_opt can_lift_class_type_field_node (first_child :: rest), List.find_opt
-          is_attribute_node
-          rest with
+          match List.find_opt can_lift_class_type_field_node (first_child :: rest), List.find_opt is_attribute_node rest with
           | Some payload_node, Some attribute_node ->
               Cst.ClassTypeField.Attribute {
                 syntax_node = node;
@@ -2831,9 +2633,7 @@ and class_type_from_node = fun node ->
   | Syntax_kind.ATTRIBUTE_EXPR -> (
       match direct_non_trivia_nodes node with
       | first_child :: rest -> (
-          match List.find_opt can_lift_class_type_node (first_child :: rest), List.find_opt
-          is_attribute_node
-          rest with
+          match List.find_opt can_lift_class_type_node (first_child :: rest), List.find_opt is_attribute_node rest with
           | Some payload_node, Some attribute_node ->
               Cst.ClassType.Attribute {
                 syntax_node = node;
@@ -2958,13 +2758,9 @@ and core_type_from_node = fun node ->
         ]
   and poly_variant_bound_from_node = fun node ->
     match direct_non_trivia_tokens node with
-    | _open_bracket :: marker_token :: _ when String.equal
-    (Ceibo.Red.SyntaxToken.text marker_token)
-    "<" ->
+    | _open_bracket :: marker_token :: _ when String.equal (Ceibo.Red.SyntaxToken.text marker_token) "<" ->
         Cst.PolyVariantBound.UpperBound {marker_token = token marker_token}
-    | _open_bracket :: marker_token :: _ when String.equal
-    (Ceibo.Red.SyntaxToken.text marker_token)
-    ">" ->
+    | _open_bracket :: marker_token :: _ when String.equal (Ceibo.Red.SyntaxToken.text marker_token) ">" ->
         Cst.PolyVariantBound.LowerBound {marker_token = token marker_token}
     | _ ->
         Cst.PolyVariantBound.Exact
@@ -3073,9 +2869,7 @@ and core_type_from_node = fun node ->
   | Syntax_kind.ATTRIBUTE_EXPR -> (
       match direct_non_trivia_nodes node with
       | first_child :: rest -> (
-          match List.find_opt can_lift_core_type_node (first_child :: rest), List.find_opt
-          is_attribute_node
-          rest with
+          match List.find_opt can_lift_core_type_node (first_child :: rest), List.find_opt is_attribute_node rest with
           | Some payload_node, Some attribute_node ->
               Cst.CoreType.Attribute {
                 syntax_node = node;
@@ -3178,10 +2972,8 @@ let rec pattern_from_node = fun node ->
     | Syntax_kind.ATTRIBUTE_EXPR -> (
         match direct_non_trivia_nodes node with
         | first_child :: rest -> (
-            match List.find_opt (fun child -> is_pattern_syntax_kind
-            (Ceibo.Red.SyntaxNode.kind child)) (first_child :: rest), List.find_opt
-            is_attribute_node
-            rest with
+            match List.find_opt (fun child -> is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child)) (first_child
+            :: rest), List.find_opt is_attribute_node rest with
             | Some payload_node, Some attribute_node ->
                 let payload_node, attributes = peel_outer_pattern_attributes payload_node in
                 (payload_node, attributes @ [ attribute_from_node attribute_node ])
@@ -3283,7 +3075,12 @@ let rec pattern_from_node = fun node ->
             if awaiting_payload then
               match pending_label with
               | Some label_pattern_node ->
-                  loop rest false None false (labeled_payload_element label_pattern_node child :: acc)
+                  loop
+                  rest
+                  false
+                  None
+                  false
+                  (labeled_payload_element label_pattern_node child :: acc)
               | None ->
                   loop rest false None false (unlabeled_element child :: acc)
             else if saw_tilde then
@@ -3392,7 +3189,8 @@ let rec pattern_from_node = fun node ->
               syntax_node = node;
               tag_token;
               payload = (direct_non_trivia_nodes node
-              |> List.find_opt (fun child -> is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+              |> List.find_opt
+              (fun child -> is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
               |> Option.map pattern_from_node);
               attributes = []
             }
@@ -3433,7 +3231,8 @@ let rec pattern_from_node = fun node ->
         Cst.Pattern.Record {
           syntax_node = node;
           fields = direct_non_trivia_nodes node
-          |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD_PATTERN)
+          |> List.filter
+          (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD_PATTERN)
           |> List.filter_map record_pattern_field_from_node;
           closedness;
           attributes = []
@@ -3536,8 +3335,7 @@ and effect_pattern_from_node = fun node ->
 let parameter_from_node = fun node ->
   let binding_pattern_from_direct_nodes = fun ~label_name_token direct_nodes ->
     match direct_nodes with
-    | binding_pattern_node :: _ when is_pattern_syntax_kind
-    (Ceibo.Red.SyntaxNode.kind binding_pattern_node) ->
+    | binding_pattern_node :: _ when is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind binding_pattern_node) ->
         Some (pattern_from_node binding_pattern_node)
     | type_node :: _ when is_type_syntax_kind (Ceibo.Red.SyntaxNode.kind type_node) ->
         let identifier_pattern = Cst.Pattern.Identifier {
@@ -3858,8 +3656,8 @@ and expression_with_type_annotation = fun ~syntax_node ~expression type_node ->
   | _ ->
       Cst.Expression.Typed {syntax_node; expression; type_; attributes = []}
 and binding_type_annotation_node = fun prefix_nodes -> prefix_nodes |> List.find_opt can_lift_core_type_node
-and binding_parameter_nodes = fun prefix_nodes ->
-  prefix_nodes |> List.filter (fun child -> is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
+and binding_parameter_nodes = fun prefix_nodes -> prefix_nodes
+|> List.filter (fun child -> is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
 and binding_parameters_from_prefix = fun prefix_nodes -> binding_parameter_nodes prefix_nodes |> parameters_from_nodes
 and binding_value_from_prefix = fun ~binding_syntax_node ~prefix_nodes ~value_node ->
   let value = expression_from_node value_node in
@@ -3868,8 +3666,11 @@ and binding_value_from_prefix = fun ~binding_syntax_node ~prefix_nodes ~value_no
       expression_with_type_annotation ~syntax_node:binding_syntax_node ~expression:value type_node
   | None ->
       value
-and constrain_module_expression = fun ~syntax_node ~module_expression module_type ->
-  Cst.ModuleExpression.Constraint {syntax_node; module_expression; module_type}
+and constrain_module_expression = fun ~syntax_node ~module_expression module_type -> Cst.ModuleExpression.Constraint {
+  syntax_node;
+  module_expression;
+  module_type
+}
 and module_expression_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.IDENT_EXPR ->
@@ -3883,9 +3684,8 @@ and module_expression_from_node = fun node ->
       }
   | Syntax_kind.FUNCTOR_TYPE -> (
       match direct_non_trivia_tokens node, List.rev (direct_non_trivia_nodes node) with
-      | functor_kw :: _, body_node :: rev_parameter_nodes when String.equal
-      (Ceibo.Red.SyntaxToken.text functor_kw)
-      "functor" ->
+      | functor_kw :: _, body_node :: rev_parameter_nodes when String.equal (Ceibo.Red.SyntaxToken.text
+      functor_kw) "functor" ->
           Cst.ModuleExpression.Functor {
             syntax_node = node;
             parameters = List.rev rev_parameter_nodes
@@ -3944,9 +3744,7 @@ and module_expression_from_node = fun node ->
   | Syntax_kind.ATTRIBUTE_EXPR -> (
       match direct_non_trivia_nodes node with
       | first_child :: rest -> (
-          match List.find_opt can_lift_module_expression_node (first_child :: rest), List.find_opt
-          is_attribute_node
-          rest with
+          match List.find_opt can_lift_module_expression_node (first_child :: rest), List.find_opt is_attribute_node rest with
           | Some payload_node, Some attribute_node ->
               Cst.ModuleExpression.Attribute {
                 syntax_node = node;
@@ -3971,9 +3769,7 @@ and expression_from_node = fun node ->
     | Syntax_kind.ATTRIBUTE_EXPR -> (
         match direct_non_trivia_nodes node with
         | first_child :: rest -> (
-            match List.find_opt can_lift_expression_node (first_child :: rest), List.find_opt
-            is_attribute_node
-            rest with
+            match List.find_opt can_lift_expression_node (first_child :: rest), List.find_opt is_attribute_node rest with
             | Some payload_node, Some attribute_node ->
                 let payload_node, attributes = peel_outer_expression_attributes payload_node in
                 (payload_node, attributes @ [ attribute_from_node attribute_node ])
@@ -4288,8 +4084,7 @@ and expression_from_node = fun node ->
                   attributes = []
                 }
             | _ ->
-                normalize_greedy_labeled_argument ~syntax_node:node ~callee:(expression_from_node callee_node) (apply_argument_from_node
-                argument_node)
+                normalize_greedy_labeled_argument ~syntax_node:node ~callee:(expression_from_node callee_node) (apply_argument_from_node argument_node)
           )
         | _ ->
             unsupported_expression node
@@ -4309,9 +4104,7 @@ and expression_from_node = fun node ->
       )
     | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> (
         match non_paren_tokens node, direct_non_trivia_nodes node with
-        | module_kw :: _, module_expression_node :: _ when String.equal
-        (Ceibo.Red.SyntaxToken.text module_kw)
-        "module" ->
+        | module_kw :: _, module_expression_node :: _ when String.equal (Ceibo.Red.SyntaxToken.text module_kw) "module" ->
             let module_type = direct_non_trivia_nodes node
             |> List.find_opt can_lift_module_type_node
             |> Option.map module_type_from_node in
@@ -4342,7 +4135,8 @@ and expression_from_node = fun node ->
                     syntax_node = node;
                     exception_declaration = {
                       syntax_node = exception_decl_node;
-                      name_token = token name_syntax_token
+                      name_token = token name_syntax_token;
+                      owned_trivia = owned_trivia_from_node exception_decl_node
                     };
                     body = expression_from_node body_node;
                     attributes = []
@@ -4722,9 +4516,7 @@ and assign_expression_from_node = fun node ->
       let operator_token = token operator_syntax_token in
       Some (
         match Ceibo.Red.SyntaxNode.kind target_node, direct_non_trivia_tokens target_node with
-        | Syntax_kind.IDENT_EXPR, name_syntax_token :: _ when String.equal
-        (Cst.Token.text operator_token)
-        "<-" ->
+        | Syntax_kind.IDENT_EXPR, name_syntax_token :: _ when String.equal (Cst.Token.text operator_token) "<-" ->
             Cst.Expression.InstanceVariableAssign {
               syntax_node = node;
               name_token = token name_syntax_token;
@@ -4784,14 +4576,13 @@ and sequence_expression_from_node = fun node ->
 and record_field_path_from_node = fun node ->
   let tokens = direct_non_trivia_tokens node |> take_tokens_until_equals [] in
   module_path_from_tokens ~syntax_node:node tokens
-and record_field_value_from_node =
-  fun node ->
-    direct_non_trivia_nodes node |> List.find_map
-      (fun child ->
-        if can_lift_expression_node child then
-          Some (expression_from_node child)
-        else
-          None)
+and record_field_value_from_node = fun node ->
+  direct_non_trivia_nodes node |> List.find_map
+    (fun child ->
+      if can_lift_expression_node child then
+        Some (expression_from_node child)
+      else
+        None)
 and record_expression_field_from_node = fun node ->
   let lifted_field_path = record_field_path_from_node node in
   match Cst.Ident.last_segment lifted_field_path with
@@ -4962,13 +4753,12 @@ and fun_body_from_node = fun node ->
       Cst.Cases (function_case_body_from_node node)
   | _ ->
       Cst.Expression (expression_from_node node)
-and function_expression_from_node = fun node ->
-  Some {
-    Cst.syntax_node = node;
-    keyword_token = direct_required_token_with_text ~context:[ "function_expression" ] node "function";
-    cases = (function_case_body_from_node node).cases;
-    attributes = []
-  }
+and function_expression_from_node = fun node -> Some {
+  Cst.syntax_node = node;
+  keyword_token = direct_required_token_with_text ~context:[ "function_expression" ] node "function";
+  cases = (function_case_body_from_node node).cases;
+  attributes = []
+}
 and let_operator_expression_from_node = fun node ->
   let operator_pairs = binding_operator_pairs_from_tokens node in
   let lifted_children = direct_non_trivia_nodes node
@@ -5089,8 +4879,7 @@ and let_expression_from_node = fun ~is_recursive_binding node ->
                 bail ~message:"expected let-in keyword during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                   "let_expression"
                 ]
-          ); binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix
-          prefix_nodes; bound_value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_bindings = and_binding_nodes
+          ); binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix prefix_nodes; bound_value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_bindings = and_binding_nodes
           |> List.mapi
             (fun index and_binding_node ->
               match List.nth_opt and_keyword_tokens index with
@@ -5118,10 +4907,12 @@ and apply_payload_and_item_attribute = fun ~can_lift_payload node ->
     )
   | _ ->
       (node, None)
-and expression_payload_and_field_attribute = fun node ->
-  apply_payload_and_item_attribute ~can_lift_payload:can_lift_expression_node node
-and class_expression_payload_and_field_attribute = fun node ->
-  apply_payload_and_item_attribute ~can_lift_payload:can_lift_class_expression_node node
+and expression_payload_and_field_attribute = fun node -> apply_payload_and_item_attribute
+~can_lift_payload:can_lift_expression_node
+node
+and class_expression_payload_and_field_attribute = fun node -> apply_payload_and_item_attribute
+~can_lift_payload:can_lift_class_expression_node
+node
 and class_method_from_node = fun node ->
   let children_without_attributes = direct_non_trivia_nodes node
   |> List.filter (fun child -> not (is_attribute_node child)) in
@@ -5347,8 +5138,7 @@ and class_let_expression_from_node = fun ~is_recursive_binding node ->
     None
   else
     match let_expression_parts ~is_recursive_binding node with
-    | Some (`Value (is_recursive_binding, binding_pattern_node, prefix_nodes, bound_value_node, and_binding_nodes, body_node)) when can_lift_class_expression_node
-    body_node ->
+    | Some (`Value (is_recursive_binding, binding_pattern_node, prefix_nodes, bound_value_node, and_binding_nodes, body_node)) when can_lift_class_expression_node body_node ->
         let and_keyword_tokens =
           direct_non_trivia_tokens node
           |> List.filter
@@ -5416,8 +5206,7 @@ and class_let_expression_from_node = fun ~is_recursive_binding node ->
                 bail ~message:"expected class let-in keyword during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                   "class_let_expression"
                 ]
-          ); binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix
-          prefix_nodes; bound_value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_bindings = and_binding_nodes
+          ); binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix prefix_nodes; bound_value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_bindings = and_binding_nodes
           |> List.mapi
             (fun index and_binding_node ->
               match List.nth_opt and_keyword_tokens index with
@@ -5589,9 +5378,7 @@ and class_expression_from_node = fun node ->
   | Syntax_kind.ATTRIBUTE_EXPR -> (
       match direct_non_trivia_nodes node with
       | first_child :: rest -> (
-          match List.find_opt can_lift_class_expression_node (first_child :: rest), List.find_opt
-          is_attribute_node
-          rest with
+          match List.find_opt can_lift_class_expression_node (first_child :: rest), List.find_opt is_attribute_node rest with
           | Some payload_node, Some attribute_node ->
               Cst.ClassExpression.Attribute {
                 syntax_node = node;
@@ -5757,10 +5544,9 @@ and type_parameter_from_node = fun node ->
     is_injective = parameter_is_injective;
     type_variable = lifted_type_variable
   }
-and type_parameters_from_node = fun node ->
-  direct_non_trivia_nodes node
-  |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_PARAM)
-  |> List.map type_parameter_from_node
+and type_parameters_from_node = fun node -> direct_non_trivia_nodes node
+|> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_PARAM)
+|> List.map type_parameter_from_node
 
 let record_field_name_token = fun node ->
   match direct_non_trivia_tokens node with
@@ -5780,45 +5566,43 @@ let type_constraint_from_node = fun node ->
   | _ ->
       None
 
-let private_flag_from_type_declaration_node =
-  fun node ->
-    direct_non_trivia_tokens node |> List.find_opt
-      (fun syntax_token ->
-        String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "private") |> function
-    | Some private_token ->
-        Cst.PrivateFlag.Private {private_token = token private_token}
-    | None ->
-        Cst.PrivateFlag.Public
+let private_flag_from_type_declaration_node = fun node ->
+  direct_non_trivia_tokens node |> List.find_opt
+    (fun syntax_token ->
+      String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "private") |> function
+  | Some private_token ->
+      Cst.PrivateFlag.Private {private_token = token private_token}
+  | None ->
+      Cst.PrivateFlag.Public
 
-let record_field_from_node =
-  fun node ->
-    record_field_name_token node |> Option.map
-      (fun field_name ->
-        let mutable_field =
-          match direct_non_trivia_tokens node with
-          | first :: _ ->
-              String.equal (Ceibo.Red.SyntaxToken.text first) "mutable"
-          | [] -> false
-        in
-        let field_type_node = direct_non_trivia_nodes node |> List.find_opt can_lift_core_type_node in
-        let lifted_field_type, lifted_attributes =
-          match field_type_node with
-          | Some field_type_node ->
-              let field_type_node, attributes = peel_outer_type_attributes field_type_node in
-              (core_type_from_node field_type_node, attributes)
-          | None ->
-              bail ~message:"expected record field type during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-                "type_definition.record_field"
-              ]
-        in
-        Cst.RecordField.{
-          syntax_node = node;
-          field_name;
-          field_type = lifted_field_type;
-          is_mutable = mutable_field;
-          attributes = lifted_attributes;
-          owned_trivia = owned_trivia_from_node node
-        })
+let record_field_from_node = fun node ->
+  record_field_name_token node |> Option.map
+    (fun field_name ->
+      let mutable_field =
+        match direct_non_trivia_tokens node with
+        | first :: _ ->
+            String.equal (Ceibo.Red.SyntaxToken.text first) "mutable"
+        | [] -> false
+      in
+      let field_type_node = direct_non_trivia_nodes node |> List.find_opt can_lift_core_type_node in
+      let lifted_field_type, lifted_attributes =
+        match field_type_node with
+        | Some field_type_node ->
+            let field_type_node, attributes = peel_outer_type_attributes field_type_node in
+            (core_type_from_node field_type_node, attributes)
+        | None ->
+            bail ~message:"expected record field type during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+              "type_definition.record_field"
+            ]
+      in
+      Cst.RecordField.{
+        syntax_node = node;
+        field_name;
+        field_type = lifted_field_type;
+        is_mutable = mutable_field;
+        attributes = lifted_attributes;
+        owned_trivia = owned_trivia_from_node node
+      })
 
 let variant_constructor_from_node = fun node ->
   let constructor_payload_signature = fun payload_type ->
@@ -5871,7 +5655,8 @@ let variant_constructor_from_node = fun node ->
                   None
               | [ record_node ] when Ceibo.Red.SyntaxNode.kind record_node = Syntax_kind.TYPE_RECORD ->
                   Some (Cst.ConstructorArguments.Record (direct_non_trivia_nodes record_node
-                  |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
+                  |> List.filter
+                  (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
                   |> List.filter_map record_field_from_node))
               | [ tuple_node ] when Ceibo.Red.SyntaxNode.kind tuple_node = Syntax_kind.TYPE_TUPLE ->
                   Some (Cst.ConstructorArguments.Tuple (direct_non_trivia_nodes tuple_node
@@ -5999,13 +5784,12 @@ let type_declaration_name_path = fun node ->
             "name"
           ])
 
-let is_type_extension_node =
-  fun node ->
-    Ceibo.Red.SyntaxNode.kind node = Syntax_kind.TYPE_DECL && (
-      direct_non_trivia_tokens node |> List.exists
-        (fun syntax_token ->
-          String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "+")
-    )
+let is_type_extension_node = fun node ->
+  Ceibo.Red.SyntaxNode.kind node = Syntax_kind.TYPE_DECL && (
+    direct_non_trivia_tokens node |> List.exists
+      (fun syntax_token ->
+        String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "+")
+  )
 
 let is_type_definition_body_kind =
   function
@@ -6040,11 +5824,10 @@ let type_manifest_alias_from_node = fun node ->
     in
     loop direct_children
 
-let type_declaration_has_nonrec =
-  fun node ->
-    direct_non_trivia_tokens node |> List.exists
-      (fun syntax_token ->
-        String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "nonrec")
+let type_declaration_has_nonrec = fun node ->
+  direct_non_trivia_tokens node |> List.exists
+    (fun syntax_token ->
+      String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "nonrec")
 
 let type_definition_from_node = fun node ->
   if Ceibo.Red.SyntaxNode.kind node = Syntax_kind.TYPE_EXTENSIBLE then
@@ -6061,12 +5844,14 @@ let type_definition_from_node = fun node ->
       |> List.find_opt (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD) with
       | Some record_node ->
           let fields = direct_non_trivia_nodes record_node
-          |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
+          |> List.filter
+          (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
           |> List.filter_map record_field_from_node in
           Cst.TypeDefinition.Record {syntax_node = record_node; fields}
       | None -> (
           match direct_children
-          |> List.find_opt (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_POLY_VARIANT) with
+          |> List.find_opt
+          (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_POLY_VARIANT) with
           | Some poly_variant_node ->
               Cst.TypeDefinition.PolyVariant (poly_variant_from_node poly_variant_node)
           | None -> (
@@ -6086,7 +5871,8 @@ let type_definition_from_node = fun node ->
                     Cst.TypeDefinition.Object {
                       syntax_node = first;
                       fields = direct_non_trivia_nodes first
-                      |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.OBJECT_TYPE_FIELD)
+                      |> List.filter
+                      (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.OBJECT_TYPE_FIELD)
                       |> List.map
                         (fun field_node ->
                           match first_ident_token_in_subtree field_node, direct_non_trivia_nodes field_node
@@ -6120,8 +5906,8 @@ let type_definition_from_node = fun node ->
                         kind != Syntax_kind.TYPE_PARAM
                         && kind != Syntax_kind.IDENT_EXPR
                         && kind != Syntax_kind.MODULE_PATH
-                        && not
-                        (kind = Syntax_kind.ATTRIBUTE_EXPR && not (can_lift_core_type_node child)))
+                        && not (kind = Syntax_kind.ATTRIBUTE_EXPR
+                        && not (can_lift_core_type_node child)))
                   in
                   match remaining_nodes with
                   | [] -> Cst.TypeDefinition.Abstract
@@ -6175,25 +5961,16 @@ let type_declaration_from_node = fun node ->
     )
   | None -> None
 
-let rec flatten_type_declaration_group =
-  fun (decl : Cst.TypeDeclaration.t) ->
-    let direct_type_decl_nodes =
-      direct_non_trivia_nodes (Cst.TypeDeclaration.syntax_node decl)
-      |> List.filter
-           (fun child ->
-             Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL)
-    in
-    match direct_type_decl_nodes |> List.filter_map type_declaration_from_node with
-    | _ :: _ as flattened ->
-        flattened
-    | [] ->
-        let existing_and_declarations =
-          Cst.TypeDeclaration.and_declarations decl
-        in
-        let decl = { decl with and_declarations = [] } in
-        decl
-        :: (existing_and_declarations
-           |> List.concat_map flatten_type_declaration_group)
+let rec flatten_type_declaration_group = fun (decl : Cst.TypeDeclaration.t) ->
+  let direct_type_decl_nodes = direct_non_trivia_nodes (Cst.TypeDeclaration.syntax_node decl)
+  |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL) in
+  match direct_type_decl_nodes |> List.filter_map type_declaration_from_node with
+  | _ :: _ as flattened ->
+      flattened
+  | [] ->
+      let existing_and_declarations = Cst.TypeDeclaration.and_declarations decl in
+      let decl = {decl with and_declarations = []} in
+      decl :: (existing_and_declarations |> List.concat_map flatten_type_declaration_group)
 
 let grouped_type_declaration_from_nodes = fun ~group_syntax_node nodes ->
   let decls = nodes
@@ -6205,28 +5982,22 @@ let grouped_type_declaration_from_nodes = fun ~group_syntax_node nodes ->
   | first :: rest ->
       Some {first with syntax_node = group_syntax_node; and_declarations = rest}
 
-let merge_type_declaration_groups =
-  fun (first : Cst.TypeDeclaration.t) (next : Cst.TypeDeclaration.t) ->
-    match
-      flatten_type_declaration_group first
-      @ flatten_type_declaration_group next
-    with
-    | [] ->
-        first
-    | first :: rest ->
-        { first with and_declarations = rest }
+let merge_type_declaration_groups = fun (first : Cst.TypeDeclaration.t) (next : Cst.TypeDeclaration.t) ->
+  match flatten_type_declaration_group first @ flatten_type_declaration_group next with
+  | [] ->
+      first
+  | first :: rest ->
+      {first with and_declarations = rest}
 
 let rec coalesce_structure_type_declaration_groups =
   function
-  | Cst.StructureItem.TypeDeclaration first
-    :: Cst.StructureItem.TypeDeclaration next
-    :: rest
-    when
-      type_declaration_starts_with_and next
-      && Cst.TypeDeclaration.and_declarations next = [] ->
-      coalesce_structure_type_declaration_groups
-        (Cst.StructureItem.TypeDeclaration (merge_type_declaration_groups first next)
-        :: rest)
+  | Cst.StructureItem.TypeDeclaration first :: Cst.StructureItem.TypeDeclaration next :: rest when type_declaration_starts_with_and
+  next
+  && Cst.TypeDeclaration.and_declarations next = [] ->
+      coalesce_structure_type_declaration_groups (Cst.StructureItem.TypeDeclaration (merge_type_declaration_groups
+      first
+      next)
+      :: rest)
   | item :: rest ->
       item :: coalesce_structure_type_declaration_groups rest
   | [] ->
@@ -6234,15 +6005,13 @@ let rec coalesce_structure_type_declaration_groups =
 
 let rec coalesce_signature_type_declaration_groups =
   function
-  | Cst.SignatureItem.TypeDeclaration first
-    :: Cst.SignatureItem.TypeDeclaration next
-    :: rest
-    when
-      type_declaration_starts_with_and next
-      && Cst.TypeDeclaration.and_declarations next = [] ->
-      coalesce_signature_type_declaration_groups
-        (Cst.SignatureItem.TypeDeclaration (merge_type_declaration_groups first next)
-        :: rest)
+  | Cst.SignatureItem.TypeDeclaration first :: Cst.SignatureItem.TypeDeclaration next :: rest when type_declaration_starts_with_and
+  next
+  && Cst.TypeDeclaration.and_declarations next = [] ->
+      coalesce_signature_type_declaration_groups (Cst.SignatureItem.TypeDeclaration (merge_type_declaration_groups
+      first
+      next)
+      :: rest)
   | item :: rest ->
       item :: coalesce_signature_type_declaration_groups rest
   | [] ->
@@ -6263,7 +6032,11 @@ let type_extension_from_node = fun node ->
             syntax_node = node;
             type_name = extension_type_name;
             type_params = extension_type_params;
-            constructors = extension_constructors
+            constructors = extension_constructors;
+            owned_trivia =
+              owned_trivia_from_node_excluding_child_owned_spans node
+                (extension_constructors
+                |> List.concat_map variant_constructor_owned_trivia_spans)
           }
       | None -> None
     )
@@ -6351,8 +6124,8 @@ let let_expression_binding_from_node = fun ~is_recursive_binding node ->
                   bail ~message:"expected let-expression binding equals during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                     "let_expression.binding"
                   ]
-            ); attributes = []; binding_pattern = pattern_from_node binding_pattern_node; binding_name = simple_pattern_name_token
-            binding_pattern_node; parameters = binding_parameters_from_prefix prefix_nodes; value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_bindings = []; is_recursive = is_recursive_binding}
+            ); attributes = []; binding_pattern = pattern_from_node binding_pattern_node; binding_name = simple_pattern_name_token binding_pattern_node; parameters = binding_parameters_from_prefix
+            prefix_nodes; value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_bindings = []; is_recursive = is_recursive_binding}
     | _ -> None
 
 let module_declaration_from_node = fun node ->
@@ -6417,7 +6190,8 @@ let module_declaration_from_node = fun node ->
         module_type = lifted_module_type;
         module_expression = lifted_module_expression;
         is_destructive_substitution = destructive_substitution;
-        is_recursive = is_recursive_declaration
+        is_recursive = is_recursive_declaration;
+        owned_trivia = owned_trivia_from_node node
       }
     )
   | None -> None
@@ -6441,11 +6215,19 @@ let recursive_module_declaration_from_nodes = fun ~group_syntax_node module_decl
   | _ ->
       Some Cst.RecursiveModuleDeclaration.{
         syntax_node = group_syntax_node;
-        declarations = recursive_declarations
+        declarations = recursive_declarations;
+        owned_trivia =
+          owned_trivia_from_node_excluding_child_owned_spans group_syntax_node
+            (recursive_declarations
+            |> List.concat_map
+                 (fun decl ->
+                   owned_trivia_spans (Cst.ModuleDeclaration.owned_trivia decl)))
       }
 
 let module_type_declaration_from_node = fun node ->
-  match find_declaration_name_token ~skip_keywords:[ "module"; "type" ] (direct_non_trivia_tokens node) with
+  match find_declaration_name_token
+  ~skip_keywords:[ "module"; "type" ]
+  (direct_non_trivia_tokens node) with
   | Some module_type_name ->
       let destructive_substitution =
         direct_non_trivia_tokens node
@@ -6460,7 +6242,8 @@ let module_type_declaration_from_node = fun node ->
         |> List.rev
         |> List.find_opt can_lift_module_type_node
         |> Option.map module_type_from_node);
-        is_destructive_substitution = destructive_substitution
+        is_destructive_substitution = destructive_substitution;
+        owned_trivia = owned_trivia_from_node node
       }
   | None -> None
 
@@ -6536,7 +6319,8 @@ let class_declaration_from_node = fun node ->
               | Some _ -> suffix_class_type
               | None -> prefix_class_type
             );
-            class_body = suffix_class_body
+            class_body = suffix_class_body;
+            owned_trivia = owned_trivia_from_node node
           }
       | _ -> None
     )
@@ -6562,7 +6346,8 @@ let class_type_declaration_from_node = fun node ->
               Cst.syntax_node = node;
               type_params = type_parameters_from_node node;
               class_type_name;
-              class_type_body = class_type_from_node body_node
+              class_type_body = class_type_from_node body_node;
+              owned_trivia = owned_trivia_from_node node
             }
           else
             None
@@ -6587,7 +6372,8 @@ let open_statement_from_node = fun node ->
       Some Cst.OpenStatement.{
         syntax_node = node;
         target = lifted_target;
-        bang_token = bang_token_opt
+        bang_token = bang_token_opt;
+        owned_trivia = owned_trivia_from_node node
       }
   | None ->
       let module_tokens =
@@ -6604,7 +6390,8 @@ let open_statement_from_node = fun node ->
             Some Cst.OpenStatement.{
               syntax_node = node;
               target = Cst.OpenStatement.Path (module_path_from_tokens ~syntax_node:node module_tokens);
-              bang_token = bang_token_opt
+              bang_token = bang_token_opt;
+              owned_trivia = owned_trivia_from_node node
             }
       )
 
@@ -6629,7 +6416,7 @@ let value_declaration_from_node = fun node ->
   match declaration_name_token_from_node node with
   | Some lifted_name_token -> (
       match List.rev direct_children |> List.find_opt can_lift_core_type_node with
-          | Some lifted_type_node ->
+      | Some lifted_type_node ->
           Some ({
             syntax_node = node;
             name_token = lifted_name_token;
@@ -6645,8 +6432,7 @@ let external_declaration_from_node = fun node ->
   let lifted_primitive_name_tokens = direct_non_trivia_tokens node
   |> List.filter (fun syntax_token -> Ceibo.Red.SyntaxToken.kind syntax_token = Syntax_kind.STRING_LITERAL)
   |> List.map token in
-  let external_name_token = find_declaration_name_token ~skip_keywords:[ "external" ] (direct_non_trivia_tokens
-  node)
+  let external_name_token = find_declaration_name_token ~skip_keywords:[ "external" ] (direct_non_trivia_tokens node)
   |> Option.map token in
   match external_name_token with
   | Some lifted_name_token -> (
@@ -6657,7 +6443,8 @@ let external_declaration_from_node = fun node ->
             name_token = lifted_name_token;
             type_ = core_type_from_node lifted_type_node;
             primitive_name_tokens = lifted_primitive_name_tokens;
-            attributes = attributes_from_node node
+            attributes = attributes_from_node node;
+            owned_trivia = owned_trivia_from_node node
           }: Cst.external_declaration)
       | None -> None
     )
@@ -6674,13 +6461,17 @@ let include_statement_from_node = fun node ->
         else
           bail ~message:"expected include target during Ceibo -> CST lifting" ~syntax_node:included_node ~context:[
             "include_statement"
-          ];}: Cst.include_statement)
+          ]; owned_trivia = owned_trivia_from_node node}: Cst.include_statement)
   | None -> None
 
 let exception_declaration_from_node = fun node ->
   match find_declaration_name_token ~skip_keywords:[ "exception" ] (direct_non_trivia_tokens node) with
   | Some name_syntax_token ->
-      Some ({syntax_node = node; name_token = token name_syntax_token}: Cst.exception_declaration)
+      Some ({
+        syntax_node = node;
+        name_token = token name_syntax_token;
+        owned_trivia = owned_trivia_from_node node
+      }: Cst.exception_declaration)
   | None -> None
 
 let rec structure_items_from_node = fun node ->
@@ -7026,8 +6817,8 @@ let structure_payload_item_syntax_nodes_from_node = fun node ->
   | _ ->
       structure_items_from_node node |> List.map Cst.StructureItem.syntax_node
 
-let signature_payload_item_syntax_nodes_from_node = fun node ->
-  signature_items_from_node node |> List.map Cst.SignatureItem.syntax_node
+let signature_payload_item_syntax_nodes_from_node = fun node -> signature_items_from_node node
+|> List.map Cst.SignatureItem.syntax_node
 
 let item_syntax_nodes_from_parse_result = fun ~kind result ->
   if List.length result.Parser.diagnostics > 0 then
@@ -7121,21 +6912,14 @@ let annotation_payload_from_shell_lift = fun shell_node ->
 
 let () = Cell.set annotation_payload_from_shell_impl annotation_payload_from_shell_lift
 
-let build_source_file_body =
-  fun ~source ~comment_item_of_comment ~docstring_item_of_docstring
-    ~syntax_node_of_item ~owned_trivia_spans_of_item tree items_from_node ->
+let build_source_file_body = fun ~source ~comment_item_of_comment ~docstring_item_of_docstring ~syntax_node_of_item ~owned_trivia_spans_of_item tree items_from_node ->
   let root = Ceibo.Red.new_root tree in
-  let item_nodes =
-    Ceibo.Red.SyntaxNode.direct_nodes root
-    |> List.filter (fun node -> not (is_trivia (Ceibo.Red.SyntaxNode.kind node)))
-  in
+  let item_nodes = Ceibo.Red.SyntaxNode.direct_nodes root
+  |> List.filter (fun node -> not (is_trivia (Ceibo.Red.SyntaxNode.kind node))) in
   let item_node_bounds = List.map span_of_syntax_node_nontrivia_bounds item_nodes in
   let is_standalone_trivia_token = fun ({ Token.span; _ } : Token.t) ->
-    not (List.exists
-      (fun (bounds : Ceibo.Span.t) ->
-        span.start >= bounds.start && span.end_ <= bounds.end_)
-      item_node_bounds)
-  in
+    not (List.exists (fun (bounds : Ceibo.Span.t) -> span.start >= bounds.start
+    && span.end_ <= bounds.end_) item_node_bounds) in
   let next_index =
     let cell = Cell.create 0 in
     fun () ->
@@ -7146,33 +6930,27 @@ let build_source_file_body =
   let item_entries =
     item_nodes
     |> List.concat_map
-         (fun node ->
-           items_from_node node
-           |> List.map
-                (fun item ->
-                  let span = span_of_syntax_node_nontrivia_bounds (syntax_node_of_item item) in
-                  (next_index (), span, item)))
+      (fun node ->
+        items_from_node node |> List.map
+          (fun item ->
+            let span = span_of_syntax_node_nontrivia_bounds (syntax_node_of_item item) in
+            (next_index (), span, item)))
   in
-  let owned_trivia_spans =
-    item_entries |> List.concat_map (fun (_, _, item) -> owned_trivia_spans_of_item item)
-  in
+  let owned_trivia_spans = item_entries
+  |> List.concat_map (fun (_, _, item) -> owned_trivia_spans_of_item item) in
   let trivia_entries =
     Lexer.tokenize source
     |> List.filter is_standalone_trivia_token
-    |> List.filter
-         (fun ({ Token.span; _ } : Token.t) ->
-           not
-             (List.exists
-                (fun owned_span -> span_contains owned_span span)
-                owned_trivia_spans))
+    |> List.filter (fun ({ Token.span; _ } : Token.t) -> not (List.exists (fun owned_span -> span_contains
+    owned_span
+    span) owned_trivia_spans))
     |> List.filter_map
-         (fun lexed_token ->
-           standalone_trivia_item_from_lexed_token ~source ~comment_item_of_comment
-             ~docstring_item_of_docstring lexed_token
-           |> Option.map
-                (fun item ->
-                  let syntax_node = syntax_node_of_item item in
-                  (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item)))
+      (fun lexed_token ->
+        standalone_trivia_item_from_lexed_token ~source ~comment_item_of_comment ~docstring_item_of_docstring lexed_token
+        |> Option.map
+          (fun item ->
+            let syntax_node = syntax_node_of_item item in
+            (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item)))
   in
   let file_items =
     List.sort
@@ -7194,13 +6972,9 @@ let build_source_file_body =
   in
   (root, file_items)
 
-let build_items_from_payload_nodes =
-  fun ~comment_item_of_comment ~docstring_item_of_docstring ~owned_trivia_spans_of_item payload_nodes items_from_node ->
-    payload_nodes |> List.concat_map
-      (fun payload_node ->
-        Ceibo.Red.SyntaxNode.children_list payload_node |> List.concat_map
-          (source_file_items_from_child ~comment_item_of_comment
-             ~docstring_item_of_docstring ~owned_trivia_spans_of_item items_from_node))
+let build_items_from_payload_nodes = fun ~comment_item_of_comment ~docstring_item_of_docstring ~owned_trivia_spans_of_item payload_nodes items_from_node -> payload_nodes
+|> List.concat_map (fun payload_node -> Ceibo.Red.SyntaxNode.children_list payload_node
+|> List.concat_map (source_file_items_from_child ~comment_item_of_comment ~docstring_item_of_docstring ~owned_trivia_spans_of_item items_from_node))
 
 let rec validate_pattern = fun ~context ->
   function
@@ -7210,55 +6984,57 @@ let rec validate_pattern = fun ~context ->
   | Cst.Pattern.Extension _ ->
       ()
   | Cst.Pattern.Lazy { pattern; _ } ->
-      validate_pattern ~context:(("pattern.lazy" :: context)) pattern
+      validate_pattern ~context:((("pattern.lazy" :: context))) pattern
   | Cst.Pattern.Exception { pattern; _ } ->
-      validate_pattern ~context:(("pattern.exception" :: context)) pattern
+      validate_pattern ~context:((("pattern.exception" :: context))) pattern
   | Cst.Pattern.Range _
   | Cst.Pattern.Operator _
   | Cst.Pattern.PolyVariantInherit _ ->
       ()
   | Cst.Pattern.FirstClassModule { module_type; _ } ->
-      Option.iter (validate_module_type ~context:(("pattern.first_class_module.type" :: context))) module_type
+      Option.iter (validate_module_type ~context:((("pattern.first_class_module.type" :: context)))) module_type
   | Cst.Pattern.PolyVariant { payload; _ } ->
-      Option.iter (validate_pattern ~context:(("pattern.poly_variant.payload" :: context))) payload
+      Option.iter (validate_pattern ~context:((("pattern.poly_variant.payload" :: context)))) payload
   | Cst.Pattern.Constructor { arguments; _ } ->
-      List.iteri (fun index argument -> validate_pattern ~context:((("pattern.constructor.argument["
+      List.iteri (fun index argument -> validate_pattern ~context:(((("pattern.constructor.argument["
       ^ Int.to_string index
       ^ "]")
-      :: context)) argument) arguments
+      :: context))) argument) arguments
   | Cst.Pattern.Tuple { elements; _ } ->
-      List.iteri (fun index ({ Cst.pattern; _ } : Cst.tuple_pattern_element) -> validate_pattern ~context:((("pattern.tuple.element["
+      List.iteri (fun index ({ Cst.pattern; _ } : Cst.tuple_pattern_element) -> validate_pattern ~context:(((("pattern.tuple.element["
       ^ Int.to_string index
       ^ "]")
-      :: context)) pattern) elements
+      :: context))) pattern) elements
   | Cst.Pattern.List { elements; _ }
   | Cst.Pattern.Array { elements; _ }
   | Cst.Pattern.Or { alternatives = elements; _ } ->
-      List.iteri (fun index pattern -> validate_pattern ~context:((("pattern.element["
+      List.iteri (fun index pattern -> validate_pattern ~context:(((("pattern.element["
       ^ Int.to_string index
       ^ "]")
-      :: context)) pattern) elements
+      :: context))) pattern) elements
   | Cst.Pattern.Record { fields; _ } ->
       List.iteri
         (fun index (field : Cst.record_pattern_field) ->
-          Option.iter (validate_pattern ~context:((("pattern.record.field[" ^ Int.to_string index ^ "].pattern")
-          :: context))) field.pattern)
+          Option.iter (validate_pattern ~context:(((("pattern.record.field["
+          ^ Int.to_string index
+          ^ "].pattern")
+          :: context)))) field.pattern)
         fields
   | Cst.Pattern.Cons { head; tail; _ } ->
-      validate_pattern ~context:(("pattern.cons.head" :: context)) head;
-      validate_pattern ~context:(("pattern.cons.tail" :: context)) tail
+      validate_pattern ~context:((("pattern.cons.head" :: context))) head;
+      validate_pattern ~context:((("pattern.cons.tail" :: context))) tail
   | Cst.Pattern.Alias { pattern; _ } ->
-      validate_pattern ~context:(("pattern.alias.pattern" :: context)) pattern
+      validate_pattern ~context:((("pattern.alias.pattern" :: context))) pattern
   | Cst.Pattern.Typed { pattern; type_; _ } ->
-      validate_pattern ~context:(("pattern.typed.pattern" :: context)) pattern;
-      validate_core_type ~context:(("pattern.typed.type" :: context)) type_
+      validate_pattern ~context:((("pattern.typed.pattern" :: context))) pattern;
+      validate_core_type ~context:((("pattern.typed.type" :: context))) type_
   | Cst.Pattern.Effect { effect_pattern; continuation; _ } ->
-      validate_pattern ~context:(("pattern.effect.effect" :: context)) effect_pattern;
-      validate_pattern ~context:(("pattern.effect.continuation" :: context)) continuation
+      validate_pattern ~context:((("pattern.effect.effect" :: context))) effect_pattern;
+      validate_pattern ~context:((("pattern.effect.continuation" :: context))) continuation
   | Cst.Pattern.LocalOpen { pattern; _ } ->
-      validate_pattern ~context:(("pattern.local_open.pattern" :: context)) pattern
+      validate_pattern ~context:((("pattern.local_open.pattern" :: context))) pattern
   | Cst.Pattern.Parenthesized { inner; _ } ->
-      validate_pattern ~context:(("pattern.parenthesized" :: context)) inner
+      validate_pattern ~context:((("pattern.parenthesized" :: context))) inner
 and validate_parameter = fun ~context ->
   function
   | Cst.Parameter.Positional _
@@ -7274,26 +7050,26 @@ and validate_module_type = fun ~context ->
   | Cst.ModuleType.Extension _ ->
       ()
   | Cst.ModuleType.Parenthesized { inner; _ } ->
-      validate_module_type ~context:(("module_type.parenthesized" :: context)) inner
+      validate_module_type ~context:((("module_type.parenthesized" :: context))) inner
   | Cst.ModuleType.Attribute { module_type; _ } ->
-      validate_module_type ~context:(("module_type.attribute" :: context)) module_type
+      validate_module_type ~context:((("module_type.attribute" :: context))) module_type
   | Cst.ModuleType.With { base; constraints; _ } ->
-      validate_module_type ~context:(("module_type.with.base" :: context)) base;
+      validate_module_type ~context:((("module_type.with.base" :: context))) base;
       List.iteri
         (fun
           index ({ constrained_type; replacement_type; _ } :
                Cst.module_type_constraint) ->
-          validate_core_type ~context:((("module_type.with.constraint[" ^ Int.to_string index ^ "].target")
-          :: context)) constrained_type;
-          validate_core_type ~context:((("module_type.with.constraint[" ^ Int.to_string index ^ "].replacement")
-          :: context)) replacement_type)
+          validate_core_type ~context:(((("module_type.with.constraint[" ^ Int.to_string index ^ "].target")
+          :: context))) constrained_type;
+          validate_core_type ~context:(((("module_type.with.constraint[" ^ Int.to_string index ^ "].replacement")
+          :: context))) replacement_type)
         constraints
   | Cst.ModuleType.Functor { parameters; result; _ } ->
-      List.iteri (fun index ({ module_type; _ } : Cst.functor_parameter) -> validate_module_type ~context:((("module_type.functor.parameter["
+      List.iteri (fun index ({ module_type; _ } : Cst.functor_parameter) -> validate_module_type ~context:(((("module_type.functor.parameter["
       ^ Int.to_string index
       ^ "]")
-      :: context)) module_type) parameters;
-      validate_module_type ~context:(("module_type.functor.result" :: context)) result
+      :: context))) module_type) parameters;
+      validate_module_type ~context:((("module_type.functor.result" :: context))) result
 and validate_core_type = fun ~context ->
   function
   | Cst.CoreType.Wildcard _
@@ -7301,69 +7077,71 @@ and validate_core_type = fun ~context ->
   | Cst.CoreType.Extension _ ->
       ()
   | Cst.CoreType.Poly { body; _ } ->
-      validate_core_type ~context:(("core_type.poly.body" :: context)) body
+      validate_core_type ~context:((("core_type.poly.body" :: context))) body
   | Cst.CoreType.FirstClassModule { module_type; _ } ->
-      validate_module_type ~context:(("core_type.first_class_module" :: context)) module_type
+      validate_module_type ~context:((("core_type.first_class_module" :: context))) module_type
   | Cst.CoreType.Constr { arguments; _ } ->
-      List.iteri (fun index type_ -> validate_core_type ~context:((("core_type.constr.arg["
+      List.iteri (fun index type_ -> validate_core_type ~context:(((("core_type.constr.arg["
       ^ Int.to_string index
       ^ "]")
-      :: context)) type_) arguments
+      :: context))) type_) arguments
   | Cst.CoreType.Class { arguments; _ } ->
-      List.iteri (fun index type_ -> validate_core_type ~context:((("core_type.class.arg["
+      List.iteri (fun index type_ -> validate_core_type ~context:(((("core_type.class.arg["
       ^ Int.to_string index
       ^ "]")
-      :: context)) type_) arguments
+      :: context))) type_) arguments
   | Cst.CoreType.Alias { type_; _ } ->
-      validate_core_type ~context:(("core_type.alias.type" :: context)) type_
+      validate_core_type ~context:((("core_type.alias.type" :: context))) type_
   | Cst.CoreType.Attribute { type_; _ } ->
-      validate_core_type ~context:(("core_type.attribute.type" :: context)) type_
+      validate_core_type ~context:((("core_type.attribute.type" :: context))) type_
   | Cst.CoreType.Arrow { parameter_type; result_type; _ } ->
-      validate_core_type ~context:(("core_type.arrow.parameter" :: context)) parameter_type;
-      validate_core_type ~context:(("core_type.arrow.result" :: context)) result_type
+      validate_core_type ~context:((("core_type.arrow.parameter" :: context))) parameter_type;
+      validate_core_type ~context:((("core_type.arrow.result" :: context))) result_type
   | Cst.CoreType.Tuple { elements; _ } ->
-      List.iteri (fun index type_ -> validate_core_type ~context:((("core_type.tuple.element["
+      List.iteri (fun index type_ -> validate_core_type ~context:(((("core_type.tuple.element["
       ^ Int.to_string index
       ^ "]")
-      :: context)) type_) elements
+      :: context))) type_) elements
   | Cst.CoreType.Parenthesized { inner; _ } ->
-      validate_core_type ~context:(("core_type.parenthesized" :: context)) inner
+      validate_core_type ~context:((("core_type.parenthesized" :: context))) inner
   | Cst.CoreType.LocalOpen { type_; _ } ->
-      validate_core_type ~context:(("core_type.local_open.type" :: context)) type_
+      validate_core_type ~context:((("core_type.local_open.type" :: context))) type_
   | Cst.CoreType.PolyVariant poly_variant ->
-      validate_poly_variant ~context:(("core_type.poly_variant" :: context)) poly_variant
+      validate_poly_variant ~context:((("core_type.poly_variant" :: context))) poly_variant
   | Cst.CoreType.Record { fields; _ } ->
-      List.iteri (fun index ({ field_type; _ } : Cst.record_type_field) -> validate_core_type ~context:((("core_type.record.field["
+      List.iteri (fun index ({ field_type; _ } : Cst.record_type_field) -> validate_core_type ~context:(((("core_type.record.field["
       ^ Int.to_string index
       ^ "].type")
-      :: context)) field_type) fields
+      :: context))) field_type) fields
   | Cst.CoreType.Object { fields; _ } ->
-      List.iteri (fun index ({ field_type; _ } : Cst.object_type_field) -> validate_core_type ~context:((("core_type.object.field["
+      List.iteri (fun index ({ field_type; _ } : Cst.object_type_field) -> validate_core_type ~context:(((("core_type.object.field["
       ^ Int.to_string index
       ^ "].type")
-      :: context)) field_type) fields
+      :: context))) field_type) fields
 and validate_row_field = fun ~context index ->
   function
   | Cst.RowField.Tag tag ->
-      Option.iter (validate_core_type ~context:((("row_field[" ^ Int.to_string index ^ "].tag.payload")
-      :: context))) (Cst.PolyVariantTag.payload_type tag)
+      Option.iter (validate_core_type ~context:(((("row_field[" ^ Int.to_string index ^ "].tag.payload")
+      :: context)))) (Cst.PolyVariantTag.payload_type tag)
   | Cst.RowField.Inherit { type_; _ } ->
-      validate_core_type ~context:((("row_field[" ^ Int.to_string index ^ "].inherit") :: context)) type_
-and validate_poly_variant = fun ~context poly_variant ->
-  Cst.PolyVariant.fields poly_variant |> List.iteri (validate_row_field ~context)
+      validate_core_type
+      ~context:(((("row_field[" ^ Int.to_string index ^ "].inherit") :: context)))
+      type_
+and validate_poly_variant = fun ~context poly_variant -> Cst.PolyVariant.fields poly_variant
+|> List.iteri (validate_row_field ~context)
 and validate_class_type_field = fun ~context ->
   function
   | Cst.ClassTypeField.Inherit { class_type; _ } ->
-      validate_class_type ~context:(("class_type_field.inherit" :: context)) class_type
+      validate_class_type ~context:((("class_type_field.inherit" :: context))) class_type
   | Cst.ClassTypeField.Value { type_; _ } ->
-      validate_core_type ~context:(("class_type_field.value" :: context)) type_
+      validate_core_type ~context:((("class_type_field.value" :: context))) type_
   | Cst.ClassTypeField.Method { type_; _ } ->
-      validate_core_type ~context:(("class_type_field.method" :: context)) type_
+      validate_core_type ~context:((("class_type_field.method" :: context))) type_
   | Cst.ClassTypeField.Constraint { left; right; _ } ->
-      validate_core_type ~context:(("class_type_field.constraint.left" :: context)) left;
-      validate_core_type ~context:(("class_type_field.constraint.right" :: context)) right
+      validate_core_type ~context:((("class_type_field.constraint.left" :: context))) left;
+      validate_core_type ~context:((("class_type_field.constraint.right" :: context))) right
   | Cst.ClassTypeField.Attribute { field; _ } ->
-      validate_class_type_field ~context:(("class_type_field.attribute" :: context)) field
+      validate_class_type_field ~context:((("class_type_field.attribute" :: context))) field
   | Cst.ClassTypeField.Extension _ ->
       ()
 and validate_class_type = fun ~context ->
@@ -7372,36 +7150,36 @@ and validate_class_type = fun ~context ->
   | Cst.ClassType.Extension _ ->
       ()
   | Cst.ClassType.Signature { fields; _ } ->
-      List.iteri (fun index field -> validate_class_type_field ~context:((("class_type.signature.field["
+      List.iteri (fun index field -> validate_class_type_field ~context:(((("class_type.signature.field["
       ^ Int.to_string index
       ^ "]")
-      :: context)) field) fields
+      :: context))) field) fields
   | Cst.ClassType.Arrow { parameter_type; result_type; _ } ->
-      validate_core_type ~context:(("class_type.arrow.parameter" :: context)) parameter_type;
-      validate_class_type ~context:(("class_type.arrow.result" :: context)) result_type
+      validate_core_type ~context:((("class_type.arrow.parameter" :: context))) parameter_type;
+      validate_class_type ~context:((("class_type.arrow.result" :: context))) result_type
   | Cst.ClassType.Parenthesized { inner; _ } ->
-      validate_class_type ~context:(("class_type.parenthesized" :: context)) inner
+      validate_class_type ~context:((("class_type.parenthesized" :: context))) inner
   | Cst.ClassType.LocalOpen { class_type; _ } ->
-      validate_class_type ~context:(("class_type.local_open" :: context)) class_type
+      validate_class_type ~context:((("class_type.local_open" :: context))) class_type
   | Cst.ClassType.Attribute { class_type; _ } ->
-      validate_class_type ~context:(("class_type.attribute" :: context)) class_type
+      validate_class_type ~context:((("class_type.attribute" :: context))) class_type
 and validate_class_field = fun ~context ->
   function
   | Cst.ClassField.Method { body; type_; _ } ->
-      Option.iter (validate_expression ~context:(("class_field.method.body" :: context))) body;
-      Option.iter (validate_core_type ~context:(("class_field.method.type" :: context))) type_
+      Option.iter (validate_expression ~context:((("class_field.method.body" :: context)))) body;
+      Option.iter (validate_core_type ~context:((("class_field.method.type" :: context)))) type_
   | Cst.ClassField.Value { value; type_; _ } ->
-      Option.iter (validate_expression ~context:(("class_field.value.value" :: context))) value;
-      Option.iter (validate_core_type ~context:(("class_field.value.type" :: context))) type_
+      Option.iter (validate_expression ~context:((("class_field.value.value" :: context)))) value;
+      Option.iter (validate_core_type ~context:((("class_field.value.type" :: context)))) type_
   | Cst.ClassField.Inherit { class_expression; _ } ->
-      validate_class_expression ~context:(("class_field.inherit.class_expression" :: context)) class_expression
+      validate_class_expression ~context:((("class_field.inherit.class_expression" :: context))) class_expression
   | Cst.ClassField.Constraint { left; right; _ } ->
-      validate_core_type ~context:(("class_field.constraint.left" :: context)) left;
-      validate_core_type ~context:(("class_field.constraint.right" :: context)) right
+      validate_core_type ~context:((("class_field.constraint.left" :: context))) left;
+      validate_core_type ~context:((("class_field.constraint.right" :: context))) right
   | Cst.ClassField.Initializer { body; _ } ->
-      Option.iter (validate_expression ~context:(("class_field.initializer.body" :: context))) body
+      Option.iter (validate_expression ~context:((("class_field.initializer.body" :: context)))) body
   | Cst.ClassField.Attribute { field; _ } ->
-      validate_class_field ~context:(("class_field.attribute" :: context)) field
+      validate_class_field ~context:((("class_field.attribute" :: context))) field
   | Cst.ClassField.Extension _ ->
       ()
 and validate_class_expression = fun ~context ->
@@ -7410,16 +7188,17 @@ and validate_class_expression = fun ~context ->
   | Cst.ClassExpression.Extension _ ->
       ()
   | Cst.ClassExpression.Structure { self_pattern; fields; _ } ->
-      Option.iter (validate_pattern ~context:(("class_expression.structure.self_pattern" :: context))) self_pattern;
-      List.iteri (fun index field -> validate_class_field ~context:((("class_expression.structure.field["
+      Option.iter (validate_pattern
+      ~context:((("class_expression.structure.self_pattern" :: context)))) self_pattern;
+      List.iteri (fun index field -> validate_class_field ~context:(((("class_expression.structure.field["
       ^ Int.to_string index
       ^ "]")
-      :: context)) field) fields
+      :: context))) field) fields
   | Cst.ClassExpression.Fun { body; _ } ->
-      validate_class_expression ~context:(("class_expression.fun.body" :: context)) body
+      validate_class_expression ~context:((("class_expression.fun.body" :: context))) body
   | Cst.ClassExpression.Apply { callee; argument; _ } ->
-      validate_class_expression ~context:(("class_expression.apply.callee" :: context)) callee;
-      validate_apply_argument ~context:(("class_expression.apply.argument" :: context)) argument
+      validate_class_expression ~context:((("class_expression.apply.callee" :: context))) callee;
+      validate_apply_argument ~context:((("class_expression.apply.argument" :: context))) argument
   | Cst.ClassExpression.Let {
     parameters;
     bound_value;
@@ -7427,33 +7206,33 @@ and validate_class_expression = fun ~context ->
     body;
     _
   } ->
-      List.iteri (fun index parameter -> validate_parameter ~context:((("class_expression.let.parameters["
+      List.iteri (fun index parameter -> validate_parameter ~context:(((("class_expression.let.parameters["
       ^ Int.to_string index
       ^ "]")
-      :: context)) parameter) parameters;
-      validate_expression ~context:(("class_expression.let.bound_value" :: context)) bound_value;
-      List.iteri (fun index binding -> validate_expression ~context:((("class_expression.let.and_binding["
+      :: context))) parameter) parameters;
+      validate_expression ~context:((("class_expression.let.bound_value" :: context))) bound_value;
+      List.iteri (fun index binding -> validate_expression ~context:(((("class_expression.let.and_binding["
       ^ Int.to_string index
       ^ "]")
-      :: context)) (Cst.LetBinding.value binding)) and_bindings;
-      validate_class_expression ~context:(("class_expression.let.body" :: context)) body
+      :: context))) (Cst.LetBinding.value binding)) and_bindings;
+      validate_class_expression ~context:((("class_expression.let.body" :: context))) body
   | Cst.ClassExpression.Constraint { class_expression; class_type; _ } ->
-      validate_class_expression ~context:(("class_expression.constraint.expression" :: context)) class_expression;
-      validate_class_type ~context:(("class_expression.constraint.class_type" :: context)) class_type
+      validate_class_expression ~context:((("class_expression.constraint.expression" :: context))) class_expression;
+      validate_class_type ~context:((("class_expression.constraint.class_type" :: context))) class_type
   | Cst.ClassExpression.LocalOpen { class_expression; _ } ->
-      validate_class_expression ~context:(("class_expression.local_open" :: context)) class_expression
+      validate_class_expression ~context:((("class_expression.local_open" :: context))) class_expression
   | Cst.ClassExpression.Parenthesized { inner; _ } ->
-      validate_class_expression ~context:(("class_expression.parenthesized" :: context)) inner
+      validate_class_expression ~context:((("class_expression.parenthesized" :: context))) inner
   | Cst.ClassExpression.Attribute { class_expression; _ } ->
-      validate_class_expression ~context:(("class_expression.attribute" :: context)) class_expression
+      validate_class_expression ~context:((("class_expression.attribute" :: context))) class_expression
 and validate_apply_argument = fun ~context ->
   function
   | Cst.Positional expr ->
-      validate_expression ~context:(("apply_argument.positional" :: context)) expr
+      validate_expression ~context:((("apply_argument.positional" :: context))) expr
   | Cst.Labeled { value; _ } ->
-      Option.iter (validate_expression ~context:(("apply_argument.labeled.value" :: context))) value
+      Option.iter (validate_expression ~context:((("apply_argument.labeled.value" :: context)))) value
   | Cst.Optional { value; _ } ->
-      Option.iter (validate_expression ~context:(("apply_argument.optional.value" :: context))) value
+      Option.iter (validate_expression ~context:((("apply_argument.optional.value" :: context)))) value
 and validate_module_expression = fun ~context ->
   function
   | Cst.ModuleExpression.Path _
@@ -7461,49 +7240,49 @@ and validate_module_expression = fun ~context ->
   | Cst.ModuleExpression.Extension _ ->
       ()
   | Cst.ModuleExpression.Functor { parameters; body; _ } ->
-      List.iteri (fun index ({ module_type; _ } : Cst.functor_parameter) -> validate_module_type ~context:((("module_expression.functor.parameter["
+      List.iteri (fun index ({ module_type; _ } : Cst.functor_parameter) -> validate_module_type ~context:(((("module_expression.functor.parameter["
       ^ Int.to_string index
       ^ "]")
-      :: context)) module_type) parameters;
-      validate_module_expression ~context:(("module_expression.functor.body" :: context)) body
+      :: context))) module_type) parameters;
+      validate_module_expression ~context:((("module_expression.functor.body" :: context))) body
   | Cst.ModuleExpression.Apply { callee; argument; _ } ->
-      validate_module_expression ~context:(("module_expression.apply.callee" :: context)) callee;
-      validate_module_expression ~context:(("module_expression.apply.argument" :: context)) argument
+      validate_module_expression ~context:((("module_expression.apply.callee" :: context))) callee;
+      validate_module_expression ~context:((("module_expression.apply.argument" :: context))) argument
   | Cst.ModuleExpression.ApplyUnit { callee; _ } ->
-      validate_module_expression ~context:(("module_expression.apply_unit.callee" :: context)) callee
+      validate_module_expression ~context:((("module_expression.apply_unit.callee" :: context))) callee
   | Cst.ModuleExpression.Constraint { module_expression; module_type; _ } ->
-      validate_module_expression ~context:(("module_expression.constraint.expression" :: context)) module_expression;
-      validate_module_type ~context:(("module_expression.constraint.type" :: context)) module_type
+      validate_module_expression ~context:((("module_expression.constraint.expression" :: context))) module_expression;
+      validate_module_type ~context:((("module_expression.constraint.type" :: context))) module_type
   | Cst.ModuleExpression.ModuleUnpack { expression; module_type; _ } ->
-      validate_expression ~context:(("module_expression.unpack.expression" :: context)) expression;
-      Option.iter (validate_module_type ~context:(("module_expression.unpack.type" :: context))) module_type
+      validate_expression ~context:((("module_expression.unpack.expression" :: context))) expression;
+      Option.iter (validate_module_type ~context:((("module_expression.unpack.type" :: context)))) module_type
   | Cst.ModuleExpression.Parenthesized { inner; _ } ->
-      validate_module_expression ~context:(("module_expression.parenthesized" :: context)) inner
+      validate_module_expression ~context:((("module_expression.parenthesized" :: context))) inner
   | Cst.ModuleExpression.Attribute { module_expression; _ } ->
-      validate_module_expression ~context:(("module_expression.attribute" :: context)) module_expression
+      validate_module_expression ~context:((("module_expression.attribute" :: context))) module_expression
 and validate_object_member = fun ~context ->
   function
   | Cst.ObjectMember.Method { body; type_; _ } ->
-      Option.iter (validate_expression ~context:(("object_member.method.body" :: context))) body;
-      Option.iter (validate_core_type ~context:(("object_member.method.type" :: context))) type_
+      Option.iter (validate_expression ~context:((("object_member.method.body" :: context)))) body;
+      Option.iter (validate_core_type ~context:((("object_member.method.type" :: context)))) type_
   | Cst.ObjectMember.Value { value; type_; _ } ->
-      Option.iter (validate_expression ~context:(("object_member.value.value" :: context))) value;
-      Option.iter (validate_core_type ~context:(("object_member.value.type" :: context))) type_
+      Option.iter (validate_expression ~context:((("object_member.value.value" :: context)))) value;
+      Option.iter (validate_core_type ~context:((("object_member.value.type" :: context)))) type_
   | Cst.ObjectMember.Inherit { expression; _ } ->
-      validate_expression ~context:(("object_member.inherit.expression" :: context)) expression
+      validate_expression ~context:((("object_member.inherit.expression" :: context))) expression
   | Cst.ObjectMember.Extension _ ->
       ()
   | Cst.ObjectMember.Initializer { body; _ } ->
-      Option.iter (validate_expression ~context:(("object_member.initializer.body" :: context))) body
+      Option.iter (validate_expression ~context:((("object_member.initializer.body" :: context)))) body
 and validate_fun_body = fun ~context ->
   function
   | Cst.Expression expression ->
-      validate_expression ~context:(("fun_body.expression" :: context)) expression
+      validate_expression ~context:((("fun_body.expression" :: context))) expression
   | Cst.Cases { cases; _ } ->
-      List.iteri (fun index case -> validate_match_case ~context:((("fun_body.case["
+      List.iteri (fun index case -> validate_match_case ~context:(((("fun_body.case["
       ^ Int.to_string index
       ^ "]")
-      :: context)) case) cases
+      :: context))) case) cases
 and validate_expression = fun ~context ->
   function
   | Cst.Expression.Path _
@@ -7513,124 +7292,125 @@ and validate_expression = fun ~context ->
   | Cst.Expression.Extension _ ->
       ()
   | Cst.Expression.Constructor { payload; _ } ->
-      Option.iter (validate_expression ~context:(("expression.constructor.payload" :: context))) payload
+      Option.iter (validate_expression ~context:((("expression.constructor.payload" :: context)))) payload
   | Cst.Expression.ModulePack { module_expression; module_type; _ } ->
-      validate_module_expression ~context:(("expression.first_class_module.expression" :: context)) module_expression;
-      Option.iter (validate_module_type ~context:(("expression.first_class_module.type" :: context))) module_type
+      validate_module_expression ~context:((("expression.first_class_module.expression" :: context))) module_expression;
+      Option.iter (validate_module_type
+      ~context:((("expression.first_class_module.type" :: context)))) module_type
   | Cst.Expression.Object { self_pattern; members; _ } ->
-      Option.iter (validate_pattern ~context:(("expression.object.self_pattern" :: context))) self_pattern;
-      List.iteri (fun index member -> validate_object_member ~context:((("expression.object.member["
+      Option.iter (validate_pattern ~context:((("expression.object.self_pattern" :: context)))) self_pattern;
+      List.iteri (fun index member -> validate_object_member ~context:(((("expression.object.member["
       ^ Int.to_string index
       ^ "]")
-      :: context)) member) members
+      :: context))) member) members
   | Cst.Expression.LetModule { body; _ } ->
-      validate_expression ~context:(("expression.let_module.body" :: context)) body
+      validate_expression ~context:((("expression.let_module.body" :: context))) body
   | Cst.Expression.LetException { body; _ } ->
-      validate_expression ~context:(("expression.let_exception.body" :: context)) body
+      validate_expression ~context:((("expression.let_exception.body" :: context))) body
   | Cst.Expression.PolyVariant { payload; _ } ->
-      Option.iter (validate_expression ~context:(("expression.poly_variant.payload" :: context))) payload
+      Option.iter (validate_expression ~context:((("expression.poly_variant.payload" :: context)))) payload
   | Cst.Expression.Assert { asserted; _ } ->
-      validate_expression ~context:(("expression.assert.asserted" :: context)) asserted
+      validate_expression ~context:((("expression.assert.asserted" :: context))) asserted
   | Cst.Expression.Lazy { body; _ } ->
-      validate_expression ~context:(("expression.lazy.body" :: context)) body
+      validate_expression ~context:((("expression.lazy.body" :: context))) body
   | Cst.Expression.While { condition; body; _ } ->
-      validate_expression ~context:(("expression.while.condition" :: context)) condition;
-      validate_expression ~context:(("expression.while.body" :: context)) body
+      validate_expression ~context:((("expression.while.condition" :: context))) condition;
+      validate_expression ~context:((("expression.while.body" :: context))) body
   | Cst.Expression.For { start_expr; end_expr; body; _ } ->
-      validate_expression ~context:(("expression.for.start" :: context)) start_expr;
-      validate_expression ~context:(("expression.for.end" :: context)) end_expr;
-      validate_expression ~context:(("expression.for.body" :: context)) body
+      validate_expression ~context:((("expression.for.start" :: context))) start_expr;
+      validate_expression ~context:((("expression.for.end" :: context))) end_expr;
+      validate_expression ~context:((("expression.for.body" :: context))) body
   | Cst.Expression.Apply { callee; argument; _ } ->
-      validate_expression ~context:(("expression.apply.callee" :: context)) callee;
-      validate_apply_argument ~context:(("expression.apply.argument" :: context)) argument
+      validate_expression ~context:((("expression.apply.callee" :: context))) callee;
+      validate_apply_argument ~context:((("expression.apply.argument" :: context))) argument
   | Cst.Expression.MethodCall { receiver; _ } ->
-      validate_expression ~context:(("expression.method_call.receiver" :: context)) receiver
+      validate_expression ~context:((("expression.method_call.receiver" :: context))) receiver
   | Cst.Expression.New _ ->
       ()
   | Cst.Expression.Prefix { operand; _ } ->
-      validate_expression ~context:(("expression.prefix.operand" :: context)) operand
+      validate_expression ~context:((("expression.prefix.operand" :: context))) operand
   | Cst.Expression.FieldAccess { receiver; _ } ->
-      validate_expression ~context:(("expression.field_access.receiver" :: context)) receiver
+      validate_expression ~context:((("expression.field_access.receiver" :: context))) receiver
   | Cst.Expression.Index { collection; index; _ } ->
-      validate_expression ~context:(("expression.index.collection" :: context)) collection;
-      validate_expression ~context:(("expression.index.index" :: context)) index
+      validate_expression ~context:((("expression.index.collection" :: context))) collection;
+      validate_expression ~context:((("expression.index.index" :: context))) index
   | Cst.Expression.ObjectOverride { fields; _ } ->
       List.iteri
         (fun index (field : Cst.object_override_field) ->
-          Option.iter (validate_expression ~context:((("expression.object_override.field["
+          Option.iter (validate_expression ~context:(((("expression.object_override.field["
           ^ Int.to_string index
           ^ "].value")
-          :: context))) field.value)
+          :: context)))) field.value)
         fields
   | Cst.Expression.InstanceVariableAssign { value; _ } ->
-      validate_expression ~context:(("expression.instance_variable_assign.value" :: context)) value
+      validate_expression ~context:((("expression.instance_variable_assign.value" :: context))) value
   | Cst.Expression.FieldAssign { target; value; _ } ->
-      validate_expression ~context:(("expression.field_assign.receiver" :: context)) target.receiver;
-      validate_expression ~context:(("expression.field_assign.value" :: context)) value
+      validate_expression ~context:((("expression.field_assign.receiver" :: context))) target.receiver;
+      validate_expression ~context:((("expression.field_assign.value" :: context))) value
   | Cst.Expression.Assign { target; value; _ } ->
-      validate_expression ~context:(("expression.assign.target" :: context)) target;
-      validate_expression ~context:(("expression.assign.value" :: context)) value
+      validate_expression ~context:((("expression.assign.target" :: context))) target;
+      validate_expression ~context:((("expression.assign.value" :: context))) value
   | Cst.Expression.Infix { left; right; _ } ->
-      validate_expression ~context:(("expression.infix.left" :: context)) left;
-      validate_expression ~context:(("expression.infix.right" :: context)) right
+      validate_expression ~context:((("expression.infix.left" :: context))) left;
+      validate_expression ~context:((("expression.infix.right" :: context))) right
   | Cst.Expression.Typed { expression; type_; _ } ->
-      validate_expression ~context:(("expression.typed.expression" :: context)) expression;
-      validate_core_type ~context:(("expression.typed.type" :: context)) type_
+      validate_expression ~context:((("expression.typed.expression" :: context))) expression;
+      validate_core_type ~context:((("expression.typed.type" :: context))) type_
   | Cst.Expression.Polymorphic { expression; type_; _ } ->
-      validate_expression ~context:(("expression.polymorphic.expression" :: context)) expression;
-      validate_core_type ~context:(("expression.polymorphic.type" :: context)) type_
+      validate_expression ~context:((("expression.polymorphic.expression" :: context))) expression;
+      validate_core_type ~context:((("expression.polymorphic.type" :: context))) type_
   | Cst.Expression.Coerce { expression; from_type; to_type; _ } ->
-      validate_expression ~context:(("expression.coerce.expression" :: context)) expression;
-      Option.iter (validate_core_type ~context:(("expression.coerce.from_type" :: context))) from_type;
-      validate_core_type ~context:(("expression.coerce.to_type" :: context)) to_type
+      validate_expression ~context:((("expression.coerce.expression" :: context))) expression;
+      Option.iter (validate_core_type ~context:((("expression.coerce.from_type" :: context)))) from_type;
+      validate_core_type ~context:((("expression.coerce.to_type" :: context))) to_type
   | Cst.Expression.Sequence { expressions; _ } ->
-      List.iter (validate_expression ~context:(("expression.sequence.expressions" :: context))) expressions
+      List.iter (validate_expression ~context:((("expression.sequence.expressions" :: context)))) expressions
   | Cst.Expression.Tuple { elements; _ }
   | Cst.Expression.List { elements; _ }
   | Cst.Expression.Array { elements; _ } ->
-      List.iteri (fun index expr -> validate_expression ~context:((("expression.element["
+      List.iteri (fun index expr -> validate_expression ~context:(((("expression.element["
       ^ Int.to_string index
       ^ "]")
-      :: context)) expr) elements
+      :: context))) expr) elements
   | Cst.Expression.Record (Cst.RecordExpression.Literal { fields; _ }) ->
-      List.iteri (fun index (field : Cst.record_expression_field) -> validate_expression ~context:((("expression.record.field["
+      List.iteri (fun index (field : Cst.record_expression_field) -> validate_expression ~context:(((("expression.record.field["
       ^ Int.to_string index
       ^ "].value")
-      :: context)) field.value) fields
+      :: context))) field.value) fields
   | Cst.Expression.Record (Cst.RecordExpression.Update { base; fields; _ }) ->
-      validate_expression ~context:(("expression.record.base" :: context)) base;
-      List.iteri (fun index (field : Cst.record_expression_field) -> validate_expression ~context:((("expression.record.field["
+      validate_expression ~context:((("expression.record.base" :: context))) base;
+      List.iteri (fun index (field : Cst.record_expression_field) -> validate_expression ~context:(((("expression.record.field["
       ^ Int.to_string index
       ^ "].value")
-      :: context)) field.value) fields
+      :: context))) field.value) fields
   | Cst.Expression.LocalOpen { body; _ } ->
-      validate_expression ~context:(("expression.local_open.body" :: context)) body
+      validate_expression ~context:((("expression.local_open.body" :: context))) body
   | Cst.Expression.Fun { parameters; body; _ } ->
-      List.iteri (fun index parameter -> validate_parameter ~context:((("expression.fun.parameter["
+      List.iteri (fun index parameter -> validate_parameter ~context:(((("expression.fun.parameter["
       ^ Int.to_string index
       ^ "]")
-      :: context)) parameter) parameters;
-      validate_fun_body ~context:(("expression.fun.body" :: context)) body
+      :: context))) parameter) parameters;
+      validate_fun_body ~context:((("expression.fun.body" :: context))) body
   | Cst.Expression.Function { cases; _ } ->
-      List.iteri (fun index case -> validate_match_case ~context:((("expression.function.case["
+      List.iteri (fun index case -> validate_match_case ~context:(((("expression.function.case["
       ^ Int.to_string index
       ^ "]")
-      :: context)) case) cases
+      :: context))) case) cases
   | Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
-      validate_pattern ~context:(("expression.let_operator.binding.pattern" :: context)) binding.binding_pattern;
-      validate_expression ~context:(("expression.let_operator.binding.value" :: context)) binding.bound_value;
+      validate_pattern ~context:((("expression.let_operator.binding.pattern" :: context))) binding.binding_pattern;
+      validate_expression ~context:((("expression.let_operator.binding.value" :: context))) binding.bound_value;
       List.iteri
         (fun index ({ binding_pattern; bound_value; _ } : Cst.binding_operator_binding) ->
-          validate_pattern ~context:((("expression.let_operator.and_bindings["
+          validate_pattern ~context:(((("expression.let_operator.and_bindings["
           ^ Int.to_string index
           ^ "].pattern")
-          :: context)) binding_pattern;
-          validate_expression ~context:((("expression.let_operator.and_bindings["
+          :: context))) binding_pattern;
+          validate_expression ~context:(((("expression.let_operator.and_bindings["
           ^ Int.to_string index
           ^ "].value")
-          :: context)) bound_value)
+          :: context))) bound_value)
         and_bindings;
-      validate_expression ~context:(("expression.let_operator.body" :: context)) body
+      validate_expression ~context:((("expression.let_operator.body" :: context))) body
   | Cst.Expression.Let {
     binding_pattern;
     parameters;
@@ -7639,142 +7419,143 @@ and validate_expression = fun ~context ->
     body;
     _
   } ->
-      validate_pattern ~context:(("expression.let.pattern" :: context)) binding_pattern;
-      List.iteri (fun index parameter -> validate_parameter ~context:((("expression.let.parameters["
+      validate_pattern ~context:((("expression.let.pattern" :: context))) binding_pattern;
+      List.iteri (fun index parameter -> validate_parameter ~context:(((("expression.let.parameters["
       ^ Int.to_string index
       ^ "]")
-      :: context)) parameter) parameters;
-      validate_expression ~context:(("expression.let.bound_value" :: context)) bound_value;
+      :: context))) parameter) parameters;
+      validate_expression ~context:((("expression.let.bound_value" :: context))) bound_value;
       List.iteri
         (fun index binding ->
-          validate_pattern ~context:((("expression.let.and_bindings[" ^ Int.to_string index ^ "].pattern")
-          :: context)) (Cst.LetBinding.binding_pattern binding);
-          validate_expression ~context:((("expression.let.and_bindings[" ^ Int.to_string index ^ "].value")
-          :: context)) (Cst.LetBinding.value binding))
+          validate_pattern ~context:(((("expression.let.and_bindings[" ^ Int.to_string index ^ "].pattern")
+          :: context))) (Cst.LetBinding.binding_pattern binding);
+          validate_expression ~context:(((("expression.let.and_bindings[" ^ Int.to_string index ^ "].value")
+          :: context))) (Cst.LetBinding.value binding))
         and_bindings;
-      validate_expression ~context:(("expression.let.body" :: context)) body
+      validate_expression ~context:((("expression.let.body" :: context))) body
   | Cst.Expression.Match { scrutinee; cases; _ } ->
-      validate_expression ~context:(("expression.match.scrutinee" :: context)) scrutinee;
-      List.iteri (fun index case -> validate_match_case ~context:((("expression.match.case["
+      validate_expression ~context:((("expression.match.scrutinee" :: context))) scrutinee;
+      List.iteri (fun index case -> validate_match_case ~context:(((("expression.match.case["
       ^ Int.to_string index
       ^ "]")
-      :: context)) case) cases
+      :: context))) case) cases
   | Cst.Expression.Try { body; cases; _ } ->
-      validate_expression ~context:(("expression.try.body" :: context)) body;
-      List.iteri (fun index case -> validate_match_case ~context:((("expression.try.case["
+      validate_expression ~context:((("expression.try.body" :: context))) body;
+      List.iteri (fun index case -> validate_match_case ~context:(((("expression.try.case["
       ^ Int.to_string index
       ^ "]")
-      :: context)) case) cases
+      :: context))) case) cases
   | Cst.Expression.If { condition; then_branch; else_branch; _ } ->
-      validate_expression ~context:(("expression.if.condition" :: context)) condition;
-      validate_expression ~context:(("expression.if.then_branch" :: context)) then_branch;
-      Option.iter (validate_expression ~context:(("expression.if.else_branch" :: context))) else_branch
+      validate_expression ~context:((("expression.if.condition" :: context))) condition;
+      validate_expression ~context:((("expression.if.then_branch" :: context))) then_branch;
+      Option.iter (validate_expression ~context:((("expression.if.else_branch" :: context)))) else_branch
   | Cst.Expression.Parenthesized { inner; _ } ->
-      validate_expression ~context:(("expression.parenthesized" :: context)) inner
+      validate_expression ~context:((("expression.parenthesized" :: context))) inner
 and validate_match_case = fun ~context ({ pattern; guard; body; _ } : Cst.match_case) ->
-  validate_pattern ~context:(("match_case.pattern" :: context)) pattern;
-  Option.iter (validate_expression ~context:(("match_case.guard" :: context))) guard;
-  validate_expression ~context:(("match_case.body" :: context)) body
+  validate_pattern ~context:((("match_case.pattern" :: context))) pattern;
+  Option.iter (validate_expression ~context:((("match_case.guard" :: context)))) guard;
+  validate_expression ~context:((("match_case.body" :: context))) body
 
 let validate_constructor_arguments = fun ~context ->
   function
   | Cst.ConstructorArguments.Tuple elements ->
-      List.iteri (fun index element -> validate_core_type ~context:((("constructor_arguments.tuple["
+      List.iteri (fun index element -> validate_core_type ~context:(((("constructor_arguments.tuple["
       ^ Int.to_string index
       ^ "]")
-      :: context)) element) elements
+      :: context))) element) elements
   | Cst.ConstructorArguments.Record fields ->
-      List.iteri (fun index field -> validate_core_type ~context:((("constructor_arguments.record["
+      List.iteri (fun index field -> validate_core_type ~context:(((("constructor_arguments.record["
       ^ Int.to_string index
       ^ "].type")
-      :: context)) (Cst.RecordField.field_type field)) fields
+      :: context))) (Cst.RecordField.field_type field)) fields
 
 let validate_type_definition = fun ~context ->
   function
   | Cst.TypeDefinition.Abstract -> ()
   | Cst.TypeDefinition.Alias { manifest; _ } ->
-      validate_core_type ~context:(("type_definition.alias" :: context)) manifest
+      validate_core_type ~context:((("type_definition.alias" :: context))) manifest
   | Cst.TypeDefinition.Extensible _ -> ()
   | Cst.TypeDefinition.FirstClassModule { module_type; _ } ->
-      validate_module_type ~context:(("type_definition.first_class_module" :: context)) module_type
+      validate_module_type ~context:((("type_definition.first_class_module" :: context))) module_type
   | Cst.TypeDefinition.Object { fields; _ } ->
-      List.iteri (fun index ({ field_type; _ } : Cst.object_type_field) -> validate_core_type ~context:((("type_definition.object.field["
+      List.iteri (fun index ({ field_type; _ } : Cst.object_type_field) -> validate_core_type ~context:(((("type_definition.object.field["
       ^ Int.to_string index
       ^ "].type")
-      :: context)) field_type) fields
+      :: context))) field_type) fields
   | Cst.TypeDefinition.Record { fields; _ } ->
-      List.iteri (fun index field -> validate_core_type ~context:((("type_definition.record.field["
+      List.iteri (fun index field -> validate_core_type ~context:(((("type_definition.record.field["
       ^ Int.to_string index
       ^ "].type")
-      :: context)) (Cst.RecordField.field_type field)) fields
+      :: context))) (Cst.RecordField.field_type field)) fields
   | Cst.TypeDefinition.Variant { constructors; _ } ->
       List.iteri
         (fun index constructor ->
-          Option.iter (validate_constructor_arguments ~context:((("type_definition.variant.constructor["
+          Option.iter (validate_constructor_arguments ~context:(((("type_definition.variant.constructor["
           ^ Int.to_string index
           ^ "].arguments")
-          :: context))) (Cst.VariantConstructor.arguments constructor);
-          Option.iter (validate_core_type ~context:((("type_definition.variant.constructor["
+          :: context)))) (Cst.VariantConstructor.arguments constructor);
+          Option.iter (validate_core_type ~context:(((("type_definition.variant.constructor["
           ^ Int.to_string index
           ^ "].payload")
-          :: context))) (Cst.VariantConstructor.payload_type constructor);
-          Option.iter (validate_core_type ~context:((("type_definition.variant.constructor["
+          :: context)))) (Cst.VariantConstructor.payload_type constructor);
+          Option.iter (validate_core_type ~context:(((("type_definition.variant.constructor["
           ^ Int.to_string index
           ^ "].result")
-          :: context))) (Cst.VariantConstructor.result_type constructor))
+          :: context)))) (Cst.VariantConstructor.result_type constructor))
         constructors
   | Cst.TypeDefinition.PolyVariant poly_variant ->
-      validate_poly_variant ~context:(("type_definition.poly_variant" :: context)) poly_variant
+      validate_poly_variant ~context:((("type_definition.poly_variant" :: context))) poly_variant
 
 let validate_type_constraint = fun ~context ({ left; right; _ } : Cst.type_constraint) ->
-  validate_core_type ~context:(("type_constraint.left" :: context)) left;
-  validate_core_type ~context:(("type_constraint.right" :: context)) right
+  validate_core_type ~context:((("type_constraint.left" :: context))) left;
+  validate_core_type ~context:((("type_constraint.right" :: context))) right
 
 let rec validate_type_declaration = fun ~context ({ type_definition; manifest_alias; constraints; and_declarations; _ } : Cst.TypeDeclaration.t) ->
-  Option.iter (validate_core_type ~context:(("item.type_declaration.manifest_alias" :: context))) manifest_alias;
-  validate_type_definition ~context:(("item.type_declaration" :: context)) type_definition;
-  List.iteri (fun index constraint_ -> validate_type_constraint ~context:((("item.type_declaration.constraint["
+  Option.iter (validate_core_type ~context:((("item.type_declaration.manifest_alias" :: context)))) manifest_alias;
+  validate_type_definition ~context:((("item.type_declaration" :: context))) type_definition;
+  List.iteri (fun index constraint_ -> validate_type_constraint ~context:(((("item.type_declaration.constraint["
   ^ Int.to_string index
   ^ "]")
-  :: context)) constraint_) constraints;
-  List.iteri (fun index declaration -> validate_type_declaration ~context:((("item.type_declaration.and_declarations["
+  :: context))) constraint_) constraints;
+  List.iteri (fun index declaration -> validate_type_declaration ~context:(((("item.type_declaration.and_declarations["
   ^ Int.to_string index
   ^ "]")
-  :: context)) declaration) and_declarations
+  :: context))) declaration) and_declarations
 
 let validate_type_extension = fun ~context ({ constructors; _ } : Cst.TypeExtension.t) ->
   List.iteri
     (fun index constructor ->
-      Option.iter (validate_constructor_arguments ~context:((("item.type_extension.constructor["
+      Option.iter (validate_constructor_arguments ~context:(((("item.type_extension.constructor["
       ^ Int.to_string index
       ^ "].arguments")
-      :: context))) (Cst.VariantConstructor.arguments constructor);
-      Option.iter (validate_core_type ~context:((("item.type_extension.constructor["
+      :: context)))) (Cst.VariantConstructor.arguments constructor);
+      Option.iter (validate_core_type ~context:(((("item.type_extension.constructor["
       ^ Int.to_string index
       ^ "].payload")
-      :: context))) (Cst.VariantConstructor.payload_type constructor);
-      Option.iter (validate_core_type ~context:((("item.type_extension.constructor["
+      :: context)))) (Cst.VariantConstructor.payload_type constructor);
+      Option.iter (validate_core_type ~context:(((("item.type_extension.constructor["
       ^ Int.to_string index
       ^ "].result")
-      :: context))) (Cst.VariantConstructor.result_type constructor))
+      :: context)))) (Cst.VariantConstructor.result_type constructor))
     constructors
 
 let validate_class_declaration = fun ~context ({ class_type; class_body; _ } : Cst.class_declaration) ->
-  Option.iter (validate_class_type ~context:(("item.class_declaration.type" :: context))) class_type;
-  Option.iter (validate_class_expression ~context:(("item.class_declaration.body" :: context))) class_body
+  Option.iter (validate_class_type ~context:((("item.class_declaration.type" :: context)))) class_type;
+  Option.iter (validate_class_expression ~context:((("item.class_declaration.body" :: context)))) class_body
 
-let validate_class_type_declaration = fun ~context ({ class_type_body; _ } : Cst.class_type_declaration) ->
-  validate_class_type ~context:(("item.class_type_declaration.body" :: context)) class_type_body
+let validate_class_type_declaration = fun ~context ({ class_type_body; _ } : Cst.class_type_declaration) -> validate_class_type
+~context:((("item.class_type_declaration.body" :: context)))
+class_type_body
 
 let validate_module_type_declaration = fun ~context ({ module_type; _ } : Cst.ModuleTypeDeclaration.t) ->
-  Option.iter (validate_module_type ~context:(("item.module_type_declaration" :: context))) module_type
+  Option.iter (validate_module_type ~context:((("item.module_type_declaration" :: context)))) module_type
 
 let validate_open_statement = fun ~context stmt ->
   match Cst.OpenStatement.target stmt with
   | Cst.OpenStatement.Path _ ->
       ()
   | Cst.OpenStatement.ModuleExpression expr ->
-      validate_module_expression ~context:(("item.open_statement.target" :: context)) expr
+      validate_module_expression ~context:((("item.open_statement.target" :: context))) expr
 
 let validate_structure_item = fun ~context ->
   function
@@ -7783,17 +7564,17 @@ let validate_structure_item = fun ~context ->
   | Cst.StructureItem.TypeExtension decl ->
       validate_type_extension ~context decl
   | Cst.StructureItem.LetBinding { binding_pattern; value; and_bindings; _ } ->
-      validate_pattern ~context:(("item.let_binding.pattern" :: context)) binding_pattern;
-      validate_expression ~context:(("item.let_binding.value" :: context)) value;
+      validate_pattern ~context:((("item.let_binding.pattern" :: context))) binding_pattern;
+      validate_expression ~context:((("item.let_binding.value" :: context))) value;
       List.iteri
         (fun index binding ->
-          validate_pattern ~context:((("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].pattern")
-          :: context)) (Cst.LetBinding.binding_pattern binding);
-          validate_expression ~context:((("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].value")
-          :: context)) (Cst.LetBinding.value binding))
+          validate_pattern ~context:(((("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].pattern")
+          :: context))) (Cst.LetBinding.binding_pattern binding);
+          validate_expression ~context:(((("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].value")
+          :: context))) (Cst.LetBinding.value binding))
         and_bindings
   | Cst.StructureItem.Expression expr ->
-      validate_expression ~context:(("item.expression" :: context)) expr
+      validate_expression ~context:((("item.expression" :: context))) expr
   | Cst.StructureItem.ClassDeclaration decl ->
       validate_class_declaration ~context decl
   | Cst.StructureItem.ClassTypeDeclaration decl ->
@@ -7806,9 +7587,9 @@ let validate_structure_item = fun ~context ->
   | Cst.StructureItem.Comment _ ->
       ()
   | Cst.StructureItem.ValueDeclaration { type_; _ } ->
-      validate_core_type ~context:(("item.value_declaration.type" :: context)) type_
+      validate_core_type ~context:((("item.value_declaration.type" :: context))) type_
   | Cst.StructureItem.ExternalDeclaration { type_; _ } ->
-      validate_core_type ~context:(("item.external_declaration.type" :: context)) type_
+      validate_core_type ~context:((("item.external_declaration.type" :: context))) type_
   | Cst.StructureItem.ModuleTypeDeclaration decl ->
       validate_module_type_declaration ~context decl
   | Cst.StructureItem.OpenStatement stmt ->
@@ -7841,9 +7622,9 @@ let validate_signature_item = fun ~context ->
   | Cst.SignatureItem.OpenStatement stmt ->
       validate_open_statement ~context stmt
   | Cst.SignatureItem.ValueDeclaration { type_; _ } ->
-      validate_core_type ~context:(("item.value_declaration.type" :: context)) type_
+      validate_core_type ~context:((("item.value_declaration.type" :: context))) type_
   | Cst.SignatureItem.ExternalDeclaration { type_; _ } ->
-      validate_core_type ~context:(("item.external_declaration.type" :: context)) type_
+      validate_core_type ~context:((("item.external_declaration.type" :: context))) type_
   | Cst.SignatureItem.ModuleDeclaration _
   | Cst.SignatureItem.RecursiveModuleDeclaration _
   | Cst.SignatureItem.IncludeStatement _
@@ -7867,38 +7648,20 @@ let lift = fun ~kind ~source tree ->
   let cst =
     match kind with
     | `Implementation ->
-        let syntax_node, items =
-          build_source_file_body
-            ~source
-            ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment)
-            ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc)
-            ~syntax_node_of_item:Cst.StructureItem.syntax_node
-            ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans
-            tree structure_items_from_node
-        in
+        let syntax_node, items = build_source_file_body ~source ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~syntax_node_of_item:Cst.StructureItem.syntax_node ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans tree structure_items_from_node in
         Cst.Implementation {
           syntax_node;
-          items =
-            items
-            |> coalesce_structure_type_declaration_groups
-            |> normalize_structure_items_owned_trivia ~source
+          items = items
+          |> coalesce_structure_type_declaration_groups
+          |> normalize_structure_items_owned_trivia ~source
         }
     | `Interface ->
-        let syntax_node, items =
-          build_source_file_body
-            ~source
-            ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment)
-            ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc)
-            ~syntax_node_of_item:Cst.SignatureItem.syntax_node
-            ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans
-            tree signature_items_from_node
-        in
+        let syntax_node, items = build_source_file_body ~source ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans tree signature_items_from_node in
         Cst.Interface {
           syntax_node;
-          items =
-            items
-            |> coalesce_signature_type_declaration_groups
-            |> normalize_signature_items_owned_trivia ~source
+          items = items
+          |> coalesce_signature_type_declaration_groups
+          |> normalize_signature_items_owned_trivia ~source
         }
   in
   validate_source_file cst;
@@ -7930,20 +7693,17 @@ let signature_item_payload_nodes_from_node = fun node ->
   | _ ->
       [ node ]
 
-let normalize_structure_items = fun ~source items ->
-  items
-  |> coalesce_structure_type_declaration_groups
-  |> normalize_structure_items_owned_trivia ~source
+let normalize_structure_items = fun ~source items -> items
+|> coalesce_structure_type_declaration_groups
+|> normalize_structure_items_owned_trivia ~source
 
 let raw_structure_items_from_syntax_node = fun node ->
   let items =
     match Ceibo.Red.SyntaxNode.kind node with
     | Syntax_kind.STRUCT_EXPR ->
-        build_items_from_payload_nodes
-          ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment)
-          ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc)
-          ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans
-          [ node ] structure_items_from_node
+        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans [
+          node
+        ] structure_items_from_node
     | _ ->
         structure_items_from_node node
   in
@@ -7952,50 +7712,41 @@ let raw_structure_items_from_syntax_node = fun node ->
       Ok items
   | exception Bail error -> Error error
 
-let structure_items_from_syntax_node = fun node ->
-  raw_structure_items_from_syntax_node node
-  |> Result.map (normalize_structure_items ~source:(source_text_of_syntax_node_tree node))
+let structure_items_from_syntax_node = fun node -> raw_structure_items_from_syntax_node node
+|> Result.map (normalize_structure_items ~source:(source_text_of_syntax_node_tree node))
 
-let structure_items_from_syntax_node_with_source = fun ~source node ->
-  raw_structure_items_from_syntax_node node
-  |> Result.map (normalize_structure_items ~source)
+let structure_items_from_syntax_node_with_source = fun ~source node -> raw_structure_items_from_syntax_node
+node
+|> Result.map (normalize_structure_items ~source)
 
 let structure_items_from_syntax_nodes = fun nodes ->
-  match
-    nodes
-    |> List.concat_map structure_item_payload_nodes_from_node
-    |> List.concat_map structure_items_from_node
-  with
+  match nodes |> List.concat_map structure_item_payload_nodes_from_node |> List.concat_map structure_items_from_node with
   | items -> (
       match nodes with
       | first :: _ ->
           Ok (normalize_structure_items ~source:(source_text_of_syntax_node_tree first) items)
       | [] ->
-          Ok items)
+          Ok items
+    )
   | exception Bail error -> Error error
 
-let normalize_signature_items = fun ~source items ->
-  items
-  |> coalesce_signature_type_declaration_groups
-  |> normalize_signature_items_owned_trivia ~source
+let normalize_signature_items = fun ~source items -> items
+|> coalesce_signature_type_declaration_groups
+|> normalize_signature_items_owned_trivia ~source
 
 let raw_signature_items_from_syntax_node = fun node ->
   let items =
     match Ceibo.Red.SyntaxNode.kind node with
     | Syntax_kind.SIGNATURE ->
-        build_items_from_payload_nodes
-          ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment)
-          ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc)
-          ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans
-          [ node ] signature_items_from_node
+        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans [
+          node
+        ] signature_items_from_node
     | Syntax_kind.IDENT_EXPR -> (
         match direct_non_trivia_tokens node with
         | sig_kw :: _ when String.equal (Ceibo.Red.SyntaxToken.text sig_kw) "sig" ->
-            build_items_from_payload_nodes
-              ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment)
-              ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc)
-              ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans
-              [ node ] signature_items_from_node
+            build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans [
+              node
+            ] signature_items_from_node
         | _ ->
             signature_items_from_node node
       )
@@ -8007,24 +7758,20 @@ let raw_signature_items_from_syntax_node = fun node ->
       Ok items
   | exception Bail error -> Error error
 
-let signature_items_from_syntax_node = fun node ->
-  raw_signature_items_from_syntax_node node
-  |> Result.map (normalize_signature_items ~source:(source_text_of_syntax_node_tree node))
+let signature_items_from_syntax_node = fun node -> raw_signature_items_from_syntax_node node
+|> Result.map (normalize_signature_items ~source:(source_text_of_syntax_node_tree node))
 
-let signature_items_from_syntax_node_with_source = fun ~source node ->
-  raw_signature_items_from_syntax_node node
-  |> Result.map (normalize_signature_items ~source)
+let signature_items_from_syntax_node_with_source = fun ~source node -> raw_signature_items_from_syntax_node
+node
+|> Result.map (normalize_signature_items ~source)
 
 let signature_items_from_syntax_nodes = fun nodes ->
-  match
-    nodes
-    |> List.concat_map signature_item_payload_nodes_from_node
-    |> List.concat_map signature_items_from_node
-  with
+  match nodes |> List.concat_map signature_item_payload_nodes_from_node |> List.concat_map signature_items_from_node with
   | items -> (
       match nodes with
       | first :: _ ->
           Ok (normalize_signature_items ~source:(source_text_of_syntax_node_tree first) items)
       | [] ->
-          Ok items)
+          Ok items
+    )
   | exception Bail error -> Error error
