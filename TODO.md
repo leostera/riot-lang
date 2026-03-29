@@ -61,8 +61,9 @@ This file is _yours_. Keep it up to date after every big change.
 - inline-record constructor arguments no longer preserve multiline layout just because the original record node contained newlines; they format from field structure and owned trivia only.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - `Format_core.format` now has an explicit EOF policy: non-empty formatted output ends with a final newline, without inspecting the input source to inherit that behavior.
+- top-level structure phrase separators now come from direct source-file separator tokens, not by slicing raw source between item spans or preserving expression runs from source text.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
-- `lower.ml` still contains source/text heuristics, source-backed owned-trivia separator recovery, and one remaining source-backed phrase-boundary preservation path that should be treated as debt.
+- `lower.ml` still contains source/text heuristics and source-backed owned-trivia separator recovery; the remaining debt is in those live formatting decisions, not top-level source-gap replay.
 
 ## Working Style
 
@@ -71,6 +72,7 @@ This file is _yours_. Keep it up to date after every big change.
 - Commit every slice with a scoped conventional commit message.
 - Prefer `syn:cst_tests` for ownership bugs and `krasny` fixtures for layout/rendering bugs.
 - Do not reintroduce ownership heuristics in `krasny` once the CST already knows the answer.
+- At every turn, do a quick audit to see if we can add more clean up todo items 
 
 ## Structural Formatting Debt
 
@@ -90,13 +92,10 @@ This file is _yours_. Keep it up to date after every big change.
   - non-empty formatted output now ends with a final newline by explicit formatter contract
   - `format`, `write`, CLI formatting, and verify now share that explicit EOF policy
 
-- [ ] Remove raw source-gap parsing from top-level structure/signature rendering
-  - `source_gap_has_only_phrase_separators`
-  - `source_gap_leading_phrase_separator`
-  - `source_of_relative_span`
-  - `separator_doc_between_offsets`
-  - expression-run preservation in `render_structure_top_level_items`
-  - top-level suffix insertion that still depends on scanning raw source between item spans
+- [x] Remove raw source-gap parsing from top-level structure/signature rendering
+  - `source_gap_has_only_phrase_separators`, `source_gap_leading_phrase_separator`, and `source_of_relative_span` are gone from `lower.ml`
+  - top-level structure phrase separators now come from direct source-file separator tokens instead of scanning raw source between item spans
+  - expression-run preservation in `render_structure_top_level_items` is gone; phrase separation is structural
 
 - [ ] Remove raw trivia reparsing helpers from `lower.ml`
   - `parse_trivia_between_offsets`

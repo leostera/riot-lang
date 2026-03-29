@@ -15,6 +15,9 @@ let annotation_colon = Doc.concat [ Doc.colon; Doc.space ]
 let multiline_list_threshold = 10
 
 let star = Doc.text "*"
+let at = Doc.text "@"
+
+let semicolon_text = ";"
 
 type ctx = {
   source : string option;
@@ -121,61 +124,8 @@ let string_contains_substring = fun text pattern ->
   in
   pattern_length > 0 && loop 0
 
-let source_gap_has_only_phrase_separators = fun ~source ~source_offset ~start ~end_ ->
-  let source_length = String.length source in
-  let relative_start = Int.max 0 (start - source_offset) in
-  let relative_end = Int.min source_length (end_ - source_offset) in
-  let rec loop = fun index saw_semicolon ->
-    if index >= relative_end then
-      saw_semicolon
-    else
-      match String.get source index with
-      | ';' ->
-          loop (index + 1) true
-      | ' '
-      | '\t'
-      | '\n'
-      | '\r' ->
-          loop (index + 1) saw_semicolon
-      | _ ->
-          false
-  in
-  relative_end > relative_start && loop relative_start false
-
-let source_gap_leading_phrase_separator = fun ~source ~source_offset ~start ~end_ ->
-  let source_length = String.length source in
-  let relative_start = Int.max 0 (start - source_offset) in
-  let relative_end = Int.min source_length (end_ - source_offset) in
-  let rec skip_layout = fun index ->
-    if index >= relative_end then
-      index
-    else
-      match String.get source index with
-      | ' '
-      | '\t'
-      | '\n'
-      | '\r' ->
-          skip_layout (index + 1)
-      | _ ->
-          index
-  in
-  let rec consume_semicolons = fun index saw_semicolon ->
-    if index >= relative_end then
-      (index, saw_semicolon)
-    else if Char.equal (String.get source index) ';' then
-      consume_semicolons (index + 1) true
-    else
-      (index, saw_semicolon)
-  in
-  let start_index = skip_layout relative_start in
-  let after_semicolons, saw_semicolon = consume_semicolons start_index false in
-  if saw_semicolon then
-    Some (
-      String.sub source start_index (after_semicolons - start_index),
-      source_offset + after_semicolons
-    )
-  else
-    None
+let token_is_phrase_separator = fun token ->
+  String.equal (Syn.Ceibo.Red.SyntaxToken.text token) semicolon_text
 
 let normalized_source_length = fun source ->
   let rec loop = fun index in_whitespace acc ->
@@ -311,6 +261,42 @@ let compare_child_by_span = fun left right ->
 
 let children_in_source_order = fun syntax_node ->
   Syn.Ceibo.Red.SyntaxNode.children_list syntax_node |> List.sort compare_child_by_span
+
+let compare_direct_token_by_span = fun left right ->
+  let left_span = Syn.Ceibo.Red.SyntaxToken.span left in
+  let right_span = Syn.Ceibo.Red.SyntaxToken.span right in
+  if not (Int.equal left_span.start right_span.start) then
+    Int.compare left_span.start right_span.start
+  else
+    Int.compare left_span.end_ right_span.end_
+
+let direct_tokens_in_source_order = fun syntax_node ->
+  Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node
+  |> List.sort compare_direct_token_by_span
+
+let phrase_separator_count_between_tokens = fun tokens ~start ~end_ ->
+  let rec loop count = function
+    | [] ->
+        count
+    | token :: rest ->
+        let span = Syn.Ceibo.Red.SyntaxToken.span token in
+        if span.end_ <= start then
+          loop count rest
+        else if span.start >= end_ then
+          count
+        else if token_is_phrase_separator token then
+          loop (count + 1) rest
+        else
+          -1
+  in
+  loop 0 tokens
+
+let phrase_separator_doc_between_tokens = fun tokens ~start ~end_ ->
+  match phrase_separator_count_between_tokens tokens ~start ~end_ with
+  | count when count > 0 ->
+      Some (List.init count (fun _ -> Doc.semi) |> Doc.concat)
+  | _ ->
+      None
 
 let is_layout_character =
   function
@@ -564,9 +550,15 @@ let doc_of_owned_trivia = fun ?start ~source trivia ->
   in
   loop None start trivia
 
-let render_attribute = fun (attribute : Syn.Cst.attribute) ->
+let render_attribute_doc = fun ~floating (attribute : Syn.Cst.attribute) ->
+  let sigil_doc =
+    if floating then
+      Doc.concat [ at; doc_of_token attribute.sigil_token ]
+    else
+      doc_of_token attribute.sigil_token
+  in
   Doc.concat
-    [ Doc.lbracket; doc_of_token attribute.sigil_token; doc_of_ident attribute.name; (
+    [ Doc.lbracket; sigil_doc; doc_of_ident attribute.name; (
         match attribute.payload_syntax_node with
         | Some payload_syntax_node ->
             let payload_text = Source.source_of_syntax_node payload_syntax_node |> String.trim in
@@ -577,6 +569,9 @@ let render_attribute = fun (attribute : Syn.Cst.attribute) ->
         | None ->
             Doc.empty
       ); Doc.rbracket ]
+
+let render_attribute = fun attribute -> render_attribute_doc ~floating:false attribute
+let render_floating_attribute = fun attribute -> render_attribute_doc ~floating:true attribute
 
 let kw_module = Doc.text "module"
 
@@ -4604,16 +4599,6 @@ and is_open_signature_item = function
   | _ ->
       false
 
-and source_of_relative_span ~source ~source_offset (span : Syn.Ceibo.Span.t) =
-  let source_length = String.length source in
-  let start =
-    Int.max 0 (Int.min (span.start - source_offset) source_length)
-  in
-  let end_ =
-    Int.max start (Int.min (span.end_ - source_offset) source_length)
-  in
-  Source.source_between source ~start ~end_
-
 and trailing_inline_comment_suffix ~source ~source_offset (span : Syn.Ceibo.Span.t) =
   let source_length = String.length source in
   let rec skip_horizontal index =
@@ -4816,32 +4801,14 @@ and render_signature_item_owned_trivia =
   | Syn.Cst.SignatureItem.Comment _ ->
       None
 
-and render_structure_entry ~source ~source_offset ~span ~preserve_source
-    ~trailing_suffix item =
-  let rendered_source =
-    if preserve_source then
-      Some (source_of_relative_span ~source ~source_offset span)
-    else
-      None
-  in
-  let trailing_suffix =
-    match trailing_suffix with
-    | None ->
-        None
-    | Some (suffix_text, _) ->
-        Some (Doc.text suffix_text)
-  in
+and render_structure_entry ~source ~trailing_suffix item =
   let doc =
     let base_doc =
-      match rendered_source with
-      | Some rendered_source ->
-          Doc.text rendered_source
-      | None -> (
-          match item with
-          | Syn.Cst.StructureItem.TypeDeclaration decl ->
-              render_type_declaration_with_keyword kw_type decl
-          | _ ->
-              render_structure_item item)
+      match item with
+      | Syn.Cst.StructureItem.TypeDeclaration decl ->
+          render_type_declaration_with_keyword kw_type decl
+      | _ ->
+          render_structure_item item
     in
     let base_doc =
       match item with
@@ -4890,13 +4857,6 @@ and render_structure_entry ~source ~source_offset ~span ~preserve_source
 and render_signature_entry ~source ~source_offset ~span ~trailing_suffix item =
   let _span = (span : Syn.Ceibo.Span.t) in
   let _source_offset = source_offset in
-  let trailing_suffix =
-    match trailing_suffix with
-    | None ->
-        None
-    | Some (suffix_text, _) ->
-        Some (Doc.text suffix_text)
-  in
   let doc =
     let base_doc =
       match item with
@@ -4984,7 +4944,7 @@ and render_structure_item = function
           render_open_target open_.target;
         ]
   | Syn.Cst.StructureItem.Attribute attribute ->
-      render_attribute attribute
+      render_floating_attribute attribute
   | Syn.Cst.StructureItem.Docstring docstring ->
       doc_of_token (Syn.Cst.Docstring.token docstring)
   | Syn.Cst.StructureItem.Comment comment ->
@@ -5029,7 +4989,7 @@ and render_signature_item item =
           render_open_target open_.target;
         ]
   | Syn.Cst.SignatureItem.Attribute attribute ->
-      render_attribute attribute
+      render_floating_attribute attribute
   | Syn.Cst.SignatureItem.Docstring docstring ->
       doc_of_token (Syn.Cst.Docstring.token docstring)
   | Syn.Cst.SignatureItem.Comment comment ->
@@ -5144,15 +5104,7 @@ and type_declaration_owned_trivia_end = fun decl ->
          Int.max acc (type_declaration_owned_trivia_end declaration))
        current
 
-and structure_item_requires_source_preservation_before_expression item next_item =
-  match item, next_item with
-  | Syn.Cst.StructureItem.LetBinding binding, Syn.Cst.StructureItem.Expression _ ->
-      not (List.is_empty binding.parameters)
-      && not (binding_has_explicit_fun_rhs binding)
-  | _ ->
-      false
-
-and render_structure_top_level_items ~source ~source_offset ~source_node:_source_node ~items =
+and render_structure_top_level_items ~source ~source_offset:_source_offset ~source_node ~items =
   let rec join_entries = function
     | [] ->
         Doc.empty
@@ -5200,7 +5152,8 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
       Int.compare left_span.end_ right_span.end_
   in
   let source_length = String.length source in
-  let source_end = source_offset + source_length in
+  let source_end = (Syn.Ceibo.Red.SyntaxNode.span source_node).start + source_length in
+  let top_level_tokens = direct_tokens_in_source_order source_node in
   let items =
     items
     |> List.map (fun item -> (item, structure_item_span item))
@@ -5223,104 +5176,19 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
     match items with
     | [] ->
         join_entries (List.rev acc)
-    | ((Syn.Cst.StructureItem.Expression _ as item), (base_span : Syn.Ceibo.Span.t)) :: rest ->
-        let rec collect_expression_run (prev_span : Syn.Ceibo.Span.t) acc remaining =
-          match remaining with
-          | ((Syn.Cst.StructureItem.Expression _ as next), (next_span : Syn.Ceibo.Span.t)) :: tail ->
-              if
-                source_gap_has_only_phrase_separators ~source ~source_offset
-                  ~start:prev_span.end_ ~end_:next_span.start
-              then
-                collect_expression_run next_span (next :: acc) tail
-              else
-                (List.rev acc, remaining, prev_span)
-          | _ ->
-              (List.rev acc, remaining, prev_span)
-        in
-        let run_items, remaining, run_span =
-          collect_expression_run base_span [ item ] rest
-        in
-        let next_boundary =
-          match remaining with
-          | (_, (next_span : Syn.Ceibo.Span.t)) :: _ ->
-              next_span.start
-          | [] ->
-              source_end
-        in
-        let trailing_phrase_separator =
-          source_gap_leading_phrase_separator ~source ~source_offset
-            ~start:run_span.end_ ~end_:next_boundary
-        in
-        let preserved_run_end =
-          match trailing_phrase_separator with
-          | Some (_, suffix_end) ->
-              suffix_end
-          | None ->
-              run_span.end_
-        in
-        let should_preserve_run_source =
-          match run_items, trailing_phrase_separator with
-          | _ :: _ :: _, _ ->
-              true
-          | [ _ ], Some _ ->
-              true
-          | _ ->
-              false
-        in
-        let entry =
-          if should_preserve_run_source then
-            let run_source =
-              source_of_relative_span ~source ~source_offset
-                { Syn.Ceibo.Span.start = base_span.start; end_ = preserved_run_end }
-            in
-            (Doc.text run_source, false, false, false, false, false)
-          else
-            match run_items with
-            | [ item ] ->
-                render_structure_entry ~source ~source_offset ~span:base_span
-                  ~preserve_source:false ~trailing_suffix:None item
-            | _ ->
-                assert false
-        in
-        loop (entry :: acc) remaining
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
-        let preserve_source =
-          match rest with
-          | (next, _) :: _ ->
-              structure_item_requires_source_preservation_before_expression item next
-          | [] ->
-              false
-        in
         let next_boundary =
           match rest with
           | (_, (next_span : Syn.Ceibo.Span.t)) :: _ ->
               next_span.start
           | [] ->
               source_end
-        in
-        let leading_phrase_separator =
-          source_gap_leading_phrase_separator ~source ~source_offset
-            ~start:base_span.end_ ~end_:next_boundary
         in
         let trailing_suffix =
-          match leading_phrase_separator with
-          | Some _ as suffix ->
-              suffix
-          | None ->
-              (match item, rest with
-              | Syn.Cst.StructureItem.Expression _, (next, _) :: _
-                when
-                  Syn.Ceibo.Red.SyntaxNode.kind
-                    (Syn.Cst.StructureItem.syntax_node next)
-                  = Syn.SyntaxKind.ATTRIBUTE_EXPR ->
-                  Some (";;", base_span.end_)
-              | _ ->
-                  None)
+          phrase_separator_doc_between_tokens top_level_tokens ~start:base_span.end_
+            ~end_:next_boundary
         in
-        let entry =
-          render_structure_entry ~source ~source_offset ~span:base_span
-            ~preserve_source ~trailing_suffix item
-        in
+        let entry = render_structure_entry ~source ~trailing_suffix item in
         loop (entry :: acc) rest
   in
   loop [] items

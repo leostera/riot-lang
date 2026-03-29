@@ -597,6 +597,32 @@ let ( .??[] ) () () = ();;
           ~source
           ~msg:"top-level expression phrases should stay outside lowered fun bindings";
         Ok ());
+    Test.case "format keeps top-level phrase separators structural" (fun () ->
+        let source =
+          {|let project x = x
+;;
+1
+;;
+module M = struct end
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"top-level phrase separators should come from source-file tokens, not source gaps"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let project x = x;;
+
+1;;
+
+module M = struct
+
+end
+|}
+          ~actual;
+        Ok ());
     Test.case "format preserves syntax hash for selected codebase files"
       (fun () ->
         List.iter assert_roundtrip_hash workspace_files;
