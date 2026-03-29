@@ -1894,6 +1894,33 @@ let tests =
             Ok ()
         | _ ->
             Error "expected module type declaration with module-type-of body");
+    Test.case
+      "cst module type declarations keep module-type-of lookahead stable across inline comments"
+      (fun () ->
+        let result =
+          parse_ml
+            "module type S = module (* c1 *) type (* c2 *) of Stdlib.Array\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration
+            {
+              module_type =
+                Some
+                  (Syn.Cst.ModuleType.TypeOf
+                    { module_path = Syn.Cst.Ident.Qualified { name_token; _ }; _ });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Array"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Ok ()
+        | _ ->
+            Error "expected commented module type declaration with module-type-of body");
     Test.case "cst module type declarations preserve extension module type bodies"
       (fun () ->
         let result = parse_ml "module type S = [%sig_ext]\n" in

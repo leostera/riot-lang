@@ -311,6 +311,11 @@ let starts_with_module_type_keyword = fun parser ->
   peek_kind parser = Token.Keyword Keyword.Module
   && (peek_n parser 1).Token.kind = Token.Keyword Keyword.Type
 
+let starts_with_module_type_of_keywords = fun parser ->
+  peek_kind parser = Token.Keyword Keyword.Module
+  && (peek_n parser 1).Token.kind = Token.Keyword Keyword.Type
+  && (peek_n parser 2).Token.kind = Token.Keyword Keyword.Of
+
 let starts_with_class_type_keyword = fun parser ->
   peek_kind parser = Token.Keyword Keyword.Class
   && (peek_n parser 1).Token.kind = Token.Keyword Keyword.Type
@@ -9401,51 +9406,29 @@ and parse_module_type_expr parser =
         parse_extension parser
     | Token.OpenDelim Token.Brace when is_brace_extension_start parser ->
         parse_extension parser
+    | Token.Keyword Keyword.Module when starts_with_module_type_of_keywords parser ->
+        let module_kw = consume parser in
+        let trivia_after_module = consume_trivia parser in
+        let type_kw = consume parser in
+        let trivia_after_type = consume_trivia parser in
+        let of_kw = consume parser in
+        let trivia_after_of = consume_trivia parser in
+        let module_path = parse_module_type_path parser in
+        make_node Syntax_kind.MODULE_TYPE_OF
+          ([ make_token parser module_kw ]
+          @ tokens_to_green parser trivia_after_module
+          @ [ make_token parser type_kw ]
+          @ tokens_to_green parser trivia_after_type
+          @ [ make_token parser of_kw ]
+          @ tokens_to_green parser trivia_after_of
+          @ [ Ceibo.Green.Node module_path ])
     | Token.Keyword Keyword.Module ->
-        (* Check if this is "module type of" *)
-        let saved_pos = position parser in
-        advance parser; (* Skip 'module' *)
-        if peek_kind parser = Token.Keyword Keyword.Type then (
-          advance parser; (* Skip 'type' *)
-          if peek_kind parser = Token.Keyword Keyword.Of then (
-            (* This is "module type of" *)
-            Token_cursor.set_position parser.cursor saved_pos;
-            let module_kw = consume parser in
-            let trivia_after_module = consume_trivia parser in
-            let type_kw = consume parser in
-            let trivia_after_type = consume_trivia parser in
-            let of_kw = consume parser in
-            let trivia_after_of = consume_trivia parser in
-            (* Parse the module path *)
-            let module_path = parse_module_type_path parser in
-            make_node Syntax_kind.MODULE_TYPE_OF
-              ([ make_token parser module_kw ]
-              @ tokens_to_green parser trivia_after_module
-              @ [ make_token parser type_kw ]
-              @ tokens_to_green parser trivia_after_type
-              @ [ make_token parser of_kw ]
-              @ tokens_to_green parser trivia_after_of
-              @ [ Ceibo.Green.Node module_path ])
-          ) else (
-            (* Not "module type of", restore *)
-            Token_cursor.set_position parser.cursor saved_pos;
-            let found = peek parser in
-            let diagnostic =
-              Diagnostic.invalid_expression ~found ~text:(token_text parser found)
-                ~span:(expected_span parser)
-            in
-            make_error_node parser ~diagnostic ~consumed_tokens:[ found ]
-          )
-        ) else (
-          (* Not "module type", restore *)
-          Token_cursor.set_position parser.cursor saved_pos;
-          let found = peek parser in
-          let diagnostic =
-            Diagnostic.invalid_expression ~found ~text:(token_text parser found)
-              ~span:(expected_span parser)
-          in
-          make_error_node parser ~diagnostic ~consumed_tokens:[ found ]
-        )
+        let found = peek parser in
+        let diagnostic =
+          Diagnostic.invalid_expression ~found ~text:(token_text parser found)
+            ~span:(expected_span parser)
+        in
+        make_error_node parser ~diagnostic ~consumed_tokens:[ found ]
     | Token.Keyword Keyword.Functor ->
         (* Functor type: functor (X : S) -> T *)
         let functor_kw = consume parser in
