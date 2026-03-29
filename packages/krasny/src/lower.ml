@@ -5181,13 +5181,23 @@ and render_let_binding (binding : Syn.Cst.let_binding) =
   in
   Doc.concat (first :: trailing)
 
-and nested_structure_items_from_syntax_node syntax_node =
-  Syn.CstBuilder.structure_items_from_syntax_node syntax_node
+and nested_structure_items_from_module_expression module_expression =
+  Syn.CstBuilder.structure_items_of_module_expression module_expression
   |> Result.to_option
+  |> function
+  | Some items ->
+      items
+  | None ->
+      None
 
-and nested_signature_items_from_syntax_node syntax_node =
-  Syn.CstBuilder.signature_items_from_syntax_node syntax_node
+and nested_signature_items_from_module_type module_type =
+  Syn.CstBuilder.signature_items_of_module_type module_type
   |> Result.to_option
+  |> function
+  | Some items ->
+      items
+  | None ->
+      None
 
 and render_module_type_constraint ~keyword (constraint_ : Syn.Cst.module_type_constraint) =
   let separator =
@@ -5222,8 +5232,8 @@ and render_module_type_doc = function
       doc_of_ident path
   | Syn.Cst.ModuleType.TypeOf { module_path; _ } ->
       Doc.concat [ Doc.text "module"; Doc.space; kw_type; Doc.space; Doc.text "of"; Doc.space; doc_of_ident module_path ]
-  | Syn.Cst.ModuleType.Signature { syntax_node; signature_syntax_node } ->
-      (match nested_signature_items_from_syntax_node signature_syntax_node with
+  | (Syn.Cst.ModuleType.Signature { syntax_node; _ } as module_type) ->
+      (match nested_signature_items_from_module_type module_type with
       | Some items ->
           let body = render_signature_items ~source_node:syntax_node items in
           Doc.concat
@@ -5282,8 +5292,8 @@ and render_module_application_argument = function
 and render_module_expression_doc = function
   | Syn.Cst.ModuleExpression.Path path ->
       doc_of_ident path
-  | Syn.Cst.ModuleExpression.Structure { syntax_node; item_syntax_nodes = _ } ->
-      (match nested_structure_items_from_syntax_node syntax_node with
+  | (Syn.Cst.ModuleExpression.Structure { syntax_node; item_syntax_nodes = _ } as module_expression) ->
+      (match nested_structure_items_from_module_expression module_expression with
       | Some items ->
           let body = render_structure_items ~source_node:syntax_node items in
           Doc.concat

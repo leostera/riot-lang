@@ -7795,6 +7795,13 @@ let structure_items_from_syntax_nodes = fun nodes ->
     )
   | exception Bail error -> Error error
 
+let structure_items_of_module_expression = function
+  | Cst.ModuleExpression.Structure {syntax_node; _} ->
+      structure_items_from_syntax_node syntax_node
+      |> Result.map Option.some
+  | _ ->
+      Ok None
+
 let normalize_signature_items = fun ~source items -> items
 |> coalesce_signature_type_declaration_groups
 |> normalize_signature_items_owned_trivia ~source
@@ -7840,3 +7847,10 @@ let signature_items_from_syntax_nodes = fun nodes ->
           Ok items
     )
   | exception Bail error -> Error error
+
+let signature_items_of_module_type = function
+  | Cst.ModuleType.Signature {signature_syntax_node; _} ->
+      signature_items_from_syntax_node signature_syntax_node
+      |> Result.map Option.some
+  | _ ->
+      Ok None

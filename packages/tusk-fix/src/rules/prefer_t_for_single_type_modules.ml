@@ -63,9 +63,6 @@ let single_type_decl_token item_nodes =
   | _ ->
       None
 
-let signature_item_nodes signature_syntax_node =
-  direct_non_trivia_nodes signature_syntax_node
-
 let make_diagnostic token =
   let original = Syn.Ceibo.Red.SyntaxToken.text token in
   Diagnostic.make ~severity:Warning
@@ -76,25 +73,31 @@ let make_diagnostic token =
 
 let diagnostic_for_module_decl decl =
   match Syn.Cst.ModuleDeclaration.module_expression decl with
-  | Some (Syn.Cst.ModuleExpression.Structure { item_syntax_nodes; _ }) -> (
-      match single_type_decl_token item_syntax_nodes with
-      | Some token when Syn.Ceibo.Red.SyntaxToken.text token != "t" ->
-          Some (make_diagnostic token)
-      | _ ->
+  | Some module_expression -> (
+      match Syn.CstBuilder.structure_items_of_module_expression module_expression with
+      | Ok (Some items) -> (
+          match List.map Syn.Cst.StructureItem.syntax_node items |> single_type_decl_token with
+          | Some token when Syn.Ceibo.Red.SyntaxToken.text token != "t" ->
+              Some (make_diagnostic token)
+          | _ ->
+              None)
+      | Ok None
+      | Error _ ->
           None)
-  | _ ->
-      None
 
 let diagnostic_for_module_type_decl decl =
   match Syn.Cst.ModuleTypeDeclaration.module_type decl with
-  | Some (Syn.Cst.ModuleType.Signature { signature_syntax_node; _ }) -> (
-      match signature_item_nodes signature_syntax_node |> single_type_decl_token with
-      | Some token when Syn.Ceibo.Red.SyntaxToken.text token != "t" ->
-          Some (make_diagnostic token)
-      | _ ->
+  | Some module_type -> (
+      match Syn.CstBuilder.signature_items_of_module_type module_type with
+      | Ok (Some items) -> (
+          match List.map Syn.Cst.SignatureItem.syntax_node items |> single_type_decl_token with
+          | Some token when Syn.Ceibo.Red.SyntaxToken.text token != "t" ->
+              Some (make_diagnostic token)
+          | _ ->
+              None)
+      | Ok None
+      | Error _ ->
           None)
-  | _ ->
-      None
 
 let diagnostics_for_items source_file =
   match source_file with

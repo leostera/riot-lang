@@ -1170,12 +1170,12 @@ let tests =
             {
               module_expression =
                 Some
-                  (Syn.Cst.ModuleExpression.Structure { item_syntax_nodes; _ });
+                  ((Syn.Cst.ModuleExpression.Structure _) as module_expression);
               _;
             }
           :: _ -> (
-            match Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes with
-            | Ok [ Syn.Cst.StructureItem.LetBinding binding ] ->
+            match Syn.CstBuilder.structure_items_of_module_expression module_expression with
+            | Ok (Some [ Syn.Cst.StructureItem.LetBinding binding ]) ->
                 Test.assert_equal ~expected:"answer"
                   ~actual:(Syn.Cst.LetBinding.name binding);
                 Ok ()
@@ -1703,19 +1703,24 @@ let tests =
         | Syn.Cst.StructureItem.ModuleTypeDeclaration
             {
               module_type =
-                Some (Syn.Cst.ModuleType.Signature { signature_syntax_node; _ });
+                Some ((Syn.Cst.ModuleType.Signature { signature_syntax_node; _ }) as module_type);
               _;
             }
-          :: _ -> (
-            match Syn.CstBuilder.signature_items_from_syntax_node signature_syntax_node with
-            | Ok [ Syn.Cst.SignatureItem.ValueDeclaration decl ] ->
+          :: _ ->
+            Test.assert_equal ~expected:"SIGNATURE"
+              ~actual:
+                (SyntaxKind.to_string
+                   (Ceibo.Red.SyntaxNode.kind signature_syntax_node));
+            (match Syn.CstBuilder.signature_items_of_module_type module_type with
+            | Ok (Some [ Syn.Cst.SignatureItem.ValueDeclaration decl ]) ->
                 Test.assert_equal ~expected:"x"
                   ~actual:(Syn.Cst.Token.text decl.name_token);
                 Ok ()
             | Ok _ ->
                 Error "expected nested signature items to lift a val declaration"
             | Error _ ->
-                Error "expected nested signature items to reify successfully")
+                Error "expected nested signature items to reify successfully"
+            )
         | _ ->
             Error "expected module type declaration with signature body");
     Test.case "cst builder normalizes nested signature grouped type docs and headings"
@@ -1753,15 +1758,17 @@ let tests =
         | [ Syn.Cst.SignatureItem.ModuleDeclaration
               {
                 module_type =
-                  Some (Syn.Cst.ModuleType.Signature { signature_syntax_node; _ });
+                  Some ((Syn.Cst.ModuleType.Signature _) as module_type);
                 _;
               } ] -> (
-            match Syn.CstBuilder.signature_items_from_syntax_node signature_syntax_node with
-            | Ok [ Syn.Cst.SignatureItem.Docstring types_doc;
-                   Syn.Cst.SignatureItem.TypeDeclaration token_decl;
-                   Syn.Cst.SignatureItem.TypeDeclaration node_decl;
-                   Syn.Cst.SignatureItem.Docstring construction_doc;
-                   Syn.Cst.SignatureItem.ValueDeclaration _ ] ->
+            match Syn.CstBuilder.signature_items_of_module_type module_type with
+            | Ok
+                (Some
+                  [ Syn.Cst.SignatureItem.Docstring types_doc;
+                    Syn.Cst.SignatureItem.TypeDeclaration token_decl;
+                    Syn.Cst.SignatureItem.TypeDeclaration node_decl;
+                    Syn.Cst.SignatureItem.Docstring construction_doc;
+                    Syn.Cst.SignatureItem.ValueDeclaration _ ]) ->
                 Test.assert_equal ~expected:"(** ## Types *)"
                   ~actual:(Syn.Cst.Docstring.text types_doc);
                 Test.assert_equal ~expected:"(** ## Construction *)"
@@ -1823,15 +1830,17 @@ let tests =
         | [ Syn.Cst.SignatureItem.ModuleDeclaration
               {
                 module_type =
-                  Some (Syn.Cst.ModuleType.Signature { signature_syntax_node; _ });
+                  Some ((Syn.Cst.ModuleType.Signature _) as module_type);
                 _;
               } ] -> (
-            match Syn.CstBuilder.signature_items_from_syntax_node signature_syntax_node with
-            | Ok [ Syn.Cst.SignatureItem.Docstring heading;
-                   Syn.Cst.SignatureItem.TypeDeclaration tool_decl;
-                   Syn.Cst.SignatureItem.TypeDeclaration resource_decl;
-                   Syn.Cst.SignatureItem.TypeDeclaration prompt_decl;
-                   Syn.Cst.SignatureItem.TypeDeclaration sampling_decl ] ->
+            match Syn.CstBuilder.signature_items_of_module_type module_type with
+            | Ok
+                (Some
+                  [ Syn.Cst.SignatureItem.Docstring heading;
+                    Syn.Cst.SignatureItem.TypeDeclaration tool_decl;
+                    Syn.Cst.SignatureItem.TypeDeclaration resource_decl;
+                    Syn.Cst.SignatureItem.TypeDeclaration prompt_decl;
+                    Syn.Cst.SignatureItem.TypeDeclaration sampling_decl ]) ->
                 Test.assert_equal ~expected:"(** {2 Capabilities} *)"
                   ~actual:(Syn.Cst.Docstring.text heading);
                 Test.assert_equal ~expected:1
