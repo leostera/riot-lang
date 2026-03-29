@@ -52,14 +52,14 @@
           "module_type": {
             "tag": "signature",
             "syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 33,
                 "end": 121
               }
             },
             "signature_syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 33,
                 "end": 121
@@ -97,14 +97,14 @@
             "module_type": {
               "tag": "signature",
               "syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 33,
                   "end": 121
                 }
               },
               "signature_syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 33,
                   "end": 121
@@ -315,14 +315,14 @@
           "module_type": {
             "tag": "signature",
             "syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 413,
                 "end": 440
               }
             },
             "signature_syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 413,
                 "end": 440
@@ -360,14 +360,14 @@
             "module_type": {
               "tag": "signature",
               "syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 413,
                   "end": 440
                 }
               },
               "signature_syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 413,
                   "end": 440

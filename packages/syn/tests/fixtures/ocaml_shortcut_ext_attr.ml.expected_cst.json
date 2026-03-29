@@ -4303,14 +4303,14 @@
                 "module_type": {
                   "tag": "signature",
                   "syntax_node": {
-                    "kind": "IDENT_EXPR",
+                    "kind": "SIG_EXPR",
                     "span": {
                       "start": 1599,
                       "end": 1607
                     }
                   },
                   "signature_syntax_node": {
-                    "kind": "IDENT_EXPR",
+                    "kind": "SIG_EXPR",
                     "span": {
                       "start": 1599,
                       "end": 1607
@@ -5428,14 +5428,14 @@
           "module_type": {
             "tag": "signature",
             "syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 2036,
                 "end": 2436
               }
             },
             "signature_syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 2036,
                 "end": 2436

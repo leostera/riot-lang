@@ -51,14 +51,14 @@
           "module_type": {
             "tag": "signature",
             "syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 57,
                 "end": 89
               }
             },
             "signature_syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 57,
                 "end": 89

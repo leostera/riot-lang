@@ -80,14 +80,14 @@
             "result": {
               "tag": "signature",
               "syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 34,
                   "end": 56
                 }
               },
               "signature_syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 34,
                   "end": 56

@@ -32,14 +32,14 @@
           "module_type": {
             "tag": "signature",
             "syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 10,
                 "end": 64
               }
             },
             "signature_syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 10,
                 "end": 64
@@ -84,14 +84,14 @@
             "module_type": {
               "tag": "signature",
               "syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 10,
                   "end": 64
                 }
               },
               "signature_syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 10,
                   "end": 64

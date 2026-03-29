@@ -31,14 +31,14 @@
           "module_type": {
             "tag": "signature",
             "syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 15,
                 "end": 23
               }
             },
             "signature_syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 15,
                 "end": 23

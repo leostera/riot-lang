@@ -466,11 +466,18 @@ let parse_ident = fun parser diagnostic_fn ->
 
 (* Return found token as dummy *)
 
-(** Convert Token.token_kind to Syntax_kind.t
+(** Convert trivia kinds to their trivia syntax kinds. *)
+let trivia_kind_to_syntax_kind =
+  function
+  | Token.WhitespaceTrivia -> Syntax_kind.WHITESPACE
+  | Token.CommentTrivia _ -> Syntax_kind.COMMENT
+  | Token.DocstringTrivia _ -> Syntax_kind.DOCSTRING
 
-    For now, we map all tokens to expression/pattern kinds. TODO: Add proper
-    token-level syntax kinds to Syntax_kind.t *)
-let token_kind_to_syntax_kind =
+(** Convert token kinds to the syntax kinds used by parser-built green tokens.
+
+    Most real tokens still reuse nearby expression/pattern kinds because the
+    green tree models syntax nodes, not a separate token-kind enum. *)
+let syntax_kind_of_token_kind =
   function
   | Token.Whitespace -> Syntax_kind.WHITESPACE
   | Token.Comment _ -> Syntax_kind.COMMENT
@@ -497,18 +504,14 @@ let make_node = fun kind children ->
 
 (** Make an ERROR node with diagnostic *)
 let green_trivia_of_token_trivia = fun parser (trivia : Token.trivia) ->
-  let kind =
-    trivia.Token.kind
-    |> Token.token_kind_of_trivia_kind
-    |> token_kind_to_syntax_kind
-  in
+  let kind = trivia_kind_to_syntax_kind trivia.Token.kind in
   let text = Token_cursor.view parser.cursor trivia.Token.span in
   let width = String.length text in
   Ceibo.Green.make_trivia ~kind ~text ~width
 
 let make_token = fun parser token ->
   let token_kind = token.Token.kind in
-  let syntax_kind = token_kind_to_syntax_kind token_kind in
+  let syntax_kind = syntax_kind_of_token_kind token_kind in
   let text = Token_cursor.view parser.cursor token.Token.span in
   let width = String.length text in
   let leading_trivia =

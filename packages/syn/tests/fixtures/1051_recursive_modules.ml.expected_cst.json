@@ -41,14 +41,14 @@
               "module_type": {
                 "tag": "signature",
                 "syntax_node": {
-                  "kind": "IDENT_EXPR",
+                  "kind": "SIG_EXPR",
                   "span": {
                     "start": 14,
                     "end": 36
                   }
                 },
                 "signature_syntax_node": {
-                  "kind": "IDENT_EXPR",
+                  "kind": "SIG_EXPR",
                   "span": {
                     "start": 14,
                     "end": 36
@@ -86,14 +86,14 @@
                 "module_type": {
                   "tag": "signature",
                   "syntax_node": {
-                    "kind": "IDENT_EXPR",
+                    "kind": "SIG_EXPR",
                     "span": {
                       "start": 14,
                       "end": 36
                     }
                   },
                   "signature_syntax_node": {
-                    "kind": "IDENT_EXPR",
+                    "kind": "SIG_EXPR",
                     "span": {
                       "start": 14,
                       "end": 36
@@ -124,14 +124,14 @@
               "module_type": {
                 "tag": "signature",
                 "syntax_node": {
-                  "kind": "IDENT_EXPR",
+                  "kind": "SIG_EXPR",
                   "span": {
                     "start": 71,
                     "end": 93
                   }
                 },
                 "signature_syntax_node": {
-                  "kind": "IDENT_EXPR",
+                  "kind": "SIG_EXPR",
                   "span": {
                     "start": 71,
                     "end": 93
@@ -169,14 +169,14 @@
                 "module_type": {
                   "tag": "signature",
                   "syntax_node": {
-                    "kind": "IDENT_EXPR",
+                    "kind": "SIG_EXPR",
                     "span": {
                       "start": 71,
                       "end": 93
                     }
                   },
                   "signature_syntax_node": {
-                    "kind": "IDENT_EXPR",
+                    "kind": "SIG_EXPR",
                     "span": {
                       "start": 71,
                       "end": 93

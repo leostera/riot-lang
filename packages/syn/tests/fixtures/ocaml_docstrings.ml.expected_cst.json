@@ -92,14 +92,14 @@
           "module_type": {
             "tag": "signature",
             "syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 280,
                 "end": 3575
               }
             },
             "signature_syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 280,
                 "end": 3575
@@ -186,14 +186,14 @@
             "module_type": {
               "tag": "signature",
               "syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 280,
                   "end": 3575
                 }
               },
               "signature_syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 280,
                   "end": 3575
@@ -2899,14 +2899,14 @@
           "module_type": {
             "tag": "signature",
             "syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 17275,
                 "end": 17414
               }
             },
             "signature_syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 17275,
                 "end": 17414

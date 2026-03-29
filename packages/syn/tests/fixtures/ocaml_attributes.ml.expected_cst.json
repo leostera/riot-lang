@@ -862,14 +862,14 @@
             "module_type": {
               "tag": "signature",
               "syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 424,
                   "end": 570
                 }
               },
               "signature_syntax_node": {
-                "kind": "IDENT_EXPR",
+                "kind": "SIG_EXPR",
                 "span": {
                   "start": 424,
                   "end": 570
@@ -938,14 +938,14 @@
           "module_type": {
             "tag": "signature",
             "syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 612,
                 "end": 629
               }
             },
             "signature_syntax_node": {
-              "kind": "IDENT_EXPR",
+              "kind": "SIG_EXPR",
               "span": {
                 "start": 612,
                 "end": 629
