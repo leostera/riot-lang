@@ -111,40 +111,8 @@ let text_of_syntax_node = fun syntax_node ->
       in
       first_text ^ rest_text
 
-let string_contains_substring = fun text pattern ->
-  let text_length = String.length text in
-  let pattern_length = String.length pattern in
-  let rec loop = fun index ->
-    if index + pattern_length > text_length then
-      false
-    else if String.sub text index pattern_length = pattern then
-      true
-    else
-      loop (index + 1)
-  in
-  pattern_length > 0 && loop 0
-
 let token_is_phrase_separator = fun token ->
   String.equal (Syn.Ceibo.Red.SyntaxToken.text token) semicolon_text
-
-let normalized_source_length = fun source ->
-  let rec loop = fun index in_whitespace acc ->
-    if index >= String.length source then
-      acc
-    else
-      match source.[index] with
-      | ' '
-      | '\t'
-      | '\n'
-      | '\r' ->
-          if in_whitespace then
-            loop (index + 1) true acc
-          else
-            loop (index + 1) true (acc + 1)
-      | _ ->
-          loop (index + 1) false (acc + 1)
-  in
-  loop 0 true 0
 
 let trim_trailing_layout_whitespace = fun text ->
   let rec find_last_non_layout = fun index ->

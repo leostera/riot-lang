@@ -73,6 +73,7 @@ This file is _yours_. Keep it up to date after every big change.
 - singleton list patterns now use explicit formatter edge spacing; `lower.ml` no longer sniffs source text for `"[ "` / `" ]"` to preserve original spacing.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `render_trivia_between_spans`, `parse_trivia_between_offsets`, `trailing_inline_comment_suffix`, `leading_inline_comment_between_offsets`, and `split_leading_inline_comment_source` are gone from `lower.ml`; the remaining raw-trivia debt is in `doc_of_owned_trivia` separator recovery and source/text heuristics, not generic between-node span replay.
+- `packages/krasny/src/source.ml` is trimmed to the live helper surface `lower.ml` still uses; the old replay-era helper chain for trailing comments, pattern text, fresh match names, and comment-like substring probes is gone.
 
 ## Working Style
 
@@ -113,7 +114,7 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Remove source-sniffing and token-text heuristics used to make rendering decisions
   - `type_declaration_requires_source_preservation`
   - rendered-source substring checks such as `[@` / `[%%expect]` preservation gates
-  - multiline/layout heuristics currently driven by `text_of_syntax_node` or `string_contains_substring`
+  - multiline/layout heuristics currently driven by reconstructed node text
   - token-text scans over `SyntaxNode.tokens`, e.g. searching for `"="` then `"fun"` or reconstructing poly-variant inherit paths from token text lists
 
 - [ ] Remove node-text-driven layout heuristics from `lower.ml`
@@ -137,7 +138,6 @@ This file is _yours_. Keep it up to date after every big change.
   - do not derive nested/top-level source windows from `ctx.source` + `source_node` spans just to support fallback formatting
 
 - [ ] Shrink `packages/krasny/src/source.ml` to the minimal structural-support surface
-  - delete helpers that are dead after the source-preserving fallback removal, such as `split_trailing_comment_block`, `source_of_pattern`, `fresh_match_parameter_name`, `contains_comment_like_text`, and their private helper chain if they are no longer referenced
   - keep `Source` focused on the remaining supported structural utilities, not as a grab-bag for historical source-replay helpers
 
 - [ ] Remove public/docs-level assumptions that unsupported shapes are preserved from source
