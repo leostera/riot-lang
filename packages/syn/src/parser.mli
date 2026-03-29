@@ -86,11 +86,8 @@ type parse_result = {
   source : string;
   (** The original source text that produced this parse result. *)
   tokens : Token.t list;
-  (** The original lexer token stream, before parser-compatibility trivia
-      flattening.
-
-      During the trivia migration this remains the lossless source of token
-      ownership, including `EOF.leading_trivia` for trailing file trivia. *)
+  (** The original lexer token stream, including token-attached trivia and
+      `EOF.leading_trivia` for trailing file trivia. *)
   kind :
     [
       | `Implementation

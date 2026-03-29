@@ -7,7 +7,7 @@ type t = {
   mutable leading_trivia_consumed : bool;
   length : int;
   source : string;
-  (* Keep source for view function *)
+  (* Keep source for span-based debug views. *)
 }
 
 let create = fun ~source tokens ->
