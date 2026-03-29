@@ -4,7 +4,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import GitHubAvatar from "@/components/GitHubAvatar.astro";
 import SiteLayout from "../../layouts/SiteLayout.astro";
@@ -52,9 +51,6 @@ const latestUpdate = ownerView?.latest_update_at
               <CardTitle className="text-sm">
                 <GitHubAvatar login={user} avatarUrl={ownerAvatarUrl} href={`/u/${user}`} />
               </CardTitle>
-              <CardDescription>
-                Public packages published from repositories owned by this user.
-              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 py-4">
               <div class="grid gap-1">
