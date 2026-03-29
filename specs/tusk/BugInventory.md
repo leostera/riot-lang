@@ -1,0 +1,200 @@
+# Tusk Bug Inventory
+
+This file is the running list of `tusk` properties that currently look buggy
+under the extracted specs.
+
+The goal here is triage, not fixes and not OCaml tests yet.
+
+Workflow:
+
+- extract one small spec slice from the current implementation
+- run TLC against a passing smoke model and, when useful, a failing bug model
+- if the spec exposes a likely design bug, add the property here
+- only after this list feels complete enough do we switch to writing OCaml tests
+
+## Status Meanings
+
+- `suspected`: the property looks wrong from code reading or partial modeling,
+  but we do not yet have a tight failing spec
+- `spec-failing`: the current extracted TLA+ slice produces a counterexample
+- `spec-failing + impl-reproduced`: the spec fails and we have also reproduced
+  the same behavior directly against the current implementation
+
+## Current Bug Properties
+
+### 1. Action Cache Must Respect Command Order
+
+Status: `spec-failing`
+
+Spec slice:
+- `ActionCache.tla`
+- `ActionCacheCommandOrderBug.cfg`
+
+Property:
+- Two `BuildForeignDependency` actions with different ordered command sequences
+  must not share the same cache entry.
+
+Why it looks buggy:
+- The current action hash normalizes `build_cmd` as a multiset, so
+  `["Prep", "Compile"]` and `["Compile", "Prep"]` collide.
+- The cache machine can then reuse a stored artifact for the wrong command
+  order.
+
+Primary source area:
+- `packages/tusk-planner/src/action.ml`
+- `packages/tusk-executor/src/action_executor.ml`
+
+Counterexample shape:
+- `FirstBuild` stores the result of `<<"Prep", "Compile">>`
+- `SecondBuild` with `<<"Compile", "Prep">>` hits cache instead of rebuilding
+
+Deferred follow-up:
+- write an OCaml regression test only after we finish the broader bug-inventory
+  pass
+
+### 2. Module Wiring Must Prefer Implementation Nodes When Both Exist
+
+Status: `spec-failing + impl-reproduced`
+
+Spec slice:
+- `ModuleGraphWiring.tla`
+- `ModuleGraphWiringPreferenceBug.cfg`
+
+Property:
+- When both `Foo.mli` and `Foo.ml` exist for a referenced module, downstream
+  graph edges should prefer the implementation node instead of the interface
+  node.
+
+Why it looks buggy:
+- Registry lookup returns both candidates for `Foo`
+- implementation registration is prepended ahead of interface registration
+- the current `MLI -> ML` filter then drops `Foo.ml` for interface consumers
+- the remaining edge points only to `Foo.mli`
+
+Primary source area:
+- `packages/tusk-planner/src/module_graph.ml`
+- `packages/tusk-planner/src/module_registry.ml`
+
+Implementation reproduction:
+- `_build/debug/aarch64-apple-darwin/out/tusk-planner/dependency_resolution_tests run-tests "module graph prefers implementation when interface exists"`
+- current result: `expected bar.mli to depend on foo.ml implementation node only`
+
+Counterexample shape:
+- `BarMLI` processes `FooML` first and skips it
+- `BarMLI` then keeps only `FooMLI`
+
+Deferred follow-up:
+- write an OCaml regression test only after we finish the broader bug-inventory
+  pass
+
+### 3. Module Dependency Resolution Must Respect The Source File's Namespace
+
+Status: `spec-failing`
+
+Spec slice:
+- `ModuleGraphNamespaceResolution.tla`
+- `ModuleGraphNamespaceResolutionBug.cfg`
+
+Property:
+- When a source file reconstructs a qualified dependency name in its own nested
+  namespace, resolution should prefer the matching namespaced module over
+  same-simple-name modules from other namespaces.
+
+Why it looks buggy:
+- `wire_dependencies` reconstructs a namespaced `Module_name` for each
+  dependency based on the source file's subdirectory
+- the next lookup step converts that dependency back to its simple name
+- the registry is keyed only by simple names, so lookup returns every `Foo`
+  regardless of namespace
+- the current machine then wires every returned candidate
+
+Primary source area:
+- `packages/tusk-planner/src/module_graph.ml`
+- `packages/tusk-planner/src/module_registry.ml`
+
+Counterexample shape:
+- the source reconstructs `Pkg__Sub__Foo`
+- simple-name lookup for `Foo` returns both `Pkg__Foo` and `Pkg__Sub__Foo`
+- both edges are added instead of preferring only `Pkg__Sub__Foo`
+
+Deferred follow-up:
+- write an OCaml regression test only after we finish the broader bug-inventory
+  pass
+
+### 4. Module Dependency Resolution Must Respect Alias-Exposed Targets
+
+Status: `spec-failing`
+
+Spec slice:
+- `ModuleGraphAliasResolution.tla`
+- `ModuleGraphAliasResolutionBug.cfg`
+
+Property:
+- When a module has alias context that exposes a specific qualified target for a
+  simple dependency name, dependency wiring should prefer the alias-matched
+  target over unrelated same-simple-name modules.
+
+Why it looks buggy:
+- scan-time graph construction records alias nodes in `open_modules`
+- action generation already turns those alias nodes into `-open` compiler flags
+- but `wire_dependencies` never consults alias context when adding graph edges
+- simple-name registry lookup therefore returns every `Foo`, even when the open
+  alias context points specifically at `Pkg__Util__Foo`
+
+Primary source area:
+- `packages/tusk-planner/src/module_graph.ml`
+- `packages/tusk-planner/src/alias_module.ml`
+- `packages/tusk-planner/src/action_graph.ml`
+
+Counterexample shape:
+- alias context says `Foo` should mean `Pkg__Util__Foo`
+- simple-name lookup for `Foo` returns both `Pkg__Foo` and `Pkg__Util__Foo`
+- both edges are added instead of preferring only `Pkg__Util__Foo`
+
+Deferred follow-up:
+- write an OCaml regression test only after we finish the broader bug-inventory
+  pass
+
+### 5. Allowed Native Source Files Must Survive Scanner Tagging And Filtering
+
+Status: `spec-failing`
+
+Spec slice:
+- `ModuleScannerPipeline.tla`
+- `ModuleScannerNativeTagBug.cfg`
+
+Property:
+- Allowed `.c` and `.h` source files should survive the scanner + filter
+  pipeline as dedicated `C` / `H` entries.
+
+Why it looks buggy:
+- `module_scanner.ml` defines first-class `C` and `H` entry kinds
+- `filter_entries` has explicit cases that retain `C` and `H` when allowed
+- but the current `scan_directory` tagging logic only recognizes `.ml` and
+  `.mli`
+- every other extension becomes `Other`, so allowed `.c` / `.h` files are
+  dropped before the planner can use them
+
+Primary source area:
+- `packages/tusk-planner/src/module_scanner.ml`
+- `packages/tusk-planner/src/module_graph.ml`
+
+Counterexample shape:
+- `src/stubs.c` and `src/api.h` are both in the allowed source set
+- current scanner tags both as `Other`
+- filtering drops both instead of keeping typed native-source entries
+
+Deferred follow-up:
+- write an OCaml regression test only after we finish the broader bug-inventory
+  pass
+
+## Next Candidates To Model
+
+These are not yet bug entries. They are the next properties most likely to
+surface design issues once modeled.
+
+- Planner bundle cache rehydration and stale-version invalidation
+- Action-scheduler readiness, skip propagation, and completion accounting
+- Package-level cache rematerialization versus rebuild decisions
+- Package-export manifest deduplication and rematerialization rules
+- Shared package-planner bundle cache hash/version invalidation rules
