@@ -290,80 +290,6 @@ let syntax_node_has_explicit_fun_rhs = fun syntax_node ->
   in
   loop false tokens
 
-let is_identifier_like_text = fun text ->
-  let is_alpha_or_underscore = fun ch ->
-    (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch = '_' in
-  let len = String.length text in
-  if len = 0 then
-    false
-  else
-    let ch = String.get text 0 in
-    is_alpha_or_underscore ch || if ch = '#' && len > 1 then
-      let next = String.get text 1 in
-      is_alpha_or_underscore next
-    else if ch = '\\' then
-      true
-    else
-      false
-
-let inherited_poly_variant_path_doc = fun syntax_node ->
-  let tokens =
-    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.map Syn.Ceibo.Red.SyntaxToken.text
-  in
-  let is_ignorable =
-    function
-    | "["
-    | "]"
-    | "|"
-    | "<"
-    | ">" ->
-        true
-    | _ ->
-        false
-  in
-  let rec trim_trailing_dot =
-    function
-    | [] ->
-        []
-    | "." :: rest ->
-        trim_trailing_dot rest
-    | parts ->
-        parts
-  in
-  let rec scan = fun started parts ->
-    function
-    | [] ->
-        trim_trailing_dot parts |> List.rev
-    | text :: rest when is_ignorable text && not started ->
-        scan false parts rest
-    | text :: rest when is_identifier_like_text text && not started ->
-        scan true (text :: parts) rest
-    | "." :: rest when started -> (
-        match parts with
-        | "." :: _ ->
-            trim_trailing_dot parts |> List.rev
-        | _ ->
-            scan true ("." :: parts) rest
-      )
-    | text :: rest when started && is_identifier_like_text text -> (
-        match parts with
-        | "." :: _ ->
-            scan true (text :: parts) rest
-        | _ ->
-            trim_trailing_dot parts |> List.rev
-      )
-    | _ :: _ when started ->
-        trim_trailing_dot parts |> List.rev
-    | _ :: rest ->
-        scan started parts rest
-  in
-  match scan false [] tokens with
-  | [] ->
-      None
-  | segments ->
-      Some (Doc.text (String.concat "" segments))
-
 let push_pending_break = fun pending ~position break_count ->
   if break_count <= 0 then
     pending
@@ -1295,18 +1221,8 @@ and render_poly_variant_field =
         | Some payload_type ->
             Doc.concat [ head; Doc.space; kw_of; Doc.space; render_core_type payload_type ]
       )
-  | Syn.Cst.RowField.Inherit { syntax_node; type_ } -> (
-      match inherited_poly_variant_path_doc syntax_node with
-      | Some doc ->
-          doc
-      | None -> (
-          match type_ with
-          | Syn.Cst.CoreType.Constr { constructor_path; arguments = []; _ } ->
-              doc_of_ident constructor_path
-          | _ ->
-              render_core_type type_
-        )
-    )
+  | Syn.Cst.RowField.Inherit { type_; _ } ->
+      render_core_type type_
 and render_poly_variant_type = fun ?(field_indent = 2) poly_variant ->
   let open_doc =
     match Syn.Cst.PolyVariant.kind poly_variant with

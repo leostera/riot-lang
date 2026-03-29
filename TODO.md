@@ -51,6 +51,7 @@ This file is _yours_. Keep it up to date after every big change.
 - module-pack, assert, lazy, while, for, method-call, new, object-override, instance-variable-assign, typed, polymorphic, and coerce expressions now lower structurally; expression/object extensions fail explicitly instead of falling through raw fallback.
 - optional parameter defaults and typed binding patterns now survive the `Syn.Cst` lift structurally, and `krasny` renders parameters from CST shape instead of `Source.source_of_parameter`.
 - signature `val` declarations now render names from CST token structure; `krasny` no longer reparses declaration source to recover operator names before `:`.
+- inherited polymorphic-variant rows now render directly from `Syn.Cst.RowField.Inherit.type_`; `krasny` no longer reconstructs inherited row paths by scanning token text.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `lower.ml` still contains source/text heuristics and one remaining source-backed phrase-boundary preservation path that should be treated as debt.
@@ -93,7 +94,6 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Remove source-sniffing and token-text heuristics used to make rendering decisions
   - `syntax_node_has_explicit_fun_rhs`
-  - `inherited_poly_variant_path_doc`
   - `type_declaration_requires_source_preservation`
   - rendered-source substring checks such as `[@` / `[%%expect]` preservation gates
   - multiline/layout heuristics currently driven by `text_of_syntax_node` or `string_contains_substring`
