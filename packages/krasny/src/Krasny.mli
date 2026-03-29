@@ -16,9 +16,9 @@ val format_error_to_string : format_error -> string
 
     The current implementation lowers the supported CST subset through an
     internal document tree before rendering to text. Mixed implementation files
-    keep unsupported top-level items verbatim and only rewrite supported `let`
-    bindings when that rewrite is known to be safe. Broken files fail because
-    formatting requires a successful CST lift. *)
+    preserve unsupported top-level items from source and only rewrite
+    supported `let` bindings when that rewrite is known to be safe. Broken
+    files fail because formatting requires a successful CST lift. *)
 val format : Syn.Parser.parse_result -> (string, format_error) result
 
 (** `syntax_hash result` computes a normalized hash of the parsed concrete

@@ -54,7 +54,7 @@ For every future cleanup slice:
 - Top-level and nested structure/signature ownership run through shared ordered-item passes built from token order.
 - Variant constructors and record fields are the only explicit member-stream grammars today.
 - `sig ... end` now has an explicit `SIG_EXPR` syntax kind; `syn` no longer recognizes signature module types by string-sniffing an `IDENT_EXPR` token stream.
-- `krasny` renders top-level, nested, grouped-type, and record-body ownership from CST streams plus per-node `owned_trivia`; verbatim/source fallbacks rebuild text from real token bodies plus later-token `leading_trivia`.
+- `krasny` renders top-level, nested, grouped-type, and record-body ownership from CST streams plus per-node `owned_trivia`; source-preserving fallbacks rebuild text from real token bodies plus later-token `leading_trivia`.
 
 ## Maintenance Backlog
 

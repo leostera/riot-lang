@@ -85,17 +85,17 @@ let text_of_syntax_node = fun syntax_node ->
       in
       first_text ^ rest_text
 
-let doc_of_verbatim_syntax_node = fun node ->
+let doc_of_source_preserved_syntax_node = fun node ->
   text_of_syntax_node node |> Doc.text
 
-let doc_of_verbatim_syntax_node_from_current_source = fun ctx node ->
+let doc_of_source_preserved_syntax_node_from_current_source = fun ctx node ->
   match ctx.source with
   | Some source ->
       Doc.text (Source.source_of_node_from_source source node)
   | None ->
-      doc_of_verbatim_syntax_node node
+      doc_of_source_preserved_syntax_node node
 
-let doc_of_verbatim_syntax_node_span_from_current_source = fun ctx node ->
+let doc_of_source_preserved_syntax_node_span_from_current_source = fun ctx node ->
   let trim_trailing_layout = fun text ->
     let rec find_last_non_layout = fun index ->
       if index < 0 then
@@ -170,9 +170,9 @@ let doc_of_verbatim_syntax_node_span_from_current_source = fun ctx node ->
       let slice = String.sub source start (end_ - start) in
       Doc.text (strip_trailing_partial_item_prefix slice)
   | None ->
-      doc_of_verbatim_syntax_node node
+      doc_of_source_preserved_syntax_node node
 
-let doc_of_node = doc_of_verbatim_syntax_node
+let doc_of_node = doc_of_source_preserved_syntax_node
 
 let string_contains_substring = fun text pattern ->
   let text_length = String.length text in
@@ -744,10 +744,12 @@ let doc_of_core_type = fun ctx type_ ->
       text_of_syntax_node syntax_node |> trim_trailing_layout_whitespace |> Doc.text
 
 let doc_of_module_expression = fun ctx expression ->
-  doc_of_verbatim_syntax_node_from_current_source ctx (Syn.Cst.ModuleExpression.syntax_node expression)
+  doc_of_source_preserved_syntax_node_from_current_source ctx
+    (Syn.Cst.ModuleExpression.syntax_node expression)
 
 let doc_of_module_type = fun ctx module_type ->
-  doc_of_verbatim_syntax_node_from_current_source ctx (Syn.Cst.ModuleType.syntax_node module_type)
+  doc_of_source_preserved_syntax_node_from_current_source ctx
+    (Syn.Cst.ModuleType.syntax_node module_type)
 
 let render_attribute = fun (attribute : Syn.Cst.attribute) ->
   Doc.concat
@@ -1200,7 +1202,7 @@ let rec render_core_type =
   | Syn.Cst.CoreType.FirstClassModule { module_type; _ } ->
       render_first_class_module_type module_type
   | other ->
-      doc_of_verbatim_syntax_node (Syn.Cst.CoreType.syntax_node other)
+      doc_of_source_preserved_syntax_node (Syn.Cst.CoreType.syntax_node other)
 and render_record_core_type_field = fun (field : Syn.Cst.record_type_field) ->
   let type_doc = render_core_type field.field_type in
   let separator =
@@ -1593,7 +1595,7 @@ let type_definition_layout = fun decl ->
   | Syn.Cst.TypeDefinition.Abstract ->
       Inline_definition
 
-let type_declaration_requires_verbatim = fun decl ->
+let type_declaration_requires_source_preservation = fun decl ->
   match Syn.Cst.TypeDeclaration.type_definition decl with
   | Syn.Cst.TypeDefinition.Variant { constructors; _ } ->
       constructors |> List.exists
@@ -1608,13 +1610,15 @@ let type_declaration_requires_verbatim = fun decl ->
   | _ ->
       false
 
-let type_declaration_group_requires_verbatim = fun decl ->
-  type_declaration_requires_verbatim decl
-  || List.exists type_declaration_requires_verbatim (Syn.Cst.TypeDeclaration.and_declarations decl)
+let type_declaration_group_requires_source_preservation = fun decl ->
+  type_declaration_requires_source_preservation decl
+  || List.exists type_declaration_requires_source_preservation
+       (Syn.Cst.TypeDeclaration.and_declarations decl)
 
 let render_single_type_declaration_with_keyword = fun ctx keyword decl ->
-  if type_declaration_requires_verbatim decl then
-    doc_of_verbatim_syntax_node_span_from_current_source ctx (Syn.Cst.TypeDeclaration.syntax_node decl)
+  if type_declaration_requires_source_preservation decl then
+    doc_of_source_preserved_syntax_node_span_from_current_source ctx
+      (Syn.Cst.TypeDeclaration.syntax_node decl)
   else
     let type_name = Syn.Cst.TypeDeclaration.type_name decl in
     let type_definition = Syn.Cst.TypeDeclaration.type_definition decl in
@@ -1717,8 +1721,9 @@ let render_type_declaration_with_keyword = fun ctx keyword decl ->
   let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
   if and_declarations = [] then
     render_type_declaration_member_with_keyword ctx keyword decl
-  else if type_declaration_group_requires_verbatim decl then
-    doc_of_verbatim_syntax_node_span_from_current_source ctx (Syn.Cst.TypeDeclaration.syntax_node decl)
+  else if type_declaration_group_requires_source_preservation decl then
+    doc_of_source_preserved_syntax_node_span_from_current_source ctx
+      (Syn.Cst.TypeDeclaration.syntax_node decl)
   else
     Doc.join blank_line
       (render_type_declaration_member_with_keyword ctx keyword decl
@@ -1876,7 +1881,7 @@ let rec render_pattern =
             Doc.concat [ head; Doc.space; render_pattern payload ]
       )
   | other ->
-      doc_of_verbatim_syntax_node (Syn.Cst.Pattern.syntax_node other)
+      doc_of_source_preserved_syntax_node (Syn.Cst.Pattern.syntax_node other)
 
 let pattern_requires_parens_in_named_parameter =
   function
@@ -2357,11 +2362,11 @@ type lowerer = {
 }
 
 let make_lowerer ctx =
-  let doc_of_verbatim_syntax_node_from_current_source =
-    doc_of_verbatim_syntax_node_from_current_source ctx
+  let doc_of_source_preserved_syntax_node_from_current_source =
+    doc_of_source_preserved_syntax_node_from_current_source ctx
   in
-  let doc_of_verbatim_syntax_node_span_from_current_source =
-    doc_of_verbatim_syntax_node_span_from_current_source ctx
+  let doc_of_source_preserved_syntax_node_span_from_current_source =
+    doc_of_source_preserved_syntax_node_span_from_current_source ctx
   in
   let render_trivia_between_spans = render_trivia_between_spans ctx in
   let doc_of_core_type = doc_of_core_type ctx in
@@ -4243,7 +4248,7 @@ and render_module_type_doc = function
               Doc.text "end";
             ]
       | None ->
-          doc_of_verbatim_syntax_node_from_current_source syntax_node)
+          doc_of_source_preserved_syntax_node_from_current_source syntax_node)
   | Syn.Cst.ModuleType.Functor { parameters; result; _ } ->
       Doc.concat
         [
@@ -4303,7 +4308,7 @@ and render_module_expression_doc = function
               Doc.text "end";
             ]
       | None ->
-          doc_of_verbatim_syntax_node_from_current_source syntax_node)
+          doc_of_source_preserved_syntax_node_from_current_source syntax_node)
   | Syn.Cst.ModuleExpression.Functor { parameters; body; _ } ->
       Doc.concat
         [
@@ -4679,11 +4684,11 @@ and render_signature_item_owned_trivia =
   | Syn.Cst.SignatureItem.Comment _ ->
       None
 
-and render_structure_entry ~source ~source_offset ~span ~preserve_verbatim
-    ~trailing_suffix ~is_last_item item =
+and render_structure_entry ~source ~source_offset ~span ~preserve_source
+    ~trailing_suffix item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
-  let should_preserve_verbatim =
-    preserve_verbatim
+  let should_preserve_source =
+    preserve_source
     || string_contains_substring rendered_source "[@"
     || string_contains_substring rendered_source "[%%expect"
   in
@@ -4696,12 +4701,11 @@ and render_structure_entry ~source ~source_offset ~span ~preserve_verbatim
   in
   let doc =
     let base_doc =
-      if should_preserve_verbatim || structure_item_uses_verbatim_span item then
+      if should_preserve_source || structure_item_uses_source_preservation_span item then
         Doc.text rendered_source
       else (
         match item with
         | Syn.Cst.StructureItem.TypeDeclaration decl ->
-            let _ = is_last_item in
             render_type_declaration_with_keyword kw_type decl
         | _ ->
             render_structure_item item)
@@ -4751,9 +4755,9 @@ and render_structure_entry ~source ~source_offset ~span ~preserve_verbatim
   in
   (doc, is_open_structure_item item, is_trivia, tight_after, false, is_docstring)
 
-and render_signature_entry ~source ~source_offset ~span ~trailing_suffix ~is_last_item item =
+and render_signature_entry ~source ~source_offset ~span ~trailing_suffix item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
-  let should_preserve_verbatim =
+  let should_preserve_source =
     string_contains_substring rendered_source "[@"
     || string_contains_substring rendered_source "[%%expect"
   in
@@ -4766,12 +4770,11 @@ and render_signature_entry ~source ~source_offset ~span ~trailing_suffix ~is_las
   in
   let doc =
     let base_doc =
-      if should_preserve_verbatim || signature_item_uses_verbatim_span item then
+      if should_preserve_source || signature_item_uses_source_preservation_span item then
         Doc.text rendered_source
       else (
         match item with
         | Syn.Cst.SignatureItem.TypeDeclaration decl ->
-            let _ = is_last_item in
             render_type_declaration_with_keyword kw_type decl
         | _ ->
             render_signature_item item)
@@ -4933,7 +4936,7 @@ and render_signature_item item =
   | item ->
       doc_of_node (Syn.Cst.SignatureItem.syntax_node item)
 
-and structure_item_uses_verbatim_span = function
+and structure_item_uses_source_preservation_span = function
   | Syn.Cst.StructureItem.LetBinding _
   | Syn.Cst.StructureItem.TypeDeclaration _
   | Syn.Cst.StructureItem.ExternalDeclaration _
@@ -4975,7 +4978,7 @@ and span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node =
   in
   { Syn.Ceibo.Span.start = start_span.start; end_ = end_span.end_ }
 
-and signature_item_uses_verbatim_span = function
+and signature_item_uses_source_preservation_span = function
   | Syn.Cst.SignatureItem.TypeDeclaration _
   | Syn.Cst.SignatureItem.ModuleDeclaration _
   | Syn.Cst.SignatureItem.RecursiveModuleDeclaration _
@@ -5051,7 +5054,7 @@ and type_declaration_owned_trivia_end = fun decl ->
          Int.max acc (type_declaration_owned_trivia_end declaration))
        current
 
-and structure_item_requires_verbatim_before_expression item next_item =
+and structure_item_requires_source_preservation_before_expression item next_item =
   match item, next_item with
   | Syn.Cst.StructureItem.LetBinding binding, Syn.Cst.StructureItem.Expression _ ->
       not (List.is_empty binding.parameters)
@@ -5089,7 +5092,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
         Syn.Cst.Token.span (Syn.Cst.Docstring.token docstring)
     | _ ->
         let syntax_node = Syn.Cst.StructureItem.syntax_node item in
-        if structure_item_uses_verbatim_span item then
+        if structure_item_uses_source_preservation_span item then
           span_of_syntax_node_nontrivia_bounds syntax_node
         else
           (match item with
@@ -5168,7 +5171,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
           | None ->
               run_span.end_
         in
-        let should_preserve_run_verbatim =
+        let should_preserve_run_source =
           match run_items, trailing_phrase_separator with
           | _ :: _ :: _, _ ->
               true
@@ -5178,7 +5181,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
               false
         in
         let entry =
-          if should_preserve_run_verbatim then
+          if should_preserve_run_source then
             let run_source =
               source_of_relative_span ~source ~source_offset
                 { Syn.Ceibo.Span.start = base_span.start; end_ = preserved_run_end }
@@ -5188,17 +5191,16 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
             match run_items with
             | [ item ] ->
                 render_structure_entry ~source ~source_offset ~span:base_span
-                  ~preserve_verbatim:false ~trailing_suffix:None
-                  ~is_last_item:(remaining = []) item
+                  ~preserve_source:false ~trailing_suffix:None item
             | _ ->
                 assert false
         in
         loop (entry :: acc) remaining
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
-        let preserve_verbatim =
+        let preserve_source =
           match rest with
           | (next, _) :: _ ->
-              structure_item_requires_verbatim_before_expression item next
+              structure_item_requires_source_preservation_before_expression item next
           | [] ->
               false
         in
@@ -5230,7 +5232,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
         in
         let entry =
           render_structure_entry ~source ~source_offset ~span:base_span
-            ~preserve_verbatim ~trailing_suffix ~is_last_item:(rest = []) item
+            ~preserve_source ~trailing_suffix item
         in
         loop (entry :: acc) rest
   in
@@ -5300,7 +5302,7 @@ and render_signature_top_level_items
         span
     | _ ->
         let syntax_node = Syn.Cst.SignatureItem.syntax_node item in
-        if signature_item_uses_verbatim_span item then
+        if signature_item_uses_source_preservation_span item then
           span_of_syntax_node_nontrivia_bounds syntax_node
         else
           span_of_syntax_node_nontrivia_bounds syntax_node
@@ -5337,8 +5339,8 @@ and render_signature_top_level_items
         join_entries (List.rev acc)
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
         let entry =
-          render_signature_entry ~source ~source_offset ~span:base_span ~trailing_suffix:None
-            ~is_last_item:(rest = []) item
+          render_signature_entry ~source ~source_offset ~span:base_span
+            ~trailing_suffix:None item
         in
         loop (entry :: acc) rest
   in
