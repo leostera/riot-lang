@@ -2,19 +2,11 @@
 
 This file is _yours_. Keep it up to date after every big change.
 
-## How You Work
-
-1. Read this file from top to bottom and pick the next unchecked item that is unblocked.
-2. Work until it is complete.
-3. Mark a task complete here only after the listed verification has passed.
-4. Commit after every slice with a conventional commit message.
-5. Prefer `ceibo` / `syn` changes over new `krasny/lower.ml` trivia heuristics.
-
 ## Mission
 
 - [x] Make trivia, comments, and docstrings first-class at the token layer so the CST can derive reliable ownership and `krasny` can become a renderer again
 
-## Invariants
+## Stable Contracts
 
 - Use token `leading_trivia` only; do not add token `trailing_trivia`.
 - Preserve trivia losslessly in `syn`, even when the source placement is weird.
@@ -23,17 +15,7 @@ This file is _yours_. Keep it up to date after every big change.
 - Derive ownership from token order and item/member sequences, not source-gap archaeology.
 - Normalize ugly comment placement in `krasny`, not in `syn`.
 - Keep doc ownership leading-only; postfix docstrings stay preserved but standalone.
-
-## Slice Loop
-
-For every future cleanup slice:
-
-- Add or update the smallest regression first.
-- Land the smallest code change that improves the current token-trivia model.
-- Run focused tests first.
-- Run the slice build command.
-- Commit with a scoped conventional commit message.
-- Update this file before starting the next slice.
+- Keep source-preserving fallback in `krasny` limited to unsupported or ambiguity-sensitive rendering shapes, not ownership recovery.
 
 ## Completed State
 
@@ -56,12 +38,21 @@ For every future cleanup slice:
 - `sig ... end` now has an explicit `SIG_EXPR` syntax kind; `syn` no longer recognizes signature module types by string-sniffing an `IDENT_EXPR` token stream.
 - `krasny` renders top-level, nested, grouped-type, and record-body ownership from CST streams plus per-node `owned_trivia`; source-preserving fallbacks rebuild text from real token bodies plus later-token `leading_trivia`.
 
-## Maintenance Backlog
+## Working Style
 
-- [x] Decide whether `owned_trivia` should stay public as-is or be renamed/simplified now that the token-trivia model is stable.
-- [ ] Keep trimming stale rollout-era comments/helpers in `packages/syn` and `packages/krasny` when compiler/readability audits surface them.
-- [ ] Add new ownership regressions to `syn:cst_tests` before adding formatter-only fixtures.
-- [ ] Keep future formatter fixtures renderer/layout-focused; do not reintroduce `lower.ml` ownership archaeology.
+- Add or update the smallest regression first.
+- Prefer compiler-driven cleanup over speculative rewrites.
+- Commit every slice with a scoped conventional commit message.
+- Prefer `syn:cst_tests` for ownership bugs and `krasny` fixtures for layout/rendering bugs.
+- Do not reintroduce ownership heuristics in `krasny` once the CST already knows the answer.
+
+## Next Steps
+
+- [ ] Audit the remaining source-preserving fallback sites in `packages/krasny/src/lower.ml` and classify them as either necessary syntax preservation or removable cleanup debt.
+- [ ] Keep trimming stale rollout-era comments, helper knobs, and redundant branches in `packages/syn` and `packages/krasny` when compiler/readability audits surface them.
+- [ ] Add direct `syn:cst_tests` ownership regressions whenever a real workspace formatting case exposes an ownership bug, before adding formatter-only fixtures.
+- [ ] Keep future formatter fixtures renderer/layout-focused; do not let them become a substitute for CST ownership coverage.
+- [ ] If formatter UX work resumes, make `tusk fmt <file>` default to formatting just that file instead of walking the whole workspace.
 
 ## Validate
 
