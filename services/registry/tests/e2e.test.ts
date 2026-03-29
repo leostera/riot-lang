@@ -27,6 +27,12 @@ describe("riot package registry live e2e", () => {
       manifest: "/v1/packages/<locator>/manifest/<sha>.json",
       source: "/v1/packages/<locator>/source/<sha>.tar.gz",
       publish: "/v1/packages/<locator>/publish?ref=<selector>",
+      views_package_overview: "/v1/views/packages/<package-name>/overview",
+      views_package_relations: "/v1/views/packages/<package-name>/relations",
+      views_recent_packages: "/v1/views/recent/packages",
+      views_popular_packages: "/v1/views/popular/packages",
+      views_categories: "/v1/views/categories",
+      views_owner_packages: "/v1/views/owners/<github-login>/packages",
       auth_github_start: "/v1/auth/github/start?return_to=<url>",
       auth_github_callback: "/v1/auth/github/callback?code=<code>&state=<state>",
       auth_logout: "/v1/auth/logout",
@@ -327,6 +333,73 @@ describe("riot package registry live e2e", () => {
     expect(searchResponse.results[0]?.package_name).toBe(publication.package_name);
     expect(searchResponse.results[0]?.latest_version).toBe(publication.package_version);
     expect(searchResponse.results[0]?.canonical_locator).toBe(publication.package);
+  });
+
+  livePublishTest("published package is immediately available through registry view routes", async () => {
+    const publication = await publishPackage();
+    const owner = publication.package.split("/")[1] ?? "unknown";
+
+    const overview = await pollJson<Record<string, unknown>>(
+      `${baseUrl}/v1/views/packages/${encodeURIComponent(publication.package_name)}/overview`,
+      (value) =>
+        value !== null &&
+        value.package_name === publication.package_name &&
+        value.latest_version === publication.package_version,
+    );
+    expect(overview.owner_github_login).toBe(owner);
+
+    const relations = await pollJson<Record<string, unknown>>(
+      `${baseUrl}/v1/views/packages/${encodeURIComponent(publication.package_name)}/relations`,
+      (value) =>
+        value !== null &&
+        value.package_name === publication.package_name &&
+        Array.isArray(value.dependencies) &&
+        Array.isArray(value.dependents),
+    );
+    expect(relations.package_name).toBe(publication.package_name);
+
+    const ownerPackages = await pollJson<Record<string, unknown>>(
+      `${baseUrl}/v1/views/owners/${encodeURIComponent(owner)}/packages`,
+      (value) =>
+        value !== null &&
+        value.owner_github_login === owner &&
+        Array.isArray(value.packages) &&
+        value.packages.some(
+          (item) =>
+            item !== null &&
+            typeof item === "object" &&
+            "package_name" in item &&
+            item.package_name === publication.package_name,
+        ),
+    );
+    expect(ownerPackages.package_count).toBeGreaterThanOrEqual(1);
+
+    const recent = await pollJson<Record<string, unknown>>(
+      `${baseUrl}/v1/views/recent/packages`,
+      (value) =>
+        value !== null &&
+        Array.isArray(value.packages) &&
+        value.packages.some(
+          (item) =>
+            item !== null &&
+            typeof item === "object" &&
+            "package_name" in item &&
+            item.package_name === publication.package_name,
+        ),
+    );
+    expect(Array.isArray(recent.packages)).toBe(true);
+
+    const popular = await pollJson<Record<string, unknown>>(
+      `${baseUrl}/v1/views/popular/packages`,
+      (value) => value !== null && Array.isArray(value.packages),
+    );
+    expect(Array.isArray(popular.packages)).toBe(true);
+
+    const categories = await pollJson<Record<string, unknown>>(
+      `${baseUrl}/v1/views/categories`,
+      (value) => value !== null && Array.isArray(value.categories),
+    );
+    expect(Array.isArray(categories.categories)).toBe(true);
   });
 });
 

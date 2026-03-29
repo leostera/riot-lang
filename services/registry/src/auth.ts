@@ -4,6 +4,7 @@ import { parse as parseCookieHeader, serialize as serializeCookie } from "cookie
 import { getConfig, getGitHubApiBaseUrl } from "./config.ts";
 import { HttpError } from "./errors.ts";
 import {
+  applyMetadataMigrations,
   deleteSessionRecord,
   deleteOAuthStateRecord,
   readApiTokenLookupRecord,
@@ -18,7 +19,7 @@ import {
   writeSessionRecord,
   writeUserLoginRecord,
   writeUserRecord,
-} from "./storage.ts";
+} from "./metadata-db.ts";
 import type {
   ApiTokenCapability,
   ApiTokenLookupRecord,
@@ -59,7 +60,8 @@ export async function createGitHubAuthorizationUrl(
     created_at: createdAt,
   };
 
-  await writeOAuthStateRecord(env.ML_PKGS_CDN, record);
+  await applyMetadataMigrations(env.SEARCH_DB);
+  await writeOAuthStateRecord(env.SEARCH_DB, record);
   return client.createAuthorizationURL(state, ["read:user"]).toString();
 }
 
@@ -70,13 +72,14 @@ export async function completeGitHubAuthorization(
   state: string,
 ): Promise<{ user: UserRecord; session: SessionRecord; returnTo: string }> {
   const client = getGitHubOAuthClient(env, buildGitHubCallbackUrl(requestUrl));
-  const stateRecord = await readOAuthStateRecord(env.ML_PKGS_CDN, state);
+  await applyMetadataMigrations(env.SEARCH_DB);
+  const stateRecord = await readOAuthStateRecord(env.SEARCH_DB, state);
 
   if (stateRecord === null) {
     throw new HttpError(400, "invalid_oauth_state", "GitHub login state is missing or invalid.");
   }
 
-  await deleteOAuthStateRecord(env.ML_PKGS_CDN, state);
+  await deleteOAuthStateRecord(env.SEARCH_DB, state);
 
   const createdAt = new Date(stateRecord.created_at);
   if (Number.isNaN(createdAt.getTime()) || Date.now() - createdAt.getTime() > OAUTH_STATE_TTL_MS) {
@@ -114,7 +117,8 @@ export async function logoutSession(
     return;
   }
 
-  await deleteSessionRecord(env.ML_PKGS_CDN, sessionId);
+  await applyMetadataMigrations(env.SEARCH_DB);
+  await deleteSessionRecord(env.SEARCH_DB, sessionId);
 }
 
 export function buildSessionCookie(env: Env, session: SessionRecord): string {
@@ -152,7 +156,8 @@ export async function readAuthenticatedSession(
     return null;
   }
 
-  const session = await readSessionRecord(env.ML_PKGS_CDN, sessionId);
+  await applyMetadataMigrations(env.SEARCH_DB);
+  const session = await readSessionRecord(env.SEARCH_DB, sessionId);
   if (session === null) {
     return null;
   }
@@ -162,7 +167,7 @@ export async function readAuthenticatedSession(
     return null;
   }
 
-  const user = await readUserRecord(env.ML_PKGS_CDN, session.user_id);
+  const user = await readUserRecord(env.SEARCH_DB, session.user_id);
   if (user === null) {
     return null;
   }
@@ -231,8 +236,9 @@ export async function createPublishApiToken(
     capabilities: record.capabilities,
   };
 
-  await writeApiTokenRecord(env.ML_PKGS_CDN, record);
-  await writeApiTokenLookupRecord(env.ML_PKGS_CDN, secretHash, lookup);
+  await applyMetadataMigrations(env.SEARCH_DB);
+  await writeApiTokenRecord(env.SEARCH_DB, record);
+  await writeApiTokenLookupRecord(env.SEARCH_DB, secretHash, lookup);
 
   return { plaintext, record };
 }
@@ -242,7 +248,8 @@ export async function revokeApiToken(
   user: UserRecord,
   tokenId: string,
 ): Promise<ApiTokenRecord | null> {
-  const record = await readApiTokenRecord(env.ML_PKGS_CDN, user.user_id, tokenId);
+  await applyMetadataMigrations(env.SEARCH_DB);
+  const record = await readApiTokenRecord(env.SEARCH_DB, user.user_id, tokenId);
   if (record === null) {
     return null;
   }
@@ -257,15 +264,15 @@ export async function revokeApiToken(
     revoked_at: revokedAt,
   };
 
-  const lookup = await readApiTokenLookupRecord(env.ML_PKGS_CDN, record.secret_hash);
+  const lookup = await readApiTokenLookupRecord(env.SEARCH_DB, record.secret_hash);
   if (lookup !== null) {
-    await writeApiTokenLookupRecord(env.ML_PKGS_CDN, record.secret_hash, {
+    await writeApiTokenLookupRecord(env.SEARCH_DB, record.secret_hash, {
       ...lookup,
       revoked_at: revokedAt,
     });
   }
 
-  await writeApiTokenRecord(env.ML_PKGS_CDN, nextRecord);
+  await writeApiTokenRecord(env.SEARCH_DB, nextRecord);
   return nextRecord;
 }
 
@@ -317,9 +324,10 @@ async function fetchGitHubUser(env: Env, accessToken: string): Promise<GitHubUse
 
 async function upsertUser(env: Env, githubUser: GitHubUserProfile): Promise<UserRecord> {
   const now = new Date().toISOString();
-  const existingLogin = await readUserLoginRecord(env.ML_PKGS_CDN, githubUser.login);
+  await applyMetadataMigrations(env.SEARCH_DB);
+  const existingLogin = await readUserLoginRecord(env.SEARCH_DB, githubUser.login);
   const userId = existingLogin?.user_id ?? crypto.randomUUID();
-  const existingUser = await readUserRecord(env.ML_PKGS_CDN, userId);
+  const existingUser = await readUserRecord(env.SEARCH_DB, userId);
 
   const record: UserRecord = {
     user_id: userId,
@@ -331,8 +339,8 @@ async function upsertUser(env: Env, githubUser: GitHubUserProfile): Promise<User
     updated_at: now,
   };
 
-  await writeUserRecord(env.ML_PKGS_CDN, record);
-  await writeUserLoginRecord(env.ML_PKGS_CDN, {
+  await writeUserRecord(env.SEARCH_DB, record);
+  await writeUserLoginRecord(env.SEARCH_DB, {
     github_login: githubUser.login,
     user_id: userId,
     updated_at: now,
@@ -352,7 +360,8 @@ async function createSession(env: Env, user: UserRecord): Promise<SessionRecord>
     expires_at: expiresAt.toISOString(),
   };
 
-  await writeSessionRecord(env.ML_PKGS_CDN, record);
+  await applyMetadataMigrations(env.SEARCH_DB);
+  await writeSessionRecord(env.SEARCH_DB, record);
   return record;
 }
 
@@ -410,12 +419,13 @@ async function authenticateApiToken(
   }
 
   const secretHash = await hashSecret(plaintext);
-  const lookup = await readApiTokenLookupRecord(env.ML_PKGS_CDN, secretHash);
+  await applyMetadataMigrations(env.SEARCH_DB);
+  const lookup = await readApiTokenLookupRecord(env.SEARCH_DB, secretHash);
   if (lookup === null || lookup.revoked_at !== undefined) {
     throw new HttpError(401, "unauthorized", "Publish requests require a valid API token.");
   }
 
-  const record = await readApiTokenRecord(env.ML_PKGS_CDN, lookup.user_id, lookup.token_id);
+  const record = await readApiTokenRecord(env.SEARCH_DB, lookup.user_id, lookup.token_id);
   if (record === null || record.revoked_at !== undefined) {
     throw new HttpError(401, "unauthorized", "Publish requests require a valid API token.");
   }
@@ -427,7 +437,7 @@ async function authenticateApiToken(
   }
 
   const now = new Date().toISOString();
-  await writeApiTokenRecord(env.ML_PKGS_CDN, {
+  await writeApiTokenRecord(env.SEARCH_DB, {
     ...record,
     last_used_at: now,
   });

@@ -18,7 +18,6 @@ const searchApiBaseUrl =
   trimTrailingSlash(process.env.PKGS_E2E_SEARCH_API_BASE_URL) ?? `${registryApiBaseUrl}/v1/search`;
 const cdnBaseUrl = trimTrailingSlash(process.env.PUBLIC_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
 const indexBasePath = trimSlashes(process.env.PUBLIC_INDEX_BASE_PATH) ?? "index/v1";
-const viewsBasePath = trimSlashes(process.env.PUBLIC_VIEWS_BASE_PATH) ?? "views/v1";
 const rootAuthToken = process.env.REGISTRY_E2E_ROOT_AUTH_TOKEN ?? null;
 const sessionCookie = process.env.PKGS_E2E_SESSION_COOKIE ?? process.env.REGISTRY_E2E_SESSION_COOKIE ?? null;
 const githubLogin = process.env.PKGS_E2E_GITHUB_LOGIN ?? process.env.REGISTRY_E2E_GITHUB_LOGIN ?? null;
@@ -431,19 +430,19 @@ async function fetchPackageIndexDocument(packageName: string): Promise<PackageIn
 }
 
 async function fetchCategoriesView(): Promise<CategoriesIndexDocument> {
-  return await fetchViewDocument<CategoriesIndexDocument>("categories/index.json");
+  return await fetchViewDocument<CategoriesIndexDocument>("categories");
 }
 
 async function fetchRecentPackagesView(): Promise<RecentPackagesDocument> {
-  return await fetchViewDocument<RecentPackagesDocument>("recent/packages.json");
+  return await fetchViewDocument<RecentPackagesDocument>("recent/packages");
 }
 
 async function fetchPopularPackagesView(): Promise<PopularPackagesDocument> {
-  return await fetchViewDocument<PopularPackagesDocument>("popular/packages.json");
+  return await fetchViewDocument<PopularPackagesDocument>("popular/packages");
 }
 
 async function fetchViewDocument<T>(path: string): Promise<T> {
-  const response = await fetch(`${cdnBaseUrl}/${viewsBasePath}/${path}`, {
+  const response = await fetch(`${registryApiBaseUrl}/v1/views/${path}`, {
     headers: {
       accept: "application/json",
     },

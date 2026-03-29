@@ -5,17 +5,20 @@ import { HttpError } from "./errors.ts";
 import { indexPublishedRelease } from "./indexing.ts";
 import { isFullSha, isSemverLikeTag } from "./locator.ts";
 import {
-  manifestKey,
-  packageClaimKey,
-  publishedReleaseKey,
+  applyMetadataMigrations,
   readPackageClaim,
   readPublishedRelease,
-  readPublicationManifest,
   readSelectorResolution,
-  sourceArchiveKey,
   writePackageClaim,
   writePublishedRelease,
   writeSelectorResolution,
+} from "./metadata-db.ts";
+import {
+  manifestKey,
+  packageClaimKey,
+  publishedReleaseKey,
+  readPublicationManifest,
+  sourceArchiveKey,
 } from "./storage.ts";
 import type {
   AuthenticatedActor,
@@ -36,11 +39,12 @@ export async function ensureSourceMaterialization(
   selector: string,
 ): Promise<ResolvedPublication> {
   await assertGitHubRepositoryAccess(env, locator);
+  await applyMetadataMigrations(env.SEARCH_DB);
 
   const materializedAt = new Date().toISOString();
   const freezeSelector = isSemverLikeTag(selector);
   const selectorRecord = freezeSelector
-    ? await readSelectorResolution(env.ML_PKGS_CDN, locator, selector)
+    ? await readSelectorResolution(env.SEARCH_DB, locator.normalized, selector)
     : null;
 
   const resolvedSha =
@@ -107,7 +111,7 @@ export async function ensureSourceMaterialization(
   }
 
   if (freezeSelector && selectorRecord === null) {
-    await writeSelectorResolution(env.ML_PKGS_CDN, locator, {
+    await writeSelectorResolution(env.SEARCH_DB, {
       package_locator: locator.normalized,
       selector,
       resolved_sha: resolvedSha,
@@ -135,17 +139,18 @@ export async function publishPackageRelease(
   const materialization = await ensureSourceMaterialization(env, locator, selector);
   const manifest = await readMaterializationManifest(env, materialization.manifestKey);
   assertPublishableManifest(manifest);
+  await applyMetadataMigrations(env.SEARCH_DB);
 
   const now = new Date().toISOString();
-  const existingClaim = await readPackageClaim(env.ML_PKGS_CDN, manifest.package_name);
+  const existingClaim = await readPackageClaim(env.SEARCH_DB, manifest.package_name);
   const claimRecord = buildClaimRecord(locator, manifest, existingClaim, actor, now);
 
   if (existingClaim === null || !claimMatches(existingClaim, claimRecord)) {
-    await writePackageClaim(env.ML_PKGS_CDN, claimRecord);
+    await writePackageClaim(env.SEARCH_DB, claimRecord);
   }
 
   const existingRelease = await readPublishedRelease(
-    env.ML_PKGS_CDN,
+    env.SEARCH_DB,
     manifest.package_name,
     manifest.package_version,
   );
@@ -154,7 +159,7 @@ export async function publishPackageRelease(
   let indexChanged = false;
   if (existingRelease === null) {
     const releaseRecord = buildPublishedReleaseRecord(manifest, now);
-    await writePublishedRelease(env.ML_PKGS_CDN, releaseRecord);
+    await writePublishedRelease(env.SEARCH_DB, releaseRecord);
     const indexResult = await indexPublishedRelease(env, releaseRecord, manifest);
     indexChanged = indexResult.changed;
     await env.PACKAGE_PUBLISHED_QUEUE.send({
@@ -168,7 +173,7 @@ export async function publishPackageRelease(
       : buildPublishedReleaseRecord(manifest, now);
 
     if (releaseRecord !== existingRelease) {
-      await writePublishedRelease(env.ML_PKGS_CDN, releaseRecord);
+      await writePublishedRelease(env.SEARCH_DB, releaseRecord);
     }
 
     const indexResult = await indexPublishedRelease(env, releaseRecord, manifest);
@@ -192,11 +197,12 @@ export async function readCachedMaterialization(
   locator: PackageLocator,
   selector: string,
 ): Promise<ResolvedPublication | null> {
+  await applyMetadataMigrations(env.SEARCH_DB);
   const resolvedSha =
     isFullSha(selector)
       ? selector
       : isSemverLikeTag(selector)
-        ? (await readSelectorResolution(env.ML_PKGS_CDN, locator, selector))?.resolved_sha ?? null
+        ? (await readSelectorResolution(env.SEARCH_DB, locator.normalized, selector))?.resolved_sha ?? null
         : null;
 
   if (resolvedSha === null) {

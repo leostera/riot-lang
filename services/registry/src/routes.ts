@@ -22,13 +22,22 @@ import {
 } from "./locator.ts";
 import { readCachedMaterialization } from "./publication.ts";
 import { writeRequestLog } from "./request-log.ts";
+import {
+  applyMetadataMigrations,
+  listApiTokenRecords,
+  readCategoriesIndexDocument,
+  readOwnerPackagesDocument,
+  readPackageOverviewDocument,
+  readPackageRelationsDocument,
+  readPopularPackagesDocument,
+  readRecentPackagesDocument,
+} from "./metadata-db.ts";
 import { applySearchMigrations, searchPackages } from "./search-db.ts";
 import {
   manifestKey,
   prettyManifestUrl,
   prettySourceUrl,
   sourceArchiveKey,
-  listApiTokenRecords,
 } from "./storage.ts";
 import type {
   ApiTokenRecord,
@@ -102,6 +111,12 @@ async function routeRequest(
         manifest: "/v1/packages/<locator>/manifest/<sha>.json",
         source: "/v1/packages/<locator>/source/<sha>.tar.gz",
         publish: "/v1/packages/<locator>/publish?ref=<selector>",
+        views_package_overview: "/v1/views/packages/<package-name>/overview",
+        views_package_relations: "/v1/views/packages/<package-name>/relations",
+        views_recent_packages: "/v1/views/recent/packages",
+        views_popular_packages: "/v1/views/popular/packages",
+        views_categories: "/v1/views/categories",
+        views_owner_packages: "/v1/views/owners/<github-login>/packages",
         auth_github_start: "/v1/auth/github/start?return_to=<url>",
         auth_github_callback: "/v1/auth/github/callback?code=<code>&state=<state>",
         auth_logout: "/v1/auth/logout",
@@ -114,6 +129,12 @@ async function routeRequest(
         manifest: "/package/<locator>/-/manifest/<sha>.json",
         source: "/package/<locator>/-/source/<sha>.tar.gz",
         publish: "/package/<locator>/-/publish?ref=<selector>",
+        views_package_overview: "/api/v1/views/packages/<package-name>/overview",
+        views_package_relations: "/api/v1/views/packages/<package-name>/relations",
+        views_recent_packages: "/api/v1/views/recent/packages",
+        views_popular_packages: "/api/v1/views/popular/packages",
+        views_categories: "/api/v1/views/categories",
+        views_owner_packages: "/api/v1/views/owners/<github-login>/packages",
         auth_github_start: "/auth/github/start?return_to=<url>",
         auth_github_callback: "/auth/github/callback?code=<code>&state=<state>",
         auth_logout: "/auth/logout",
@@ -124,6 +145,8 @@ async function routeRequest(
       cdn_base_url: getConfig(env).cdnBaseUrl,
     });
   }
+
+  await applyMetadataMigrations(env.SEARCH_DB);
 
   if (matchesPath(path, "v1/auth/github/start", "auth/github/start")) {
     if (request.method !== "GET") {
@@ -191,6 +214,17 @@ async function routeRequest(
 
     logEntry.route = "api.search";
     return await handleSearch(env, url);
+  }
+
+  const viewRoute = parseViewRoute(path);
+  if (viewRoute !== null) {
+    if (request.method !== "GET") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET"]);
+    }
+
+    logEntry.route = `api.views.${viewRoute.kind}`;
+    return await handleViewDocument(env, viewRoute);
   }
 
   if (matchesPath(path, "v1/me/tokens", "api/v1/me/tokens")) {
@@ -585,12 +619,68 @@ async function handleSearch(env: Env, url: URL): Promise<Response> {
 
 async function handleListTokens(request: Request, env: Env): Promise<Response> {
   const { user } = await requireAuthenticatedSession(request, env);
-  const records = await listApiTokenRecords(env.ML_PKGS_CDN, user.user_id);
+  const records = await listApiTokenRecords(env.SEARCH_DB, user.user_id);
 
   return json({
     user,
     tokens: records.filter((record) => record.revoked_at === undefined).map(serializeTokenRecord),
   });
+}
+
+async function handleViewDocument(
+  env: Env,
+  viewRoute: ParsedViewRoute,
+): Promise<Response> {
+  switch (viewRoute.kind) {
+    case "package_overview": {
+      const document = await readPackageOverviewDocument(env.SEARCH_DB, viewRoute.packageName);
+      if (document === null) {
+        throw new HttpError(404, "view_not_found", "Package overview was not found.");
+      }
+
+      return json(document);
+    }
+    case "package_relations": {
+      const document = await readPackageRelationsDocument(env.SEARCH_DB, viewRoute.packageName);
+      if (document === null) {
+        throw new HttpError(404, "view_not_found", "Package relations were not found.");
+      }
+
+      return json(document);
+    }
+    case "recent_packages": {
+      const document = await readRecentPackagesDocument(env.SEARCH_DB);
+      if (document === null) {
+        throw new HttpError(404, "view_not_found", "Recent packages view was not found.");
+      }
+
+      return json(document);
+    }
+    case "popular_packages": {
+      const document = await readPopularPackagesDocument(env.SEARCH_DB);
+      if (document === null) {
+        throw new HttpError(404, "view_not_found", "Popular packages view was not found.");
+      }
+
+      return json(document);
+    }
+    case "categories": {
+      const document = await readCategoriesIndexDocument(env.SEARCH_DB);
+      if (document === null) {
+        throw new HttpError(404, "view_not_found", "Categories view was not found.");
+      }
+
+      return json(document);
+    }
+    case "owner_packages": {
+      const document = await readOwnerPackagesDocument(env.SEARCH_DB, viewRoute.ownerGithubLogin);
+      if (document === null) {
+        throw new HttpError(404, "view_not_found", "Owner packages view was not found.");
+      }
+
+      return json(document);
+    }
+  }
 }
 
 async function handleCreateToken(request: Request, env: Env): Promise<Response> {
@@ -633,6 +723,14 @@ interface ParsedPackageRoute {
   operation: "resolve" | "manifest" | "source" | "publish";
   sha: string | null;
 }
+
+type ParsedViewRoute =
+  | { kind: "package_overview"; packageName: string }
+  | { kind: "package_relations"; packageName: string }
+  | { kind: "recent_packages" }
+  | { kind: "popular_packages" }
+  | { kind: "categories" }
+  | { kind: "owner_packages"; ownerGithubLogin: string };
 
 type PackageRouteStyle = "legacy" | "v1";
 
@@ -727,6 +825,56 @@ function parsePackageRoute(path: string): ParsedPackageRoute | null {
   }
 
   return null;
+}
+
+function parseViewRoute(path: string): ParsedViewRoute | null {
+  const normalizedPath = path.startsWith("api/v1/views/")
+    ? path.slice("api/v1/views/".length)
+    : path.startsWith("v1/views/")
+      ? path.slice("v1/views/".length)
+      : null;
+
+  if (normalizedPath === null) {
+    return null;
+  }
+
+  if (normalizedPath === "recent/packages") {
+    return { kind: "recent_packages" };
+  }
+
+  if (normalizedPath === "popular/packages") {
+    return { kind: "popular_packages" };
+  }
+
+  if (normalizedPath === "categories") {
+    return { kind: "categories" };
+  }
+
+  const packageOverviewMatch = normalizedPath.match(/^packages\/([^/]+)\/overview$/);
+  if (packageOverviewMatch !== null) {
+    return {
+      kind: "package_overview",
+      packageName: decodeURIComponent(packageOverviewMatch[1] ?? ""),
+    };
+  }
+
+  const packageRelationsMatch = normalizedPath.match(/^packages\/([^/]+)\/relations$/);
+  if (packageRelationsMatch !== null) {
+    return {
+      kind: "package_relations",
+      packageName: decodeURIComponent(packageRelationsMatch[1] ?? ""),
+    };
+  }
+
+  const ownerPackagesMatch = normalizedPath.match(/^owners\/([^/]+)\/packages$/);
+  if (ownerPackagesMatch !== null) {
+    return {
+      kind: "owner_packages",
+      ownerGithubLogin: decodeURIComponent(ownerPackagesMatch[1] ?? ""),
+    };
+  }
+
+  throw new HttpError(404, "not_found", "View route does not exist.");
 }
 
 function parsePackageOperation(rawLocator: string, operationPath: string): ParsedPackageRoute {

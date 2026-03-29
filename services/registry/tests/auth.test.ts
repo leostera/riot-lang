@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
 import { handleRequest } from "../src/routes.ts";
-import { packageClaimKey } from "../src/storage.ts";
+import { applyMetadataMigrations, readPackageClaim, readUserLoginRecord } from "../src/metadata-db.ts";
 import { FakeExecutionContext, makeEnv, makeTarGz, withMockedFetch } from "./helpers.ts";
 
 const SHA = "0123456789abcdef0123456789abcdef01234567";
 
 describe("riot package registry auth", () => {
   test("github oauth callback creates a session and /v1/me returns the user", async () => {
-    const { env, bucket } = makeEnv({
+    const { env, db } = makeEnv({
       GITHUB_OAUTH_CLIENT_ID: "github-client-id",
       GITHUB_OAUTH_CLIENT_SECRET: "github-client-secret",
       PKGS_WEB_BASE_URL: "https://pkgs.ml",
@@ -69,7 +69,8 @@ describe("riot package registry auth", () => {
 
     const cookie = callbackResponse.headers.get("set-cookie");
     expect(cookie).toContain("pkgs_session=");
-    expect(await bucket.text("auth/users/by-login/leostera.json")).not.toBeNull();
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readUserLoginRecord(db as unknown as D1Database, "leostera")).not.toBeNull();
 
     const sessionCtx = new FakeExecutionContext();
     const sessionResponse = await handleRequest(
@@ -178,7 +179,7 @@ describe("riot package registry auth", () => {
   });
 
   test("publish tokens can create claims for matching github owners and adopt legacy claims", async () => {
-    const { env, bucket, queue, indexedQueue } = makeEnv({
+    const { env, db, queue, indexedQueue } = makeEnv({
       GITHUB_OAUTH_CLIENT_ID: "github-client-id",
       GITHUB_OAUTH_CLIENT_SECRET: "github-client-secret",
       PKGS_WEB_BASE_URL: "https://pkgs.ml",
@@ -240,7 +241,8 @@ describe("riot package registry auth", () => {
       expect(userPublish.status).toBe(200);
     });
 
-    const claim = JSON.parse((await bucket.text(packageClaimKey("minttea"))) ?? "null");
+    await applyMetadataMigrations(db as unknown as D1Database);
+    const claim = await readPackageClaim(db as unknown as D1Database, "minttea");
     expect(claim).toMatchObject({
       owner_github_login: "leostera",
     });
@@ -249,7 +251,7 @@ describe("riot package registry auth", () => {
   });
 
   test("publish tokens cannot claim packages for a different github owner", async () => {
-    const { env, bucket } = makeEnv({
+    const { env, db } = makeEnv({
       GITHUB_OAUTH_CLIENT_ID: "github-client-id",
       GITHUB_OAUTH_CLIENT_SECRET: "github-client-secret",
       PKGS_WEB_BASE_URL: "https://pkgs.ml",
@@ -300,7 +302,8 @@ describe("riot package registry auth", () => {
       });
     });
 
-    expect(await bucket.text(packageClaimKey("minttea"))).toBeNull();
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).toBeNull();
   });
 });
 

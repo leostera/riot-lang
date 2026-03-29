@@ -1,6 +1,6 @@
 import { getConfig } from "./config.ts";
 import {
-  listPackageIndexDocuments,
+  applyMetadataMigrations,
   readPackageClaim,
   readUserLoginRecord,
   readUserRecord,
@@ -10,6 +10,9 @@ import {
   writePackageRelationsDocument,
   writePopularPackagesDocument,
   writeRecentPackagesDocument,
+} from "./metadata-db.ts";
+import {
+  listPackageIndexDocuments,
 } from "./storage.ts";
 import type {
   CategoriesIndexDocument,
@@ -29,11 +32,12 @@ import type {
 
 export async function rebuildWebViews(env: Env): Promise<void> {
   const config = getConfig(env);
+  await applyMetadataMigrations(env.SEARCH_DB);
   const documents = await listPackageIndexDocuments(env.ML_PKGS_CDN, config);
   const latestEntries = await Promise.all(
     documents.map(async (document) => {
       const latestRelease = getLatestRelease(document);
-      const claim = await readPackageClaim(env.ML_PKGS_CDN, document.name);
+      const claim = await readPackageClaim(env.SEARCH_DB, document.name);
       const owner = claim?.owner_github_login ?? parseCanonicalLocator(latestRelease.canonical_locator).owner;
       const ownerAvatarUrl = await resolveOwnerAvatarUrl(env, claim, owner);
 
@@ -128,19 +132,19 @@ export async function rebuildWebViews(env: Env): Promise<void> {
 
   await Promise.all([
     ...overviews.map(async (overview) => {
-      await writePackageOverviewDocument(env.ML_PKGS_CDN, config, overview);
+      await writePackageOverviewDocument(env.SEARCH_DB, overview);
       const relation = relations.find((candidate) => candidate.package_name === overview.package_name);
       if (relation === undefined) {
         throw new Error(`Missing relations for package ${overview.package_name}.`);
       }
 
-      await writePackageRelationsDocument(env.ML_PKGS_CDN, config, relation);
+      await writePackageRelationsDocument(env.SEARCH_DB, relation);
     }),
-    writeRecentPackagesDocument(env.ML_PKGS_CDN, config, recent),
-    writePopularPackagesDocument(env.ML_PKGS_CDN, config, popular),
-    writeCategoriesIndexDocument(env.ML_PKGS_CDN, config, categories),
+    writeRecentPackagesDocument(env.SEARCH_DB, recent),
+    writePopularPackagesDocument(env.SEARCH_DB, popular),
+    writeCategoriesIndexDocument(env.SEARCH_DB, categories),
     ...owners.map(async (owner) => {
-      await writeOwnerPackagesDocument(env.ML_PKGS_CDN, config, owner);
+      await writeOwnerPackagesDocument(env.SEARCH_DB, owner);
     }),
   ]);
 }
@@ -306,7 +310,7 @@ async function resolveOwnerAvatarUrl(
   fallbackGithubLogin: string,
 ): Promise<string | undefined> {
   if (claim?.owner_user_id !== undefined) {
-    const user = await readUserRecord(env.ML_PKGS_CDN, claim.owner_user_id);
+    const user = await readUserRecord(env.SEARCH_DB, claim.owner_user_id);
     if (user?.github_avatar_url !== undefined) {
       return user.github_avatar_url;
     }
@@ -314,9 +318,9 @@ async function resolveOwnerAvatarUrl(
 
   const githubLogin = claim?.owner_github_login ?? fallbackGithubLogin;
   if (githubLogin.length > 0) {
-    const loginRecord = await readUserLoginRecord(env.ML_PKGS_CDN, githubLogin);
+    const loginRecord = await readUserLoginRecord(env.SEARCH_DB, githubLogin);
     if (loginRecord !== null) {
-      const user = await readUserRecord(env.ML_PKGS_CDN, loginRecord.user_id);
+      const user = await readUserRecord(env.SEARCH_DB, loginRecord.user_id);
       if (user?.github_avatar_url !== undefined) {
         return user.github_avatar_url;
       }

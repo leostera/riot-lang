@@ -10,7 +10,7 @@ import type {
 
 function viewUrl(path: string): string {
   const config = getConfig();
-  return `${config.cdnBaseUrl}/${config.viewsBasePath}/${path}`;
+  return `${config.registryBaseUrl}/v1/views/${path}`;
 }
 
 async function fetchJsonOrNull<T>(url: string): Promise<T | null> {
@@ -33,30 +33,30 @@ async function fetchJsonOrNull<T>(url: string): Promise<T | null> {
 
 export async function fetchPackageOverview(packageName: string): Promise<PackageOverviewDocument | null> {
   return await fetchJsonOrNull<PackageOverviewDocument>(
-    viewUrl(`packages/${encodeURIComponent(packageName)}/overview.json`),
+    viewUrl(`packages/${encodeURIComponent(packageName)}/overview`),
   );
 }
 
 export async function fetchPackageRelations(packageName: string): Promise<PackageRelationsDocument | null> {
   return await fetchJsonOrNull<PackageRelationsDocument>(
-    viewUrl(`packages/${encodeURIComponent(packageName)}/relations.json`),
+    viewUrl(`packages/${encodeURIComponent(packageName)}/relations`),
   );
 }
 
 export async function fetchRecentPackages(): Promise<RecentPackagesDocument | null> {
-  return await fetchJsonOrNull<RecentPackagesDocument>(viewUrl("recent/packages.json"));
+  return await fetchJsonOrNull<RecentPackagesDocument>(viewUrl("recent/packages"));
 }
 
 export async function fetchPopularPackages(): Promise<PopularPackagesDocument | null> {
-  return await fetchJsonOrNull<PopularPackagesDocument>(viewUrl("popular/packages.json"));
+  return await fetchJsonOrNull<PopularPackagesDocument>(viewUrl("popular/packages"));
 }
 
 export async function fetchCategoriesIndex(): Promise<CategoriesIndexDocument | null> {
-  return await fetchJsonOrNull<CategoriesIndexDocument>(viewUrl("categories/index.json"));
+  return await fetchJsonOrNull<CategoriesIndexDocument>(viewUrl("categories"));
 }
 
 export async function fetchOwnerPackages(ownerGithubLogin: string): Promise<OwnerPackagesDocument | null> {
   return await fetchJsonOrNull<OwnerPackagesDocument>(
-    viewUrl(`owners/${encodeURIComponent(ownerGithubLogin.toLowerCase())}/packages.json`),
+    viewUrl(`owners/${encodeURIComponent(ownerGithubLogin.toLowerCase())}/packages`),
   );
 }

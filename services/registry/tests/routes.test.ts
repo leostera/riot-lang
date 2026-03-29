@@ -2,12 +2,15 @@ import { describe, expect, test } from "bun:test";
 
 import { handleRequest } from "../src/routes.ts";
 import {
+  applyMetadataMigrations,
+  readPackageClaim,
+  readPublishedRelease,
+  readSelectorResolution,
+} from "../src/metadata-db.ts";
+import {
   indexConfigKey,
   manifestKey,
-  packageClaimKey,
   packageIndexKey,
-  publishedReleaseKey,
-  selectorResolutionKey,
   sourceArchiveKey,
 } from "../src/storage.ts";
 import {
@@ -43,6 +46,12 @@ describe("riot package registry routes", () => {
         manifest: "/v1/packages/<locator>/manifest/<sha>.json",
         source: "/v1/packages/<locator>/source/<sha>.tar.gz",
         publish: "/v1/packages/<locator>/publish?ref=<selector>",
+        views_package_overview: "/v1/views/packages/<package-name>/overview",
+        views_package_relations: "/v1/views/packages/<package-name>/relations",
+        views_recent_packages: "/v1/views/recent/packages",
+        views_popular_packages: "/v1/views/popular/packages",
+        views_categories: "/v1/views/categories",
+        views_owner_packages: "/v1/views/owners/<github-login>/packages",
         auth_github_start: "/v1/auth/github/start?return_to=<url>",
         auth_github_callback: "/v1/auth/github/callback?code=<code>&state=<state>",
         auth_logout: "/v1/auth/logout",
@@ -55,6 +64,12 @@ describe("riot package registry routes", () => {
         manifest: "/package/<locator>/-/manifest/<sha>.json",
         source: "/package/<locator>/-/source/<sha>.tar.gz",
         publish: "/package/<locator>/-/publish?ref=<selector>",
+        views_package_overview: "/api/v1/views/packages/<package-name>/overview",
+        views_package_relations: "/api/v1/views/packages/<package-name>/relations",
+        views_recent_packages: "/api/v1/views/recent/packages",
+        views_popular_packages: "/api/v1/views/popular/packages",
+        views_categories: "/api/v1/views/categories",
+        views_owner_packages: "/api/v1/views/owners/<github-login>/packages",
         auth_github_start: "/auth/github/start?return_to=<url>",
         auth_github_callback: "/auth/github/callback?code=<code>&state=<state>",
         auth_logout: "/auth/logout",
@@ -176,7 +191,7 @@ describe("riot package registry routes", () => {
   });
 
   test("semver-like tags freeze after first materialization", async () => {
-    const { env, bucket, queue, indexedQueue } = makeEnv();
+    const { env, bucket, db, queue, indexedQueue } = makeEnv();
     const firstArchive = await makeTarGz({
       "tusk.toml": ['[package]', 'name = "minttea"', 'version = "0.4.2"', "public = true"].join(
         "\n",
@@ -232,7 +247,14 @@ describe("riot package registry routes", () => {
     });
 
     expect(commitLookupCount).toBe(1);
-    expect(await bucket.text(selectorResolutionKey(locator("leostera/minttea"), "0.4.2"))).not.toBeNull();
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(
+      await readSelectorResolution(
+        db as unknown as D1Database,
+        locator("leostera/minttea").normalized,
+        "0.4.2",
+      ),
+    ).not.toBeNull();
     expect(queue.messages).toHaveLength(0);
   });
 
@@ -331,7 +353,7 @@ describe("riot package registry routes", () => {
   });
 
   test("publish creates claim and release records and emits package.published", async () => {
-    const { env, bucket, queue, indexedQueue } = makeEnv();
+    const { env, bucket, db, queue, indexedQueue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
       "tusk.toml": [
@@ -391,8 +413,9 @@ describe("riot package registry routes", () => {
       });
     });
 
-    expect(await bucket.text(packageClaimKey("minttea"))).not.toBeNull();
-    expect(await bucket.text(publishedReleaseKey("minttea", "0.4.2"))).not.toBeNull();
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).not.toBeNull();
+    expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.4.2")).not.toBeNull();
     expect(await bucket.text(indexConfigKey(INDEX_CONFIG))).not.toBeNull();
     expect(
       await bucket.text(packageIndexKey(INDEX_CONFIG, "minttea")),
@@ -422,8 +445,10 @@ describe("riot package registry routes", () => {
       latest: "0.4.2",
     });
 
-    const publishedRelease = JSON.parse(
-      (await bucket.text(publishedReleaseKey("minttea", "0.4.2"))) ?? "null",
+    const publishedRelease = await readPublishedRelease(
+      db as unknown as D1Database,
+      "minttea",
+      "0.4.2",
     );
     expect(publishedRelease).toMatchObject({
       package_description: "Terminal UI toolkit for Riot",
@@ -517,7 +542,7 @@ describe("riot package registry routes", () => {
   });
 
   test("publish refreshes an existing release when the same package version is republished", async () => {
-    const { env, bucket, queue, indexedQueue } = makeEnv();
+    const { env, bucket, db, queue, indexedQueue } = makeEnv();
     const firstArchive = await makeTarGz({
       "tusk.toml": [
         "[package]",
@@ -591,8 +616,11 @@ describe("riot package registry routes", () => {
     expect(queue.messages).toHaveLength(1);
     expect(indexedQueue.messages).toHaveLength(2);
 
-    const publishedRelease = JSON.parse(
-      (await bucket.text(publishedReleaseKey("minttea", "0.4.2"))) ?? "null",
+    await applyMetadataMigrations(db as unknown as D1Database);
+    const publishedRelease = await readPublishedRelease(
+      db as unknown as D1Database,
+      "minttea",
+      "0.4.2",
     );
     expect(publishedRelease).toMatchObject({
       resolved_sha: NEXT_SHA,
@@ -635,7 +663,7 @@ describe("riot package registry routes", () => {
   });
 
   test("publish rejects non-public packages after materialization", async () => {
-    const { env, bucket, queue, indexedQueue } = makeEnv();
+    const { env, bucket, db, queue, indexedQueue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
       "tusk.toml": [
@@ -681,12 +709,13 @@ describe("riot package registry routes", () => {
     expect(await bucket.text(`packages/github.com/leostera/minttea/${SHA}.manifest.json`)).not.toBeNull();
     expect(queue.messages).toHaveLength(0);
     expect(indexedQueue.messages).toHaveLength(0);
-    expect(await bucket.text(packageClaimKey("minttea"))).toBeNull();
-    expect(await bucket.text(publishedReleaseKey("minttea", "0.4.2"))).toBeNull();
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).toBeNull();
+    expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.4.2")).toBeNull();
   });
 
   test("publish rejects package name conflicts from different locators", async () => {
-    const { env, bucket, queue, indexedQueue } = makeEnv();
+    const { env, bucket, db, queue, indexedQueue } = makeEnv();
     const firstArchive = await makeTarGz({
       "tusk.toml": [
         "[package]",
@@ -762,12 +791,13 @@ describe("riot package registry routes", () => {
 
     expect(queue.messages).toHaveLength(1);
     expect(indexedQueue.messages).toHaveLength(1);
-    expect(await bucket.text(packageClaimKey("minttea"))).not.toBeNull();
-    expect(await bucket.text(publishedReleaseKey("minttea", "0.5.0"))).toBeNull();
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).not.toBeNull();
+    expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.5.0")).toBeNull();
   });
 
   test("publish rejects packages without a description", async () => {
-    const { env, bucket, queue, indexedQueue } = makeEnv();
+    const { env, db, queue, indexedQueue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
       "tusk.toml": [
@@ -811,12 +841,13 @@ describe("riot package registry routes", () => {
 
     expect(queue.messages).toHaveLength(0);
     expect(indexedQueue.messages).toHaveLength(0);
-    expect(await bucket.text(packageClaimKey("minttea"))).toBeNull();
-    expect(await bucket.text(publishedReleaseKey("minttea", "0.4.2"))).toBeNull();
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).toBeNull();
+    expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.4.2")).toBeNull();
   });
 
   test("publish rejects packages with non-SPDX licenses", async () => {
-    const { env, bucket, queue, indexedQueue } = makeEnv();
+    const { env, db, queue, indexedQueue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
       "tusk.toml": [
@@ -861,8 +892,9 @@ describe("riot package registry routes", () => {
 
     expect(queue.messages).toHaveLength(0);
     expect(indexedQueue.messages).toHaveLength(0);
-    expect(await bucket.text(packageClaimKey("minttea"))).toBeNull();
-    expect(await bucket.text(publishedReleaseKey("minttea", "0.4.2"))).toBeNull();
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).toBeNull();
+    expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.4.2")).toBeNull();
   });
 
   test("github selector misses surface as 404 without publishing", async () => {

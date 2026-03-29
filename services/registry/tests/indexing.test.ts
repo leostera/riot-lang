@@ -3,14 +3,17 @@ import { describe, expect, test } from "bun:test";
 import { getConfig } from "../src/config.ts";
 import { indexPublishedRelease } from "../src/indexing.ts";
 import {
-  categoriesIndexKey,
+  applyMetadataMigrations,
+  readCategoriesIndexDocument,
+  readOwnerPackagesDocument,
+  readPackageOverviewDocument,
+  readPackageRelationsDocument,
+  readPopularPackagesDocument,
+  readRecentPackagesDocument,
+} from "../src/metadata-db.ts";
+import {
   indexConfigKey,
-  ownerPackagesKey,
   packageIndexKey,
-  packageOverviewKey,
-  packageRelationsKey,
-  popularPackagesKey,
-  recentPackagesKey,
 } from "../src/storage.ts";
 import type {
   CategoriesIndexDocument,
@@ -27,7 +30,7 @@ import { makeEnv } from "./helpers.ts";
 
 describe("registry indexing", () => {
   test("indexing a published release writes config, package doc, and package.indexed", async () => {
-    const { env, bucket, indexedQueue } = makeEnv();
+    const { env, bucket, db, indexedQueue } = makeEnv();
     const release = makeReleaseRecord();
     const manifest = makeManifest(release);
 
@@ -89,9 +92,8 @@ describe("registry indexing", () => {
       },
     ]);
 
-    const overview = JSON.parse(
-      (await bucket.text(packageOverviewKey(config, "kernel"))) ?? "null",
-    ) as PackageOverviewDocument;
+    await applyMetadataMigrations(db as unknown as D1Database);
+    const overview = await readPackageOverviewDocument(db as unknown as D1Database, "kernel") as PackageOverviewDocument;
     expect(overview).toMatchObject({
       package_name: "kernel",
       latest_version: "0.0.1",
@@ -101,9 +103,7 @@ describe("registry indexing", () => {
       categories: [],
     });
 
-    const relations = JSON.parse(
-      (await bucket.text(packageRelationsKey(config, "kernel"))) ?? "null",
-    ) as PackageRelationsDocument;
+    const relations = await readPackageRelationsDocument(db as unknown as D1Database, "kernel") as PackageRelationsDocument;
     expect(relations).toEqual({
       schema_version: 1,
       package_name: "kernel",
@@ -112,9 +112,7 @@ describe("registry indexing", () => {
       dependents: [],
     });
 
-    const recent = JSON.parse(
-      (await bucket.text(recentPackagesKey(config))) ?? "null",
-    ) as RecentPackagesDocument;
+    const recent = await readRecentPackagesDocument(db as unknown as D1Database) as RecentPackagesDocument;
     expect(recent.packages).toHaveLength(1);
     expect(recent.packages[0]).toMatchObject({
       package_name: "kernel",
@@ -122,9 +120,7 @@ describe("registry indexing", () => {
       owner_github_login: "leostera",
     });
 
-    const popular = JSON.parse(
-      (await bucket.text(popularPackagesKey(config))) ?? "null",
-    ) as PopularPackagesDocument;
+    const popular = await readPopularPackagesDocument(db as unknown as D1Database) as PopularPackagesDocument;
     expect(popular.packages).toHaveLength(1);
     expect(popular.packages[0]).toMatchObject({
       package_name: "kernel",
@@ -132,13 +128,12 @@ describe("registry indexing", () => {
       release_count: 1,
     });
 
-    const categories = JSON.parse(
-      (await bucket.text(categoriesIndexKey(config))) ?? "null",
-    ) as CategoriesIndexDocument;
+    const categories = await readCategoriesIndexDocument(db as unknown as D1Database) as CategoriesIndexDocument;
     expect(categories.categories).toEqual([]);
 
-    const ownerPackages = JSON.parse(
-      (await bucket.text(ownerPackagesKey(config, "leostera"))) ?? "null",
+    const ownerPackages = await readOwnerPackagesDocument(
+      db as unknown as D1Database,
+      "leostera",
     ) as OwnerPackagesDocument;
     expect(ownerPackages).toMatchObject({
       owner_github_login: "leostera",
@@ -210,7 +205,7 @@ describe("registry indexing", () => {
   });
 
   test("reindexing the same version replaces stale release metadata", async () => {
-    const { env, bucket } = makeEnv();
+    const { env, bucket, db } = makeEnv();
     const release = makeReleaseRecord();
     const manifest = makeManifest(release);
 
@@ -264,7 +259,7 @@ describe("registry indexing", () => {
   });
 
   test("web views track dependents and categories across indexed packages", async () => {
-    const { env, bucket } = makeEnv();
+    const { env, bucket, db } = makeEnv();
     const kernel = makeReleaseRecord({
       package_categories: ["runtime", "concurrency"],
     });
@@ -291,9 +286,10 @@ describe("registry indexing", () => {
       makeManifest(miniriot, { package_categories: ["runtime", "actors"] }),
     );
 
-    const config = getConfig(env);
-    const kernelRelations = JSON.parse(
-      (await bucket.text(packageRelationsKey(config, "kernel"))) ?? "null",
+    await applyMetadataMigrations(db as unknown as D1Database);
+    const kernelRelations = await readPackageRelationsDocument(
+      db as unknown as D1Database,
+      "kernel",
     ) as PackageRelationsDocument;
     expect(kernelRelations.dependents).toEqual([
       {
@@ -303,9 +299,7 @@ describe("registry indexing", () => {
       },
     ]);
 
-    const categories = JSON.parse(
-      (await bucket.text(categoriesIndexKey(config))) ?? "null",
-    ) as CategoriesIndexDocument;
+    const categories = await readCategoriesIndexDocument(db as unknown as D1Database) as CategoriesIndexDocument;
     expect(categories.categories).toEqual([
       {
         name: "runtime",
@@ -327,8 +321,9 @@ describe("registry indexing", () => {
       },
     ]);
 
-    const ownerPackages = JSON.parse(
-      (await bucket.text(ownerPackagesKey(config, "leostera"))) ?? "null",
+    const ownerPackages = await readOwnerPackagesDocument(
+      db as unknown as D1Database,
+      "leostera",
     ) as OwnerPackagesDocument;
     expect(ownerPackages.packages.map((item) => item.package_name)).toEqual(["miniriot", "kernel"]);
   });
