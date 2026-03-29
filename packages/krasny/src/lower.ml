@@ -1793,10 +1793,10 @@ let rec core_type_is_atomic =
       true
   | Syn.Cst.CoreType.Constr { arguments = []; _ } ->
       true
-  | Syn.Cst.CoreType.Constr { arguments = [ argument ]; _ } ->
-      core_type_is_atomic argument
   | Syn.Cst.CoreType.Constr { arguments = [ Syn.Cst.CoreType.Tuple { elements; _ } ]; _ } ->
       List.for_all core_type_is_atomic elements
+  | Syn.Cst.CoreType.Constr { arguments = [ argument ]; _ } ->
+      core_type_is_atomic argument
   | Syn.Cst.CoreType.Parenthesized { inner; _ } ->
       core_type_is_atomic inner
   | Syn.Cst.CoreType.Attribute { type_; _ } ->
@@ -1958,19 +1958,52 @@ and render_record_definition_field = fun (field : Syn.Cst.RecordField.t) ->
     Doc.colon;
     Doc.indent 2 (Doc.concat [ separator; type_doc ])
   ])
-and render_record_definition = fun fields ->
-  let body = join_map (Doc.concat [ Doc.semi; Doc.line ]) render_record_definition_field fields in
+and render_record_definition_field_entry = fun ?source (field : Syn.Cst.RecordField.t) ->
+  let body = Doc.concat [ render_record_definition_field field; Doc.semi ] in
+  match source with
+  | Some source ->
+      let owned = Syn.Cst.RecordField.owned_trivia field in
+      let leading =
+        doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
+      in
+      let trailing =
+        doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
+      in
+      body
+      |> doc_with_leading_trivia leading
+      |> fun body -> doc_with_trailing_trivia body trailing
+  | None ->
+      body
+and render_record_definition_terminal_trivia = fun ~source ~source_node fields ->
+  let _ = source in
+  match List.rev fields, List.rev (Syn.Ceibo.Red.SyntaxNode.tokens source_node) with
+  | _ :: _, closing_token :: _ ->
+      let trailing_docs =
+        Syn.Ceibo.Red.SyntaxToken.leading_trivia closing_token
+        |> List.filter_map
+             (fun trivia ->
+               match Syn.Ceibo.Red.SyntaxTrivia.kind trivia with
+               | Syn.SyntaxKind.COMMENT
+               | Syn.SyntaxKind.DOCSTRING ->
+                   Some (Doc.text (Syn.Ceibo.Red.SyntaxTrivia.text trivia))
+               | _ ->
+                   None)
+      in
+      (match trailing_docs with
+      | [] ->
+          None
+      | docs ->
+          Some (Doc.join Doc.line docs))
+  | _ ->
+      None
+and render_record_definition = fun ?source fields ->
+  let body =
+    fields
+    |> List.map (render_record_definition_field_entry ?source)
+    |> Doc.join Doc.line
+  in
   Doc.concat
-    [ Doc.lbrace; Doc.line; Doc.indent 2
-        (
-          Doc.concat
-            [ body; (
-                if fields = [] then
-                  Doc.empty
-                else
-                  Doc.semi
-              ) ]
-        ); Doc.line; Doc.rbrace ]
+    [ Doc.lbrace; Doc.line; Doc.indent 2 body; Doc.line; Doc.rbrace ]
 and render_inline_record_definition = fun fields ->
   if fields = [] then
     Doc.concat [ Doc.lbrace; Doc.rbrace ]
@@ -1984,30 +2017,71 @@ and render_inline_record_definition = fun fields ->
       Doc.break ~flat:" " ();
       Doc.rbrace
     ])
-and render_record_definition_with_comments = fun ~source_node fields ->
-  let field_docs = fields
-  |> List.map (fun field -> Doc.concat [ render_record_definition_field field; Doc.semi ]) in
-  let body = render_interleaved_node_docs ~end_before:None ~source_node ~should_consume_node:(fun node -> Syn.Ceibo.Red.SyntaxNode.kind
-  node
-  = Syn.SyntaxKind.TYPE_RECORD_FIELD) ~node_docs:field_docs
-  |> Doc.join Doc.line in
+and render_record_definition_with_comments = fun ?source ~source_node fields ->
+  let field_docs =
+    fields |> List.map (render_record_definition_field_entry ?source)
+  in
+  let body =
+    render_interleaved_node_docs ~end_before:None ~source_node
+      ~should_consume_node:(fun node ->
+        Syn.Ceibo.Red.SyntaxNode.kind node = Syn.SyntaxKind.TYPE_RECORD_FIELD)
+      ~node_docs:field_docs
+    |> Doc.join Doc.line
+  in
+  let trailing =
+    match source with
+    | Some source_text ->
+        render_record_definition_terminal_trivia ~source:source_text ~source_node fields
+    | None ->
+        None
+  in
+  let body =
+    match trailing with
+    | None ->
+        body
+    | Some trailing ->
+        Doc.concat [ body; Doc.line; trailing ]
+  in
   Doc.concat [ Doc.lbrace; Doc.line; Doc.indent 2 body; Doc.line; Doc.rbrace ]
-and render_inline_record_definition_with_comments = fun ~source_node fields ->
+and render_inline_record_definition_with_comments = fun ?source ~source_node fields ->
   let field_count = List.length fields in
   let field_docs =
     fields
     |> List.mapi
-      (fun index field ->
-        let doc = render_record_definition_field field in
-        if index < field_count - 1 then
-          Doc.concat [ doc; Doc.semi ]
-        else
-          doc)
+         (fun index field ->
+           let doc =
+             match source with
+             | Some source_text ->
+                 render_record_definition_field_entry ~source:source_text field
+             | None ->
+                 render_record_definition_field field
+           in
+           if index < field_count - 1 then
+             Doc.concat [ doc; Doc.semi ]
+           else
+             doc)
   in
-  let body = render_interleaved_node_docs ~end_before:None ~source_node ~should_consume_node:(fun node -> Syn.Ceibo.Red.SyntaxNode.kind
-  node
-  = Syn.SyntaxKind.TYPE_RECORD_FIELD) ~node_docs:field_docs
-  |> Doc.join Doc.line in
+  let body =
+    render_interleaved_node_docs ~end_before:None ~source_node
+      ~should_consume_node:(fun node ->
+        Syn.Ceibo.Red.SyntaxNode.kind node = Syn.SyntaxKind.TYPE_RECORD_FIELD)
+      ~node_docs:field_docs
+    |> Doc.join Doc.line
+  in
+  let trailing =
+    match source with
+    | Some source_text ->
+        render_record_definition_terminal_trivia ~source:source_text ~source_node fields
+    | None ->
+        None
+  in
+  let body =
+    match trailing with
+    | None ->
+        body
+    | Some trailing ->
+        Doc.concat [ body; Doc.line; trailing ]
+  in
   Doc.concat [ Doc.lbrace; Doc.line; Doc.indent 2 body; Doc.line; Doc.rbrace ]
 and render_object_type_field = fun (field : Syn.Cst.object_type_field) ->
   Doc.group (Doc.concat [
@@ -2095,11 +2169,20 @@ let render_type_constraint = fun (constraint_ : Syn.Cst.type_constraint) ->
     render_core_type constraint_.right
   ]
 
-let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record = false) ->
+let render_variant_constructor_arguments = fun ?source ?(prefer_multiline_inline_record = false) ->
   function
   | Syn.Cst.ConstructorArguments.Tuple types ->
       Doc.group (join_map (Doc.concat [ Doc.space; star; Doc.break ~flat:" " () ]) render_core_type types)
   | Syn.Cst.ConstructorArguments.Record fields ->
+      let fields_have_owned_trivia =
+        fields
+        |> List.exists
+             (fun field ->
+               let owned = Syn.Cst.RecordField.owned_trivia field in
+               not (List.is_empty (Syn.Cst.OwnedTrivia.leading owned))
+               || not (List.is_empty (Syn.Cst.OwnedTrivia.inner owned))
+               || not (List.is_empty (Syn.Cst.OwnedTrivia.trailing owned)))
+      in
       let source_node =
         match fields with
         | [] ->
@@ -2109,15 +2192,18 @@ let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record 
       in
       (
         match source_node with
-        | Some source_node when syntax_node_has_comment_like_token source_node
+        | Some source_node when fields_have_owned_trivia
+        || syntax_node_has_comment_like_token source_node
         || (Syn.Ceibo.Red.SyntaxNode.tokens source_node |> List.exists whitespace_has_newline) ->
-            Doc.indent 2 (render_record_definition_with_comments ~source_node fields)
+            Doc.indent 2
+              (render_record_definition_with_comments ?source ~source_node fields)
         | Some source_node when prefer_multiline_inline_record ->
-            Doc.indent 2 (render_record_definition_with_comments ~source_node fields)
+            Doc.indent 2
+              (render_record_definition_with_comments ?source ~source_node fields)
         | Some _ ->
-            Doc.indent 2 (render_record_definition fields)
+            Doc.indent 2 (render_record_definition ?source fields)
         | None ->
-            Doc.indent 2 (render_record_definition fields)
+            Doc.indent 2 (render_record_definition ?source fields)
       )
 
 let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comment = true) ?(prefer_multiline_inline_record = false) constructor ->
@@ -2129,7 +2215,10 @@ let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comm
   let body =
     match Syn.Cst.VariantConstructor.arguments constructor, Syn.Cst.VariantConstructor.result_type constructor with
     | Some arguments, Some result_type ->
-        let payload = render_variant_constructor_arguments ~prefer_multiline_inline_record arguments in
+        let payload =
+          render_variant_constructor_arguments ?source
+            ~prefer_multiline_inline_record arguments
+        in
         Doc.concat
         [ head; Doc.space; Doc.colon; Doc.space; payload; arrow; render_core_type result_type ]
     | Some arguments, None ->
@@ -2138,7 +2227,8 @@ let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comm
           Doc.space;
           kw_of;
           Doc.space;
-          render_variant_constructor_arguments ~prefer_multiline_inline_record arguments
+          render_variant_constructor_arguments ?source
+            ~prefer_multiline_inline_record arguments
         ]
     | None, Some result_type ->
         Doc.concat [ head; Doc.space; Doc.colon; Doc.space; render_core_type result_type ]
@@ -2186,7 +2276,7 @@ let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comm
       else
         body
 
-let render_variant_definition = fun ?source ?end_before ~source_node:_ constructors ->
+let render_variant_definition = fun ?source ~source_node:_ constructors ->
   let constructors_all_inline_records =
     constructors != []
     && List.for_all
@@ -2198,37 +2288,29 @@ let render_variant_definition = fun ?source ?end_before ~source_node:_ construct
             false)
       constructors
   in
-  let constructor_count = List.length constructors in
   let constructor_docs = constructors
-  |> List.mapi (fun index constructor ->
-    let constructor_end_before =
-      match end_before with
-      | Some end_before when Int.equal index (constructor_count - 1) ->
-          Some end_before
-      | _ ->
-          None
-    in
+  |> List.map (fun constructor ->
     render_variant_constructor
       ?source
-      ?end_before:constructor_end_before
       ~prefer_multiline_inline_record:constructors_all_inline_records
       ~include_trailing_comment:true
       constructor) in
   constructor_docs |> Doc.join Doc.line
 
-let render_type_definition = fun ?source ?trailing_docstring_start ->
+let render_type_definition = fun ?source ->
   function
   | Syn.Cst.TypeDefinition.Abstract ->
       None
   | Syn.Cst.TypeDefinition.Alias { manifest; _ } ->
       Some (render_core_type manifest)
   | Syn.Cst.TypeDefinition.Record { syntax_node; fields } ->
-      Some (render_record_definition_with_comments ~source_node:syntax_node fields)
+      Some
+        (render_record_definition_with_comments ?source
+           ~source_node:syntax_node fields)
   | Syn.Cst.TypeDefinition.Variant { syntax_node; constructors } ->
       Some
         (render_variant_definition
            ?source
-           ?end_before:trailing_docstring_start
            ~source_node:syntax_node
            constructors)
   | Syn.Cst.TypeDefinition.PolyVariant poly_variant -> (
@@ -2333,73 +2415,7 @@ let type_declaration_nontrivia_end = fun ?before declaration ->
   let syntax_node = Syn.Cst.TypeDeclaration.syntax_node declaration in
   syntax_node_nontrivia_end ?before syntax_node
 
-let type_declaration_trailing_docstring_start = fun ~source declaration ->
-  let declaration_end = type_declaration_nontrivia_end declaration in
-  let indent =
-    docstring_indentation ~source (Syn.Cst.TypeDeclaration.syntax_node declaration)
-    |> Option.unwrap_or ~default:0
-  in
-  match
-    find_trailing_docstring_start_at_indentation
-      ~source
-      ~indent
-      ~include_sections:false
-      ~start:declaration_end
-      ~end_:((Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node declaration)).end_)
-  with
-  | None ->
-      None
-  | Some block_start ->
-      let before_block =
-        parse_trivia_between_offsets source ~start:declaration_end ~end_:block_start []
-      in
-      if pending_has_blank_line before_block then
-        None
-      else
-        Some block_start
-
-let split_type_declaration_trailing_docstring_block = fun ~source declaration ->
-  let declaration_end = type_declaration_nontrivia_end declaration in
-  let full_end =
-    (Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node declaration)).end_
-  in
-  let indent =
-    docstring_indentation ~source (Syn.Cst.TypeDeclaration.syntax_node declaration)
-    |> Option.unwrap_or ~default:0
-  in
-  match
-    find_trailing_docstring_start_at_indentation
-      ~source
-      ~indent
-      ~include_sections:true
-      ~start:declaration_end
-      ~end_:full_end
-  with
-  | None ->
-      (None, [], None)
-  | Some block_start ->
-      let before_block =
-        parse_trivia_between_offsets source ~start:declaration_end ~end_:block_start []
-      in
-      if pending_has_blank_line before_block then
-        (None, [], Some block_start)
-      else
-        let trailing =
-          parse_trivia_between_offsets source ~start:block_start ~end_:full_end []
-        in
-        let moved_docstrings, remaining =
-          extract_docstring_block_from_start ~allow_terminal_docstrings:true trailing
-        in
-        let remaining_start =
-          match remaining with
-          | [] ->
-              None
-          | entry :: _ ->
-              Some (pending_trivia_position entry)
-        in
-        (moved_docstrings, remaining, remaining_start)
-
-let render_single_type_declaration_with_keyword = fun ?trailing_docstring_start_override ctx keyword decl ->
+let render_single_type_declaration_with_keyword = fun ctx keyword decl ->
   if type_declaration_requires_verbatim decl then
     doc_of_verbatim_syntax_node_span_from_current_source ctx (Syn.Cst.TypeDeclaration.syntax_node decl)
   else
@@ -2425,39 +2441,15 @@ let render_single_type_declaration_with_keyword = fun ?trailing_docstring_start_
       | None ->
           header
     in
-  let trailing_docstring_start =
-    match trailing_docstring_start_override with
-    | Some _ ->
-        trailing_docstring_start_override
-    | None -> (
-        match ctx.source with
-        | None ->
-            None
-        | Some source ->
-            let declaration_end = type_declaration_nontrivia_end decl in
-            let indent =
-              docstring_indentation ~source (Syn.Cst.TypeDeclaration.syntax_node decl)
-              |> Option.unwrap_or ~default:0
-            in
-            find_trailing_docstring_start_at_indentation
-              ~source
-              ~indent
-              ~include_sections:true
-              ~start:declaration_end
-              ~end_:((Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node decl)).end_)
-      )
-  in
   let definition =
     match Syn.Cst.TypeDeclaration.private_flag decl with
     | Syn.Cst.PrivateFlag.Public ->
           render_type_definition
             ?source:ctx.source
-            ?trailing_docstring_start
             type_definition
     | Syn.Cst.PrivateFlag.Private _ ->
           Option.map (fun definition -> Doc.concat [ kw_private; Doc.space; definition ]) (render_type_definition
           ?source:ctx.source
-          ?trailing_docstring_start
           type_definition)
     in
     let with_definition =
@@ -2485,32 +2477,7 @@ let render_type_declaration_with_keyword =
   fun ?(allow_terminal_docstrings = false) ?(render_remaining_trivia = true) ctx keyword decl ->
   let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
   if and_declarations = [] then
-    let doc = render_single_type_declaration_with_keyword ctx keyword decl in
-    (
-      match ctx.source with
-      | None ->
-          doc
-      | Some source ->
-          let moved_docstrings, _remaining, _ =
-            split_type_declaration_trailing_docstring_block ~source decl
-          in
-          let doc =
-            match moved_docstrings with
-            | Some docstrings ->
-                doc_with_leading_trivia (Some docstrings) doc
-            | None ->
-                doc
-          in
-          if render_remaining_trivia then
-            let _, remaining, _ = split_type_declaration_trailing_docstring_block ~source decl in
-            match render_pending_trivia remaining with
-            | Some trailing_doc ->
-                Doc.concat [ doc; blank_line; trailing_doc ]
-            | None ->
-                doc
-          else
-            doc
-    )
+    render_single_type_declaration_with_keyword ctx keyword decl
   else if type_declaration_group_requires_verbatim decl then
     doc_of_verbatim_syntax_node_span_from_current_source ctx (Syn.Cst.TypeDeclaration.syntax_node decl)
   else
@@ -2551,34 +2518,12 @@ let render_type_declaration_with_keyword =
             Doc.empty
         | (first_decl, first_keyword) :: rest ->
             let first_doc = render_single_type_declaration_with_keyword ctx first_keyword first_decl in
-            let prepend_to_last = fun acc docstrings ->
-              match acc with
-              | [] ->
-                  []
-              | current :: rest ->
-                  doc_with_leading_trivia (Some docstrings) current :: rest
-            in
             let rec build = fun acc current_end remaining_entries ->
               match remaining_entries with
               | [] ->
                 let trailing = parse_trivia_between_offsets source ~start:current_end ~end_:group_end [] in
-                let moved_docstrings, remaining =
-                  if pending_has_section_docstring trailing then
-                    (None, trailing)
-                  else
-                    extract_trailing_docstring_block
-                      ~allow_terminal_docstrings:true
-                      trailing
-                in
                 let acc =
-                  match moved_docstrings with
-                  | Some docstrings ->
-                      prepend_to_last acc docstrings
-                    | None ->
-                        acc
-                  in
-                let acc =
-                  match render_pending_trivia remaining, acc with
+                  match render_pending_trivia trailing, acc with
                   | Some trailing_doc, current :: rest ->
                       Doc.concat [ current; blank_line; trailing_doc ] :: rest
                   | _ ->
@@ -2587,43 +2532,13 @@ let render_type_declaration_with_keyword =
                 Doc.join blank_line (List.rev acc)
               | (next_decl, next_keyword) :: rest_entries ->
                   let next_decl_end = declaration_end next_decl rest_entries in
-                  let next_trailing_docstring_start =
-                    if rest_entries = [] then
-                      let indent =
-                        docstring_indentation ~source (Syn.Cst.TypeDeclaration.syntax_node next_decl)
-                        |> Option.unwrap_or ~default:0
-                      in
-                      find_trailing_docstring_start_at_indentation
-                        ~source
-                        ~indent
-                        ~include_sections:true
-                        ~start:next_decl_end
-                        ~end_:group_end
-                    else
-                      None
-                  in
                   let next_doc =
-                    render_single_type_declaration_with_keyword
-                      ?trailing_docstring_start_override:next_trailing_docstring_start
-                      ctx next_keyword next_decl
+                    render_single_type_declaration_with_keyword ctx next_keyword next_decl
                   in
                   let between = parse_trivia_between_offsets source ~start:current_end ~end_:(and_keyword_start
                   next_decl) [] in
-                  let moved_docstrings, remaining =
-                    if pending_has_section_docstring between then
-                      (None, between)
-                    else
-                      extract_trailing_docstring_block between
-                  in
-                  let acc =
-                    match moved_docstrings with
-                    | Some docstrings ->
-                        prepend_to_last acc docstrings
-                    | None ->
-                        acc
-                  in
                   let next_doc =
-                    match render_pending_trivia remaining with
+                    match render_pending_trivia between with
                     | None ->
                         next_doc
                     | Some between_doc ->
@@ -6259,20 +6174,6 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
     match items with
     | [] ->
         let pending = parse_between pending ~start:cursor ~end_:source_end in
-        let moved_docstrings, pending =
-          if acc = [] then
-            (None, pending)
-          else
-            extract_trailing_docstring_block ~allow_terminal_docstrings:true pending
-        in
-        let acc =
-          match moved_docstrings, acc with
-          | Some docstrings, (doc, a, b, c, d, e, f) :: rest ->
-              (doc_with_leading_trivia (Some docstrings) doc, a, b, c, d, e, f)
-              :: rest
-          | _ ->
-              acc
-        in
         let acc = flush_pending pending acc in
         let acc =
           match leading_doc with
@@ -6284,20 +6185,6 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         join_entries (List.rev acc)
     | ((Syn.Cst.StructureItem.Expression _ as item), (base_span : Syn.Ceibo.Span.t)) :: rest ->
         let pending = parse_between pending ~start:cursor ~end_:base_span.start in
-        let moved_docstrings, pending =
-          if acc = [] then
-            (None, pending)
-          else
-            extract_trailing_docstring_block pending
-        in
-        let acc =
-          match moved_docstrings, acc with
-          | Some docstrings, (doc, a, b, c, d, e, f) :: tail ->
-              (doc_with_leading_trivia (Some docstrings) doc, a, b, c, d, e, f)
-              :: tail
-          | _ ->
-              acc
-        in
         let rec collect_expression_run (prev_span : Syn.Ceibo.Span.t) acc remaining =
           match remaining with
           | ((Syn.Cst.StructureItem.Expression _ as next), (next_span : Syn.Ceibo.Span.t)) :: tail ->
@@ -6372,68 +6259,32 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
           | _ ->
               false
         in
-        let acc =
+          let acc = acc in
           if is_attachable_docstring then
-            match acc with
-            | (doc, a, b, c, d, e, true) :: tail -> (
-                match item with
-                | Syn.Cst.StructureItem.Docstring docstring ->
-                    let docstring_doc = doc_of_token (Syn.Cst.Docstring.token docstring) in
-                    (doc_with_leading_trivia (Some docstring_doc) doc, a, b, c, d, e, true) :: tail
-                | _ ->
-                    acc)
-            | _ ->
-                acc
-          else
-            acc
-        in
-        if is_attachable_docstring then
           let leading_doc =
-            match acc with
-            | (_, _, _, _, _, _, true) :: _ ->
+            match item, rest with
+            | Syn.Cst.StructureItem.Docstring docstring, (next_item, _) :: _
+              when structure_item_accepts_trailing_docstring next_item ->
+                append_leading_doc leading_doc
+                  (doc_of_token (Syn.Cst.Docstring.token docstring))
+            | _ ->
                 leading_doc
-            | _ -> (
-                match item, rest with
-                | Syn.Cst.StructureItem.Docstring docstring, (next_item, _) :: _
-                  when structure_item_accepts_trailing_docstring next_item ->
-                      append_leading_doc leading_doc
-                        (doc_of_token (Syn.Cst.Docstring.token docstring))
-                | _ ->
-                    None)
           in
           let acc =
-            match acc with
-            | (_, _, _, _, _, _, true) :: _ ->
+            match item, rest with
+            | Syn.Cst.StructureItem.Docstring _, (next_item, _) :: _
+              when structure_item_accepts_trailing_docstring next_item ->
                 acc
-            | _ -> (
-                match item, rest with
-                | Syn.Cst.StructureItem.Docstring _, (next_item, _) :: _
-                  when structure_item_accepts_trailing_docstring next_item ->
-                      acc
-                | _ ->
-                    let acc = flush_pending pending acc in
-                    let entry =
-                      render_structure_entry ~source ~source_offset ~span:base_span
-                        ~trailing_suffix:None ~is_last_item:(rest = []) item
-                    in
-                    apply_leading_doc leading_doc entry :: acc)
+            | _ ->
+                let acc = flush_pending pending acc in
+                let entry =
+                  render_structure_entry ~source ~source_offset ~span:base_span
+                    ~trailing_suffix:None ~is_last_item:(rest = []) item
+                in
+                apply_leading_doc leading_doc entry :: acc
           in
           loop [] leading_doc acc base_span.end_ rest
         else
-          let moved_docstrings, pending =
-            if acc = [] then
-              (None, pending)
-            else
-              extract_trailing_docstring_block pending
-          in
-          let acc =
-            match moved_docstrings, acc with
-            | Some docstrings, (doc, a, b, c, d, e, f) :: tail ->
-                (doc_with_leading_trivia (Some docstrings) doc, a, b, c, d, e, f)
-                :: tail
-            | _ ->
-                acc
-          in
           let pending =
             match acc with
             | (_, _, _, _, _, prev_is_module_alias, _) :: _
@@ -6599,13 +6450,7 @@ and render_signature_top_level_items
           in
           { span with end_ = Int.max span.end_ (type_declaration_owned_trivia_end decl) }
         in
-        (
-          match split_type_declaration_trailing_docstring_block ~source decl with
-          | _, _, Some remaining_start ->
-              { span with end_ = Int.max span.end_ remaining_start }
-          | _ ->
-              span
-        )
+        span
     | _ ->
         let syntax_node = Syn.Cst.SignatureItem.syntax_node item in
         if signature_item_uses_verbatim_span item then
@@ -6678,20 +6523,6 @@ and render_signature_top_level_items
     match items with
     | [] ->
         let pending = parse_between pending ~start:cursor ~end_:source_end in
-        let moved_docstrings, pending =
-          if acc = [] then
-            (None, pending)
-          else
-            extract_trailing_docstring_block ~allow_terminal_docstrings:true pending
-        in
-        let acc =
-          match moved_docstrings, acc with
-          | Some docstrings, (doc, a, b, c, d, e, f) :: rest ->
-              (doc_with_leading_trivia (Some docstrings) doc, a, b, c, d, e, f)
-              :: rest
-          | _ ->
-              acc
-        in
         let acc = flush_pending pending acc in
         let acc =
           match leading_doc with
@@ -6712,70 +6543,34 @@ and render_signature_top_level_items
           | _ ->
               false
         in
-        let acc =
-          if is_attachable_docstring then
-            match acc with
-            | (doc, a, b, c, d, e, true) :: tail -> (
-                match item with
-                | Syn.Cst.SignatureItem.Docstring docstring ->
-                    let docstring_doc = doc_of_token (Syn.Cst.Docstring.token docstring) in
-                    (doc_with_leading_trivia (Some docstring_doc) doc, a, b, c, d, e, true) :: tail
-                | _ ->
-                    acc)
-            | _ ->
-                acc
-          else
-            acc
-        in
+        let acc = acc in
         if is_attachable_docstring then
           let leading_doc =
-            match acc with
-            | (_, _, _, _, _, _, true) :: _ ->
+            match item, rest with
+            | Syn.Cst.SignatureItem.Docstring docstring, (next_item, _) :: _
+              when signature_item_accepts_trailing_docstring next_item ->
+                append_leading_doc leading_doc
+                  (doc_of_token (Syn.Cst.Docstring.token docstring))
+            | _ ->
                 leading_doc
-            | _ -> (
-                match item, rest with
-                | Syn.Cst.SignatureItem.Docstring docstring, (next_item, _) :: _
-                  when signature_item_accepts_trailing_docstring next_item ->
-                      append_leading_doc leading_doc
-                        (doc_of_token (Syn.Cst.Docstring.token docstring))
-                | _ ->
-                    None)
           in
           let acc =
-            match acc with
-            | (_, _, _, _, _, _, true) :: _ ->
+            match item, rest with
+            | Syn.Cst.SignatureItem.Docstring _, (next_item, _) :: _
+              when signature_item_accepts_trailing_docstring next_item ->
                 acc
-            | _ -> (
-                match item, rest with
-                | Syn.Cst.SignatureItem.Docstring _, (next_item, _) :: _
-                  when signature_item_accepts_trailing_docstring next_item ->
-                      acc
-                | _ ->
-                    let acc = flush_pending pending acc in
-                    let entry =
-                      render_signature_entry
-                        ~include_trailing_comment:(include_last_trailing_comment && rest = [])
-                        ~source ~source_offset ~span:base_span ~trailing_suffix:None
-                        ~is_last_item:(rest = []) item
-                    in
-                    apply_leading_doc leading_doc entry :: acc)
+            | _ ->
+                let acc = flush_pending pending acc in
+                let entry =
+                  render_signature_entry
+                    ~include_trailing_comment:(include_last_trailing_comment && rest = [])
+                    ~source ~source_offset ~span:base_span ~trailing_suffix:None
+                    ~is_last_item:(rest = []) item
+                in
+                apply_leading_doc leading_doc entry :: acc
           in
           loop [] leading_doc acc rest base_span.end_
         else
-          let moved_docstrings, pending =
-            if acc = [] then
-              (None, pending)
-            else
-              extract_trailing_docstring_block pending
-          in
-          let acc =
-            match moved_docstrings, acc with
-            | Some docstrings, (doc, a, b, c, d, e, f) :: tail ->
-                (doc_with_leading_trivia (Some docstrings) doc, a, b, c, d, e, f)
-                :: tail
-            | _ ->
-                acc
-          in
           let acc = flush_pending pending acc in
           let entry =
             render_signature_entry

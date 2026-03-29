@@ -32,7 +32,8 @@
 26. Keep nested `sig ... end` and `struct ... end` bodies exposed through CST-node helpers such as `CstBuilder.signature_items_of_module_type` and `CstBuilder.structure_items_of_module_expression`; callers should not have to relift raw nested syntax anchors by hand just to get normalized item ownership.
 27. Keep grouped `type ... and ...` ownership member-driven: normalize each member from its own `TYPE_DECL` token stream, then reassemble the public grouped declaration, instead of redistributing docs/headings out of the grouped parent node by source-span slicing.
 28. Keep red traversal aligned with that same contract for parser-built trees: `SyntaxNode.children`, `direct_tokens`, and `tokens` should already be trivia-free, with comments/docstrings reachable through `SyntaxToken.leading_trivia`.
-29. Keep variant constructor postfix docs/comments owned by constructors, including the last constructor before the next declaration; peel constructor-postfix trivia out of the variant stream and any next-type leading trivia before top-level type ownership runs.
+29. Keep member doc ownership leading-only: constructor docstrings in inter-member gaps should attach to the next constructor's `owned_trivia.leading`, while postfix comments may still bubble backward onto the previous constructor and terminal constructor docstrings stay standalone.
+30. Keep record field doc ownership leading-only: field docstrings in inter-field gaps should attach to the next field's `owned_trivia.leading`, while postfix comments may still bubble backward onto the previous field and terminal `}`-owned docs/comments must be preserved without stealing them for the last field.
 
 ## Validate
 

@@ -85,6 +85,7 @@
 0741_signature_abstract_type_then_error_type_then_section_heading.mli
 0742_signature_protocol_sections_and_alias_docs.mli
 0743_signature_variant_constructor_doc_before_type_level_doc.mli
+0744_signature_record_field_doc_before_type_level_doc.mli
 
 # 08xx modules, signatures, and functors
 0800_modules_signatures_and_functors.ml

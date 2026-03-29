@@ -1,2 +1,2 @@
-(** doc string *)
 type a
+(** doc string *)
