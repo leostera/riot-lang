@@ -54,6 +54,12 @@ bugs.
   plan-bundle round-trip baseline.
 - `PlanBundleModuleGraphOpenModulesBug.cfg`: a failing config showing that the
   current plan-bundle round-trip erases non-empty `open_modules`.
+- `PlanBundleVersionGate.tla`: a PlusCal slice of the warm-plan cache
+  acceptance gate for persisted plan bundles.
+- `PlanBundleVersionGate.cfg`: a passing smoke config for the accepted
+  fresh-bundle path.
+- `PlanBundleVersionGateStaleVersion.cfg`: a passing config for the stale
+  bundle-version rebuild path.
 - `BugInventory.md`: the running list of bug-shaped properties found by the
   extracted specs. This is the place to accumulate likely bugs before we add
   OCaml regression tests.
@@ -191,6 +197,21 @@ implementation-shaped semantics, every node is serialized with `"opens": []`
 and restored with `open_modules = []`, so any non-empty open-module context is
 lost across the round-trip.
 
+## What `PlanBundleVersionGate.tla` Extracts
+
+This slice stays in `packages/tusk-planner/src/package_planner.ml`, but narrows
+to the acceptance gate on a loaded plan bundle:
+
+- missing bundles rebuild
+- decode exceptions rebuild
+- wrong bundle versions rebuild
+- wrong package identity rebuilds
+- module-graph or action-graph parse failures rebuild
+- only a fully accepted bundle yields a warm cache hit
+
+So far this slice does not expose a bug. The extracted version gate matches the
+intended stale-bundle invalidation behavior.
+
 ## How To Work On The Spec
 
 `ActionCache.tla` is written primarily in PlusCal. Treat the PlusCal algorithm
@@ -265,6 +286,15 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/PlanBundleModuleGraphRoundTrip.cfg
 ```
 
+And for the plan-bundle version-gate slice:
+
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/PlanBundleVersionGate.tla \
+  -config specs/tusk/PlanBundleVersionGate.cfg
+```
+
 The bug config is expected to fail under the current implementation-shaped
 semantics:
 
@@ -308,6 +338,13 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   tlc2.TLC \
   specs/tusk/PlanBundleModuleGraphRoundTrip.tla \
   -config specs/tusk/PlanBundleModuleGraphOpenModulesBug.cfg
+```
+
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/PlanBundleVersionGate.tla \
+  -config specs/tusk/PlanBundleVersionGateStaleVersion.cfg
 ```
 
 ## Current Findings
@@ -387,3 +424,7 @@ These configs are safety-only and intentionally tiny.
 - `PlanBundleModuleGraphOpenModulesBug.cfg` currently fails with a
   counterexample where `Main` starts with non-empty `open_modules` but the
   restored graph gives it `{}`.
+- `PlanBundleVersionGate.cfg` currently completes with 9 distinct states and no
+  errors.
+- `PlanBundleVersionGateStaleVersion.cfg` currently completes with 6 distinct
+  states and no errors.

@@ -101,6 +101,9 @@ Implemented slice:
 - `PlanBundleModuleGraphRoundTrip.tla` covers one fidelity law inside persisted
   plan bundles: whether the serialized module graph preserves per-node
   `open_modules` across save/load round-trips.
+- `PlanBundleVersionGate.tla` covers the warm-plan cache acceptance gate around
+  bundle presence, version matching, package identity, and module/action graph
+  parse success.
 
 Still open:
 - dependency state classification for `MissingDependencies` vs
@@ -108,7 +111,6 @@ Still open:
 - dependency summaries sourced from immutable store paths
 - input-hash composition over build context, package metadata, workspace-local
   dependency details, and transitive dependency hashes
-- stale planner bundle version invalidation
 - action-graph round-trip fidelity inside plan bundles
 - action-hash preservation on planner bundle rehydration
 
