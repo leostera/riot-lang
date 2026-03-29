@@ -938,18 +938,6 @@ let doc_of_owned_trivia = fun ?start ~source trivia ->
   in
   loop None start trivia
 
-let pending_nonbreak_count =
-  fun pending ->
-    pending |> List.fold_left
-      (fun count ->
-        function
-        | TriviaComment _
-        | TriviaDocstring _ ->
-            count + 1
-        | TriviaBreak _ ->
-            count)
-      0
-
 let pending_has_section_docstring =
   fun pending ->
     List.exists
@@ -957,16 +945,6 @@ let pending_has_section_docstring =
         | TriviaDocstring (_, true, _) ->
             true
         | _ ->
-            false)
-      pending
-
-let pending_has_only_breaks =
-  fun pending ->
-    List.for_all
-      (function
-        | TriviaBreak _ ->
-            true
-        | TriviaComment _ | TriviaDocstring _ ->
             false)
       pending
 
@@ -991,23 +969,6 @@ let pending_has_comment_or_section_docstring =
         | TriviaBreak _ | TriviaDocstring _ ->
             false)
       pending
-
-let pending_has_only_section_docstrings =
-  fun pending ->
-    let saw_section = ref false in
-    let ok =
-      List.for_all
-        (function
-          | TriviaBreak _ ->
-              true
-          | TriviaDocstring (_, true, _) ->
-              saw_section := true;
-              true
-          | TriviaComment _ | TriviaDocstring _ ->
-              false)
-        pending
-    in
-    ok && !saw_section
 
 let source_position_is_line_start = fun source position ->
   let source_length = String.length source in
@@ -5683,9 +5644,7 @@ and render_signature_item_owned_trivia =
   | Syn.Cst.SignatureItem.Comment _ ->
       None
 
-and render_structure_entry
-    ?(render_owned_trivia = false)
-    ~source ~source_offset ~span ~trailing_suffix ~is_last_item item =
+and render_structure_entry ~source ~source_offset ~span ~trailing_suffix ~is_last_item item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
   let should_preserve_verbatim =
     string_contains_substring rendered_source "[@"
@@ -5712,22 +5671,19 @@ and render_structure_entry
       
     in
     let base_doc =
-      if render_owned_trivia then
-        match render_structure_item_owned_trivia item with
-        | Some owned ->
-            let leading =
-              doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
-            in
-            let trailing =
-              doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
-            in
-            base_doc
-            |> doc_with_leading_trivia leading
-            |> fun doc -> doc_with_trailing_trivia doc trailing
-        | None ->
-            base_doc
-      else
-        base_doc
+      match render_structure_item_owned_trivia item with
+      | Some owned ->
+          let leading =
+            doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
+          in
+          let trailing =
+            doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
+          in
+          base_doc
+          |> doc_with_leading_trivia leading
+          |> fun doc -> doc_with_trailing_trivia doc trailing
+      | None ->
+          base_doc
     in
     match trailing_suffix with
     | None ->
@@ -5745,19 +5701,9 @@ and render_structure_entry
         false
   in
   let tight_after = false in
-  (
-    doc,
-    is_open_structure_item item,
-    is_trivia,
-    tight_after,
-    false,
-    is_module_alias_structure_item item,
-    structure_item_accepts_trailing_docstring item
-  )
+  (doc, is_open_structure_item item, is_trivia, tight_after, false)
 
-and render_signature_entry
-    ?(render_owned_trivia = false)
-    ~source ~source_offset ~span ~trailing_suffix ~is_last_item item =
+and render_signature_entry ~source ~source_offset ~span ~trailing_suffix ~is_last_item item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
   let should_preserve_verbatim =
     string_contains_substring rendered_source "[@"
@@ -5785,22 +5731,19 @@ and render_signature_entry
             render_signature_item item)
     in
     let base_doc =
-      if render_owned_trivia then
-        match render_signature_item_owned_trivia item with
-        | Some owned ->
-            let leading =
-              doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
-            in
-            let trailing =
-              doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
-            in
-            base_doc
-            |> doc_with_leading_trivia leading
-            |> fun doc -> doc_with_trailing_trivia doc trailing
-        | None ->
-            base_doc
-      else
-        base_doc
+      match render_signature_item_owned_trivia item with
+      | Some owned ->
+          let leading =
+            doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
+          in
+          let trailing =
+            doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
+          in
+          base_doc
+          |> doc_with_leading_trivia leading
+          |> fun doc -> doc_with_trailing_trivia doc trailing
+      | None ->
+          base_doc
     in
     match trailing_suffix with
     | None ->
@@ -5827,15 +5770,7 @@ and render_signature_entry
   let compact_after =
     false
   in
-  (
-    doc,
-    is_open_signature_item item,
-    is_trivia,
-    tight_after,
-    false,
-    compact_after,
-    signature_item_accepts_trailing_docstring item
-  )
+  (doc, is_open_signature_item item, is_trivia, tight_after, false, compact_after)
 
 and render_structure_item = function
   | Syn.Cst.StructureItem.LetBinding binding ->
@@ -5940,42 +5875,6 @@ and render_signature_item item =
       render_external_declaration decl
   | item ->
       doc_of_node (Syn.Cst.SignatureItem.syntax_node item)
-
-and structure_item_accepts_trailing_docstring =
-  function
-  | Syn.Cst.StructureItem.LetBinding _
-  | Syn.Cst.StructureItem.TypeDeclaration _
-  | Syn.Cst.StructureItem.ExternalDeclaration _
-  | Syn.Cst.StructureItem.ModuleDeclaration _
-  | Syn.Cst.StructureItem.RecursiveModuleDeclaration _
-  | Syn.Cst.StructureItem.ModuleTypeDeclaration _ ->
-      true
-  | Syn.Cst.StructureItem.IncludeStatement _
-  | Syn.Cst.StructureItem.OpenStatement _
-  | Syn.Cst.StructureItem.Docstring _
-  | Syn.Cst.StructureItem.Comment _
-  | Syn.Cst.StructureItem.Expression _ ->
-      false
-  | _ ->
-      false
-
-and signature_item_accepts_trailing_docstring =
-  function
-  | Syn.Cst.SignatureItem.ValueDeclaration _
-  | Syn.Cst.SignatureItem.TypeDeclaration _
-  | Syn.Cst.SignatureItem.ExternalDeclaration _
-  | Syn.Cst.SignatureItem.ModuleDeclaration _
-  | Syn.Cst.SignatureItem.RecursiveModuleDeclaration _
-  | Syn.Cst.SignatureItem.ModuleTypeDeclaration _ ->
-      true
-  | Syn.Cst.SignatureItem.IncludeStatement _
-  | Syn.Cst.SignatureItem.OpenStatement _
-  | Syn.Cst.SignatureItem.Docstring _ ->
-      false
-  | Syn.Cst.SignatureItem.Comment _ ->
-      false
-  | _ ->
-      false
 
 and structure_item_uses_verbatim_span = function
   | Syn.Cst.StructureItem.LetBinding _
@@ -6124,46 +6023,14 @@ and type_declaration_owned_trivia_end = fun decl ->
          Int.max acc (type_declaration_owned_trivia_end declaration))
        current
 
-and render_structure_top_level_items ~source ~source_offset ~source_node ~items =
-  let flush_pending pending acc =
-    let strip_trailing_breaks =
-      not (acc = [] && pending_nonbreak_count pending = 1)
-    in
-    match render_pending_trivia ~strip_trailing_breaks pending with
-    | None ->
-        acc
-    | Some pending_doc ->
-        let is_section_block = pending_has_only_section_docstrings pending in
-        ( pending_doc,
-          false,
-          not is_section_block,
-          false,
-          not strip_trailing_breaks,
-          false,
-          false )
-        :: acc
-  in
-  let append_leading_doc = fun existing doc ->
-    match existing with
-    | None ->
-        Some doc
-    | Some existing ->
-        Some (Doc.concat [ existing; Doc.line; doc ])
-  in
-  let apply_leading_doc = fun leading_doc (doc, a, b, c, d, e, f) ->
-    match leading_doc with
-    | None ->
-        (doc, a, b, c, d, e, f)
-    | Some leading_doc ->
-        (doc_with_leading_trivia (Some leading_doc) doc, a, b, c, d, e, f)
-  in
+and render_structure_top_level_items ~source ~source_offset ~source_node:_source_node ~items =
   let rec join_entries = function
     | [] ->
         Doc.empty
-    | (doc, _, _, _, _, _, _) :: [] ->
+    | (doc, _, _, _, _) :: [] ->
         doc
-    | (doc, is_open, is_trivia, tight_after, has_trailing_break, _, _)
-      :: ((_, next_is_open, _, _, _, _, _) :: _ as rest) ->
+    | (doc, is_open, is_trivia, tight_after, has_trailing_break)
+      :: ((_, next_is_open, _, _, _) :: _ as rest) ->
         let separator =
           if has_trailing_break then
             Doc.empty
@@ -6185,7 +6052,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
     | _ ->
         let syntax_node = Syn.Cst.StructureItem.syntax_node item in
         if structure_item_uses_verbatim_span item then
-          span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia:true syntax_node
+          span_of_syntax_node_nontrivia_bounds syntax_node
         else
           (match item with
           | Syn.Cst.StructureItem.TypeDeclaration decl ->
@@ -6206,11 +6073,6 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
   in
   let source_length = String.length source in
   let source_end = source_offset + source_length in
-  let uses_source_file_item_stream = true in
-  let parse_between pending ~start ~end_ =
-    parse_trivia_between_offsets source ~start:(start - source_offset)
-      ~end_:(end_ - source_offset) pending
-  in
   let items =
     items
     |> List.map (fun item -> (item, structure_item_span item))
@@ -6228,32 +6090,12 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
            else
              compare_structure_items_by_span left right)
   in
-  let rec loop pending leading_doc acc cursor items =
+  let rec loop acc items =
     yield ();
     match items with
     | [] ->
-        let pending =
-          if uses_source_file_item_stream then
-            pending
-          else
-            parse_between pending ~start:cursor ~end_:source_end
-        in
-        let acc = flush_pending pending acc in
-        let acc =
-          match leading_doc with
-          | None ->
-              acc
-          | Some doc ->
-              (doc, false, false, false, false, false, false) :: acc
-        in
         join_entries (List.rev acc)
     | ((Syn.Cst.StructureItem.Expression _ as item), (base_span : Syn.Ceibo.Span.t)) :: rest ->
-        let pending =
-          if uses_source_file_item_stream then
-            pending
-          else
-            parse_between pending ~start:cursor ~end_:base_span.start
-        in
         let rec collect_expression_run (prev_span : Syn.Ceibo.Span.t) acc remaining =
           match remaining with
           | ((Syn.Cst.StructureItem.Expression _ as next), (next_span : Syn.Ceibo.Span.t)) :: tail ->
@@ -6297,127 +6139,56 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
           | _ ->
               false
         in
-        let acc = flush_pending pending acc in
-        let entry, next_cursor =
+        let entry =
           if should_preserve_run_verbatim then
             let run_source =
               source_of_relative_span ~source ~source_offset
                 { Syn.Ceibo.Span.start = base_span.start; end_ = preserved_run_end }
             in
-            ( (Doc.text run_source, false, false, false, false, false, false),
-              preserved_run_end )
+            (Doc.text run_source, false, false, false, false)
           else
             match run_items with
             | [ item ] ->
-                ( render_structure_entry ~render_owned_trivia:uses_source_file_item_stream
-                    ~source ~source_offset ~span:base_span
-                    ~trailing_suffix:None ~is_last_item:(remaining = []) item,
-                  run_span.end_ )
+                render_structure_entry ~source ~source_offset ~span:base_span
+                  ~trailing_suffix:None ~is_last_item:(remaining = []) item
             | _ ->
                 assert false
         in
-        let entry = apply_leading_doc leading_doc entry in
-        loop [] None (entry :: acc) next_cursor remaining
+        loop (entry :: acc) remaining
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
-        let pending =
-          if uses_source_file_item_stream then
-            pending
-          else
-            parse_between pending ~start:cursor ~end_:base_span.start
+        let next_boundary =
+          match rest with
+          | (_, (next_span : Syn.Ceibo.Span.t)) :: _ ->
+              next_span.start
+          | [] ->
+              source_end
         in
-        let is_attachable_docstring =
-          (not uses_source_file_item_stream)
-          && match item with
-          | Syn.Cst.StructureItem.Docstring docstring ->
-              not (Syn.Cst.Docstring.is_section docstring)
-              && pending_has_only_breaks pending
-          | _ ->
-              false
+        let leading_phrase_separator =
+          source_gap_leading_phrase_separator ~source ~source_offset
+            ~start:base_span.end_ ~end_:next_boundary
         in
-          let acc = acc in
-          if is_attachable_docstring then
-          let leading_doc =
-            match item, rest with
-            | Syn.Cst.StructureItem.Docstring docstring, (next_item, _) :: _
-              when structure_item_accepts_trailing_docstring next_item ->
-                append_leading_doc leading_doc
-                  (doc_of_token (Syn.Cst.Docstring.token docstring))
-            | _ ->
-                leading_doc
-          in
-          let acc =
-            match item, rest with
-            | Syn.Cst.StructureItem.Docstring _, (next_item, _) :: _
-              when structure_item_accepts_trailing_docstring next_item ->
-                acc
-            | _ ->
-                let acc = flush_pending pending acc in
-                let entry =
-                  render_structure_entry
-                    ~render_owned_trivia:uses_source_file_item_stream
-                    ~source ~source_offset ~span:base_span
-                    ~trailing_suffix:None ~is_last_item:(rest = []) item
-                in
-                apply_leading_doc leading_doc entry :: acc
-          in
-          loop [] leading_doc acc base_span.end_ rest
-        else
-          let pending =
-            match acc with
-            | (_, _, _, _, _, prev_is_module_alias, _) :: _
-              when
-                prev_is_module_alias
-                && is_module_alias_structure_item item
-                && pending_has_only_breaks pending ->
-                []
-            | _ ->
-                pending
-          in
-          let next_boundary =
-            match rest with
-            | (_, (next_span : Syn.Ceibo.Span.t)) :: _ ->
-                next_span.start
-            | [] ->
-                source_end
-          in
-          let leading_phrase_separator =
-            source_gap_leading_phrase_separator ~source ~source_offset
-              ~start:base_span.end_ ~end_:next_boundary
-          in
-          let trailing_suffix =
-            match leading_phrase_separator with
-            | Some _ as suffix ->
-                suffix
-            | None ->
-                (match item, rest with
-                | Syn.Cst.StructureItem.Expression _, (next, _) :: _
-                  when
-                    Syn.Ceibo.Red.SyntaxNode.kind
-                      (Syn.Cst.StructureItem.syntax_node next)
-                    = Syn.SyntaxKind.ATTRIBUTE_EXPR ->
-                    Some (";;", base_span.end_)
-                | _ ->
-                    None)
-          in
-          let next_cursor =
-            match leading_phrase_separator with
-            | Some (_, suffix_end) ->
-                suffix_end
-            | None ->
-                base_span.end_
-          in
-          let acc = flush_pending pending acc in
-          let entry =
-            render_structure_entry
-              ~render_owned_trivia:uses_source_file_item_stream
-              ~source ~source_offset ~span:base_span ~trailing_suffix
-              ~is_last_item:(rest = []) item
-          in
-          let entry = apply_leading_doc leading_doc entry in
-          loop [] None (entry :: acc) next_cursor rest
+        let trailing_suffix =
+          match leading_phrase_separator with
+          | Some _ as suffix ->
+              suffix
+          | None ->
+              (match item, rest with
+              | Syn.Cst.StructureItem.Expression _, (next, _) :: _
+                when
+                  Syn.Ceibo.Red.SyntaxNode.kind
+                    (Syn.Cst.StructureItem.syntax_node next)
+                  = Syn.SyntaxKind.ATTRIBUTE_EXPR ->
+                  Some (";;", base_span.end_)
+              | _ ->
+                  None)
+        in
+        let entry =
+          render_structure_entry ~source ~source_offset ~span:base_span
+            ~trailing_suffix ~is_last_item:(rest = []) item
+        in
+        loop (entry :: acc) rest
   in
-  let source_node_span = Syn.Ceibo.Red.SyntaxNode.span source_node in
-  loop [] None [] source_node_span.start items
+  loop [] items
 
 and render_structure_items ?source ~source_node items =
   let source_opt = source in
@@ -6446,10 +6217,10 @@ and render_signature_top_level_items
   let rec join_entries = function
     | [] ->
         Doc.empty
-    | (doc, _, _, _, _, _, _) :: [] ->
+    | (doc, _, _, _, _, _) :: [] ->
         doc
-    | (doc, is_open, is_trivia, tight_after, has_trailing_break, compact_after, _)
-      :: ((_, next_is_open, _, _, _, _, _) :: _ as rest) ->
+    | (doc, is_open, is_trivia, tight_after, has_trailing_break, compact_after)
+      :: ((_, next_is_open, _, _, _, _) :: _ as rest) ->
         let separator =
           if has_trailing_break then
             Doc.empty
@@ -6482,7 +6253,7 @@ and render_signature_top_level_items
     | _ ->
         let syntax_node = Syn.Cst.SignatureItem.syntax_node item in
         if signature_item_uses_verbatim_span item then
-          span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia:true syntax_node
+          span_of_syntax_node_nontrivia_bounds syntax_node
         else
           span_of_syntax_node_nontrivia_bounds syntax_node
   in
@@ -6518,9 +6289,7 @@ and render_signature_top_level_items
         join_entries (List.rev acc)
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
         let entry =
-          render_signature_entry
-            ~render_owned_trivia:true
-            ~source ~source_offset ~span:base_span ~trailing_suffix:None
+          render_signature_entry ~source ~source_offset ~span:base_span ~trailing_suffix:None
             ~is_last_item:(rest = []) item
         in
         loop (entry :: acc) rest
