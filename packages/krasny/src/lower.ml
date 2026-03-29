@@ -2175,17 +2175,21 @@ let rec expression_is_simple_after_equals =
       expression_is_simple_after_equals inner
   | _ ->
       false
-and apply_expression_is_simple_after_equals = fun ({ syntax_node; _ } : Syn.Cst.apply_expression) ->
-  if Source.syntax_node_has_comment_like_trivia syntax_node then
-    false
-  else
-    let source = text_of_syntax_node syntax_node |> String.trim in
-    not (string_contains_substring source "function"
-    || string_contains_substring source "match "
-    || string_contains_substring source "if "
-    || string_contains_substring source "try "
-    || string_contains_substring source "while "
-    || string_contains_substring source "for ")
+and apply_argument_is_simple_after_equals =
+  function
+  | Syn.Cst.Positional value ->
+      expression_is_simple_after_equals value
+  | Syn.Cst.Labeled { value = Some value; _ }
+  | Syn.Cst.Optional { value = Some value; _ } ->
+      expression_is_simple_after_equals value
+  | Syn.Cst.Labeled { value = None; _ }
+  | Syn.Cst.Optional { value = None; _ } ->
+      true
+and apply_expression_is_simple_after_equals =
+  fun ({ syntax_node; callee; argument; _ } : Syn.Cst.apply_expression) ->
+  not (Source.syntax_node_has_comment_like_trivia syntax_node)
+  && expression_is_simple_after_equals callee
+  && apply_argument_is_simple_after_equals argument
 
 let expression_requires_break_after_equals =
   function

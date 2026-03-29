@@ -54,6 +54,7 @@ This file is _yours_. Keep it up to date after every big change.
 - inherited polymorphic-variant rows now render directly from `Syn.Cst.RowField.Inherit.type_`; `krasny` no longer reconstructs inherited row paths by scanning token text.
 - `let f = fun ...` detection now comes from `Syn.Cst.let_binding` shape instead of scanning tokens after `=`.
 - tuple and `let open ... in` line breaking no longer sniff source length or embedded newlines; `krasny` now relies on structural docs there.
+- simple apply expressions now decide whether they stay after `=` by recursing over CST callee/argument shape instead of scanning source text for keyword substrings.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `lower.ml` still contains source/text heuristics and one remaining source-backed phrase-boundary preservation path that should be treated as debt.

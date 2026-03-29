@@ -94,6 +94,15 @@ let tests =
         in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
+    Test.case "format keeps simple applies inline even when identifiers contain keywords"
+      (fun () ->
+        let source = "let handler = use function_handler\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"simple applies should not sniff keyword substrings"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
     Test.case "format rewrites parameterized let bindings between formatted lets"
       (fun () ->
         let source = "(* intro *)\nlet x = 1 + 2\nlet f x = x + 1\nlet y = 3 + 4\n" in
