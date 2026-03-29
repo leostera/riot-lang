@@ -312,6 +312,41 @@ module M = [%foo]
             panic "core-type extensions should fail formatting instead of preserving source"
         | Error _ ->
             Ok ());
+    Test.case "format keeps structural patterns idempotent" (fun () ->
+        let source =
+          {|let unpack = function
+  | (module M) -> ()
+  | (M.(Some x) as whole) -> whole
+  | (lazy y : t) -> y
+|}
+        in
+        assert_idempotent
+          ~source
+          ~msg:"first-class module, local-open, alias, and typed patterns should format structurally";
+        Ok ());
+    Test.case "format fails for typed first-class-module patterns" (fun () ->
+        let source =
+          {|let unpack = function
+  | (module M : S) -> ()
+|}
+        in
+        match parse_ml source |> Krasny.format with
+        | Ok _ ->
+            panic
+              "typed first-class-module patterns should fail formatting instead of preserving source"
+        | Error _ ->
+            Ok ());
+    Test.case "format fails for pattern extensions" (fun () ->
+        let source =
+          {|let unpack = function
+  | [%foo? Some x] -> x
+|}
+        in
+        match parse_ml source |> Krasny.format with
+        | Ok _ ->
+            panic "pattern extensions should fail formatting instead of preserving source"
+        | Error _ ->
+            Ok ());
     Test.case "format keeps boolean if conditions with matches idempotent" (fun () ->
         let source =
           {|open Std

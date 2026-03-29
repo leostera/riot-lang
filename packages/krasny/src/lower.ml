@@ -1806,14 +1806,28 @@ let render_external_declaration = fun (decl : Syn.Cst.external_declaration) ->
       attributes;
     ]
 
+let doc_with_pattern_attributes = fun pattern doc ->
+  match Syn.Cst.Pattern.attributes pattern with
+  | [] ->
+      doc
+  | attributes ->
+      Doc.concat [ doc; Doc.space; join_map Doc.space render_attribute attributes ]
+
 let rec render_pattern =
-  function
+  fun pattern ->
+  let doc =
+    match pattern with
   | Syn.Cst.Pattern.Identifier { name_token; _ } ->
       doc_of_token name_token
   | Syn.Cst.Pattern.Wildcard _ ->
       Doc.text "_"
+  | Syn.Cst.Pattern.Extension extension ->
+      unsupported_syntax ~context:[ "pattern" ] ~syntax_node:extension.syntax_node
+        "pattern extensions do not have a structural formatter yet"
   | Syn.Cst.Pattern.Literal { literal; _ } ->
       render_literal literal
+  | Syn.Cst.Pattern.Lazy { pattern; _ } ->
+      Doc.concat [ Doc.text "lazy"; Doc.space; render_pattern pattern ]
   | Syn.Cst.Pattern.Constructor { constructor_path; arguments; _ } ->
       let head = doc_of_ident constructor_path in
       (
@@ -1827,6 +1841,30 @@ let rec render_pattern =
               join_map (Doc.concat [ Doc.comma; Doc.space ]) render_pattern arguments
             ]
       )
+  | Syn.Cst.Pattern.Operator { operator_tokens; _ } ->
+      let operator = operator_tokens |> List.map token_text |> String.concat "" |> Doc.text in
+      Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
+  | Syn.Cst.Pattern.FirstClassModule { binding; module_type; _ } ->
+      let binding_doc =
+        match binding with
+        | Syn.Cst.Named { name_token } ->
+            doc_of_token name_token
+        | Syn.Cst.Anonymous { wildcard_token } ->
+            doc_of_token wildcard_token
+      in
+      let constraint_doc =
+        match module_type with
+        | None ->
+            Doc.empty
+        | Some module_type ->
+            unsupported_syntax ~context:[ "pattern"; "first_class_module" ]
+              ~syntax_node:(Syn.Cst.ModuleType.syntax_node module_type)
+              "typed first-class-module patterns do not have a structural formatter yet"
+      in
+      Doc.concat
+        [ Doc.lparen; Doc.text "module"; Doc.space; binding_doc; constraint_doc; Doc.rparen ]
+  | Syn.Cst.Pattern.PolyVariantInherit { type_path; _ } ->
+      Doc.concat [ Doc.text "#"; doc_of_ident type_path ]
   | Syn.Cst.Pattern.Tuple { elements; _ } ->
       Doc.concat
         [ Doc.lparen; join_map (Doc.concat [ Doc.comma; Doc.space ])
@@ -1906,6 +1944,21 @@ let rec render_pattern =
       Doc.concat [ render_pattern head; Doc.space; Doc.text "::"; Doc.space; render_pattern tail ]
   | Syn.Cst.Pattern.Or { alternatives; _ } ->
       join_map (Doc.concat [ Doc.space; Doc.bar; Doc.space ]) render_pattern alternatives
+  | Syn.Cst.Pattern.Alias { pattern; name_token; _ } ->
+      Doc.concat [ render_pattern pattern; Doc.space; Doc.text "as"; Doc.space; doc_of_token name_token ]
+  | Syn.Cst.Pattern.Typed { pattern; type_; _ } ->
+      Doc.concat [ Doc.lparen; render_pattern pattern; annotation_colon; render_core_type type_; Doc.rparen ]
+  | Syn.Cst.Pattern.Effect { effect_pattern; continuation; _ } ->
+      Doc.concat
+        [
+          Doc.text "effect";
+          Doc.space;
+          render_pattern effect_pattern;
+          Doc.space;
+          render_pattern continuation;
+        ]
+  | Syn.Cst.Pattern.LocalOpen { module_path; pattern; _ } ->
+      Doc.concat [ doc_of_ident module_path; Doc.text ".("; render_pattern pattern; Doc.rparen ]
   | Syn.Cst.Pattern.Exception { keyword_token; pattern; _ } ->
       Doc.concat [ doc_of_token keyword_token; Doc.space; render_pattern pattern ]
   | Syn.Cst.Pattern.Range { lower; upper; _ } ->
@@ -1932,8 +1985,8 @@ let rec render_pattern =
         | Some payload ->
             Doc.concat [ head; Doc.space; render_pattern payload ]
       )
-  | other ->
-      doc_of_source_preserved_syntax_node (Syn.Cst.Pattern.syntax_node other)
+  in
+  doc_with_pattern_attributes pattern doc
 
 let pattern_requires_parens_in_named_parameter =
   function
