@@ -219,6 +219,40 @@ Deferred follow-up:
 - write an OCaml regression test only after we finish the broader bug-inventory
   pass
 
+### 7. Plan Bundle Cache Key Must Invalidate On Toolchain Change
+
+Status: `spec-failing`
+
+Spec slice:
+- `PlanBundleToolchainInvalidation.tla`
+- `PlanBundleToolchainInvalidationBug.cfg`
+
+Property:
+- A persisted plan bundle must not be reused across toolchain changes unless
+  the restored action hashes are recomputed for the new toolchain.
+
+Why it looks buggy:
+- `compute_input_hash` decides the planner bundle cache key
+- that key currently includes build context, package metadata, workspace-local
+  dependency details, and transitive dependency hashes, but not the toolchain
+- `Action_node.make` does include the toolchain hash in every action-node hash
+- so a warm-plan cache hit can restore an action graph whose stored hashes were
+  computed under an older toolchain
+
+Primary source area:
+- `packages/tusk-planner/src/package_planner.ml`
+- `packages/tusk-planner/src/action_node.ml`
+
+Counterexample shape:
+- the first plan stores an action hash derived from `toolchain-v1`
+- the second plan uses `toolchain-v2` but computes the same plan-bundle key
+- the planner takes a cache hit and restores the old `toolchain-v1` action hash
+  instead of replanning or rehashing
+
+Deferred follow-up:
+- write an OCaml regression test only after we finish the broader bug-inventory
+  pass
+
 ## Next Candidates To Model
 
 These are not yet bug entries. They are the next properties most likely to

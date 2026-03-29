@@ -60,6 +60,14 @@ bugs.
   fresh-bundle path.
 - `PlanBundleVersionGateStaleVersion.cfg`: a passing config for the stale
   bundle-version rebuild path.
+- `PlanBundleToolchainInvalidation.tla`: a PlusCal slice of the planner-cache
+  key mismatch between toolchain-insensitive plan bundles and
+  toolchain-sensitive action hashes.
+- `PlanBundleToolchainInvalidation.cfg`: a passing smoke config for the
+  no-toolchain-change baseline.
+- `PlanBundleToolchainInvalidationBug.cfg`: a failing config showing that the
+  current planner bundle key can survive a toolchain change and restore stale
+  action hashes.
 - `BugInventory.md`: the running list of bug-shaped properties found by the
   extracted specs. This is the place to accumulate likely bugs before we add
   OCaml regression tests.
@@ -212,6 +220,22 @@ to the acceptance gate on a loaded plan bundle:
 So far this slice does not expose a bug. The extracted version gate matches the
 intended stale-bundle invalidation behavior.
 
+## What `PlanBundleToolchainInvalidation.tla` Extracts
+
+This slice stays in the same planner-cache area, but isolates a different law:
+
+- `compute_input_hash` decides whether the planner reuses a cached plan bundle
+- `Action_node.make` computes per-action hashes that do include toolchain
+  identity
+- if the planner cache key omits toolchain identity, a warm-plan cache hit can
+  restore an action graph whose stored hashes were computed under a different
+  toolchain
+
+The bug config checks that stronger law directly. Under the current extracted
+semantics, a first plan stores an action hash derived from `toolchain-v1`, a
+second plan with `toolchain-v2` computes the same bundle key, and the planner
+restores the old `toolchain-v1` action hash.
+
 ## How To Work On The Spec
 
 `ActionCache.tla` is written primarily in PlusCal. Treat the PlusCal algorithm
@@ -295,6 +319,15 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/PlanBundleVersionGate.cfg
 ```
 
+And for the plan-bundle toolchain-invalidation slice:
+
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/PlanBundleToolchainInvalidation.tla \
+  -config specs/tusk/PlanBundleToolchainInvalidation.cfg
+```
+
 The bug config is expected to fail under the current implementation-shaped
 semantics:
 
@@ -347,6 +380,13 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/PlanBundleVersionGateStaleVersion.cfg
 ```
 
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/PlanBundleToolchainInvalidation.tla \
+  -config specs/tusk/PlanBundleToolchainInvalidationBug.cfg
+```
+
 ## Current Findings
 
 `ActionCacheCommandOrderBug.cfg` is designed to expose one concrete design bug:
@@ -390,6 +430,11 @@ empty `"opens"` list for every module-graph node, and the current deserializer
 restores every node with `open_modules = []`, so a warm-plan cache hit loses
 non-empty alias-open context.
 
+`PlanBundleToolchainInvalidationBug.cfg` exposes a seventh design bug: the
+planner bundle cache key ignores toolchain identity even though action-node
+hashes include it. A warm-plan cache hit can therefore restore stale action
+hashes computed under an older toolchain.
+
 ## Validation Notes
 
 These configs are safety-only and intentionally tiny.
@@ -428,3 +473,9 @@ These configs are safety-only and intentionally tiny.
   errors.
 - `PlanBundleVersionGateStaleVersion.cfg` currently completes with 6 distinct
   states and no errors.
+- `PlanBundleToolchainInvalidation.cfg` currently completes with 4 distinct
+  states and no errors.
+- `PlanBundleToolchainInvalidationBug.cfg` currently fails with a
+  counterexample where the planner reuses a bundle stored under
+  `toolchain-v1` after a switch to `toolchain-v2`, and restores the old action
+  hash instead of replanning or rehashing.

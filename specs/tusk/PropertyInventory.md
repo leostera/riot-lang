@@ -104,6 +104,8 @@ Implemented slice:
 - `PlanBundleVersionGate.tla` covers the warm-plan cache acceptance gate around
   bundle presence, version matching, package identity, and module/action graph
   parse success.
+- `PlanBundleToolchainInvalidation.tla` covers the mismatch between the
+  planner bundle cache key and per-action toolchain-sensitive hashes.
 
 Still open:
 - dependency state classification for `MissingDependencies` vs
@@ -119,6 +121,9 @@ Current bug found:
   `open_modules`. Warm-plan cache hits restore every node with
   `open_modules = []`, even when the original planned graph carried non-empty
   alias-open context.
+- The current planner bundle cache key does not include toolchain identity,
+  even though action-node hashes do. A warm-plan cache hit can therefore
+  restore stale action hashes after a toolchain change.
 
 ### 4. `ModuleGraphBuilder`
 
