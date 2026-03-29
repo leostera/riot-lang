@@ -185,7 +185,7 @@ For every slice below:
   - verification:
     - design documented in code/comments/tests
 
-- [ ] Add nested member-heading coverage
+- [x] Add nested member-heading coverage
   - headings/docs inside nested modules should not duplicate or drift
   - verification:
     - targeted CST tests for `ceibo.mli`
@@ -257,8 +257,9 @@ For every slice below:
 - [ ] Current state: constructor doc ownership is now leading-only: docstrings between constructors attach to the next constructor, postfix comments may still stay with the previous constructor, and terminal constructor docstrings remain standalone instead of being stolen by the last constructor
 - [ ] Current state: record field doc ownership is now leading-only: docstrings between fields attach to the next field, postfix comments may still stay with the previous field, and terminal `}`-owned docs/comments are preserved inside the record body; `blink/src/sse.mli` plus fixtures `0744` and `0915` pin the formatter output
 - [ ] Current state: explicit member-item streams are only needed for repeated member grammars with public member `owned_trivia` today, namely variant constructors and record fields; exception declarations stay on the ordinary ordered-item pass, and object type fields remain syntax-only until they grow a public owned-trivia/rendering contract
+- [ ] Current state: nested heading/doc ordering is now pinned against the real `ceibo.mli` `Green` signature, including repeated `## Construction` section docs staying standalone while the following `make_trivia` API doc stays declaration-owned
 - [ ] Current state: module/class top-level keyword probes, bracket attribute/extension probes, functor application / `(val ...)` module-expression probes, parenthesized module-type lookahead in module expressions, declaration-local `module type of` probes, application/infix/tuple/assign/sequence expression continuations, paren and bracket local-open vs index expression disambiguation, postfix custom-index/operator-like probes, dotted module/module-type/type-name/qualified-field path continuations, local-open core type path lookahead, `include module type of`, `let open` expression detection, the polymorphic/local-open/local-abstract type probes, tuple/as/cons/or pattern continuations, local-open pattern path disambiguation, literal range-pattern probes, and grouped structure/signature type-declaration uppercase-body disambiguation no longer rely on trivia-skipping control flow; inline-comment alias-vs-variant, grouped GADT, and `module type of` declaration cases are pinned in `syn:cst_tests`
 - [ ] Current state: top-level file loops and nested `struct`/`sig` body loops no longer thread trivia through `tokens_to_green []`
 - [ ] Current state: red traversal now follows the same contract as green for parser-built trees; leading trivia lives on tokens and `SyntaxNode.tokens` stays trivia-free
 - [ ] Current state: `print-ceibo` fixture coverage now includes a mixed comment/docstring bridge case
-- [ ] The next concrete slice is nested member-heading coverage, especially heading/doc ordering inside nested modules such as `ceibo.mli`
+- [ ] The next concrete slice is making doc kind explicit so ordinary docs and section docs stop getting reclassified from raw text in normal paths

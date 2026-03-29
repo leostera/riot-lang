@@ -35,6 +35,9 @@ let parse_ml = fun source -> Syn.parse ~filename:sample_ml source |> with_option
 
 let parse_mli = fun source -> Syn.parse ~filename:sample_mli source |> with_optional_cst
 
+let read_file = fun path ->
+  Fs.read_to_string path |> Result.expect ~msg:"failed to read file"
+
 let structure_items =
   function
   | Syn.Cst.Implementation { items; _ } -> items
@@ -1977,6 +1980,101 @@ let tests =
                 Error "expected nested signature capability docs to normalize successfully")
         | _ ->
             Error "expected capabilities module declaration with signature body");
+    Test.case "cst builder keeps ceibo nested signature headings stable"
+      (fun () ->
+        let source =
+          read_file
+            Path.(
+              Path.v "packages" / Path.v "ceibo" / Path.v "src"
+              / Path.v "ceibo.mli")
+        in
+        let result = parse_mli source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let green_module_type =
+          signature_items cst
+          |> List.find_map (
+               function
+               | Syn.Cst.SignatureItem.ModuleDeclaration
+                   {
+                     module_name;
+                     module_type =
+                       Some ((Syn.Cst.ModuleType.Signature _) as module_type);
+                     _;
+                   }
+                 when String.equal (Syn.Cst.Token.text module_name) "Green" ->
+                   Some module_type
+               | _ ->
+                   None)
+        in
+        match green_module_type with
+        | Some module_type -> (
+            match Syn.CstBuilder.signature_items_of_module_type module_type with
+            | Ok (Some items) ->
+                let types_heading_count =
+                  items
+                  |> List.filter (
+                       function
+                       | Syn.Cst.SignatureItem.Docstring doc ->
+                           String.equal (Syn.Cst.Docstring.text doc)
+                             "(** ## Types *)"
+                       | _ ->
+                           false)
+                  |> List.length
+                in
+                let construction_heading_count =
+                  items
+                  |> List.filter (
+                       function
+                       | Syn.Cst.SignatureItem.Docstring doc ->
+                           String.equal (Syn.Cst.Docstring.text doc)
+                             "(** ## Construction *)"
+                       | _ ->
+                           false)
+                  |> List.length
+                in
+                let first_value_decl =
+                  items
+                  |> List.find_map (
+                       function
+                       | Syn.Cst.SignatureItem.ValueDeclaration decl ->
+                           Some decl
+                       | _ ->
+                           None)
+                in
+                Test.assert_equal ~expected:1 ~actual:types_heading_count;
+                Test.assert_equal ~expected:4 ~actual:construction_heading_count;
+                (match first_value_decl with
+                | Some decl ->
+                    Test.assert_equal ~expected:"make_trivia"
+                      ~actual:(Syn.Cst.Token.text decl.name_token);
+                    (match
+                       Syn.Cst.OwnedTrivia.leading
+                         (Syn.Cst.ValueDeclaration.owned_trivia decl)
+                     with
+                    | [ Syn.Cst.Trivia.Docstring doc ] ->
+                        let text = Syn.Cst.Docstring.text doc in
+                        Test.assert_equal ~expected:false
+                          ~actual:(String.contains text "## Construction");
+                        Test.assert_equal ~expected:true
+                          ~actual:
+                            (String.contains text
+                               "make_trivia ~kind ~text ~width");
+                        Ok ()
+                    | _ ->
+                        Error "expected make_trivia leading docstring")
+                | None ->
+                    Error "expected a nested value declaration")
+            | Ok _ ->
+                Error "expected normalized nested Green signature items"
+            | Error _ ->
+                Error "expected nested Green signature items to reify successfully"
+            )
+        | None ->
+            Error "expected Green module signature in ceibo.mli");
     Test.case
       "cst builder preserves nested signature standalone docs and comments after open"
       (fun () ->
