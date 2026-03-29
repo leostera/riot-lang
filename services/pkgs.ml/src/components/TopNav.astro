@@ -57,12 +57,11 @@ const logoutUrl = buildLogoutUrl(currentUrl);
 
       {
         session.authenticated && session.user ? (
-          <>
-            <a
-              href={`/u/${session.user.github_login}`}
+          <details class="relative">
+            <summary
               class:list={[
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "rounded-md gap-2 px-2",
+                "list-none rounded-md gap-2 px-2 pr-2.5 [&::-webkit-details-marker]:hidden cursor-pointer",
               ]}
             >
               <GitHubAvatar
@@ -70,19 +69,37 @@ const logoutUrl = buildLogoutUrl(currentUrl);
                 avatarUrl={session.user.github_avatar_url}
                 size="sm"
               />
-            </a>
-            <form action={logoutUrl} method="post">
-              <button
-                type="submit"
-                class:list={[
-                  buttonVariants({ variant: "default", size: "sm" }),
-                  "rounded-md",
-                ]}
-              >
-                Log out
-              </button>
-            </form>
-          </>
+              <span class="max-w-[9rem] truncate text-xs text-foreground">
+                @{session.user.github_login}
+              </span>
+              <span aria-hidden="true" class="text-[10px] text-muted-foreground">▾</span>
+            </summary>
+
+            <div class="absolute right-0 top-full z-50 mt-2 min-w-[180px] overflow-hidden rounded-md border border-border bg-background shadow-sm">
+              <div class="grid py-1 text-sm">
+                <a
+                  href={`/u/${session.user.github_login}`}
+                  class="px-3 py-2 text-foreground hover:bg-muted"
+                >
+                  My Profile
+                </a>
+                <a
+                  href={`/u/${session.user.github_login}/tokens`}
+                  class="px-3 py-2 text-foreground hover:bg-muted"
+                >
+                  API Tokens
+                </a>
+                <form action={logoutUrl} method="post" class="border-t border-border">
+                  <button
+                    type="submit"
+                    class="block w-full px-3 py-2 text-left text-foreground hover:bg-muted"
+                  >
+                    Logout
+                  </button>
+                </form>
+              </div>
+            </div>
+          </details>
         ) : (
           <a
             href={loginUrl}
