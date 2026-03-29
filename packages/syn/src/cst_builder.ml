@@ -732,12 +732,6 @@ let owned_trivia_with_leading = fun owned leading_trivia -> Cst.OwnedTrivia.{
   trailing = Cst.OwnedTrivia.trailing owned
 }
 
-let owned_trivia_with_inner = fun owned inner_trivia -> Cst.OwnedTrivia.{
-  leading = Cst.OwnedTrivia.leading owned;
-  inner = inner_trivia;
-  trailing = Cst.OwnedTrivia.trailing owned
-}
-
 let owned_trivia_append_leading = fun owned leading_trivia -> owned_trivia_with_leading
 owned
 (Cst.OwnedTrivia.leading owned @ leading_trivia)

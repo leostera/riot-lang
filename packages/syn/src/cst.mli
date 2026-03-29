@@ -102,6 +102,16 @@ type comment = {
 type trivia =
   | Docstring of docstring
   | Comment of comment
+
+(** Trivia that a CST node owns after token-order normalization.
+
+    - `leading` holds trivia that should render before the node.
+    - `inner` holds trivia that lives inside the node's span but is not part of
+      a child node's owned trivia.
+    - `trailing` holds trivia that stays after the node.
+
+    This stays public because downstream renderers and analyses need the
+    normalized ownership buckets directly. *)
 type owned_trivia = {
   leading : trivia list;
   inner : trivia list;
@@ -4125,6 +4135,7 @@ module OwnedTrivia : sig
     inner : trivia list;
     trailing : trivia list;
   }
+
   val empty : t
 
   val leading : t -> trivia list

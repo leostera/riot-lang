@@ -58,7 +58,7 @@ For every future cleanup slice:
 
 ## Maintenance Backlog
 
-- [ ] Decide whether `owned_trivia` should stay public as-is or be renamed/simplified now that the token-trivia model is stable.
+- [x] Decide whether `owned_trivia` should stay public as-is or be renamed/simplified now that the token-trivia model is stable.
 - [ ] Keep trimming stale migration-era comments/helpers in `packages/syn` and `packages/krasny` when compiler/readability audits surface them.
 - [ ] Add new ownership regressions to `syn:cst_tests` before adding formatter-only fixtures.
 - [ ] Keep future formatter fixtures renderer/layout-focused; do not reintroduce `lower.ml` ownership archaeology.
