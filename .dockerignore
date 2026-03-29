@@ -51,9 +51,21 @@ llm/
 
 # Docker files (don't copy Docker into Docker)
 docker/
+!docker/ocaml-toolchain.Dockerfile
+!docker/ocaml-toolchain-run.sh
 Dockerfile
 .dockerignore
 
 # Native build artifacts
 native/**/*.o
 packages/*/native/*.o
+
+# Vendored OCaml generated toolchains and installs
+vendor/ocaml/compiler/
+vendor/ocaml/cross/*
+!vendor/ocaml/cross/*.sh
+!vendor/ocaml/cross/flexdll/
+!vendor/ocaml/cross/targets/
+
+# Local Docker working volumes
+.docker/volumes/

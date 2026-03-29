@@ -299,11 +299,12 @@ tarballs.
 The repository now includes a local manual helper for the producer side of those
 tarballs:
 
-- `scripts/release/ocaml.sh`
+- `scripts/toolchain/ocaml.sh`
 
 That script can build selected vendored compilers, package them with the
-existing `vendor/ocaml/cross/package.sh` naming convention, and upload them to
-an S3-compatible bucket such as Cloudflare R2.
+existing `vendor/ocaml/cross/package.sh` naming convention, upload existing
+tarballs, or do both in one `release` step against an S3-compatible bucket such
+as Cloudflare R2.
 
 What this repository still does not currently define is an active automated
 publisher for those tarballs.
@@ -318,7 +319,7 @@ By contrast, this repository now includes local manual helpers for publishing:
 
 - `tusk` release tarballs via `scripts/release/tusk.sh`
 - the top-level install script at `cdn.ocaml.ai/tusk/install.sh`
-- prebuilt OCaml tarballs via `scripts/release/ocaml.sh`
+- prebuilt OCaml tarballs via `scripts/toolchain/ocaml.sh`
 
 The disabled workflow references remain:
 

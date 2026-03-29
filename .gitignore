@@ -1,3 +1,4 @@
+dist
 artifacts
 *.pone
 3rdparty
@@ -31,6 +32,7 @@ run_tusk.sh
 
 /llm
 .tmp
+.docker/volumes/
 
 __pycache__
 

@@ -38,7 +38,7 @@ some use cases for the macro rfd:
   - the original relocatability regression is fixed
   - cross-toolchain packaging is also fixed now; published artifacts preserve the full installed layout
 - Verified on Apple Silicon macOS:
-  - `./scripts/release/ocaml.sh aarch64-apple-darwin-x-aarch64-unknown-linux-gnu` now completes successfully when run with uploads disabled
+  - `./scripts/toolchain/ocaml.sh build aarch64-apple-darwin-x-aarch64-unknown-linux-gnu` now completes successfully
   - `vendor/ocaml/cross/aarch64-apple-darwin/bin/ocamlc -config` now reports `standard_library_relative: ../lib/ocaml`
   - `vendor/ocaml/runtime/build_config.h` now contains `#define OCAML_STDLIB_DIR "../lib/ocaml"`
   - `vendor/ocaml/Makefile.build_config` now has `TARGET_LIBDIR=../lib/ocaml` and `TARGET_LIBDIR_IS_RELATIVE=true`
