@@ -639,28 +639,6 @@ let doc_with_leading_trivia = fun trivia doc ->
   | Some trivia ->
       Doc.concat [ trivia; Doc.line; doc ]
 
-let nontrivia_end_before = fun ?before syntax_node ->
-  let node_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
-  let end_before =
-    match before with
-    | None ->
-        node_span.end_
-    | Some before ->
-        Int.min before node_span.end_
-  in
-  let tokens =
-    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.filter
-         (fun syntax_token ->
-           let span = Syn.Ceibo.Red.SyntaxToken.span syntax_token in
-           span.end_ <= end_before)
-  in
-  match List.rev tokens with
-  | token :: _ ->
-      (Syn.Ceibo.Red.SyntaxToken.span token).end_
-  | [] ->
-      end_before
-
 let separator_doc_between_offsets = fun source ~start ~end_ ->
   let source_length = String.length source in
   let start = Int.max 0 (Int.min start source_length) in
@@ -1360,13 +1338,8 @@ and render_poly_variant_type = fun ?(field_indent = 2) poly_variant ->
   in
   let fields =
     Syn.Cst.PolyVariant.fields poly_variant
-    |> List.mapi
-      (fun index field ->
-        let prefix =
-          let _ = index in
-          Doc.concat [ Doc.bar; Doc.space ]
-        in
-        Doc.concat [ prefix; render_poly_variant_field field ])
+    |> List.map
+         (fun field -> Doc.concat [ Doc.bar; Doc.space; render_poly_variant_field field ])
   in
   Doc.concat [
     open_doc;
@@ -1441,7 +1414,7 @@ let render_variant_constructor_arguments = fun ?source ?(prefer_multiline_inline
             Doc.indent 2 (render_record_definition ?source fields)
       )
 
-let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comment = true) ?(prefer_multiline_inline_record = false) constructor ->
+let render_variant_constructor = fun ?source ?(prefer_multiline_inline_record = false) constructor ->
   let head = Doc.concat [
     Doc.bar;
     Doc.space;
@@ -1477,20 +1450,11 @@ let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comm
         doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
       in
       let trailing =
-        if include_trailing_comment then
-          Syn.Cst.OwnedTrivia.trailing owned
-          |> List.filter
-               (fun trivia ->
-                 match end_before with
-                 | None ->
-                     true
-                 | Some end_before ->
-                     (Syn.Cst.Token.span (Syn.Cst.Trivia.token trivia)).start < end_before)
-          |> doc_of_owned_trivia ~source
-               ~start:(nontrivia_end_before ?before:end_before
-                         (Syn.Cst.VariantConstructor.syntax_node constructor))
-        else
-          None
+        Syn.Cst.OwnedTrivia.trailing owned
+        |> doc_of_owned_trivia ~source
+             ~start:
+               ((nontrivia_bounds_span_of_syntax_node
+                   (Syn.Cst.VariantConstructor.syntax_node constructor)).end_)
       in
       let body = body |> doc_with_leading_trivia leading in
       (match trailing with
@@ -1499,7 +1463,6 @@ let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comm
       | Some suffix ->
           Doc.concat [ body; suffix ])
   | None ->
-      let _ = include_trailing_comment in
       body
 
 let render_variant_definition = fun ?source ~source_node:_ constructors ->
@@ -1519,7 +1482,6 @@ let render_variant_definition = fun ?source ~source_node:_ constructors ->
     render_variant_constructor
       ?source
       ~prefer_multiline_inline_record:constructors_all_inline_records
-      ~include_trailing_comment:true
       constructor) in
   constructor_docs |> Doc.join Doc.line
 
