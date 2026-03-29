@@ -68,8 +68,9 @@ This file is _yours_. Keep it up to date after every big change.
 - trivia between `fun ... ->` and the first body token now comes from that body token's `leading_trivia`; `lower.ml` no longer reparses a raw source slice for that path.
 - trivia around `if ... then ... else` branches now comes from `else_token.leading_trivia` and the next branch node's first-token `leading_trivia`; `lower.ml` no longer reparses raw source spans for that path.
 - trivia after `=` and `in` in ordinary `let ... in` expressions now comes from the RHS/body node's first-token `leading_trivia`; `lower.ml` no longer reparses raw source spans for those paths.
+- singleton list patterns now use explicit formatter edge spacing; `lower.ml` no longer sniffs source text for `"[ "` / `" ]"` to preserve original spacing.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
-- `render_trivia_between_spans` is gone from `lower.ml`; the remaining raw-trivia debt is in inline-comment/source-backed separator helpers and source/text heuristics, not generic between-node span replay.
+- `render_trivia_between_spans`, `parse_trivia_between_offsets`, `trailing_inline_comment_suffix`, `leading_inline_comment_between_offsets`, and `split_leading_inline_comment_source` are gone from `lower.ml`; the remaining raw-trivia debt is in `doc_of_owned_trivia` separator recovery and source/text heuristics, not generic between-node span replay.
 
 ## Working Style
 
@@ -104,10 +105,6 @@ This file is _yours_. Keep it up to date after every big change.
   - expression-run preservation in `render_structure_top_level_items` is gone; phrase separation is structural
 
 - [ ] Remove raw trivia reparsing helpers from `lower.ml`
-  - `parse_trivia_between_offsets`
-  - `trailing_inline_comment_suffix`
-  - `leading_inline_comment_between_offsets`
-  - `split_leading_inline_comment_source`
   - `doc_of_owned_trivia` should not need `separator_doc_between_offsets` plus raw `source` just to recover spacing between adjacent comment/doc items
   - if formatting still needs these, the missing structure belongs in `syn`
 
@@ -121,7 +118,6 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Remove node-text-driven layout heuristics from `lower.ml`
   - `syntax_node_has_internal_newline`
   - function-binding layout branches in `render_local_binding`
-  - list edge-spacing checks that sniff `"[ "` / `" ]"` from `text_of_syntax_node`
   - `tuple_source_is_long`
   - `apply_expression_is_simple_after_equals`
   - `expression_source_is_long`

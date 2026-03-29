@@ -246,6 +246,37 @@ let bind =
 |}
           ~actual;
         Ok ());
+    Test.case "format singleton list patterns with explicit formatter spacing"
+      (fun () ->
+        let compact_source =
+          {|let classify = function
+  | [value] -> hit
+|}
+        in
+        let spaced_source =
+          {|let classify = function
+  | [ value ] -> hit
+|}
+        in
+        let expected =
+          {|let classify =
+  function
+  | [ value ] -> hit
+|}
+        in
+        let actual_compact =
+          parse_ml compact_source |> Krasny.format
+          |> Result.expect
+               ~msg:"singleton list patterns should not preserve compact source spacing"
+        in
+        let actual_spaced =
+          parse_ml spaced_source |> Krasny.format
+          |> Result.expect
+               ~msg:"singleton list patterns should keep the explicit formatter style"
+        in
+        Test.assert_equal ~expected ~actual:actual_compact;
+        Test.assert_equal ~expected ~actual:actual_spaced;
+        Ok ());
     Test.case "format keeps simple applies inline even when identifiers contain keywords"
       (fun () ->
         let source = "let handler = use function_handler\n" in

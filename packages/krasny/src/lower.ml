@@ -298,16 +298,6 @@ let phrase_separator_doc_between_tokens = fun tokens ~start ~end_ ->
   | _ ->
       None
 
-let is_layout_character =
-  function
-  | ' '
-  | '\t'
-  | '\n'
-  | '\r' ->
-      true
-  | _ ->
-      false
-
 let is_section_docstring_text = fun comment_text ->
   let len = String.length comment_text in
   if len < 5 then
@@ -316,77 +306,6 @@ let is_section_docstring_text = fun comment_text ->
     let body = String.sub comment_text 3 (len - 5) |> String.trim in
     String.length body > 0
     && (Char.equal body.[0] '{' || Char.equal body.[0] '#')
-
-let parse_trivia_between_offsets = fun source ~start ~end_ pending ->
-  let source_length = String.length source in
-  let start = Int.max 0 (Int.min start source_length) in
-  let end_ = Int.max start (Int.min end_ source_length) in
-  let rec consume_whitespace = fun index newline_count ->
-    if index >= end_ || index >= source_length || index < 0 then
-      (index, newline_count)
-    else
-      match source.[index] with
-      | '\n' ->
-          consume_whitespace (index + 1) (newline_count + 1)
-      | ' '
-      | '\t'
-      | '\r' ->
-          consume_whitespace (index + 1) newline_count
-      | _ ->
-          (index, newline_count)
-  in
-  let rec consume_comment = fun index depth ->
-    if index < 0 || index + 1 >= end_ || index + 1 >= source_length then
-      Int.min end_ source_length
-    else if source.[index] = '(' && source.[index + 1] = '*' then
-      consume_comment (index + 2) (depth + 1)
-    else if source.[index] = '*' && source.[index + 1] = ')' then
-      if depth = 1 then
-        index + 2
-      else
-        consume_comment (index + 2) (depth - 1)
-    else
-      consume_comment (index + 1) depth
-  in
-  let rec loop = fun index pending ->
-    if index < 0 || index >= end_ || index >= source_length then
-      pending
-    else if is_layout_character source.[index] then
-      let next_index, newline_count = consume_whitespace index 0 in
-      let pending =
-        if newline_count > 0 then
-          push_pending_break pending ~position:index newline_count
-        else
-          pending
-      in
-      loop next_index pending
-    else if
-      index + 1 < end_
-      && index + 1 < source_length
-      && source.[index] = '('
-      && source.[index + 1] = '*'
-    then
-      let comment_end = consume_comment (index + 2) 1 |> Int.max index |> Int.min source_length in
-      if comment_end > index then
-        let comment_text = String.sub source index (comment_end - index) in
-        let pending_entry =
-          if
-            String.starts_with ~prefix:"(**" comment_text
-            && not (String.starts_with ~prefix:"(***" comment_text)
-          then
-            TriviaDocstring (index, is_section_docstring_text comment_text, Doc.text comment_text)
-          else
-            TriviaComment (index, Doc.text comment_text)
-        in
-        loop comment_end (pending_entry :: pending)
-      else
-        loop (index + 1) pending
-    else
-      loop (index + 1) pending
-  in
-  try loop start pending with
-  | Invalid_argument _ ->
-      pending
 
 let pending_trivia_position =
   function
@@ -1719,20 +1638,11 @@ let rec render_pattern =
               | Some label_token ->
                   Doc.concat [ doc_of_token label_token; render_pattern element.pattern ])
             elements; Doc.rparen ]
-  | Syn.Cst.Pattern.List { syntax_node; elements; _ } ->
+  | Syn.Cst.Pattern.List { elements; _ } ->
       if elements = [] then
         Doc.concat [ Doc.lbracket; Doc.rbracket ]
       else
-        let edge_space =
-          if List.length elements = 1 then
-            let text = text_of_syntax_node syntax_node in
-            if string_contains_substring text "[ " || string_contains_substring text " ]" then
-              " "
-            else
-              ""
-          else
-            ""
-        in
+        let edge_space = if List.length elements = 1 then " " else "" in
         Doc.group (Doc.concat [
           Doc.lbracket;
           Doc.indent 2 (Doc.concat [
@@ -4647,116 +4557,6 @@ and is_open_signature_item = function
       true
   | _ ->
       false
-
-and trailing_inline_comment_suffix ~source ~source_offset (span : Syn.Ceibo.Span.t) =
-  let source_length = String.length source in
-  let rec skip_horizontal index =
-    if index >= source_length then
-      index
-    else
-      match source.[index] with
-      | ' '
-      | '\t' ->
-          skip_horizontal (index + 1)
-      | _ ->
-          index
-  in
-  let rec scan_comment index depth =
-    if index >= source_length then
-      None
-    else if index + 1 < source_length && source.[index] = '(' && source.[index + 1] = '*' then
-      scan_comment (index + 2) (depth + 1)
-    else if index + 1 < source_length && source.[index] = '*' && source.[index + 1] = ')' then
-      if depth = 1 then
-        Some (index + 2)
-      else
-        scan_comment (index + 2) (depth - 1)
-    else
-      scan_comment (index + 1) depth
-  in
-  let start = span.end_ - source_offset in
-  if start < 0 || start >= source_length then
-    None
-  else
-    let comment_start = skip_horizontal start in
-    if
-      comment_start + 1 >= source_length
-      || not (Char.equal source.[comment_start] '(')
-      || not (Char.equal source.[comment_start + 1] '*')
-    then
-      None
-    else
-      match scan_comment (comment_start + 2) 1 with
-      | None ->
-          None
-      | Some after_comment ->
-          let suffix_end = skip_horizontal after_comment in
-          Some
-            ( Source.source_between source ~start:start ~end_:suffix_end,
-              source_offset + suffix_end )
-
-and leading_inline_comment_between_offsets source ~start ~end_ =
-  let source_length = String.length source in
-  let start = Int.max 0 (Int.min start source_length) in
-  let end_ = Int.max start (Int.min end_ source_length) in
-  match
-    trailing_inline_comment_suffix ~source ~source_offset:0
-      { Syn.Ceibo.Span.start; end_ = start }
-  with
-  | Some (suffix_text, suffix_end) when suffix_end <= end_ ->
-      Some (Doc.text suffix_text, suffix_end)
-  | _ ->
-      None
-
-and split_leading_inline_comment_source gap_source =
-  let source_length = String.length gap_source in
-  let rec skip_horizontal index =
-    if index >= source_length then
-      index
-    else
-      match gap_source.[index] with
-      | ' '
-      | '\t' ->
-          skip_horizontal (index + 1)
-      | _ ->
-          index
-  in
-  let rec scan_comment index depth =
-    if index >= source_length || index + 1 >= source_length then
-      None
-    else if gap_source.[index] = '(' && gap_source.[index + 1] = '*' then
-      scan_comment (index + 2) (depth + 1)
-    else if gap_source.[index] = '*' && gap_source.[index + 1] = ')' then
-      if depth = 1 then
-        Some (index + 2)
-      else
-        scan_comment (index + 2) (depth - 1)
-    else
-      scan_comment (index + 1) depth
-  in
-  let comment_start = skip_horizontal 0 in
-  if
-    comment_start >= source_length
-    || comment_start + 1 >= source_length
-    || not (Char.equal gap_source.[comment_start] '(')
-    || not (Char.equal gap_source.[comment_start + 1] '*')
-  then
-    (None, gap_source)
-  else
-    match scan_comment (comment_start + 2) 1 with
-    | None ->
-        (None, gap_source)
-    | Some comment_end ->
-        let comment =
-          String.sub gap_source comment_start (comment_end - comment_start)
-        in
-        let remaining =
-          if comment_end >= source_length then
-            ""
-          else
-            String.sub gap_source comment_end (source_length - comment_end)
-        in
-        (Some (Doc.text comment), remaining)
 
 and flatten_top_level_expression_item = function
   | Syn.Cst.StructureItem.Expression (Syn.Cst.Expression.Sequence { expressions; _ }) ->
