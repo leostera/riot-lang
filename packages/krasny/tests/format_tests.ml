@@ -301,6 +301,26 @@ let bind =
 |}
           ~actual;
         Ok ());
+    Test.case "format binding values from structure, not source newlines"
+      (fun () ->
+        let source =
+          {|let wrapped =
+  (
+    value
+  )
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"binding layout should not preserve multiline source for a simple wrapped value"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let wrapped = (value)
+|}
+          ~actual;
+        Ok ());
     Test.case "format keeps simple applies inline even when identifiers contain keywords"
       (fun () ->
         let source = "let handler = use function_handler\n" in

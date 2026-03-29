@@ -181,10 +181,6 @@ let strip_module_prefix = fun text ->
   else
     text
 
-let syntax_node_has_internal_newline = fun syntax_node ->
-  let text = text_of_syntax_node syntax_node |> trim_trailing_layout_whitespace in
-  String.contains text "\n"
-
 let doc_of_ident = fun ident ->
   Syn.Cst.Ident.segments ident |> List.map doc_of_token |> Doc.join (Doc.text ".")
 
@@ -3143,21 +3139,6 @@ and render_function_expression_unindented
         cases;
     ]
 
-and render_function_expression_indented
-    ({ keyword_token; cases; _ } : Syn.Cst.function_expression) =
-  let force_multiline_cases =
-    List.length cases > 2 && List.exists case_body_prefers_multiline cases
-  in
-  Doc.concat
-    [
-      doc_of_token keyword_token;
-      Doc.line;
-      Doc.indent 2
-        (join_map Doc.line
-           (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
-           cases);
-    ]
-
 and render_fun_body = function
   | Syn.Cst.Expression (Syn.Cst.Expression.Tuple { elements; _ }) ->
       render_tuple_expression_bare elements
@@ -4020,11 +4001,6 @@ and render_local_binding
   let rendered_value =
     match value with
     | Syn.Cst.Expression.Function function_
-      when parameters = []
-           && keep_value_after_equals
-           && syntax_node_has_internal_newline function_.syntax_node ->
-        render_function_expression_indented function_
-    | Syn.Cst.Expression.Function function_
       when parameters = [] && not keep_value_after_equals ->
         render_function_expression_unindented function_
     | _ when not (parameters = []) ->
@@ -4067,8 +4043,7 @@ and render_local_binding
         rendered_value;
       ]
   else if
-    syntax_node_has_internal_newline (Syn.Cst.Expression.syntax_node value)
-    || not (expression_is_simple_after_equals value)
+    not (expression_is_simple_after_equals value)
     || expression_prefers_multiline_layout value
     || Doc.is_multiline rendered_value
   then
