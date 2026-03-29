@@ -1,0 +1,2 @@
+type a
+(** doc string *)

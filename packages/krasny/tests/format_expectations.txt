@@ -109,6 +109,9 @@
 0912_banner_comments_followed_by_plain_comment.ml
 0913_structure_docstring_after_open.ml
 0914_docstring_then_plain_comment_before_let.ml
+0915_signature_type_trailing_docstring_at_eof.mli
+0916_signature_type_trailing_comment_at_eof.mli
+0917_signature_type_docstring_between_declarations.mli
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml
