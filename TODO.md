@@ -5,6 +5,7 @@ This file is _yours_. Keep it up to date after every big change.
 ## Mission
 
 - [x] Make trivia, comments, and docstrings first-class at the token layer so the CST can derive reliable ownership and `krasny` can become a renderer again
+- [ ] Make `krasny` Structural Formatting Only: format from CST structure plus token-attached trivia, never by reparsing or sniffing source text
 
 ## Stable Contracts
 
@@ -15,7 +16,11 @@ This file is _yours_. Keep it up to date after every big change.
 - Derive ownership from token order and item/member sequences, not source-gap archaeology.
 - Normalize ugly comment placement in `krasny`, not in `syn`.
 - Keep doc ownership leading-only; postfix docstrings stay preserved but standalone.
-- Keep source-preserving fallback in `krasny` limited to unsupported or ambiguity-sensitive rendering shapes, not ownership recovery.
+- Structural formatting only:
+  no reparsing source,
+  no source sniffing,
+  no string heuristics for ownership or rendering decisions.
+- If `krasny` cannot format a shape structurally, formatting should fail until `syn` or the CST exposes the missing fact.
 
 ## Completed State
 
@@ -36,7 +41,7 @@ This file is _yours_. Keep it up to date after every big change.
 - Top-level and nested structure/signature ownership run through shared ordered-item passes built from token order.
 - Variant constructors and record fields are the only explicit member-stream grammars today.
 - `sig ... end` now has an explicit `SIG_EXPR` syntax kind; `syn` no longer recognizes signature module types by string-sniffing an `IDENT_EXPR` token stream.
-- `krasny` renders top-level, nested, grouped-type, and record-body ownership from CST streams plus per-node `owned_trivia`; source-preserving fallbacks rebuild text from real token bodies plus later-token `leading_trivia`.
+- `krasny` renders top-level, nested, grouped-type, and record-body ownership from CST streams plus per-node `owned_trivia`, but `lower.ml` still contains source-preserving fallback and source/text heuristics that should be treated as debt.
 
 ## Working Style
 
@@ -46,12 +51,58 @@ This file is _yours_. Keep it up to date after every big change.
 - Prefer `syn:cst_tests` for ownership bugs and `krasny` fixtures for layout/rendering bugs.
 - Do not reintroduce ownership heuristics in `krasny` once the CST already knows the answer.
 
-## Next Steps
+## Structural Formatting Debt
 
-- [ ] Audit the remaining source-preserving fallback sites in `packages/krasny/src/lower.ml` and classify them as either necessary syntax preservation or removable cleanup debt.
+- [ ] Remove source-preserving node fallback from `packages/krasny/src/lower.ml`
+  - `doc_of_source_preserved_syntax_node`
+  - `doc_of_source_preserved_syntax_node_from_current_source`
+  - `doc_of_source_preserved_syntax_node_span_from_current_source`
+  - direct source renderers such as `doc_of_core_type`, `doc_of_module_expression`, `doc_of_module_type`, and `render_parameter`
+  - attribute/module-type string reconstruction such as `render_attribute`, `render_first_class_module_type`, `strip_outer_parens_once`, and `strip_module_prefix`
+  - `structure_item_uses_source_preservation_span`
+  - `signature_item_uses_source_preservation_span`
+  - unsupported top-level items should fail formatting instead of preserving source text
+
+- [ ] Remove raw source-gap parsing from top-level structure/signature rendering
+  - `source_gap_has_only_phrase_separators`
+  - `source_gap_leading_phrase_separator`
+  - expression-run preservation in `render_structure_top_level_items`
+  - top-level suffix insertion that still depends on scanning raw source between item spans
+
+- [ ] Remove raw trivia reparsing helpers from `lower.ml`
+  - `parse_trivia_between_offsets`
+  - `render_trivia_between_spans`
+  - `trailing_inline_comment_suffix`
+  - `leading_inline_comment_between_offsets`
+  - `split_leading_inline_comment_source`
+  - if formatting still needs these, the missing structure belongs in `syn`
+
+- [ ] Remove source-sniffing and token-text heuristics used to make rendering decisions
+  - `syntax_node_has_explicit_fun_rhs`
+  - `inherited_poly_variant_path_doc`
+  - `type_declaration_requires_source_preservation`
+  - `value_declaration_name_doc`
+  - rendered-source substring checks such as `[@` / `[%%expect]` preservation gates
+  - multiline/layout heuristics currently driven by `text_of_syntax_node` or `string_contains_substring`
+
+- [ ] Audit every `ctx.source` / `Source.*` use in `packages/krasny/src/lower.ml`
+  - classify each site as:
+    remove,
+    replace with an explicit CST fact,
+    or keep only behind an explicit “unsupported shape” failure boundary while the CST is extended
+
+- [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing
+  - explicit phrase-separator / top-level phrase-boundary modeling
+  - explicit value-declaration printable name modeling
+  - explicit ambiguity-sensitive type-declaration shape markers
+  - explicit poly-variant inherit path rendering data if needed
+
+- [ ] Add regression coverage before removing each heuristic
+  - use `syn:cst_tests` when the missing fact is ownership/structure
+  - use `krasny` fixtures when the issue is purely rendering/layout
+
 - [ ] Keep trimming stale rollout-era comments, helper knobs, and redundant branches in `packages/syn` and `packages/krasny` when compiler/readability audits surface them.
-- [ ] Add direct `syn:cst_tests` ownership regressions whenever a real workspace formatting case exposes an ownership bug, before adding formatter-only fixtures.
-- [ ] Keep future formatter fixtures renderer/layout-focused; do not let them become a substitute for CST ownership coverage.
+
 - [ ] If formatter UX work resumes, make `tusk fmt <file>` default to formatting just that file instead of walking the whole workspace.
 
 ## Validate
