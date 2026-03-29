@@ -1,13 +1,13 @@
 open Std
 
 (** Detected platform *)
-type t = 
+type t =
   | MacOS
-  | Linux  
+  | Linux
   | Windows
   | Unknown of string
-
 val to_string : t -> string
+
 val of_string : string -> t
 
 (** Detect the current platform *)

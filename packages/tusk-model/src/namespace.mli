@@ -1,25 +1,24 @@
 (** Module namespace handling with double-underscore convention *)
 
-type t
 (** Abstract type for namespaces *)
-
-val empty : t
 (** Empty namespace *)
+type t
+val empty : t
 
-val of_string : string -> t
 (** Create namespace from string (splits on __) *)
+val of_string : string -> t
 
-val of_list : string list -> t
 (** Create namespace from list of components *)
+val of_list : string list -> t
 
-val append : t -> string -> t
 (** Append a component to namespace *)
+val append : t -> string -> t
 
-val to_string : t -> string
 (** Convert to string with __ separator *)
+val to_string : t -> string
 
-val to_list : t -> string list
 (** Get list of namespace components *)
+val to_list : t -> string list
 
-val is_empty : t -> bool
 (** Check if namespace is empty *)
+val is_empty : t -> bool

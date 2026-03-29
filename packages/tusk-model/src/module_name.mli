@@ -2,70 +2,69 @@
 
 open Std
 
-type t
 (** Abstract type representing a module name *)
-
-val make : filename:Path.t -> namespace:Namespace.t -> name:string -> t
 (** Create a module name with explicit components *)
+type t
+val make : filename:Path.t -> namespace:Namespace.t -> name:string -> t
 
-val of_filename : ?namespace:Namespace.t -> Path.t -> t
 (** Create from a filename, optionally with namespace *)
+val of_filename : ?namespace:Namespace.t -> Path.t -> t
 
-val of_string : ?namespace:Namespace.t -> string -> t
 (** Create from a string name, optionally with namespace *)
+val of_string : ?namespace:Namespace.t -> string -> t
 
-val of_path : Path.t -> t
 (** Create from a file path, extracting the module name *)
+val of_path : Path.t -> t
 
-val filename : t -> Path.t
 (** Get the original filename *)
+val filename : t -> Path.t
 
-val to_string : t -> string
 (** Get the simple module name (without namespace) *)
+val to_string : t -> string
 
-val namespace : t -> Namespace.t
 (** Get the namespace *)
+val namespace : t -> Namespace.t
 
 val simple_name : t -> string
 
-val qualified_name : t -> string
 (** Get the fully qualified name (namespace__name) *)
+val qualified_name : t -> string
 
-val cma : t -> Path.t
 (** Get the .cma filename based on qualified name *)
+val cma : t -> Path.t
 
-val cmxa : t -> Path.t
 (** Get the .cmxa filename based on qualified name *)
+val cmxa : t -> Path.t
 
-val cmxs : t -> Path.t
 (** Get the .cmxs filename based on qualified name *)
+val cmxs : t -> Path.t
 
-val cmo : t -> Path.t
 (** Get the .cmo filename based on qualified name *)
+val cmo : t -> Path.t
 
-val cmi : t -> Path.t
 (** Get the .cmi filename based on qualified name *)
+val cmi : t -> Path.t
 
-val cmx : t -> Path.t
 (** Get the .cmx filename based on qualified name *)
+val cmx : t -> Path.t
 
-val cmt : t -> Path.t
 (** Get the .cmt filename based on qualified name *)
+val cmt : t -> Path.t
 
-val cmti : t -> Path.t
 (** Get the .cmti filename based on qualified name *)
+val cmti : t -> Path.t
 
-val o : t -> Path.t
 (** Get the .o filename based on qualified name *)
+val o : t -> Path.t
 
-val a : t -> Path.t
 (** Get the .a filename based on qualified name *)
+val a : t -> Path.t
 
-val canonical_mli : t -> Path.t
 (** Get the canonical .mli filename *)
+val canonical_mli : t -> Path.t
 
-val canonical_ml : t -> Path.t
 (** Get the canonical .ml filename *)
+val canonical_ml : t -> Path.t
 
-val binary : t -> string
 (** Get the binary name (qualified name without extension, e.g., "demo_cmd" or "namespace__demo_cmd") *)
+val binary : t -> string

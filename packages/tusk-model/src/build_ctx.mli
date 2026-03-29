@@ -2,18 +2,18 @@ open Std
 
 type t = {
   host_triplet : Kernel.System.Host.t;
-  target : Target.t;  (* Changed from target_triplet *)
+  target : Target.t;
+  (* Changed from target_triplet *)
   profile : Profile.t;
   available_parallelism : int;
   session_id : Session_id.t;
 }
-
-val make : 
-  session_id:Session_id.t -> 
-  profile:Profile.t ->
-  ?target:Target.t ->
-  ?available_parallelism:int -> 
-  unit -> t
+val make : session_id:Session_id.t ->
+profile:Profile.t ->
+?target:Target.t ->
+?available_parallelism:int ->
+unit ->
+t
 
 (** Get target platform name for package.target.* lookups *)
 val target_platform_name : t -> string
