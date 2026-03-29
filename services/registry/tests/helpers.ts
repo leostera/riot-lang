@@ -1,3 +1,5 @@
+import { Database, type SQLQueryBindings } from "bun:sqlite";
+
 import { handlePublicationCoordinatorRequest } from "../src/publication-coordinator-handler.ts";
 import type { Env } from "../src/types.ts";
 
@@ -208,13 +210,16 @@ export function makeEnv(overrides: Partial<Env> = {}): {
   bucket: FakeR2Bucket;
   queue: FakeQueue;
   indexedQueue: FakeQueue;
+  db: FakeD1Database;
 } {
   const bucket = new FakeR2Bucket();
   const queue = new FakeQueue();
   const indexedQueue = new FakeQueue();
+  const db = new FakeD1Database();
 
   const env: Env = {
     ML_PKGS_CDN: bucket as unknown as R2Bucket,
+    SEARCH_DB: db as unknown as D1Database,
     PACKAGE_PUBLISHED_QUEUE: queue as unknown as Queue,
     PACKAGE_INDEXED_QUEUE: indexedQueue as unknown as Queue,
     PUBLICATION_COORDINATOR: undefined as unknown as DurableObjectNamespace,
@@ -234,7 +239,79 @@ export function makeEnv(overrides: Partial<Env> = {}): {
     bucket,
     queue,
     indexedQueue,
+    db,
   };
+}
+
+export class FakeD1Database {
+  private readonly sqlite = new Database(":memory:");
+
+  async exec(query: string): Promise<D1ExecResult> {
+    this.sqlite.exec(query);
+    return {
+      count: 0,
+      duration: 0,
+    };
+  }
+
+  prepare(query: string): FakeD1PreparedStatement {
+    return new FakeD1PreparedStatement(this.sqlite, query);
+  }
+
+  async batch<T = unknown>(statements: FakeD1PreparedStatement[]): Promise<D1Result<T>[]> {
+    return await Promise.all(statements.map(async (statement) => await statement.run<T>()));
+  }
+}
+
+class FakeD1PreparedStatement {
+  private bindings: SQLQueryBindings[] = [];
+
+  constructor(
+    private readonly sqlite: Database,
+    private readonly query: string,
+  ) {}
+
+  bind(...values: SQLQueryBindings[]): FakeD1PreparedStatement {
+    this.bindings = values;
+    return this;
+  }
+
+  async run<T = unknown>(): Promise<D1Result<T>> {
+    const statement = this.sqlite.query(this.query);
+    statement.run(...this.bindings);
+    return {
+      success: true,
+      meta: {
+        changed_db: false,
+        changes: 0,
+        duration: 0,
+        last_row_id: 0,
+        rows_read: 0,
+        rows_written: 0,
+        served_by_region: "test",
+        size_after: 0,
+      },
+    } as D1Result<T>;
+  }
+
+  async all<T = unknown>(): Promise<D1Result<T>> {
+    const statement = this.sqlite.query(this.query);
+    const results = statement.all(...this.bindings) as T[];
+    return {
+      success: true,
+      meta: {
+        changed_db: false,
+        changes: 0,
+        duration: 0,
+        last_row_id: 0,
+        rows_read: results.length,
+        rows_written: 0,
+        served_by_region: "test",
+        size_after: 0,
+      },
+      results,
+    } as D1Result<T>;
+  }
 }
 
 export async function withMockedFetch<T>(

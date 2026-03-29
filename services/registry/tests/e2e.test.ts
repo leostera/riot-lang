@@ -8,6 +8,11 @@ const publishPackageLocator = process.env.REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR ?
 const liveTest = baseUrl === null ? test.skip : test;
 const rootAuthToken = process.env.REGISTRY_E2E_ROOT_AUTH_TOKEN ?? null;
 const livePublishTest = baseUrl === null || rootAuthToken === null ? test.skip : test;
+const sessionCookie = process.env.REGISTRY_E2E_SESSION_COOKIE ?? null;
+const githubLogin = process.env.REGISTRY_E2E_GITHUB_LOGIN ?? null;
+const liveAuthTest = baseUrl === null ? test.skip : test;
+const liveAuthenticatedTest =
+  baseUrl === null || sessionCookie === null || githubLogin === null ? test.skip : test;
 const cdnBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
 const indexBasePath = trimSlashes(process.env.REGISTRY_INDEX_E2E_BASE_PATH) ?? "index/v1";
 
@@ -23,6 +28,133 @@ describe("riot package registry live e2e", () => {
       manifest: "/package/<locator>/-/manifest/<sha>.json",
       source: "/package/<locator>/-/source/<sha>.tar.gz",
       publish: "/package/<locator>/-/publish?ref=<selector>",
+      auth_github_start: "/auth/github/start?return_to=<url>",
+      auth_github_callback: "/auth/github/callback?code=<code>&state=<state>",
+      auth_logout: "/auth/logout",
+      me: "/api/v1/me",
+      tokens: "/api/v1/me/tokens",
+      search: "/api/v1/search?q=<query>",
+    });
+  });
+
+  liveAuthTest("github auth start redirects to GitHub authorize", async () => {
+    const response = await fetch(
+      `${baseUrl}/auth/github/start?return_to=${encodeURIComponent("https://pkgs.ml/login")}`,
+      {
+        redirect: "manual",
+      },
+    );
+
+    expect(response.status).toBe(302);
+    const location = response.headers.get("location");
+    expect(location).not.toBeNull();
+
+    const redirectUrl = new URL(location ?? "");
+    expect(redirectUrl.origin).toBe("https://github.com");
+    expect(redirectUrl.pathname).toBe("/login/oauth/authorize");
+    expect(redirectUrl.searchParams.get("client_id")).not.toBeNull();
+    expect(redirectUrl.searchParams.get("redirect_uri")).toBe(
+      `${baseUrl}/auth/github/callback`,
+    );
+    expect(redirectUrl.searchParams.get("state")).not.toBeNull();
+  });
+
+  liveAuthTest("anonymous session and token routes behave as expected", async () => {
+    const meResponse = await fetch(`${baseUrl}/api/v1/me`, {
+      headers: {
+        accept: "application/json",
+      },
+    });
+
+    expect(meResponse.status).toBe(200);
+    const mePayload = (await meResponse.json()) as Record<string, unknown>;
+    expect(mePayload).toEqual({
+      authenticated: false,
+    });
+
+    const tokenListResponse = await fetch(`${baseUrl}/api/v1/me/tokens`, {
+      headers: {
+        accept: "application/json",
+      },
+    });
+
+    expect(tokenListResponse.status).toBe(401);
+    expect(await tokenListResponse.json()).toMatchObject({
+      error: "unauthorized",
+    });
+  });
+
+  liveTest("search miss returns an empty result set", async () => {
+    const query = `definitely-not-a-package-${Date.now()}`;
+    const response = await fetch(`${baseUrl}/api/v1/search?q=${encodeURIComponent(query)}`, {
+      headers: {
+        accept: "application/json",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as Record<string, unknown>;
+    expect(payload).toEqual({
+      query,
+      count: 0,
+      results: [],
+    });
+  });
+
+  liveAuthenticatedTest("authenticated session can list and manage publish tokens", async () => {
+    const tokenName = `e2e-${Date.now()}`;
+
+    const meResponse = await fetch(`${baseUrl}/api/v1/me`, {
+      headers: authenticatedHeaders(),
+    });
+    expect(meResponse.status).toBe(200);
+    expect(await meResponse.json()).toMatchObject({
+      authenticated: true,
+      user: {
+        github_login: githubLogin,
+      },
+    });
+
+    const createResponse = await fetch(`${baseUrl}/api/v1/me/tokens`, {
+      method: "POST",
+      headers: {
+        ...authenticatedHeaders(),
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ name: tokenName }),
+    });
+    expect(createResponse.status).toBe(201);
+    const created = (await createResponse.json()) as {
+      plaintext_token: string;
+      token: { token_id: string; name: string };
+    };
+    expect(created.plaintext_token.startsWith("rpk_")).toBe(true);
+    expect(created.token.name).toBe(tokenName);
+
+    const listResponse = await fetch(`${baseUrl}/api/v1/me/tokens`, {
+      headers: authenticatedHeaders(),
+    });
+    expect(listResponse.status).toBe(200);
+    const listed = (await listResponse.json()) as {
+      user: { github_login: string };
+      tokens: Array<{ token_id: string; name: string }>;
+    };
+    expect(listed.user.github_login).toBe(githubLogin ?? "");
+    expect(listed.tokens.some((token) => token.token_id === created.token.token_id)).toBe(true);
+
+    const revokeResponse = await fetch(
+      `${baseUrl}/api/v1/me/tokens/${encodeURIComponent(created.token.token_id)}`,
+      {
+        method: "DELETE",
+        headers: authenticatedHeaders(),
+      },
+    );
+    expect(revokeResponse.status).toBe(200);
+    expect(await revokeResponse.json()).toMatchObject({
+      token: {
+        token_id: created.token.token_id,
+        revoked_at: expect.any(String),
+      },
     });
   });
 
@@ -171,6 +303,31 @@ describe("riot package registry live e2e", () => {
 
     const sourceResponse = await fetch(`${cdnBaseUrl}/${indexedRelease!.source_key}`);
     expect(sourceResponse.status).toBe(200);
+  });
+
+  livePublishTest("published package is immediately searchable through the registry api", async () => {
+    const publication = await publishPackage();
+
+    const searchResponse = await pollJson<SearchResponsePayload>(
+      `${baseUrl}/api/v1/search?q=${encodeURIComponent(publication.package_name)}`,
+      (value) =>
+        value !== null &&
+        Array.isArray(value.results) &&
+        value.results.some(
+          (result) =>
+            result.package_name === publication.package_name &&
+            result.latest_version === publication.package_version &&
+            result.canonical_locator === publication.package &&
+            result.repo_owner.length > 0 &&
+            result.repo_name.length > 0,
+        ),
+    );
+
+    expect(searchResponse.query).toBe(publication.package_name);
+    expect(searchResponse.count).toBeGreaterThanOrEqual(1);
+    expect(searchResponse.results[0]?.package_name).toBe(publication.package_name);
+    expect(searchResponse.results[0]?.latest_version).toBe(publication.package_version);
+    expect(searchResponse.results[0]?.canonical_locator).toBe(publication.package);
   });
 });
 
@@ -329,4 +486,25 @@ interface PackageIndexReleasePayload {
   manifest_key: string;
   source_key: string;
   dependencies: unknown[];
+}
+
+interface SearchResultPayload {
+  package_name: string;
+  latest_version: string;
+  canonical_locator: string;
+  repo_owner: string;
+  repo_name: string;
+}
+
+interface SearchResponsePayload {
+  query: string;
+  count: number;
+  results: SearchResultPayload[];
+}
+
+function authenticatedHeaders(): Record<string, string> {
+  return {
+    accept: "application/json",
+    cookie: sessionCookie ?? "",
+  };
 }

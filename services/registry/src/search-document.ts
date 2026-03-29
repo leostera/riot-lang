@@ -7,7 +7,9 @@ import type {
 export function buildSearchRow(document: PackageIndexDocument): SearchPackageRow {
   const latestRelease = document.releases.find((release) => release.version === document.latest);
   if (latestRelease === undefined) {
-    throw new Error(`Package document ${document.name} does not include latest release ${document.latest}.`);
+    throw new Error(
+      `Package document ${document.name} does not include latest release ${document.latest}.`,
+    );
   }
 
   const parsed = parseCanonicalLocator(latestRelease.canonical_locator);
@@ -81,7 +83,7 @@ function parseCanonicalLocator(locator: string): {
 function tokenizeQuery(query: string): string[] {
   return query
     .toLowerCase()
-    .replace(/[^a-z0-9/_-]+/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
     .split(/\s+/)
     .map((token) => token.trim())
     .filter((token) => token.length > 0);

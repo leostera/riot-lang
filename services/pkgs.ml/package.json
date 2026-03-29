@@ -8,7 +8,8 @@
     "preview": "astro preview",
     "check": "astro check && tsc --noEmit",
     "deploy": "astro build && wrangler deploy",
-    "test": "bun test tests/package-index.test.ts"
+    "test": "bun test tests/package-index.test.ts",
+    "test:e2e": "bun test ./tests/e2e.test.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.1.4",

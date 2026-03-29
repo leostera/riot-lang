@@ -76,24 +76,46 @@ const latestUpdate = packages[0]?.updated_at
                 >
                   GitHub profile
                 </a>
-                {
-                  isCurrentUser ? (
-                    <a href={`/u/${user}/tokens`} class="hover:text-foreground">Manage tokens</a>
-                  ) : null
-                }
                 <a href={`/?q=${encodeURIComponent(user)}`} class="hover:text-foreground">
                   Search by owner
                 </a>
               </div>
             </CardContent>
           </Card>
+
+          {
+            isCurrentUser ? (
+              <Card className="rounded-md shadow-none">
+                <CardHeader className="border-b border-border">
+                  <CardTitle className="text-sm">API Tokens</CardTitle>
+                  <CardDescription>
+                    Manage publish credentials for <code>tusk publish</code>.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 py-4">
+                  <p class="text-xs leading-5 text-muted-foreground">
+                    Create and revoke publish tokens for local development, CI, and release
+                    automation.
+                  </p>
+
+                  <a
+                    href={`/u/${user}/tokens`}
+                    class="text-xs font-medium text-foreground hover:text-primary"
+                  >
+                    Manage API tokens
+                  </a>
+                </CardContent>
+              </Card>
+            ) : null
+          }
         </div>
 
         <Card className="rounded-md shadow-none">
           <CardHeader className="border-b border-border">
-            <CardTitle className="text-sm">Published packages</CardTitle>
+            <CardTitle className="text-sm">Recently published packages</CardTitle>
             <CardDescription>
-              One result per package, sourced from the search index.
+              Public packages indexed from repositories owned by this user, ordered by latest
+              release.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 py-4">

@@ -36,12 +36,14 @@ those upstreams. This is useful for on-premise or private testing setups.
 - `GET /auth/github/callback?code=<code>&state=<state>` completes GitHub OAuth, creates a user session, and redirects back to `pkgs.ml`.
 - `POST /auth/logout` clears the session cookie.
 - `GET /api/v1/me` returns the authenticated user session, if one exists.
+- `GET /api/v1/search?q=<query>` returns one search result per indexed package, backed by D1 + FTS5.
 - `GET /api/v1/me/tokens` lists publish tokens for the authenticated user.
 - `POST /api/v1/me/tokens` creates a new publish token and returns the plaintext token once.
 - `DELETE /api/v1/me/tokens/<token-id>` revokes a publish token.
-- `POST /package/<locator>/-/publish?ref=<selector>` publishes a named package release, synchronously updates the sparse package index under `cdn.pkgs.ml/index/v1`, and accepts either `Authorization: Bearer <ROOT_AUTH_TOKEN>` or a user publish token created through `/api/v1/me/tokens`.
+- `POST /package/<locator>/-/publish?ref=<selector>` publishes a named package release, synchronously updates the sparse package index under `cdn.pkgs.ml/index/v1`, updates the registry search database, and accepts either `Authorization: Bearer <ROOT_AUTH_TOKEN>` or a user publish token created through `/api/v1/me/tokens`.
 
 The Worker logs every request into `ml-pkgs-cdn/requests/...`.
+The Worker also uses a D1 binding for search indexing and query serving.
 
 ## Live smoke tests
 
@@ -53,6 +55,8 @@ REGISTRY_E2E_BASE_URL=https://registry.pkgs.ml
 REGISTRY_E2E_PACKAGE_LOCATOR=github.com/leostera/riot-new/packages/kernel
 REGISTRY_E2E_ROOT_AUTH_TOKEN=
 REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR=github.com/owner/repo/path/to/public-package
+REGISTRY_E2E_SESSION_COOKIE=pkgs_session=...
+REGISTRY_E2E_GITHUB_LOGIN=leostera
 REGISTRY_INDEX_E2E_CDN_BASE_URL=https://cdn.pkgs.ml
 REGISTRY_INDEX_E2E_BASE_PATH=index/v1
 ```
@@ -66,7 +70,9 @@ bun run test:e2e
 The live tests are skipped when `REGISTRY_E2E_BASE_URL` is not set.
 The live publish smoke test is skipped unless `REGISTRY_E2E_ROOT_AUTH_TOKEN` is
 set. If `REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR` is omitted, it defaults to
-`REGISTRY_E2E_PACKAGE_LOCATOR`.
+`REGISTRY_E2E_PACKAGE_LOCATOR`. The authenticated token-management smoke tests
+are skipped unless both `REGISTRY_E2E_SESSION_COOKIE` and
+`REGISTRY_E2E_GITHUB_LOGIN` are set.
 
 `bun run test` only runs the local unit suite. The live registry smoke tests are
 kept behind `bun run test:e2e`.

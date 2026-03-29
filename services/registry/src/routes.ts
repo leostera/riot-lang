@@ -22,6 +22,7 @@ import {
 } from "./locator.ts";
 import { readCachedMaterialization } from "./publication.ts";
 import { writeRequestLog } from "./request-log.ts";
+import { applySearchMigrations, searchPackages } from "./search-db.ts";
 import {
   manifestKey,
   manifestRoutePath,
@@ -108,6 +109,7 @@ async function routeRequest(
         auth_logout: "/auth/logout",
         me: "/api/v1/me",
         tokens: "/api/v1/me/tokens",
+        search: "/api/v1/search?q=<query>",
       },
       cdn_base_url: getConfig(env).cdnBaseUrl,
     });
@@ -169,6 +171,16 @@ async function routeRequest(
 
     logEntry.route = "api.me";
     return await handleCurrentSession(request, env);
+  }
+
+  if (path === "api/v1/search") {
+    if (request.method !== "GET") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET"]);
+    }
+
+    logEntry.route = "api.search";
+    return await handleSearch(env, url);
   }
 
   if (path === "api/v1/me/tokens") {
@@ -535,6 +547,33 @@ async function handleCurrentSession(request: Request, env: Env): Promise<Respons
   });
 }
 
+async function handleSearch(env: Env, url: URL): Promise<Response> {
+  const query = url.searchParams.get("q");
+
+  if (query === null || query.trim().length === 0) {
+    const config = getConfig(env);
+    return json({
+      service: "riot-package-registry",
+      route: "/api/v1/search?q=<query>",
+      source: {
+        package_index_base_url: `${config.cdnBaseUrl}/${config.indexBasePath}`,
+        updated_during_publish: true,
+      },
+    });
+  }
+
+  await applySearchMigrations(env.SEARCH_DB);
+  const limit = clampInteger(url.searchParams.get("limit"), 20, 1, 100);
+  const offset = clampInteger(url.searchParams.get("offset"), 0, 0, 10_000);
+  const results = await searchPackages(env.SEARCH_DB, query, limit, offset);
+
+  return json({
+    query,
+    count: results.length,
+    results,
+  });
+}
+
 async function handleListTokens(request: Request, env: Env): Promise<Response> {
   const { user } = await requireAuthenticatedSession(request, env);
   const records = await listApiTokenRecords(env.ML_PKGS_CDN, user.user_id);
@@ -582,6 +621,24 @@ async function handleDeleteToken(
 
 function trimSlashes(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
+}
+
+function clampInteger(
+  value: string | null,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  if (value === null) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(maximum, Math.max(minimum, parsed));
 }
 
 async function readBodyObject(request: Request): Promise<Record<string, unknown>> {

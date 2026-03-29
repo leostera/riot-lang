@@ -47,6 +47,7 @@ describe("riot package registry routes", () => {
         auth_logout: "/auth/logout",
         me: "/api/v1/me",
         tokens: "/api/v1/me/tokens",
+        search: "/api/v1/search?q=<query>",
       },
       cdn_base_url: "https://cdn.pkgs.ml",
     });

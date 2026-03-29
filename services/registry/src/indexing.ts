@@ -1,10 +1,11 @@
 import { getConfig } from "./config.ts";
 import { buildIndexedRelease, upsertPackageDocument } from "./index-document.ts";
+import { applySearchMigrations, upsertSearchRow } from "./search-db.ts";
+import { buildSearchRow } from "./search-document.ts";
 import {
   packageIndexKey,
   packageIndexUrl,
   readPackageIndexDocument,
-  readPublicationManifest,
   writeIndexConfig,
   writePackageIndexDocument,
 } from "./storage.ts";
@@ -47,6 +48,9 @@ export async function indexPublishedRelease(
   const url = packageIndexUrl(config, releaseRecord.package_name);
 
   if (!changed) {
+    await applySearchMigrations(env.SEARCH_DB);
+    await upsertSearchRow(env.SEARCH_DB, buildSearchRow(document));
+
     await env.PACKAGE_INDEXED_QUEUE.send({
       type: "package.indexed",
       package_name: releaseRecord.package_name,
@@ -69,6 +73,8 @@ export async function indexPublishedRelease(
   }
 
   await writePackageIndexDocument(env.ML_PKGS_CDN, config, document);
+  await applySearchMigrations(env.SEARCH_DB);
+  await upsertSearchRow(env.SEARCH_DB, buildSearchRow(document));
   await env.PACKAGE_INDEXED_QUEUE.send({
     type: "package.indexed",
     package_name: releaseRecord.package_name,

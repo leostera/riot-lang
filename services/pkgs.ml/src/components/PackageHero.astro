@@ -105,6 +105,34 @@ const metadataFacts = facts.filter((fact) =>
               ))}
             </CardContent>
           </Card>
+
+          <Card size="sm" className="rounded-md shadow-none">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="text-sm">Versions</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2 py-3">
+              {document.releases.map((candidate) => (
+                <div class="flex items-center justify-between gap-3 text-xs">
+                  <a
+                    href={`/p/${document.name}/${candidate.version}`}
+                    class:list={[
+                      "hover:text-primary",
+                      candidate.version === selectedVersion ? "font-medium text-foreground" : "text-foreground",
+                    ]}
+                  >
+                    v{candidate.version}
+                  </a>
+                  <span class="text-muted-foreground">
+                    {new Intl.DateTimeFormat("en", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    }).format(new Date(candidate.published_at))}
+                  </span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
       </CardContent>
 

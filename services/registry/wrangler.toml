@@ -22,6 +22,12 @@ binding = "ML_PKGS_CDN"
 bucket_name = "ml-pkgs-cdn"
 preview_bucket_name = "ml-pkgs-cdn"
 
+[[d1_databases]]
+binding = "SEARCH_DB"
+database_name = "riot-package-search"
+database_id = "98a889ee-2e93-4f7b-8301-c6ad47ec5a0c"
+migrations_dir = "../package-search/migrations"
+
 [[queues.producers]]
 binding = "PACKAGE_PUBLISHED_QUEUE"
 queue = "riot-package-published"

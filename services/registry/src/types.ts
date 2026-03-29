@@ -1,5 +1,6 @@
 export interface Env {
   ML_PKGS_CDN: R2Bucket;
+  SEARCH_DB: D1Database;
   PACKAGE_PUBLISHED_QUEUE: Queue<PackagePublishedEvent>;
   PACKAGE_INDEXED_QUEUE: Queue<PackageIndexedEvent>;
   PUBLICATION_COORDINATOR: DurableObjectNamespace;
@@ -200,6 +201,26 @@ export interface PackageIndexDocument {
   updated_at: string;
   releases: IndexedPackageRelease[];
 }
+
+export interface SearchPackageRow {
+  package_name: string;
+  normalized_name: string;
+  latest_version: string;
+  description: string | null;
+  license: string | null;
+  homepage: string | null;
+  repository: string | null;
+  root_module: string | null;
+  canonical_locator: string;
+  repo_url: string;
+  repo_owner: string;
+  repo_name: string;
+  subdir: string;
+  release_count: number;
+  updated_at: string;
+}
+
+export interface SearchResult extends SearchPackageRow {}
 
 export interface SelectorResolutionRecord {
   package_locator: string;

@@ -1,7 +1,7 @@
-import type { SearchPackageRow, SearchResult } from "./types.ts";
 import { buildFtsQuery, rankQueryResult } from "./search-document.ts";
+import type { SearchPackageRow, SearchResult } from "./types.ts";
 
-export async function applyMigrations(db: D1Database): Promise<void> {
+export async function applySearchMigrations(db: D1Database): Promise<void> {
   await db.exec(
     "CREATE TABLE IF NOT EXISTS packages (" +
       "package_name TEXT PRIMARY KEY, " +
