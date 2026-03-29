@@ -28,7 +28,8 @@
 22. Keep `Parser.parse_result.tokens` as the original lexer token stream during the migration so tools can stay lossless before trivia children disappear from the tree, and use that stream as the source of truth for file-level standalone trivia instead of re-lexing source text.
 23. Keep parser-built green trees trivia-free in normal paths: parser control flow may still consume token-attached leading trivia explicitly during the migration, but green child arrays should represent trivia through token `leading_trivia`, not standalone trivia elements.
 24. Keep top-level structure/signature doc ownership on one shared ordered-item pass; do not let those normalization rules fork by item family again.
-25. Keep red traversal aligned with that same contract for parser-built trees: `SyntaxNode.children`, `direct_tokens`, and `tokens` should already be trivia-free, with comments/docstrings reachable through `SyntaxToken.leading_trivia`.
+25. Keep top-level standalone comment/doc ordering driven by token order: derive file items from each item’s first-token leading trivia plus `EOF.leading_trivia`, not by subtracting syntax-node spans from the file.
+26. Keep red traversal aligned with that same contract for parser-built trees: `SyntaxNode.children`, `direct_tokens`, and `tokens` should already be trivia-free, with comments/docstrings reachable through `SyntaxToken.leading_trivia`.
 
 ## Validate
 

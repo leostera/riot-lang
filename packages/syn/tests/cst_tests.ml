@@ -224,6 +224,22 @@ let tests =
               ~actual:(Syn.Cst.Comment.text comment |> String.trim);
             Ok ()
         | _ -> Error "expected trailing file comment after let binding");
+    Test.case "build_cst keeps trailing file docstrings visible via EOF trivia"
+      (fun () ->
+        let result = parse_ml "let x = 1\n(** tail doc *)\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding _
+          :: Syn.Cst.StructureItem.Docstring docstring
+          :: _ ->
+            Test.assert_equal ~expected:"(** tail doc *)"
+              ~actual:(Syn.Cst.Docstring.text docstring);
+            Ok ()
+        | _ -> Error "expected trailing file docstring after let binding");
     Test.case "parse results retain original tokens with EOF-owned trailing trivia"
       (fun () ->
         let result = parse_ml "let x = 1\n(* tail *)\n" in

@@ -196,15 +196,31 @@ let standalone_trivia_item_from_lexed_token = fun ~source ~comment_item_of_comme
       |> Cst.Token.syntax_token in
       standalone_trivia_item_from_token ~comment_item_of_comment ~docstring_item_of_docstring syntax_token
 
-let flatten_lexed_trivia_tokens = fun tokens ->
-  tokens
-  |> List.concat_map (fun ({ Token.leading_trivia; _ } as token) ->
-       let leading = List.map Token.trivia_to_token leading_trivia in
-       match Token.trivia_of_token token with
-       | Some _ ->
-           leading @ [ token ]
-       | None ->
-           leading)
+let same_token_span = fun (left : Token.t) syntax_token ->
+  let right = Ceibo.Red.SyntaxToken.span syntax_token in
+  left.span.start = right.start && left.span.end_ = right.end_
+
+let original_token_for_syntax_token = fun tokens syntax_token -> tokens
+|> List.find_opt (fun token -> same_token_span token syntax_token)
+
+let leading_trivia_tokens_for_item = fun ~tokens syntax_node ->
+  match Ceibo.Red.SyntaxNode.tokens syntax_node with
+  | first_token :: _ -> (
+      match original_token_for_syntax_token tokens first_token with
+      | Some token ->
+          List.map Token.trivia_to_token token.leading_trivia
+      | None ->
+          []
+    )
+  | [] ->
+      []
+
+let eof_leading_trivia_tokens = fun tokens ->
+  match List.rev tokens with
+  | eof :: _ when eof.Token.kind = Token.EOF ->
+      List.map Token.trivia_to_token eof.Token.leading_trivia
+  | _ ->
+      []
 
 let source_file_items_from_child = fun ~comment_item_of_comment ~docstring_item_of_docstring ~owned_trivia_spans_of_item items_from_node ->
   function
@@ -6966,10 +6982,6 @@ let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docst
   let root = Ceibo.Red.new_root tree in
   let item_nodes = Ceibo.Red.SyntaxNode.direct_nodes root
   |> List.filter (fun node -> not (is_trivia (Ceibo.Red.SyntaxNode.kind node))) in
-  let item_node_bounds = List.map span_of_syntax_node_nontrivia_bounds item_nodes in
-  let is_standalone_trivia_token = fun ({ Token.span; _ } : Token.t) ->
-    not (List.exists (fun (bounds : Ceibo.Span.t) -> span.start >= bounds.start
-    && span.end_ <= bounds.end_) item_node_bounds) in
   let next_index =
     let cell = Cell.create 0 in
     fun () ->
@@ -6989,9 +7001,11 @@ let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docst
   let owned_trivia_spans = item_entries
   |> List.concat_map (fun (_, _, item) -> owned_trivia_spans_of_item item) in
   let trivia_entries =
-    tokens
-    |> flatten_lexed_trivia_tokens
-    |> List.filter is_standalone_trivia_token
+    ((item_entries
+      |> List.concat_map
+           (fun (_, _, item) ->
+             leading_trivia_tokens_for_item ~tokens (syntax_node_of_item item)))
+     @ eof_leading_trivia_tokens tokens)
     |> List.filter (fun ({ Token.span; _ } : Token.t) -> not (List.exists (fun owned_span -> span_contains
     owned_span
     span) owned_trivia_spans))
