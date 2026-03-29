@@ -27,8 +27,13 @@ val view : t -> Ceibo.Span.t -> string
 (** Peek at the current token's unconsumed leading trivia. *)
 val peek_leading_trivia : t -> Token.trivia list
 
-(** Consume the current token's leading trivia as synthetic trivia tokens. *)
+(** Consume the current token's leading trivia as token-shaped trivia entries.
+
+    This does not reintroduce trivia into the main cursor stream; it only gives
+    parser helpers a convenient token-like view when building green trivia. *)
 val consume_leading_trivia : t -> Token.t list
 
-(** Get the last consumed non-trivia token. Returns first token if at start. *)
+(** Get the last consumed real token from the cursor stream.
+
+    Returns the first token if no token has been consumed yet. *)
 val last_token : t -> Token.t

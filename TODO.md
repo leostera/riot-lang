@@ -247,7 +247,7 @@ For every slice below:
 - [ ] Current state: Ceibo green/red tokens have token-attached `leading_trivia`; `syn` now also uses EOF `leading_trivia` to own trailing file trivia
 - [ ] Current state: `Parser.parse_result.tokens` and `syn print-ceibo` preserve the original lexer token stream, and `Syn.build_cst` now uses that token stream for top-level standalone comment/docstring ownership instead of re-lexing `source`
 - [ ] Current state: `Lexer.tokenize` now emits only real tokens plus EOF, with all non-EOF trivia attached to the next real token
-- [ ] Current state: `Token_cursor` now works on real tokens directly and exposes helper APIs for consuming the current token's leading trivia without reintroducing trivia tokens into the main parser stream
+- [ ] Current state: `Token_cursor` now treats the main cursor stream as real-token-only end-to-end: lookahead/last-token helpers do not special-case impossible trivia tokens anymore, while leading trivia is still available explicitly for parser green construction
 - [ ] Current state: the parser still has explicit `consume_trivia` flows, but they no longer splice trivia into green children: `tokens_to_green` drops trivia tokens entirely and real token construction still rehydrates original token `leading_trivia`
 - [ ] Current state: top-level structure/signature item ownership now runs through one generic ordered-item pass, so type/value doc attachment and standalone heading preservation no longer fork by item family
 - [ ] Current state: top-level standalone item ordering no longer subtracts item spans from the file token stream; it walks each item’s first-token trivia plus `EOF.leading_trivia` from the original parser tokens

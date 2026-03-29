@@ -59,7 +59,6 @@ let take_while = fun t f ->
 
 let slice = fun t start len -> Array.sub t.tokens start len |> Array.to_list
 
-(** Get the last consumed non-trivia token. Returns first token if at start. *)
 let view = fun t span ->
   let start_pos = span.Ceibo.Span.start in
   let end_pos = span.Ceibo.Span.end_ in
@@ -77,23 +76,8 @@ let consume_leading_trivia = fun t ->
   List.map Token.trivia_to_token trivia
 
 let last_token = fun t ->
-  let rec find_last_non_trivia = fun idx ->
-    if idx < 0 then
-      if t.length > 0 then
-        t.tokens.(0)
-      else
-        eof_token ()
-    else
-      let tok = t.tokens.(idx) in
-      match tok.Token.kind with
-      | Token.Whitespace
-      | Token.Comment _
-      | Token.Docstring _ ->
-          find_last_non_trivia (idx - 1)
-      | _ -> tok
-  in
   if t.pos > 0 then
-    find_last_non_trivia (t.pos - 1)
+    t.tokens.(t.pos - 1)
   else if t.length > 0 then
     t.tokens.(0)
   else
