@@ -373,6 +373,8 @@ function buildPublishedReleaseRecord(
     package_homepage: manifest.package_homepage,
     package_repository: manifest.package_repository,
     package_root_module: manifest.package_root_module,
+    package_categories: manifest.package_categories,
+    package_keywords: manifest.package_keywords,
     dependencies: manifest.dependencies,
     source_archive_key: manifest.source_archive_key,
     manifest_key: manifest.manifest_key,
@@ -392,6 +394,10 @@ function releaseMatchesManifest(
     existingRelease.package_homepage === manifest.package_homepage &&
     existingRelease.package_repository === manifest.package_repository &&
     existingRelease.package_root_module === manifest.package_root_module &&
+    JSON.stringify(existingRelease.package_categories ?? []) ===
+      JSON.stringify(manifest.package_categories ?? []) &&
+    JSON.stringify(existingRelease.package_keywords ?? []) ===
+      JSON.stringify(manifest.package_keywords ?? []) &&
     JSON.stringify(existingRelease.dependencies) === JSON.stringify(manifest.dependencies) &&
     existingRelease.source_archive_key === manifest.source_archive_key &&
     existingRelease.manifest_key === manifest.manifest_key

@@ -1,0 +1,244 @@
+---
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import type {
+  IndexedPackageRelease,
+  PackageIndexDocument,
+  PackageOverviewDocument,
+  PackageRelationsDocument,
+} from "../lib/types.ts";
+import { formatDate } from "../lib/package-index.ts";
+import { getConfig } from "../lib/config.ts";
+
+interface Props {
+  document: PackageIndexDocument;
+  release: IndexedPackageRelease;
+  overview?: PackageOverviewDocument | null;
+  relations?: PackageRelationsDocument | null;
+}
+
+const { document, release, overview = null, relations = null } = Astro.props;
+const config = getConfig();
+const owner = overview?.owner_github_login ?? release.canonical_locator.split("/")[1] ?? "unknown";
+const dependencyRows =
+  relations?.dependencies ??
+  release.dependencies.map((dependency) => {
+    const record = dependency as Record<string, unknown>;
+    const name =
+      typeof record.package === "string"
+        ? record.package
+        : typeof record.name === "string"
+          ? record.name
+          : "unknown";
+    const requirement =
+      typeof record.version === "string"
+        ? record.version
+        : typeof record.raw === "string"
+          ? record.raw
+          : typeof record.requirement === "string"
+            ? record.requirement
+            : "unspecified";
+
+    return { package_name: name, requirement };
+  });
+const manifestUrl = `${config.cdnBaseUrl}/${release.manifest_key}`;
+const sourceArchiveUrl = `${config.cdnBaseUrl}/${release.source_key}`;
+---
+
+<section class="w-full px-4 pb-10 sm:px-6 xl:px-8">
+  <div class="mx-auto grid w-full max-w-6xl gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div class="grid gap-4">
+      <Card size="sm" className="rounded-md shadow-none">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-sm">Links</CardTitle>
+          <CardDescription>
+            Primary entry points for using and inspecting this release.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2 py-3 text-sm">
+          <a href={release.repo_url} target="_blank" rel="noreferrer" class="hover:text-primary">
+            Repository
+          </a>
+          {
+            release.repository && release.repository !== release.repo_url ? (
+              <a href={release.repository} target="_blank" rel="noreferrer" class="hover:text-primary">
+                Source browser
+              </a>
+            ) : null
+          }
+          {
+            release.homepage ? (
+              <a href={release.homepage} target="_blank" rel="noreferrer" class="hover:text-primary">
+                Homepage
+              </a>
+            ) : null
+          }
+          <a href={sourceArchiveUrl} target="_blank" rel="noreferrer" class="hover:text-primary">
+            Source archive
+          </a>
+          <a href={manifestUrl} target="_blank" rel="noreferrer" class="hover:text-primary">
+            Published manifest
+          </a>
+        </CardContent>
+      </Card>
+
+      <Card size="sm" className="rounded-md shadow-none">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-sm">Dependencies</CardTitle>
+          <CardDescription>
+            Dependencies declared for this release.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="py-3">
+          {
+            dependencyRows.length === 0 ? (
+              <p class="text-sm text-muted-foreground">No dependencies declared for this release.</p>
+            ) : (
+              <ul class="grid gap-2">
+                {dependencyRows.map((dependency) => (
+                  <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-sm last:border-b-0 last:pb-0">
+                    <a href={`/p/${dependency.package_name}`} class="font-medium text-foreground hover:text-primary">
+                      {dependency.package_name}
+                    </a>
+                    <code class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[11px] text-foreground">
+                      {dependency.requirement}
+                    </code>
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+        </CardContent>
+      </Card>
+
+      <Card size="sm" className="rounded-md shadow-none">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-sm">Dependents</CardTitle>
+          <CardDescription>
+            Packages that currently depend on {document.name}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="py-3">
+          {
+            (relations?.dependents.length ?? 0) === 0 ? (
+              <p class="text-sm text-muted-foreground">No indexed dependents yet.</p>
+            ) : (
+              <ul class="grid gap-2">
+                {relations?.dependents.map((dependent) => (
+                  <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-sm last:border-b-0 last:pb-0">
+                    <a href={`/p/${dependent.package_name}`} class="font-medium text-foreground hover:text-primary">
+                      {dependent.package_name}
+                    </a>
+                    <code class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[11px] text-foreground">
+                      {dependent.requirement}
+                    </code>
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+        </CardContent>
+      </Card>
+
+      <Card size="sm" className="rounded-md shadow-none">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-sm">Source provenance</CardTitle>
+          <CardDescription>
+            Immutable source details for this published release.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="py-3">
+          <dl class="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            <div class="grid gap-1 text-xs">
+              <dt class="text-[11px] text-muted-foreground">Package locator</dt>
+              <dd class="font-mono text-foreground break-all">{release.canonical_locator}</dd>
+            </div>
+            <div class="grid gap-1 text-xs">
+              <dt class="text-[11px] text-muted-foreground">Resolved commit</dt>
+              <dd class="font-mono text-foreground break-all">{release.sha}</dd>
+            </div>
+            <div class="grid gap-1 text-xs">
+              <dt class="text-[11px] text-muted-foreground">Repository root</dt>
+              <dd class="text-foreground break-all">{release.repo_url}</dd>
+            </div>
+            <div class="grid gap-1 text-xs">
+              <dt class="text-[11px] text-muted-foreground">Package subdir</dt>
+              <dd class="text-foreground">{release.subdir || "/"}</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+    </div>
+
+    <div class="grid gap-4 xl:self-start">
+      <Card size="sm" className="rounded-md shadow-none">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-sm">Release details</CardTitle>
+        </CardHeader>
+        <CardContent className="py-3">
+          <dl class="grid gap-y-3 text-xs">
+            <div class="grid gap-1">
+              <dt class="text-[11px] text-muted-foreground">Latest indexed version</dt>
+              <dd class="text-foreground">v{document.latest}</dd>
+            </div>
+            <div class="grid gap-1">
+              <dt class="text-[11px] text-muted-foreground">Published</dt>
+              <dd class="text-foreground">{formatDate(release.published_at)}</dd>
+            </div>
+            {
+              (overview?.license ?? release.license) ? (
+                <div class="grid gap-1">
+                  <dt class="text-[11px] text-muted-foreground">License</dt>
+                  <dd class="text-foreground">{overview?.license ?? release.license}</dd>
+                </div>
+              ) : null
+            }
+            {
+              release.root_module ? (
+                <div class="grid gap-1">
+                  <dt class="text-[11px] text-muted-foreground">Root module</dt>
+                  <dd class="text-foreground">{release.root_module}</dd>
+                </div>
+              ) : null
+            }
+            <div class="grid gap-1">
+              <dt class="text-[11px] text-muted-foreground">Published versions</dt>
+              <dd class="text-foreground">{overview?.release_count ?? document.releases.length}</dd>
+            </div>
+            <div class="grid gap-1">
+              <dt class="text-[11px] text-muted-foreground">Owner</dt>
+              <dd>
+                <a href={`/u/${owner}`} class="text-foreground hover:text-primary">
+                  @{owner}
+                </a>
+              </dd>
+            </div>
+            {
+              (overview?.categories.length ?? 0) > 0 ? (
+                <div class="grid gap-1">
+                  <dt class="text-[11px] text-muted-foreground">Categories</dt>
+                  <dd class="flex flex-wrap gap-1">
+                    {overview?.categories.map((category) => (
+                      <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
+                        {category}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              ) : null
+            }
+            <div class="grid gap-1">
+              <dt class="text-[11px] text-muted-foreground">Dependents</dt>
+              <dd class="text-foreground">{overview?.dependent_count ?? relations?.dependents.length ?? 0}</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+</section>

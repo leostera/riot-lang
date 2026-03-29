@@ -3,10 +3,18 @@ import HomeHero from "../components/HomeHero.astro";
 import SearchResults from "../components/SearchResults.astro";
 import SiteLayout from "../layouts/SiteLayout.astro";
 import { fetchSearchResults } from "../lib/search.ts";
+import { fetchCategoriesIndex, fetchPopularPackages, fetchRecentPackages } from "../lib/web-views.ts";
 
 const query = Astro.url.searchParams.get("q")?.trim() ?? "";
 const hasQuery = query.length > 0;
 const search = hasQuery ? await fetchSearchResults(query) : null;
+const [categories, popular, recent] = hasQuery
+  ? [null, null, null]
+  : await Promise.all([
+      fetchCategoriesIndex(),
+      fetchPopularPackages(),
+      fetchRecentPackages(),
+    ]);
 const title = hasQuery ? `${query} · pkgs.ml` : "pkgs.ml · OCaml packages";
 ---
 
@@ -16,5 +24,11 @@ const title = hasQuery ? `${query} · pkgs.ml` : "pkgs.ml · OCaml packages";
   showNavSearch={hasQuery}
   navSearchQuery={query}
 >
-  {hasQuery && search !== null ? <SearchResults query={query} response={search} /> : <HomeHero />}
+  {
+    hasQuery && search !== null ? (
+      <SearchResults query={query} response={search} />
+    ) : (
+      <HomeHero categories={categories} popular={popular} recent={recent} />
+    )
+  }
 </SiteLayout>

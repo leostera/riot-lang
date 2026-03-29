@@ -1,13 +1,21 @@
 ---
-import PackageDocsScaffold from "@/components/PackageDocsScaffold.astro";
+import PackageDetails from "@/components/PackageDetails.astro";
 import PackageHero from "@/components/PackageHero.astro";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import SiteLayout from "@/layouts/SiteLayout.astro";
 import { fetchPackageRelease } from "@/lib/package-index.ts";
+import { fetchPackageOverview, fetchPackageRelations } from "@/lib/web-views.ts";
 
 const packageName = Astro.params.pkg ?? "";
 const version = Astro.params.vsn ?? "";
 const resolved = await fetchPackageRelease(packageName, version);
+const [overview, relations] =
+  resolved === null
+    ? [null, null]
+    : await Promise.all([
+        fetchPackageOverview(packageName),
+        fetchPackageRelations(packageName),
+      ]);
 
 if (resolved === null) {
   Astro.response.status = 404;
@@ -31,7 +39,12 @@ if (resolved === null) {
           release={resolved.release}
           selectedVersion={resolved.release.version}
         />
-        <PackageDocsScaffold document={resolved.document} release={resolved.release} />
+        <PackageDetails
+          document={resolved.document}
+          release={resolved.release}
+          overview={overview}
+          relations={relations}
+        />
       </>
     ) : (
       <section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">

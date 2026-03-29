@@ -77,14 +77,10 @@ function formatUpdatedAt(value: string): string {
                   </div>
                 </div>
 
-                <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-start sm:gap-x-4">
+                <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-x-4">
                   <p class="min-w-0 text-xs leading-5 text-muted-foreground">
                     {result.description || "No package description has been published yet."}
                   </p>
-
-                  <div class="text-[11px] text-muted-foreground sm:text-right">
-                    Total downloads: tracking soon
-                  </div>
 
                   <div class="text-[11px] text-muted-foreground sm:text-right">
                     Last updated: {formatUpdatedAt(result.updated_at)}

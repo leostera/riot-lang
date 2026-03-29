@@ -2,11 +2,26 @@ import { describe, expect, test } from "bun:test";
 
 import { getConfig } from "../src/config.ts";
 import { indexPublishedRelease } from "../src/indexing.ts";
-import { indexConfigKey, packageIndexKey } from "../src/storage.ts";
+import {
+  categoriesIndexKey,
+  indexConfigKey,
+  ownerPackagesKey,
+  packageIndexKey,
+  packageOverviewKey,
+  packageRelationsKey,
+  popularPackagesKey,
+  recentPackagesKey,
+} from "../src/storage.ts";
 import type {
+  CategoriesIndexDocument,
+  OwnerPackagesDocument,
   PackageIndexDocument,
   PackagePublicationManifest,
+  PackageOverviewDocument,
+  PackageRelationsDocument,
+  PopularPackagesDocument,
   PublishedReleaseRecord,
+  RecentPackagesDocument,
 } from "../src/types.ts";
 import { makeEnv } from "./helpers.ts";
 
@@ -73,6 +88,70 @@ describe("registry indexing", () => {
         indexed_at: "2026-03-27T15:27:35Z",
       },
     ]);
+
+    const overview = JSON.parse(
+      (await bucket.text(packageOverviewKey(config, "kernel"))) ?? "null",
+    ) as PackageOverviewDocument;
+    expect(overview).toMatchObject({
+      package_name: "kernel",
+      latest_version: "0.0.1",
+      owner_github_login: "leostera",
+      dependency_count: 1,
+      dependent_count: 0,
+      categories: [],
+    });
+
+    const relations = JSON.parse(
+      (await bucket.text(packageRelationsKey(config, "kernel"))) ?? "null",
+    ) as PackageRelationsDocument;
+    expect(relations).toEqual({
+      schema_version: 1,
+      package_name: "kernel",
+      updated_at: "2026-03-27T15:27:35Z",
+      dependencies: [{ package_name: "std", requirement: "unspecified" }],
+      dependents: [],
+    });
+
+    const recent = JSON.parse(
+      (await bucket.text(recentPackagesKey(config))) ?? "null",
+    ) as RecentPackagesDocument;
+    expect(recent.packages).toHaveLength(1);
+    expect(recent.packages[0]).toMatchObject({
+      package_name: "kernel",
+      latest_version: "0.0.1",
+      owner_github_login: "leostera",
+    });
+
+    const popular = JSON.parse(
+      (await bucket.text(popularPackagesKey(config))) ?? "null",
+    ) as PopularPackagesDocument;
+    expect(popular.packages).toHaveLength(1);
+    expect(popular.packages[0]).toMatchObject({
+      package_name: "kernel",
+      dependent_count: 0,
+      release_count: 1,
+    });
+
+    const categories = JSON.parse(
+      (await bucket.text(categoriesIndexKey(config))) ?? "null",
+    ) as CategoriesIndexDocument;
+    expect(categories.categories).toEqual([]);
+
+    const ownerPackages = JSON.parse(
+      (await bucket.text(ownerPackagesKey(config, "leostera"))) ?? "null",
+    ) as OwnerPackagesDocument;
+    expect(ownerPackages).toMatchObject({
+      owner_github_login: "leostera",
+      package_count: 1,
+      packages: [
+        {
+          package_name: "kernel",
+          latest_version: "0.0.1",
+          repo_url: "https://github.com/leostera/riot-new",
+          release_count: 1,
+        },
+      ],
+    });
   });
 
   test("higher versions become latest and releases stay semver-sorted", async () => {
@@ -183,6 +262,76 @@ describe("registry indexing", () => {
       license: "Apache-2.0",
     });
   });
+
+  test("web views track dependents and categories across indexed packages", async () => {
+    const { env, bucket } = makeEnv();
+    const kernel = makeReleaseRecord({
+      package_categories: ["runtime", "concurrency"],
+    });
+    const miniriot = makeReleaseRecord({
+      package_name: "miniriot",
+      package_version: "0.0.1",
+      package_locator: "github.com/leostera/riot-new/packages/miniriot",
+      package_description: "Actor runtime building blocks.",
+      package_root_module: "Miniriot",
+      dependencies: [{ name: "kernel", raw: "^0.0.1" }],
+      source_archive_key:
+        "sources/github.com/leostera/riot-new/abcf0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
+      manifest_key:
+        "packages/github.com/leostera/riot-new/packages/miniriot/abcf0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
+      resolved_sha: "abcf0372bf5b6687db05bda80cde55f960cbfd9d",
+      published_at: "2026-03-27T16:10:00Z",
+      package_categories: ["runtime", "actors"],
+    });
+
+    await indexPublishedRelease(env, kernel, makeManifest(kernel, { package_categories: ["runtime", "concurrency"] }));
+    await indexPublishedRelease(
+      env,
+      miniriot,
+      makeManifest(miniriot, { package_categories: ["runtime", "actors"] }),
+    );
+
+    const config = getConfig(env);
+    const kernelRelations = JSON.parse(
+      (await bucket.text(packageRelationsKey(config, "kernel"))) ?? "null",
+    ) as PackageRelationsDocument;
+    expect(kernelRelations.dependents).toEqual([
+      {
+        package_name: "miniriot",
+        latest_version: "0.0.1",
+        requirement: "^0.0.1",
+      },
+    ]);
+
+    const categories = JSON.parse(
+      (await bucket.text(categoriesIndexKey(config))) ?? "null",
+    ) as CategoriesIndexDocument;
+    expect(categories.categories).toEqual([
+      {
+        name: "runtime",
+        slug: "runtime",
+        package_count: 2,
+        packages: ["kernel", "miniriot"],
+      },
+      {
+        name: "actors",
+        slug: "actors",
+        package_count: 1,
+        packages: ["miniriot"],
+      },
+      {
+        name: "concurrency",
+        slug: "concurrency",
+        package_count: 1,
+        packages: ["kernel"],
+      },
+    ]);
+
+    const ownerPackages = JSON.parse(
+      (await bucket.text(ownerPackagesKey(config, "leostera"))) ?? "null",
+    ) as OwnerPackagesDocument;
+    expect(ownerPackages.packages.map((item) => item.package_name)).toEqual(["miniriot", "kernel"]);
+  });
 });
 
 function makeReleaseRecord(
@@ -201,6 +350,8 @@ function makeReleaseRecord(
     package_homepage: "https://riot.ml",
     package_repository: "https://github.com/leostera/riot-new",
     package_root_module: "Kernel",
+    package_categories: undefined,
+    package_keywords: undefined,
     dependencies: [{ name: "std", path: "../std" }],
     source_archive_key: "sources/github.com/leostera/riot-new/2aef0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
     manifest_key:
@@ -228,6 +379,8 @@ function makeManifest(
     package_homepage: release.package_homepage,
     package_repository: release.package_repository,
     package_root_module: release.package_root_module,
+    package_categories: release.package_categories,
+    package_keywords: release.package_keywords,
     dependencies: release.dependencies,
     source_archive_key: release.source_archive_key,
     manifest_key: release.manifest_key,

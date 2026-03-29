@@ -22,6 +22,7 @@ const NEXT_SHA = "89abcdef012345670123456789abcdef01234567";
 const INDEX_CONFIG = {
   cdnBaseUrl: "https://cdn.pkgs.ml",
   indexBasePath: "index/v1",
+  viewsBasePath: "views/v1",
   authCookieDomain: "pkgs.ml",
   pkgsWebBaseUrl: "https://pkgs.ml",
 };

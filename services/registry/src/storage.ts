@@ -3,12 +3,18 @@ import type {
   ApiTokenRecord,
   IndexConfig,
   IndexConfigDocument,
+  CategoriesIndexDocument,
   OAuthStateRecord,
+  OwnerPackagesDocument,
   PackageIndexDocument,
+  PackageOverviewDocument,
   PackageClaimRecord,
   PackageLocator,
+  PackageRelationsDocument,
   PackagePublicationManifest,
+  PopularPackagesDocument,
   PublishedReleaseRecord,
+  RecentPackagesDocument,
   RegistryConfig,
   RequestLogEntry,
   SelectorResolutionRecord,
@@ -130,6 +136,30 @@ export function buildIndexConfigDocument(config: IndexConfig): IndexConfigDocume
   };
 }
 
+export function packageOverviewKey(config: RegistryConfig, packageName: string): string {
+  return `${config.viewsBasePath}/packages/${encodePathSegment(packageName)}/overview.json`;
+}
+
+export function packageRelationsKey(config: RegistryConfig, packageName: string): string {
+  return `${config.viewsBasePath}/packages/${encodePathSegment(packageName)}/relations.json`;
+}
+
+export function recentPackagesKey(config: RegistryConfig): string {
+  return `${config.viewsBasePath}/recent/packages.json`;
+}
+
+export function popularPackagesKey(config: RegistryConfig): string {
+  return `${config.viewsBasePath}/popular/packages.json`;
+}
+
+export function categoriesIndexKey(config: RegistryConfig): string {
+  return `${config.viewsBasePath}/categories/index.json`;
+}
+
+export function ownerPackagesKey(config: RegistryConfig, ownerGithubLogin: string): string {
+  return `${config.viewsBasePath}/owners/${encodePathSegment(ownerGithubLogin.toLowerCase())}/packages.json`;
+}
+
 export async function writeIndexConfig(bucket: R2Bucket, config: IndexConfig): Promise<void> {
   await bucket.put(indexConfigKey(config), JSON.stringify(buildIndexConfigDocument(config), null, 2), {
     httpMetadata: {
@@ -157,6 +187,78 @@ export async function writePackageIndexDocument(
   document: PackageIndexDocument,
 ): Promise<void> {
   await bucket.put(packageIndexKey(config, document.name), JSON.stringify(document, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function writePackageOverviewDocument(
+  bucket: R2Bucket,
+  config: RegistryConfig,
+  document: PackageOverviewDocument,
+): Promise<void> {
+  await bucket.put(packageOverviewKey(config, document.package_name), JSON.stringify(document, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function writePackageRelationsDocument(
+  bucket: R2Bucket,
+  config: RegistryConfig,
+  document: PackageRelationsDocument,
+): Promise<void> {
+  await bucket.put(packageRelationsKey(config, document.package_name), JSON.stringify(document, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function writeRecentPackagesDocument(
+  bucket: R2Bucket,
+  config: RegistryConfig,
+  document: RecentPackagesDocument,
+): Promise<void> {
+  await bucket.put(recentPackagesKey(config), JSON.stringify(document, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function writePopularPackagesDocument(
+  bucket: R2Bucket,
+  config: RegistryConfig,
+  document: PopularPackagesDocument,
+): Promise<void> {
+  await bucket.put(popularPackagesKey(config), JSON.stringify(document, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function writeCategoriesIndexDocument(
+  bucket: R2Bucket,
+  config: RegistryConfig,
+  document: CategoriesIndexDocument,
+): Promise<void> {
+  await bucket.put(categoriesIndexKey(config), JSON.stringify(document, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function writeOwnerPackagesDocument(
+  bucket: R2Bucket,
+  config: RegistryConfig,
+  document: OwnerPackagesDocument,
+): Promise<void> {
+  await bucket.put(ownerPackagesKey(config, document.owner_github_login), JSON.stringify(document, null, 2), {
     httpMetadata: {
       contentType: "application/json; charset=utf-8",
     },
@@ -198,6 +300,32 @@ export async function readPackageClaim(
   }
 
   return (await object.json()) as PackageClaimRecord;
+}
+
+export async function listPackageIndexDocuments(
+  bucket: R2Bucket,
+  config: RegistryConfig,
+): Promise<PackageIndexDocument[]> {
+  const listing = await bucket.list({
+    prefix: `${config.indexBasePath}/`,
+  });
+
+  const keys = listing.objects
+    .map((object) => object.key)
+    .filter((key) => key.endsWith(".json") && key !== indexConfigKey(config));
+
+  const documents = await Promise.all(
+    keys.map(async (key) => {
+      const object = await bucket.get(key);
+      if (object === null) {
+        throw new Error(`Expected package index document ${key} to exist.`);
+      }
+
+      return await object.json<PackageIndexDocument>();
+    }),
+  );
+
+  return documents.sort((left, right) => left.name.localeCompare(right.name));
 }
 
 export async function writePackageClaim(

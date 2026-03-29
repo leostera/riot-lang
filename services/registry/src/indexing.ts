@@ -9,6 +9,7 @@ import {
   writeIndexConfig,
   writePackageIndexDocument,
 } from "./storage.ts";
+import { rebuildWebViews } from "./web-views.ts";
 import type {
   Env,
   PackageIndexedEvent,
@@ -50,6 +51,7 @@ export async function indexPublishedRelease(
   if (!changed) {
     await applySearchMigrations(env.SEARCH_DB);
     await upsertSearchRow(env.SEARCH_DB, buildSearchRow(document));
+    await rebuildWebViews(env);
 
     await env.PACKAGE_INDEXED_QUEUE.send({
       type: "package.indexed",
@@ -75,6 +77,7 @@ export async function indexPublishedRelease(
   await writePackageIndexDocument(env.ML_PKGS_CDN, config, document);
   await applySearchMigrations(env.SEARCH_DB);
   await upsertSearchRow(env.SEARCH_DB, buildSearchRow(document));
+  await rebuildWebViews(env);
   await env.PACKAGE_INDEXED_QUEUE.send({
     type: "package.indexed",
     package_name: releaseRecord.package_name,

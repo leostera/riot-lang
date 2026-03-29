@@ -8,22 +8,23 @@ import {
 } from "@/components/ui/card";
 import SiteLayout from "../../layouts/SiteLayout.astro";
 import { fetchSession } from "../../lib/auth";
-import { fetchPackagesByOwner } from "../../lib/search.ts";
+import { fetchOwnerPackages } from "../../lib/web-views.ts";
 
 const user = Astro.params.user ?? "user";
-const packages = await fetchPackagesByOwner(user);
+const ownerView = await fetchOwnerPackages(user);
+const packages = ownerView?.packages ?? [];
 const session = await fetchSession(Astro.request);
 const isCurrentUser =
   session.authenticated &&
   session.user !== undefined &&
   session.user.github_login.toLowerCase() === user.toLowerCase();
 
-const latestUpdate = packages[0]?.updated_at
+const latestUpdate = ownerView?.latest_update_at
   ? new Intl.DateTimeFormat("en", {
       year: "numeric",
       month: "short",
       day: "numeric",
-    }).format(new Date(packages[0].updated_at))
+    }).format(new Date(ownerView.latest_update_at))
   : "No packages yet";
 ---
 
@@ -53,7 +54,7 @@ const latestUpdate = packages[0]?.updated_at
               <div class="grid gap-1">
                 <div class="text-[11px] text-muted-foreground">Published packages</div>
                 <div class="text-sm font-medium text-foreground">
-                  {packages.length} package{packages.length === 1 ? "" : "s"}
+                  {ownerView?.package_count ?? packages.length} package{(ownerView?.package_count ?? packages.length) === 1 ? "" : "s"}
                 </div>
               </div>
 
@@ -152,7 +153,6 @@ const latestUpdate = packages[0]?.updated_at
                           </p>
 
                           <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                            <span>{result.repo_owner}/{result.repo_name}</span>
                             <span>{result.subdir || "repo root"}</span>
                             <span>
                               {result.release_count} version{result.release_count === 1 ? "" : "s"}
@@ -170,7 +170,7 @@ const latestUpdate = packages[0]?.updated_at
                           </a>
                           <a
                             class="text-muted-foreground hover:text-foreground"
-                            href={result.repo_url}
+                            href={result.repository ?? result.repo_url}
                             target="_blank"
                             rel="noreferrer"
                           >

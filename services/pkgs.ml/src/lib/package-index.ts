@@ -71,18 +71,14 @@ export function buildPackageFacts(
       label: "Last release",
       value: formatDate(release.published_at),
     },
-    {
-      label: "OCaml",
-      value: "Tracking soon",
-    },
-    {
-      label: "Code size",
-      value: "Tracking soon",
-    },
-    {
-      label: "Archive",
-      value: "Tracking soon",
-    },
+    ...(release.license
+      ? [
+          {
+            label: "License",
+            value: release.license,
+          } satisfies PackageFact,
+        ]
+      : []),
     {
       label: "Install",
       value: `tusk add ${document.name}`,
@@ -99,16 +95,8 @@ export function buildPackageFacts(
       href: ownerPath,
     },
     {
-      label: "Categories",
-      value: "Uncategorized",
-    },
-    {
-      label: "Versions",
-      value: `${document.releases.length}`,
-    },
-    {
-      label: "Downloads",
-      value: "Tracking soon",
+      label: "Dependencies",
+      value: `${release.dependencies.length}`,
     },
   ];
 }

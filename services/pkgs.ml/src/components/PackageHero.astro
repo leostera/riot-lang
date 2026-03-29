@@ -1,10 +1,4 @@
 ---
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { buildPackageFacts } from "../lib/package-index.ts";
 import type { IndexedPackageRelease, PackageIndexDocument } from "../lib/types.ts";
 
@@ -18,30 +12,48 @@ const { document, release, selectedVersion } = Astro.props;
 const facts = buildPackageFacts(document, release);
 const breadcrumbBits = release.canonical_locator.split("/");
 const owner = breadcrumbBits[1] ?? "unknown";
+const packageHref = `/p/${document.name}`;
 
 const installFact = facts.find((fact) => fact.label === "Install");
 const tomlFact = facts.find((fact) => fact.label === "tusk.toml");
-const summaryFacts = facts.filter((fact) =>
-  ["Last release", "OCaml", "Code size", "Archive"].includes(fact.label),
-);
-const metadataFacts = facts.filter((fact) =>
-  ["Owners", "Categories", "Versions", "Downloads"].includes(fact.label),
+const detailFacts = facts.filter((fact) =>
+  [
+    "Last release",
+    "License",
+    "Owners",
+    "Dependencies",
+  ].includes(fact.label),
 );
 ---
 
-<section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
-  <div class="grid gap-4">
+<section class="w-full px-4 py-4 sm:px-6 xl:px-8">
+  <div class="mx-auto grid w-full max-w-6xl gap-3">
     <nav class="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-      <a href="/" class="hover:text-foreground">All packages</a>
-      <span>/</span>
+      <a href="/" class="hover:text-foreground">Discover Packages</a>
+      <span>&gt;</span>
       <a href={`/u/${owner}`} class="hover:text-foreground">{owner}</a>
-      <span>/</span>
-      <span class="text-foreground">{document.name}</span>
+      <span>&gt;</span>
+      <a href={packageHref} class="hover:text-foreground">{document.name}</a>
+      <span>&gt;</span>
+      <label class="sr-only" for="package-version-select">Select version</label>
+      <select
+        id="package-version-select"
+        class="min-w-28 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-foreground outline-none ring-0"
+        data-package-name={document.name}
+      >
+        {
+          document.releases.map((candidate) => (
+            <option value={candidate.version} selected={candidate.version === selectedVersion}>
+              v{candidate.version}
+            </option>
+          ))
+        }
+      </select>
     </nav>
 
-    <Card className="rounded-md shadow-none">
-      <CardContent className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div class="grid gap-4">
+    <div class="grid gap-4 rounded-md border border-border bg-card px-4 py-4 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
+      <div class="grid gap-3 min-w-0">
+        <div class="grid gap-2">
           <div class="flex flex-wrap items-center gap-2">
             <h1 class="text-xl font-semibold tracking-tight text-foreground">{document.name}</h1>
             <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
@@ -53,7 +65,7 @@ const metadataFacts = facts.filter((fact) =>
             {release.description || "A published OCaml package with indexed metadata and source-backed releases."}
           </p>
 
-          <div class="flex flex-wrap gap-3 text-xs text-muted-foreground">
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <a href={release.repo_url} target="_blank" rel="noreferrer" class="hover:text-foreground">Repository</a>
             {
               release.homepage ? (
@@ -71,87 +83,62 @@ const metadataFacts = facts.filter((fact) =>
           </div>
         </div>
 
-        <div class="grid gap-3">
-          <Card size="sm" className="rounded-md shadow-none">
-            <CardHeader className="border-b border-border">
-              <CardTitle className="text-sm">Install</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 py-3">
-              <div class="grid gap-1">
-                <div class="text-[11px] text-muted-foreground">{installFact?.label}</div>
-                <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-[11px] text-foreground">
-                  {installFact?.value}
-                </code>
-              </div>
-              <div class="grid gap-1">
-                <div class="text-[11px] text-muted-foreground">{tomlFact?.label}</div>
-                <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-[11px] text-foreground">
-                  {tomlFact?.value}
-                </code>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card size="sm" className="rounded-md shadow-none">
-            <CardHeader className="border-b border-border">
-              <CardTitle className="text-sm">Package facts</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 py-3">
-              {summaryFacts.map((fact) => (
-                <div class="grid gap-1">
-                  <div class="text-[11px] text-muted-foreground">{fact.label}</div>
-                  <div class="text-xs text-foreground">{fact.value}</div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card size="sm" className="rounded-md shadow-none">
-            <CardHeader className="border-b border-border">
-              <CardTitle className="text-sm">Versions</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-2 py-3">
-              {document.releases.map((candidate) => (
-                <div class="flex items-center justify-between gap-3 text-xs">
-                  <a
-                    href={`/p/${document.name}/${candidate.version}`}
-                    class:list={[
-                      "hover:text-primary",
-                      candidate.version === selectedVersion ? "font-medium text-foreground" : "text-foreground",
-                    ]}
-                  >
-                    v{candidate.version}
-                  </a>
-                  <span class="text-muted-foreground">
-                    {new Intl.DateTimeFormat("en", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    }).format(new Date(candidate.published_at))}
-                  </span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </CardContent>
-
-      <div class="border-t border-border px-4 py-3">
-        <div class="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-muted-foreground">
-          {metadataFacts.map((fact) => (
-            <div class="flex items-center gap-1.5">
-              <span>{fact.label}:</span>
-              {
-                fact.href ? (
-                  <a href={fact.href} class="text-foreground hover:text-primary">{fact.value}</a>
-                ) : (
-                  <span class={fact.code ? "font-mono text-foreground" : "text-foreground"}>{fact.value}</span>
-                )
-              }
+        <dl class="flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-3 text-xs">
+          {detailFacts.map((fact) => (
+            <div class="flex items-center gap-2">
+              <dt class="text-[11px] text-muted-foreground">{fact.label}</dt>
+              <dd class="text-foreground">
+                {
+                  fact.href ? (
+                    <a href={fact.href} class="hover:text-primary">{fact.value}</a>
+                  ) : (
+                    <span class={fact.code ? "font-mono" : ""}>{fact.value}</span>
+                  )
+                }
+              </dd>
             </div>
           ))}
+        </dl>
+      </div>
+
+      <div class="grid gap-3 border-t border-border pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+        <div class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Install
+        </div>
+        <div class="grid gap-2">
+          <div class="grid gap-1">
+            <div class="text-[11px] text-muted-foreground">{installFact?.label}</div>
+            <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-[11px] text-foreground">
+              {installFact?.value}
+            </code>
+          </div>
+          <div class="grid gap-1">
+            <div class="text-[11px] text-muted-foreground">{tomlFact?.label}</div>
+            <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-[11px] text-foreground">
+              {tomlFact?.value}
+            </code>
+          </div>
         </div>
       </div>
-    </Card>
+    </div>
   </div>
 </section>
+
+<script is:inline>
+  const versionSelect = document.getElementById("package-version-select");
+
+  versionSelect?.addEventListener("change", (event) => {
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLSelectElement)) {
+      return;
+    }
+
+    const packageName = target.dataset.packageName;
+    const version = target.value;
+    if (!packageName || !version) {
+      return;
+    }
+
+    window.location.href = `/p/${encodeURIComponent(packageName)}/${encodeURIComponent(version)}`;
+  });
+</script>

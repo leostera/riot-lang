@@ -7,53 +7,19 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import type {
+  CategoriesIndexDocument,
+  PopularPackagesDocument,
+  RecentPackagesDocument,
+} from "@/lib/types.ts";
 
-const categories = [
-  {
-    title: "Web programming",
-    description: "Frameworks, HTTP clients, servers, and real-time primitives.",
-    tags: ["http", "server", "websocket"],
-  },
-  {
-    title: "Actors and concurrency",
-    description: "Schedulers, mailboxes, timers, and concurrent runtime building blocks.",
-    tags: ["actors", "runtime", "mailbox"],
-  },
-  {
-    title: "Developer tooling",
-    description: "Build planning, formatters, linters, and workspace automation.",
-    tags: ["build", "cli", "formatting"],
-  },
-  {
-    title: "Data and storage",
-    description: "JSON, SQL, SQLite, Postgres, and persistence-oriented packages.",
-    tags: ["json", "sqlite", "postgres"],
-  },
-];
+interface Props {
+  categories: CategoriesIndexDocument | null;
+  popular: PopularPackagesDocument | null;
+  recent: RecentPackagesDocument | null;
+}
 
-const featured = [
-  {
-    name: "kernel",
-    version: "0.0.1",
-    description: "Low-level runtime and event loop primitives for the Riot stack.",
-  },
-  {
-    name: "miniriot",
-    version: "0.0.1",
-    description: "Actor runtime building blocks and scheduler infrastructure.",
-  },
-  {
-    name: "suri",
-    version: "0.0.1",
-    description: "Web framework components for routing, middleware, and live views.",
-  },
-];
-
-const recent = [
-  { name: "kernel", note: "Core runtime updates and release metadata." },
-  { name: "miniriot", note: "Actor runtime release published from source." },
-  { name: "suri", note: "Package index metadata refreshed." },
-];
+const { categories, popular, recent } = Astro.props;
 ---
 
 <section class="border-b border-border">
@@ -80,43 +46,62 @@ const recent = [
         <CardDescription>Jump into the ecosystem through common areas of development.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
-        {categories.map((category) => (
-          <article class="grid gap-1 border-b border-border/70 pb-3 last:border-b-0 last:pb-0">
-            <h3 class="text-sm font-medium text-foreground">{category.title}</h3>
-            <p class="text-xs leading-5 text-muted-foreground">{category.description}</p>
-            <div class="flex flex-wrap gap-1">
-              {category.tags.map((tag) => (
-                <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </article>
-        ))}
+        {
+          (categories?.categories.length ?? 0) === 0 ? (
+            <p class="text-xs leading-5 text-muted-foreground">No categories have been published yet.</p>
+          ) : (
+            categories?.categories.slice(0, 6).map((category) => (
+              <article class="grid gap-1 border-b border-border/70 pb-3 last:border-b-0 last:pb-0">
+                <h3 class="text-sm font-medium text-foreground">{category.name}</h3>
+                <p class="text-xs leading-5 text-muted-foreground">
+                  {category.package_count} package{category.package_count === 1 ? "" : "s"}
+                </p>
+                <div class="flex flex-wrap gap-1">
+                  {category.packages.slice(0, 3).map((packageName) => (
+                    <a
+                      href={`/p/${packageName}`}
+                      class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                    >
+                      {packageName}
+                    </a>
+                  ))}
+                </div>
+              </article>
+            ))
+          )
+        }
       </CardContent>
     </Card>
 
     <Card size="sm" className="rounded-md shadow-none">
       <CardHeader className="border-b border-border">
-        <CardTitle className="text-sm">Featured packages</CardTitle>
-        <CardDescription>Useful packages to start exploring the registry.</CardDescription>
+        <CardTitle className="text-sm">Popular packages</CardTitle>
+        <CardDescription>Packages with the strongest usage signal in the registry.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2">
-        {featured.map((item) => (
-          <article class="grid gap-1 border-b border-border/70 pb-2 last:border-b-0 last:pb-0">
-            <div class="flex items-start justify-between gap-2">
-              <div class="grid gap-1">
-                <a href={`/p/${item.name}`} class="text-sm font-medium text-foreground hover:text-primary">
-                  {item.name}
-                </a>
-                <p class="text-xs leading-5 text-muted-foreground">{item.description}</p>
-              </div>
-              <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                v{item.version}
-              </span>
-            </div>
-          </article>
-        ))}
+        {
+          (popular?.packages.length ?? 0) === 0 ? (
+            <p class="text-xs leading-5 text-muted-foreground">No popular packages available yet.</p>
+          ) : (
+            popular?.packages.slice(0, 6).map((item) => (
+              <article class="grid gap-1 border-b border-border/70 pb-2 last:border-b-0 last:pb-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="grid gap-1">
+                    <a href={item.package_path} class="text-sm font-medium text-foreground hover:text-primary">
+                      {item.package_name}
+                    </a>
+                    <p class="text-xs leading-5 text-muted-foreground">
+                      {item.description ?? "Published OCaml package"}
+                    </p>
+                  </div>
+                  <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    v{item.latest_version}
+                  </span>
+                </div>
+              </article>
+            ))
+          )
+        }
       </CardContent>
     </Card>
 
@@ -126,14 +111,26 @@ const recent = [
         <CardDescription>Fresh registry activity and package updates.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2">
-        {recent.map((item) => (
-          <article class="grid gap-1 border-b border-border/70 pb-2 last:border-b-0 last:pb-0">
-            <a href={`/?q=${encodeURIComponent(item.name)}`} class="text-sm font-medium text-foreground hover:text-primary">
-              {item.name}
-            </a>
-            <p class="text-xs leading-5 text-muted-foreground">{item.note}</p>
-          </article>
-        ))}
+        {
+          (recent?.packages.length ?? 0) === 0 ? (
+            <p class="text-xs leading-5 text-muted-foreground">No package releases have been indexed yet.</p>
+          ) : (
+            recent?.packages.slice(0, 6).map((item) => (
+              <article class="grid gap-1 border-b border-border/70 pb-2 last:border-b-0 last:pb-0">
+                <a href={item.package_path} class="text-sm font-medium text-foreground hover:text-primary">
+                  {item.package_name}
+                </a>
+                <p class="text-xs leading-5 text-muted-foreground">
+                  v{item.latest_version} · updated {new Intl.DateTimeFormat("en", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  }).format(new Date(item.updated_at))}
+                </p>
+              </article>
+            ))
+          )
+        }
       </CardContent>
     </Card>
   </div>

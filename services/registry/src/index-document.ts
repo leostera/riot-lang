@@ -23,6 +23,8 @@ export function buildIndexedRelease(
     homepage: release.package_homepage,
     repository: release.package_repository,
     root_module: release.package_root_module,
+    categories: release.package_categories,
+    keywords: release.package_keywords,
     manifest_key: release.manifest_key,
     source_key: release.source_archive_key,
     dependencies: release.dependencies,
@@ -128,6 +130,8 @@ function assertMatchingManifest(
     release.package_homepage !== manifest.package_homepage ||
     release.package_repository !== manifest.package_repository ||
     release.package_root_module !== manifest.package_root_module ||
+    JSON.stringify(release.package_categories ?? []) !== JSON.stringify(manifest.package_categories ?? []) ||
+    JSON.stringify(release.package_keywords ?? []) !== JSON.stringify(manifest.package_keywords ?? []) ||
     release.manifest_key !== manifest.manifest_key ||
     release.source_archive_key !== manifest.source_archive_key
   ) {
@@ -150,6 +154,8 @@ function isSameIndexedRelease(left: IndexedPackageRelease, right: IndexedPackage
     left.homepage === right.homepage &&
     left.repository === right.repository &&
     left.root_module === right.root_module &&
+    JSON.stringify(left.categories ?? []) === JSON.stringify(right.categories ?? []) &&
+    JSON.stringify(left.keywords ?? []) === JSON.stringify(right.keywords ?? []) &&
     left.manifest_key === right.manifest_key &&
     left.source_key === right.source_key &&
     JSON.stringify(left.dependencies) === JSON.stringify(right.dependencies)

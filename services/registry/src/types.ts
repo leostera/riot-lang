@@ -6,6 +6,7 @@ export interface Env {
   PUBLICATION_COORDINATOR: DurableObjectNamespace;
   CDN_BASE_URL?: string;
   INDEX_BASE_PATH?: string;
+  VIEWS_BASE_PATH?: string;
   GITHUB_TOKEN?: string;
   GITHUB_API_BASE_URL?: string;
   GITHUB_OAUTH_CLIENT_ID?: string;
@@ -27,6 +28,7 @@ export interface PackageLocator {
 export interface RegistryConfig {
   cdnBaseUrl: string;
   indexBasePath: string;
+  viewsBasePath: string;
   authCookieDomain: string;
   pkgsWebBaseUrl: string;
 }
@@ -47,6 +49,8 @@ export interface PackagePublicationManifest {
   package_homepage?: string;
   package_repository?: string;
   package_root_module?: string;
+  package_categories?: string[];
+  package_keywords?: string[];
   dependencies: Array<Record<string, unknown>>;
   source_archive_key: string;
   manifest_key: string;
@@ -147,6 +151,8 @@ export interface PublishedReleaseRecord {
   package_homepage?: string;
   package_repository?: string;
   package_root_module?: string;
+  package_categories?: string[];
+  package_keywords?: string[];
   dependencies: Array<Record<string, unknown>>;
   source_archive_key: string;
   manifest_key: string;
@@ -189,6 +195,8 @@ export interface IndexedPackageRelease {
   homepage?: string;
   repository?: string;
   root_module?: string;
+  categories?: string[];
+  keywords?: string[];
   manifest_key: string;
   source_key: string;
   dependencies: Array<Record<string, unknown>>;
@@ -221,6 +229,99 @@ export interface SearchPackageRow {
 }
 
 export interface SearchResult extends SearchPackageRow {}
+
+export interface PackageOverviewDocument {
+  schema_version: 1;
+  package_name: string;
+  latest_version: string;
+  updated_at: string;
+  published_at: string;
+  description?: string;
+  license?: string;
+  homepage?: string;
+  repository?: string;
+  root_module?: string;
+  canonical_locator: string;
+  repo_url: string;
+  subdir: string;
+  source_key: string;
+  manifest_key: string;
+  sha: string;
+  owner_github_login: string;
+  release_count: number;
+  dependency_count: number;
+  dependent_count: number;
+  categories: string[];
+  keywords: string[];
+}
+
+export interface PackageRelationDependency {
+  package_name: string;
+  requirement: string;
+}
+
+export interface PackageRelationDependent {
+  package_name: string;
+  latest_version: string;
+  requirement: string;
+}
+
+export interface PackageRelationsDocument {
+  schema_version: 1;
+  package_name: string;
+  updated_at: string;
+  dependencies: PackageRelationDependency[];
+  dependents: PackageRelationDependent[];
+}
+
+export interface WebPackageListItem {
+  package_name: string;
+  latest_version: string;
+  description?: string;
+  license?: string;
+  owner_github_login: string;
+  categories: string[];
+  updated_at: string;
+  repo_url: string;
+  repository?: string;
+  subdir: string;
+  release_count: number;
+  package_path: string;
+}
+
+export interface RecentPackagesDocument {
+  schema_version: 1;
+  generated_at: string;
+  packages: WebPackageListItem[];
+}
+
+export interface PopularPackagesDocument {
+  schema_version: 1;
+  generated_at: string;
+  packages: Array<WebPackageListItem & { dependent_count: number; release_count: number }>;
+}
+
+export interface CategorySummary {
+  name: string;
+  slug: string;
+  package_count: number;
+  packages: string[];
+}
+
+export interface CategoriesIndexDocument {
+  schema_version: 1;
+  generated_at: string;
+  categories: CategorySummary[];
+}
+
+export interface OwnerPackagesDocument {
+  schema_version: 1;
+  generated_at: string;
+  owner_github_login: string;
+  package_count: number;
+  latest_update_at?: string;
+  packages: WebPackageListItem[];
+}
 
 export interface SelectorResolutionRecord {
   package_locator: string;

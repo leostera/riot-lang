@@ -14,6 +14,7 @@ const searchApiBaseUrl =
   trimTrailingSlash(process.env.PKGS_E2E_SEARCH_API_BASE_URL) ?? `${registryBaseUrl}/api/v1/search`;
 const cdnBaseUrl = trimTrailingSlash(process.env.PUBLIC_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
 const indexBasePath = trimSlashes(process.env.PUBLIC_INDEX_BASE_PATH) ?? "index/v1";
+const viewsBasePath = trimSlashes(process.env.PUBLIC_VIEWS_BASE_PATH) ?? "views/v1";
 const rootAuthToken = process.env.REGISTRY_E2E_ROOT_AUTH_TOKEN ?? null;
 const sessionCookie = process.env.PKGS_E2E_SESSION_COOKIE ?? process.env.REGISTRY_E2E_SESSION_COOKIE ?? null;
 const githubLogin = process.env.PKGS_E2E_GITHUB_LOGIN ?? process.env.REGISTRY_E2E_GITHUB_LOGIN ?? null;
@@ -36,6 +37,53 @@ describe("pkgs.ml live e2e", () => {
     expect(html).toContain(
       `${registryBaseUrl}/auth/github/start?return_to=${encodeURIComponent(`${pkgsBaseUrl}/`)}`,
     );
+  });
+
+  liveTest("homepage popular categories only showcases existing categories", async () => {
+    const categories = await fetchCategoriesView();
+    const html = await pollText(`${pkgsBaseUrl}/`, (page) => page.includes("Popular categories"));
+
+    if (categories.categories.length === 0) {
+      expect(html).toContain("No categories have been published yet.");
+      return;
+    }
+
+    for (const category of categories.categories.slice(0, 6)) {
+      expect(html).toContain(category.name);
+      for (const packageName of category.packages.slice(0, 3)) {
+        expect(html).toContain(packageName);
+      }
+    }
+  });
+
+  liveTest("homepage popular packages only showcases existing packages", async () => {
+    const popular = await fetchPopularPackagesView();
+    const html = await pollText(`${pkgsBaseUrl}/`, (page) => page.includes("Popular packages"));
+
+    if (popular.packages.length === 0) {
+      expect(html).toContain("No popular packages available yet.");
+      return;
+    }
+
+    for (const item of popular.packages.slice(0, 6)) {
+      expect(html).toContain(item.package_name);
+      expect(html).toContain(`v${item.latest_version}`);
+    }
+  });
+
+  liveTest("homepage recently updated only shows recently updated packages", async () => {
+    const recent = await fetchRecentPackagesView();
+    const html = await pollText(`${pkgsBaseUrl}/`, (page) => page.includes("Recently updated"));
+
+    if (recent.packages.length === 0) {
+      expect(html).toContain("No package releases have been indexed yet.");
+      return;
+    }
+
+    for (const item of recent.packages.slice(0, 6)) {
+      expect(html).toContain(item.package_name);
+      expect(html).toContain(`v${item.latest_version}`);
+    }
   });
 
   liveTest("login page links to the registry github auth start route", async () => {
@@ -113,7 +161,7 @@ describe("pkgs.ml live e2e", () => {
         html.includes(`v${publication.package_version}`) &&
         html.includes(`tusk add ${publication.package_name}`),
     );
-    expect(packageHtml).toContain("All packages");
+    expect(packageHtml).toContain("Discover Packages");
     expect(packageHtml).toContain(owner);
     expect(packageHtml).toContain(`tusk add ${publication.package_name}`);
 
@@ -142,16 +190,13 @@ describe("pkgs.ml live e2e", () => {
     const packageHtml = await pollText(
       `${pkgsBaseUrl}/p/${encodeURIComponent(publication.package_name)}`,
       (html) =>
-        html.includes("Versions") &&
+        html.includes('id="package-version-select"') &&
         document.releases.every((release) => html.includes(`v${release.version}`)),
     );
 
-    expect(packageHtml).toContain("Versions");
+    expect(packageHtml).toContain('id="package-version-select"');
     for (const release of document.releases) {
       expect(packageHtml).toContain(`v${release.version}`);
-      expect(packageHtml).toContain(
-        `/p/${encodeURIComponent(publication.package_name)}/${encodeURIComponent(release.version)}`,
-      );
     }
   });
 
@@ -350,6 +395,26 @@ interface SearchApiResponse {
   }>;
 }
 
+interface WebPackageListItem {
+  package_name: string;
+  latest_version: string;
+}
+
+interface CategoriesIndexDocument {
+  categories: Array<{
+    name: string;
+    packages: string[];
+  }>;
+}
+
+interface RecentPackagesDocument {
+  packages: WebPackageListItem[];
+}
+
+interface PopularPackagesDocument {
+  packages: WebPackageListItem[];
+}
+
 interface PackageIndexDocument {
   name: string;
   releases: Array<{
@@ -377,6 +442,29 @@ async function fetchPackageIndexDocument(packageName: string): Promise<PackageIn
 
   expect(response.status).toBe(200);
   return (await response.json()) as PackageIndexDocument;
+}
+
+async function fetchCategoriesView(): Promise<CategoriesIndexDocument> {
+  return await fetchViewDocument<CategoriesIndexDocument>("categories/index.json");
+}
+
+async function fetchRecentPackagesView(): Promise<RecentPackagesDocument> {
+  return await fetchViewDocument<RecentPackagesDocument>("recent/packages.json");
+}
+
+async function fetchPopularPackagesView(): Promise<PopularPackagesDocument> {
+  return await fetchViewDocument<PopularPackagesDocument>("popular/packages.json");
+}
+
+async function fetchViewDocument<T>(path: string): Promise<T> {
+  const response = await fetch(`${cdnBaseUrl}/${viewsBasePath}/${path}`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  expect(response.status).toBe(200);
+  return (await response.json()) as T;
 }
 
 function packageIndexKey(packageName: string): string {

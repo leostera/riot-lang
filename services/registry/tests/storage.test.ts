@@ -23,6 +23,7 @@ describe("registry storage", () => {
     const config: IndexConfig = {
       cdnBaseUrl: "https://cdn.pkgs.ml",
       indexBasePath: "index/v1",
+      viewsBasePath: "views/v1",
       authCookieDomain: "pkgs.ml",
       pkgsWebBaseUrl: "https://pkgs.ml",
     };

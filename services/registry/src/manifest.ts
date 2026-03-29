@@ -58,6 +58,16 @@ export async function buildPublicationManifest(args: {
     "package.root_module",
     args.locator.normalized,
   );
+  const packageCategories = readOptionalStringArray(
+    packageSection.categories,
+    "package.categories",
+    args.locator.normalized,
+  );
+  const packageKeywords = readOptionalStringArray(
+    packageSection.keywords,
+    "package.keywords",
+    args.locator.normalized,
+  );
 
   return {
     package_locator: args.locator.normalized,
@@ -73,6 +83,8 @@ export async function buildPublicationManifest(args: {
     package_homepage: packageHomepage,
     package_repository: packageRepository,
     package_root_module: packageRootModule,
+    package_categories: packageCategories,
+    package_keywords: packageKeywords,
     dependencies: extractDependencies(parsed.dependencies),
     source_archive_key: sourceArchiveKey(args.locator, args.resolvedSha),
     manifest_key: manifestKey(args.locator, args.resolvedSha),
@@ -171,4 +183,36 @@ function readOptionalString(value: unknown, field: string, locator: string): str
     "invalid_package_manifest",
     `Field ${field} in ${locator} must be a non-empty string when present.`,
   );
+}
+
+function readOptionalStringArray(
+  value: unknown,
+  field: string,
+  locator: string,
+): string[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new HttpError(
+      422,
+      "invalid_package_manifest",
+      `Field ${field} in ${locator} must be an array of non-empty strings when present.`,
+    );
+  }
+
+  const items = value.map((item) => {
+    if (typeof item === "string" && item.length > 0) {
+      return item;
+    }
+
+    throw new HttpError(
+      422,
+      "invalid_package_manifest",
+      `Field ${field} in ${locator} must be an array of non-empty strings when present.`,
+    );
+  });
+
+  return items.length === 0 ? undefined : items;
 }
