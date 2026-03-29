@@ -5617,7 +5617,75 @@ and render_structure_expression_run ~has_trailing_separator items =
          Doc.concat [ render_expression expression; suffix ])
   |> Doc.join Doc.line
 
-and render_structure_entry ~source ~source_offset ~span ~trailing_suffix ~is_last_item item =
+and render_structure_item_owned_trivia =
+  function
+  | Syn.Cst.StructureItem.TypeDeclaration decl ->
+      Some (Syn.Cst.TypeDeclaration.owned_trivia decl)
+  | Syn.Cst.StructureItem.TypeExtension decl ->
+      Some (Syn.Cst.TypeExtension.owned_trivia decl)
+  | Syn.Cst.StructureItem.ClassDeclaration decl ->
+      Some decl.owned_trivia
+  | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
+      Some decl.owned_trivia
+  | Syn.Cst.StructureItem.ModuleDeclaration decl ->
+      Some (Syn.Cst.ModuleDeclaration.owned_trivia decl)
+  | Syn.Cst.StructureItem.RecursiveModuleDeclaration decl ->
+      Some (Syn.Cst.RecursiveModuleDeclaration.owned_trivia decl)
+  | Syn.Cst.StructureItem.ModuleTypeDeclaration decl ->
+      Some (Syn.Cst.ModuleTypeDeclaration.owned_trivia decl)
+  | Syn.Cst.StructureItem.OpenStatement stmt ->
+      Some (Syn.Cst.OpenStatement.owned_trivia stmt)
+  | Syn.Cst.StructureItem.ValueDeclaration decl ->
+      Some (Syn.Cst.ValueDeclaration.owned_trivia decl)
+  | Syn.Cst.StructureItem.ExternalDeclaration decl ->
+      Some decl.owned_trivia
+  | Syn.Cst.StructureItem.IncludeStatement stmt ->
+      Some stmt.owned_trivia
+  | Syn.Cst.StructureItem.ExceptionDeclaration decl ->
+      Some decl.owned_trivia
+  | Syn.Cst.StructureItem.LetBinding _
+  | Syn.Cst.StructureItem.Expression _
+  | Syn.Cst.StructureItem.Attribute _
+  | Syn.Cst.StructureItem.Extension _
+  | Syn.Cst.StructureItem.Docstring _
+  | Syn.Cst.StructureItem.Comment _ ->
+      None
+
+and render_signature_item_owned_trivia =
+  function
+  | Syn.Cst.SignatureItem.TypeDeclaration decl ->
+      Some (Syn.Cst.TypeDeclaration.owned_trivia decl)
+  | Syn.Cst.SignatureItem.TypeExtension decl ->
+      Some (Syn.Cst.TypeExtension.owned_trivia decl)
+  | Syn.Cst.SignatureItem.ClassDeclaration decl ->
+      Some decl.owned_trivia
+  | Syn.Cst.SignatureItem.ClassTypeDeclaration decl ->
+      Some decl.owned_trivia
+  | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
+      Some (Syn.Cst.ModuleDeclaration.owned_trivia decl)
+  | Syn.Cst.SignatureItem.RecursiveModuleDeclaration decl ->
+      Some (Syn.Cst.RecursiveModuleDeclaration.owned_trivia decl)
+  | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
+      Some (Syn.Cst.ModuleTypeDeclaration.owned_trivia decl)
+  | Syn.Cst.SignatureItem.OpenStatement stmt ->
+      Some (Syn.Cst.OpenStatement.owned_trivia stmt)
+  | Syn.Cst.SignatureItem.ValueDeclaration decl ->
+      Some (Syn.Cst.ValueDeclaration.owned_trivia decl)
+  | Syn.Cst.SignatureItem.ExternalDeclaration decl ->
+      Some decl.owned_trivia
+  | Syn.Cst.SignatureItem.IncludeStatement stmt ->
+      Some stmt.owned_trivia
+  | Syn.Cst.SignatureItem.ExceptionDeclaration decl ->
+      Some decl.owned_trivia
+  | Syn.Cst.SignatureItem.Attribute _
+  | Syn.Cst.SignatureItem.Extension _
+  | Syn.Cst.SignatureItem.Docstring _
+  | Syn.Cst.SignatureItem.Comment _ ->
+      None
+
+and render_structure_entry
+    ?(render_owned_trivia = false)
+    ~source ~source_offset ~span ~trailing_suffix ~is_last_item item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
   let should_preserve_verbatim =
     string_contains_substring rendered_source "[@"
@@ -5643,17 +5711,44 @@ and render_structure_entry ~source ~source_offset ~span ~trailing_suffix ~is_las
             render_structure_item item)
       
     in
+    let base_doc =
+      if render_owned_trivia then
+        match render_structure_item_owned_trivia item with
+        | Some owned ->
+            let leading =
+              doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
+            in
+            let trailing =
+              doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
+            in
+            base_doc
+            |> doc_with_leading_trivia leading
+            |> fun doc -> doc_with_trailing_trivia doc trailing
+        | None ->
+            base_doc
+      else
+        base_doc
+    in
     match trailing_suffix with
     | None ->
         base_doc
     | Some suffix ->
         Doc.concat [ base_doc; suffix ]
   in
+  let is_trivia =
+    match item with
+    | Syn.Cst.StructureItem.Docstring docstring ->
+        not (Syn.Cst.Docstring.is_section docstring)
+    | Syn.Cst.StructureItem.Comment _ ->
+        false
+    | _ ->
+        false
+  in
   let tight_after = false in
   (
     doc,
     is_open_structure_item item,
-    false,
+    is_trivia,
     tight_after,
     false,
     is_module_alias_structure_item item,
@@ -5661,6 +5756,7 @@ and render_structure_entry ~source ~source_offset ~span ~trailing_suffix ~is_las
   )
 
 and render_signature_entry
+    ?(render_owned_trivia = false)
     ?(include_trailing_comment = false)
     ~source ~source_offset ~span ~trailing_suffix ~is_last_item item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
@@ -5690,6 +5786,24 @@ and render_signature_entry
             render_signature_item item)
     in
     let base_doc =
+      if render_owned_trivia then
+        match render_signature_item_owned_trivia item with
+        | Some owned ->
+            let leading =
+              doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
+            in
+            let trailing =
+              doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
+            in
+            base_doc
+            |> doc_with_leading_trivia leading
+            |> fun doc -> doc_with_trailing_trivia doc trailing
+        | None ->
+            base_doc
+      else
+        base_doc
+    in
+    let base_doc =
       match include_trailing_comment with
       | true -> (
           match trailing_comment_suffix_doc (Syn.Cst.SignatureItem.syntax_node item) with
@@ -5706,6 +5820,15 @@ and render_signature_entry
     | Some suffix ->
         Doc.concat [ base_doc; suffix ]
   in
+  let is_trivia =
+    match item with
+    | Syn.Cst.SignatureItem.Docstring docstring ->
+        not (Syn.Cst.Docstring.is_section docstring)
+    | Syn.Cst.SignatureItem.Comment _ ->
+        false
+    | _ ->
+        false
+  in
   let tight_after =
     match item with
     | Syn.Cst.SignatureItem.TypeDeclaration _ ->
@@ -5719,7 +5842,7 @@ and render_signature_entry
   (
     doc,
     is_open_signature_item item,
-    false,
+    is_trivia,
     tight_after,
     false,
     compact_after,
@@ -5751,6 +5874,8 @@ and render_structure_item = function
         ]
   | Syn.Cst.StructureItem.Docstring docstring ->
       doc_of_token (Syn.Cst.Docstring.token docstring)
+  | Syn.Cst.StructureItem.Comment comment ->
+      doc_of_token (Syn.Cst.Comment.token comment)
   | Syn.Cst.StructureItem.Expression expression ->
       render_expression expression
   | item ->
@@ -5812,6 +5937,8 @@ and render_signature_item item =
         ]
   | Syn.Cst.SignatureItem.Docstring docstring ->
       doc_of_token (Syn.Cst.Docstring.token docstring)
+  | Syn.Cst.SignatureItem.Comment comment ->
+      doc_of_token (Syn.Cst.Comment.token comment)
   | Syn.Cst.SignatureItem.ValueDeclaration decl ->
       Doc.concat
         [
@@ -5838,6 +5965,7 @@ and structure_item_accepts_trailing_docstring =
   | Syn.Cst.StructureItem.IncludeStatement _
   | Syn.Cst.StructureItem.OpenStatement _
   | Syn.Cst.StructureItem.Docstring _
+  | Syn.Cst.StructureItem.Comment _
   | Syn.Cst.StructureItem.Expression _ ->
       false
   | _ ->
@@ -5856,6 +5984,8 @@ and signature_item_accepts_trailing_docstring =
   | Syn.Cst.SignatureItem.OpenStatement _
   | Syn.Cst.SignatureItem.Docstring _ ->
       false
+  | Syn.Cst.SignatureItem.Comment _ ->
+      false
   | _ ->
       false
 
@@ -5869,6 +5999,7 @@ and structure_item_uses_verbatim_span = function
   | Syn.Cst.StructureItem.IncludeStatement _
   | Syn.Cst.StructureItem.OpenStatement _
   | Syn.Cst.StructureItem.Docstring _
+  | Syn.Cst.StructureItem.Comment _
   | Syn.Cst.StructureItem.Expression _ ->
       false
   | _ ->
@@ -5937,6 +6068,7 @@ and signature_item_uses_verbatim_span = function
   | Syn.Cst.SignatureItem.IncludeStatement _
   | Syn.Cst.SignatureItem.OpenStatement _
   | Syn.Cst.SignatureItem.Docstring _
+  | Syn.Cst.SignatureItem.Comment _
   | Syn.Cst.SignatureItem.ValueDeclaration _
   | Syn.Cst.SignatureItem.ExternalDeclaration _ ->
       false
@@ -6005,37 +6137,6 @@ and type_declaration_owned_trivia_end = fun decl ->
        current
 
 and render_structure_top_level_items ~source ~source_offset ~source_node ~items =
-  let find_substring_from source pattern start =
-    let source_length = String.length source in
-    let pattern_length = String.length pattern in
-    let rec loop index =
-      if pattern_length = 0 then
-        Some start
-      else if index + pattern_length > source_length then
-        None
-      else if String.equal (String.sub source index pattern_length) pattern then
-        Some index
-      else
-        loop (index + 1)
-    in
-    loop start
-  in
-  let rec lookup_docstring_offset text = function
-    | [] ->
-        0
-    | (key, offset) :: _ when String.equal key text ->
-        offset
-    | _ :: rest ->
-        lookup_docstring_offset text rest
-  in
-  let rec update_docstring_offset text next_offset = function
-    | [] ->
-        [ (text, next_offset) ]
-    | (key, _) :: rest when String.equal key text ->
-        (text, next_offset) :: rest
-    | entry :: rest ->
-        entry :: update_docstring_offset text next_offset rest
-  in
   let flush_pending pending acc =
     let strip_trailing_breaks =
       not (acc = [] && pending_nonbreak_count pending = 1)
@@ -6089,6 +6190,8 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
   in
   let structure_item_span item =
     match item with
+    | Syn.Cst.StructureItem.Comment comment ->
+        Syn.Cst.Token.span (Syn.Cst.Comment.token comment)
     | Syn.Cst.StructureItem.Docstring docstring ->
         Syn.Cst.Token.span (Syn.Cst.Docstring.token docstring)
     | _ ->
@@ -6096,18 +6199,14 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         if structure_item_uses_verbatim_span item then
           span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia:true syntax_node
         else
-          match item with
-    | Syn.Cst.StructureItem.TypeDeclaration _ ->
+          (match item with
+          | Syn.Cst.StructureItem.TypeDeclaration decl ->
               let span =
                 span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node
               in
-              match item with
-              | Syn.Cst.StructureItem.TypeDeclaration decl ->
-                  { span with end_ = Int.max span.end_ (type_declaration_owned_trivia_end decl) }
-              | _ ->
-                  span
+              { span with end_ = Int.max span.end_ (type_declaration_owned_trivia_end decl) }
           | _ ->
-              span_of_syntax_node_nontrivia_bounds syntax_node
+              span_of_syntax_node_nontrivia_bounds syntax_node)
   in
   let compare_structure_items_by_span left right =
     let left_span = structure_item_span left in
@@ -6119,42 +6218,16 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
   in
   let source_length = String.length source in
   let source_end = source_offset + source_length in
+  let uses_source_file_item_stream =
+    Syn.Ceibo.Red.SyntaxNode.kind source_node = Syn.SyntaxKind.SOURCE_FILE
+  in
   let parse_between pending ~start ~end_ =
     parse_trivia_between_offsets source ~start:(start - source_offset)
       ~end_:(end_ - source_offset) pending
   in
   let items =
-    let rec resolve_docstring_spans offsets acc = function
-      | [] ->
-          List.rev acc
-      | item :: rest -> (
-          match item with
-          | Syn.Cst.StructureItem.Docstring docstring ->
-              let token = Syn.Cst.Docstring.token docstring in
-              let text = Syn.Cst.Token.text token in
-              let search_start = lookup_docstring_offset text offsets in
-              let token_span =
-                match find_substring_from source text search_start with
-                | Some relative_start ->
-                    let relative_end = relative_start + String.length text in
-                    Syn.Ceibo.Span.make ~start:(source_offset + relative_start)
-                      ~end_:(source_offset + relative_end)
-                | None ->
-                    Syn.Cst.Token.span token
-              in
-              let offsets =
-                update_docstring_offset text
-                  (Int.max search_start (token_span.end_ - source_offset))
-                  offsets
-              in
-              resolve_docstring_spans
-                offsets
-                ((item, token_span) :: acc) rest
-          | _ ->
-              let span = structure_item_span item in
-              resolve_docstring_spans offsets ((item, span) :: acc) rest)
-    in
-    resolve_docstring_spans [] [] items
+    items
+    |> List.map (fun item -> (item, structure_item_span item))
     |> List.sort (fun (left, left_span) (right, right_span) ->
            let left_span : Syn.Ceibo.Span.t = left_span in
            let right_span : Syn.Ceibo.Span.t = right_span in
@@ -6173,7 +6246,12 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
     yield ();
     match items with
     | [] ->
-        let pending = parse_between pending ~start:cursor ~end_:source_end in
+        let pending =
+          if uses_source_file_item_stream then
+            pending
+          else
+            parse_between pending ~start:cursor ~end_:source_end
+        in
         let acc = flush_pending pending acc in
         let acc =
           match leading_doc with
@@ -6184,7 +6262,12 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         in
         join_entries (List.rev acc)
     | ((Syn.Cst.StructureItem.Expression _ as item), (base_span : Syn.Ceibo.Span.t)) :: rest ->
-        let pending = parse_between pending ~start:cursor ~end_:base_span.start in
+        let pending =
+          if uses_source_file_item_stream then
+            pending
+          else
+            parse_between pending ~start:cursor ~end_:base_span.start
+        in
         let rec collect_expression_run (prev_span : Syn.Ceibo.Span.t) acc remaining =
           match remaining with
           | ((Syn.Cst.StructureItem.Expression _ as next), (next_span : Syn.Ceibo.Span.t)) :: tail ->
@@ -6240,7 +6323,8 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
           else
             match run_items with
             | [ item ] ->
-                ( render_structure_entry ~source ~source_offset ~span:base_span
+                ( render_structure_entry ~render_owned_trivia:uses_source_file_item_stream
+                    ~source ~source_offset ~span:base_span
                     ~trailing_suffix:None ~is_last_item:(remaining = []) item,
                   run_span.end_ )
             | _ ->
@@ -6249,9 +6333,15 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         let entry = apply_leading_doc leading_doc entry in
         loop [] None (entry :: acc) next_cursor remaining
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
-        let pending = parse_between pending ~start:cursor ~end_:base_span.start in
+        let pending =
+          if uses_source_file_item_stream then
+            pending
+          else
+            parse_between pending ~start:cursor ~end_:base_span.start
+        in
         let is_attachable_docstring =
-          match item with
+          (not uses_source_file_item_stream)
+          && match item with
           | Syn.Cst.StructureItem.Docstring docstring ->
               not (Syn.Cst.Docstring.is_section docstring)
               && pending_has_only_breaks pending
@@ -6277,7 +6367,9 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
             | _ ->
                 let acc = flush_pending pending acc in
                 let entry =
-                  render_structure_entry ~source ~source_offset ~span:base_span
+                  render_structure_entry
+                    ~render_owned_trivia:uses_source_file_item_stream
+                    ~source ~source_offset ~span:base_span
                     ~trailing_suffix:None ~is_last_item:(rest = []) item
                 in
                 apply_leading_doc leading_doc entry :: acc
@@ -6330,7 +6422,9 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
           in
           let acc = flush_pending pending acc in
           let entry =
-            render_structure_entry ~source ~source_offset ~span:base_span ~trailing_suffix
+            render_structure_entry
+              ~render_owned_trivia:uses_source_file_item_stream
+              ~source ~source_offset ~span:base_span ~trailing_suffix
               ~is_last_item:(rest = []) item
           in
           let entry = apply_leading_doc leading_doc entry in
@@ -6363,37 +6457,6 @@ and render_structure_items ?source ~source_node items =
 
 and render_signature_top_level_items
     ~source ~source_offset ~source_node ~include_last_trailing_comment ~items =
-  let find_substring_from source pattern start =
-    let source_length = String.length source in
-    let pattern_length = String.length pattern in
-    let rec loop index =
-      if pattern_length = 0 then
-        Some start
-      else if index + pattern_length > source_length then
-        None
-      else if String.equal (String.sub source index pattern_length) pattern then
-        Some index
-      else
-        loop (index + 1)
-    in
-    loop start
-  in
-  let rec lookup_docstring_offset text = function
-    | [] ->
-        0
-    | (key, offset) :: _ when String.equal key text ->
-        offset
-    | _ :: rest ->
-        lookup_docstring_offset text rest
-  in
-  let rec update_docstring_offset text next_offset = function
-    | [] ->
-        [ (text, next_offset) ]
-    | (key, _) :: rest when String.equal key text ->
-        (text, next_offset) :: rest
-    | entry :: rest ->
-        entry :: update_docstring_offset text next_offset rest
-  in
   let flush_pending pending acc =
     match render_pending_trivia pending with
     | None ->
@@ -6439,6 +6502,8 @@ and render_signature_top_level_items
   in
   let signature_item_span item =
     match item with
+    | Syn.Cst.SignatureItem.Comment comment ->
+        Syn.Cst.Token.span (Syn.Cst.Comment.token comment)
     | Syn.Cst.SignatureItem.Docstring docstring ->
         Syn.Cst.Token.span (Syn.Cst.Docstring.token docstring)
     | Syn.Cst.SignatureItem.TypeDeclaration decl ->
@@ -6467,42 +6532,16 @@ and render_signature_top_level_items
   in
   let source_length = String.length source in
   let source_end = source_offset + source_length in
+  let uses_source_file_item_stream =
+    Syn.Ceibo.Red.SyntaxNode.kind source_node = Syn.SyntaxKind.SOURCE_FILE
+  in
   let parse_between pending ~start ~end_ =
     parse_trivia_between_offsets source ~start:(start - source_offset)
       ~end_:(end_ - source_offset) pending
   in
   let items =
-    let rec resolve_docstring_spans offsets acc = function
-      | [] ->
-          List.rev acc
-      | item :: rest -> (
-          match item with
-          | Syn.Cst.SignatureItem.Docstring docstring ->
-              let token = Syn.Cst.Docstring.token docstring in
-              let text = Syn.Cst.Token.text token in
-              let search_start = lookup_docstring_offset text offsets in
-              let token_span =
-                match find_substring_from source text search_start with
-                | Some relative_start ->
-                    let relative_end = relative_start + String.length text in
-                    Syn.Ceibo.Span.make ~start:(source_offset + relative_start)
-                      ~end_:(source_offset + relative_end)
-                | None ->
-                    Syn.Cst.Token.span token
-              in
-              let offsets =
-                update_docstring_offset text
-                  (Int.max search_start (token_span.end_ - source_offset))
-                  offsets
-              in
-              resolve_docstring_spans
-                offsets
-                ((item, token_span) :: acc) rest
-          | _ ->
-              let span = signature_item_span item in
-              resolve_docstring_spans offsets ((item, span) :: acc) rest)
-    in
-    resolve_docstring_spans [] [] items
+    items
+    |> List.map (fun item -> (item, signature_item_span item))
     |> List.sort (fun (left, left_span) (right, right_span) ->
            let left_span : Syn.Ceibo.Span.t = left_span in
            let right_span : Syn.Ceibo.Span.t = right_span in
@@ -6521,7 +6560,12 @@ and render_signature_top_level_items
     yield ();
     match items with
     | [] ->
-        let pending = parse_between pending ~start:cursor ~end_:source_end in
+        let pending =
+          if uses_source_file_item_stream then
+            pending
+          else
+            parse_between pending ~start:cursor ~end_:source_end
+        in
         let acc = flush_pending pending acc in
         let acc =
           match leading_doc with
@@ -6532,9 +6576,15 @@ and render_signature_top_level_items
         in
         join_entries (List.rev acc)
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
-        let pending = parse_between pending ~start:cursor ~end_:base_span.start in
+        let pending =
+          if uses_source_file_item_stream then
+            pending
+          else
+            parse_between pending ~start:cursor ~end_:base_span.start
+        in
         let is_attachable_docstring =
-          match item with
+          (not uses_source_file_item_stream)
+          && match item with
           | Syn.Cst.SignatureItem.Docstring docstring ->
               not (Syn.Cst.Docstring.is_section docstring)
               && pending_has_only_breaks pending
@@ -6561,6 +6611,7 @@ and render_signature_top_level_items
                 let acc = flush_pending pending acc in
                 let entry =
                   render_signature_entry
+                    ~render_owned_trivia:uses_source_file_item_stream
                     ~include_trailing_comment:(include_last_trailing_comment && rest = [])
                     ~source ~source_offset ~span:base_span ~trailing_suffix:None
                     ~is_last_item:(rest = []) item
@@ -6572,6 +6623,7 @@ and render_signature_top_level_items
           let acc = flush_pending pending acc in
           let entry =
             render_signature_entry
+              ~render_owned_trivia:uses_source_file_item_stream
               ~include_trailing_comment:(include_last_trailing_comment && rest = [])
               ~source ~source_offset ~span:base_span ~trailing_suffix:None
               ~is_last_item:(rest = []) item

@@ -1,9 +1,9 @@
-(** Main run function *)
 let create_default_package = fun () ->
   let* () = Ok () in
   println "";
   Ok ()
 
+(** Main run function *)
 let run = fun matches ->
   let open Result in
     let open ArgParser in get_one matches "path"
