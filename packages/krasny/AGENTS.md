@@ -21,6 +21,8 @@
 15. Render top-level source files from the ordered `SourceFile.items` stream plus each item's `owned_trivia`; do not reparse raw source gaps there to rediscover standalone comments/docstrings or declaration docs.
 16. Render nested `sig ... end` and `struct ... end` bodies from `Syn.CstBuilder.signature_items_of_module_type` and `Syn.CstBuilder.structure_items_of_module_expression` directly; do not keep nested-only trailing-comment or source-gap recovery once those helper streams are token-order-complete.
 17. Keep `render_structure_top_level_items` and `render_signature_top_level_items` layout-only. They may preserve phrase separators and expression runs, but they must not accumulate pending source-gap trivia or synthetic leading-doc state; ordered item streams plus `owned_trivia` already decide ownership.
+18. Render grouped `type ... and ...` members from each member's `Syn.Cst.TypeDeclaration.owned_trivia`; do not reparse between-member source gaps once `syn` has attached `and`-token leading trivia to the following member.
+19. Keep adjacent standalone ordinary docstrings visually separate in top-level joins; do not compact them into a single tight run just because they are both trivia items.
 
 ## Validate
 

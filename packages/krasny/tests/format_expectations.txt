@@ -115,6 +115,8 @@
 0917_signature_type_docstring_between_declarations.mli
 0918_nested_signature_terminal_doc_before_end.mli
 0919_nested_structure_terminal_comment_before_end.ml
+0920_signature_grouped_type_comment_before_and_member.mli
+0921_signature_grouped_type_doc_before_and_member.mli
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

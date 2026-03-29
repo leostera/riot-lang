@@ -2434,80 +2434,62 @@ let render_single_type_declaration_with_keyword = fun ctx keyword decl ->
     [ acc; Doc.line; Doc.indent 2 (render_type_constraint constraint_) ]) with_definition in
     with_constraints
 
+let doc_with_type_declaration_owned_trivia = fun ctx decl doc ->
+  match ctx.source with
+  | None ->
+      doc
+  | Some source ->
+      let owned = Syn.Cst.TypeDeclaration.owned_trivia decl in
+      let leading =
+        doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
+      in
+      let trailing =
+        doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
+      in
+      let trailing_separator =
+        match Syn.Cst.TypeDeclaration.type_definition decl, trailing with
+        | Syn.Cst.TypeDefinition.Variant { constructors; _ }, Some _ -> (
+            match List.rev constructors with
+            | constructor :: _ ->
+                let trailing =
+                  Syn.Cst.VariantConstructor.owned_trivia constructor
+                  |> Syn.Cst.OwnedTrivia.trailing
+                in
+                if List.is_empty trailing then
+                  Doc.line
+                else
+                  blank_line
+            | [] ->
+                Doc.line)
+        | _ ->
+            Doc.line
+      in
+      doc
+      |> doc_with_leading_trivia leading
+      |> fun doc ->
+           match trailing with
+           | None ->
+               doc
+           | Some trailing ->
+               Doc.concat [ doc; trailing_separator; trailing ]
+
+let render_type_declaration_member_with_keyword = fun ctx keyword decl ->
+  render_single_type_declaration_with_keyword ctx keyword decl
+  |> doc_with_type_declaration_owned_trivia ctx decl
+
 let render_type_declaration_with_keyword =
   fun ?(allow_terminal_docstrings = false) ?(render_remaining_trivia = true) ctx keyword decl ->
+  let _ = allow_terminal_docstrings in
+  let _ = render_remaining_trivia in
   let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
   if and_declarations = [] then
-    render_single_type_declaration_with_keyword ctx keyword decl
+    render_type_declaration_member_with_keyword ctx keyword decl
   else if type_declaration_group_requires_verbatim decl then
     doc_of_verbatim_syntax_node_span_from_current_source ctx (Syn.Cst.TypeDeclaration.syntax_node decl)
   else
-    match ctx.source with
-    | None ->
-        Doc.join blank_line (render_single_type_declaration_with_keyword ctx keyword decl
-        :: List.map (render_single_type_declaration_with_keyword ctx kw_and) and_declarations)
-    | Some source ->
-        let group_end = Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node decl)
-        |> fun span -> span.end_ in
-        let and_keyword_start = fun declaration ->
-          let start = Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node declaration)
-          |> fun span -> span.start in
-          let rec skip_layout = fun index ->
-            if index <= 0 then
-              0
-            else if is_layout_character source.[index - 1] then
-              skip_layout (index - 1)
-            else
-              index
-          in
-          let candidate = skip_layout start in
-          if candidate >= 3 && String.equal (String.sub source (candidate - 3) 3) "and" then
-            candidate - 3
-          else
-            start
-        in
-        let entries = (decl, keyword) :: List.map (fun declaration -> (declaration, kw_and)) and_declarations in
-        let declaration_end = fun declaration rest ->
-          match rest with
-          | (next_decl, _) :: _ ->
-              type_declaration_nontrivia_end ~before:(and_keyword_start next_decl) declaration
-          | [] ->
-              type_declaration_nontrivia_end declaration
-        in
-        match entries with
-        | [] ->
-            Doc.empty
-        | (first_decl, first_keyword) :: rest ->
-            let first_doc = render_single_type_declaration_with_keyword ctx first_keyword first_decl in
-            let rec build = fun acc current_end remaining_entries ->
-              match remaining_entries with
-              | [] ->
-                let trailing = parse_trivia_between_offsets source ~start:current_end ~end_:group_end [] in
-                let acc =
-                  match render_pending_trivia trailing, acc with
-                  | Some trailing_doc, current :: rest ->
-                      Doc.concat [ current; blank_line; trailing_doc ] :: rest
-                  | _ ->
-                      acc
-                in
-                Doc.join blank_line (List.rev acc)
-              | (next_decl, next_keyword) :: rest_entries ->
-                  let next_decl_end = declaration_end next_decl rest_entries in
-                  let next_doc =
-                    render_single_type_declaration_with_keyword ctx next_keyword next_decl
-                  in
-                  let between = parse_trivia_between_offsets source ~start:current_end ~end_:(and_keyword_start
-                  next_decl) [] in
-                  let next_doc =
-                    match render_pending_trivia between with
-                    | None ->
-                        next_doc
-                    | Some between_doc ->
-                        doc_with_leading_trivia (Some between_doc) next_doc
-                  in
-                  build (next_doc :: acc) next_decl_end rest_entries
-            in
-            build [ first_doc ] (declaration_end first_decl rest) rest
+    Doc.join blank_line
+      (render_type_declaration_member_with_keyword ctx keyword decl
+      :: List.map (render_type_declaration_member_with_keyword ctx kw_and) and_declarations)
 
 let render_external_declaration = fun (decl : Syn.Cst.external_declaration) ->
   let primitive_names = decl.primitive_name_tokens |> List.map doc_of_token |> Doc.join Doc.space in
@@ -5671,19 +5653,23 @@ and render_structure_entry ~source ~source_offset ~span ~trailing_suffix ~is_las
       
     in
     let base_doc =
-      match render_structure_item_owned_trivia item with
-      | Some owned ->
-          let leading =
-            doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
-          in
-          let trailing =
-            doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
-          in
+      match item with
+      | Syn.Cst.StructureItem.TypeDeclaration _ ->
           base_doc
-          |> doc_with_leading_trivia leading
-          |> fun doc -> doc_with_trailing_trivia doc trailing
-      | None ->
-          base_doc
+      | _ -> (
+          match render_structure_item_owned_trivia item with
+          | Some owned ->
+              let leading =
+                doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
+              in
+              let trailing =
+                doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
+              in
+              base_doc
+              |> doc_with_leading_trivia leading
+              |> fun doc -> doc_with_trailing_trivia doc trailing
+          | None ->
+              base_doc)
     in
     match trailing_suffix with
     | None ->
@@ -5701,7 +5687,14 @@ and render_structure_entry ~source ~source_offset ~span ~trailing_suffix ~is_las
         false
   in
   let tight_after = false in
-  (doc, is_open_structure_item item, is_trivia, tight_after, false)
+  let is_docstring =
+    match item with
+    | Syn.Cst.StructureItem.Docstring docstring ->
+        not (Syn.Cst.Docstring.is_section docstring)
+    | _ ->
+        false
+  in
+  (doc, is_open_structure_item item, is_trivia, tight_after, false, is_docstring)
 
 and render_signature_entry ~source ~source_offset ~span ~trailing_suffix ~is_last_item item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
@@ -5731,19 +5724,23 @@ and render_signature_entry ~source ~source_offset ~span ~trailing_suffix ~is_las
             render_signature_item item)
     in
     let base_doc =
-      match render_signature_item_owned_trivia item with
-      | Some owned ->
-          let leading =
-            doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
-          in
-          let trailing =
-            doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
-          in
+      match item with
+      | Syn.Cst.SignatureItem.TypeDeclaration _ ->
           base_doc
-          |> doc_with_leading_trivia leading
-          |> fun doc -> doc_with_trailing_trivia doc trailing
-      | None ->
-          base_doc
+      | _ -> (
+          match render_signature_item_owned_trivia item with
+          | Some owned ->
+              let leading =
+                doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
+              in
+              let trailing =
+                doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
+              in
+              base_doc
+              |> doc_with_leading_trivia leading
+              |> fun doc -> doc_with_trailing_trivia doc trailing
+          | None ->
+              base_doc)
     in
     match trailing_suffix with
     | None ->
@@ -5770,7 +5767,14 @@ and render_signature_entry ~source ~source_offset ~span ~trailing_suffix ~is_las
   let compact_after =
     false
   in
-  (doc, is_open_signature_item item, is_trivia, tight_after, false, compact_after)
+  let is_docstring =
+    match item with
+    | Syn.Cst.SignatureItem.Docstring docstring ->
+        not (Syn.Cst.Docstring.is_section docstring)
+    | _ ->
+        false
+  in
+  (doc, is_open_signature_item item, is_trivia, tight_after, false, compact_after, is_docstring)
 
 and render_structure_item = function
   | Syn.Cst.StructureItem.LetBinding binding ->
@@ -6027,13 +6031,15 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
   let rec join_entries = function
     | [] ->
         Doc.empty
-    | (doc, _, _, _, _) :: [] ->
+    | (doc, _, _, _, _, _) :: [] ->
         doc
-    | (doc, is_open, is_trivia, tight_after, has_trailing_break)
-      :: ((_, next_is_open, _, _, _) :: _ as rest) ->
+    | (doc, is_open, is_trivia, tight_after, has_trailing_break, is_docstring)
+      :: ((_, next_is_open, _, _, _, next_is_docstring) :: _ as rest) ->
         let separator =
           if has_trailing_break then
             Doc.empty
+          else if is_docstring && next_is_docstring then
+            blank_line
           else if tight_after || is_trivia then
             Doc.line
           else if is_open && next_is_open then
@@ -6145,7 +6151,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
               source_of_relative_span ~source ~source_offset
                 { Syn.Ceibo.Span.start = base_span.start; end_ = preserved_run_end }
             in
-            (Doc.text run_source, false, false, false, false)
+            (Doc.text run_source, false, false, false, false, false)
           else
             match run_items with
             | [ item ] ->
@@ -6217,15 +6223,17 @@ and render_signature_top_level_items
   let rec join_entries = function
     | [] ->
         Doc.empty
-    | (doc, _, _, _, _, _) :: [] ->
+    | (doc, _, _, _, _, _, _) :: [] ->
         doc
-    | (doc, is_open, is_trivia, tight_after, has_trailing_break, compact_after)
-      :: ((_, next_is_open, _, _, _, _) :: _ as rest) ->
+    | (doc, is_open, is_trivia, tight_after, has_trailing_break, compact_after, is_docstring)
+      :: ((_, next_is_open, _, _, _, _, next_is_docstring) :: _ as rest) ->
         let separator =
           if has_trailing_break then
             Doc.empty
           else if compact_after then
             Doc.empty
+          else if is_docstring && next_is_docstring then
+            blank_line
           else if tight_after || is_trivia then
             Doc.line
           else if is_open && next_is_open then

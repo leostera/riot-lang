@@ -1,0 +1,3 @@
+type a = unit
+(** doc for b *)
+and b = unit
