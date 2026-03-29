@@ -1,16 +1,14 @@
 (** Elm-style application definition *)
 
+(** An application with Model-View-Update architecture *)
+(** Create a new application *)
 type 'model t = {
-  init:'model -> 'model * Command.t;
+  init : 'model -> 'model * Command.t;
   update : Event.t -> 'model -> 'model * Command.t;
   view : 'model -> Gooey.Element.t;
 }
-(** An application with Model-View-Update architecture *)
-
-val make :
-  init:('model -> 'model * Command.t) ->
-  update:(Event.t -> 'model -> 'model * Command.t) ->
-  view:('model -> Gooey.Element.t) ->
-  unit ->
-  'model t
-(** Create a new application *)
+val make : init:('model -> 'model * Command.t) ->
+update:(Event.t -> 'model -> 'model * Command.t) ->
+view:('model -> Gooey.Element.t) ->
+unit ->
+'model t
