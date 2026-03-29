@@ -405,27 +405,31 @@ describe("riot package registry live e2e", () => {
     expect(Array.isArray(categories.categories)).toBe(true);
   });
 
-  livePublishTest("all workspace packages publish successfully", async () => {
-    const repoRoot = repoRootFromLocator(publishPackageLocator);
-    const members = readWorkspacePublishMembers();
+  livePublishTest(
+    "all workspace packages publish successfully",
+    async () => {
+      const repoRoot = repoRootFromLocator(publishPackageLocator);
+      const members = readWorkspacePublishMembers();
 
-    expect(members.length).toBeGreaterThan(0);
+      expect(members.length).toBeGreaterThan(0);
 
-    for (const member of members) {
-      const expectedManifest = readPackageManifest(member);
-      const locator = `${repoRoot}/${member}`;
-      const publication = await publishPackageAt(locator);
+      for (const member of members) {
+        const expectedManifest = readPackageManifest(member);
+        const locator = `${repoRoot}/${member}`;
+        const publication = await publishPackageAt(locator);
 
-      expect(publication.package).toBe(locator);
-      expect(publication.package_name).toBe(expectedManifest.name);
-      expect(publication.package_version).toBe(expectedManifest.version);
-      expect(publication.resolved_sha).toMatch(/^[0-9a-f]{40}$/);
-      expect(publication.claim.key).toBe(`claims/${expectedManifest.name}.json`);
-      expect(publication.release.key).toBe(
-        `releases/${expectedManifest.name}/${expectedManifest.version}.json`,
-      );
-    }
-  });
+        expect(publication.package).toBe(locator);
+        expect(publication.package_name).toBe(expectedManifest.name);
+        expect(publication.package_version).toBe(expectedManifest.version);
+        expect(publication.resolved_sha).toMatch(/^[0-9a-f]{40}$/);
+        expect(publication.claim.key).toBe(`claims/${expectedManifest.name}.json`);
+        expect(publication.release.key).toBe(
+          `releases/${expectedManifest.name}/${expectedManifest.version}.json`,
+        );
+      }
+    },
+    180_000,
+  );
 });
 
 async function resolvePublication(): Promise<ResolvePayload> {
