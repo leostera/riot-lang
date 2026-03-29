@@ -672,6 +672,50 @@ let tests =
                 Error "expected one grouped interface type declaration")
         | _ ->
             Error "expected grouped interface type declaration");
+    Test.case
+      "cst grouped type declarations keep and-member docs and following section headings in order"
+      (fun () ->
+        let result =
+          parse_mli
+            "type node = unit\n\
+             (** Node type doc *)\n\
+             (** Element type doc *)\n\
+             and element = unit\n\
+             (** {2 Next} *)\n\
+             type next = unit\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.TypeDeclaration node_decl;
+            Syn.Cst.SignatureItem.Docstring heading;
+            Syn.Cst.SignatureItem.TypeDeclaration next_decl ] -> (
+            match Syn.Cst.TypeDeclaration.and_declarations node_decl with
+            | [ element_decl ] ->
+                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia node_decl) with
+                | [ Syn.Cst.Trivia.Docstring doc ] ->
+                    Test.assert_equal ~expected:"(** Node type doc *)"
+                      ~actual:(Syn.Cst.Docstring.text doc)
+                | _ ->
+                    raise (Failure "expected node leading docstring"));
+                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia element_decl) with
+                | [ Syn.Cst.Trivia.Docstring doc ] ->
+                    Test.assert_equal ~expected:"(** Element type doc *)"
+                      ~actual:(Syn.Cst.Docstring.text doc)
+                | _ ->
+                    raise (Failure "expected element leading docstring"));
+                Test.assert_equal ~expected:"(** {2 Next} *)"
+                  ~actual:(Syn.Cst.Docstring.text heading);
+                Test.assert_equal ~expected:0
+                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia next_decl)));
+                Ok ()
+            | _ ->
+                Error "expected grouped node/element declarations")
+        | _ ->
+            Error "expected grouped type declaration, heading, and trailing type");
     Test.case "cst type declarations expose direct type parameters" (fun () ->
         let result =
           parse_ml "type ('a, 'error) resultish = int\n"

@@ -158,7 +158,7 @@ For every slice below:
 
 ### 6. Rebuild Member-Level Ownership
 
-- [ ] Make type declaration ownership come from token order
+- [x] Make type declaration ownership come from token order
   - avoid ad hoc span surgery around grouped `and` declarations
   - verification:
     - CST tests for grouped type docs/headings
@@ -253,8 +253,9 @@ For every slice below:
 - [ ] Current state: top-level standalone item ordering no longer subtracts item spans from the file token stream; it walks each item’s first-token trivia plus `EOF.leading_trivia` from the original parser tokens
 - [ ] Current state: nested `sig ... end` and `struct ... end` bodies now expose normalized item lists through `CstBuilder.signature_items_of_module_type` and `CstBuilder.structure_items_of_module_expression`, while still preserving raw syntax-node anchors for losslessness/debugging
 - [ ] Current state: nested helper APIs are now pinned against the same ordered-item ownership behavior as the top level, including grouped-type headings, repeated docs, and standalone doc/comment ordering after `open`
+- [ ] Current state: grouped `type ... and ...` ownership now normalizes each member from its own `TYPE_DECL` token stream before reassembling the public group, so doc/header ownership no longer depends on redistributing trivia out of the grouped parent node by source spans
 - [ ] Current state: module/class top-level keyword probes, bracket attribute/extension probes, functor application / `(val ...)` module-expression probes, parenthesized module-type lookahead in module expressions, declaration-local `module type of` probes, application/infix/tuple/assign/sequence expression continuations, paren and bracket local-open vs index expression disambiguation, postfix custom-index/operator-like probes, dotted module/module-type/type-name/qualified-field path continuations, local-open core type path lookahead, `include module type of`, `let open` expression detection, the polymorphic/local-open/local-abstract type probes, tuple/as/cons/or pattern continuations, local-open pattern path disambiguation, literal range-pattern probes, and grouped structure/signature type-declaration uppercase-body disambiguation no longer rely on trivia-skipping control flow; inline-comment alias-vs-variant, grouped GADT, and `module type of` declaration cases are pinned in `syn:cst_tests`
 - [ ] Current state: top-level file loops and nested `struct`/`sig` body loops no longer thread trivia through `tokens_to_green []`
 - [ ] Current state: red traversal now follows the same contract as green for parser-built trees; leading trivia lives on tokens and `SyntaxNode.tokens` stays trivia-free
 - [ ] Current state: `print-ceibo` fixture coverage now includes a mixed comment/docstring bridge case
-- [ ] The next concrete slice is member-level ownership for grouped `type ... and ...` declarations, so docs/headings stop relying on ad hoc span surgery
+- [ ] The next concrete slice is variant constructor ownership, especially constructor docs vs the next type declaration

@@ -795,23 +795,6 @@ let type_declaration_nontrivia_end = fun decl -> span_of_syntax_node_nontrivia_b
 (Cst.TypeDeclaration.syntax_node decl)
 |> fun span -> span.end_
 
-let type_declaration_nontrivia_end_before = fun ?before decl ->
-  let tokens =
-    subtree_non_trivia_tokens (Cst.TypeDeclaration.syntax_node decl)
-    |> List.filter
-      (fun token ->
-        match before with
-        | Some before ->
-            (Ceibo.Red.SyntaxToken.span token).end_ <= before
-        | None ->
-            true)
-  in
-  match List.rev tokens with
-  | token :: _ ->
-      (Ceibo.Red.SyntaxToken.span token).end_
-  | [] ->
-      (Ceibo.Red.SyntaxNode.span (Cst.TypeDeclaration.syntax_node decl)).end_
-
 let take_contiguous_type_docstring_block = fun ~source ~decl_end trailing_trivia ->
   let rec loop = fun previous_end acc ->
     function
@@ -941,52 +924,53 @@ let normalize_type_declaration_sequence = fun ~source ~has_next_sibling ?(initia
   loop initial_leading [] [] decls
 
 let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_leading = []) decl ->
-  let append_leading_trivia = fun declaration trivia ->
-    if trivia = [] then
-      declaration
-    else
-      let owned = Cst.TypeDeclaration.owned_trivia declaration in
-      {
-        declaration
-        with owned_trivia = owned_trivia_append_leading owned (sort_trivia_by_source trivia)
-      }
+  let group_syntax_node = Cst.TypeDeclaration.syntax_node decl in
+  let member_syntax_nodes =
+    match Ceibo.Red.SyntaxNode.kind group_syntax_node with
+    | Syntax_kind.TYPE_MUTUAL_DECL ->
+        direct_non_trivia_nodes group_syntax_node
+        |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL)
+    | _ ->
+        decl :: Cst.TypeDeclaration.and_declarations decl
+        |> List.map Cst.TypeDeclaration.syntax_node
   in
-  let redistribute_group_inner_trivia = fun decls ->
-    match decls with
-    | []
-    | [ _ ] ->
-        (decls, [])
-    | first :: rest ->
-        let first_owned = Cst.TypeDeclaration.owned_trivia first in
-        let group_inner = sort_trivia_by_source (Cst.OwnedTrivia.inner first_owned) in
-        let first = {first with owned_trivia = owned_trivia_with_inner first_owned []} in
-        let rec loop = fun current acc remaining_inner ->
-          function
-          | [] ->
-              let current_end = type_declaration_nontrivia_end_before current in
-              let current_docstrings, leftover_inner = take_contiguous_type_docstring_block ~source ~decl_end:current_end remaining_inner in
-              let current = append_leading_trivia current current_docstrings in
-              (List.rev (current :: acc), leftover_inner)
-          | next :: remaining ->
-              let next_start = (Ceibo.Red.SyntaxNode.span (Cst.TypeDeclaration.syntax_node next)).start in
-              let gap_inner, later_inner = remaining_inner
-              |> List.partition (fun trivia -> (trivia_span trivia).end_ <= next_start) in
-              let current_end = type_declaration_nontrivia_end_before ~before:next_start current in
-              let current_docstrings, bubble_to_next = take_contiguous_type_docstring_block ~source ~decl_end:current_end gap_inner in
-              let current = append_leading_trivia current current_docstrings in
-              let next = append_leading_trivia next bubble_to_next in
-              loop next (current :: acc) later_inner remaining
-        in
-        loop first [] group_inner rest
+  let rec restore_member_nodes = fun acc nodes decls ->
+    match nodes, decls with
+    | node :: node_rest, ((decl : Cst.TypeDeclaration.t) :: decl_rest) ->
+        restore_member_nodes
+          ({decl with syntax_node = node; and_declarations = []} :: acc)
+          node_rest
+          decl_rest
+    | [], [] ->
+        Some (List.rev acc)
+    | _ ->
+        None
   in
-  let normalized_decls, bubbled_to_next = normalize_type_declaration_sequence ~source ~has_next_sibling ~initial_leading (decl
-  :: Cst.TypeDeclaration.and_declarations decl) in
-  let normalized_decls, bubbled_from_group = redistribute_group_inner_trivia normalized_decls in
-  let bubbled_to_next = bubbled_from_group @ bubbled_to_next |> sort_trivia_by_source |> dedup_trivia_by_span in
+  let member_decls =
+    match restore_member_nodes [] member_syntax_nodes
+            (decl :: Cst.TypeDeclaration.and_declarations decl) with
+    | Some member_decls ->
+        member_decls
+    | None ->
+        decl :: Cst.TypeDeclaration.and_declarations decl
+        |> List.map (fun (decl : Cst.TypeDeclaration.t) ->
+               {decl with and_declarations = []})
+  in
+  let normalized_decls, bubbled_to_next =
+    normalize_type_declaration_sequence ~source ~has_next_sibling
+      ~initial_leading member_decls
+  in
   match normalized_decls with
   | [] ->
       (decl, bubbled_to_next)
   | first :: rest ->
+      let first =
+        match Ceibo.Red.SyntaxNode.kind group_syntax_node with
+        | Syntax_kind.TYPE_MUTUAL_DECL ->
+            {first with syntax_node = group_syntax_node}
+        | _ ->
+            first
+      in
       ({first with and_declarations = rest}, bubbled_to_next)
 
 let structure_item_of_trivia = fun trivia ->
