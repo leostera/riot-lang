@@ -5,5 +5,4 @@ type t = {
   body : string;
   message : string;
 }
-
 val format : t -> string
