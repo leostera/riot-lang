@@ -103,7 +103,7 @@ For every slice below:
     - focused lexer tests with mixed blank lines/comments/docstrings
     - `timeout 120 tusk build syn`
 
-- [ ] Remove explicit parser trivia consumption
+- [x] Remove explicit parser trivia consumption
   - delete parser flows that splice trivia into green children
   - keep offsets and diagnostics stable
   - verification:
@@ -248,9 +248,9 @@ For every slice below:
 - [ ] Current state: `Parser.parse_result.tokens` and `syn print-ceibo` preserve the original lexer token stream, so lossless token ownership no longer depends on trivia tree children
 - [ ] Current state: `Lexer.tokenize` now emits only real tokens plus EOF, with all non-EOF trivia attached to the next real token
 - [ ] Current state: `Token_cursor` now works on real tokens directly and exposes helper APIs for consuming the current token's leading trivia without reintroducing trivia tokens into the main parser stream
-- [ ] Current state: the parser still has explicit `consume_trivia` flows, but they now mostly live in syntax-preserving production paths and ambiguity checks, not in the old trivia-token control-flow scaffolding
+- [ ] Current state: the parser still has explicit `consume_trivia` flows, but they no longer splice trivia into green children: `tokens_to_green` drops trivia tokens entirely and real token construction still rehydrates original token `leading_trivia`
 - [ ] Current state: module/class top-level keyword probes, bracket attribute/extension probes, functor application / `(val ...)` module-expression probes, parenthesized module-type lookahead in module expressions, declaration-local `module type of` probes, application/infix/tuple/assign/sequence expression continuations, paren and bracket local-open vs index expression disambiguation, postfix custom-index/operator-like probes, dotted module/module-type/type-name/qualified-field path continuations, local-open core type path lookahead, `include module type of`, `let open` expression detection, the polymorphic/local-open/local-abstract type probes, tuple/as/cons/or pattern continuations, local-open pattern path disambiguation, literal range-pattern probes, and grouped structure/signature type-declaration uppercase-body disambiguation no longer rely on trivia-skipping control flow; inline-comment alias-vs-variant, grouped GADT, and `module type of` declaration cases are pinned in `syn:cst_tests`
 - [ ] Current state: top-level file loops and nested `struct`/`sig` body loops no longer thread trivia through `tokens_to_green []`
 - [ ] Current state: red traversal now follows the same contract as green for parser-built trees; leading trivia lives on tokens and `SyntaxNode.tokens` stays trivia-free
 - [ ] Current state: `print-ceibo` fixture coverage now includes a mixed comment/docstring bridge case
-- [ ] The next concrete slice is auditing the remaining rewind-style parser probes outside the declaration/type family, especially top-level `let`-item scanning and any other longer-range lookahead paths, before deciding whether the parser migration item can be closed or needs one more focused cleanup slice
+- [ ] The next concrete slice is section 4: derive standalone comments/docstrings from token boundaries instead of source-gap archaeology at the top level
