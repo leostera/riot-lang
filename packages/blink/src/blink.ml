@@ -7,11 +7,17 @@ module Error = Error
 module SSE = Sse
 
 type error = Error.t
+
 type message = Connection.message
 
 let connect = Transport.connect
+
 let request = Connection.request
+
 let stream = Connection.stream
+
 let messages = Connection.messages
+
 let await = Connection.await
+
 let close = Connection.close

@@ -9,6 +9,6 @@ type t =
   | Invalid_frame
   | Eof
   | Closed
-
 val of_net_error : Net.error -> t
+
 val of_tls_error : Net.TlsStream.error -> t
