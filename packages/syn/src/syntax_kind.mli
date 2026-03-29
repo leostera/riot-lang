@@ -101,6 +101,7 @@ type t =
   | LET_MODULE_EXPR  (** Let module: `let module M = ... in expr` *)
   | FIRST_CLASS_MODULE_EXPR  (** First-class module: `(module M)` or `(module M : S)` *)
   | STRUCT_EXPR  (** Struct expression: `struct ... end` *)
+  | SIG_EXPR  (** Signature expression: `sig ... end` *)
   | MODULE_PATH  (** Module path: `A.B.C` *)
   (* ===================================================================== *)
   (* PATTERNS *)

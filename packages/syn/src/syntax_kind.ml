@@ -71,6 +71,7 @@ type t =
   | LET_MODULE_EXPR (* let module M = ... in expr *)
   | FIRST_CLASS_MODULE_EXPR (* (module M) or (module M : S) *)
   | STRUCT_EXPR (* struct ... end *)
+  | SIG_EXPR (* sig ... end *)
   | MODULE_PATH (* A.B.C module path *)
   (* ========================================================================= *)
   (* PATTERNS *)
@@ -225,6 +226,7 @@ let to_string =
   | LET_MODULE_EXPR -> "LET_MODULE_EXPR"
   | FIRST_CLASS_MODULE_EXPR -> "FIRST_CLASS_MODULE_EXPR"
   | STRUCT_EXPR -> "STRUCT_EXPR"
+  | SIG_EXPR -> "SIG_EXPR"
   | MODULE_PATH -> "MODULE_PATH"
   | IDENT_PATTERN -> "IDENT_PATTERN"
   | WILDCARD_PATTERN -> "WILDCARD_PATTERN"
@@ -364,6 +366,7 @@ let from_string =
   | "LET_MODULE_EXPR" -> Some LET_MODULE_EXPR
   | "FIRST_CLASS_MODULE_EXPR" -> Some FIRST_CLASS_MODULE_EXPR
   | "STRUCT_EXPR" -> Some STRUCT_EXPR
+  | "SIG_EXPR" -> Some SIG_EXPR
   | "IDENT_PATTERN" -> Some IDENT_PATTERN
   | "WILDCARD_PATTERN" -> Some WILDCARD_PATTERN
   | "LITERAL_PATTERN" -> Some LITERAL_PATTERN

@@ -2284,12 +2284,8 @@ let rec can_lift_module_type_node = fun node ->
       direct_non_trivia_nodes node |> List.exists can_lift_module_type_node
   | Syntax_kind.ATTRIBUTE_EXPR ->
       direct_non_trivia_nodes node |> List.exists can_lift_module_type_node
-  | Syntax_kind.IDENT_EXPR -> (
-      match direct_non_trivia_tokens node with
-      | first :: _ ->
-          String.equal (Ceibo.Red.SyntaxToken.text first) "sig"
-      | [] -> false
-    )
+  | Syntax_kind.SIG_EXPR ->
+      true
   | _ ->
       false
 
@@ -2368,10 +2364,13 @@ let rec can_lift_module_expression_node = fun node ->
       direct_non_trivia_nodes node |> List.exists can_lift_module_expression_node
   | Syntax_kind.IDENT_EXPR -> (
       match direct_non_trivia_tokens node with
-      | first :: _ ->
-          not (String.equal (Ceibo.Red.SyntaxToken.text first) "sig")
-      | [] -> false
+      | _ :: _ ->
+          true
+      | [] ->
+          false
     )
+  | Syntax_kind.SIG_EXPR ->
+      false
   | _ ->
       false
 
@@ -2961,15 +2960,8 @@ and module_type_from_node = fun node ->
     )
   | Syntax_kind.EXTENSION_EXPR ->
       Cst.ModuleType.Extension (extension_from_node node)
-  | Syntax_kind.IDENT_EXPR -> (
-      match direct_non_trivia_tokens node with
-      | sig_kw :: _ when String.equal (Ceibo.Red.SyntaxToken.text sig_kw) "sig" ->
-          Cst.ModuleType.Signature {syntax_node = node; signature_syntax_node = node}
-      | _ ->
-          bail ~message:"unsupported module type identifier shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-            "module_type"
-          ]
-    )
+  | Syntax_kind.SIG_EXPR ->
+      Cst.ModuleType.Signature {syntax_node = node; signature_syntax_node = node}
   | _ ->
       bail ~message:"unsupported module type shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
         "module_type"
@@ -8399,13 +8391,8 @@ let signature_item_payload_nodes_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.SIGNATURE ->
       direct_non_trivia_nodes node
-  | Syntax_kind.IDENT_EXPR -> (
-      match direct_non_trivia_tokens node with
-      | sig_kw :: _ when String.equal (Ceibo.Red.SyntaxToken.text sig_kw) "sig" ->
-          direct_non_trivia_nodes node
-      | _ ->
-          [ node ]
-    )
+  | Syntax_kind.SIG_EXPR ->
+      direct_non_trivia_nodes node
   | _ ->
       [ node ]
 
@@ -8464,15 +8451,10 @@ let raw_signature_items_from_syntax_node = fun node ->
         build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans [
           node
         ] signature_items_from_node
-    | Syntax_kind.IDENT_EXPR -> (
-        match direct_non_trivia_tokens node with
-        | sig_kw :: _ when String.equal (Ceibo.Red.SyntaxToken.text sig_kw) "sig" ->
-            build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans [
-              node
-            ] signature_items_from_node
-        | _ ->
-            signature_items_from_node node
-      )
+    | Syntax_kind.SIG_EXPR ->
+        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans [
+          node
+        ] signature_items_from_node
     | _ ->
         signature_items_from_node node
   in

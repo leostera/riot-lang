@@ -1929,7 +1929,7 @@ let tests =
               _;
             }
           :: _ ->
-            Test.assert_equal ~expected:"SIGNATURE"
+            Test.assert_equal ~expected:"SIG_EXPR"
               ~actual:
                 (SyntaxKind.to_string
                    (Ceibo.Red.SyntaxNode.kind signature_syntax_node));

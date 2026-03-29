@@ -9905,8 +9905,7 @@ and parse_sig_expr parser =
   in
 
   (* Build SIG_EXPR node *)
-  make_node Syntax_kind.IDENT_EXPR
-    (* TODO: Add proper SIG_EXPR syntax kind *)
+  make_node Syntax_kind.SIG_EXPR
     ([ make_token parser sig_kw ]
     @ items
     @ [ make_token parser end_kw ])
