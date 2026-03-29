@@ -405,6 +405,18 @@ end
           ~source
           ~msg:"nested signature and structure bodies should lower from structural item streams";
         Ok ());
+    Test.case "format keeps grouped GADT type declarations structural" (fun () ->
+        let source =
+          {|type _ expr =
+  | Int : int expr
+and packed =
+  | Packed : int expr -> packed
+|}
+        in
+        assert_idempotent
+          ~source
+          ~msg:"grouped GADT type declarations should lower structurally instead of preserving source";
+        Ok ());
     Test.case "format keeps boolean if conditions with matches idempotent" (fun () ->
         let source =
           {|open Std

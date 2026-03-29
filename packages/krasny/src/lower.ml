@@ -1614,53 +1614,29 @@ let type_definition_layout = fun decl ->
   | Syn.Cst.TypeDefinition.Abstract ->
       Inline_definition
 
-let type_declaration_requires_source_preservation = fun decl ->
-  match Syn.Cst.TypeDeclaration.type_definition decl with
-  | Syn.Cst.TypeDefinition.Variant { constructors; _ } ->
-      constructors |> List.exists
-        (fun constructor ->
-          match Syn.Cst.VariantConstructor.arguments constructor, Syn.Cst.VariantConstructor.result_type
-          constructor with
-          | Some _, Some _ ->
-              let source = text_of_syntax_node (Syn.Cst.VariantConstructor.syntax_node constructor) in
-              string_contains_substring source " of "
-          | _ ->
-              false)
-  | _ ->
-      false
-
-let type_declaration_group_requires_source_preservation = fun decl ->
-  type_declaration_requires_source_preservation decl
-  || List.exists type_declaration_requires_source_preservation
-       (Syn.Cst.TypeDeclaration.and_declarations decl)
-
 let render_single_type_declaration_with_keyword = fun ctx keyword decl ->
-  if type_declaration_requires_source_preservation decl then
-    doc_of_source_preserved_syntax_node_span_from_current_source ctx
-      (Syn.Cst.TypeDeclaration.syntax_node decl)
-  else
-    let type_name = Syn.Cst.TypeDeclaration.type_name decl in
-    let type_definition = Syn.Cst.TypeDeclaration.type_definition decl in
-    let params = render_type_parameters (Syn.Cst.TypeDeclaration.type_params decl) in
-    let keyword =
-      if Syn.Cst.TypeDeclaration.is_nonrec decl then
-        Doc.concat [ keyword; Doc.space; Doc.text "nonrec" ]
-      else
-        keyword
-    in
-    let header =
-      if params = Doc.empty then
-        Doc.concat [ keyword; Doc.space; doc_of_ident type_name ]
-      else
-        Doc.concat [ keyword; Doc.space; params; Doc.space; doc_of_ident type_name ]
-    in
-    let header =
-      match Syn.Cst.TypeDeclaration.manifest_alias decl with
-      | Some manifest_alias ->
-          Doc.concat [ header; equals; render_core_type manifest_alias ]
-      | None ->
-          header
-    in
+  let type_name = Syn.Cst.TypeDeclaration.type_name decl in
+  let type_definition = Syn.Cst.TypeDeclaration.type_definition decl in
+  let params = render_type_parameters (Syn.Cst.TypeDeclaration.type_params decl) in
+  let keyword =
+    if Syn.Cst.TypeDeclaration.is_nonrec decl then
+      Doc.concat [ keyword; Doc.space; Doc.text "nonrec" ]
+    else
+      keyword
+  in
+  let header =
+    if params = Doc.empty then
+      Doc.concat [ keyword; Doc.space; doc_of_ident type_name ]
+    else
+      Doc.concat [ keyword; Doc.space; params; Doc.space; doc_of_ident type_name ]
+  in
+  let header =
+    match Syn.Cst.TypeDeclaration.manifest_alias decl with
+    | Some manifest_alias ->
+        Doc.concat [ header; equals; render_core_type manifest_alias ]
+    | None ->
+        header
+  in
   let definition =
     match Syn.Cst.TypeDeclaration.private_flag decl with
     | Syn.Cst.PrivateFlag.Public ->
@@ -1740,9 +1716,6 @@ let render_type_declaration_with_keyword = fun ctx keyword decl ->
   let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
   if and_declarations = [] then
     render_type_declaration_member_with_keyword ctx keyword decl
-  else if type_declaration_group_requires_source_preservation decl then
-    doc_of_source_preserved_syntax_node_span_from_current_source ctx
-      (Syn.Cst.TypeDeclaration.syntax_node decl)
   else
     Doc.join blank_line
       (render_type_declaration_member_with_keyword ctx keyword decl
