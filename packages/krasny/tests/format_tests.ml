@@ -347,6 +347,37 @@ module M = [%foo]
             panic "pattern extensions should fail formatting instead of preserving source"
         | Error _ ->
             Ok ());
+    Test.case "format keeps structural imperative and module expressions idempotent" (fun () ->
+        let source =
+          {|let packed = (module M : S)
+let guarded ready = assert ready
+let delayed compute = lazy (compute ())
+let loop cond body = while cond () do body () done
+let count () = for i = 10 downto 0 do print_int i done
+let call obj = obj#run
+let make () = new queue
+let cast value = (value : source :> target)
+let widen value = (value :> target)
+let update next count = {< current = next; count >}
+|}
+        in
+        assert_idempotent
+          ~source
+          ~msg:"module-pack, imperative, coercion, and object-override expressions should format structurally";
+        Ok ());
+    Test.case "format fails for unsupported object and extension expressions"
+      (fun () ->
+        let source =
+          {|let generated = [%foo]
+let counter = object method run = 1 end
+|}
+        in
+        match parse_ml source |> Krasny.format with
+        | Ok _ ->
+            panic
+              "object and extension expressions should fail formatting instead of preserving source"
+        | Error _ ->
+            Ok ());
     Test.case "format keeps boolean if conditions with matches idempotent" (fun () ->
         let source =
           {|open Std

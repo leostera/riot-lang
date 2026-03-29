@@ -46,6 +46,7 @@ This file is _yours_. Keep it up to date after every big change.
 - module-expression and module-type extensions now fail explicitly instead of falling through raw `doc_of_node` fallback.
 - class, local-open, and object core types now lower structurally; core-type extensions fail explicitly instead of falling through raw fallback.
 - lazy/operator/poly-variant-inherit/alias/typed/local-open/effect patterns now lower structurally; pattern extensions and typed first-class-module patterns fail explicitly instead of falling through raw fallback.
+- module-pack, assert, lazy, while, for, method-call, new, object-override, instance-variable-assign, and coerce expressions now lower structurally; expression/object extensions fail explicitly instead of falling through raw fallback.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - `lower.ml` still contains source/text heuristics and one remaining source-backed phrase-boundary preservation path that should be treated as debt.
 

@@ -766,12 +766,14 @@ let render_attribute = fun (attribute : Syn.Cst.attribute) ->
             Doc.empty
       ); Doc.rbracket ]
 
+let kw_module = Doc.text "module"
+
 let render_first_class_module_type = fun module_type ->
   let module_type_text = Syn.Cst.ModuleType.syntax_node module_type
   |> text_of_syntax_node
   |> strip_outer_parens_once
   |> strip_module_prefix in
-  Doc.concat [ Doc.lparen; Doc.text "module"; Doc.space; Doc.text module_type_text; Doc.rparen ]
+  Doc.concat [ Doc.lparen; kw_module; Doc.space; Doc.text module_type_text; Doc.rparen ]
 
 let kw_let = Doc.text "let"
 
@@ -802,6 +804,8 @@ let kw_fun = Doc.text "fun"
 
 let kw_open = Doc.text "open"
 
+let kw_val = Doc.text "val"
+
 let kw_type = Doc.text "type"
 
 let kw_external = Doc.text "external"
@@ -813,6 +817,28 @@ let kw_of = Doc.text "of"
 let kw_mutable = Doc.text "mutable"
 
 let kw_private = Doc.text "private"
+
+let kw_assert = Doc.text "assert"
+
+let kw_lazy = Doc.text "lazy"
+
+let kw_while = Doc.text "while"
+
+let kw_for = Doc.text "for"
+
+let kw_do = Doc.text "do"
+
+let kw_done = Doc.text "done"
+
+let kw_new = Doc.text "new"
+
+let hash = Doc.text "#"
+
+let coercion_arrow = Doc.text ":>"
+
+let object_override_open = Doc.text "{<"
+
+let object_override_close = Doc.text ">}"
 
 let join_map = fun separator f ->
   function
@@ -1827,7 +1853,7 @@ let rec render_pattern =
   | Syn.Cst.Pattern.Literal { literal; _ } ->
       render_literal literal
   | Syn.Cst.Pattern.Lazy { pattern; _ } ->
-      Doc.concat [ Doc.text "lazy"; Doc.space; render_pattern pattern ]
+      Doc.concat [ kw_lazy; Doc.space; render_pattern pattern ]
   | Syn.Cst.Pattern.Constructor { constructor_path; arguments; _ } ->
       let head = doc_of_ident constructor_path in
       (
@@ -1862,9 +1888,9 @@ let rec render_pattern =
               "typed first-class-module patterns do not have a structural formatter yet"
       in
       Doc.concat
-        [ Doc.lparen; Doc.text "module"; Doc.space; binding_doc; constraint_doc; Doc.rparen ]
+        [ Doc.lparen; kw_module; Doc.space; binding_doc; constraint_doc; Doc.rparen ]
   | Syn.Cst.Pattern.PolyVariantInherit { type_path; _ } ->
-      Doc.concat [ Doc.text "#"; doc_of_ident type_path ]
+      Doc.concat [ hash; doc_of_ident type_path ]
   | Syn.Cst.Pattern.Tuple { elements; _ } ->
       Doc.concat
         [ Doc.lparen; join_map (Doc.concat [ Doc.comma; Doc.space ])
@@ -2485,8 +2511,14 @@ let make_lowerer ctx =
     match expression with
   | Syn.Cst.Expression.Path { path; _ } ->
       doc_of_ident path
+  | Syn.Cst.Expression.Extension extension ->
+      unsupported_syntax ~context:[ "expression" ] ~syntax_node:extension.syntax_node
+        "extension expressions do not have a structural formatter yet"
   | Syn.Cst.Expression.Literal literal ->
       render_literal literal
+  | Syn.Cst.Expression.Object object_ ->
+      unsupported_syntax ~context:[ "expression" ] ~syntax_node:object_.syntax_node
+        "object expressions do not have a structural formatter yet"
   | Syn.Cst.Expression.Constructor { constructor_path; payload; _ } ->
       let head = doc_of_ident constructor_path in
       (match payload with
@@ -2500,6 +2532,65 @@ let make_lowerer ctx =
               render_expression payload
           in
           Doc.concat [ head; Doc.space; payload ])
+  | Syn.Cst.Expression.ModulePack { module_expression; module_type; _ } ->
+      let constraint_doc =
+        match module_type with
+        | None ->
+            Doc.empty
+        | Some module_type ->
+            Doc.concat [ colon; render_module_type_doc module_type ]
+      in
+      Doc.concat
+        [
+          Doc.lparen;
+          kw_module;
+          Doc.space;
+          render_module_expression_doc module_expression;
+          constraint_doc;
+          Doc.rparen;
+        ]
+  | Syn.Cst.Expression.Assert { asserted; _ } ->
+      Doc.concat [ kw_assert; Doc.space; render_expression asserted ]
+  | Syn.Cst.Expression.Lazy { body; _ } ->
+      Doc.concat [ kw_lazy; Doc.space; render_expression body ]
+  | Syn.Cst.Expression.While { condition; body; _ } ->
+      Doc.concat
+        [
+          kw_while;
+          Doc.space;
+          render_expression condition;
+          Doc.space;
+          kw_do;
+          Doc.line;
+          Doc.indent 2 (render_block_expression body);
+          Doc.line;
+          kw_done;
+        ]
+  | Syn.Cst.Expression.For { iterator_token; start_expr; direction; end_expr; body; _ } ->
+      let direction_doc =
+        match direction with
+        | Syn.Cst.To { direction_token }
+        | Syn.Cst.Downto { direction_token } ->
+            doc_of_token direction_token
+      in
+      Doc.concat
+        [
+          kw_for;
+          Doc.space;
+          doc_of_token iterator_token;
+          equals;
+          render_expression start_expr;
+          Doc.space;
+          direction_doc;
+          Doc.space;
+          render_expression end_expr;
+          Doc.space;
+          kw_do;
+          Doc.line;
+          Doc.indent 2 (render_block_expression body);
+          Doc.line;
+          kw_done;
+        ]
   | Syn.Cst.Expression.Operator { operator_tokens; _ } ->
       let operator = operator_tokens |> List.map token_text |> String.concat "" |> Doc.text in
       Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
@@ -2634,6 +2725,35 @@ let make_lowerer ctx =
       render_sequence_expression sequence
   | Syn.Cst.Expression.Record record ->
       render_record_expression record
+  | Syn.Cst.Expression.MethodCall { receiver; method_name; _ } ->
+      let receiver =
+        match receiver with
+        | Syn.Cst.Expression.If _
+        | Syn.Cst.Expression.Match _
+        | Syn.Cst.Expression.Try _
+        | Syn.Cst.Expression.LetOperator _
+        | Syn.Cst.Expression.Let _
+        | Syn.Cst.Expression.Sequence _
+        | Syn.Cst.Expression.Fun _
+        | Syn.Cst.Expression.Function _ ->
+            Doc.concat [ Doc.lparen; render_expression receiver; Doc.rparen ]
+        | _ ->
+            render_expression receiver
+      in
+      Doc.concat [ receiver; hash; doc_of_token method_name ]
+  | Syn.Cst.Expression.New { class_path; _ } ->
+      Doc.concat [ kw_new; Doc.space; doc_of_ident class_path ]
+  | Syn.Cst.Expression.ObjectOverride override ->
+      render_object_override_expression override
+  | Syn.Cst.Expression.InstanceVariableAssign assign ->
+      Doc.concat
+        [
+          doc_of_token assign.name_token;
+          Doc.space;
+          doc_of_token assign.operator_token;
+          Doc.space;
+          render_expression assign.value;
+        ]
   | Syn.Cst.Expression.FieldAccess { receiver; field_name; _ } ->
       let receiver =
         match receiver with
@@ -2658,6 +2778,25 @@ let make_lowerer ctx =
   | Syn.Cst.Expression.Polymorphic { expression; type_; _ } ->
       Doc.concat
         [ Doc.lparen; render_expression expression; annotation_colon; doc_of_core_type type_; Doc.rparen ]
+  | Syn.Cst.Expression.Coerce { expression; from_type; to_type; _ } ->
+      let from_doc =
+        match from_type with
+        | None ->
+            Doc.empty
+        | Some from_type ->
+            Doc.concat [ annotation_colon; render_core_type from_type ]
+      in
+      Doc.concat
+        [
+          Doc.lparen;
+          render_expression expression;
+          from_doc;
+          Doc.space;
+          coercion_arrow;
+          Doc.space;
+          render_core_type to_type;
+          Doc.rparen;
+        ]
   | Syn.Cst.Expression.PolyVariant { syntax_node; payload; _ } ->
       let head = doc_of_nontrivia_direct_tokens syntax_node in
       (match payload with
@@ -2671,8 +2810,6 @@ let make_lowerer ctx =
               render_expression payload
           in
           Doc.concat [ head; Doc.space; payload ])
-  | other ->
-      doc_of_node (Syn.Cst.Expression.syntax_node other)
   in
   doc_with_expression_attributes expression doc
 
@@ -2682,6 +2819,44 @@ and render_record_field (field : Syn.Cst.record_expression_field) =
       doc_of_ident field.field_path
   | Syn.Cst.Explicit ->
       Doc.concat [ doc_of_ident field.field_path; equals; render_expression field.value ]
+
+and render_object_override_expression ({ fields; _ } : Syn.Cst.object_override_expression) =
+  let fields =
+    fields
+    |> List.map
+      (fun ({ field_name; value; _ } : Syn.Cst.object_override_field) ->
+        match value with
+        | None ->
+            doc_of_token field_name
+        | Some value ->
+            Doc.concat [ doc_of_token field_name; equals; render_expression value ])
+  in
+  if fields = [] then
+    Doc.concat [ object_override_open; object_override_close ]
+  else if List.length fields > 4 then
+    Doc.concat
+      [
+        object_override_open;
+        Doc.line;
+        Doc.indent 2 (join_map (Doc.concat [ Doc.semi; Doc.line ]) (fun doc -> doc) fields);
+        Doc.line;
+        object_override_close;
+      ]
+  else
+    Doc.group
+      (Doc.concat
+         [
+           object_override_open;
+           Doc.indent 2
+             (Doc.concat
+                [
+                  Doc.break ~flat:" " ();
+                  join_map (Doc.concat [ Doc.semi; Doc.break ~flat:" " () ]) (fun doc -> doc)
+                    fields;
+                ]);
+           Doc.break ~flat:" " ();
+           object_override_close;
+         ])
 
 and render_index_expression ({ syntax_node; collection; index; _ } : Syn.Cst.index_expression) =
   let collection_doc =
@@ -3618,7 +3793,7 @@ and render_let_module_expression
       [
         kw_let;
         Doc.space;
-        Doc.text "module";
+        kw_module;
         Doc.space;
         doc_of_token module_name_token;
         equals;
@@ -3637,7 +3812,7 @@ and render_exception_declaration (decl : Syn.Cst.exception_declaration) =
     | Some (Syn.Cst.Alias alias) ->
         Doc.concat [ equals; doc_of_ident alias ]
     | Some (Syn.Cst.Payload payload_type) ->
-        Doc.concat [ Doc.space; Doc.text "of"; Doc.space; render_core_type payload_type ]
+        Doc.concat [ Doc.space; kw_of; Doc.space; render_core_type payload_type ]
   in
   Doc.concat [ Doc.text "exception"; Doc.space; doc_of_token decl.name_token; rhs_doc ]
 
@@ -4347,7 +4522,7 @@ and render_module_type_doc = function
   | Syn.Cst.ModuleType.Path path ->
       doc_of_ident path
   | Syn.Cst.ModuleType.TypeOf { module_path; _ } ->
-      Doc.concat [ Doc.text "module"; Doc.space; kw_type; Doc.space; Doc.text "of"; Doc.space; doc_of_ident module_path ]
+      Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; kw_of; Doc.space; doc_of_ident module_path ]
   | (Syn.Cst.ModuleType.Signature { syntax_node; _ } as module_type) ->
       (match nested_signature_items_from_module_type module_type with
       | Some items ->
@@ -4461,7 +4636,7 @@ and render_module_expression_doc = function
       Doc.concat
         [
           Doc.lparen;
-          Doc.text "val";
+          kw_val;
           Doc.space;
           render_expression expression;
           constraint_doc;
@@ -4529,14 +4704,14 @@ and render_recursive_module_declaration (decl : Syn.Cst.RecursiveModuleDeclarati
   | first :: rest ->
       Doc.join blank_line
         (render_module_declaration_with_keyword
-           (Doc.concat [ Doc.text "module"; Doc.space; kw_rec ])
+           (Doc.concat [ kw_module; Doc.space; kw_rec ])
            first
         :: List.map (render_module_declaration_with_keyword kw_and) rest)
 
 and render_module_type_declaration ({ module_type_name; module_type; is_destructive_substitution; _ } :
       Syn.Cst.ModuleTypeDeclaration.t) =
   let header =
-    Doc.concat [ Doc.text "module"; Doc.space; kw_type; Doc.space; doc_of_token module_type_name ]
+    Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; doc_of_token module_type_name ]
   in
   match module_type with
   | None ->
@@ -4951,7 +5126,7 @@ and render_structure_item = function
   | Syn.Cst.StructureItem.ExternalDeclaration decl ->
       render_external_declaration decl
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
-      render_module_declaration_with_keyword (Doc.text "module") decl
+      render_module_declaration_with_keyword kw_module decl
   | Syn.Cst.StructureItem.RecursiveModuleDeclaration decl ->
       render_recursive_module_declaration decl
   | Syn.Cst.StructureItem.ModuleTypeDeclaration decl ->
@@ -5030,7 +5205,7 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.TypeExtension decl ->
       render_type_extension ctx decl
   | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
-      render_module_declaration_with_keyword (Doc.text "module") decl
+      render_module_declaration_with_keyword kw_module decl
   | Syn.Cst.SignatureItem.RecursiveModuleDeclaration decl ->
       render_recursive_module_declaration decl
   | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
@@ -5054,7 +5229,7 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.ValueDeclaration decl ->
       Doc.concat
         [
-          Doc.text "val";
+          kw_val;
           Doc.space;
           value_declaration_name_doc decl;
           colon;
