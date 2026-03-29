@@ -887,6 +887,13 @@ let type_declaration_nontrivia_end = fun decl -> span_of_syntax_node_nontrivia_b
 (Cst.TypeDeclaration.syntax_node decl)
 |> fun span -> span.end_
 
+(* Explicit member-stream normalization is only needed for repeated member
+   grammars whose members expose public owned trivia and get rendered
+   independently. Today that means variant constructors and record fields.
+   Exception declarations stay on the ordinary ordered-item path because they
+   are already top-level/body items, while object type fields still lift as
+   syntax-only members without owned_trivia and should not grow member-stream
+   ownership rules until that public CST surface exists. *)
 let normalize_record_field_owned_trivia = fun ~source field ->
   let member_indent = record_field_indent ~source field in
   let normalized_owned_trivia, _bubble =

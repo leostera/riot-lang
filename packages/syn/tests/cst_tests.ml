@@ -4496,6 +4496,41 @@ let tests =
         | _ ->
             Error "expected type declaration followed by standalone docstring");
     Test.case
+      "cst keeps exception docstrings on the next item without a member stream"
+      (fun () ->
+        let result =
+          parse_mli
+            "exception Cancelled\n\
+             (** Response payload *)\n\
+             type response = int\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.ExceptionDeclaration exception_decl;
+            Syn.Cst.SignatureItem.TypeDeclaration response_decl ] ->
+            Test.assert_equal ~expected:0
+              ~actual:
+                (List.length
+                   (Syn.Cst.OwnedTrivia.leading exception_decl.owned_trivia));
+            Test.assert_equal ~expected:0
+              ~actual:
+                (List.length
+                   (Syn.Cst.OwnedTrivia.trailing exception_decl.owned_trivia));
+            (match Syn.Cst.OwnedTrivia.leading
+                     (Syn.Cst.TypeDeclaration.owned_trivia response_decl) with
+            | [ Syn.Cst.Trivia.Docstring doc ] ->
+                Test.assert_equal ~expected:"(** Response payload *)"
+                  ~actual:(Syn.Cst.Docstring.text doc);
+                Ok ()
+            | _ ->
+                Error "expected next type leading docstring")
+        | _ ->
+            Error "expected exception declaration followed by type declaration");
+    Test.case
       "cst keeps constructor docstrings leading on the next constructor"
       (fun () ->
         let result =

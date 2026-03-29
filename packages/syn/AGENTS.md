@@ -34,6 +34,7 @@
 28. Keep red traversal aligned with that same contract for parser-built trees: `SyntaxNode.children`, `direct_tokens`, and `tokens` should already be trivia-free, with comments/docstrings reachable through `SyntaxToken.leading_trivia`.
 29. Keep member doc ownership leading-only: constructor docstrings in inter-member gaps should attach to the next constructor's `owned_trivia.leading`, while postfix comments may still bubble backward onto the previous constructor and terminal constructor docstrings stay standalone.
 30. Keep record field doc ownership leading-only: field docstrings in inter-field gaps should attach to the next field's `owned_trivia.leading`, while postfix comments may still bubble backward onto the previous field and terminal `}`-owned docs/comments must be preserved without stealing them for the last field.
+31. Keep explicit member-stream normalization limited to repeated member grammars with public member `owned_trivia` today: variant constructors and record fields. Exception declarations stay on the ordinary ordered-item path, and object type fields should not gain member-stream ownership rules until the CST gives them `owned_trivia` and a renderer contract.
 
 ## Validate
 
