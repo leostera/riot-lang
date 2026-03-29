@@ -33,6 +33,7 @@
 27. Distinguish `let f = fun ...` from `let f x = ...` from `Syn.Cst.let_binding` shape, not from scanning tokens around `=` in the original source.
 28. `Krasny.format` output policy is explicit: non-empty formatted output ends with a final newline, independent of whether the input source had one.
 29. Render trivia around `if ... then ... else` from `else_token.leading_trivia` and the following branch node's leading trivia; do not reparse raw source spans between `then`, `else`, and branch bodies.
+30. Render trivia after `=` and `in` in ordinary `let ... in` expressions from the RHS/body node's leading trivia. Do not reparse raw source spans for those boundaries once the CST already exposes `equals_token`, `in_token`, and the branch node.
 
 ## Validate
 

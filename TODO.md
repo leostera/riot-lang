@@ -64,6 +64,7 @@ This file is _yours_. Keep it up to date after every big change.
 - top-level structure phrase separators now come from direct source-file separator tokens, not by slicing raw source between item spans or preserving expression runs from source text.
 - trivia between `fun ... ->` and the first body token now comes from that body token's `leading_trivia`; `lower.ml` no longer reparses a raw source slice for that path.
 - trivia around `if ... then ... else` branches now comes from `else_token.leading_trivia` and the next branch node's first-token `leading_trivia`; `lower.ml` no longer reparses raw source spans for that path.
+- trivia after `=` and `in` in ordinary `let ... in` expressions now comes from the RHS/body node's first-token `leading_trivia`; `lower.ml` no longer reparses raw source spans for those paths.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `lower.ml` still contains source/text heuristics and source-backed owned-trivia separator recovery; the remaining debt is in those live formatting decisions, not top-level source-gap replay.
 
@@ -170,6 +171,8 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit structured attribute/extension payload rendering surface instead of replaying `payload_syntax_node` / `item_syntax_nodes`
   - explicit structured structure/signature payload and module-body views where the public CST still exposes only raw `item_syntax_nodes`
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
+  - per-boundary sequence separator tokens or an ordered sequence-item stream; a single `sequence_expression.separator_token` is not enough to render comment/doc trivia around every `;` structurally
+  - explicit `=` and `in` tokens for binding-operator clauses (`let*` / `and*` / `let+`), so `krasny` can render clause RHS/body trivia without `render_trivia_between_spans`
   - explicit ambiguity-sensitive type-declaration shape markers
   - explicit poly-variant inherit path rendering data if needed
 

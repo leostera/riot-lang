@@ -165,6 +165,32 @@ let nested = fun flag other ->
 |}
           ~actual;
         Ok ());
+    Test.case "format renders let rhs and body trivia from token-leading trivia"
+      (fun () ->
+        let source =
+          {|let run =
+  let value = (* keep before rhs *) compute in
+  (* keep before body *)
+  use value
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"let rhs/body trivia should not need source reparsing"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let run =
+  let value =
+    (* keep before rhs *)
+    compute
+  in
+  (* keep before body *)
+  use value
+|}
+          ~actual;
+        Ok ());
     Test.case "format keeps simple applies inline even when identifiers contain keywords"
       (fun () ->
         let source = "let handler = use function_handler\n" in

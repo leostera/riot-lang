@@ -4170,9 +4170,9 @@ and render_local_binding
            false)
   in
   let leading_value_trivia =
-    render_trivia_between_spans
-      ~start:(Syn.Cst.Token.span equals_token).end_
-      ~end_:(nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node value)).start
+    render_leading_trivia_before_node
+      ~after:(Syn.Cst.Token.span equals_token).end_
+      (Syn.Cst.Expression.syntax_node value)
   in
   let keep_value_after_equals =
     let has_fun_rhs =
@@ -4307,9 +4307,9 @@ and render_let_expression
       (first_binding :: List.map (fun binding -> Doc.concat [ Doc.line; binding ]) and_bindings)
   in
   let body_trivia =
-    render_trivia_between_spans
-      ~start:(Syn.Cst.Token.span in_token).end_
-      ~end_:(nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node body)).start
+    render_leading_trivia_before_node
+      ~after:(Syn.Cst.Token.span in_token).end_
+      (Syn.Cst.Expression.syntax_node body)
   in
   let body_doc = render_expression body |> doc_with_leading_trivia body_trivia in
   if Doc.is_multiline first_binding then
