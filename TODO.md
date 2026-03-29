@@ -123,7 +123,7 @@ For every slice below:
   - verification:
     - `timeout 180 tusk test syn:cst_tests`
 
-- [ ] Build a generic ordered-item ownership pass
+- [x] Build a generic ordered-item ownership pass
   - use one pass for structure items and signature items
   - attach leading doc blocks
   - preserve standalone headings/docs
@@ -249,8 +249,9 @@ For every slice below:
 - [ ] Current state: `Lexer.tokenize` now emits only real tokens plus EOF, with all non-EOF trivia attached to the next real token
 - [ ] Current state: `Token_cursor` now works on real tokens directly and exposes helper APIs for consuming the current token's leading trivia without reintroducing trivia tokens into the main parser stream
 - [ ] Current state: the parser still has explicit `consume_trivia` flows, but they no longer splice trivia into green children: `tokens_to_green` drops trivia tokens entirely and real token construction still rehydrates original token `leading_trivia`
+- [ ] Current state: top-level structure/signature item ownership now runs through one generic ordered-item pass, so type/value doc attachment and standalone heading preservation no longer fork by item family
 - [ ] Current state: module/class top-level keyword probes, bracket attribute/extension probes, functor application / `(val ...)` module-expression probes, parenthesized module-type lookahead in module expressions, declaration-local `module type of` probes, application/infix/tuple/assign/sequence expression continuations, paren and bracket local-open vs index expression disambiguation, postfix custom-index/operator-like probes, dotted module/module-type/type-name/qualified-field path continuations, local-open core type path lookahead, `include module type of`, `let open` expression detection, the polymorphic/local-open/local-abstract type probes, tuple/as/cons/or pattern continuations, local-open pattern path disambiguation, literal range-pattern probes, and grouped structure/signature type-declaration uppercase-body disambiguation no longer rely on trivia-skipping control flow; inline-comment alias-vs-variant, grouped GADT, and `module type of` declaration cases are pinned in `syn:cst_tests`
 - [ ] Current state: top-level file loops and nested `struct`/`sig` body loops no longer thread trivia through `tokens_to_green []`
 - [ ] Current state: red traversal now follows the same contract as green for parser-built trees; leading trivia lives on tokens and `SyntaxNode.tokens` stays trivia-free
 - [ ] Current state: `print-ceibo` fixture coverage now includes a mixed comment/docstring bridge case
-- [ ] The next concrete slice is building the generic ordered-item ownership pass for structure and signature items, so leading doc blocks and standalone headings stop depending on file-level span subtraction
+- [ ] The next concrete slice is retiring the remaining file-level span-exclusion/source-gap ownership path where top-level CST ordering still depends on subtracting item spans instead of walking ordered token ownership directly

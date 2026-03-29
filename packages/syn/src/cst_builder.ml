@@ -987,21 +987,33 @@ let signature_item_of_trivia = fun trivia ->
   | Cst.Trivia.Comment comment ->
       Cst.SignatureItem.Comment comment
 
-let rec drop_matching_leading_structure_trivia = fun trivia items ->
-  match trivia, items with
-  | (Cst.Trivia.Docstring left) :: rest_trivia, Cst.StructureItem.Docstring right :: rest_items when trivia_same_span (Cst.Trivia.Docstring left) (Cst.Trivia.Docstring right) ->
-      drop_matching_leading_structure_trivia rest_trivia rest_items
-  | (Cst.Trivia.Comment left) :: rest_trivia, Cst.StructureItem.Comment right :: rest_items when trivia_same_span (Cst.Trivia.Comment left) (Cst.Trivia.Comment right) ->
-      drop_matching_leading_structure_trivia rest_trivia rest_items
+let trivia_of_structure_item =
+  function
+  | Cst.StructureItem.Docstring docstring ->
+      Some (Cst.Trivia.Docstring docstring)
+  | Cst.StructureItem.Comment comment ->
+      Some (Cst.Trivia.Comment comment)
   | _ ->
-      items
+      None
 
-let rec drop_matching_leading_signature_trivia = fun trivia items ->
+let trivia_of_signature_item =
+  function
+  | Cst.SignatureItem.Docstring docstring ->
+      Some (Cst.Trivia.Docstring docstring)
+  | Cst.SignatureItem.Comment comment ->
+      Some (Cst.Trivia.Comment comment)
+  | _ ->
+      None
+
+let rec drop_matching_leading_trivia = fun ~trivia_of_item trivia items ->
   match trivia, items with
-  | (Cst.Trivia.Docstring left) :: rest_trivia, Cst.SignatureItem.Docstring right :: rest_items when trivia_same_span (Cst.Trivia.Docstring left) (Cst.Trivia.Docstring right) ->
-      drop_matching_leading_signature_trivia rest_trivia rest_items
-  | (Cst.Trivia.Comment left) :: rest_trivia, Cst.SignatureItem.Comment right :: rest_items when trivia_same_span (Cst.Trivia.Comment left) (Cst.Trivia.Comment right) ->
-      drop_matching_leading_signature_trivia rest_trivia rest_items
+  | left :: rest_trivia, item :: rest_items -> (
+      match trivia_of_item item with
+      | Some right when trivia_same_span left right ->
+          drop_matching_leading_trivia ~trivia_of_item rest_trivia rest_items
+      | _ ->
+          items
+    )
   | _ ->
       items
 
@@ -1012,147 +1024,177 @@ let type_declaration_starts_with_and = fun decl ->
   | [] ->
       false
 
-let rec take_leading_structure_docstrings =
+let rec take_adjacent_item_docstrings = fun ~docstring_of_item ->
   function
-  | Cst.StructureItem.Docstring docstring :: rest when not
-  (is_section_docstring_text (Cst.Docstring.text docstring)) ->
-      let taken, remaining = take_leading_structure_docstrings rest in
-      (Cst.Trivia.Docstring docstring :: taken, remaining)
-  | items ->
-      ([], items)
+  | item :: rest -> (
+      match docstring_of_item item with
+      | Some docstring when not (is_section_docstring_text (Cst.Docstring.text docstring)) ->
+          let taken, remaining = take_adjacent_item_docstrings ~docstring_of_item rest in
+          (Cst.Trivia.Docstring docstring :: taken, remaining)
+      | _ ->
+          ([], item :: rest)
+    )
+  | [] ->
+      ([], [])
 
-let rec take_following_structure_docstrings =
-  function
-  | Cst.StructureItem.Docstring docstring :: rest when not
-  (is_section_docstring_text (Cst.Docstring.text docstring)) ->
-      let taken, remaining = take_following_structure_docstrings rest in
-      (Cst.Trivia.Docstring docstring :: taken, remaining)
-  | items ->
-      ([], items)
+type ('item, 'value_decl) ordered_item_ops = {
+  trivia_of_item : 'item -> Cst.trivia option;
+  docstring_of_item : 'item -> Cst.docstring option;
+  type_declaration_of_item : 'item -> Cst.TypeDeclaration.t option;
+  value_declaration_of_item : 'item -> 'value_decl option;
+  item_of_trivia : Cst.trivia -> 'item;
+  item_of_type_declaration : Cst.TypeDeclaration.t -> 'item;
+  item_of_value_declaration : 'value_decl -> 'item;
+  normalize_value_declaration : 'value_decl -> 'value_decl;
+  append_value_declaration_leading_trivia : 'value_decl -> Cst.trivia list -> 'value_decl;
+}
 
-let rec take_leading_signature_docstrings =
-  function
-  | Cst.SignatureItem.Docstring docstring :: rest when not
-  (is_section_docstring_text (Cst.Docstring.text docstring)) ->
-      let taken, remaining = take_leading_signature_docstrings rest in
-      (Cst.Trivia.Docstring docstring :: taken, remaining)
-  | items ->
-      ([], items)
-
-let rec take_following_signature_docstrings =
-  function
-  | Cst.SignatureItem.Docstring docstring :: rest when not
-  (is_section_docstring_text (Cst.Docstring.text docstring)) ->
-      let taken, remaining = take_following_signature_docstrings rest in
-      (Cst.Trivia.Docstring docstring :: taken, remaining)
-  | items ->
-      ([], items)
-
-let rec normalize_structure_items_owned_trivia = fun ~source ->
+let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
   function
   | [] ->
       []
-  | Cst.StructureItem.Docstring docstring :: rest when not
-  (is_section_docstring_text (Cst.Docstring.text docstring)) -> (
-      let attached_docstrings, remaining = take_leading_structure_docstrings rest in
-      let attached_docstrings = Cst.Trivia.Docstring docstring :: attached_docstrings in
-      match remaining with
-      | Cst.StructureItem.TypeDeclaration decl :: tail ->
-          let normalized_decl, next_trivia =
-            normalize_type_declaration_group ~source
-              ~has_next_sibling:((
-                match tail with
-                | [] ->
-                    false
-                | _ ->
-                    true
-              ))
-              ~initial_leading:attached_docstrings
-              decl
+  | item :: rest -> (
+      match ops.docstring_of_item item with
+      | Some docstring when not (is_section_docstring_text (Cst.Docstring.text docstring)) -> (
+          let attached_docstrings, remaining =
+            take_adjacent_item_docstrings ~docstring_of_item:ops.docstring_of_item rest
           in
-          let tail = drop_matching_leading_structure_trivia next_trivia tail in
-          Cst.StructureItem.TypeDeclaration normalized_decl
-          :: normalize_structure_items_owned_trivia ~source (List.map structure_item_of_trivia next_trivia
-          @ tail)
-      | _ ->
-          Cst.StructureItem.Docstring docstring :: normalize_structure_items_owned_trivia ~source rest
+          let attached_docstrings =
+            Cst.Trivia.Docstring docstring :: attached_docstrings
+          in
+          match remaining with
+          | next_item :: tail -> (
+              match ops.type_declaration_of_item next_item with
+              | Some decl ->
+                  let normalized_decl, next_trivia =
+                    normalize_type_declaration_group ~source
+                      ~has_next_sibling:((
+                        match tail with
+                        | [] ->
+                            false
+                        | _ ->
+                            true
+                      ))
+                      ~initial_leading:attached_docstrings
+                      decl
+                  in
+                  let tail =
+                    drop_matching_leading_trivia ~trivia_of_item:ops.trivia_of_item
+                      next_trivia tail
+                  in
+                  ops.item_of_type_declaration normalized_decl
+                  :: normalize_ordered_items_owned_trivia ~source ops
+                       (List.map ops.item_of_trivia next_trivia @ tail)
+              | None ->
+                  item :: normalize_ordered_items_owned_trivia ~source ops rest
+            )
+          | [] ->
+              item :: normalize_ordered_items_owned_trivia ~source ops rest
+        )
+      | _ -> (
+          match ops.type_declaration_of_item item with
+          | Some decl ->
+              let normalized_decl, next_trivia =
+                normalize_type_declaration_group ~source
+                  ~has_next_sibling:((
+                    match rest with
+                    | [] ->
+                        false
+                    | _ ->
+                        true
+                  ))
+                  decl
+              in
+              let rest =
+                drop_matching_leading_trivia ~trivia_of_item:ops.trivia_of_item
+                  next_trivia rest
+              in
+              ops.item_of_type_declaration normalized_decl
+              :: normalize_ordered_items_owned_trivia ~source ops
+                   (List.map ops.item_of_trivia next_trivia @ rest)
+          | None -> (
+              match ops.value_declaration_of_item item with
+              | Some decl ->
+                  let decl = ops.normalize_value_declaration decl in
+                  let attached_docstrings, rest =
+                    take_adjacent_item_docstrings ~docstring_of_item:ops.docstring_of_item rest
+                  in
+                  ops.item_of_value_declaration
+                    (ops.append_value_declaration_leading_trivia decl attached_docstrings)
+                  :: normalize_ordered_items_owned_trivia ~source ops rest
+              | None ->
+                  item :: normalize_ordered_items_owned_trivia ~source ops rest
+            )
+        )
     )
-  | Cst.StructureItem.TypeDeclaration decl :: rest ->
-      let normalized_decl, next_trivia =
-        normalize_type_declaration_group ~source
-          ~has_next_sibling:((
-            match rest with
-            | [] ->
-                false
-            | _ ->
-                true
-          ))
-          decl
-      in
-      let rest = drop_matching_leading_structure_trivia next_trivia rest in
-      Cst.StructureItem.TypeDeclaration normalized_decl
-      :: normalize_structure_items_owned_trivia ~source (List.map structure_item_of_trivia next_trivia
-      @ rest)
-  | Cst.StructureItem.ValueDeclaration decl :: rest ->
-      let decl = normalize_value_declaration_owned_trivia decl in
-      let attached_docstrings, rest = take_following_structure_docstrings rest in
-      Cst.StructureItem.ValueDeclaration (append_value_declaration_leading_trivia decl attached_docstrings)
-      :: normalize_structure_items_owned_trivia ~source rest
-  | item :: rest ->
-      item :: normalize_structure_items_owned_trivia ~source rest
 
-let rec normalize_signature_items_owned_trivia = fun ~source ->
+let structure_item_docstring =
   function
-  | [] ->
-      []
-  | Cst.SignatureItem.Docstring docstring :: rest when not
-  (is_section_docstring_text (Cst.Docstring.text docstring)) -> (
-      let attached_docstrings, remaining = take_leading_signature_docstrings rest in
-      let attached_docstrings = Cst.Trivia.Docstring docstring :: attached_docstrings in
-      match remaining with
-      | Cst.SignatureItem.TypeDeclaration decl :: tail ->
-          let normalized_decl, next_trivia =
-            normalize_type_declaration_group ~source
-              ~has_next_sibling:((
-                match tail with
-                | [] ->
-                    false
-                | _ ->
-                    true
-              ))
-              ~initial_leading:attached_docstrings
-              decl
-          in
-          let tail = drop_matching_leading_signature_trivia next_trivia tail in
-          Cst.SignatureItem.TypeDeclaration normalized_decl
-          :: normalize_signature_items_owned_trivia ~source (List.map signature_item_of_trivia next_trivia
-          @ tail)
-      | _ ->
-          Cst.SignatureItem.Docstring docstring :: normalize_signature_items_owned_trivia ~source rest
-    )
-  | Cst.SignatureItem.TypeDeclaration decl :: rest ->
-      let normalized_decl, next_trivia =
-        normalize_type_declaration_group ~source
-          ~has_next_sibling:((
-            match rest with
-            | [] ->
-                false
-            | _ ->
-                true
-          ))
-          decl
-      in
-      let rest = drop_matching_leading_signature_trivia next_trivia rest in
-      Cst.SignatureItem.TypeDeclaration normalized_decl
-      :: normalize_signature_items_owned_trivia ~source (List.map signature_item_of_trivia next_trivia
-      @ rest)
-  | Cst.SignatureItem.ValueDeclaration decl :: rest ->
-      let decl = normalize_value_declaration_owned_trivia decl in
-      let attached_docstrings, rest = take_following_signature_docstrings rest in
-      Cst.SignatureItem.ValueDeclaration (append_value_declaration_leading_trivia decl attached_docstrings)
-      :: normalize_signature_items_owned_trivia ~source rest
-  | item :: rest ->
-      item :: normalize_signature_items_owned_trivia ~source rest
+  | Cst.StructureItem.Docstring docstring ->
+      Some docstring
+  | _ ->
+      None
+
+let signature_item_docstring =
+  function
+  | Cst.SignatureItem.Docstring docstring ->
+      Some docstring
+  | _ ->
+      None
+
+let structure_item_type_declaration =
+  function
+  | Cst.StructureItem.TypeDeclaration decl ->
+      Some decl
+  | _ ->
+      None
+
+let signature_item_type_declaration =
+  function
+  | Cst.SignatureItem.TypeDeclaration decl ->
+      Some decl
+  | _ ->
+      None
+
+let structure_item_value_declaration =
+  function
+  | Cst.StructureItem.ValueDeclaration decl ->
+      Some decl
+  | _ ->
+      None
+
+let signature_item_value_declaration =
+  function
+  | Cst.SignatureItem.ValueDeclaration decl ->
+      Some decl
+  | _ ->
+      None
+
+let normalize_structure_items_owned_trivia = fun ~source items ->
+  normalize_ordered_items_owned_trivia ~source {
+    trivia_of_item = trivia_of_structure_item;
+    docstring_of_item = structure_item_docstring;
+    type_declaration_of_item = structure_item_type_declaration;
+    value_declaration_of_item = structure_item_value_declaration;
+    item_of_trivia = structure_item_of_trivia;
+    item_of_type_declaration = (fun decl -> Cst.StructureItem.TypeDeclaration decl);
+    item_of_value_declaration = (fun decl -> Cst.StructureItem.ValueDeclaration decl);
+    normalize_value_declaration = normalize_value_declaration_owned_trivia;
+    append_value_declaration_leading_trivia = append_value_declaration_leading_trivia;
+  } items
+
+let normalize_signature_items_owned_trivia = fun ~source items ->
+  normalize_ordered_items_owned_trivia ~source {
+    trivia_of_item = trivia_of_signature_item;
+    docstring_of_item = signature_item_docstring;
+    type_declaration_of_item = signature_item_type_declaration;
+    value_declaration_of_item = signature_item_value_declaration;
+    item_of_trivia = signature_item_of_trivia;
+    item_of_type_declaration = (fun decl -> Cst.SignatureItem.TypeDeclaration decl);
+    item_of_value_declaration = (fun decl -> Cst.SignatureItem.ValueDeclaration decl);
+    normalize_value_declaration = normalize_value_declaration_owned_trivia;
+    append_value_declaration_leading_trivia = append_value_declaration_leading_trivia;
+  } items
 
 let expression_grouping_from_node = fun node ->
   match direct_non_trivia_tokens node with

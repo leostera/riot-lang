@@ -4299,6 +4299,67 @@ let tests =
         | _ ->
             Error
               "expected types heading, two type declaration items, construction heading, and value declaration");
+    Test.case
+      "cst implementation keeps section docstrings after grouped type declarations standalone"
+      (fun () ->
+        let result =
+          parse_ml
+            "(** ## Types *)\n\
+             \n\
+             type ('kind, 'text) token = { kind : 'kind; text : 'text; width : int }\n\
+             (** Green token - leaf node containing source text. *)\n\
+             \n\
+             type ('kind, 'text) node = {\n\
+             \  kind : 'kind;\n\
+             \  children : ('kind, 'text) element array;\n\
+             }\n\
+             (** Green node - interior node with children. *)\n\
+             \n\
+             (** Element can be either a token or a node. *)\n\
+             and ('kind, 'text) element =\n\
+             \  | Token of ('kind, 'text) token\n\
+             \  | Node of ('kind, 'text) node\n\
+             \n\
+             (** ## Construction *)\n\
+             \n\
+             let make_token ~kind ~text ~width = { kind; text; width }\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | [ Syn.Cst.StructureItem.Docstring types_doc;
+            Syn.Cst.StructureItem.TypeDeclaration token_decl;
+            Syn.Cst.StructureItem.TypeDeclaration node_decl;
+            Syn.Cst.StructureItem.Docstring construction_doc;
+            Syn.Cst.StructureItem.LetBinding make_token ] ->
+            Test.assert_equal ~expected:"(** ## Types *)"
+              ~actual:(Syn.Cst.Docstring.text types_doc);
+            Test.assert_equal ~expected:"token"
+              ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name token_decl));
+            Test.assert_equal ~expected:"node"
+              ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name node_decl));
+            Test.assert_equal ~expected:"(** ## Construction *)"
+              ~actual:(Syn.Cst.Docstring.text construction_doc);
+            Test.assert_equal ~expected:"make_token"
+              ~actual:(Syn.Cst.LetBinding.name make_token);
+            (match Syn.Cst.TypeDeclaration.and_declarations node_decl with
+            | [ element_decl ] ->
+                Test.assert_equal ~expected:"element"
+                  ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name element_decl));
+                let element_owned = Syn.Cst.TypeDeclaration.owned_trivia element_decl in
+                Test.assert_equal ~expected:1
+                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading element_owned));
+                Test.assert_equal ~expected:0
+                  ~actual:(List.length (Syn.Cst.OwnedTrivia.trailing element_owned));
+                Ok ()
+            | _ ->
+                Error "expected grouped node/element type declarations")
+        | _ ->
+            Error
+              "expected types heading, two type declaration items, construction heading, and let binding");
     Test.case "cst keeps banner comments as standalone top-level comments"
       (fun () ->
         let result =
