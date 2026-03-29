@@ -19,7 +19,8 @@ val format_error_to_string : format_error -> string
     internal document tree before rendering to text. Files fail formatting
     when the current CST surface does not yet expose enough structure for a
     purely structural lowering. Broken files also fail because formatting
-    requires a successful CST lift. *)
+    requires a successful CST lift. Non-empty formatted output always ends
+    with a final newline. *)
 val format : Syn.Parser.parse_result -> (string, format_error) result
 
 (** `syntax_hash result` computes a normalized hash of the parsed concrete

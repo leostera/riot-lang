@@ -25,27 +25,24 @@ let format_error_to_string = function
   | Cannot_lower err ->
       err
 
+let finalize_rendered_output rendered =
+  if String.length rendered = 0 || String.ends_with ~suffix:"\n" rendered then
+    rendered
+  else
+    rendered ^ "\n"
+
 let format (result : Syn.Parser.parse_result) =
   yield ();
   match Syn.build_cst result with
   | Error err ->
       Error (Cannot_build_cst err)
   | Ok source_file ->
-      let original_source = Source.source_of_result result in
       yield ();
-      (match Lower.source_file ~source:original_source source_file with
+      (match Lower.source_file ~source:result.source source_file with
       | Error err ->
           Error (Cannot_lower (Lower.error_to_string err))
       | Ok rendered ->
           yield ();
           let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
           yield ();
-          Ok
-            (if
-               String.ends_with ~suffix:"\n" original_source
-               && String.ends_with ~suffix:"\n" rendered
-             then
-               rendered
-             else if String.ends_with ~suffix:"\n" original_source then
-               rendered ^ "\n"
-             else rendered))
+          Ok (finalize_rendered_output rendered))

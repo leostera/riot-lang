@@ -6,6 +6,8 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [x] Make trivia, comments, and docstrings first-class at the token layer so the CST can derive reliable ownership and `krasny` can become a renderer again
 - [ ] Make `krasny` Structural Formatting Only: format from CST structure plus token-attached trivia, never by reparsing or sniffing source text
+- [ ] Implement RFD0025 - Snapshot Testing for Riot (./docs/rfds/RFD0025-snapshot-testing-for-riot.md) -- that document includes an itemized description of how to implement
+- [ ] Implement specs/TODO.md
 
 ## Stable Contracts
 
@@ -58,7 +60,7 @@ This file is _yours_. Keep it up to date after every big change.
 - application rendering no longer force-switches layout from raw source length or embedded newlines; it follows structural argument break rules only.
 - inline-record constructor arguments no longer preserve multiline layout just because the original record node contained newlines; they format from field structure and owned trivia only.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
-- `Format_core.format` still uses the original parse-result source to preserve trailing-final-newline behavior; that output policy remains debt until it is made explicit instead of source-derived.
+- `Format_core.format` now has an explicit EOF policy: non-empty formatted output ends with a final newline, without inspecting the input source to inherit that behavior.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `lower.ml` still contains source/text heuristics, source-backed owned-trivia separator recovery, and one remaining source-backed phrase-boundary preservation path that should be treated as debt.
 
@@ -83,10 +85,10 @@ This file is _yours_. Keep it up to date after every big change.
   - `Lower.source_file` now returns an explicit lowering result instead of `None`
   - `Format_core.format` now reports `Cannot_lower` instead of returning `original_source`
 
-- [ ] Remove source-derived output policy from `packages/krasny/src/format_core.ml`
-  - `Format_core.format` should not inspect `Source.source_of_result result` just to preserve the original file's trailing-final-newline state
-  - decide and document an explicit formatter output policy for EOF newlines instead of inheriting it from source text
-  - keep `format`, `write`, CLI formatting, and verify behavior on the same explicit contract
+- [x] Remove source-derived output policy from `packages/krasny/src/format_core.ml`
+  - `Format_core.format` no longer inspects `Source.source_of_result result` to inherit the input file's trailing-final-newline state
+  - non-empty formatted output now ends with a final newline by explicit formatter contract
+  - `format`, `write`, CLI formatting, and verify now share that explicit EOF policy
 
 - [ ] Remove raw source-gap parsing from top-level structure/signature rendering
   - `source_gap_has_only_phrase_separators`
@@ -158,8 +160,7 @@ This file is _yours_. Keep it up to date after every big change.
     `Source.source_of_syntax_node`,
     `Source.source_of_node_from_source`,
     `Source.source_between`,
-    `Source.syntax_node_has_comment_like_trivia`,
-    `Source.source_of_result`
+    `Source.syntax_node_has_comment_like_trivia`
 
 - [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing
   - explicit phrase-separator / top-level phrase-boundary modeling

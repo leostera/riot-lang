@@ -31,6 +31,7 @@
 25. Render signature `val` names from CST token structure. Do not reparse declaration source to recover operator spelling or parentheses once `Syn.Cst.value_declaration.name_token` is available.
 26. Render inherited polymorphic-variant rows from `Syn.Cst.RowField.Inherit.type_` directly. Do not scan raw token text to reconstruct row paths that the CST already models as a core type.
 27. Distinguish `let f = fun ...` from `let f x = ...` from `Syn.Cst.let_binding` shape, not from scanning tokens around `=` in the original source.
+28. `Krasny.format` output policy is explicit: non-empty formatted output ends with a final newline, independent of whether the input source had one.
 
 ## Validate
 

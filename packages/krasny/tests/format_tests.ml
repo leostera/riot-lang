@@ -86,6 +86,21 @@ let tests =
         in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
+    Test.case "format adds a final newline to non-empty output" (fun () ->
+        let source = "let x = 1 + 2" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"formatted output should end with a final newline"
+        in
+        Test.assert_equal ~expected:"let x = 1 + 2\n" ~actual;
+        Ok ());
+    Test.case "format keeps empty files empty" (fun () ->
+        let actual =
+          parse_ml "" |> Krasny.format
+          |> Result.expect ~msg:"empty files should still format"
+        in
+        Test.assert_equal ~expected:"" ~actual;
+        Ok ());
     Test.case "format keeps explicit fun rhs bindings explicit" (fun () ->
         let source = "let id = fun x -> x\n" in
         let actual =

@@ -10,7 +10,7 @@ module Printer = Printer
 module Source = Source
 module Lower = Lower
 
-let format = fun (result : Syn.Parser.parse_result) ->
+let format = fun (result: Syn.Parser.parse_result) ->
   match Syn.build_cst result with
   | Error err -> Error (Cannot_build_cst err)
   | Ok source_file ->
@@ -19,9 +19,9 @@ let format = fun (result : Syn.Parser.parse_result) ->
         match Lower.source_file ~source:original_source source_file with
         | Some rendered ->
             let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
-            if 
-              String.ends_with ~suffix:"\n" original_source 
-              && String.ends_with ~suffix:"\n" rendered 
+            if
+              String.ends_with ~suffix:"\n" original_source
+              &&  String.ends_with ~suffix:"\n" rendered
             then
               rendered
             else if String.ends_with ~suffix:"\n" original_source then
@@ -33,7 +33,7 @@ let format = fun (result : Syn.Parser.parse_result) ->
 
 (* TODO(@leostera): rewrite this hasher to use Crypto.Sha521.create () *)
 
-let syntax_hash = fun (result : Syn.Parser.parse_result) ->
+let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   let buffer = IO.Buffer.create 1_024 in
   let rec write_element =
     function

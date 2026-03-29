@@ -55,18 +55,18 @@ let line_start_before = fun text index ->
   loop index
 
 let find_trailing_comment_start = fun text end_ ->
-  if end_ < 2 || text.[end_ - 2] != '*' || text.[end_ - 1] != ')' then
+  if end_ < 2 ||  text.[end_ - 2] != '*' ||  text.[end_ - 1] != ')' then
     None
   else
     let rec loop = fun index depth ->
       if index <= 0 then
         None
-      else if text.[index - 1] = '(' && text.[index] = '*' then
+      else if text.[index - 1] = '(' &&  text.[index] = '*' then
         if depth = 1 then
           Some (index - 1)
         else
           loop (index - 2) (depth - 1)
-      else if text.[index - 1] = '*' && text.[index] = ')' then
+      else if text.[index - 1] = '*' &&  text.[index] = ')' then
         loop (index - 2) (depth + 1)
       else
         loop (index - 1) depth
@@ -90,7 +90,7 @@ let split_trailing_comment_block = fun text ->
           suffix_start
   in
   let suffix_start = peel (String.length body) in
-  if suffix_start = 0 || suffix_start = String.length body then
+  if suffix_start = 0 ||  suffix_start = String.length body then
     (body, trailing_layout)
   else
     (
@@ -98,7 +98,7 @@ let split_trailing_comment_block = fun text ->
       String.sub body suffix_start (String.length body - suffix_start) ^ trailing_layout
     )
 
-let source_of_syntax_node = fun (node : Syn.Cst.syntax_node) ->
+let source_of_syntax_node = fun (node: Syn.Cst.syntax_node) ->
   let buffer = IO.Buffer.create 1_024 in
   Syn.Ceibo.Red.SyntaxNode.preorder node
     (
@@ -115,7 +115,7 @@ let source_of_token = fun token -> Syn.Cst.Token.text token
 let source_of_ident = fun ident ->
   Syn.Cst.Ident.segments ident |> List.map source_of_token |> String.concat "."
 
-let source_of_result = fun (result : Syn.Parser.parse_result) -> result.source
+let source_of_result = fun (result: Syn.Parser.parse_result) -> result.source
 
 let source_of_pattern = fun pattern ->
   source_of_syntax_node (Syn.Cst.Pattern.syntax_node pattern) |> String.trim
@@ -147,7 +147,7 @@ let source_mentions_identifier = fun source identifier ->
         after_index = source_length
         || not (identifier_character source.[after_index])
       in
-      if before_ok && after_ok then
+      if before_ok &&  after_ok then
         true
       else
         loop (index + 1)
@@ -186,7 +186,7 @@ let fresh_match_parameter_name = fun syntax_node ->
   in
   pick [ "x"; "value"; "arg"; "input"; "subject"; "subject0"; "subject1" ]
 
-let syntax_node_has_comment_like_trivia = fun (node : Syn.Cst.syntax_node) ->
+let syntax_node_has_comment_like_trivia = fun (node: Syn.Cst.syntax_node) ->
   let found = ref false in
   Syn.Ceibo.Red.SyntaxNode.preorder node
     (
@@ -204,7 +204,7 @@ let syntax_node_has_comment_like_trivia = fun (node : Syn.Cst.syntax_node) ->
     );
   !found
 
-let source_of_span = fun source (span : Syn.Ceibo.Span.t) ->
+let source_of_span = fun source (span: Syn.Ceibo.Span.t) ->
   let source_length = String.length source in
   let start =
     if span.start < 0 then
