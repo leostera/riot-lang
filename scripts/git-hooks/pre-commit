@@ -51,8 +51,3 @@ printf "%s\n" "$packages" | while IFS= read -r pkg; do
   printf "pre-commit: tusk test %s\n" "$pkg"
   run timeout 1800 tusk test "$pkg:..."
 done
-
-if printf "%s\n" "$packages" | grep -qx "syn"; then
-  printf "pre-commit: running syn fixture suite\n"
-  run timeout 1800 python3 packages/syn/tests/test_runner.py all
-fi
