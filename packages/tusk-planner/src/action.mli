@@ -20,7 +20,11 @@ type t =
       includes : Path.t list;
       flags : Tusk_toolchain.Ocamlc.compiler_flag list;
     }
-  | CompileC of { source : Path.t; outputs : Path.t list; ccflags : string list }
+  | CompileC of {
+      source : Path.t;
+      outputs : Path.t list;
+      ccflags : string list;
+    }
   | CreateLibrary of {
       outputs : Path.t list;
       objects : Path.t list;
@@ -44,8 +48,14 @@ type t =
       ccopt_flags : string list;
       cclib_flags : string list;
     }
-  | CopyFile of { source : Path.t; destination : Path.t }
-  | WriteFile of { destination : Path.t; content : string }
+  | CopyFile of {
+      source : Path.t;
+      destination : Path.t;
+    }
+  | WriteFile of {
+      destination : Path.t;
+      content : string;
+    }
   | BuildForeignDependency of {
       name : string;
       path : Path.t;
@@ -53,11 +63,16 @@ type t =
       outputs : Path.t list;
       env : (string * string) list;
     }
-
 val hash : t -> Std.Crypto.hash
+
 val to_string : t -> string
+
 val to_json : t -> Data.Json.t
+
 val from_json : Data.Json.t -> (t, string) Result.t
+
 val equal : t -> t -> bool
+
 val outputs : t -> Path.t list
+
 val kind : t -> string

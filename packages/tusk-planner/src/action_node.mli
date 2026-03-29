@@ -1,6 +1,7 @@
 open Std
 open Std.Collections
 open Tusk_model
+
 module G = Std.Graph.SimpleGraph
 
 type action_spec = {
@@ -11,18 +12,6 @@ type action_spec = {
   toolchain : Tusk_toolchain.t;
   hash : Crypto.hash;
 }
-
-type t = action_spec G.node
-
-val make :
-  actions:Action.t list ->
-  outs:Path.t list ->
-  srcs:Path.t list ->
-  package:Package.t ->
-  toolchain:Tusk_toolchain.t ->
-  dependency_hashes:(G.Node_id.t -> Crypto.hash) ->
-  deps:G.Node_id.t list ->
-  action_spec
 (** Create an action_spec with a pre-computed Merkle hash.
 
     The hash is computed immediately and stored in the action_spec. This enables
@@ -31,8 +20,16 @@ val make :
 
     @param dependency_hashes Function to look up hash of a dependency by ID
     @param deps List of dependency node IDs for this action *)
+type t = action_spec G.node
+val make : actions:Action.t list ->
+outs:Path.t list ->
+srcs:Path.t list ->
+package:Package.t ->
+toolchain:Tusk_toolchain.t ->
+dependency_hashes:(G.Node_id.t -> Crypto.hash) ->
+deps:G.Node_id.t list ->
+action_spec
 
-val get_hash : t -> Crypto.hash
 (** Get the pre-computed hash of an action node.
 
     The hash is computed when the node is created via `make` and includes: 1.
@@ -44,9 +41,10 @@ val get_hash : t -> Crypto.hash
     This means if ANY source file changes OR any dependency changes OR the
     toolchain changes, the hash changes, invalidating the cache for this node
     and all downstream nodes. *)
+val get_hash : t -> Crypto.hash
 
-val to_json : t -> Data.Json.t
 (** Convert an action node to JSON, including all fields and hash *)
+val to_json : t -> Data.Json.t
 
-val equal : t -> t -> bool
 (** Compare two action nodes structurally (ignoring node IDs) *)
+val equal : t -> t -> bool

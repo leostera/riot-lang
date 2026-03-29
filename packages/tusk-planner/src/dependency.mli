@@ -8,16 +8,15 @@ open Std
 open Std.Collections
 open Tusk_model
 
+(** Return the expected path to the dependency's `.cmxa` archive in the store. *)
 type t = {
   package : Package.t;
   artifact_dir : Path.t;
   depset : t list;
   hash : Crypto.hash;
 }
-
 val library_cmxa : t -> Path.t
-(** Return the expected path to the dependency's `.cmxa` archive in the store. *)
 
-val transitive_closure : t list -> t list
 (** Flatten dependencies and their transitive deps in dependency-first order,
     deduplicated by package name. *)
+val transitive_closure : t list -> t list

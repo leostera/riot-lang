@@ -18,14 +18,6 @@ type plan_input = {
   depset : Dependency.t list;
   store : Tusk_store.Store.t;
 }
-
-type plan_result = {
-  sources : Path.t list;
-  module_graph : Module_node.t Graph.SimpleGraph.t;
-  action_graph : Action_graph.t;
-}
-
-val plan_node : plan_input -> (plan_result, Planning_error.t) result
 (** Plan a complete build for a package.
     
     This function orchestrates the entire planning process:
@@ -40,3 +32,9 @@ val plan_node : plan_input -> (plan_result, Planning_error.t) result
     - Cycle { cycle } if circular dependencies detected
     - Error msg if planning fails
 *)
+type plan_result = {
+  sources : Path.t list;
+  module_graph : Module_node.t Graph.SimpleGraph.t;
+  action_graph : Action_graph.t;
+}
+val plan_node : plan_input -> (plan_result, Planning_error.t) result
