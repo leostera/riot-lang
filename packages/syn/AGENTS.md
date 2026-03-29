@@ -43,6 +43,8 @@
 37. Keep `sig ... end` on an explicit `SIG_EXPR` syntax kind. Do not route signature module-type bodies back through `IDENT_EXPR` plus token-text sniffing in the parser or CST builder.
 38. Keep `Cst.owned_trivia` public and explicit: `leading`, `inner`, and `trailing` are the stable CST ownership buckets consumed by `krasny` and CST JSON, not a temporary migration wrapper to hide behind source-gap recovery.
 39. Keep optional parameter structure lossless in `Syn.Cst`: preserve typed binding patterns and `default_value` as real CST fields instead of forcing downstream tools to recover them from parameter source text.
+40. Keep sequence separator structure explicit in `Syn.Cst`: `sequence_expression.separator_tokens` is the token-order-complete list of `;` boundaries, and downstream tools should not have to recover per-boundary separator trivia from raw source gaps.
+41. Keep binding-operator clause boundaries explicit in `Syn.Cst`: `binding_operator_binding.equals_token` and `let_operator_expression.in_token` must stay public so downstream renderers do not reconstruct `let*` / `and*` separators from subtree token scans or source text.
 
 ## Validate
 

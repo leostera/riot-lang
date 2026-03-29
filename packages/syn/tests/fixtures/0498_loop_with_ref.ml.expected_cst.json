@@ -82,6 +82,16 @@
                 "end": 51
               }
             },
+            "separator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "span": {
+                  "start": 50,
+                  "end": 51
+                }
+              }
+            ],
             "expressions": [
               {
                 "tag": "for",

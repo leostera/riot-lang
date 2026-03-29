@@ -82,6 +82,16 @@
                 "end": 49
               }
             },
+            "separator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "span": {
+                  "start": 48,
+                  "end": 49
+                }
+              }
+            ],
             "expressions": [
               {
                 "tag": "while",

@@ -29,6 +29,16 @@
               "end": 3
             }
           },
+          "separator_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": ";",
+              "span": {
+                "start": 2,
+                "end": 3
+              }
+            }
+          ],
           "expressions": [
             {
               "tag": "prefix",

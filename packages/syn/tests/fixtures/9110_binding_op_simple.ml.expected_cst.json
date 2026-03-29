@@ -256,6 +256,14 @@
                   "end": 70
                 }
               },
+              "equals_token": {
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "span": {
+                  "start": 73,
+                  "end": 74
+                }
+              },
               "binding_pattern": {
                 "tag": "identifier",
                 "syntax_node": {
@@ -332,6 +340,14 @@
               }
             },
             "and_bindings": [],
+            "in_token": {
+              "kind": "IDENT_EXPR",
+              "text": "in",
+              "span": {
+                "start": 80,
+                "end": 82
+              }
+            },
             "body": {
               "tag": "constructor",
               "syntax_node": {

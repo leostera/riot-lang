@@ -82,6 +82,24 @@
                 "end": 12
               }
             },
+            "separator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "span": {
+                  "start": 11,
+                  "end": 12
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "span": {
+                  "start": 16,
+                  "end": 17
+                }
+              }
+            ],
             "expressions": [
               {
                 "tag": "path",

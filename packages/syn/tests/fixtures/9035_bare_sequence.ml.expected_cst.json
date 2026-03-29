@@ -114,6 +114,24 @@
                 "end": 27
               }
             },
+            "separator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "span": {
+                  "start": 26,
+                  "end": 27
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "span": {
+                  "start": 39,
+                  "end": 40
+                }
+              }
+            ],
             "expressions": [
               {
                 "tag": "apply",
@@ -560,6 +578,16 @@
                       "end": 112
                     }
                   },
+                  "separator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ";",
+                      "span": {
+                        "start": 111,
+                        "end": 112
+                      }
+                    }
+                  ],
                   "expressions": [
                     {
                       "tag": "apply",

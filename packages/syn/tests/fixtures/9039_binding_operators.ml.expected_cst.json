@@ -1220,6 +1220,14 @@
                   "end": 223
                 }
               },
+              "equals_token": {
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "span": {
+                  "start": 226,
+                  "end": 227
+                }
+              },
               "binding_pattern": {
                 "tag": "identifier",
                 "syntax_node": {
@@ -1296,6 +1304,14 @@
               }
             },
             "and_bindings": [],
+            "in_token": {
+              "kind": "IDENT_EXPR",
+              "text": "in",
+              "span": {
+                "start": 233,
+                "end": 235
+              }
+            },
             "body": {
               "tag": "let_operator",
               "syntax_node": {
@@ -1320,6 +1336,14 @@
                   "span": {
                     "start": 241,
                     "end": 242
+                  }
+                },
+                "equals_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "=",
+                  "span": {
+                    "start": 245,
+                    "end": 246
                   }
                 },
                 "binding_pattern": {
@@ -1468,6 +1492,14 @@
                 }
               },
               "and_bindings": [],
+              "in_token": {
+                "kind": "IDENT_EXPR",
+                "text": "in",
+                "span": {
+                  "start": 258,
+                  "end": 260
+                }
+              },
               "body": {
                 "tag": "constructor",
                 "syntax_node": {
@@ -1757,6 +1789,14 @@
                   "end": 297
                 }
               },
+              "equals_token": {
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "span": {
+                  "start": 300,
+                  "end": 301
+                }
+              },
               "binding_pattern": {
                 "tag": "identifier",
                 "syntax_node": {
@@ -1850,6 +1890,14 @@
                     "end": 311
                   }
                 },
+                "equals_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "=",
+                  "span": {
+                    "start": 314,
+                    "end": 315
+                  }
+                },
                 "binding_pattern": {
                   "tag": "identifier",
                   "syntax_node": {
@@ -1926,6 +1974,14 @@
                 }
               }
             ],
+            "in_token": {
+              "kind": "IDENT_EXPR",
+              "text": "in",
+              "span": {
+                "start": 321,
+                "end": 323
+              }
+            },
             "body": {
               "tag": "constructor",
               "syntax_node": {
@@ -2178,6 +2234,14 @@
                   "end": 358
                 }
               },
+              "equals_token": {
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "span": {
+                  "start": 361,
+                  "end": 362
+                }
+              },
               "binding_pattern": {
                 "tag": "identifier",
                 "syntax_node": {
@@ -2254,6 +2318,14 @@
               }
             },
             "and_bindings": [],
+            "in_token": {
+              "kind": "IDENT_EXPR",
+              "text": "in",
+              "span": {
+                "start": 368,
+                "end": 370
+              }
+            },
             "body": {
               "tag": "infix",
               "syntax_node": {

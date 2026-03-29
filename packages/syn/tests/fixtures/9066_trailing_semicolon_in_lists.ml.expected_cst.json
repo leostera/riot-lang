@@ -2543,6 +2543,16 @@
                       "end": 1279
                     }
                   },
+                  "separator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ";",
+                      "span": {
+                        "start": 1278,
+                        "end": 1279
+                      }
+                    }
+                  ],
                   "expressions": [
                     {
                       "tag": "apply",
@@ -2682,6 +2692,16 @@
                       "end": 1303
                     }
                   },
+                  "separator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ";",
+                      "span": {
+                        "start": 1302,
+                        "end": 1303
+                      }
+                    }
+                  ],
                   "expressions": [
                     {
                       "tag": "apply",
@@ -2912,6 +2932,16 @@
                       "end": 1400
                     }
                   },
+                  "separator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ";",
+                      "span": {
+                        "start": 1399,
+                        "end": 1400
+                      }
+                    }
+                  ],
                   "expressions": [
                     {
                       "tag": "apply",
@@ -3051,6 +3081,16 @@
                       "end": 1424
                     }
                   },
+                  "separator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ";",
+                      "span": {
+                        "start": 1423,
+                        "end": 1424
+                      }
+                    }
+                  ],
                   "expressions": [
                     {
                       "tag": "apply",

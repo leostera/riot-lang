@@ -155,6 +155,16 @@
                 "end": 45
               }
             },
+            "separator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "span": {
+                  "start": 44,
+                  "end": 45
+                }
+              }
+            ],
             "expressions": [
               {
                 "tag": "apply",

@@ -1100,6 +1100,24 @@
                       "end": 830
                     }
                   },
+                  "separator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ";",
+                      "span": {
+                        "start": 829,
+                        "end": 830
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ";",
+                      "span": {
+                        "start": 873,
+                        "end": 874
+                      }
+                    }
+                  ],
                   "expressions": [
                     {
                       "tag": "apply",
@@ -1692,6 +1710,32 @@
                 "end": 1066
               }
             },
+            "separator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "span": {
+                  "start": 1065,
+                  "end": 1066
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "span": {
+                  "start": 1113,
+                  "end": 1114
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "span": {
+                  "start": 1147,
+                  "end": 1148
+                }
+              }
+            ],
             "expressions": [
               {
                 "tag": "apply",

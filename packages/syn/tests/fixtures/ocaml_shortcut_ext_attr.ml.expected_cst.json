@@ -316,6 +316,48 @@
                   "end": 260
                 }
               },
+              "separator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ";",
+                  "span": {
+                    "start": 259,
+                    "end": 260
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ";",
+                  "span": {
+                    "start": 294,
+                    "end": 295
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ";",
+                  "span": {
+                    "start": 321,
+                    "end": 322
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ";",
+                  "span": {
+                    "start": 353,
+                    "end": 354
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ";",
+                  "span": {
+                    "start": 388,
+                    "end": 389
+                  }
+                }
+              ],
               "expressions": [
                 {
                   "tag": "parenthesized",
@@ -896,6 +938,48 @@
                         "end": 424
                       }
                     },
+                    "separator_tokens": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ";",
+                        "span": {
+                          "start": 423,
+                          "end": 424
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ";",
+                        "span": {
+                          "start": 462,
+                          "end": 463
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ";",
+                        "span": {
+                          "start": 509,
+                          "end": 510
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ";",
+                        "span": {
+                          "start": 515,
+                          "end": 516
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ";",
+                        "span": {
+                          "start": 525,
+                          "end": 526
+                        }
+                      }
+                    ],
                     "expressions": [
                       {
                         "tag": "literal",
@@ -1093,6 +1177,16 @@
                               "end": 551
                             }
                           },
+                          "separator_tokens": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": ";",
+                              "span": {
+                                "start": 550,
+                                "end": 551
+                              }
+                            }
+                          ],
                           "expressions": [
                             {
                               "tag": "literal",
@@ -1142,6 +1236,40 @@
                                     "end": 571
                                   }
                                 },
+                                "separator_tokens": [
+                                  {
+                                    "kind": "IDENT_EXPR",
+                                    "text": ";",
+                                    "span": {
+                                      "start": 570,
+                                      "end": 571
+                                    }
+                                  },
+                                  {
+                                    "kind": "IDENT_EXPR",
+                                    "text": ";",
+                                    "span": {
+                                      "start": 594,
+                                      "end": 595
+                                    }
+                                  },
+                                  {
+                                    "kind": "IDENT_EXPR",
+                                    "text": ";",
+                                    "span": {
+                                      "start": 625,
+                                      "end": 626
+                                    }
+                                  },
+                                  {
+                                    "kind": "IDENT_EXPR",
+                                    "text": ";",
+                                    "span": {
+                                      "start": 644,
+                                      "end": 645
+                                    }
+                                  }
+                                ],
                                 "expressions": [
                                   {
                                     "tag": "path",

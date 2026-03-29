@@ -1377,6 +1377,7 @@ and coerce_expression = {
 and sequence_expression = {
   syntax_node : syntax_node;
   separator_token : Token.t;
+  separator_tokens : Token.t list;
   expressions : expression list;
   attributes : attribute list;
 }
@@ -1484,6 +1485,7 @@ and let_binding = {
 and binding_operator_binding = {
   keyword_token : Token.t;
   operator_token : Token.t;
+  equals_token : Token.t;
   binding_pattern : pattern;
   bound_value : expression;
 }
@@ -1492,6 +1494,7 @@ and let_operator_expression = {
   syntax_node : syntax_node;
   binding : binding_operator_binding;
   and_bindings : binding_operator_binding list;
+  in_token : Token.t;
   body : expression;
   attributes : attribute list;
 }

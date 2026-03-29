@@ -91,6 +91,16 @@
                   "end": 38
                 }
               },
+              "separator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ";",
+                  "span": {
+                    "start": 37,
+                    "end": 38
+                  }
+                }
+              ],
               "expressions": [
                 {
                   "tag": "parenthesized",

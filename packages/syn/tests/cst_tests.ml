@@ -5977,6 +5977,37 @@ let tests =
               ~actual:(Syn.Cst.Token.text right_name);
             Ok ()
         | _ -> Error "expected parallel let-operator expression item");
+    Test.case "cst let-operator expressions expose equals and in tokens"
+      (fun () ->
+        let source =
+          "let ( let* ) = Result.bind\n\
+           let ( and* ) = Result.both\n\
+           let* a = Ok 1 and* b = Ok 2 in Ok (a, b)\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | _ :: _ :: Syn.Cst.StructureItem.Expression
+                     (Syn.Cst.Expression.LetOperator
+                       {
+                         binding = { equals_token = first_equals; _ };
+                         and_bindings = [ { equals_token = second_equals; _ } ];
+                         in_token;
+                         _;
+                       })
+               :: _ ->
+            Test.assert_equal ~expected:"="
+              ~actual:(Syn.Cst.Token.text first_equals);
+            Test.assert_equal ~expected:"="
+              ~actual:(Syn.Cst.Token.text second_equals);
+            Test.assert_equal ~expected:"in"
+              ~actual:(Syn.Cst.Token.text in_token);
+            Ok ()
+        | _ -> Error "expected let-operator tokens to expose equals and in");
     Test.case "cst let expressions expose unit-pattern sequencing structurally" (fun () ->
         let source = "let render () = let () = log () in flush ()\n" in
         let result = parse_ml source in
@@ -6497,6 +6528,35 @@ let tests =
           :: _ ->
             Ok ()
         | _ -> Error "expected commented begin-end sequence");
+    Test.case "cst sequences expose every separator token"
+      (fun () ->
+        let source = "let wrapped = begin log \"start\"; log \"middle\"; log \"done\" end\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Parenthesized
+                  {
+                    grouping = Syn.Cst.BeginEnd;
+                    inner =
+                      Syn.Cst.Expression.Sequence
+                        { separator_tokens; expressions = [ _; _; _ ]; _ };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:2 ~actual:(List.length separator_tokens);
+            Test.assert_equal ~expected:[ ";"; ";" ]
+              ~actual:(List.map Syn.Cst.Token.text separator_tokens);
+            Ok ()
+        | _ -> Error "expected begin-end sequence with separator token list");
     Test.case "cst constructor expressions preserve bare and applied forms"
       (fun () ->
         let source =

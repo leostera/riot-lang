@@ -841,11 +841,12 @@ and object_member_to_json =
         ("body", option_to_json expression_to_json body)
       ]
 and binding_operator_binding_to_json = fun
-  ({ keyword_token; operator_token; binding_pattern; bound_value } :
+  ({ keyword_token; operator_token; equals_token; binding_pattern; bound_value } :
       Cst.binding_operator_binding) ->
   Json.Object [
     ("keyword_token", token_to_json keyword_token);
     ("operator_token", token_to_json operator_token);
+    ("equals_token", token_to_json equals_token);
     ("binding_pattern", pattern_to_json binding_pattern);
     ("bound_value", expression_to_json bound_value)
   ]
@@ -1131,11 +1132,12 @@ and expression_to_json = fun expression ->
         ("to_type", core_type_to_json to_type)
       ]
       @ expression_attribute_fields expression)
-  | Cst.Expression.Sequence { syntax_node; separator_token; expressions; _ } ->
+  | Cst.Expression.Sequence { syntax_node; separator_token; separator_tokens; expressions; _ } ->
       Json.Object ([
         ("tag", Json.String "sequence");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("separator_token", token_to_json separator_token);
+        ("separator_tokens", Json.Array (List.map token_to_json separator_tokens));
         ("expressions", Json.Array (List.map expression_to_json expressions))
       ]
       @ expression_attribute_fields expression)
@@ -1221,6 +1223,7 @@ and expression_to_json = fun expression ->
     syntax_node;
     binding;
     and_bindings;
+    in_token;
     body;
     _
   } ->
@@ -1229,6 +1232,7 @@ and expression_to_json = fun expression ->
         ("syntax_node", syntax_node_to_json syntax_node);
         ("binding", binding_operator_binding_to_json binding);
         ("and_bindings", Json.Array (List.map binding_operator_binding_to_json and_bindings));
+        ("in_token", token_to_json in_token);
         ("body", expression_to_json body)
       ]
       @ expression_attribute_fields expression)

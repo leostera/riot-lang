@@ -54,6 +54,7 @@ This file is _yours_. Keep it up to date after every big change.
 - optional parameter defaults and typed binding patterns now survive the `Syn.Cst` lift structurally, and `krasny` renders parameters from CST shape instead of `Source.source_of_parameter`.
 - signature `val` declarations now render names from CST token structure; `krasny` no longer reparses declaration source to recover operator names before `:`.
 - inherited polymorphic-variant rows now render directly from `Syn.Cst.RowField.Inherit.type_`; `krasny` no longer reconstructs inherited row paths by scanning token text.
+- `Syn.Cst.sequence_expression` now exposes per-boundary `separator_tokens`, and binding-operator clauses now expose `equals_token` plus `let_operator_expression.in_token`; the CST surface now carries the token boundaries `krasny` needs for sequence and `let*` trivia without source-gap recovery.
 - `let f = fun ...` detection now comes from `Syn.Cst.let_binding` shape instead of scanning tokens after `=`.
 - tuple and `let open ... in` line breaking no longer sniff source length or embedded newlines; `krasny` now relies on structural docs there.
 - simple apply expressions now decide whether they stay after `=` by recursing over CST callee/argument shape instead of scanning source text for keyword substrings.
@@ -171,8 +172,6 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit structured attribute/extension payload rendering surface instead of replaying `payload_syntax_node` / `item_syntax_nodes`
   - explicit structured structure/signature payload and module-body views where the public CST still exposes only raw `item_syntax_nodes`
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
-  - per-boundary sequence separator tokens or an ordered sequence-item stream; a single `sequence_expression.separator_token` is not enough to render comment/doc trivia around every `;` structurally
-  - explicit `=` and `in` tokens for binding-operator clauses (`let*` / `and*` / `let+`), so `krasny` can render clause RHS/body trivia without `render_trivia_between_spans`
   - explicit ambiguity-sensitive type-declaration shape markers
   - explicit poly-variant inherit path rendering data if needed
 

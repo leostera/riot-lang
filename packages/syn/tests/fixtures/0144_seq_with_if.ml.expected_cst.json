@@ -162,6 +162,16 @@
                   "end": 32
                 }
               },
+              "separator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ";",
+                  "span": {
+                    "start": 31,
+                    "end": 32
+                  }
+                }
+              ],
               "expressions": [
                 {
                   "tag": "literal",

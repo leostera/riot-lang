@@ -55,6 +55,12 @@ let is_trivia = fun kind -> let open Syntax_kind in kind = WHITESPACE || kind = 
 
 let token = fun syntax_tok -> Cst.Token.{syntax_token = syntax_tok}
 
+let keyword_let_text = "let"
+let keyword_and_text = "and"
+let keyword_in_text = "in"
+let equals_text = "="
+let semicolon_text = ";"
+
 let synthetic_token = fun ~kind ~text ~start_offset ~end_offset ->
   let green_token =
     Ceibo.Green.make_token ~leading_trivia:[] ~kind ~text
@@ -2702,18 +2708,27 @@ let is_binding_operator_expression_node = fun node ->
   | _ ->
       false
 
-let binding_operator_pairs_from_tokens = fun node ->
+let binding_operator_tokens_from_node = fun node ->
   let rec loop = fun acc ->
     function
     | keyword_syntax_token :: operator_syntax_token :: equals_syntax_token :: rest when (String.equal (Ceibo.Red.SyntaxToken.text
-    keyword_syntax_token) "let"
-    || String.equal (Ceibo.Red.SyntaxToken.text keyword_syntax_token) "and")
-    && String.equal (Ceibo.Red.SyntaxToken.text equals_syntax_token) "=" ->
-        loop ((token keyword_syntax_token, token operator_syntax_token) :: acc) rest
-    | in_syntax_token :: _ when String.equal (Ceibo.Red.SyntaxToken.text in_syntax_token) "in" ->
-        List.rev acc
+    keyword_syntax_token) keyword_let_text
+    || String.equal (Ceibo.Red.SyntaxToken.text keyword_syntax_token) keyword_and_text)
+    && String.equal (Ceibo.Red.SyntaxToken.text equals_syntax_token) equals_text ->
+        loop
+          ( ( token keyword_syntax_token,
+              token operator_syntax_token,
+              token equals_syntax_token )
+          :: acc )
+          rest
+    | in_syntax_token :: _ when String.equal (Ceibo.Red.SyntaxToken.text in_syntax_token) keyword_in_text ->
+        (List.rev acc, token in_syntax_token)
     | [] ->
-        List.rev acc
+        bail ~message:"expected let-operator in keyword during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+          "expression";
+          "let_operator";
+          "tokens"
+        ]
     | _ ->
         bail ~message:"expected binding-operator token sequence during Ceibo -> CST lifting" ~syntax_node:node ~context:[
           "expression";
@@ -5166,9 +5181,25 @@ and prefix_expression_from_node = fun node ->
 and sequence_expression_from_node = fun node ->
   match direct_non_trivia_nodes node with
   | first :: rest ->
+      let separator_tokens =
+        direct_non_trivia_tokens node
+        |> List.filter (fun syntax_token ->
+               String.equal (Ceibo.Red.SyntaxToken.text syntax_token) semicolon_text)
+        |> List.map token
+      in
+      let separator_token =
+        match separator_tokens with
+        | separator_token :: _ ->
+            separator_token
+        | [] ->
+            bail ~message:"expected sequence separator during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+              "sequence_expression"
+            ]
+      in
       Some {
         syntax_node = node;
-        separator_token = direct_required_token_with_text ~context:[ "sequence_expression" ] node ";";
+        separator_token;
+        separator_tokens;
         expressions = List.map expression_from_node (first :: rest);
         attributes = []
       }
@@ -5360,27 +5391,28 @@ and function_expression_from_node = fun node -> Some {
   attributes = []
 }
 and let_operator_expression_from_node = fun node ->
-  let operator_pairs = binding_operator_pairs_from_tokens node in
+  let operator_tokens, in_token = binding_operator_tokens_from_node node in
   let lifted_children = direct_non_trivia_nodes node
   |> List.filter (fun child -> not (is_attribute_node child)) in
   match List.rev lifted_children with
   | body_node :: rev_binding_nodes ->
       let binding_nodes = List.rev rev_binding_nodes in
-      let expected_binding_nodes = 2 * List.length operator_pairs in
+      let expected_binding_nodes = 2 * List.length operator_tokens in
       if
-        List.length operator_pairs = 0
+        List.length operator_tokens = 0
         || not (Int.equal (List.length binding_nodes) expected_binding_nodes)
       then
         None
       else
-        let rec lift_bindings = fun acc token_pairs nodes ->
-          match token_pairs, nodes with
+        let rec lift_bindings = fun acc token_triplets nodes ->
+          match token_triplets, nodes with
           | [], [] ->
               List.rev acc
-          | (keyword_token, operator_token) :: rest_pairs, binding_pattern_node :: bound_value_node :: rest_nodes ->
+          | (keyword_token, operator_token, equals_token) :: rest_pairs, binding_pattern_node :: bound_value_node :: rest_nodes ->
               let binding : Cst.binding_operator_binding = {
                 keyword_token = keyword_token;
                 operator_token = operator_token;
+                equals_token = equals_token;
                 binding_pattern = pattern_from_node binding_pattern_node;
                 bound_value = expression_from_node bound_value_node
               } in
@@ -5393,12 +5425,13 @@ and let_operator_expression_from_node = fun node ->
               ]
         in
         (
-          match lift_bindings [] operator_pairs binding_nodes with
+          match lift_bindings [] operator_tokens binding_nodes with
           | binding :: and_bindings ->
               Some {
                 Cst.syntax_node = node;
                 binding;
                 and_bindings;
+                in_token;
                 body = expression_from_node body_node;
                 attributes = []
               }
@@ -5996,26 +6029,14 @@ and class_expression_from_node = fun node ->
   | _ ->
       unsupported_class_expression node
 and let_binding_from_binding_operator_binding = fun
-  ~binding_syntax_node ( { keyword_token = binding_keyword_token; binding_pattern = clause_pattern; bound_value = clause_value; _ } :
+  ~binding_syntax_node ( { keyword_token = binding_keyword_token; equals_token = binding_equals_token; binding_pattern = clause_pattern; bound_value = clause_value; _ } :
         Cst.binding_operator_binding ) ->
   Cst.LetBinding.
     {
       syntax_node = binding_syntax_node;
       keyword_token = binding_keyword_token;
       rec_token = None;
-      equals_token = (
-        match
-          subtree_non_trivia_tokens binding_syntax_node |> List.find_opt
-            (fun syntax_token ->
-              String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "=")
-        with
-        | Some syntax_token ->
-            token syntax_token
-        | None ->
-            bail ~message:"expected binding-operator equals during Ceibo -> CST lifting" ~syntax_node:binding_syntax_node ~context:[
-              "let_operator.binding"
-            ]
-      );
+      equals_token = binding_equals_token;
       attributes = [];
       binding_pattern = clause_pattern;
       binding_name = simple_pattern_name_token (Cst.Pattern.syntax_node clause_pattern);

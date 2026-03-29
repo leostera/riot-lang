@@ -400,6 +400,14 @@
                   "end": 99
                 }
               },
+              "equals_token": {
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "span": {
+                  "start": 102,
+                  "end": 103
+                }
+              },
               "binding_pattern": {
                 "tag": "identifier",
                 "syntax_node": {
@@ -493,6 +501,14 @@
                     "end": 113
                   }
                 },
+                "equals_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "=",
+                  "span": {
+                    "start": 116,
+                    "end": 117
+                  }
+                },
                 "binding_pattern": {
                   "tag": "identifier",
                   "syntax_node": {
@@ -569,6 +585,14 @@
                 }
               }
             ],
+            "in_token": {
+              "kind": "IDENT_EXPR",
+              "text": "in",
+              "span": {
+                "start": 123,
+                "end": 125
+              }
+            },
             "body": {
               "tag": "constructor",
               "syntax_node": {

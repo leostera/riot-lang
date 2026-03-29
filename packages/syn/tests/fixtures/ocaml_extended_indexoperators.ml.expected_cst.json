@@ -1364,6 +1364,16 @@
                 "end": 1084
               }
             },
+            "separator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "span": {
+                  "start": 1083,
+                  "end": 1084
+                }
+              }
+            ],
             "expressions": [
               {
                 "tag": "assign",
@@ -1498,6 +1508,24 @@
                       "end": 1111
                     }
                   },
+                  "separator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ";",
+                      "span": {
+                        "start": 1110,
+                        "end": 1111
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ";",
+                      "span": {
+                        "start": 1143,
+                        "end": 1144
+                      }
+                    }
+                  ],
                   "expressions": [
                     {
                       "tag": "parenthesized",
@@ -3011,6 +3039,24 @@
                     "end": 1771
                   }
                 },
+                "separator_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ";",
+                    "span": {
+                      "start": 1770,
+                      "end": 1771
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ";",
+                    "span": {
+                      "start": 1781,
+                      "end": 1782
+                    }
+                  }
+                ],
                 "expressions": [
                   {
                     "tag": "literal",
@@ -3200,6 +3246,16 @@
                       "end": 1832
                     }
                   },
+                  "separator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ";",
+                      "span": {
+                        "start": 1831,
+                        "end": 1832
+                      }
+                    }
+                  ],
                   "expressions": [
                     {
                       "tag": "apply",

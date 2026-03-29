@@ -544,6 +544,14 @@
                   "end": 129
                 }
               },
+              "equals_token": {
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "span": {
+                  "start": 132,
+                  "end": 133
+                }
+              },
               "binding_pattern": {
                 "tag": "identifier",
                 "syntax_node": {
@@ -620,6 +628,14 @@
               }
             },
             "and_bindings": [],
+            "in_token": {
+              "kind": "IDENT_EXPR",
+              "text": "in",
+              "span": {
+                "start": 139,
+                "end": 141
+              }
+            },
             "body": {
               "tag": "let_operator",
               "syntax_node": {
@@ -644,6 +660,14 @@
                   "span": {
                     "start": 147,
                     "end": 148
+                  }
+                },
+                "equals_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "=",
+                  "span": {
+                    "start": 151,
+                    "end": 152
                   }
                 },
                 "binding_pattern": {
@@ -739,6 +763,14 @@
                       "end": 162
                     }
                   },
+                  "equals_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "=",
+                    "span": {
+                      "start": 165,
+                      "end": 166
+                    }
+                  },
                   "binding_pattern": {
                     "tag": "identifier",
                     "syntax_node": {
@@ -815,6 +847,14 @@
                   }
                 }
               ],
+              "in_token": {
+                "kind": "IDENT_EXPR",
+                "text": "in",
+                "span": {
+                  "start": 172,
+                  "end": 174
+                }
+              },
               "body": {
                 "tag": "let_operator",
                 "syntax_node": {
@@ -839,6 +879,14 @@
                     "span": {
                       "start": 180,
                       "end": 181
+                    }
+                  },
+                  "equals_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "=",
+                    "span": {
+                      "start": 189,
+                      "end": 190
                     }
                   },
                   "binding_pattern": {
@@ -1036,6 +1084,14 @@
                   }
                 },
                 "and_bindings": [],
+                "in_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "in",
+                  "span": {
+                    "start": 206,
+                    "end": 208
+                  }
+                },
                 "body": {
                   "tag": "infix",
                   "syntax_node": {
