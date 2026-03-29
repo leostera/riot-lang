@@ -134,6 +134,10 @@ This file is _yours_. Keep it up to date after every big change.
   - `render_signature_items ?source ~source_node`
   - do not derive nested/top-level source windows from `ctx.source` + `source_node` spans just to support fallback formatting
 
+- [ ] Shrink `packages/krasny/src/source.ml` to the minimal structural-support surface
+  - delete helpers that are dead after the source-preserving fallback removal, such as `split_trailing_comment_block`, `source_of_pattern`, `fresh_match_parameter_name`, `contains_comment_like_text`, and their private helper chain if they are no longer referenced
+  - keep `Source` focused on the remaining supported structural utilities, not as a grab-bag for historical source-replay helpers
+
 - [ ] Remove public/docs-level assumptions that unsupported shapes are preserved from source
   - `packages/krasny/src/Krasny.mli`
   - `packages/krasny/src/format_core.ml`
@@ -161,6 +165,7 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit phrase-separator / top-level phrase-boundary modeling
   - explicit value-declaration printable name modeling
   - explicit structured attribute/extension payload rendering surface instead of replaying `payload_syntax_node` / `item_syntax_nodes`
+  - explicit structured structure/signature payload and module-body views where the public CST still exposes only raw `item_syntax_nodes`
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
   - explicit ambiguity-sensitive type-declaration shape markers
   - explicit poly-variant inherit path rendering data if needed
