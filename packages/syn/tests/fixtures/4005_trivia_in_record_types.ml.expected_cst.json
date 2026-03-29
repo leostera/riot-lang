@@ -292,7 +292,29 @@
                   },
                   "arguments": []
                 },
-                "is_mutable": false
+                "is_mutable": false,
+                "trailing_trivia": [
+                  {
+                    "tag": "comment",
+                    "value": {
+                      "syntax_node": {
+                        "kind": "COMMENT",
+                        "span": {
+                          "start": 195,
+                          "end": 217
+                        }
+                      },
+                      "comment_token": {
+                        "kind": "COMMENT",
+                        "text": "(* The y coordinate *)",
+                        "span": {
+                          "start": 195,
+                          "end": 217
+                        }
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "syntax_node": {
@@ -450,7 +472,29 @@
                   },
                   "arguments": []
                 },
-                "is_mutable": false
+                "is_mutable": false,
+                "trailing_trivia": [
+                  {
+                    "tag": "comment",
+                    "value": {
+                      "syntax_node": {
+                        "kind": "COMMENT",
+                        "span": {
+                          "start": 313,
+                          "end": 328
+                        }
+                      },
+                      "comment_token": {
+                        "kind": "COMMENT",
+                        "text": "(* semicolon *)",
+                        "span": {
+                          "start": 313,
+                          "end": 328
+                        }
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "syntax_node": {

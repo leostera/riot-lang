@@ -5757,7 +5757,6 @@ and render_structure_entry
 
 and render_signature_entry
     ?(render_owned_trivia = false)
-    ?(include_trailing_comment = false)
     ~source ~source_offset ~span ~trailing_suffix ~is_last_item item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
   let should_preserve_verbatim =
@@ -5802,17 +5801,6 @@ and render_signature_entry
             base_doc
       else
         base_doc
-    in
-    let base_doc =
-      match include_trailing_comment with
-      | true -> (
-          match trailing_comment_suffix_doc (Syn.Cst.SignatureItem.syntax_node item) with
-          | Some suffix ->
-              Doc.concat [ base_doc; suffix ]
-          | None ->
-              base_doc)
-      | false ->
-          base_doc
     in
     match trailing_suffix with
     | None ->
@@ -6218,9 +6206,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
   in
   let source_length = String.length source in
   let source_end = source_offset + source_length in
-  let uses_source_file_item_stream =
-    Syn.Ceibo.Red.SyntaxNode.kind source_node = Syn.SyntaxKind.SOURCE_FILE
-  in
+  let uses_source_file_item_stream = true in
   let parse_between pending ~start ~end_ =
     parse_trivia_between_offsets source ~start:(start - source_offset)
       ~end_:(end_ - source_offset) pending
@@ -6456,29 +6442,7 @@ and render_structure_items ?source ~source_node items =
   render_structure_top_level_items ~source ~source_offset ~source_node ~items
 
 and render_signature_top_level_items
-    ~source ~source_offset ~source_node ~include_last_trailing_comment ~items =
-  let flush_pending pending acc =
-    match render_pending_trivia pending with
-    | None ->
-        acc
-    | Some pending_doc ->
-        let is_section_block = pending_has_only_section_docstrings pending in
-        (pending_doc, false, not is_section_block, false, false, false, false) :: acc
-  in
-  let append_leading_doc = fun existing doc ->
-    match existing with
-    | None ->
-        Some doc
-    | Some existing ->
-        Some (Doc.concat [ existing; Doc.line; doc ])
-  in
-  let apply_leading_doc = fun leading_doc (doc, a, b, c, d, e, f) ->
-    match leading_doc with
-    | None ->
-        (doc, a, b, c, d, e, f)
-    | Some leading_doc ->
-        (doc_with_leading_trivia (Some leading_doc) doc, a, b, c, d, e, f)
-  in
+    ~source ~source_offset ~source_node ~items =
   let rec join_entries = function
     | [] ->
         Doc.empty
@@ -6530,15 +6494,6 @@ and render_signature_top_level_items
     else
       Int.compare left_span.end_ right_span.end_
   in
-  let source_length = String.length source in
-  let source_end = source_offset + source_length in
-  let uses_source_file_item_stream =
-    Syn.Ceibo.Red.SyntaxNode.kind source_node = Syn.SyntaxKind.SOURCE_FILE
-  in
-  let parse_between pending ~start ~end_ =
-    parse_trivia_between_offsets source ~start:(start - source_offset)
-      ~end_:(end_ - source_offset) pending
-  in
   let items =
     items
     |> List.map (fun item -> (item, signature_item_span item))
@@ -6556,83 +6511,21 @@ and render_signature_top_level_items
            else
              compare_signature_items_by_span left right)
   in
-  let rec loop pending leading_doc acc items cursor =
+  let rec loop acc items =
     yield ();
     match items with
     | [] ->
-        let pending =
-          if uses_source_file_item_stream then
-            pending
-          else
-            parse_between pending ~start:cursor ~end_:source_end
-        in
-        let acc = flush_pending pending acc in
-        let acc =
-          match leading_doc with
-          | None ->
-              acc
-          | Some doc ->
-              (doc, false, false, false, false, false, false) :: acc
-        in
         join_entries (List.rev acc)
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
-        let pending =
-          if uses_source_file_item_stream then
-            pending
-          else
-            parse_between pending ~start:cursor ~end_:base_span.start
+        let entry =
+          render_signature_entry
+            ~render_owned_trivia:true
+            ~source ~source_offset ~span:base_span ~trailing_suffix:None
+            ~is_last_item:(rest = []) item
         in
-        let is_attachable_docstring =
-          (not uses_source_file_item_stream)
-          && match item with
-          | Syn.Cst.SignatureItem.Docstring docstring ->
-              not (Syn.Cst.Docstring.is_section docstring)
-              && pending_has_only_breaks pending
-          | _ ->
-              false
-        in
-        let acc = acc in
-        if is_attachable_docstring then
-          let leading_doc =
-            match item, rest with
-            | Syn.Cst.SignatureItem.Docstring docstring, (next_item, _) :: _
-              when signature_item_accepts_trailing_docstring next_item ->
-                append_leading_doc leading_doc
-                  (doc_of_token (Syn.Cst.Docstring.token docstring))
-            | _ ->
-                leading_doc
-          in
-          let acc =
-            match item, rest with
-            | Syn.Cst.SignatureItem.Docstring _, (next_item, _) :: _
-              when signature_item_accepts_trailing_docstring next_item ->
-                acc
-            | _ ->
-                let acc = flush_pending pending acc in
-                let entry =
-                  render_signature_entry
-                    ~render_owned_trivia:uses_source_file_item_stream
-                    ~include_trailing_comment:(include_last_trailing_comment && rest = [])
-                    ~source ~source_offset ~span:base_span ~trailing_suffix:None
-                    ~is_last_item:(rest = []) item
-                in
-                apply_leading_doc leading_doc entry :: acc
-          in
-          loop [] leading_doc acc rest base_span.end_
-        else
-          let acc = flush_pending pending acc in
-          let entry =
-            render_signature_entry
-              ~render_owned_trivia:uses_source_file_item_stream
-              ~include_trailing_comment:(include_last_trailing_comment && rest = [])
-              ~source ~source_offset ~span:base_span ~trailing_suffix:None
-              ~is_last_item:(rest = []) item
-          in
-          let entry = apply_leading_doc leading_doc entry in
-          loop [] None (entry :: acc) rest base_span.end_
+        loop (entry :: acc) rest
   in
-  let source_node_span = Syn.Ceibo.Red.SyntaxNode.span source_node in
-  loop [] None [] items source_node_span.start
+  loop [] items
 
 and render_signature_items ?source ~source_node items =
   let source_opt = source in
@@ -6654,12 +6547,7 @@ and render_signature_items ?source ~source_node items =
     | None ->
         (Syn.Ceibo.Red.SyntaxNode.span source_node).start
   in
-  let include_last_trailing_comment =
-    not
-      (Syn.Ceibo.Red.SyntaxNode.kind source_node = Syn.SyntaxKind.SOURCE_FILE)
-  in
-  render_signature_top_level_items ~source ~source_offset ~source_node
-    ~include_last_trailing_comment ~items
+  render_signature_top_level_items ~source ~source_offset ~source_node ~items
   in
   { render_structure_items; render_signature_items }
 

@@ -223,7 +223,29 @@
                     "end": 160
                   }
                 },
-                "payload_type": null
+                "payload_type": null,
+                "trailing_trivia": [
+                  {
+                    "tag": "comment",
+                    "value": {
+                      "syntax_node": {
+                        "kind": "COMMENT",
+                        "span": {
+                          "start": 163,
+                          "end": 174
+                        }
+                      },
+                      "comment_token": {
+                        "kind": "COMMENT",
+                        "text": "(* first *)",
+                        "span": {
+                          "start": 163,
+                          "end": 174
+                        }
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "syntax_node": {
@@ -241,7 +263,29 @@
                     "end": 180
                   }
                 },
-                "payload_type": null
+                "payload_type": null,
+                "trailing_trivia": [
+                  {
+                    "tag": "comment",
+                    "value": {
+                      "syntax_node": {
+                        "kind": "COMMENT",
+                        "span": {
+                          "start": 183,
+                          "end": 195
+                        }
+                      },
+                      "comment_token": {
+                        "kind": "COMMENT",
+                        "text": "(* second *)",
+                        "span": {
+                          "start": 183,
+                          "end": 195
+                        }
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "syntax_node": {
@@ -259,31 +303,33 @@
                     "end": 201
                   }
                 },
-                "payload_type": null
+                "payload_type": null,
+                "trailing_trivia": [
+                  {
+                    "tag": "comment",
+                    "value": {
+                      "syntax_node": {
+                        "kind": "COMMENT",
+                        "span": {
+                          "start": 202,
+                          "end": 213
+                        }
+                      },
+                      "comment_token": {
+                        "kind": "COMMENT",
+                        "text": "(* third *)",
+                        "span": {
+                          "start": 202,
+                          "end": 213
+                        }
+                      }
+                    }
+                  }
+                ]
               }
             ]
           },
           "is_destructive_substitution": false
-        }
-      },
-      {
-        "tag": "comment",
-        "item": {
-          "syntax_node": {
-            "kind": "COMMENT",
-            "span": {
-              "start": 202,
-              "end": 213
-            }
-          },
-          "comment_token": {
-            "kind": "COMMENT",
-            "text": "(* third *)",
-            "span": {
-              "start": 202,
-              "end": 213
-            }
-          }
         }
       },
       {

@@ -1917,6 +1917,11 @@ let tests =
                     Syn.Cst.SignatureItem.Docstring docstring ]) ->
                 Test.assert_equal ~expected:"x"
                   ~actual:(Syn.Cst.Token.text decl.name_token);
+                Test.assert_equal ~expected:true
+                  ~actual:
+                    (Syn.Cst.ValueDeclaration.owned_trivia decl
+                     |> Syn.Cst.OwnedTrivia.trailing
+                     |> List.is_empty);
                 Test.assert_equal ~expected:"(** keep me *)"
                   ~actual:(Syn.Cst.Docstring.text docstring);
                 Ok ()
@@ -4281,7 +4286,7 @@ let tests =
                 Error "expected interface open target to remain a module path")
         | _ ->
             Error "expected first item to be an interface open statement");
-    Test.case "cst preserves standalone top-level docstrings after open statements"
+    Test.case "cst attaches top-level docstrings after open statements to the next value"
       (fun () ->
         let result =
           parse_mli
@@ -4298,14 +4303,15 @@ let tests =
         in
         match signature_items cst with
         | Syn.Cst.SignatureItem.OpenStatement _
-          :: Syn.Cst.SignatureItem.Docstring docstring
-          :: Syn.Cst.SignatureItem.ValueDeclaration _ :: _ ->
-            Test.assert_equal ~expected:"(** Module overview. *)"
-              ~actual:(Syn.Cst.Docstring.text docstring);
+          :: Syn.Cst.SignatureItem.ValueDeclaration decl :: _ ->
+            Test.assert_equal ~expected:[ "(** Module overview. *)" ]
+              ~actual:
+                (Syn.Cst.ValueDeclaration.owned_trivia decl
+                 |> Syn.Cst.OwnedTrivia.leading
+                 |> List.map Syn.Cst.Trivia.text);
             Ok ()
         | _ ->
-            Error
-              "expected open statement, standalone docstring, and value declaration");
+            Error "expected open statement and value declaration with leading doc");
     Test.case "cst preserves standalone implementation docstrings after open statements"
       (fun () ->
         let result =
@@ -4458,7 +4464,7 @@ let tests =
             Ok ()
         | _ ->
             Error "expected single module type declaration item");
-    Test.case "cst normalizes trailing value declaration docstrings onto the declaration"
+    Test.case "cst keeps terminal trailing value declaration docstrings standalone"
       (fun () ->
         let result =
           parse_mli
@@ -4471,21 +4477,19 @@ let tests =
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
         match signature_items cst with
-        | [ Syn.Cst.SignatureItem.ValueDeclaration decl ] ->
+        | [ Syn.Cst.SignatureItem.ValueDeclaration decl;
+            Syn.Cst.SignatureItem.Docstring docstring ] ->
             let owned = Syn.Cst.ValueDeclaration.owned_trivia decl in
             let leading = Syn.Cst.OwnedTrivia.leading owned in
             let trailing = Syn.Cst.OwnedTrivia.trailing owned in
-            Test.assert_equal ~expected:1 ~actual:(List.length leading);
-            Test.assert_equal ~expected:0 ~actual:(List.length trailing);
-            (match leading with
-            | [ Syn.Cst.Trivia.Docstring docstring ] ->
-                Test.assert_equal ~expected:"(** Create a new builder *)"
-                  ~actual:(Syn.Cst.Docstring.text docstring);
-                Ok ()
-            | _ ->
-                Error "expected value declaration leading docstring")
+            Test.assert_equal ~expected:true ~actual:(List.is_empty leading);
+            Test.assert_equal ~expected:true ~actual:(List.is_empty trailing);
+            Test.assert_equal ~expected:"(** Create a new builder *)"
+              ~actual:(Syn.Cst.Docstring.text docstring);
+            Ok ()
         | _ ->
-            Error "expected single value declaration item");
+            Error
+              "expected value declaration followed by standalone terminal docstring");
     Test.case
       "cst keeps trailing alias docstrings with the next type declaration"
       (fun () ->

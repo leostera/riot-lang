@@ -1,0 +1,4 @@
+module Green : sig
+  val x : int
+  (** keep me *)
+end

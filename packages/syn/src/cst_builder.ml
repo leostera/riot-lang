@@ -245,6 +245,14 @@ let leading_trivia_tokens_for_item = fun ~tokens syntax_node ->
   | [] ->
       []
 
+let leading_trivia_syntax_tokens_for_item = fun syntax_node ->
+  match Ceibo.Red.SyntaxNode.tokens syntax_node with
+  | first_token :: _ ->
+      Ceibo.Red.SyntaxToken.leading_trivia first_token
+      |> List.map syntax_token_from_trivia
+  | [] ->
+      []
+
 let eof_leading_trivia_tokens = fun tokens ->
   match List.rev tokens with
   | eof :: _ when eof.Token.kind = Token.EOF ->
@@ -1520,8 +1528,20 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
                   ops.item_of_type_declaration normalized_decl
                   :: normalize_ordered_items_owned_trivia ~source ops
                        tail
-              | None ->
-                  item :: normalize_ordered_items_owned_trivia ~source ops rest
+              | None -> (
+                  match ops.value_declaration_of_item next_item with
+                  | Some decl ->
+                      let decl =
+                        ops.normalize_value_declaration decl
+                        |> fun decl ->
+                        ops.append_value_declaration_leading_trivia decl
+                          attached_docstrings
+                      in
+                      ops.item_of_value_declaration decl
+                      :: normalize_ordered_items_owned_trivia ~source ops tail
+                  | None ->
+                      item :: normalize_ordered_items_owned_trivia ~source ops rest
+                )
             )
           | [] ->
               item :: normalize_ordered_items_owned_trivia ~source ops rest
@@ -1550,11 +1570,7 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
               match ops.value_declaration_of_item item with
               | Some decl ->
                   let decl = ops.normalize_value_declaration decl in
-                  let attached_docstrings, rest =
-                    take_adjacent_item_docstrings ~docstring_of_item:ops.docstring_of_item rest
-                  in
-                  ops.item_of_value_declaration
-                    (ops.append_value_declaration_leading_trivia decl attached_docstrings)
+                  ops.item_of_value_declaration decl
                   :: normalize_ordered_items_owned_trivia ~source ops rest
               | None ->
                   item :: normalize_ordered_items_owned_trivia ~source ops rest
@@ -7470,39 +7486,77 @@ let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docst
 let build_items_from_payload_nodes =
   fun ~comment_item_of_comment ~docstring_item_of_docstring ~syntax_node_of_item
     ~owned_trivia_spans_of_item payload_nodes items_from_node ->
-  let terminal_standalone_trivia_items_from_payload_node = fun payload_node items ->
-    let owned_trivia_spans = items |> List.concat_map owned_trivia_spans_of_item in
-    let after_offset =
-      match items with
-      | item :: rest ->
-          List.fold_left
-            (fun max_end item ->
-              Int.max max_end
-                (span_of_syntax_node_nontrivia_bounds (syntax_node_of_item item)).end_)
-            (span_of_syntax_node_nontrivia_bounds (syntax_node_of_item item)).end_
-            rest
-      | [] -> (
-          match direct_non_trivia_tokens payload_node with
-          | token :: _ ->
-              (Ceibo.Red.SyntaxToken.span token).end_
-          | [] ->
-              (Ceibo.Red.SyntaxNode.span payload_node).start
-        )
-    in
-    standalone_trivia_items_from_node ~comment_item_of_comment
-      ~docstring_item_of_docstring ~after_offset
-      ~excluded_spans:owned_trivia_spans payload_node
+  let next_index =
+    let cell = Cell.create 0 in
+    fun () ->
+      let index = Cell.get cell in
+      Cell.set cell (index + 1);
+      index
   in
-  payload_nodes
-  |> List.concat_map (fun payload_node ->
-         let items =
-           Ceibo.Red.SyntaxNode.children_list payload_node
-           |> List.concat_map
-                (source_file_items_from_child ~comment_item_of_comment
-                   ~docstring_item_of_docstring ~owned_trivia_spans_of_item
-                   items_from_node)
-         in
-         items @ terminal_standalone_trivia_items_from_payload_node payload_node items)
+  let item_entries =
+    payload_nodes
+    |> List.concat_map (fun payload_node ->
+           Ceibo.Red.SyntaxNode.direct_nodes payload_node
+           |> List.filter (fun node ->
+                  not (is_trivia (Ceibo.Red.SyntaxNode.kind node)))
+           |> List.concat_map (fun node ->
+                  items_from_node node
+                  |> List.map (fun item ->
+                         let span =
+                           span_of_syntax_node_nontrivia_bounds (syntax_node_of_item item)
+                         in
+                         (next_index (), span, item))))
+  in
+  let owned_trivia_spans =
+    item_entries
+    |> List.concat_map (fun (_, _, item) -> owned_trivia_spans_of_item item)
+  in
+  let trivia_entries =
+    let terminal_tokens =
+      payload_nodes
+      |> List.concat_map (fun payload_node ->
+             match List.rev (direct_non_trivia_tokens payload_node) with
+             | closing_token :: _ ->
+                 Ceibo.Red.SyntaxToken.leading_trivia closing_token
+                 |> List.map syntax_token_from_trivia
+             | [] ->
+                 [])
+    in
+    ((item_entries
+      |> List.concat_map (fun (_, _, item) ->
+             leading_trivia_syntax_tokens_for_item (syntax_node_of_item item)))
+     @ terminal_tokens)
+    |> List.filter (fun syntax_token ->
+           let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
+           not
+             (List.exists
+                (fun owned_span -> span_contains owned_span token_span)
+                owned_trivia_spans))
+    |> List.filter_map (fun syntax_token ->
+           standalone_trivia_item_from_token ~comment_item_of_comment
+             ~docstring_item_of_docstring syntax_token
+           |> Option.map (fun item ->
+                  let syntax_node = syntax_node_of_item item in
+                  (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item)))
+  in
+  List.sort
+    (fun
+      (left_index, (left_span : Ceibo.Span.t), _)
+      (right_index, (right_span : Ceibo.Span.t), _) ->
+      let order =
+        if not (Int.equal left_span.start right_span.start) then
+          Int.compare left_span.start right_span.start
+        else if not (Int.equal left_span.end_ right_span.end_) then
+          Int.compare left_span.end_ right_span.end_
+        else
+          0
+      in
+      if Int.equal order 0 then
+        Int.compare left_index right_index
+      else
+        order)
+    (item_entries @ trivia_entries)
+  |> List.map (fun (_, _, item) -> item)
 
 let rec validate_pattern = fun ~context ->
   function
