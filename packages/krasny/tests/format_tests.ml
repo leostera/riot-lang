@@ -277,6 +277,30 @@ let bind =
         Test.assert_equal ~expected ~actual:actual_compact;
         Test.assert_equal ~expected ~actual:actual_spaced;
         Ok ());
+    Test.case "format if conditions from infix structure, not token scans"
+      (fun () ->
+        let source =
+          {|let decide =
+  if a&&b
+     || c
+  then hit else miss
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"if conditions should format from infix expression structure"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let decide =
+  if a && b || c then
+    hit
+  else
+    miss
+|}
+          ~actual;
+        Ok ());
     Test.case "format keeps simple applies inline even when identifiers contain keywords"
       (fun () ->
         let source = "let handler = use function_handler\n" in

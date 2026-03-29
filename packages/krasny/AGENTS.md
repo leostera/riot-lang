@@ -37,6 +37,7 @@
 31. Render sequence-expression trivia from `Syn.Cst.sequence_expression.separator_tokens` plus the following expression's leading trivia; do not recover semicolon-boundary comments/docstrings by reparsing the source gap.
 32. Render binding-operator clause and body trivia from `Syn.Cst.binding_operator_binding.equals_token` and `Syn.Cst.let_operator_expression.in_token`; do not reconstruct `let*` / `and*` / `let+` trivia from raw spans once `syn` exposes the tokens explicitly.
 33. Singleton list-pattern spacing is explicit formatter policy, not source preservation. Do not sniff original `"[ value ]"` spacing from raw node text to decide pattern edge spaces.
+34. Render `if` conditions through ordinary expression lowering. Do not scan token text for `&&` / `||` or token-leading comment trivia to decide boolean-condition layout.
 
 ## Validate
 

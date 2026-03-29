@@ -2039,42 +2039,6 @@ let rec expression_is_boolean_infix =
   | _ ->
       false
 
-let rec find_boolean_infix_expression =
-  function
-  | Syn.Cst.Expression.Infix ({ operator_token; _ } as infix) ->
-      let operator = token_text operator_token in
-      if operator = "&&" || operator = "||" then
-        Some infix
-      else
-        None
-  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
-      find_boolean_infix_expression inner
-  | Syn.Cst.Expression.Prefix { operand; _ } ->
-      find_boolean_infix_expression operand
-  | Syn.Cst.Expression.Apply { callee; argument; _ } -> (
-      match argument with
-      | Syn.Cst.Positional value -> (
-          match find_boolean_infix_expression value with
-          | Some infix ->
-              Some infix
-          | None ->
-              find_boolean_infix_expression callee
-        )
-      | Syn.Cst.Labeled { value = Some value; _ }
-      | Syn.Cst.Optional { value = Some value; _ } -> (
-          match find_boolean_infix_expression value with
-          | Some infix ->
-              Some infix
-          | None ->
-              find_boolean_infix_expression callee
-        )
-      | Syn.Cst.Labeled { value = None; _ }
-      | Syn.Cst.Optional { value = None; _ } ->
-          find_boolean_infix_expression callee
-    )
-  | _ ->
-      None
-
 let rec expression_is_function_like =
   function
   | Syn.Cst.Expression.Function _ ->
@@ -3243,64 +3207,7 @@ and render_block_expression = function
 and render_if_expression_block
     ({ keyword_token; then_token; else_token; condition; then_branch; else_branch; _ } :
       Syn.Cst.if_expression) =
-  let render_condition_with_boolean_breaks condition =
-    let syntax_node = Syn.Cst.Expression.syntax_node condition in
-    let tokens = Syn.Ceibo.Red.SyntaxNode.tokens syntax_node in
-    let has_boolean_operator =
-      List.exists
-        (fun token ->
-          let text = Syn.Ceibo.Red.SyntaxToken.text token in
-          text = "&&" || text = "||")
-        tokens
-    in
-    let has_comment_like =
-      List.exists
-        (fun token ->
-          Syn.Ceibo.Red.SyntaxToken.leading_trivia token
-          |> List.exists (fun trivia ->
-                 match Syn.Ceibo.Red.SyntaxTrivia.kind trivia with
-                 | Syn.SyntaxKind.COMMENT
-                 | Syn.SyntaxKind.DOCSTRING ->
-                     true
-                 | _ ->
-                     false))
-        tokens
-    in
-    if (not has_boolean_operator) || has_comment_like then
-      render_expression condition
-    else
-      let rec loop acc = function
-        | [] ->
-            List.rev acc
-        | token :: rest ->
-            let text = Syn.Ceibo.Red.SyntaxToken.text token in
-            if text = "&&" || text = "||" then
-              loop
-                (Doc.space :: Doc.text text :: Doc.break () :: acc)
-                rest
-            else
-              let has_leading_layout =
-                Syn.Ceibo.Red.SyntaxToken.leading_trivia token
-                |> List.is_empty
-                |> not
-              in
-              let acc =
-                if has_leading_layout then
-                  Doc.text text :: Doc.space :: acc
-                else
-                  Doc.text text :: acc
-              in
-              loop acc rest
-      in
-      match tokens with
-      | [] ->
-          render_expression condition
-      | first :: rest ->
-          Doc.concat (loop [ Doc.text (Syn.Ceibo.Red.SyntaxToken.text first) ] rest)
-  in
-  let condition_doc =
-    render_condition_with_boolean_breaks condition
-  in
+  let condition_doc = render_expression condition in
   let then_doc =
     if branch_prefers_multiline_layout then_branch then
       render_block_expression then_branch
