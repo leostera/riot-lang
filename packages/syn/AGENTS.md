@@ -38,6 +38,7 @@
 32. Keep doc kind explicit on `Cst.Docstring`: section-vs-ordinary classification should be computed once during CST lift and then reused by ordered-item ownership and nested-body normalization, instead of being rediscovered from raw docstring text in normal paths.
 33. Keep nested `sig ... end` and `struct ... end` helper item streams terminal-trivia-complete: standalone comments/docstrings that live on the closing token's `leading_trivia` must surface as final nested items, not be left for downstream source-gap recovery.
 34. Keep nested `sig ... end` and `struct ... end` helper item streams built from token order, not child-gap archaeology: surface standalone comments/docstrings from each nested item's first-token `leading_trivia` plus the closing token's `leading_trivia`, then let the ordered-item pass normalize ownership exactly like the top level.
+35. Keep grouped `type ... and ...` member-leading trivia sourced from the separator token stream during normalization: later members must inherit the `and` token's `leading_trivia` after raw-node owned-trivia recomputation, not via early lift-time patches that get overwritten.
 
 ## Validate
 

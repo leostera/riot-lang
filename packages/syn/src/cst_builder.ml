@@ -1193,6 +1193,20 @@ let normalize_type_declaration_sequence = fun ~source ~has_next_sibling ?(initia
 
 let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_leading = []) decl ->
   let group_syntax_node = Cst.TypeDeclaration.syntax_node decl in
+  let and_member_leading_trivia =
+    match Ceibo.Red.SyntaxNode.kind group_syntax_node with
+    | Syntax_kind.TYPE_MUTUAL_DECL ->
+        direct_non_trivia_tokens group_syntax_node
+        |> List.filter
+             (fun syntax_token ->
+               String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "and")
+        |> List.map
+             (fun syntax_token ->
+               Ceibo.Red.SyntaxToken.leading_trivia syntax_token
+               |> List.filter_map trivia_from_syntax_trivia)
+    | _ ->
+        []
+  in
   let member_syntax_nodes =
     match Ceibo.Red.SyntaxNode.kind group_syntax_node with
     | Syntax_kind.TYPE_MUTUAL_DECL ->
@@ -1227,6 +1241,22 @@ let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_l
   let normalized_decls, bubbled_to_next =
     normalize_type_declaration_sequence ~source ~has_next_sibling
       ~initial_leading member_decls
+  in
+  let normalized_decls =
+    match normalized_decls with
+    | first :: rest ->
+        let rest =
+          rest
+          |> List.mapi (fun index decl ->
+                 match List.nth_opt and_member_leading_trivia index with
+                 | Some leading_trivia when not (List.is_empty leading_trivia) ->
+                     append_type_declaration_leading_trivia decl leading_trivia
+                 | _ ->
+                     decl)
+        in
+        first :: rest
+    | [] ->
+        []
   in
   match normalized_decls with
   | [] ->

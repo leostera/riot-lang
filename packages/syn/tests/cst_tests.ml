@@ -719,6 +719,64 @@ let tests =
                 Error "expected grouped node/element declarations")
         | _ ->
             Error "expected grouped type declaration, heading, and trailing type");
+    Test.case
+      "cst grouped type declarations keep docstrings on trailing and-members at eof"
+      (fun () ->
+        let result =
+          parse_mli
+            "type a = unit\n\
+             (** doc for b *)\n\
+             and b = unit\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.TypeDeclaration decl ] -> (
+            match Syn.Cst.TypeDeclaration.and_declarations decl with
+            | [ b_decl ] ->
+                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia b_decl) with
+                | [ Syn.Cst.Trivia.Docstring doc ] ->
+                    Test.assert_equal ~expected:"(** doc for b *)"
+                      ~actual:(Syn.Cst.Docstring.text doc);
+                    Ok ()
+                | _ ->
+                    Error "expected trailing and-member docstring on b")
+            | _ ->
+                Error "expected grouped type declaration with trailing and-member")
+        | _ ->
+            Error "expected a single grouped type declaration item");
+    Test.case
+      "cst grouped type declarations keep comments on trailing and-members at eof"
+      (fun () ->
+        let result =
+          parse_mli
+            "type a = unit\n\
+             (* comment for b *)\n\
+             and b = unit\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.TypeDeclaration decl ] -> (
+            match Syn.Cst.TypeDeclaration.and_declarations decl with
+            | [ b_decl ] ->
+                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia b_decl) with
+                | [ Syn.Cst.Trivia.Comment comment ] ->
+                    Test.assert_equal ~expected:"(* comment for b *)"
+                      ~actual:(Syn.Cst.Comment.text comment);
+                    Ok ()
+                | _ ->
+                    Error "expected trailing and-member comment on b")
+            | _ ->
+                Error "expected grouped type declaration with trailing and-member")
+        | _ ->
+            Error "expected a single grouped type declaration item");
     Test.case "cst type declarations expose direct type parameters" (fun () ->
         let result =
           parse_ml "type ('a, 'error) resultish = int\n"
