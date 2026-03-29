@@ -351,6 +351,9 @@ Implemented slice:
 - `PackageCoordinatorCacheShortCircuit.tla` covers the package-level cache
   short-circuit path between coordinator cache hits and export rematerialization
   from the store.
+- `PackageCoordinatorPendingFailurePropagation.tla` covers the wakeup path for
+  packages parked in `pending_planning` when dependency results become
+  available.
 
 Still open:
 - lazy planning and activation order for dependency-satisfied packages
@@ -365,6 +368,9 @@ Current bug found:
   when not all exports were rematerialized. The coordinator treats
   `materialize_package_exports` as successful even when the store silently skips
   missing export sources.
+- Pending package failure propagation can leave the returned `package_graph`
+  stale. A package can be resolved to a failed result and removed from
+  `pending_planning` while its graph node still says `Unplanned`.
 
 ### 9. `ArtifactStore`
 

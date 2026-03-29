@@ -361,6 +361,41 @@ Deferred follow-up:
 - write an OCaml regression test only after we finish the broader bug-inventory
   pass
 
+### 11. Pending Package Failure Propagation Must Update The Package Graph
+
+Status: `spec-failing`
+
+Spec slice:
+- `PackageCoordinatorPendingFailurePropagation.tla`
+- `PackageCoordinatorPendingFailurePropagationBug.cfg`
+
+Property:
+- Once a pending package is resolved to a failed result because one of its
+  dependencies failed, the returned `package_graph` must no longer report that
+  package as `Unplanned`.
+
+Why it looks buggy:
+- `try_plan_pending_packages` revisits packages parked in `pending_planning`
+- in the `deps_failed` branch it inserts a failed `package_results` entry and
+  removes the package from `pending_planning`
+- but it does not update the corresponding `package_graph` node
+- the result table and returned graph can therefore disagree about the same
+  package's state
+
+Primary source area:
+- `packages/tusk-executor/src/coordinator.ml`
+- `packages/tusk-planner/src/package_graph.ml`
+
+Counterexample shape:
+- `Dep` is already failed
+- pending package `Pkg` is revisited and resolved to a failed result
+- `Pkg` leaves `pending_planning`
+- `package_graph_state["Pkg"]` still says `unplanned`
+
+Deferred follow-up:
+- write an OCaml regression test only after we finish the broader bug-inventory
+  pass
+
 ## Next Candidates To Model
 
 These are not yet bug entries. They are the next properties most likely to

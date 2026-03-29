@@ -88,6 +88,13 @@ bugs.
   fully rematerializable package-cache-hit path.
 - `PackageCoordinatorCacheShortCircuitBug.cfg`: a failing config showing that a
   package can be marked cached even when one export never rematerializes.
+- `PackageCoordinatorPendingFailurePropagation.tla`: a PlusCal slice of the
+  pending-package wakeup path when dependency results become available.
+- `PackageCoordinatorPendingFailurePropagation.cfg`: a passing smoke config for
+  successful pending-package wakeup.
+- `PackageCoordinatorPendingFailurePropagationBug.cfg`: a failing config
+  showing that pending-package dependency failure can leave the package graph
+  stale.
 - `BugInventory.md`: the running list of bug-shaped properties found by the
   extracted specs. This is the place to accumulate likely bugs before we add
   OCaml regression tests.
@@ -304,6 +311,22 @@ The bug config checks the stronger package-cache law directly. Under the
 current extracted semantics, `lib.cmxa` rematerializes, `lib.cmxs` does not,
 and the coordinator still reports the package as cached.
 
+## What `PackageCoordinatorPendingFailurePropagation.tla` Extracts
+
+This slice stays in `packages/tusk-executor/src/coordinator.ml`, but narrows to
+the `pending_planning` wakeup path:
+
+- a package is parked in `pending_planning`
+- one dependency result becomes available
+- the coordinator revisits the package
+- success removes it from pending and advances the graph
+- dependency failure removes it from pending and inserts a failed result
+
+The bug config checks the stronger convergence law directly. Under the current
+extracted semantics, a package can leave `pending_planning` with a failed
+result while the returned `package_graph` still reports that package as
+`unplanned`.
+
 ## How To Work On The Spec
 
 `ActionCache.tla` is written primarily in PlusCal. Treat the PlusCal algorithm
@@ -423,6 +446,15 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/PackageCoordinatorCacheShortCircuit.cfg
 ```
 
+And for the pending-package failure-propagation slice:
+
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/PackageCoordinatorPendingFailurePropagation.tla \
+  -config specs/tusk/PackageCoordinatorPendingFailurePropagation.cfg
+```
+
 The bug config is expected to fail under the current implementation-shaped
 semantics:
 
@@ -503,6 +535,13 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/PackageCoordinatorCacheShortCircuitBug.cfg
 ```
 
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/PackageCoordinatorPendingFailurePropagation.tla \
+  -config specs/tusk/PackageCoordinatorPendingFailurePropagationBug.cfg
+```
+
 ## Current Findings
 
 `ActionCacheCommandOrderBug.cfg` is designed to expose one concrete design bug:
@@ -566,6 +605,11 @@ package coordinator can report a package cache hit even when export
 rematerialization leaves the target directory incomplete. This is a real
 coordinator/store interaction bug, not just a local serializer mismatch.
 
+`PackageCoordinatorPendingFailurePropagationBug.cfg` exposes an eleventh design
+bug: pending-package failure propagation can leave the returned package graph
+stale. The result table says the package failed, but the graph still says it is
+`unplanned`.
+
 ## Validation Notes
 
 These configs are safety-only and intentionally tiny.
@@ -624,3 +668,8 @@ These configs are safety-only and intentionally tiny.
 - `PackageCoordinatorCacheShortCircuitBug.cfg` currently fails with a
   counterexample where the package is `cached` with only `{"lib.cmxa"}`
   materialized.
+- `PackageCoordinatorPendingFailurePropagation.cfg` currently completes with 3
+  distinct states and no errors.
+- `PackageCoordinatorPendingFailurePropagationBug.cfg` currently fails with a
+  counterexample where `Pkg` leaves `pending_planning` with a failed result but
+  its graph node remains `unplanned`.
