@@ -191,6 +191,40 @@ let nested = fun flag other ->
 |}
           ~actual;
         Ok ());
+    Test.case "format renders sequence and let-operator trivia from tokens" (fun () ->
+        let source =
+          {|let run = fun () -> first (* keep after first *); (* keep before second *) second; (** keep before third *) third
+let bind =
+  let* value = (* keep before bound value *) compute in
+  (* keep before body *)
+  finish value
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"sequence and binding-operator trivia should not need source reparsing"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let run = fun () ->
+  first;
+  (* keep after first *)
+  (* keep before second *)
+  second;
+  (** keep before third *)
+  third
+
+let bind =
+  let* value =
+    (* keep before bound value *)
+    compute
+  in
+  (* keep before body *)
+  finish value
+|}
+          ~actual;
+        Ok ());
     Test.case "format keeps simple applies inline even when identifiers contain keywords"
       (fun () ->
         let source = "let handler = use function_handler\n" in

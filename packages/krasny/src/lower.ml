@@ -489,7 +489,7 @@ let pending_entry_of_syntax_trivia = fun trivia ->
   | _ ->
       None
 
-let render_leading_trivia_before_token = fun ~after token ->
+let pending_entries_of_leading_trivia_after = fun ~after token ->
   Syn.Ceibo.Red.SyntaxToken.leading_trivia token
   |> List.filter_map (fun trivia ->
          let span = Syn.Ceibo.Red.SyntaxTrivia.span trivia in
@@ -497,6 +497,9 @@ let render_leading_trivia_before_token = fun ~after token ->
            pending_entry_of_syntax_trivia trivia
          else
            None)
+
+let render_leading_trivia_before_token = fun ~after token ->
+  pending_entries_of_leading_trivia_after ~after token
   |> render_pending_trivia
 
 let render_leading_trivia_before_node = fun ~after syntax_node ->
@@ -506,12 +509,19 @@ let render_leading_trivia_before_node = fun ~after syntax_node ->
   | first :: _ ->
       render_leading_trivia_before_token ~after first
 
-let render_trivia_between_spans = fun ctx ~start ~end_ ->
-  match ctx.source with
-  | None ->
-      None
-  | Some source ->
-      parse_trivia_between_offsets source ~start ~end_ [] |> render_pending_trivia
+let render_leading_trivia_after_token_before_node = fun ~after token syntax_node ->
+  let pending = pending_entries_of_leading_trivia_after ~after token in
+  let pending =
+    match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
+    | [] ->
+        pending
+    | first :: _ ->
+        pending
+        @ pending_entries_of_leading_trivia_after
+            ~after:(Syn.Ceibo.Red.SyntaxToken.span token).end_
+            first
+  in
+  render_pending_trivia pending
 
 let doc_with_trailing_trivia = fun doc trivia ->
   match trivia with
@@ -2292,7 +2302,6 @@ type lowerer = {
 }
 
 let make_lowerer ctx =
-  let render_trivia_between_spans = render_trivia_between_spans ctx in
   let render_type_declaration_with_keyword keyword decl =
     render_type_declaration_with_keyword ctx keyword decl
   in
@@ -3619,7 +3628,7 @@ and render_let_exception_expression
     ]
 
 and render_binding_operator_binding
-    ({ keyword_token; operator_token; binding_pattern; bound_value } :
+    ({ keyword_token; operator_token; equals_token; binding_pattern; bound_value } :
       Syn.Cst.binding_operator_binding) =
   let header =
     Doc.concat
@@ -3631,15 +3640,9 @@ and render_binding_operator_binding
       ]
   in
   let leading_value_trivia =
-    render_trivia_between_spans
-      ~start:
-        (nontrivia_bounds_span_of_syntax_node
-           (Syn.Cst.Pattern.syntax_node binding_pattern))
-          .end_
-      ~end_:
-        (nontrivia_bounds_span_of_syntax_node
-           (Syn.Cst.Expression.syntax_node bound_value))
-          .start
+    render_leading_trivia_before_node
+      ~after:(Syn.Cst.Token.span equals_token).end_
+      (Syn.Cst.Expression.syntax_node bound_value)
   in
   let rendered_value =
     render_expression bound_value
@@ -3653,12 +3656,12 @@ and render_binding_operator_binding
     && not (Doc.is_multiline rendered_value)
   in
   if keep_value_after_equals then
-    Doc.concat [ header; Doc.text " = "; rendered_value ]
+    Doc.concat [ header; Doc.space; doc_of_token equals_token; Doc.space; rendered_value ]
   else
-    Doc.concat [ header; Doc.space; Doc.text "="; Doc.line; Doc.indent 2 rendered_value ]
+    Doc.concat [ header; Doc.space; doc_of_token equals_token; Doc.line; Doc.indent 2 rendered_value ]
 
 and render_let_operator_expression
-    ({ binding; and_bindings; body; _ } : Syn.Cst.let_operator_expression) =
+    ({ binding; and_bindings; in_token; body; _ } : Syn.Cst.let_operator_expression) =
   let rendered_bindings =
     render_binding_operator_binding binding
     :: List.map render_binding_operator_binding and_bindings
@@ -3679,23 +3682,19 @@ and render_let_operator_expression
         binding.bound_value
   in
   let body_trivia =
-    render_trivia_between_spans
-      ~start:
-        (nontrivia_bounds_span_of_syntax_node
-           (Syn.Cst.Expression.syntax_node last_bound_value))
-          .end_
-      ~end_:
-        (nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node body))
-          .start
+    render_leading_trivia_before_node
+      ~after:(Syn.Cst.Token.span in_token).end_
+      (Syn.Cst.Expression.syntax_node body)
   in
   let body_doc = render_expression body |> doc_with_leading_trivia body_trivia in
   if Doc.is_multiline bindings then
-    Doc.concat [ bindings; Doc.line; kw_in; Doc.line; body_doc ]
+    Doc.concat [ bindings; Doc.line; doc_of_token in_token; Doc.line; body_doc ]
   else
-    Doc.concat [ bindings; Doc.space; kw_in; Doc.line; body_doc ]
+    Doc.concat [ bindings; Doc.space; doc_of_token in_token; Doc.line; body_doc ]
 
-and render_sequence_expression ({ separator_token; expressions; _ } : Syn.Cst.sequence_expression) =
+and render_sequence_expression ({ separator_tokens; expressions; _ } : Syn.Cst.sequence_expression) =
   let expression_count = List.length expressions in
+  let separator_token_at = fun index -> List.nth_opt separator_tokens index in
   let rec render_sequence_items previous_expression index = function
     | [] ->
         []
@@ -3705,21 +3704,29 @@ and render_sequence_expression ({ separator_token; expressions; _ } : Syn.Cst.se
           | None ->
               None
           | Some previous_expression ->
-              render_trivia_between_spans
-                ~start:
-                  (nontrivia_bounds_span_of_syntax_node
-                     (Syn.Cst.Expression.syntax_node previous_expression))
-                    .end_
-                ~end_:
-                  (nontrivia_bounds_span_of_syntax_node
-                     (Syn.Cst.Expression.syntax_node expression))
-                    .start
+              (match separator_token_at (index - 1) with
+              | Some separator_token ->
+                  render_leading_trivia_after_token_before_node
+                    ~after:
+                      (nontrivia_bounds_span_of_syntax_node
+                         (Syn.Cst.Expression.syntax_node previous_expression))
+                        .end_
+                    (Syn.Cst.Token.syntax_token separator_token)
+                    (Syn.Cst.Expression.syntax_node expression)
+              | None ->
+                  render_leading_trivia_before_node
+                    ~after:
+                      (nontrivia_bounds_span_of_syntax_node
+                         (Syn.Cst.Expression.syntax_node previous_expression))
+                        .end_
+                    (Syn.Cst.Expression.syntax_node expression))
         in
         let suffix =
-          if index < expression_count - 1 || expression_count = 1 then
-            doc_of_token separator_token
-          else
-            Doc.empty
+          match separator_token_at index with
+          | Some separator_token ->
+              doc_of_token separator_token
+          | None ->
+              Doc.empty
         in
         Doc.concat
           [ doc_with_leading_trivia leading_trivia (render_expression expression); suffix ]

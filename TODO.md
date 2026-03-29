@@ -60,6 +60,7 @@ This file is _yours_. Keep it up to date after every big change.
 - simple apply expressions now decide whether they stay after `=` by recursing over CST callee/argument shape instead of scanning source text for keyword substrings.
 - application rendering no longer force-switches layout from raw source length or embedded newlines; it follows structural argument break rules only.
 - inline-record constructor arguments no longer preserve multiline layout just because the original record node contained newlines; they format from field structure and owned trivia only.
+- sequence-expression trivia now renders from `separator_tokens` plus the next expression's leading trivia, and `let*`/`let+` clause and body trivia now render from `equals_token` / `in_token`; `lower.ml` no longer reparses raw spans for those boundaries.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - `Format_core.format` now has an explicit EOF policy: non-empty formatted output ends with a final newline, without inspecting the input source to inherit that behavior.
 - top-level structure phrase separators now come from direct source-file separator tokens, not by slicing raw source between item spans or preserving expression runs from source text.
@@ -67,7 +68,7 @@ This file is _yours_. Keep it up to date after every big change.
 - trivia around `if ... then ... else` branches now comes from `else_token.leading_trivia` and the next branch node's first-token `leading_trivia`; `lower.ml` no longer reparses raw source spans for that path.
 - trivia after `=` and `in` in ordinary `let ... in` expressions now comes from the RHS/body node's first-token `leading_trivia`; `lower.ml` no longer reparses raw source spans for those paths.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
-- `lower.ml` still contains source/text heuristics and source-backed owned-trivia separator recovery; the remaining debt is in those live formatting decisions, not top-level source-gap replay.
+- `render_trivia_between_spans` is gone from `lower.ml`; the remaining raw-trivia debt is in inline-comment/source-backed separator helpers and source/text heuristics, not generic between-node span replay.
 
 ## Working Style
 
@@ -103,7 +104,6 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Remove raw trivia reparsing helpers from `lower.ml`
   - `parse_trivia_between_offsets`
-  - `render_trivia_between_spans`
   - `trailing_inline_comment_suffix`
   - `leading_inline_comment_between_offsets`
   - `split_leading_inline_comment_source`

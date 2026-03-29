@@ -34,6 +34,8 @@
 28. `Krasny.format` output policy is explicit: non-empty formatted output ends with a final newline, independent of whether the input source had one.
 29. Render trivia around `if ... then ... else` from `else_token.leading_trivia` and the following branch node's leading trivia; do not reparse raw source spans between `then`, `else`, and branch bodies.
 30. Render trivia after `=` and `in` in ordinary `let ... in` expressions from the RHS/body node's leading trivia. Do not reparse raw source spans for those boundaries once the CST already exposes `equals_token`, `in_token`, and the branch node.
+31. Render sequence-expression trivia from `Syn.Cst.sequence_expression.separator_tokens` plus the following expression's leading trivia; do not recover semicolon-boundary comments/docstrings by reparsing the source gap.
+32. Render binding-operator clause and body trivia from `Syn.Cst.binding_operator_binding.equals_token` and `Syn.Cst.let_operator_expression.in_token`; do not reconstruct `let*` / `and*` / `let+` trivia from raw spans once `syn` exposes the tokens explicitly.
 
 ## Validate
 
