@@ -17,7 +17,7 @@ module Green : sig
   and ('kind, 'text) element =
     | Token of ('kind, 'text) token
     | Node of ('kind, 'text) node
-
   (** ## Construction *)
+
   val make_token : kind:'kind -> text:'text -> width:int -> ('kind, 'text) token
 end
