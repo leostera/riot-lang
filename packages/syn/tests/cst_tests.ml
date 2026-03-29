@@ -1185,6 +1185,81 @@ let tests =
                 Error "expected nested structure items to reify successfully")
         | _ ->
             Error "expected module declaration with structure module expression");
+    Test.case
+      "cst builder normalizes nested structure grouped type docs and headings"
+      (fun () ->
+        let result =
+          parse_ml
+            "module Green = struct\n\
+             \  (** ## Types *)\n\
+             \n\
+             \  type ('kind, 'text) token = { kind : 'kind; text : 'text; width : int }\n\
+             \  (** Green token - leaf node containing source text. *)\n\
+             \n\
+             \  type ('kind, 'text) node = {\n\
+             \    kind : 'kind;\n\
+             \    children : ('kind, 'text) element array;\n\
+             \  }\n\
+             \  (** Green node - interior node with children. *)\n\
+             \n\
+             \  (** Element can be either a token or a node. *)\n\
+             \  and ('kind, 'text) element =\n\
+             \    | Token of ('kind, 'text) token\n\
+             \    | Node of ('kind, 'text) node\n\
+             \n\
+             \  (** ## Construction *)\n\
+             \n\
+             \  let make_token ~kind ~text ~width = { kind; text; width }\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | [ Syn.Cst.StructureItem.ModuleDeclaration
+              {
+                module_expression =
+                  Some ((Syn.Cst.ModuleExpression.Structure _) as module_expression);
+                _;
+              } ] -> (
+            match Syn.CstBuilder.structure_items_of_module_expression module_expression with
+            | Ok
+                (Some
+                  [ Syn.Cst.StructureItem.Docstring types_doc;
+                    Syn.Cst.StructureItem.TypeDeclaration token_decl;
+                    Syn.Cst.StructureItem.TypeDeclaration node_decl;
+                    Syn.Cst.StructureItem.Docstring construction_doc;
+                    Syn.Cst.StructureItem.LetBinding make_token ]) ->
+                Test.assert_equal ~expected:"(** ## Types *)"
+                  ~actual:(Syn.Cst.Docstring.text types_doc);
+                Test.assert_equal ~expected:"token"
+                  ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name token_decl));
+                Test.assert_equal ~expected:"node"
+                  ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name node_decl));
+                Test.assert_equal ~expected:"(** ## Construction *)"
+                  ~actual:(Syn.Cst.Docstring.text construction_doc);
+                Test.assert_equal ~expected:"make_token"
+                  ~actual:(Syn.Cst.LetBinding.name make_token);
+                (match Syn.Cst.TypeDeclaration.and_declarations node_decl with
+                | [ element_decl ] ->
+                    Test.assert_equal ~expected:"element"
+                      ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name element_decl));
+                    let element_owned = Syn.Cst.TypeDeclaration.owned_trivia element_decl in
+                    Test.assert_equal ~expected:1
+                      ~actual:(List.length (Syn.Cst.OwnedTrivia.leading element_owned));
+                    Test.assert_equal ~expected:0
+                      ~actual:(List.length (Syn.Cst.OwnedTrivia.trailing element_owned));
+                    Ok ()
+                | _ ->
+                    Error "expected grouped node/element type declarations")
+            | Ok _ ->
+                Error "expected normalized nested structure type items"
+            | Error _ ->
+                Error "expected nested structure items to normalize successfully")
+        | _ ->
+            Error "expected module declaration with structure body");
     Test.case "cst module declarations preserve constrained module expressions"
       (fun () ->
         let result =
@@ -1858,6 +1933,50 @@ let tests =
                 Error "expected nested signature capability docs to normalize successfully")
         | _ ->
             Error "expected capabilities module declaration with signature body");
+    Test.case
+      "cst builder preserves nested signature standalone docs and comments after open"
+      (fun () ->
+        let result =
+          parse_mli
+            "module Nested : sig\n\
+             \  open Std\n\
+             \  (** Nested overview *)\n\
+             \  (* plain note *)\n\
+             \  val x : int\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.ModuleDeclaration
+              {
+                module_type =
+                  Some ((Syn.Cst.ModuleType.Signature _) as module_type);
+                _;
+              } ] -> (
+            match Syn.CstBuilder.signature_items_of_module_type module_type with
+            | Ok
+                (Some
+                  [ Syn.Cst.SignatureItem.OpenStatement _;
+                    Syn.Cst.SignatureItem.Docstring docstring;
+                    Syn.Cst.SignatureItem.Comment comment;
+                    Syn.Cst.SignatureItem.ValueDeclaration decl ]) ->
+                Test.assert_equal ~expected:"(** Nested overview *)"
+                  ~actual:(Syn.Cst.Docstring.text docstring);
+                Test.assert_equal ~expected:"(* plain note *)"
+                  ~actual:(Syn.Cst.Comment.text comment);
+                Test.assert_equal ~expected:"x"
+                  ~actual:(Syn.Cst.Token.text decl.name_token);
+                Ok ()
+            | Ok _ ->
+                Error "expected nested signature open/doc/comment/value ordering"
+            | Error _ ->
+                Error "expected nested signature standalone docs/comments to normalize successfully")
+        | _ ->
+            Error "expected module declaration with nested signature body");
     Test.case "cst module type declarations preserve with-constraint bodies"
       (fun () ->
         let result =
