@@ -13,6 +13,11 @@ let command =
          |> help "Verify formatting would preserve syntax hashes";
          flag "json" |> long "json"
          |> help "Emit machine-readable JSONL events";
+         positional "path"
+         |> required false
+         |> multiple
+         |> help
+              "OCaml file or directory to format/check/verify (default: workspace packages or current directory)";
        ]
 
 let output_writer =
@@ -94,6 +99,9 @@ let relative_or_absolute ~root path =
   | Ok rel -> Path.to_string rel
   | Error _ -> Path.to_string path
 
+let compare_paths left right =
+  String.compare (Path.to_string left) (Path.to_string right)
+
 let matches_ignore_pattern ~root pattern path =
   String.contains (relative_or_absolute ~root path) pattern
 
@@ -157,6 +165,23 @@ let stream_result_writer ~json ~root ~mode ~concurrency =
     else
       write_text_file ~root file_result
 
+let explicit_targets matches =
+  ArgParser.get_many matches "path"
+  |> List.map Path.v
+  |> List.sort_uniq compare_paths
+
+let expand_explicit_targets targets =
+  let rec loop acc = function
+    | [] -> List.rev acc
+    | target :: rest ->
+        if Fs.is_dir target |> Result.unwrap_or ~default:false then
+          let nested = Krasny.Runner.collect_ocaml_files ~roots:[ target ] () in
+          loop (List.rev_append nested acc) rest
+        else
+          loop (target :: acc) rest
+  in
+  loop [] targets |> List.sort_uniq compare_paths
+
 let run ?workspace fmt_matches =
   let check = get_flag fmt_matches "check" in
   let verify = get_flag fmt_matches "verify" in
@@ -178,20 +203,35 @@ let run ?workspace fmt_matches =
       let concurrency = default_concurrency () in
       let fmt_scope = load_fmt_scope workspace in
       let on_result = stream_result_writer ~json ~root ~mode ~concurrency in
+      let explicit_targets = explicit_targets fmt_matches in
       let result : Krasny.Runner.run_result =
-        match mode with
-        | Krasny.Runner.Check ->
-            Krasny.Runner.run_checks_streaming ~concurrency
-              ~should_ignore:(should_ignore_file fmt_scope)
-              ~roots:(resolve_search_roots workspace) ~on_result ()
-        | Krasny.Runner.Verify ->
-            Krasny.Runner.run_verify_streaming ~concurrency
-              ~should_ignore:(should_ignore_file fmt_scope)
-              ~roots:(resolve_search_roots workspace) ~on_result ()
-        | Krasny.Runner.Format ->
-            Krasny.Runner.run_format_streaming ~concurrency
-              ~should_ignore:(should_ignore_file fmt_scope)
-              ~roots:(resolve_search_roots workspace) ~on_result ()
+        if List.is_empty explicit_targets then
+          match mode with
+          | Krasny.Runner.Check ->
+              Krasny.Runner.run_checks_streaming ~concurrency
+                ~should_ignore:(should_ignore_file fmt_scope)
+                ~roots:(resolve_search_roots workspace) ~on_result ()
+          | Krasny.Runner.Verify ->
+              Krasny.Runner.run_verify_streaming ~concurrency
+                ~should_ignore:(should_ignore_file fmt_scope)
+                ~roots:(resolve_search_roots workspace) ~on_result ()
+          | Krasny.Runner.Format ->
+              Krasny.Runner.run_format_streaming ~concurrency
+                ~should_ignore:(should_ignore_file fmt_scope)
+                ~roots:(resolve_search_roots workspace) ~on_result ()
+        else
+          let targets = expand_explicit_targets explicit_targets in
+          let result =
+            match mode with
+            | Krasny.Runner.Check ->
+                Krasny.Runner.run_checks ~concurrency targets
+            | Krasny.Runner.Verify ->
+                Krasny.Runner.run_verify ~concurrency targets
+            | Krasny.Runner.Format ->
+                Krasny.Runner.run_format ~concurrency targets
+          in
+          List.iter on_result result.files;
+          result
       in
       if json then
         write_json_summary ~root result.summary
