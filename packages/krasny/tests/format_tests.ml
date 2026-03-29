@@ -109,6 +109,29 @@ let tests =
         in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
+    Test.case "format renders fun body trivia from token-leading trivia" (fun () ->
+        let source =
+          {|let with_comment = fun x -> (* keep *) x
+let with_doc = fun x -> (** keep *) x
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"fun-body comment and docstring trivia should not need source reparsing"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let with_comment = fun x ->
+  (* keep *)
+  x
+
+let with_doc = fun x ->
+  (** keep *)
+  x
+|}
+          ~actual;
+        Ok ());
     Test.case "format keeps simple applies inline even when identifiers contain keywords"
       (fun () ->
         let source = "let handler = use function_handler\n" in

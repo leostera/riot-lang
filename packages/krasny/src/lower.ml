@@ -467,6 +467,45 @@ let render_pending_trivia = fun ?(strip_trailing_breaks = true) pending ->
   | None, Some _ ->
       None
 
+let pending_entry_of_syntax_trivia = fun trivia ->
+  let span = Syn.Ceibo.Red.SyntaxTrivia.span trivia in
+  match Syn.Ceibo.Red.SyntaxTrivia.kind trivia with
+  | Syn.SyntaxKind.WHITESPACE ->
+      let newline_count =
+        String.fold_left
+          (fun count char -> if Char.equal char '\n' then count + 1 else count)
+          0
+          (Syn.Ceibo.Red.SyntaxTrivia.text trivia)
+      in
+      if newline_count > 0 then
+        Some (TriviaBreak (span.start, newline_count))
+      else
+        None
+  | Syn.SyntaxKind.COMMENT ->
+      Some (TriviaComment (span.start, Doc.text (Syn.Ceibo.Red.SyntaxTrivia.text trivia)))
+  | Syn.SyntaxKind.DOCSTRING ->
+      let text = Syn.Ceibo.Red.SyntaxTrivia.text trivia in
+      Some (TriviaDocstring (span.start, is_section_docstring_text text, Doc.text text))
+  | _ ->
+      None
+
+let render_leading_trivia_before_token = fun ~after token ->
+  Syn.Ceibo.Red.SyntaxToken.leading_trivia token
+  |> List.filter_map (fun trivia ->
+         let span = Syn.Ceibo.Red.SyntaxTrivia.span trivia in
+         if span.start >= after then
+           pending_entry_of_syntax_trivia trivia
+         else
+           None)
+  |> render_pending_trivia
+
+let render_leading_trivia_before_node = fun ~after syntax_node ->
+  match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
+  | [] ->
+      None
+  | first :: _ ->
+      render_leading_trivia_before_token ~after first
+
 let render_trivia_between_spans = fun ctx ~start ~end_ ->
   match ctx.source with
   | None ->
@@ -3132,9 +3171,13 @@ and render_fun_expression
         (nontrivia_bounds_span_of_syntax_node cases.syntax_node).start
   in
   let body_trivia =
-    render_trivia_between_spans
-      ~start:(Syn.Cst.Token.span arrow_token).end_
-      ~end_:body_start
+    (match fun_.body with
+    | Syn.Cst.Expression expression ->
+        render_leading_trivia_before_node ~after:(Syn.Cst.Token.span arrow_token).end_
+          (Syn.Cst.Expression.syntax_node expression)
+    | Syn.Cst.Cases cases ->
+        render_leading_trivia_before_node ~after:(Syn.Cst.Token.span arrow_token).end_
+          cases.syntax_node)
   in
   let body = doc_with_leading_trivia body_trivia body in
   let body_prefers_multiline =
