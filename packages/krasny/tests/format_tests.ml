@@ -224,6 +224,27 @@ let optional_fun = fun ?(y = 0) -> y + 1
           ~source
           ~msg:"named parameter defaults, renames, and destructuring should format structurally";
         Ok ());
+    Test.case "format keeps signature operator values structural" (fun () ->
+        let source =
+          {|val ( = ) : 'a -> 'a -> bool
+val (mod) : int -> int -> int
+val ( := ) : 'a ref -> 'a -> unit
+|}
+        in
+        let formatted =
+          parse_mli source |> Krasny.format
+          |> Result.expect ~msg:"operator value declarations should format structurally"
+        in
+        Test.assert_equal
+          ~expected:
+            {|val ( = ) : 'a -> 'a -> bool
+
+val ( mod ) : int -> int -> int
+
+val ( := ) : 'a ref -> 'a -> unit
+|}
+          ~actual:formatted;
+        Ok ());
     Test.case "format keeps alias patterns idempotent" (fun () ->
         let source =
           {|open Std
