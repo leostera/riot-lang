@@ -63,6 +63,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `Format_core.format` now has an explicit EOF policy: non-empty formatted output ends with a final newline, without inspecting the input source to inherit that behavior.
 - top-level structure phrase separators now come from direct source-file separator tokens, not by slicing raw source between item spans or preserving expression runs from source text.
 - trivia between `fun ... ->` and the first body token now comes from that body token's `leading_trivia`; `lower.ml` no longer reparses a raw source slice for that path.
+- trivia around `if ... then ... else` branches now comes from `else_token.leading_trivia` and the next branch node's first-token `leading_trivia`; `lower.ml` no longer reparses raw source spans for that path.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `lower.ml` still contains source/text heuristics and source-backed owned-trivia separator recovery; the remaining debt is in those live formatting decisions, not top-level source-gap replay.
 
@@ -112,6 +113,7 @@ This file is _yours_. Keep it up to date after every big change.
   - rendered-source substring checks such as `[@` / `[%%expect]` preservation gates
   - multiline/layout heuristics currently driven by `text_of_syntax_node` or `string_contains_substring`
   - token-text scans over `SyntaxNode.tokens`, e.g. searching for `"="` then `"fun"` or reconstructing poly-variant inherit paths from token text lists
+  - `render_condition_with_boolean_breaks` scanning token text for `&&` / `||` and comment-like trivia instead of using explicit boolean-operator structure
 
 - [ ] Remove node-text-driven layout heuristics from `lower.ml`
   - `syntax_node_has_internal_newline`

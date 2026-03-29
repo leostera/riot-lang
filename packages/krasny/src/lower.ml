@@ -3397,9 +3397,12 @@ and render_if_expression_block
     | None ->
         None
     | Some else_token ->
-        render_trivia_between_spans
-          ~start:(nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node then_branch)).end_
-          ~end_:(Syn.Cst.Token.span else_token).start
+        render_leading_trivia_before_token
+          ~after:
+            (nontrivia_bounds_span_of_syntax_node
+               (Syn.Cst.Expression.syntax_node then_branch))
+              .end_
+          (Syn.Cst.Token.syntax_token else_token)
   in
   let then_doc = doc_with_trailing_trivia then_doc then_trivia in
   let head =
@@ -3437,9 +3440,9 @@ and render_if_expression_block
     )
   | Some (Syn.Cst.Expression.If nested_if), Some else_token ->
       let else_trivia =
-        render_trivia_between_spans
-          ~start:(Syn.Cst.Token.span else_token).end_
-          ~end_:(nontrivia_bounds_span_of_syntax_node nested_if.syntax_node).start
+        render_leading_trivia_before_node
+          ~after:(Syn.Cst.Token.span else_token).end_
+          nested_if.syntax_node
       in
       Doc.concat
         [
@@ -3467,9 +3470,9 @@ and render_if_expression_block
           render_expression else_branch
       in
       let else_trivia =
-        render_trivia_between_spans
-          ~start:(Syn.Cst.Token.span else_token).end_
-          ~end_:(nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node else_branch)).start
+        render_leading_trivia_before_node
+          ~after:(Syn.Cst.Token.span else_token).end_
+          (Syn.Cst.Expression.syntax_node else_branch)
       in
       let else_doc = doc_with_leading_trivia else_trivia else_doc in
       (match else_branch with

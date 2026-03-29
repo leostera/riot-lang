@@ -132,6 +132,39 @@ let with_doc = fun x ->
 |}
           ~actual;
         Ok ());
+    Test.case "format renders if-branch trivia from token-leading trivia" (fun () ->
+        let source =
+          {|let classify = fun flag -> if flag then value (* keep before else *) else other
+let nested = fun flag other -> if flag then value else (* keep before branch *) if other then (* nested *) next else last
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"if/else comment trivia should not need source reparsing"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let classify = fun flag ->
+  if flag then
+    value
+    (* keep before else *)
+  else
+    other
+
+let nested = fun flag other ->
+  if flag then
+    value
+  else
+    (* keep before branch *)
+    if other then
+      (* nested *)
+      next
+    else
+      last
+|}
+          ~actual;
+        Ok ());
     Test.case "format keeps simple applies inline even when identifiers contain keywords"
       (fun () ->
         let source = "let handler = use function_handler\n" in
