@@ -63,11 +63,19 @@ This file is _yours_. Keep it up to date after every big change.
   - attribute/module-type string reconstruction such as `render_attribute`, `render_first_class_module_type`, `strip_outer_parens_once`, and `strip_module_prefix`
   - `structure_item_uses_source_preservation_span`
   - `signature_item_uses_source_preservation_span`
+  - fallback item branches in `render_structure_item` / `render_signature_item` that end in `doc_of_node (...)`
   - unsupported top-level items should fail formatting instead of preserving source text
+
+- [ ] Remove API-level source-preserving fallback from `packages/krasny/src/format_core.ml` and `packages/krasny/src/lower.ml`
+  - `Lower.source_file` should not return `None` as a signal to keep original source
+  - `Format_core.format` should not return `original_source` when lowering declines to format
+  - replace optional “could not lower, keep source” control flow with explicit formatter failure
 
 - [ ] Remove raw source-gap parsing from top-level structure/signature rendering
   - `source_gap_has_only_phrase_separators`
   - `source_gap_leading_phrase_separator`
+  - `source_of_relative_span`
+  - `separator_doc_between_offsets`
   - expression-run preservation in `render_structure_top_level_items`
   - top-level suffix insertion that still depends on scanning raw source between item spans
 
@@ -86,23 +94,34 @@ This file is _yours_. Keep it up to date after every big change.
   - `value_declaration_name_doc`
   - rendered-source substring checks such as `[@` / `[%%expect]` preservation gates
   - multiline/layout heuristics currently driven by `text_of_syntax_node` or `string_contains_substring`
+  - token-text scans over `SyntaxNode.tokens`, e.g. searching for `"="` then `"fun"` or reconstructing poly-variant inherit paths from token text lists
 
 - [ ] Remove node-text-driven layout heuristics from `lower.ml`
   - `syntax_node_has_internal_newline`
   - list edge-spacing checks that sniff `"[ "` / `" ]"` from `text_of_syntax_node`
   - `tuple_source_is_long`
+  - `apply_expression_is_simple_after_equals`
   - `expression_source_is_long`
   - `expression_source_has_newline`
   - application multiline preference derived from raw node text length/newlines
+  - `render_case` deciding line-breaking from raw `"->\\n"` / `"->\\r\\n"` substrings
   - `let exception` rendering that prints `exception_declaration.syntax_node` text directly
 
 - [ ] Remove source-derived “safe to rewrite” gates from top-level formatting
   - `structure_item_requires_source_preservation_before_expression`
+  - `render_structure_entry` / `render_signature_entry` `should_preserve_source`
   - expression-run preservation rules in `render_structure_top_level_items`
   - replace “preserve this source because rewrite might change meaning” with explicit CST facts or hard failure
 
+- [ ] Remove source-slice reconstruction from lowering context setup
+  - `render_structure_items ?source ~source_node`
+  - `render_signature_items ?source ~source_node`
+  - do not derive nested/top-level source windows from `ctx.source` + `source_node` spans just to support fallback formatting
+
 - [ ] Remove public/docs-level assumptions that unsupported shapes are preserved from source
   - `packages/krasny/src/Krasny.mli`
+  - `packages/krasny/src/format_core.ml`
+  - `packages/krasny/AGENTS.md` rules that still describe source-preserving lowering as an accepted steady-state behavior
   - any AGENTS/docs wording that still describes source-preserving fallback as part of the formatter contract
 
 - [ ] Remove impossible-state fallback patterns from formatter hot paths
@@ -114,6 +133,13 @@ This file is _yours_. Keep it up to date after every big change.
     remove,
     replace with an explicit CST fact,
     or keep only behind an explicit “unsupported shape” failure boundary while the CST is extended
+  - current high-priority sites:
+    `Source.source_of_span`,
+    `Source.source_of_syntax_node`,
+    `Source.source_of_node_from_source`,
+    `Source.source_between`,
+    `Source.source_of_parameter`,
+    `Source.syntax_node_has_comment_like_trivia`
 
 - [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing
   - explicit phrase-separator / top-level phrase-boundary modeling
