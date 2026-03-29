@@ -2,7 +2,7 @@
 
 Cloudflare Worker scaffold for Riot's package publication service.
 
-Production endpoint: `https://registry.pkgs.ml`
+Production endpoint: `https://api.pkgs.ml`
 
 ## Local development
 
@@ -29,18 +29,20 @@ those upstreams. This is useful for on-premise or private testing setups.
 ## Current surface
 
 - `GET /` returns service metadata.
-- `GET /package/<locator>/-/resolve?ref=<selector>` materializes or reuses a source-backed package snapshot.
-- `GET /package/<locator>/-/manifest/<sha>.json` reads immutable manifests from R2.
-- `GET /package/<locator>/-/source/<sha>.tar.gz` redirects to immutable source archives on `cdn.pkgs.ml`.
-- `GET /auth/github/start?return_to=<url>` starts GitHub OAuth login.
-- `GET /auth/github/callback?code=<code>&state=<state>` completes GitHub OAuth, creates a user session, and redirects back to `pkgs.ml`.
-- `POST /auth/logout` clears the session cookie.
-- `GET /api/v1/me` returns the authenticated user session, if one exists.
-- `GET /api/v1/search?q=<query>` returns one search result per indexed package, backed by D1 + FTS5.
-- `GET /api/v1/me/tokens` lists publish tokens for the authenticated user.
-- `POST /api/v1/me/tokens` creates a new publish token and returns the plaintext token once.
-- `DELETE /api/v1/me/tokens/<token-id>` revokes a publish token.
-- `POST /package/<locator>/-/publish?ref=<selector>` publishes a named package release, synchronously updates the sparse package index under `cdn.pkgs.ml/index/v1`, updates the registry search database, and accepts either `Authorization: Bearer <ROOT_AUTH_TOKEN>` or a user publish token created through `/api/v1/me/tokens`.
+- `GET /v1/packages/<locator>/resolve?ref=<selector>` materializes or reuses a source-backed package snapshot.
+- `GET /v1/packages/<locator>/manifest/<sha>.json` reads immutable manifests from R2.
+- `GET /v1/packages/<locator>/source/<sha>.tar.gz` redirects to immutable source archives on `cdn.pkgs.ml`.
+- `GET /v1/auth/github/start?return_to=<url>` starts GitHub OAuth login.
+- `GET /v1/auth/github/callback?code=<code>&state=<state>` completes GitHub OAuth, creates a user session, and redirects back to `pkgs.ml`.
+- `POST /v1/auth/logout` clears the session cookie.
+- `GET /v1/me` returns the authenticated user session, if one exists.
+- `GET /v1/search?q=<query>` returns one search result per indexed package, backed by D1 + FTS5.
+- `GET /v1/me/tokens` lists publish tokens for the authenticated user.
+- `POST /v1/me/tokens` creates a new publish token and returns the plaintext token once.
+- `DELETE /v1/me/tokens/<token-id>` revokes a publish token.
+- `POST /v1/packages/<locator>/publish?ref=<selector>` publishes a named package release, synchronously updates the sparse package index under `cdn.pkgs.ml/index/v1`, updates the registry search database, and accepts either `Authorization: Bearer <ROOT_AUTH_TOKEN>` or a user publish token created through `/v1/me/tokens`.
+
+Legacy compatibility aliases under `registry.pkgs.ml` and `/api/v1`/`/package/.../-/...` remain available during the transition.
 
 The Worker logs every request into `ml-pkgs-cdn/requests/...`.
 The Worker also uses a D1 binding for search indexing and query serving.
@@ -51,7 +53,7 @@ Set a live registry base URL in `.env` to run end-to-end smoke tests against a
 deployed Worker:
 
 ```dotenv
-REGISTRY_E2E_BASE_URL=https://registry.pkgs.ml
+REGISTRY_E2E_BASE_URL=https://api.pkgs.ml
 REGISTRY_E2E_PACKAGE_LOCATOR=github.com/leostera/riot-new/packages/kernel
 REGISTRY_E2E_ROOT_AUTH_TOKEN=
 REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR=github.com/owner/repo/path/to/public-package

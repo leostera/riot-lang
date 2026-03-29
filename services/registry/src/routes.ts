@@ -25,11 +25,9 @@ import { writeRequestLog } from "./request-log.ts";
 import { applySearchMigrations, searchPackages } from "./search-db.ts";
 import {
   manifestKey,
-  manifestRoutePath,
   prettyManifestUrl,
   prettySourceUrl,
   sourceArchiveKey,
-  sourceRoutePath,
   listApiTokenRecords,
 } from "./storage.ts";
 import type {
@@ -100,6 +98,18 @@ async function routeRequest(
     return json({
       service: "riot-package-registry",
       routes: {
+        resolve: "/v1/packages/<locator>/resolve?ref=<selector>",
+        manifest: "/v1/packages/<locator>/manifest/<sha>.json",
+        source: "/v1/packages/<locator>/source/<sha>.tar.gz",
+        publish: "/v1/packages/<locator>/publish?ref=<selector>",
+        auth_github_start: "/v1/auth/github/start?return_to=<url>",
+        auth_github_callback: "/v1/auth/github/callback?code=<code>&state=<state>",
+        auth_logout: "/v1/auth/logout",
+        me: "/v1/me",
+        tokens: "/v1/me/tokens",
+        search: "/v1/search?q=<query>",
+      },
+      legacy_routes: {
         resolve: "/package/<locator>/-/resolve?ref=<selector>",
         manifest: "/package/<locator>/-/manifest/<sha>.json",
         source: "/package/<locator>/-/source/<sha>.tar.gz",
@@ -115,7 +125,7 @@ async function routeRequest(
     });
   }
 
-  if (path === "auth/github/start") {
+  if (matchesPath(path, "v1/auth/github/start", "auth/github/start")) {
     if (request.method !== "GET") {
       logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
@@ -130,7 +140,7 @@ async function routeRequest(
     return redirect(authorizationUrl);
   }
 
-  if (path === "auth/github/callback") {
+  if (matchesPath(path, "v1/auth/github/callback", "auth/github/callback")) {
     if (request.method !== "GET") {
       logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
@@ -153,7 +163,7 @@ async function routeRequest(
     });
   }
 
-  if (path === "auth/logout") {
+  if (matchesPath(path, "v1/auth/logout", "auth/logout")) {
     if (request.method !== "POST") {
       logEntry.route = "method_not_allowed";
       return methodNotAllowed(["POST"]);
@@ -163,7 +173,7 @@ async function routeRequest(
     return await handleLogout(request, env, url);
   }
 
-  if (path === "api/v1/me") {
+  if (matchesPath(path, "v1/me", "api/v1/me")) {
     if (request.method !== "GET") {
       logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
@@ -173,7 +183,7 @@ async function routeRequest(
     return await handleCurrentSession(request, env);
   }
 
-  if (path === "api/v1/search") {
+  if (matchesPath(path, "v1/search", "api/v1/search")) {
     if (request.method !== "GET") {
       logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
@@ -183,7 +193,7 @@ async function routeRequest(
     return await handleSearch(env, url);
   }
 
-  if (path === "api/v1/me/tokens") {
+  if (matchesPath(path, "v1/me/tokens", "api/v1/me/tokens")) {
     if (request.method === "GET") {
       logEntry.route = "api.me.tokens";
       return await handleListTokens(request, env);
@@ -198,33 +208,30 @@ async function routeRequest(
     return methodNotAllowed(["GET", "POST"]);
   }
 
-  if (path.startsWith("api/v1/me/tokens/")) {
+  if (path.startsWith("v1/me/tokens/") || path.startsWith("api/v1/me/tokens/")) {
     if (request.method !== "DELETE") {
       logEntry.route = "method_not_allowed";
       return methodNotAllowed(["DELETE"]);
     }
 
     logEntry.route = "api.me.tokens.delete";
-    const tokenId = decodeURIComponent(path.slice("api/v1/me/tokens/".length));
+    const tokenId = decodeURIComponent(
+      path.startsWith("v1/me/tokens/")
+        ? path.slice("v1/me/tokens/".length)
+        : path.slice("api/v1/me/tokens/".length),
+    );
     return await handleDeleteToken(request, env, tokenId);
   }
 
-  if (!path.startsWith("package/")) {
+  const packageRoute = parsePackageRoute(path);
+  if (packageRoute === null) {
     throw new HttpError(404, "not_found", "Route does not exist.");
   }
 
-  const remainder = path.slice("package/".length);
-  const separatorIndex = remainder.indexOf("/-/");
-  if (separatorIndex === -1) {
-    throw new HttpError(404, "not_found", "Package route is missing the /-/ separator.");
-  }
-
-  const rawLocator = decodeURIComponent(remainder.slice(0, separatorIndex));
-  const operationPath = remainder.slice(separatorIndex + 3);
-  const locator = normalizeLocator(rawLocator);
+  const locator = normalizeLocator(packageRoute.rawLocator);
   logEntry.package_locator = locator.normalized;
 
-  if (operationPath === "resolve") {
+  if (packageRoute.operation === "resolve") {
     if (request.method !== "GET") {
       logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
@@ -236,31 +243,31 @@ async function routeRequest(
     return await handleResolve(request, env, locator, selector, logEntry);
   }
 
-  if (operationPath.startsWith("manifest/") && operationPath.endsWith(".json")) {
+  if (packageRoute.operation === "manifest" && packageRoute.sha !== null) {
     if (request.method !== "GET") {
       logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
     }
 
     logEntry.route = "manifest";
-    const sha = operationPath.slice("manifest/".length, -".json".length);
+    const sha = packageRoute.sha;
     logEntry.resolved_sha = sha;
     return await handleManifest(env, locator, sha);
   }
 
-  if (operationPath.startsWith("source/") && operationPath.endsWith(".tar.gz")) {
+  if (packageRoute.operation === "source" && packageRoute.sha !== null) {
     if (request.method !== "GET") {
       logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
     }
 
     logEntry.route = "source";
-    const sha = operationPath.slice("source/".length, -".tar.gz".length);
+    const sha = packageRoute.sha;
     logEntry.resolved_sha = sha;
     return await handleSource(env, locator, sha);
   }
 
-  if (operationPath === "publish") {
+  if (packageRoute.operation === "publish") {
     if (request.method !== "POST") {
       logEntry.route = "method_not_allowed";
       return methodNotAllowed(["POST"]);
@@ -288,6 +295,7 @@ async function handleResolve(
     (await materializeThroughCoordinator(env, locator, selector));
 
   const requestUrl = new URL(request.url);
+  const routeStyle = packageRouteStyle(requestUrl.pathname);
   logEntry.resolved_sha = publication.resolvedSha;
 
   return json({
@@ -298,12 +306,12 @@ async function handleResolve(
     resolved_sha: publication.resolvedSha,
     manifest: {
       key: publication.manifestKey,
-      url: `${requestUrl.origin}${manifestRoutePath(locator, publication.resolvedSha)}`,
+      url: `${requestUrl.origin}${manifestRoutePathForStyle(routeStyle, locator, publication.resolvedSha)}`,
       cdn_url: prettyManifestUrl(config, locator, publication.resolvedSha),
     },
     source_archive: {
       key: publication.sourceKey,
-      url: `${requestUrl.origin}${sourceRoutePath(locator, publication.resolvedSha)}`,
+      url: `${requestUrl.origin}${sourceRoutePathForStyle(routeStyle, locator, publication.resolvedSha)}`,
       cdn_url: prettySourceUrl(config, locator, publication.resolvedSha),
     },
     cache: {
@@ -324,6 +332,7 @@ async function handlePublish(
 
   const publishResult = await publishThroughCoordinator(env, locator, selector, actor);
   const requestUrl = new URL(request.url);
+  const routeStyle = packageRouteStyle(requestUrl.pathname);
   logEntry.resolved_sha = publishResult.resolvedSha;
 
   return json({
@@ -336,12 +345,12 @@ async function handlePublish(
     package_version: publishResult.packageVersion,
     manifest: {
       key: publishResult.manifestKey,
-      url: `${requestUrl.origin}${manifestRoutePath(locator, publishResult.resolvedSha)}`,
+      url: `${requestUrl.origin}${manifestRoutePathForStyle(routeStyle, locator, publishResult.resolvedSha)}`,
       cdn_url: prettyManifestUrl(getConfig(env), locator, publishResult.resolvedSha),
     },
     source_archive: {
       key: publishResult.sourceKey,
-      url: `${requestUrl.origin}${sourceRoutePath(locator, publishResult.resolvedSha)}`,
+      url: `${requestUrl.origin}${sourceRoutePathForStyle(routeStyle, locator, publishResult.resolvedSha)}`,
       cdn_url: prettySourceUrl(getConfig(env), locator, publishResult.resolvedSha),
     },
     claim: {
@@ -554,7 +563,7 @@ async function handleSearch(env: Env, url: URL): Promise<Response> {
     const config = getConfig(env);
     return json({
       service: "riot-package-registry",
-      route: "/api/v1/search?q=<query>",
+      route: "/v1/search?q=<query>",
       source: {
         package_index_base_url: `${config.cdnBaseUrl}/${config.indexBasePath}`,
         updated_during_publish: true,
@@ -619,8 +628,133 @@ async function handleDeleteToken(
   });
 }
 
+interface ParsedPackageRoute {
+  rawLocator: string;
+  operation: "resolve" | "manifest" | "source" | "publish";
+  sha: string | null;
+}
+
+type PackageRouteStyle = "legacy" | "v1";
+
 function trimSlashes(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
+}
+
+function matchesPath(path: string, ...candidates: string[]): boolean {
+  return candidates.includes(path);
+}
+
+function packageRouteStyle(pathname: string): PackageRouteStyle {
+  return trimSlashes(pathname).startsWith("v1/packages/") ? "v1" : "legacy";
+}
+
+function manifestRoutePathForStyle(
+  style: PackageRouteStyle,
+  locator: PackageLocator,
+  sha: string,
+): string {
+  if (style === "v1") {
+    return `/v1/packages/${locator.normalized}/manifest/${sha}.json`;
+  }
+
+  return `/package/${locator.normalized}/-/manifest/${sha}.json`;
+}
+
+function sourceRoutePathForStyle(
+  style: PackageRouteStyle,
+  locator: PackageLocator,
+  sha: string,
+): string {
+  if (style === "v1") {
+    return `/v1/packages/${locator.normalized}/source/${sha}.tar.gz`;
+  }
+
+  return `/package/${locator.normalized}/-/source/${sha}.tar.gz`;
+}
+
+function parsePackageRoute(path: string): ParsedPackageRoute | null {
+  if (path.startsWith("package/")) {
+    const remainder = path.slice("package/".length);
+    const separatorIndex = remainder.indexOf("/-/");
+    if (separatorIndex === -1) {
+      throw new HttpError(404, "not_found", "Package route is missing the /-/ separator.");
+    }
+
+    return parsePackageOperation(
+      decodeURIComponent(remainder.slice(0, separatorIndex)),
+      remainder.slice(separatorIndex + 3),
+    );
+  }
+
+  if (path.startsWith("v1/packages/")) {
+    const remainder = path.slice("v1/packages/".length);
+
+    if (remainder.endsWith("/resolve")) {
+      return {
+        rawLocator: decodeURIComponent(remainder.slice(0, -"/resolve".length)),
+        operation: "resolve",
+        sha: null,
+      };
+    }
+
+    if (remainder.endsWith("/publish")) {
+      return {
+        rawLocator: decodeURIComponent(remainder.slice(0, -"/publish".length)),
+        operation: "publish",
+        sha: null,
+      };
+    }
+
+    const manifestMatch = remainder.match(/^(.*)\/manifest\/([^/]+)\.json$/);
+    if (manifestMatch !== null) {
+      return {
+        rawLocator: decodeURIComponent(manifestMatch[1] ?? ""),
+        operation: "manifest",
+        sha: manifestMatch[2] ?? "",
+      };
+    }
+
+    const sourceMatch = remainder.match(/^(.*)\/source\/([^/]+)\.tar\.gz$/);
+    if (sourceMatch !== null) {
+      return {
+        rawLocator: decodeURIComponent(sourceMatch[1] ?? ""),
+        operation: "source",
+        sha: sourceMatch[2] ?? "",
+      };
+    }
+
+    throw new HttpError(404, "not_found", "Package route does not exist.");
+  }
+
+  return null;
+}
+
+function parsePackageOperation(rawLocator: string, operationPath: string): ParsedPackageRoute {
+  if (operationPath === "resolve") {
+    return { rawLocator, operation: "resolve", sha: null };
+  }
+
+  if (operationPath === "publish") {
+    return { rawLocator, operation: "publish", sha: null };
+  }
+
+  if (operationPath.startsWith("manifest/") && operationPath.endsWith(".json")) {
+    return {
+      rawLocator,
+      operation: "manifest",
+      sha: operationPath.slice("manifest/".length, -".json".length),
+    };
+  }
+
+  if (operationPath.startsWith("source/") && operationPath.endsWith(".tar.gz")) {
+    return {
+      rawLocator,
+      operation: "source",
+      sha: operationPath.slice("source/".length, -".tar.gz".length),
+    };
+  }
+
+  throw new HttpError(404, "not_found", "Package route does not exist.");
 }
 
 function clampInteger(

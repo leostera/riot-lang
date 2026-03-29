@@ -287,7 +287,7 @@ function getGitHubOAuthClient(env: Env, callbackUrl: string): GitHub {
 }
 
 function buildGitHubCallbackUrl(requestUrl: URL): string {
-  return new URL("/auth/github/callback", requestUrl.origin).toString();
+  return new URL("/v1/auth/github/callback", requestUrl.origin).toString();
 }
 
 async function fetchGitHubUser(env: Env, accessToken: string): Promise<GitHubUserProfile> {

@@ -7,7 +7,7 @@ import type {
 
 export async function fetchSession(request: Request): Promise<SessionResponse> {
   try {
-    const response = await fetchFromRegistry(request, "/api/v1/me", {
+    const response = await fetchFromRegistry(request, "/v1/me", {
       headers: {
         accept: "application/json",
       },
@@ -24,7 +24,7 @@ export async function fetchSession(request: Request): Promise<SessionResponse> {
 }
 
 export async function fetchApiTokens(request: Request): Promise<ApiTokensResponse> {
-  const response = await fetchFromRegistry(request, "/api/v1/me/tokens", {
+  const response = await fetchFromRegistry(request, "/v1/me/tokens", {
     headers: {
       accept: "application/json",
     },
@@ -45,7 +45,7 @@ export async function createApiToken(
   request: Request,
   name: string,
 ): Promise<CreateApiTokenResponse> {
-  const response = await fetchFromRegistry(request, "/api/v1/me/tokens", {
+  const response = await fetchFromRegistry(request, "/v1/me/tokens", {
     method: "POST",
     headers: {
       accept: "application/json",
@@ -70,7 +70,7 @@ export async function revokeApiToken(
   request: Request,
   tokenId: string,
 ): Promise<void> {
-  const response = await fetchFromRegistry(request, `/api/v1/me/tokens/${encodeURIComponent(tokenId)}`, {
+  const response = await fetchFromRegistry(request, `/v1/me/tokens/${encodeURIComponent(tokenId)}`, {
     method: "DELETE",
     headers: {
       accept: "application/json",
@@ -89,12 +89,12 @@ export async function revokeApiToken(
 
 export function buildGitHubLoginUrl(returnTo: string): string {
   const { registryBaseUrl } = getConfig();
-  return `${registryBaseUrl}/auth/github/start?return_to=${encodeURIComponent(returnTo)}`;
+  return `${registryBaseUrl}/v1/auth/github/start?return_to=${encodeURIComponent(returnTo)}`;
 }
 
 export function buildLogoutUrl(returnTo: string): string {
   const { registryBaseUrl } = getConfig();
-  return `${registryBaseUrl}/auth/logout?return_to=${encodeURIComponent(returnTo)}`;
+  return `${registryBaseUrl}/v1/auth/logout?return_to=${encodeURIComponent(returnTo)}`;
 }
 
 function buildRegistryUrl(path: string): string {

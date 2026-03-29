@@ -39,6 +39,18 @@ describe("riot package registry routes", () => {
     expect(await readJson(response)).toEqual({
       service: "riot-package-registry",
       routes: {
+        resolve: "/v1/packages/<locator>/resolve?ref=<selector>",
+        manifest: "/v1/packages/<locator>/manifest/<sha>.json",
+        source: "/v1/packages/<locator>/source/<sha>.tar.gz",
+        publish: "/v1/packages/<locator>/publish?ref=<selector>",
+        auth_github_start: "/v1/auth/github/start?return_to=<url>",
+        auth_github_callback: "/v1/auth/github/callback?code=<code>&state=<state>",
+        auth_logout: "/v1/auth/logout",
+        me: "/v1/me",
+        tokens: "/v1/me/tokens",
+        search: "/v1/search?q=<query>",
+      },
+      legacy_routes: {
         resolve: "/package/<locator>/-/resolve?ref=<selector>",
         manifest: "/package/<locator>/-/manifest/<sha>.json",
         source: "/package/<locator>/-/source/<sha>.tar.gz",
@@ -72,7 +84,7 @@ describe("riot package registry routes", () => {
     });
 
     const response = await handleRequest(
-      new Request(`https://registry.test/package/leostera/minttea/-/resolve?ref=${SHA}`),
+      new Request(`https://registry.test/v1/packages/leostera/minttea/resolve?ref=${SHA}`),
       env,
       ctx,
     );
@@ -87,12 +99,12 @@ describe("riot package registry routes", () => {
       resolved_sha: SHA,
       manifest: {
         key: `packages/github.com/leostera/minttea/${SHA}.manifest.json`,
-        url: `https://registry.test/package/github.com/leostera/minttea/-/manifest/${SHA}.json`,
+        url: `https://registry.test/v1/packages/github.com/leostera/minttea/manifest/${SHA}.json`,
         cdn_url: `https://cdn.pkgs.ml/packages/github.com/leostera/minttea/${SHA}.manifest.json`,
       },
       source_archive: {
         key: `sources/github.com/leostera/minttea/${SHA}.tar.gz`,
-        url: `https://registry.test/package/github.com/leostera/minttea/-/source/${SHA}.tar.gz`,
+        url: `https://registry.test/v1/packages/github.com/leostera/minttea/source/${SHA}.tar.gz`,
         cdn_url: `https://cdn.pkgs.ml/sources/github.com/leostera/minttea/${SHA}.tar.gz`,
       },
       cache: {

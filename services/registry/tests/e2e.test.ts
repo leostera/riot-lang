@@ -1,18 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
-const baseUrl = trimTrailingSlash(process.env.REGISTRY_E2E_BASE_URL);
+const baseUrl = trimTrailingSlash(process.env.REGISTRY_E2E_BASE_URL) ?? "https://api.pkgs.ml";
 const packageLocator =
   process.env.REGISTRY_E2E_PACKAGE_LOCATOR ?? "github.com/leostera/riot-new/packages/kernel";
 const selector = process.env.REGISTRY_E2E_SELECTOR ?? "main";
 const publishPackageLocator = process.env.REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR ?? packageLocator;
-const liveTest = baseUrl === null ? test.skip : test;
+const liveTest = test;
 const rootAuthToken = process.env.REGISTRY_E2E_ROOT_AUTH_TOKEN ?? null;
-const livePublishTest = baseUrl === null || rootAuthToken === null ? test.skip : test;
+const livePublishTest = rootAuthToken === null ? test.skip : test;
 const sessionCookie = process.env.REGISTRY_E2E_SESSION_COOKIE ?? null;
 const githubLogin = process.env.REGISTRY_E2E_GITHUB_LOGIN ?? null;
-const liveAuthTest = baseUrl === null ? test.skip : test;
 const liveAuthenticatedTest =
-  baseUrl === null || sessionCookie === null || githubLogin === null ? test.skip : test;
+  sessionCookie === null || githubLogin === null ? test.skip : test;
 const cdnBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
 const indexBasePath = trimSlashes(process.env.REGISTRY_INDEX_E2E_BASE_PATH) ?? "index/v1";
 
@@ -24,22 +23,22 @@ describe("riot package registry live e2e", () => {
     const payload = (await response.json()) as Record<string, unknown>;
     expect(payload.service).toBe("riot-package-registry");
     expect(payload.routes).toEqual({
-      resolve: "/package/<locator>/-/resolve?ref=<selector>",
-      manifest: "/package/<locator>/-/manifest/<sha>.json",
-      source: "/package/<locator>/-/source/<sha>.tar.gz",
-      publish: "/package/<locator>/-/publish?ref=<selector>",
-      auth_github_start: "/auth/github/start?return_to=<url>",
-      auth_github_callback: "/auth/github/callback?code=<code>&state=<state>",
-      auth_logout: "/auth/logout",
-      me: "/api/v1/me",
-      tokens: "/api/v1/me/tokens",
-      search: "/api/v1/search?q=<query>",
+      resolve: "/v1/packages/<locator>/resolve?ref=<selector>",
+      manifest: "/v1/packages/<locator>/manifest/<sha>.json",
+      source: "/v1/packages/<locator>/source/<sha>.tar.gz",
+      publish: "/v1/packages/<locator>/publish?ref=<selector>",
+      auth_github_start: "/v1/auth/github/start?return_to=<url>",
+      auth_github_callback: "/v1/auth/github/callback?code=<code>&state=<state>",
+      auth_logout: "/v1/auth/logout",
+      me: "/v1/me",
+      tokens: "/v1/me/tokens",
+      search: "/v1/search?q=<query>",
     });
   });
 
-  liveAuthTest("github auth start redirects to GitHub authorize", async () => {
+  liveTest("github auth start redirects to GitHub authorize", async () => {
     const response = await fetch(
-      `${baseUrl}/auth/github/start?return_to=${encodeURIComponent("https://pkgs.ml/login")}`,
+      `${baseUrl}/v1/auth/github/start?return_to=${encodeURIComponent("https://pkgs.ml/login")}`,
       {
         redirect: "manual",
       },
@@ -54,13 +53,13 @@ describe("riot package registry live e2e", () => {
     expect(redirectUrl.pathname).toBe("/login/oauth/authorize");
     expect(redirectUrl.searchParams.get("client_id")).not.toBeNull();
     expect(redirectUrl.searchParams.get("redirect_uri")).toBe(
-      `${baseUrl}/auth/github/callback`,
+      `${baseUrl}/v1/auth/github/callback`,
     );
     expect(redirectUrl.searchParams.get("state")).not.toBeNull();
   });
 
-  liveAuthTest("anonymous session and token routes behave as expected", async () => {
-    const meResponse = await fetch(`${baseUrl}/api/v1/me`, {
+  liveTest("anonymous session and token routes behave as expected", async () => {
+    const meResponse = await fetch(`${baseUrl}/v1/me`, {
       headers: {
         accept: "application/json",
       },
@@ -72,7 +71,7 @@ describe("riot package registry live e2e", () => {
       authenticated: false,
     });
 
-    const tokenListResponse = await fetch(`${baseUrl}/api/v1/me/tokens`, {
+    const tokenListResponse = await fetch(`${baseUrl}/v1/me/tokens`, {
       headers: {
         accept: "application/json",
       },
@@ -86,7 +85,7 @@ describe("riot package registry live e2e", () => {
 
   liveTest("search miss returns an empty result set", async () => {
     const query = `definitely-not-a-package-${Date.now()}`;
-    const response = await fetch(`${baseUrl}/api/v1/search?q=${encodeURIComponent(query)}`, {
+    const response = await fetch(`${baseUrl}/v1/search?q=${encodeURIComponent(query)}`, {
       headers: {
         accept: "application/json",
       },
@@ -104,7 +103,7 @@ describe("riot package registry live e2e", () => {
   liveAuthenticatedTest("authenticated session can list and manage publish tokens", async () => {
     const tokenName = `e2e-${Date.now()}`;
 
-    const meResponse = await fetch(`${baseUrl}/api/v1/me`, {
+    const meResponse = await fetch(`${baseUrl}/v1/me`, {
       headers: authenticatedHeaders(),
     });
     expect(meResponse.status).toBe(200);
@@ -115,7 +114,7 @@ describe("riot package registry live e2e", () => {
       },
     });
 
-    const createResponse = await fetch(`${baseUrl}/api/v1/me/tokens`, {
+    const createResponse = await fetch(`${baseUrl}/v1/me/tokens`, {
       method: "POST",
       headers: {
         ...authenticatedHeaders(),
@@ -131,7 +130,7 @@ describe("riot package registry live e2e", () => {
     expect(created.plaintext_token.startsWith("rpk_")).toBe(true);
     expect(created.token.name).toBe(tokenName);
 
-    const listResponse = await fetch(`${baseUrl}/api/v1/me/tokens`, {
+    const listResponse = await fetch(`${baseUrl}/v1/me/tokens`, {
       headers: authenticatedHeaders(),
     });
     expect(listResponse.status).toBe(200);
@@ -143,7 +142,7 @@ describe("riot package registry live e2e", () => {
     expect(listed.tokens.some((token) => token.token_id === created.token.token_id)).toBe(true);
 
     const revokeResponse = await fetch(
-      `${baseUrl}/api/v1/me/tokens/${encodeURIComponent(created.token.token_id)}`,
+      `${baseUrl}/v1/me/tokens/${encodeURIComponent(created.token.token_id)}`,
       {
         method: "DELETE",
         headers: authenticatedHeaders(),
@@ -166,8 +165,8 @@ describe("riot package registry live e2e", () => {
     expect(publication.package_subdir).toBe("packages/kernel");
     expect(publication.selector).toBe(selector);
     expect(publication.resolved_sha).toMatch(/^[0-9a-f]{40}$/);
-    expect(publication.manifest.url).toContain(`/package/${packageLocator}/-/manifest/`);
-    expect(publication.source_archive.url).toContain(`/package/${packageLocator}/-/source/`);
+    expect(publication.manifest.url).toContain(`/v1/packages/${packageLocator}/manifest/`);
+    expect(publication.source_archive.url).toContain(`/v1/packages/${packageLocator}/source/`);
   });
 
   liveTest("manifest route returns immutable source metadata", async () => {
@@ -216,8 +215,8 @@ describe("riot package registry live e2e", () => {
     );
     expect(typeof publication.claim.created).toBe("boolean");
     expect(typeof publication.release.created).toBe("boolean");
-    expect(publication.manifest.url).toContain(`/package/${publishPackageLocator}/-/manifest/`);
-    expect(publication.source_archive.url).toContain(`/package/${publishPackageLocator}/-/source/`);
+    expect(publication.manifest.url).toContain(`/v1/packages/${publishPackageLocator}/manifest/`);
+    expect(publication.source_archive.url).toContain(`/v1/packages/${publishPackageLocator}/source/`);
 
     const config = await pollJson<Record<string, unknown>>(
       `${cdnBaseUrl}/${indexBasePath}/config.json`,
@@ -309,7 +308,7 @@ describe("riot package registry live e2e", () => {
     const publication = await publishPackage();
 
     const searchResponse = await pollJson<SearchResponsePayload>(
-      `${baseUrl}/api/v1/search?q=${encodeURIComponent(publication.package_name)}`,
+      `${baseUrl}/v1/search?q=${encodeURIComponent(publication.package_name)}`,
       (value) =>
         value !== null &&
         Array.isArray(value.results) &&
@@ -332,12 +331,8 @@ describe("riot package registry live e2e", () => {
 });
 
 async function resolvePublication(): Promise<ResolvePayload> {
-  if (baseUrl === null) {
-    throw new Error("REGISTRY_E2E_BASE_URL must be set to resolve live publications.");
-  }
-
   const response = await fetch(
-    `${baseUrl}/package/${packageLocator}/-/resolve?ref=${encodeURIComponent(selector)}`,
+    `${baseUrl}/v1/packages/${packageLocator}/resolve?ref=${encodeURIComponent(selector)}`,
   );
 
   expect(response.status).toBe(200);
@@ -345,14 +340,12 @@ async function resolvePublication(): Promise<ResolvePayload> {
 }
 
 async function publishPackage(): Promise<PublishPayload> {
-  if (baseUrl === null || rootAuthToken === null) {
-    throw new Error(
-      "REGISTRY_E2E_BASE_URL and REGISTRY_E2E_ROOT_AUTH_TOKEN must be set to publish live packages.",
-    );
+  if (rootAuthToken === null) {
+    throw new Error("REGISTRY_E2E_ROOT_AUTH_TOKEN must be set to publish live packages.");
   }
 
   const response = await fetch(
-    `${baseUrl}/package/${publishPackageLocator}/-/publish?ref=${encodeURIComponent(selector)}`,
+    `${baseUrl}/v1/packages/${publishPackageLocator}/publish?ref=${encodeURIComponent(selector)}`,
     {
       method: "POST",
       headers: {

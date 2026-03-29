@@ -9,7 +9,7 @@ describe("registry search api", () => {
   test("search route returns metadata when q is absent", async () => {
     const { env } = makeEnv();
     const response = await handleRequest(
-      new Request("https://registry.test/api/v1/search"),
+      new Request("https://registry.test/v1/search"),
       env,
       new FakeExecutionContext(),
     );
@@ -18,7 +18,7 @@ describe("registry search api", () => {
     const payload = (await response.json()) as Record<string, unknown>;
     expect(payload).toEqual({
       service: "riot-package-registry",
-      route: "/api/v1/search?q=<query>",
+      route: "/v1/search?q=<query>",
       source: {
         package_index_base_url: "https://cdn.pkgs.ml/index/v1",
         updated_during_publish: true,
@@ -31,7 +31,7 @@ describe("registry search api", () => {
     await indexPublishedRelease(env, makeReleaseRecord(), makeManifest());
 
     const exact = await handleRequest(
-      new Request("https://registry.test/api/v1/search?q=kernel"),
+      new Request("https://registry.test/v1/search?q=kernel"),
       env,
       new FakeExecutionContext(),
     );
@@ -53,7 +53,7 @@ describe("registry search api", () => {
     });
 
     const provenance = await handleRequest(
-      new Request("https://registry.test/api/v1/search?q=leostera"),
+      new Request("https://registry.test/v1/search?q=leostera"),
       env,
       new FakeExecutionContext(),
     );
@@ -69,7 +69,7 @@ describe("registry search api", () => {
     await indexPublishedRelease(env, makeReleaseRecord(), makeManifest());
 
     const response = await handleRequest(
-      new Request("https://registry.test/api/v1/search?q=definitely-not-a-package-12345"),
+      new Request("https://registry.test/v1/search?q=definitely-not-a-package-12345"),
       env,
       new FakeExecutionContext(),
     );

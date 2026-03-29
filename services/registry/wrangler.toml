@@ -11,6 +11,10 @@ AUTH_COOKIE_DOMAIN = "pkgs.ml"
 PKGS_WEB_BASE_URL = "https://pkgs.ml"
 
 [[routes]]
+pattern = "api.pkgs.ml"
+custom_domain = true
+
+[[routes]]
 pattern = "registry.pkgs.ml"
 custom_domain = true
 

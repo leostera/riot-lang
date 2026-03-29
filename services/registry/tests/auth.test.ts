@@ -7,7 +7,7 @@ import { FakeExecutionContext, makeEnv, makeTarGz, withMockedFetch } from "./hel
 const SHA = "0123456789abcdef0123456789abcdef01234567";
 
 describe("riot package registry auth", () => {
-  test("github oauth callback creates a session and /api/v1/me returns the user", async () => {
+  test("github oauth callback creates a session and /v1/me returns the user", async () => {
     const { env, bucket } = makeEnv({
       GITHUB_OAUTH_CLIENT_ID: "github-client-id",
       GITHUB_OAUTH_CLIENT_SECRET: "github-client-secret",
@@ -16,7 +16,7 @@ describe("riot package registry auth", () => {
 
     const startCtx = new FakeExecutionContext();
     const startResponse = await handleRequest(
-      new Request("https://registry.test/auth/github/start?return_to=/u/leostera/tokens"),
+      new Request("https://registry.test/v1/auth/github/start?return_to=/u/leostera/tokens"),
       env,
       startCtx,
     );
@@ -54,7 +54,7 @@ describe("riot package registry auth", () => {
     }, async () => {
       return await handleRequest(
         new Request(
-          `https://registry.test/auth/github/callback?code=oauth-code&state=${encodeURIComponent(
+          `https://registry.test/v1/auth/github/callback?code=oauth-code&state=${encodeURIComponent(
             state ?? "",
           )}`,
         ),
@@ -73,7 +73,7 @@ describe("riot package registry auth", () => {
 
     const sessionCtx = new FakeExecutionContext();
     const sessionResponse = await handleRequest(
-      new Request("https://registry.test/api/v1/me", {
+      new Request("https://registry.test/v1/me", {
         headers: {
           cookie: cookie ?? "",
           accept: "application/json",
@@ -105,7 +105,7 @@ describe("riot package registry auth", () => {
 
     const createCtx = new FakeExecutionContext();
     const createResponse = await handleRequest(
-      new Request("https://registry.test/api/v1/me/tokens", {
+      new Request("https://registry.test/v1/me/tokens", {
         method: "POST",
         headers: {
           cookie,
@@ -129,7 +129,7 @@ describe("riot package registry auth", () => {
 
     const listCtx = new FakeExecutionContext();
     const listResponse = await handleRequest(
-      new Request("https://registry.test/api/v1/me/tokens", {
+      new Request("https://registry.test/v1/me/tokens", {
         headers: {
           cookie,
           accept: "application/json",
@@ -156,7 +156,7 @@ describe("riot package registry auth", () => {
 
     const deleteCtx = new FakeExecutionContext();
     const deleteResponse = await handleRequest(
-      new Request(`https://registry.test/api/v1/me/tokens/${created.token.token_id}`, {
+      new Request(`https://registry.test/v1/me/tokens/${created.token.token_id}`, {
         method: "DELETE",
         headers: {
           cookie,
@@ -307,7 +307,7 @@ describe("riot package registry auth", () => {
 async function loginAsGitHubUser(env: ReturnType<typeof makeEnv>["env"], login: string): Promise<string> {
   const startCtx = new FakeExecutionContext();
   const startResponse = await handleRequest(
-    new Request(`https://registry.test/auth/github/start?return_to=${encodeURIComponent(`/u/${login}/tokens`)}`),
+    new Request(`https://registry.test/v1/auth/github/start?return_to=${encodeURIComponent(`/u/${login}/tokens`)}`),
     env,
     startCtx,
   );
@@ -341,7 +341,7 @@ async function loginAsGitHubUser(env: ReturnType<typeof makeEnv>["env"], login: 
   }, async () => {
     return await handleRequest(
       new Request(
-        `https://registry.test/auth/github/callback?code=oauth-code&state=${encodeURIComponent(state)}`,
+        `https://registry.test/v1/auth/github/callback?code=oauth-code&state=${encodeURIComponent(state)}`,
       ),
       env,
       callbackCtx,
@@ -364,7 +364,7 @@ async function createPublishToken(
 ): Promise<string> {
   const ctx = new FakeExecutionContext();
   const response = await handleRequest(
-    new Request("https://registry.test/api/v1/me/tokens", {
+    new Request("https://registry.test/v1/me/tokens", {
       method: "POST",
       headers: {
         cookie,

@@ -4,14 +4,14 @@ const pkgsBaseUrl = trimTrailingSlash(process.env.PKGS_E2E_BASE_URL);
 const registryBaseUrl =
   trimTrailingSlash(process.env.REGISTRY_E2E_BASE_URL) ??
   trimTrailingSlash(process.env.PUBLIC_REGISTRY_BASE_URL) ??
-  "https://registry.pkgs.ml";
+  "https://api.pkgs.ml";
 const publishPackageLocator =
   process.env.PKGS_E2E_PUBLISH_PACKAGE_LOCATOR ??
   process.env.REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR ??
   "github.com/leostera/riot-new/packages/kernel";
 const selector = process.env.REGISTRY_E2E_SELECTOR ?? "main";
 const searchApiBaseUrl =
-  trimTrailingSlash(process.env.PKGS_E2E_SEARCH_API_BASE_URL) ?? `${registryBaseUrl}/api/v1/search`;
+  trimTrailingSlash(process.env.PKGS_E2E_SEARCH_API_BASE_URL) ?? `${registryBaseUrl}/v1/search`;
 const cdnBaseUrl = trimTrailingSlash(process.env.PUBLIC_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
 const indexBasePath = trimSlashes(process.env.PUBLIC_INDEX_BASE_PATH) ?? "index/v1";
 const viewsBasePath = trimSlashes(process.env.PUBLIC_VIEWS_BASE_PATH) ?? "views/v1";
@@ -35,7 +35,7 @@ describe("pkgs.ml live e2e", () => {
     expect(html).toContain('name="q"');
     expect(html).toContain("Login with GitHub");
     expect(html).toContain(
-      `${registryBaseUrl}/auth/github/start?return_to=${encodeURIComponent(`${pkgsBaseUrl}/`)}`,
+      `${registryBaseUrl}/v1/auth/github/start?return_to=${encodeURIComponent(`${pkgsBaseUrl}/`)}`,
     );
   });
 
@@ -96,7 +96,7 @@ describe("pkgs.ml live e2e", () => {
     const html = await response.text();
     expect(html).toContain("Continue with GitHub");
     expect(html).toContain(
-      `${registryBaseUrl}/auth/github/start?return_to=${encodeURIComponent(returnTo)}`,
+      `${registryBaseUrl}/v1/auth/github/start?return_to=${encodeURIComponent(returnTo)}`,
     );
   });
 
@@ -296,7 +296,7 @@ describe("pkgs.ml live e2e", () => {
     expect(revisitHtml).not.toContain(plaintextToken);
 
     const revokeResponse = await fetch(
-      `${registryBaseUrl}/api/v1/me/tokens/${encodeURIComponent(tokenId ?? "")}`,
+      `${registryBaseUrl}/v1/me/tokens/${encodeURIComponent(tokenId ?? "")}`,
       {
         method: "DELETE",
         headers: {
@@ -311,7 +311,7 @@ describe("pkgs.ml live e2e", () => {
 
 async function publishPackage(): Promise<PublishPayload> {
   const response = await fetch(
-    `${registryBaseUrl}/package/${publishPackageLocator}/-/publish?ref=${encodeURIComponent(selector)}`,
+    `${registryBaseUrl}/v1/packages/${publishPackageLocator}/publish?ref=${encodeURIComponent(selector)}`,
     {
       method: "POST",
       headers: {
