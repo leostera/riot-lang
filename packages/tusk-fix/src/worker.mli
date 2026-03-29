@@ -2,14 +2,7 @@
 
 open Std
 
-type config = {
-  mode : Runner.mode;
-  scope : Fix_config.scope option;
-  coordinator : Pid.t;
-}
 (** Worker configuration *)
-
-val start : config -> Pid.t
 (** Start a new worker actor.
     
     The worker will:
@@ -21,3 +14,9 @@ val start : config -> Pid.t
     
     If linting fails, the worker sends a failure message and continues.
 *)
+type config = {
+  mode : Runner.mode;
+  scope : Fix_config.scope option;
+  coordinator : Pid.t;
+}
+val start : config -> Pid.t

@@ -1,7 +1,5 @@
 open Std
-
 (** Tusk-Fix - OCaml Linter and Code Fixer *)
-
 module Diagnostic = Diagnostic
 module Fix = Fix
 module Pipeline = Pipeline

@@ -2,22 +2,11 @@
 
 open Std
 
+(** Either a pre-resolved file list or root paths to stream from. *)
+(** Coordinator configuration *)
 type input =
   | Files of Path.t list
   | Roots of Path.t list
-(** Either a pre-resolved file list or root paths to stream from. *)
-
-type config = {
-  input : input;
-  concurrency : int;
-  limit : int option;
-  mode : Runner.mode;
-  scope : Fix_config.scope option;
-  owner : Pid.t;
-}
-(** Coordinator configuration *)
-
-val start : config -> Pid.t
 (** Start a new coordinator actor.
     
     The coordinator will:
@@ -29,3 +18,12 @@ val start : config -> Pid.t
     6. Stop workers when the queue drains or early termination is requested
     7. Send AllComplete message to owner when done
 *)
+type config = {
+  input : input;
+  concurrency : int;
+  limit : int option;
+  mode : Runner.mode;
+  scope : Fix_config.scope option;
+  owner : Pid.t;
+}
+val start : config -> Pid.t

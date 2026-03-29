@@ -6,7 +6,6 @@ type generated_provider = {
   copied_source_path : Path.t;
   support_module_sources : (string * Path.t) list;
 }
-
 type plan = {
   provider_hash : string;
   generated_dir : Path.t;
@@ -25,17 +24,11 @@ type plan = {
   binary_name : string;
   providers : generated_provider list;
 }
-
-val plan :
-  workspace_root:Path.t ->
-  target_dir_root:Path.t ->
-  Tusk_model.Fix_provider.t list ->
-  plan
+val plan : workspace_root:Path.t -> target_dir_root:Path.t -> Tusk_model.Fix_provider.t list -> plan
 
 val registry_source : Tusk_model.Fix_provider.t list -> string
 
-val materialize :
-  workspace_root:Path.t ->
-  target_dir_root:Path.t ->
-  Tusk_model.Fix_provider.t list ->
-  plan
+val materialize : workspace_root:Path.t ->
+target_dir_root:Path.t ->
+Tusk_model.Fix_provider.t list ->
+plan

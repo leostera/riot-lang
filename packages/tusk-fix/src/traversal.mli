@@ -5,6 +5,4 @@ type binding_site = {
   name_token : Syn.Cst.Token.t;
   is_function : bool;
 }
-
-val binding_sites_of_structure_item :
-  Syn.Cst.StructureItem.t -> binding_site list
+val binding_sites_of_structure_item : Syn.Cst.StructureItem.t -> binding_site list
