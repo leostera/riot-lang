@@ -74,6 +74,13 @@ bugs.
   single-warning round-trip baseline.
 - `ActionJsonWarningFlagsRoundTripBug.cfg`: a failing config showing that the
   current action JSON parser drops combined warning payloads.
+- `ActionSchedulerCompletionAccounting.tla`: a PlusCal slice of the scheduler /
+  executor completion-accounting interaction when dependents are skipped.
+- `ActionSchedulerCompletionAccounting.cfg`: a passing smoke config for the
+  one-node completion baseline.
+- `ActionSchedulerCompletionAccountingBug.cfg`: a failing config showing that a
+  skipped dependent can be recorded without advancing global completion
+  accounting.
 - `BugInventory.md`: the running list of bug-shaped properties found by the
   extracted specs. This is the place to accumulate likely bugs before we add
   OCaml regression tests.
@@ -256,6 +263,24 @@ extracted semantics, the serializer can emit one `-w` payload containing
 multiple warning codes, but the parser only reconstructs the one-code payloads
 `-a` and `-49`, and otherwise falls back to an empty warning list.
 
+## What `ActionSchedulerCompletionAccounting.tla` Extracts
+
+This is the first intentionally interaction-heavy slice in the directory. It
+extracts one worker-level interaction between
+`packages/tusk-executor/src/action_queue.ml` and
+`packages/tusk-executor/src/action_executor.ml`:
+
+- `Action_queue.next` can mark a node `Skipped` internally after an upstream
+  failure
+- `action_executor.execute` separately tracks `completed_count` from worker
+  completion messages
+- if skipped nodes do not increment that counter, the executor can become
+  quiescent but still be under-counted
+
+The bug config checks that quiescent completion law directly. Under the current
+extracted semantics, `A` fails, `B` is marked `Skipped`, `queue.completed`
+contains both nodes, and `completed_count` is still `1`.
+
 ## How To Work On The Spec
 
 `ActionCache.tla` is written primarily in PlusCal. Treat the PlusCal algorithm
@@ -357,6 +382,15 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/ActionJsonWarningFlagsRoundTrip.cfg
 ```
 
+And for the scheduler completion-accounting slice:
+
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/ActionSchedulerCompletionAccounting.tla \
+  -config specs/tusk/ActionSchedulerCompletionAccounting.cfg
+```
+
 The bug config is expected to fail under the current implementation-shaped
 semantics:
 
@@ -423,6 +457,13 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/ActionJsonWarningFlagsRoundTripBug.cfg
 ```
 
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/ActionSchedulerCompletionAccounting.tla \
+  -config specs/tusk/ActionSchedulerCompletionAccountingBug.cfg
+```
+
 ## Current Findings
 
 `ActionCacheCommandOrderBug.cfg` is designed to expose one concrete design bug:
@@ -476,6 +517,11 @@ warning payloads do not survive action JSON round-trips. A cached action graph
 can be restored with `Warning []` even when the original planned action carried
 multiple warning codes in one `-w` payload.
 
+`ActionSchedulerCompletionAccountingBug.cfg` exposes a ninth design bug: the
+scheduler can record skipped dependents without advancing the executor's global
+completion count. That leaves the system quiescent but under-counted, which is
+exactly the kind of interaction bug the smaller local specs do not catch.
+
 ## Validation Notes
 
 These configs are safety-only and intentionally tiny.
@@ -524,3 +570,8 @@ These configs are safety-only and intentionally tiny.
   states and no errors.
 - `ActionJsonWarningFlagsRoundTripBug.cfg` currently fails with a
   counterexample where `<<"a", "49">>` is restored as an empty warning list.
+- `ActionSchedulerCompletionAccounting.cfg` currently completes with 8 distinct
+  states and no errors.
+- `ActionSchedulerCompletionAccountingBug.cfg` currently fails with a
+  counterexample where `A` is `failed`, `B` is `skipped`, and the scheduler is
+  quiescent with `completed_count = 1`.

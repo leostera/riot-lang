@@ -255,7 +255,7 @@ Current bug found:
 
 ### 6. `ActionScheduler`
 
-Status: `next`
+Status: `partially modeled`
 
 Primary sources:
 - `packages/tusk-executor/src/action_queue.ml`
@@ -276,6 +276,27 @@ Properties:
 - Dependent actions do not run after an upstream failure.
 - Parallel execution is owned by the action scheduler, not by a competing
   package-level worker pool.
+
+Implemented slice:
+- `ActionSchedulerCompletionAccounting.tla` covers one worker-level interaction
+  between `Action_queue.next` and `action_executor.execute`: skipped dependents
+  are inserted into the completed table, while the outer executor loop tracks a
+  separate `completed_count`.
+
+Still open:
+- cache-hit readiness vs execution readiness
+- blocked-node requeue behavior with missing dependencies
+- later-queue transfer rules
+- multi-worker scheduling and fairness
+- termination/accounting on larger mixed success/failure graphs
+- empty-graph immediate termination
+
+Current bug found:
+- Skipped nodes are not counted toward global completion in the current
+  scheduler/executor interaction. The queue can record a node as `Skipped`
+  without producing a worker completion message, so the executor's
+  `completed_count` can lag behind the completed table and leave the system
+  quiescent but under-counted.
 
 ### 7. `SandboxExecution`
 

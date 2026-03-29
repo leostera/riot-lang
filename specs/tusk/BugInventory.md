@@ -287,6 +287,44 @@ Deferred follow-up:
 - write an OCaml regression test only after we finish the broader bug-inventory
   pass
 
+### 9. Action Scheduler Must Count Skipped Nodes Toward Completion
+
+Status: `spec-failing`
+
+Spec slice:
+- `ActionSchedulerCompletionAccounting.tla`
+- `ActionSchedulerCompletionAccountingBug.cfg`
+
+Property:
+- When a dependent node is marked `Skipped` because an upstream dependency
+  failed, the scheduler/executor interaction must still count that node toward
+  global completion.
+
+Why it looks buggy:
+- `Action_queue.next` can mark a node `Skipped` immediately after seeing a
+  failed dependency
+- `action_executor.execute` increments `completed_count` only on worker
+  `ActionCompleted` messages
+- skipped nodes are therefore recorded in `queue.completed` without increasing
+  `completed_count`
+- the executor can become quiescent with no ready work and no busy workers, but
+  still believe it is waiting for more completions
+
+Primary source area:
+- `packages/tusk-executor/src/action_queue.ml`
+- `packages/tusk-executor/src/action_executor.ml`
+
+Counterexample shape:
+- `A` runs and fails
+- dependent node `B` is marked `Skipped` inside `Action_queue.next`
+- `queue.completed` contains both `A` and `B`
+- `completed_count` is still `1`, so the executor is under-counted at
+  quiescence
+
+Deferred follow-up:
+- write an OCaml regression test only after we finish the broader bug-inventory
+  pass
+
 ## Next Candidates To Model
 
 These are not yet bug entries. They are the next properties most likely to
