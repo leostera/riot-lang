@@ -58,6 +58,10 @@ echo "    source: $source_dir"
 echo "    prefix: $prefix"
 
 cd "$source_dir"
-./configure --prefix="$prefix"
+./configure \
+  --prefix="$prefix" \
+  --with-relative-libdir=../lib/ocaml \
+  --enable-runtime-search \
+  --enable-runtime-search-target=fallback
 make -j"$jobs"
 make install
