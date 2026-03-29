@@ -3060,11 +3060,7 @@ and render_case ?(force_multiline_body = false) ?(force_leading_bar = false)
       when
         force_multiline_body
         || Doc.is_multiline body
-        || expression_prefers_multiline_layout case.body
-        ||
-        let case_source = text_of_syntax_node case.syntax_node in
-        string_contains_substring case_source "->\n"
-        || string_contains_substring case_source "->\r\n" ->
+        || expression_prefers_multiline_layout case.body ->
       Doc.concat
         [
           prefix;

@@ -225,6 +225,27 @@ let bind =
 |}
           ~actual;
         Ok ());
+    Test.case "format match cases from structure, not arrow source newlines"
+      (fun () ->
+        let source =
+          {|let render = function
+  | A ->
+      value
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"match case layout should not preserve source newlines after arrows"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let render =
+  function
+  | A -> value
+|}
+          ~actual;
+        Ok ());
     Test.case "format keeps simple applies inline even when identifiers contain keywords"
       (fun () ->
         let source = "let handler = use function_handler\n" in

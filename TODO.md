@@ -61,6 +61,7 @@ This file is _yours_. Keep it up to date after every big change.
 - application rendering no longer force-switches layout from raw source length or embedded newlines; it follows structural argument break rules only.
 - inline-record constructor arguments no longer preserve multiline layout just because the original record node contained newlines; they format from field structure and owned trivia only.
 - sequence-expression trivia now renders from `separator_tokens` plus the next expression's leading trivia, and `let*`/`let+` clause and body trivia now render from `equals_token` / `in_token`; `lower.ml` no longer reparses raw spans for those boundaries.
+- match-case layout no longer preserves raw source newlines after `->`; `render_case` now breaks only from rendered body structure and explicit multiline preferences.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - `Format_core.format` now has an explicit EOF policy: non-empty formatted output ends with a final newline, without inspecting the input source to inherit that behavior.
 - top-level structure phrase separators now come from direct source-file separator tokens, not by slicing raw source between item spans or preserving expression runs from source text.
@@ -126,7 +127,6 @@ This file is _yours_. Keep it up to date after every big change.
   - `expression_source_is_long`
   - `expression_source_has_newline`
   - application multiline preference derived from raw node text length/newlines
-  - `render_case` deciding line-breaking from raw `"->\\n"` / `"->\\r\\n"` substrings
   - `let exception` rendering that prints `exception_declaration.syntax_node` text directly
 
 - [ ] Remove source-derived “safe to rewrite” gates from top-level formatting
