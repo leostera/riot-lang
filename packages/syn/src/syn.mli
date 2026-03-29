@@ -170,7 +170,9 @@ val parse : filename:Std.Path.t -> string -> Parser.parse_result
     typed CST.
 
     Parsing and CST construction are separate steps so callers that only need
-    the lossless Ceibo tree do not pay the typed lift by default.
+    the lossless Ceibo tree do not pay the typed lift by default. The lift uses
+    `result.tokens` as the file-level trivia source of truth instead of
+    re-lexing `result.source`.
 
     Returns:
     - `Ok cst` when parsing produced no diagnostics and the faithful lift

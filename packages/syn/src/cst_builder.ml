@@ -6920,7 +6920,7 @@ let annotation_payload_from_shell_lift = fun shell_node ->
 
 let () = Cell.set annotation_payload_from_shell_impl annotation_payload_from_shell_lift
 
-let build_source_file_body = fun ~source ~comment_item_of_comment ~docstring_item_of_docstring ~syntax_node_of_item ~owned_trivia_spans_of_item tree items_from_node ->
+let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docstring_item_of_docstring ~syntax_node_of_item ~owned_trivia_spans_of_item tree items_from_node ->
   let root = Ceibo.Red.new_root tree in
   let item_nodes = Ceibo.Red.SyntaxNode.direct_nodes root
   |> List.filter (fun node -> not (is_trivia (Ceibo.Red.SyntaxNode.kind node))) in
@@ -6947,7 +6947,7 @@ let build_source_file_body = fun ~source ~comment_item_of_comment ~docstring_ite
   let owned_trivia_spans = item_entries
   |> List.concat_map (fun (_, _, item) -> owned_trivia_spans_of_item item) in
   let trivia_entries =
-    Lexer.tokenize source
+    tokens
     |> flatten_lexed_trivia_tokens
     |> List.filter is_standalone_trivia_token
     |> List.filter (fun ({ Token.span; _ } : Token.t) -> not (List.exists (fun owned_span -> span_contains
@@ -7653,11 +7653,11 @@ let validate_source_file = fun source_file ->
         ] item) items
   )
 
-let lift = fun ~kind ~source tree ->
+let lift = fun ~kind ~source ~tokens tree ->
   let cst =
     match kind with
     | `Implementation ->
-        let syntax_node, items = build_source_file_body ~source ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~syntax_node_of_item:Cst.StructureItem.syntax_node ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans tree structure_items_from_node in
+        let syntax_node, items = build_source_file_body ~source ~tokens ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~syntax_node_of_item:Cst.StructureItem.syntax_node ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans tree structure_items_from_node in
         Cst.Implementation {
           syntax_node;
           items = items
@@ -7665,7 +7665,7 @@ let lift = fun ~kind ~source tree ->
           |> normalize_structure_items_owned_trivia ~source
         }
     | `Interface ->
-        let syntax_node, items = build_source_file_body ~source ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans tree signature_items_from_node in
+        let syntax_node, items = build_source_file_body ~source ~tokens ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans tree signature_items_from_node in
         Cst.Interface {
           syntax_node;
           items = items
@@ -7676,8 +7676,8 @@ let lift = fun ~kind ~source tree ->
   validate_source_file cst;
   cst
 
-let create_from_ceibo = fun ~kind ~source tree ->
-  match lift ~kind ~source tree with
+let create_from_ceibo = fun ~kind ~source ~tokens tree ->
+  match lift ~kind ~source ~tokens tree with
   | cst -> Ok cst
   | exception Bail error -> Error error
 

@@ -9,7 +9,7 @@ type error = {
 val create_from_ceibo : kind:[
   | `Implementation
   | `Interface
-] -> source:string -> Cst.green_node -> (Cst.t, error) result
+] -> source:string -> tokens:Token.t list -> Cst.green_node -> (Cst.t, error) result
 
 val structure_items_from_syntax_node : Cst.syntax_node -> (Cst.StructureItem.t list, error) result
 

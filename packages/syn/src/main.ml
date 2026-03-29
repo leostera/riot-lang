@@ -147,7 +147,7 @@ let handle_print_cst = fun sub_matches ->
                   `Implementation
               )
             ))
-            ~source
+            ~source ~tokens:result.tokens
             result.tree |> CstJson.of_result
       in
       println (Data.Json.to_string json)

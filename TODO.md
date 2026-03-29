@@ -118,7 +118,7 @@ For every slice below:
 
 ### 4. Rebuild Top-Level CST Ownership
 
-- [ ] Derive standalone comments/docstrings from token boundaries
+- [x] Derive standalone comments/docstrings from token boundaries
   - stop reparsing source gaps for top-level ownership
   - verification:
     - `timeout 180 tusk test syn:cst_tests`
@@ -245,7 +245,7 @@ For every slice below:
 - [ ] Treat the existing `owned_trivia` expansion as a migration aid, not the final model
 - [ ] Current state: Ceibo docs and builder helpers now describe token-attached trivia explicitly, including EOF-owned trailing file trivia
 - [ ] Current state: Ceibo green/red tokens have token-attached `leading_trivia`; `syn` now also uses EOF `leading_trivia` to own trailing file trivia
-- [ ] Current state: `Parser.parse_result.tokens` and `syn print-ceibo` preserve the original lexer token stream, so lossless token ownership no longer depends on trivia tree children
+- [ ] Current state: `Parser.parse_result.tokens` and `syn print-ceibo` preserve the original lexer token stream, and `Syn.build_cst` now uses that token stream for top-level standalone comment/docstring ownership instead of re-lexing `source`
 - [ ] Current state: `Lexer.tokenize` now emits only real tokens plus EOF, with all non-EOF trivia attached to the next real token
 - [ ] Current state: `Token_cursor` now works on real tokens directly and exposes helper APIs for consuming the current token's leading trivia without reintroducing trivia tokens into the main parser stream
 - [ ] Current state: the parser still has explicit `consume_trivia` flows, but they no longer splice trivia into green children: `tokens_to_green` drops trivia tokens entirely and real token construction still rehydrates original token `leading_trivia`
@@ -253,4 +253,4 @@ For every slice below:
 - [ ] Current state: top-level file loops and nested `struct`/`sig` body loops no longer thread trivia through `tokens_to_green []`
 - [ ] Current state: red traversal now follows the same contract as green for parser-built trees; leading trivia lives on tokens and `SyntaxNode.tokens` stays trivia-free
 - [ ] Current state: `print-ceibo` fixture coverage now includes a mixed comment/docstring bridge case
-- [ ] The next concrete slice is section 4: derive standalone comments/docstrings from token boundaries instead of source-gap archaeology at the top level
+- [ ] The next concrete slice is building the generic ordered-item ownership pass for structure and signature items, so leading doc blocks and standalone headings stop depending on file-level span subtraction

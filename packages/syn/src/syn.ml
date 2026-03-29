@@ -24,7 +24,8 @@ let build_cst = fun (result : Parser.parse_result) ->
   if List.length result.Parser.diagnostics > 0 then
     Error (Parse_diagnostics result.Parser.diagnostics)
   else
-    match CstBuilder.create_from_ceibo ~kind:result.Parser.kind ~source:result.Parser.source result.tree with
+    match CstBuilder.create_from_ceibo ~kind:result.Parser.kind ~source:result.Parser.source
+            ~tokens:result.Parser.tokens result.tree with
     | Ok cst -> Ok cst
     | Error err -> Error (Cst_builder_error err)
 

@@ -4012,6 +4012,34 @@ let tests =
         | _ ->
             Error
               "expected open statement, standalone comment, and let binding");
+    Test.case "build_cst derives top-level standalone trivia from parser token order"
+      (fun () ->
+        let parsed =
+          Syn.parse ~filename:sample_mli
+            "open Std\n\
+             \n\
+             (** Module overview. *)\n\
+             (* plain comment *)\n\
+             \n\
+             val create : unit -> t\n"
+        in
+        match Syn.build_cst parsed with
+        | Ok cst -> (
+            match signature_items cst with
+            | Syn.Cst.SignatureItem.OpenStatement _
+              :: Syn.Cst.SignatureItem.Docstring docstring
+              :: Syn.Cst.SignatureItem.Comment comment
+              :: Syn.Cst.SignatureItem.ValueDeclaration _ :: _ ->
+                Test.assert_equal ~expected:"(** Module overview. *)"
+                  ~actual:(Syn.Cst.Docstring.text docstring);
+                Test.assert_equal ~expected:"(* plain comment *)"
+                  ~actual:(Syn.Cst.Comment.text comment);
+                Ok ()
+            | _ ->
+                Error
+                  "expected open statement, standalone docstring, standalone comment, and value declaration")
+        | Error _ ->
+            Error "expected CST build to succeed from parser token stream");
     Test.case "cst open statements expose raw owned trivia for inline comments"
       (fun () ->
         let result = parse_ml "open (* keep me *) Std\n" in
