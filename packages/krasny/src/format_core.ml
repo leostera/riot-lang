@@ -3,6 +3,7 @@ open Std.Collections
 
 type format_error =
   | Cannot_build_cst of Syn.build_cst_error
+  | Cannot_lower of string
 
 let format_error_to_string = function
   | Cannot_build_cst (Syn.Parse_diagnostics diagnostics) -> (
@@ -21,6 +22,8 @@ let format_error_to_string = function
         | context -> " [" ^ String.concat " > " context ^ "]"
       in
       err.message ^ context
+  | Cannot_lower err ->
+      err
 
 let format (result : Syn.Parser.parse_result) =
   yield ();
@@ -30,17 +33,19 @@ let format (result : Syn.Parser.parse_result) =
   | Ok source_file ->
       let original_source = Source.source_of_result result in
       yield ();
-      Ok
-        (match Lower.source_file ~source:original_source source_file with
-        | Some rendered ->
-            yield ();
-            let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
-            yield ();
-            if String.ends_with ~suffix:"\n" original_source
+      (match Lower.source_file ~source:original_source source_file with
+      | Error err ->
+          Error (Cannot_lower (Lower.error_to_string err))
+      | Ok rendered ->
+          yield ();
+          let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
+          yield ();
+          Ok
+            (if
+               String.ends_with ~suffix:"\n" original_source
                && String.ends_with ~suffix:"\n" rendered
-            then
-              rendered
-            else if String.ends_with ~suffix:"\n" original_source then
-              rendered ^ "\n"
-            else rendered
-        | None -> original_source)
+             then
+               rendered
+             else if String.ends_with ~suffix:"\n" original_source then
+               rendered ^ "\n"
+             else rendered))

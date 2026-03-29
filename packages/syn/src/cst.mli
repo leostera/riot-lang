@@ -1891,9 +1891,14 @@ module Literal = Constant
     ```
 *)
 type literal = Literal.t
-type exception_declaration = {
+type exception_rhs =
+  | Alias of Ident.t
+  | Payload of core_type
+
+and exception_declaration = {
   syntax_node : syntax_node;
   name_token : Token.t;
+  rhs : exception_rhs option;
   owned_trivia : owned_trivia;
 }
 (** Expression syntax.
@@ -1906,7 +1911,7 @@ type exception_declaration = {
     {!Expression.attributes}; it does not introduce a dedicated wrapper
     constructor.
 *)
-type expression =
+and expression =
   | Path of path_expression
       (** A value path used as an expression, such as `x`, `M.value`, or
           `List.map`. *)

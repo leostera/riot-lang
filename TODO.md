@@ -41,7 +41,10 @@ This file is _yours_. Keep it up to date after every big change.
 - Top-level and nested structure/signature ownership run through shared ordered-item passes built from token order.
 - Variant constructors and record fields are the only explicit member-stream grammars today.
 - `sig ... end` now has an explicit `SIG_EXPR` syntax kind; `syn` no longer recognizes signature module types by string-sniffing an `IDENT_EXPR` token stream.
-- `krasny` renders top-level, nested, grouped-type, and record-body ownership from CST streams plus per-node `owned_trivia`, but `lower.ml` still contains source-preserving fallback and source/text heuristics that should be treated as debt.
+- `krasny` renders top-level, nested, grouped-type, and record-body ownership from CST streams plus per-node `owned_trivia`.
+- top-level type extensions, exception declarations, and floating attributes now lower structurally; unsupported top-level class/class-type/extension items fail explicitly instead of preserving source text.
+- `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
+- `lower.ml` still contains source/text heuristics and one remaining source-backed phrase-boundary preservation path that should be treated as debt.
 
 ## Working Style
 
@@ -61,15 +64,12 @@ This file is _yours_. Keep it up to date after every big change.
   - `doc_of_source_preserved_syntax_node_span_from_current_source`
   - direct source renderers such as `doc_of_core_type`, `doc_of_module_expression`, `doc_of_module_type`, and `render_parameter`
   - attribute/module-type string reconstruction such as `render_attribute`, `render_first_class_module_type`, `strip_outer_parens_once`, and `strip_module_prefix`
-  - `structure_item_uses_source_preservation_span`
-  - `signature_item_uses_source_preservation_span`
-  - fallback item branches in `render_structure_item` / `render_signature_item` that end in `doc_of_node (...)`
-  - unsupported top-level items should fail formatting instead of preserving source text
+  - remaining non-top-level fallback branches in expression/module/module-type lowering that still end in `doc_of_node (...)`
+  - keep unsupported shapes on the explicit `Cannot_lower` path; do not reintroduce silent source preservation
 
-- [ ] Remove API-level source-preserving fallback from `packages/krasny/src/format_core.ml` and `packages/krasny/src/lower.ml`
-  - `Lower.source_file` should not return `None` as a signal to keep original source
-  - `Format_core.format` should not return `original_source` when lowering declines to format
-  - replace optional “could not lower, keep source” control flow with explicit formatter failure
+- [x] Remove API-level source-preserving fallback from `packages/krasny/src/format_core.ml` and `packages/krasny/src/lower.ml`
+  - `Lower.source_file` now returns an explicit lowering result instead of `None`
+  - `Format_core.format` now reports `Cannot_lower` instead of returning `original_source`
 
 - [ ] Remove raw source-gap parsing from top-level structure/signature rendering
   - `source_gap_has_only_phrase_separators`

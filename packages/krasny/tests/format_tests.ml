@@ -11,6 +11,7 @@ let workspace_files =
   ]
 
 let parse_ml source = Syn.parse ~filename:sample_ml source
+let parse_mli source = Syn.parse ~filename:(Path.v "sample.mli") source
 
 let parse_file path =
   let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
@@ -235,6 +236,45 @@ let packed = (module Protocol.Http1)
         assert_idempotent
           ~source
           ~msg:"first-class module expressions should stay stable";
+        Ok ());
+    Test.case "format fails for unsupported class type declaration items"
+      (fun () ->
+        let source =
+          {|module type%foo [@foo] S = S
+
+module type Outer = sig
+  module type%foo [@foo] S = S
+  class type%foo [@foo] x = x
+end
+|}
+        in
+        match parse_ml source |> Krasny.format with
+        | Ok _ ->
+            panic
+              "unsupported class type declaration items should fail formatting instead of preserving source"
+        | Error _ ->
+            Ok ());
+    Test.case "format keeps structural signature items idempotent" (fun () ->
+        let source =
+          {|[@@@warning "-32"]
+
+type t +=
+  | Added of int
+
+exception Parse_error of string
+exception Nested = Std.Result.Error
+|}
+        in
+        let formatted =
+          parse_mli source |> Krasny.format
+          |> Result.expect
+               ~msg:"signature attributes, type extensions, and exceptions should format structurally"
+        in
+        let reparsed =
+          parse_mli formatted |> Krasny.format
+          |> Result.expect ~msg:"formatted signature items should reformat"
+        in
+        Test.assert_equal ~expected:formatted ~actual:reparsed;
         Ok ());
     Test.case "format keeps boolean if conditions with matches idempotent" (fun () ->
         let source =

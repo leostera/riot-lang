@@ -1124,13 +1124,18 @@ module Literal = Constant
 
 type literal = Literal.t
 
-type exception_declaration = {
+type exception_rhs =
+  | Alias of Ident.t
+  | Payload of core_type
+
+and exception_declaration = {
   syntax_node : syntax_node;
   name_token : Token.t;
+  rhs : exception_rhs option;
   owned_trivia : owned_trivia;
 }
 
-type expression =
+and expression =
   | Path of path_expression
   | Constructor of constructor_expression
   | Operator of operator_expression

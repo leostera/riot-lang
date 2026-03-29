@@ -7,6 +7,7 @@ open Std
     pretty-print a broken file. *)
 type format_error = Format_core.format_error =
   | Cannot_build_cst of Syn.build_cst_error
+  | Cannot_lower of string
 
 val format_error_to_string : format_error -> string
 (** `format_error_to_string err` renders formatter failures into a concise
@@ -15,10 +16,10 @@ val format_error_to_string : format_error -> string
 (** `format result` renders a parse result into formatted OCaml source.
 
     The current implementation lowers the supported CST subset through an
-    internal document tree before rendering to text. Mixed implementation files
-    preserve unsupported top-level items from source and only rewrite
-    supported `let` bindings when that rewrite is known to be safe. Broken
-    files fail because formatting requires a successful CST lift. *)
+    internal document tree before rendering to text. Files fail formatting
+    when the current CST surface does not yet expose enough structure for a
+    purely structural lowering. Broken files also fail because formatting
+    requires a successful CST lift. *)
 val format : Syn.Parser.parse_result -> (string, format_error) result
 
 (** `syntax_hash result` computes a normalized hash of the parsed concrete

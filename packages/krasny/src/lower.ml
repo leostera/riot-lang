@@ -20,6 +20,29 @@ type ctx = {
   source : string option;
 }
 
+type error = {
+  message : string;
+  context : string list;
+}
+
+exception Unsupported of error
+
+let error_to_string = fun err ->
+  match err.context with
+  | [] ->
+      err.message
+  | context ->
+      err.message ^ " [" ^ String.concat " > " context ^ "]"
+
+let unsupported = fun ?(context = []) message -> raise (Unsupported {message; context})
+
+let unsupported_syntax = fun ?(context = []) ~syntax_node message ->
+  let kind =
+    Syn.Ceibo.Red.SyntaxNode.kind syntax_node
+    |> Syn.SyntaxKind.to_string
+  in
+  unsupported ~context:(context @ [ kind ]) message
+
 type pending_trivia_entry =
   | TriviaComment of int * Doc.t
   | TriviaDocstring of int * bool * Doc.t
@@ -1690,6 +1713,37 @@ let render_type_declaration_with_keyword = fun ctx keyword decl ->
     Doc.join blank_line
       (render_type_declaration_member_with_keyword ctx keyword decl
       :: List.map (render_type_declaration_member_with_keyword ctx kw_and) and_declarations)
+
+let render_type_extension = fun ctx (decl : Syn.Cst.TypeExtension.t) ->
+  let params = render_type_parameters (Syn.Cst.TypeExtension.type_params decl) in
+  let header =
+    if params = Doc.empty then
+      Doc.concat
+        [
+          kw_type;
+          Doc.space;
+          doc_of_ident (Syn.Cst.TypeExtension.type_name decl);
+          Doc.space;
+          Doc.text "+=";
+        ]
+    else
+      Doc.concat
+        [
+          kw_type;
+          Doc.space;
+          params;
+          Doc.space;
+          doc_of_ident (Syn.Cst.TypeExtension.type_name decl);
+          Doc.space;
+          Doc.text "+=";
+        ]
+  in
+  let constructors =
+    render_variant_definition ?source:ctx.source
+      ~source_node:(Syn.Cst.TypeExtension.syntax_node decl)
+      (Syn.Cst.TypeExtension.constructors decl)
+  in
+  Doc.concat [ header; Doc.line; Doc.indent 2 constructors ]
 
 let render_external_declaration = fun (decl : Syn.Cst.external_declaration) ->
   let primitive_names = decl.primitive_name_tokens |> List.map doc_of_token |> Doc.join Doc.space in
@@ -3486,13 +3540,21 @@ and render_let_module_expression
   in
   Doc.concat [ header; Doc.line; render_expression body ]
 
+and render_exception_declaration (decl : Syn.Cst.exception_declaration) =
+  let rhs_doc =
+    match decl.rhs with
+    | None ->
+        Doc.empty
+    | Some (Syn.Cst.Alias alias) ->
+        Doc.concat [ equals; doc_of_ident alias ]
+    | Some (Syn.Cst.Payload payload_type) ->
+        Doc.concat [ Doc.space; Doc.text "of"; Doc.space; render_core_type payload_type ]
+  in
+  Doc.concat [ Doc.text "exception"; Doc.space; doc_of_token decl.name_token; rhs_doc ]
+
 and render_let_exception_expression
     ({ exception_declaration; body; _ } : Syn.Cst.let_exception_expression) =
-  let exception_doc =
-    text_of_syntax_node exception_declaration.syntax_node
-    |> String.trim
-    |> Doc.text
-  in
+  let exception_doc = render_exception_declaration exception_declaration in
   Doc.concat
     [
       kw_let;
@@ -4648,11 +4710,11 @@ and render_signature_item_owned_trivia =
 
 and render_structure_entry ~source ~source_offset ~span ~preserve_source
     ~trailing_suffix item =
-  let rendered_source = source_of_relative_span ~source ~source_offset span in
-  let should_preserve_source =
-    preserve_source
-    || string_contains_substring rendered_source "[@"
-    || string_contains_substring rendered_source "[%%expect"
+  let rendered_source =
+    if preserve_source then
+      Some (source_of_relative_span ~source ~source_offset span)
+    else
+      None
   in
   let trailing_suffix =
     match trailing_suffix with
@@ -4663,15 +4725,15 @@ and render_structure_entry ~source ~source_offset ~span ~preserve_source
   in
   let doc =
     let base_doc =
-      if should_preserve_source || structure_item_uses_source_preservation_span item then
-        Doc.text rendered_source
-      else (
-        match item with
-        | Syn.Cst.StructureItem.TypeDeclaration decl ->
-            render_type_declaration_with_keyword kw_type decl
-        | _ ->
-            render_structure_item item)
-      
+      match rendered_source with
+      | Some rendered_source ->
+          Doc.text rendered_source
+      | None -> (
+          match item with
+          | Syn.Cst.StructureItem.TypeDeclaration decl ->
+              render_type_declaration_with_keyword kw_type decl
+          | _ ->
+              render_structure_item item)
     in
     let base_doc =
       match item with
@@ -4718,11 +4780,8 @@ and render_structure_entry ~source ~source_offset ~span ~preserve_source
   (doc, is_open_structure_item item, is_trivia, tight_after, false, is_docstring)
 
 and render_signature_entry ~source ~source_offset ~span ~trailing_suffix item =
-  let rendered_source = source_of_relative_span ~source ~source_offset span in
-  let should_preserve_source =
-    string_contains_substring rendered_source "[@"
-    || string_contains_substring rendered_source "[%%expect"
-  in
+  let _span = (span : Syn.Ceibo.Span.t) in
+  let _source_offset = source_offset in
   let trailing_suffix =
     match trailing_suffix with
     | None ->
@@ -4732,14 +4791,11 @@ and render_signature_entry ~source ~source_offset ~span ~trailing_suffix item =
   in
   let doc =
     let base_doc =
-      if should_preserve_source || signature_item_uses_source_preservation_span item then
-        Doc.text rendered_source
-      else (
-        match item with
-        | Syn.Cst.SignatureItem.TypeDeclaration decl ->
-            render_type_declaration_with_keyword kw_type decl
-        | _ ->
-            render_signature_item item)
+      match item with
+      | Syn.Cst.SignatureItem.TypeDeclaration decl ->
+          render_type_declaration_with_keyword kw_type decl
+      | _ ->
+          render_signature_item item
     in
     let base_doc =
       match item with
@@ -4799,6 +4855,8 @@ and render_structure_item = function
       render_let_binding binding
   | Syn.Cst.StructureItem.TypeDeclaration decl ->
       render_type_declaration_with_keyword kw_type decl
+  | Syn.Cst.StructureItem.TypeExtension decl ->
+      render_type_extension ctx decl
   | Syn.Cst.StructureItem.ExternalDeclaration decl ->
       render_external_declaration decl
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
@@ -4817,14 +4875,28 @@ and render_structure_item = function
           Doc.space;
           render_open_target open_.target;
         ]
+  | Syn.Cst.StructureItem.Attribute attribute ->
+      render_attribute attribute
   | Syn.Cst.StructureItem.Docstring docstring ->
       doc_of_token (Syn.Cst.Docstring.token docstring)
   | Syn.Cst.StructureItem.Comment comment ->
       doc_of_token (Syn.Cst.Comment.token comment)
+  | Syn.Cst.StructureItem.ExceptionDeclaration decl ->
+      render_exception_declaration decl
   | Syn.Cst.StructureItem.Expression expression ->
       render_expression expression
-  | item ->
-      doc_of_node (Syn.Cst.StructureItem.syntax_node item)
+  | Syn.Cst.StructureItem.Extension extension ->
+      unsupported_syntax ~context:[ "structure_item" ] ~syntax_node:extension.syntax_node
+        "floating extension items do not have a structural formatter yet"
+  | Syn.Cst.StructureItem.ClassDeclaration decl ->
+      unsupported_syntax ~context:[ "structure_item" ] ~syntax_node:decl.syntax_node
+        "class declaration items do not have a structural formatter yet"
+  | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
+      unsupported_syntax ~context:[ "structure_item" ] ~syntax_node:decl.syntax_node
+        "class type declaration items do not have a structural formatter yet"
+  | Syn.Cst.StructureItem.ValueDeclaration decl ->
+      unsupported_syntax ~context:[ "structure_item" ] ~syntax_node:decl.syntax_node
+        "implementation val declaration items do not have a structural formatter yet"
 
 and render_signature_item item =
   let value_declaration_name_doc (decl : Syn.Cst.value_declaration) =
@@ -4864,6 +4936,8 @@ and render_signature_item item =
   match item with
   | Syn.Cst.SignatureItem.TypeDeclaration decl ->
       render_type_declaration_with_keyword kw_type decl
+  | Syn.Cst.SignatureItem.TypeExtension decl ->
+      render_type_extension ctx decl
   | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
       render_module_declaration_with_keyword (Doc.text "module") decl
   | Syn.Cst.SignatureItem.RecursiveModuleDeclaration decl ->
@@ -4880,6 +4954,8 @@ and render_signature_item item =
           Doc.space;
           render_open_target open_.target;
         ]
+  | Syn.Cst.SignatureItem.Attribute attribute ->
+      render_attribute attribute
   | Syn.Cst.SignatureItem.Docstring docstring ->
       doc_of_token (Syn.Cst.Docstring.token docstring)
   | Syn.Cst.SignatureItem.Comment comment ->
@@ -4895,24 +4971,17 @@ and render_signature_item item =
         ]
   | Syn.Cst.SignatureItem.ExternalDeclaration decl ->
       render_external_declaration decl
-  | item ->
-      doc_of_node (Syn.Cst.SignatureItem.syntax_node item)
-
-and structure_item_uses_source_preservation_span = function
-  | Syn.Cst.StructureItem.LetBinding _
-  | Syn.Cst.StructureItem.TypeDeclaration _
-  | Syn.Cst.StructureItem.ExternalDeclaration _
-  | Syn.Cst.StructureItem.ModuleDeclaration _
-  | Syn.Cst.StructureItem.RecursiveModuleDeclaration _
-  | Syn.Cst.StructureItem.ModuleTypeDeclaration _
-  | Syn.Cst.StructureItem.IncludeStatement _
-  | Syn.Cst.StructureItem.OpenStatement _
-  | Syn.Cst.StructureItem.Docstring _
-  | Syn.Cst.StructureItem.Comment _
-  | Syn.Cst.StructureItem.Expression _ ->
-      false
-  | _ ->
-      true
+  | Syn.Cst.SignatureItem.ExceptionDeclaration decl ->
+      render_exception_declaration decl
+  | Syn.Cst.SignatureItem.Extension extension ->
+      unsupported_syntax ~context:[ "signature_item" ] ~syntax_node:extension.syntax_node
+        "floating extension items do not have a structural formatter yet"
+  | Syn.Cst.SignatureItem.ClassDeclaration decl ->
+      unsupported_syntax ~context:[ "signature_item" ] ~syntax_node:decl.syntax_node
+        "class declaration items do not have a structural formatter yet"
+  | Syn.Cst.SignatureItem.ClassTypeDeclaration decl ->
+      unsupported_syntax ~context:[ "signature_item" ] ~syntax_node:decl.syntax_node
+        "class type declaration items do not have a structural formatter yet"
 
 and span_of_syntax_node_nontrivia_bounds ?(preserve_leading_trivia = false) syntax_node =
   let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
@@ -4939,21 +5008,6 @@ and span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node =
     span_of_syntax_node_nonwhitespace_bounds ~preserve_leading_trivia:true syntax_node
   in
   { Syn.Ceibo.Span.start = start_span.start; end_ = end_span.end_ }
-
-and signature_item_uses_source_preservation_span = function
-  | Syn.Cst.SignatureItem.TypeDeclaration _
-  | Syn.Cst.SignatureItem.ModuleDeclaration _
-  | Syn.Cst.SignatureItem.RecursiveModuleDeclaration _
-  | Syn.Cst.SignatureItem.ModuleTypeDeclaration _
-  | Syn.Cst.SignatureItem.IncludeStatement _
-  | Syn.Cst.SignatureItem.OpenStatement _
-  | Syn.Cst.SignatureItem.Docstring _
-  | Syn.Cst.SignatureItem.Comment _
-  | Syn.Cst.SignatureItem.ValueDeclaration _
-  | Syn.Cst.SignatureItem.ExternalDeclaration _ ->
-      false
-  | _ ->
-      true
 
 and trivia_span = fun trivia -> Syn.Cst.Token.span (Syn.Cst.Trivia.token trivia)
 
@@ -5054,17 +5108,14 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
         Syn.Cst.Token.span (Syn.Cst.Docstring.token docstring)
     | _ ->
         let syntax_node = Syn.Cst.StructureItem.syntax_node item in
-        if structure_item_uses_source_preservation_span item then
-          span_of_syntax_node_nontrivia_bounds syntax_node
-        else
-          (match item with
-          | Syn.Cst.StructureItem.TypeDeclaration decl ->
-              let span =
-                span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node
-              in
-              { span with end_ = Int.max span.end_ (type_declaration_owned_trivia_end decl) }
-          | _ ->
-              span_of_syntax_node_nontrivia_bounds syntax_node)
+        (match item with
+        | Syn.Cst.StructureItem.TypeDeclaration decl ->
+            let span =
+              span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node
+            in
+            { span with end_ = Int.max span.end_ (type_declaration_owned_trivia_end decl) }
+        | _ ->
+            span_of_syntax_node_nontrivia_bounds syntax_node)
   in
   let compare_structure_items_by_span left right =
     let left_span = structure_item_span left in
@@ -5330,11 +5381,16 @@ and render_signature_items ?source ~source_node items =
   { render_structure_items; render_signature_items }
 
 let source_file = fun ~source source_file ->
-  let lowerer = make_lowerer {source = Some source} in
-  match source_file with
-  | Syn.Cst.Implementation implementation ->
-      Some (lowerer.render_structure_items ~source ~source_node:(Syn.Cst.SourceFile.syntax_node
-      (Syn.Cst.Implementation implementation)) implementation.items)
-  | Syn.Cst.Interface interface ->
-      Some (lowerer.render_signature_items ~source ~source_node:(Syn.Cst.SourceFile.syntax_node
-      (Syn.Cst.Interface interface)) interface.items)
+  try
+    let lowerer = make_lowerer {source = Some source} in
+    Ok
+      (match source_file with
+      | Syn.Cst.Implementation implementation ->
+          lowerer.render_structure_items ~source ~source_node:(Syn.Cst.SourceFile.syntax_node
+          (Syn.Cst.Implementation implementation)) implementation.items
+      | Syn.Cst.Interface interface ->
+          lowerer.render_signature_items ~source ~source_node:(Syn.Cst.SourceFile.syntax_node
+          (Syn.Cst.Interface interface)) interface.items)
+  with
+  | Unsupported err ->
+      Error err

@@ -4678,6 +4678,24 @@ and expression_from_node = fun node ->
                     exception_declaration = {
                       syntax_node = exception_decl_node;
                       name_token = token name_syntax_token;
+                      rhs =
+                        (match direct_non_trivia_nodes exception_decl_node
+                        |> List.find_opt (fun child ->
+                               can_lift_core_type_node child
+                               || match Ceibo.Red.SyntaxNode.kind child with
+                                  | Syntax_kind.MODULE_PATH
+                                  | Syntax_kind.MODULE_TYPE_PATH
+                                  | Syntax_kind.IDENT_EXPR
+                                  | Syntax_kind.FIELD_ACCESS_EXPR ->
+                                      true
+                                  | _ ->
+                                      false) with
+                        | Some child when can_lift_core_type_node child ->
+                            Some (Cst.Payload (core_type_from_node child))
+                        | Some child ->
+                            Some (Cst.Alias (module_path_like_from_node child))
+                        | _ ->
+                            None);
                       owned_trivia = owned_trivia_from_node exception_decl_node
                     };
                     body = expression_from_node body_node;
@@ -7019,11 +7037,31 @@ let include_statement_from_node = fun node ->
   | None -> None
 
 let exception_declaration_from_node = fun node ->
+  let rhs =
+    match direct_non_trivia_nodes node
+    |> List.find_opt (fun child ->
+           can_lift_core_type_node child
+           || match Ceibo.Red.SyntaxNode.kind child with
+              | Syntax_kind.MODULE_PATH
+              | Syntax_kind.MODULE_TYPE_PATH
+              | Syntax_kind.IDENT_EXPR
+              | Syntax_kind.FIELD_ACCESS_EXPR ->
+                  true
+              | _ ->
+                  false) with
+    | Some child when can_lift_core_type_node child ->
+        Some (Cst.Payload (core_type_from_node child))
+    | Some child ->
+        Some (Cst.Alias (module_path_like_from_node child))
+    | _ ->
+        None
+  in
   match find_declaration_name_token ~skip_keywords:[ "exception" ] (direct_non_trivia_tokens node) with
   | Some name_syntax_token ->
       Some ({
         syntax_node = node;
         name_token = token name_syntax_token;
+        rhs;
         owned_trivia = owned_trivia_from_node node
       }: Cst.exception_declaration)
   | None -> None

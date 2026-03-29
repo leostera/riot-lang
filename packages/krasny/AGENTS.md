@@ -24,8 +24,8 @@
 18. Render grouped `type ... and ...` members from each member's `Syn.Cst.TypeDeclaration.owned_trivia`; do not reparse between-member source gaps once `syn` has attached `and`-token leading trivia to the following member.
 19. Keep adjacent standalone ordinary docstrings visually separate in top-level joins; do not compact them into a single tight run just because they are both trivia items.
 20. Render record bodies and inline record constructor arguments from `Syn.CstBuilder.record_field_items_of_fields`; do not inspect raw record syntax children or closing-token trivia to rediscover terminal `}`-owned comments/docstrings.
-21. When lowering falls back to source-preserving reconstruction, rebuild node text from real token bodies plus later tokens' `leading_trivia`; do not concatenate bare token texts or assume comment/docstring trivia still appears as standalone red tokens.
-22. Preserve source-backed top-level structure output when lowering a parameterized `let` binding that would otherwise become `= fun ... -> ...` immediately before a toplevel expression phrase; do not introduce a parse ambiguity by reformatting across phrase boundaries.
+21. Do not add new source-preserving reconstruction paths in `Lower`. Unsupported shapes should fail formatting until `syn` exposes enough structure for a purely structural lowering.
+22. The remaining top-level parameterized-`let` phrase-boundary preservation path is debt, not a model to copy. Do not extend it; replace it with explicit structural phrase-boundary facts when that work is picked up.
 23. Treat `Syn.Ceibo.Red.SyntaxNode.tokens` and `direct_tokens` as real-token-only streams in `krasny`. Do not keep dead filters for impossible `WHITESPACE` / `COMMENT` / `DOCSTRING` token kinds after the token-trivia migration.
 
 ## Validate

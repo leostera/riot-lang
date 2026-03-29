@@ -3,6 +3,7 @@ open Std.Collections
 
 type format_error = Format_core.format_error =
   | Cannot_build_cst of Syn.build_cst_error
+  | Cannot_lower of string
 
 module Doc = Doc
 module Solver = Solver
