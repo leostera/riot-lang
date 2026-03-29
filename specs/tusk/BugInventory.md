@@ -188,6 +188,37 @@ Deferred follow-up:
 - write an OCaml regression test only after we finish the broader bug-inventory
   pass
 
+### 6. Plan Bundle Round-Trip Must Preserve Module Open Context
+
+Status: `spec-failing`
+
+Spec slice:
+- `PlanBundleModuleGraphRoundTrip.tla`
+- `PlanBundleModuleGraphOpenModulesBug.cfg`
+
+Property:
+- Persisted plan bundles should preserve a module graph's `open_modules`
+  context across save/load round-trips.
+
+Why it looks buggy:
+- `module_graph_to_json` serializes every node with `("opens", Array [])`
+- `module_graph_of_json` reconstructs every node with `open_modules = []`
+- any non-empty open-module context is therefore erased on a warm-plan cache
+  hit
+- that is a lossy round-trip for the module graph value returned by the planner
+
+Primary source area:
+- `packages/tusk-planner/src/package_planner.ml`
+
+Counterexample shape:
+- the original module graph gives `Main` a non-empty `open_modules` set
+- serialization writes an empty opens list anyway
+- deserialization restores `Main` with `open_modules = []`
+
+Deferred follow-up:
+- write an OCaml regression test only after we finish the broader bug-inventory
+  pass
+
 ## Next Candidates To Model
 
 These are not yet bug entries. They are the next properties most likely to

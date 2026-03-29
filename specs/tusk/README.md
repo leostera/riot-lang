@@ -48,6 +48,12 @@ bugs.
   slice.
 - `ModuleScannerNativeTagBug.cfg`: a failing config showing that allowed `.c`
   and `.h` files are currently tagged as `Other` and dropped.
+- `PlanBundleModuleGraphRoundTrip.tla`: a PlusCal slice of the planner bundle
+  module-graph serializer/deserializer fidelity for per-node `open_modules`.
+- `PlanBundleModuleGraphRoundTrip.cfg`: a passing smoke config for the
+  plan-bundle round-trip baseline.
+- `PlanBundleModuleGraphOpenModulesBug.cfg`: a failing config showing that the
+  current plan-bundle round-trip erases non-empty `open_modules`.
 - `BugInventory.md`: the running list of bug-shaped properties found by the
   extracted specs. This is the place to accumulate likely bugs before we add
   OCaml regression tests.
@@ -169,6 +175,22 @@ surface: if `.c` and `.h` are first-class scanner entry kinds, allowed native
 source files should survive the pipeline as dedicated `C` / `H` entries instead
 of being dropped as `Other`.
 
+## What `PlanBundleModuleGraphRoundTrip.tla` Extracts
+
+This slice moves later in the planner pipeline, into
+`packages/tusk-planner/src/package_planner.ml`:
+
+- `module_graph_to_json` serializes the module graph into the persisted plan
+  bundle
+- `module_graph_of_json` restores it on a warm-plan cache hit
+- per-node `open_modules` should survive that round-trip if the bundle is
+  meant to restore the same graph rather than only a graph-shaped shell
+
+The bug config checks that stronger fidelity law directly. Under the current
+implementation-shaped semantics, every node is serialized with `"opens": []`
+and restored with `open_modules = []`, so any non-empty open-module context is
+lost across the round-trip.
+
 ## How To Work On The Spec
 
 `ActionCache.tla` is written primarily in PlusCal. Treat the PlusCal algorithm
@@ -234,6 +256,15 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/ModuleScannerPipeline.cfg
 ```
 
+And for the plan-bundle module-graph round-trip slice:
+
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/PlanBundleModuleGraphRoundTrip.tla \
+  -config specs/tusk/PlanBundleModuleGraphRoundTrip.cfg
+```
+
 The bug config is expected to fail under the current implementation-shaped
 semantics:
 
@@ -270,6 +301,13 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   tlc2.TLC \
   specs/tusk/ModuleScannerPipeline.tla \
   -config specs/tusk/ModuleScannerNativeTagBug.cfg
+```
+
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/PlanBundleModuleGraphRoundTrip.tla \
+  -config specs/tusk/PlanBundleModuleGraphOpenModulesBug.cfg
 ```
 
 ## Current Findings
@@ -309,6 +347,12 @@ current extracted tagging logic in `scan_directory` classifies every non-OCaml
 extension as `Other`. Allowed `.c` and `.h` files are therefore dropped before
 the planner can keep them.
 
+`PlanBundleModuleGraphOpenModulesBug.cfg` exposes a sixth design bug: persisted
+plan bundles do not round-trip `open_modules`. The current serializer writes an
+empty `"opens"` list for every module-graph node, and the current deserializer
+restores every node with `open_modules = []`, so a warm-plan cache hit loses
+non-empty alias-open context.
+
 ## Validation Notes
 
 These configs are safety-only and intentionally tiny.
@@ -338,3 +382,8 @@ These configs are safety-only and intentionally tiny.
   no errors.
 - `ModuleScannerNativeTagBug.cfg` currently fails with a counterexample where
   `src/stubs.c` and `src/api.h` are both tagged as `Other` and dropped.
+- `PlanBundleModuleGraphRoundTrip.cfg` currently completes with 10 distinct
+  states and no errors.
+- `PlanBundleModuleGraphOpenModulesBug.cfg` currently fails with a
+  counterexample where `Main` starts with non-empty `open_modules` but the
+  restored graph gives it `{}`.

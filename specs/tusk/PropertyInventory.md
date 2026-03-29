@@ -74,7 +74,7 @@ Properties:
 
 ### 3. `PackagePlanning`
 
-Status: `next`
+Status: `partially modeled`
 
 Primary sources:
 - `packages/tusk-planner/src/package_planner.ml`
@@ -96,6 +96,27 @@ Properties:
   graphs.
 - Rehydrated plan bundles preserve precomputed action hashes instead of
   recomputing them.
+
+Implemented slice:
+- `PlanBundleModuleGraphRoundTrip.tla` covers one fidelity law inside persisted
+  plan bundles: whether the serialized module graph preserves per-node
+  `open_modules` across save/load round-trips.
+
+Still open:
+- dependency state classification for `MissingDependencies` vs
+  `FailedDependencies`
+- dependency summaries sourced from immutable store paths
+- input-hash composition over build context, package metadata, workspace-local
+  dependency details, and transitive dependency hashes
+- stale planner bundle version invalidation
+- action-graph round-trip fidelity inside plan bundles
+- action-hash preservation on planner bundle rehydration
+
+Current bug found:
+- The current plan-bundle module-graph serializer/deserializer is lossy for
+  `open_modules`. Warm-plan cache hits restore every node with
+  `open_modules = []`, even when the original planned graph carried non-empty
+  alias-open context.
 
 ### 4. `ModuleGraphBuilder`
 
