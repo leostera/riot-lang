@@ -1,22 +1,51 @@
 ---
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import SiteLayout from "../layouts/SiteLayout.astro";
+import { buildGitHubLoginUrl, fetchSession } from "../lib/auth";
+
+const session = await fetchSession(Astro.request);
+if (session.authenticated && session.user) {
+  return Astro.redirect(`/u/${session.user.github_login}`);
+}
+
+const returnTo = Astro.url.searchParams.get("return_to") ?? Astro.url.origin;
+const loginUrl = buildGitHubLoginUrl(returnTo);
 ---
 
-<SiteLayout title="Login · pkgs.ml" description="Login flow for pkgs.ml" showNavSearch>
-  <section class="section-block">
-    <div class="shell">
-      <section class="content-card">
-        <div class="section-header">
-          <div>
-            <h2>Login</h2>
-            <p>Authentication and token management will land here once the account flow is ready.</p>
-          </div>
-        </div>
-        <p>
-          For now, publishing is handled by the registry service with a root auth token.
-          This page is the placeholder for the future account flow at <code>pkgs.ml</code>.
+<SiteLayout
+  title="Login · pkgs.ml"
+  description="Authenticate with GitHub for pkgs.ml"
+  showNavSearch={false}
+  navSearchQuery=""
+>
+  <section class="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
+    <Card className="rounded-md shadow-none">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="text-sm">Login with GitHub</CardTitle>
+        <CardDescription>
+          Authenticate with GitHub to manage publish tokens and package ownership.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4 py-4">
+        <p class="text-sm leading-6 text-muted-foreground">
+          Your GitHub identity is used to create a pkgs.ml account and to bind publish
+          tokens to package claims owned by that GitHub user.
         </p>
-      </section>
-    </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <a
+            href={loginUrl}
+            class:list={[
+              buttonVariants({ variant: "default", size: "sm" }),
+              "rounded-md",
+            ]}
+          >
+            Continue with GitHub
+          </a>
+          <span class="text-xs text-muted-foreground">You will return to pkgs.ml after GitHub authorizes the session.</span>
+        </div>
+      </CardContent>
+    </Card>
   </section>
 </SiteLayout>

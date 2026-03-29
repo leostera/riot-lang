@@ -1,39 +1,121 @@
 ---
-import SearchForm from "./SearchForm.astro";
+import SearchForm from "@/components/SearchForm.astro";
+import { buildGitHubLoginUrl, buildLogoutUrl } from "@/lib/auth";
+import { buttonVariants } from "@/components/ui/button";
+import type { SessionResponse } from "@/lib/types";
 
 interface Props {
   showSearch?: boolean;
   searchQuery?: string;
+  currentUrl?: string;
+  session?: SessionResponse;
 }
 
-const { showSearch = false, searchQuery = "" } = Astro.props;
+const {
+  showSearch = false,
+  searchQuery = "",
+  currentUrl = "https://pkgs.ml/",
+  session = { authenticated: false },
+} = Astro.props;
+const loginUrl = buildGitHubLoginUrl(currentUrl);
+const logoutUrl = buildLogoutUrl(currentUrl);
 ---
 
-<header class="site-header">
-  <div class="shell top-nav">
-    <a href="/" class="brand">
-      <span class="brand-mark">ml</span>
-      <span class="brand-copy">
-        <span class="brand-title">pkgs.ml</span>
-        <span class="brand-subtitle">OCaml package discovery</span>
-      </span>
+<header class="border-b border-border bg-background/95">
+  <div class="mx-auto grid w-full max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 md:grid-cols-[auto_minmax(0,1fr)_auto]">
+    <a href="/" class="text-sm font-semibold tracking-tight text-foreground">
+      pkgs.ml
     </a>
 
-    <nav class="primary-nav">
-      <a href="/">Explore</a>
-      <a href="/#categories">Categories</a>
-      <a href="/#recent">Recent updates</a>
-      <a href="https://search.pkgs.ml/?q=kernel" target="_blank" rel="noreferrer">API</a>
-    </nav>
-
-    <div class="nav-actions">
-      {showSearch ? (
-        <div class="nav-search">
-          <SearchForm query={searchQuery} />
+    {
+      showSearch ? (
+        <div class="min-w-0 md:max-w-[400px] md:justify-self-center md:w-full">
+          <SearchForm
+            query={searchQuery}
+            placeholder="Search packages, descriptions, owners, or repositories..."
+          />
         </div>
-      ) : null}
-      <a href="/login" class="button button-ghost">Log in</a>
-      <a href="/login" class="button button-primary">Publish a package</a>
+      ) : (
+        <div class="hidden md:block" />
+      )
+    }
+
+    <div class="ml-auto flex items-center gap-2">
+      <button
+        type="button"
+        class:list={[
+          buttonVariants({ variant: "outline", size: "icon-sm" }),
+          "rounded-md text-muted-foreground",
+        ]}
+        aria-label="Toggle light and dark theme"
+        id="theme-toggle"
+      >
+        <span aria-hidden="true">☼</span>
+        <span class="sr-only">Toggle theme</span>
+      </button>
+
+      {
+        session.authenticated && session.user ? (
+          <>
+            <a
+              href={`/u/${session.user.github_login}`}
+              class:list={[
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "rounded-md",
+              ]}
+            >
+              @{session.user.github_login}
+            </a>
+            <form action={logoutUrl} method="post">
+              <button
+                type="submit"
+                class:list={[
+                  buttonVariants({ variant: "default", size: "sm" }),
+                  "rounded-md",
+                ]}
+              >
+                Log out
+              </button>
+            </form>
+          </>
+        ) : (
+          <a
+            href={loginUrl}
+            class:list={[
+              buttonVariants({ variant: "default", size: "sm" }),
+              "rounded-md",
+            ]}
+          >
+            Login with GitHub
+          </a>
+        )
+      }
     </div>
   </div>
 </header>
+
+<script is:inline>
+  const root = document.documentElement;
+  const button = document.getElementById("theme-toggle");
+
+  const applyTheme = (theme) => {
+    root.classList.toggle("dark", theme === "dark");
+    root.style.colorScheme = theme;
+    localStorage.setItem("pkgs-theme", theme);
+
+    const icon = button?.querySelector("span[aria-hidden='true']");
+    if (icon) {
+      icon.textContent = theme === "dark" ? "☾" : "☼";
+    }
+  };
+
+  const initialTheme =
+    localStorage.getItem("pkgs-theme") ??
+    (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+
+  applyTheme(initialTheme);
+
+  button?.addEventListener("click", () => {
+    applyTheme(root.classList.contains("dark") ? "light" : "dark");
+  });
+</script>

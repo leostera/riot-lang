@@ -1,6 +1,9 @@
 import type {
+  ApiTokenLookupRecord,
+  ApiTokenRecord,
   IndexConfig,
   IndexConfigDocument,
+  OAuthStateRecord,
   PackageIndexDocument,
   PackageClaimRecord,
   PackageLocator,
@@ -9,6 +12,9 @@ import type {
   RegistryConfig,
   RequestLogEntry,
   SelectorResolutionRecord,
+  SessionRecord,
+  UserLoginRecord,
+  UserRecord,
 } from "./types.ts";
 
 export function sourceArchiveKey(locator: PackageLocator, sha: string): string {
@@ -38,6 +44,30 @@ export function packageClaimKey(packageName: string): string {
 
 export function publishedReleaseKey(packageName: string, version: string): string {
   return `releases/${encodePathSegment(packageName)}/${encodePathSegment(version)}.json`;
+}
+
+export function userRecordKey(userId: string): string {
+  return `auth/users/by-id/${encodePathSegment(userId)}.json`;
+}
+
+export function userLoginKey(githubLogin: string): string {
+  return `auth/users/by-login/${encodePathSegment(githubLogin.toLowerCase())}.json`;
+}
+
+export function oauthStateKey(stateId: string): string {
+  return `auth/oauth-states/${encodePathSegment(stateId)}.json`;
+}
+
+export function sessionKey(sessionId: string): string {
+  return `auth/sessions/${encodePathSegment(sessionId)}.json`;
+}
+
+export function apiTokenKey(userId: string, tokenId: string): string {
+  return `auth/tokens/by-user/${encodePathSegment(userId)}/${encodePathSegment(tokenId)}.json`;
+}
+
+export function apiTokenLookupKey(tokenHash: string): string {
+  return `auth/tokens/by-secret/${encodePathSegment(tokenHash)}.json`;
 }
 
 export function manifestRoutePath(locator: PackageLocator, sha: string): string {
@@ -219,6 +249,165 @@ export async function readPublicationManifest(
   }
 
   return await object.json<PackagePublicationManifest>();
+}
+
+export async function readUserRecord(bucket: R2Bucket, userId: string): Promise<UserRecord | null> {
+  const object = await bucket.get(userRecordKey(userId));
+  if (object === null) {
+    return null;
+  }
+
+  return await object.json<UserRecord>();
+}
+
+export async function writeUserRecord(bucket: R2Bucket, record: UserRecord): Promise<void> {
+  await bucket.put(userRecordKey(record.user_id), JSON.stringify(record, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function readUserLoginRecord(
+  bucket: R2Bucket,
+  githubLogin: string,
+): Promise<UserLoginRecord | null> {
+  const object = await bucket.get(userLoginKey(githubLogin));
+  if (object === null) {
+    return null;
+  }
+
+  return await object.json<UserLoginRecord>();
+}
+
+export async function writeUserLoginRecord(
+  bucket: R2Bucket,
+  record: UserLoginRecord,
+): Promise<void> {
+  await bucket.put(userLoginKey(record.github_login), JSON.stringify(record, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function readOAuthStateRecord(
+  bucket: R2Bucket,
+  stateId: string,
+): Promise<OAuthStateRecord | null> {
+  const object = await bucket.get(oauthStateKey(stateId));
+  if (object === null) {
+    return null;
+  }
+
+  return await object.json<OAuthStateRecord>();
+}
+
+export async function writeOAuthStateRecord(
+  bucket: R2Bucket,
+  record: OAuthStateRecord,
+): Promise<void> {
+  await bucket.put(oauthStateKey(record.state_id), JSON.stringify(record, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function deleteOAuthStateRecord(bucket: R2Bucket, stateId: string): Promise<void> {
+  await bucket.delete(oauthStateKey(stateId));
+}
+
+export async function readSessionRecord(
+  bucket: R2Bucket,
+  sessionId: string,
+): Promise<SessionRecord | null> {
+  const object = await bucket.get(sessionKey(sessionId));
+  if (object === null) {
+    return null;
+  }
+
+  return await object.json<SessionRecord>();
+}
+
+export async function writeSessionRecord(bucket: R2Bucket, record: SessionRecord): Promise<void> {
+  await bucket.put(sessionKey(record.session_id), JSON.stringify(record, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function deleteSessionRecord(bucket: R2Bucket, sessionId: string): Promise<void> {
+  await bucket.delete(sessionKey(sessionId));
+}
+
+export async function readApiTokenRecord(
+  bucket: R2Bucket,
+  userId: string,
+  tokenId: string,
+): Promise<ApiTokenRecord | null> {
+  const object = await bucket.get(apiTokenKey(userId, tokenId));
+  if (object === null) {
+    return null;
+  }
+
+  return await object.json<ApiTokenRecord>();
+}
+
+export async function writeApiTokenRecord(
+  bucket: R2Bucket,
+  record: ApiTokenRecord,
+): Promise<void> {
+  await bucket.put(apiTokenKey(record.user_id, record.token_id), JSON.stringify(record, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
+}
+
+export async function listApiTokenRecords(
+  bucket: R2Bucket,
+  userId: string,
+): Promise<ApiTokenRecord[]> {
+  const listed = await bucket.list({
+    prefix: `auth/tokens/by-user/${encodePathSegment(userId)}/`,
+  });
+
+  const records = await Promise.all(
+    listed.objects.map(async (object) => {
+      const token = await bucket.get(object.key);
+      return token === null ? null : await token.json<ApiTokenRecord>();
+    }),
+  );
+
+  return records
+    .filter((record): record is ApiTokenRecord => record !== null)
+    .sort((left, right) => right.created_at.localeCompare(left.created_at));
+}
+
+export async function readApiTokenLookupRecord(
+  bucket: R2Bucket,
+  tokenHash: string,
+): Promise<ApiTokenLookupRecord | null> {
+  const object = await bucket.get(apiTokenLookupKey(tokenHash));
+  if (object === null) {
+    return null;
+  }
+
+  return await object.json<ApiTokenLookupRecord>();
+}
+
+export async function writeApiTokenLookupRecord(
+  bucket: R2Bucket,
+  tokenHash: string,
+  record: ApiTokenLookupRecord,
+): Promise<void> {
+  await bucket.put(apiTokenLookupKey(tokenHash), JSON.stringify(record, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
 }
 
 function encodeSelector(selector: string): string {

@@ -1,4 +1,10 @@
 ---
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { buildPackageFacts } from "../lib/package-index.ts";
 import type { IndexedPackageRelease, PackageIndexDocument } from "../lib/types.ts";
 
@@ -12,68 +18,112 @@ const { document, release, selectedVersion } = Astro.props;
 const facts = buildPackageFacts(document, release);
 const breadcrumbBits = release.canonical_locator.split("/");
 const owner = breadcrumbBits[1] ?? "unknown";
-const repo = breadcrumbBits[2] ?? "repo";
+
+const installFact = facts.find((fact) => fact.label === "Install");
+const tomlFact = facts.find((fact) => fact.label === "tusk.toml");
+const summaryFacts = facts.filter((fact) =>
+  ["Last release", "OCaml", "Code size", "Archive"].includes(fact.label),
+);
+const metadataFacts = facts.filter((fact) =>
+  ["Owners", "Categories", "Versions", "Downloads"].includes(fact.label),
+);
 ---
 
-<section class="section-block section-tight">
-  <div class="shell">
-    <nav class="breadcrumbs">
-      <a href="/">OCaml packages</a>
+<section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+  <div class="grid gap-4">
+    <nav class="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+      <a href="/" class="hover:text-foreground">All packages</a>
       <span>/</span>
-      <a href={`/u/${owner}`}>{owner}</a>
+      <a href={`/u/${owner}`} class="hover:text-foreground">{owner}</a>
       <span>/</span>
-      <span>{repo}</span>
-      <span>/</span>
-      <span>{document.name}</span>
+      <span class="text-foreground">{document.name}</span>
     </nav>
 
-    <section class="package-hero">
-      <div class="package-hero-main">
-        <div class="package-title-row">
-          <h1>{document.name}</h1>
-          <span class="version-badge">v{selectedVersion}</span>
+    <Card className="rounded-md shadow-none">
+      <CardContent className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div class="grid gap-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-xl font-semibold tracking-tight text-foreground">{document.name}</h1>
+            <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              v{selectedVersion}
+            </span>
+          </div>
+
+          <p class="max-w-3xl text-sm leading-6 text-muted-foreground">
+            {release.description || "A published OCaml package with indexed metadata and source-backed releases."}
+          </p>
+
+          <div class="flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <a href={release.repo_url} target="_blank" rel="noreferrer" class="hover:text-foreground">Repository</a>
+            {
+              release.homepage ? (
+                <a href={release.homepage} target="_blank" rel="noreferrer" class="hover:text-foreground">Homepage</a>
+              ) : null
+            }
+            <a
+              href={`https://cdn.pkgs.ml/${release.source_key}`}
+              target="_blank"
+              rel="noreferrer"
+              class="hover:text-foreground"
+            >
+              Source archive
+            </a>
+          </div>
         </div>
 
-        <p class="package-summary">
-          {release.description || "A published OCaml package with indexed metadata and source-backed releases."}
-        </p>
+        <div class="grid gap-3">
+          <Card size="sm" className="rounded-md shadow-none">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="text-sm">Install</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 py-3">
+              <div class="grid gap-1">
+                <div class="text-[11px] text-muted-foreground">{installFact?.label}</div>
+                <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-[11px] text-foreground">
+                  {installFact?.value}
+                </code>
+              </div>
+              <div class="grid gap-1">
+                <div class="text-[11px] text-muted-foreground">{tomlFact?.label}</div>
+                <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-[11px] text-foreground">
+                  {tomlFact?.value}
+                </code>
+              </div>
+            </CardContent>
+          </Card>
 
-        <div class="package-actions">
-          <a href={release.repo_url} target="_blank" rel="noreferrer">Repository</a>
-          {release.homepage ? (
-            <a href={release.homepage} target="_blank" rel="noreferrer">Homepage</a>
-          ) : null}
-          <a
-            href={`https://cdn.pkgs.ml/${release.source_key}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source archive
-          </a>
+          <Card size="sm" className="rounded-md shadow-none">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="text-sm">Package facts</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3 py-3">
+              {summaryFacts.map((fact) => (
+                <div class="grid gap-1">
+                  <div class="text-[11px] text-muted-foreground">{fact.label}</div>
+                  <div class="text-xs text-foreground">{fact.value}</div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </CardContent>
 
-      <div class="package-hero-side">
-        <div class="fact-grid">
-          {facts.map((fact) => (
-            <div class:list={["fact-card", fact.code && "fact-card-code"]}>
-              <div class="fact-label">{fact.label}</div>
-              {fact.href ? (
-                <a href={fact.href} class="fact-value fact-link">{fact.value}</a>
-              ) : (
-                <div class="fact-value">{fact.value}</div>
-              )}
+      <div class="border-t border-border px-4 py-3">
+        <div class="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-muted-foreground">
+          {metadataFacts.map((fact) => (
+            <div class="flex items-center gap-1.5">
+              <span>{fact.label}:</span>
+              {
+                fact.href ? (
+                  <a href={fact.href} class="text-foreground hover:text-primary">{fact.value}</a>
+                ) : (
+                  <span class={fact.code ? "font-mono text-foreground" : "text-foreground"}>{fact.value}</span>
+                )
+              }
             </div>
           ))}
         </div>
       </div>
-
-      <div class="package-meta-strip">
-        <span><strong>Owner:</strong> <a href={`/u/${owner}`}>@{owner}</a></span>
-        <span><strong>Locator:</strong> <code>{release.canonical_locator}</code></span>
-        <span><strong>Latest:</strong> v{document.latest}</span>
-        <span><strong>Release SHA:</strong> <code>{release.sha.slice(0, 12)}</code></span>
-      </div>
-    </section>
+    </Card>
   </div>
 </section>

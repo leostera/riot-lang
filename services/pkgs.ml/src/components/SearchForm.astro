@@ -1,25 +1,50 @@
 ---
+import { buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
 interface Props {
   query?: string;
   placeholder?: string;
   large?: boolean;
+  autofocus?: boolean;
 }
 
 const {
   query = "",
   placeholder = "Search packages, libraries, and tools",
   large = false,
+  autofocus = false,
 } = Astro.props;
 ---
 
-<form action="/" method="get" class:list={["search-form", large && "search-form-large"]}>
-  <input
+<form
+  action="/"
+  method="get"
+  class:list={[
+    "flex items-stretch gap-2",
+    large ? "mx-auto w-full max-w-[600px]" : "w-full",
+  ]}
+>
+  <Input
     type="search"
     name="q"
     value={query}
     placeholder={placeholder}
-    class="search-input"
-    autocomplete="off"
+    class:list={[
+      "min-w-0 flex-1 rounded-md bg-background text-sm shadow-none",
+      large ? "h-11 px-3.5 text-sm" : "h-9 px-3 text-sm",
+    ]}
+    autoFocus={autofocus}
+    autoComplete="off"
   />
-  <button type="submit" class="search-submit">Search</button>
+
+  <button
+    type="submit"
+    class:list={[
+      buttonVariants({ variant: "default", size: large ? "lg" : "default" }),
+      "rounded-md shadow-none",
+    ]}
+  >
+    Search
+  </button>
 </form>

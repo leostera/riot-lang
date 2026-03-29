@@ -1,8 +1,9 @@
 ---
-import PackageDocsScaffold from "../../../../src/components/PackageDocsScaffold.astro";
-import PackageHero from "../../../../src/components/PackageHero.astro";
-import SiteLayout from "../../../../src/layouts/SiteLayout.astro";
-import { fetchPackageRelease } from "../../../../src/lib/package-index.ts";
+import PackageDocsScaffold from "@/components/PackageDocsScaffold.astro";
+import PackageHero from "@/components/PackageHero.astro";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import SiteLayout from "@/layouts/SiteLayout.astro";
+import { fetchPackageRelease } from "@/lib/package-index.ts";
 
 const packageName = Astro.params.pkg ?? "";
 const version = Astro.params.vsn ?? "";
@@ -20,7 +21,7 @@ if (resolved === null) {
       : "Release not found · pkgs.ml"
   }
   description={resolved?.release.description || "Versioned package details on pkgs.ml"}
-  showNavSearch
+  navSearchQuery=""
 >
   {
     resolved ? (
@@ -33,16 +34,16 @@ if (resolved === null) {
         <PackageDocsScaffold document={resolved.document} release={resolved.release} />
       </>
     ) : (
-      <section class="section-block">
-        <div class="shell">
-          <section class="content-card empty-state">
-            <h1>Release not found</h1>
-            <p>
+      <section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+        <Card size="sm" className="rounded-md shadow-none">
+          <CardHeader>
+            <CardTitle className="text-sm">Release not found</CardTitle>
+            <CardDescription>
               The release <code>{packageName}@{version}</code> could not be found in the package
               index.
-            </p>
-          </section>
-        </div>
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </section>
     )
   }

@@ -4,6 +4,8 @@ export function getConfig(env: Env): RegistryConfig {
   return {
     cdnBaseUrl: trimTrailingSlash(env.CDN_BASE_URL ?? "https://cdn.pkgs.ml"),
     indexBasePath: trimSlashes(env.INDEX_BASE_PATH ?? "index/v1"),
+    authCookieDomain: trimLeadingDot(env.AUTH_COOKIE_DOMAIN ?? "pkgs.ml"),
+    pkgsWebBaseUrl: trimTrailingSlash(env.PKGS_WEB_BASE_URL ?? "https://pkgs.ml"),
   };
 }
 
@@ -17,4 +19,8 @@ function trimTrailingSlash(value: string): string {
 
 function trimSlashes(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
+}
+
+function trimLeadingDot(value: string): string {
+  return value.startsWith(".") ? value.slice(1) : value;
 }

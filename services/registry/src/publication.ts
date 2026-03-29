@@ -18,6 +18,7 @@ import {
   writeSelectorResolution,
 } from "./storage.ts";
 import type {
+  AuthenticatedActor,
   Env,
   PackageClaimRecord,
   PackageLocator,
@@ -27,11 +28,7 @@ import type {
   PublishedReleaseRecord,
   ResolvedPublication,
 } from "./types.ts";
-import {
-  assertGitHubRepositoryAccess,
-  fetchGitHubTarball,
-  resolveGitHubSelector,
-} from "./github.ts";
+import { assertGitHubRepositoryAccess, fetchGitHubTarball, resolveGitHubSelector } from "./github.ts";
 
 export async function ensureSourceMaterialization(
   env: Env,
@@ -133,6 +130,7 @@ export async function publishPackageRelease(
   env: Env,
   locator: PackageLocator,
   selector: string,
+  actor: AuthenticatedActor,
 ): Promise<PublishedPackageRelease> {
   const materialization = await ensureSourceMaterialization(env, locator, selector);
   const manifest = await readMaterializationManifest(env, materialization.manifestKey);
@@ -140,9 +138,9 @@ export async function publishPackageRelease(
 
   const now = new Date().toISOString();
   const existingClaim = await readPackageClaim(env.ML_PKGS_CDN, manifest.package_name);
-  const claimRecord = buildClaimRecord(manifest, existingClaim, now);
+  const claimRecord = buildClaimRecord(locator, manifest, existingClaim, actor, now);
 
-  if (existingClaim === null) {
+  if (existingClaim === null || !claimMatches(existingClaim, claimRecord)) {
     await writePackageClaim(env.ML_PKGS_CDN, claimRecord);
   }
 
@@ -281,8 +279,10 @@ function assertPublishableManifest(manifest: PackagePublicationManifest): void {
 }
 
 function buildClaimRecord(
+  locator: PackageLocator,
   manifest: PackagePublicationManifest,
   existingClaim: PackageClaimRecord | null,
+  actor: AuthenticatedActor,
   timestamp: string,
 ): PackageClaimRecord {
   if (existingClaim !== null) {
@@ -294,10 +294,54 @@ function buildClaimRecord(
       );
     }
 
+    if (actor.kind === "user") {
+      const actorOwnsSource = ownsSourceLocator(actor.githubLogin, locator);
+      const ownerUserIdMatches =
+        existingClaim.owner_user_id !== undefined && existingClaim.owner_user_id === actor.userId;
+      const ownerLoginMatches =
+        existingClaim.owner_github_login !== undefined &&
+        existingClaim.owner_github_login.toLowerCase() === actor.githubLogin.toLowerCase();
+      const claimUnowned =
+        existingClaim.owner_user_id === undefined && existingClaim.owner_github_login === undefined;
+
+      if (claimUnowned) {
+        if (!actorOwnsSource) {
+          throw new HttpError(
+            403,
+            "package_claim_forbidden",
+            `Package ${manifest.package_name} can only be claimed by GitHub user ${locator.owner}.`,
+          );
+        }
+
+        return {
+          ...existingClaim,
+          owner_user_id: actor.userId,
+          owner_github_login: actor.githubLogin,
+          updated_at: timestamp,
+        };
+      }
+
+      if (!ownerUserIdMatches && !ownerLoginMatches) {
+        throw new HttpError(
+          403,
+          "package_claim_forbidden",
+          `Package ${manifest.package_name} is owned by another publisher.`,
+        );
+      }
+    }
+
     return {
       ...existingClaim,
       updated_at: timestamp,
     };
+  }
+
+  if (actor.kind === "user" && !ownsSourceLocator(actor.githubLogin, locator)) {
+    throw new HttpError(
+      403,
+      "package_claim_forbidden",
+      `Package ${manifest.package_name} can only be claimed by GitHub user ${locator.owner}.`,
+    );
   }
 
   return {
@@ -305,6 +349,8 @@ function buildClaimRecord(
     package_locator: manifest.package_locator,
     source_url: manifest.source_url,
     package_subdir: manifest.package_subdir,
+    owner_user_id: actor.kind === "user" ? actor.userId : undefined,
+    owner_github_login: actor.kind === "user" ? actor.githubLogin : undefined,
     claimed_at: timestamp,
     updated_at: timestamp,
   };
@@ -355,5 +401,20 @@ function releaseMatchesManifest(
 function isValidSemver(value: string): boolean {
   return /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(
     value,
+  );
+}
+
+function ownsSourceLocator(githubLogin: string, locator: PackageLocator): boolean {
+  return locator.owner.toLowerCase() === githubLogin.toLowerCase();
+}
+
+function claimMatches(left: PackageClaimRecord, right: PackageClaimRecord): boolean {
+  return (
+    left.package_name === right.package_name &&
+    left.package_locator === right.package_locator &&
+    left.source_url === right.source_url &&
+    left.package_subdir === right.package_subdir &&
+    left.owner_user_id === right.owner_user_id &&
+    left.owner_github_login === right.owner_github_login
   );
 }

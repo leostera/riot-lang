@@ -1,7 +1,7 @@
 name = "riot-pkgs-web"
 main = "@astrojs/cloudflare/entrypoints/server"
 compatibility_date = "2026-03-27"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = [ "nodejs_compat" ]
 workers_dev = false
 
 [[routes]]
@@ -10,7 +10,7 @@ custom_domain = true
 
 [assets]
 binding = "ASSETS"
-directory = "./dist"
+directory = "./dist/client"
 
 [observability]
 enabled = true

@@ -14,7 +14,7 @@ const title = hasQuery ? `${query} · pkgs.ml` : "pkgs.ml · OCaml packages";
   title={title}
   description="Search, explore, and publish OCaml packages."
   showNavSearch={hasQuery}
-  searchQuery={query}
+  navSearchQuery={query}
 >
   {hasQuery && search !== null ? <SearchResults query={query} response={search} /> : <HomeHero />}
 </SiteLayout>

@@ -19,6 +19,12 @@ import {
 
 const SHA = "0123456789abcdef0123456789abcdef01234567";
 const NEXT_SHA = "89abcdef012345670123456789abcdef01234567";
+const INDEX_CONFIG = {
+  cdnBaseUrl: "https://cdn.pkgs.ml",
+  indexBasePath: "index/v1",
+  authCookieDomain: "pkgs.ml",
+  pkgsWebBaseUrl: "https://pkgs.ml",
+};
 
 describe("riot package registry routes", () => {
   test("root route returns service metadata and logs the request", async () => {
@@ -36,6 +42,11 @@ describe("riot package registry routes", () => {
         manifest: "/package/<locator>/-/manifest/<sha>.json",
         source: "/package/<locator>/-/source/<sha>.tar.gz",
         publish: "/package/<locator>/-/publish?ref=<selector>",
+        auth_github_start: "/auth/github/start?return_to=<url>",
+        auth_github_callback: "/auth/github/callback?code=<code>&state=<state>",
+        auth_logout: "/auth/logout",
+        me: "/api/v1/me",
+        tokens: "/api/v1/me/tokens",
       },
       cdn_base_url: "https://cdn.pkgs.ml",
     });
@@ -368,11 +379,9 @@ describe("riot package registry routes", () => {
 
     expect(await bucket.text(packageClaimKey("minttea"))).not.toBeNull();
     expect(await bucket.text(publishedReleaseKey("minttea", "0.4.2"))).not.toBeNull();
-    expect(await bucket.text(indexConfigKey({ cdnBaseUrl: "https://cdn.pkgs.ml", indexBasePath: "index/v1" }))).not.toBeNull();
+    expect(await bucket.text(indexConfigKey(INDEX_CONFIG))).not.toBeNull();
     expect(
-      await bucket.text(
-        packageIndexKey({ cdnBaseUrl: "https://cdn.pkgs.ml", indexBasePath: "index/v1" }, "minttea"),
-      ),
+      await bucket.text(packageIndexKey(INDEX_CONFIG, "minttea")),
     ).not.toBeNull();
     expect(queue.messages).toHaveLength(1);
     expect(queue.messages[0]).toMatchObject({
@@ -411,9 +420,7 @@ describe("riot package registry routes", () => {
     });
 
     const packageDocument = JSON.parse(
-      (await bucket.text(
-        packageIndexKey({ cdnBaseUrl: "https://cdn.pkgs.ml", indexBasePath: "index/v1" }, "minttea"),
-      )) ?? "null",
+      (await bucket.text(packageIndexKey(INDEX_CONFIG, "minttea"))) ?? "null",
     );
     expect(packageDocument.releases[0]).toMatchObject({
       description: "Terminal UI toolkit for Riot",
@@ -580,9 +587,7 @@ describe("riot package registry routes", () => {
     });
 
     const packageDocument = JSON.parse(
-      (await bucket.text(
-        packageIndexKey({ cdnBaseUrl: "https://cdn.pkgs.ml", indexBasePath: "index/v1" }, "minttea"),
-      )) ?? "null",
+      (await bucket.text(packageIndexKey(INDEX_CONFIG, "minttea"))) ?? "null",
     );
     expect(packageDocument.releases[0]).toMatchObject({
       version: "0.4.2",

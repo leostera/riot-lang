@@ -2,12 +2,18 @@ import { HttpError } from "./errors.ts";
 import { normalizeLocator } from "./locator.ts";
 import { ensureSourceMaterialization, publishPackageRelease } from "./publication.ts";
 import { json } from "./http.ts";
-import type { Env, PublishedPackageRelease, ResolvedPublication } from "./types.ts";
+import type {
+  AuthenticatedActor,
+  Env,
+  PublishedPackageRelease,
+  ResolvedPublication,
+} from "./types.ts";
 
 interface PublicationRequest {
   operation?: "materialize" | "publish";
   locator: string;
   selector: string;
+  actor?: AuthenticatedActor;
 }
 
 export async function handlePublicationCoordinatorRequest(
@@ -28,7 +34,11 @@ export async function handlePublicationCoordinatorRequest(
 
   const locator = normalizeLocator(rawLocator);
   if (body.operation === "publish") {
-    const publication = await publishPackageRelease(env, locator, selector);
+    if (body.actor?.kind !== "root" && body.actor?.kind !== "user") {
+      throw new HttpError(400, "invalid_actor", "Coordinator publish requests must include an actor.");
+    }
+
+    const publication = await publishPackageRelease(env, locator, selector, body.actor);
     return json(serializePublishedRelease(publication));
   }
 

@@ -7,7 +7,11 @@ export interface Env {
   INDEX_BASE_PATH?: string;
   GITHUB_TOKEN?: string;
   GITHUB_API_BASE_URL?: string;
+  GITHUB_OAUTH_CLIENT_ID?: string;
+  GITHUB_OAUTH_CLIENT_SECRET?: string;
   ROOT_AUTH_TOKEN?: string;
+  AUTH_COOKIE_DOMAIN?: string;
+  PKGS_WEB_BASE_URL?: string;
 }
 
 export interface PackageLocator {
@@ -22,6 +26,8 @@ export interface PackageLocator {
 export interface RegistryConfig {
   cdnBaseUrl: string;
   indexBasePath: string;
+  authCookieDomain: string;
+  pkgsWebBaseUrl: string;
 }
 
 export type IndexConfig = RegistryConfig;
@@ -51,9 +57,81 @@ export interface PackageClaimRecord {
   package_locator: string;
   source_url: string;
   package_subdir: string;
+  owner_user_id?: string;
+  owner_github_login?: string;
   claimed_at: string;
   updated_at: string;
 }
+
+export interface UserRecord {
+  user_id: string;
+  github_id: number;
+  github_login: string;
+  github_name?: string;
+  github_avatar_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserLoginRecord {
+  github_login: string;
+  user_id: string;
+  updated_at: string;
+}
+
+export interface OAuthStateRecord {
+  state_id: string;
+  return_to: string;
+  created_at: string;
+}
+
+export interface SessionRecord {
+  session_id: string;
+  user_id: string;
+  github_login: string;
+  created_at: string;
+  expires_at: string;
+}
+
+export type ApiTokenCapability = "publish";
+
+export interface ApiTokenRecord {
+  token_id: string;
+  user_id: string;
+  github_login: string;
+  name: string;
+  secret_hash: string;
+  capabilities: ApiTokenCapability[];
+  created_at: string;
+  last_used_at?: string;
+  revoked_at?: string;
+}
+
+export interface ApiTokenLookupRecord {
+  token_id: string;
+  user_id: string;
+  github_login: string;
+  capabilities: ApiTokenCapability[];
+  revoked_at?: string;
+}
+
+export interface SessionResponse {
+  authenticated: boolean;
+  user?: UserRecord;
+}
+
+export interface AuthenticatedActorRoot {
+  kind: "root";
+}
+
+export interface AuthenticatedActorUser {
+  kind: "user";
+  userId: string;
+  githubLogin: string;
+  tokenId?: string;
+}
+
+export type AuthenticatedActor = AuthenticatedActorRoot | AuthenticatedActorUser;
 
 export interface PublishedReleaseRecord {
   package_name: string;

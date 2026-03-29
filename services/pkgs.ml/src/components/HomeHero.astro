@@ -1,26 +1,33 @@
 ---
 import SearchForm from "./SearchForm.astro";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 
 const categories = [
   {
     title: "Web programming",
-    description: "Frameworks, HTTP clients, HTTP servers, and real-time primitives.",
-    tags: ["HTTP", "Server", "WebSocket"],
+    description: "Frameworks, HTTP clients, servers, and real-time primitives.",
+    tags: ["http", "server", "websocket"],
   },
   {
     title: "Actors and concurrency",
     description: "Schedulers, mailboxes, timers, and concurrent runtime building blocks.",
-    tags: ["Actors", "Runtime", "Mailbox"],
+    tags: ["actors", "runtime", "mailbox"],
   },
   {
     title: "Developer tooling",
     description: "Build planning, formatters, linters, and workspace automation.",
-    tags: ["Build", "CLI", "Formatting"],
+    tags: ["build", "cli", "formatting"],
   },
   {
     title: "Data and storage",
-    description: "JSON, SQL, SQLite, Postgres, and other persistence packages.",
-    tags: ["JSON", "SQLite", "Postgres"],
+    description: "JSON, SQL, SQLite, Postgres, and persistence-oriented packages.",
+    tags: ["json", "sqlite", "postgres"],
   },
 ];
 
@@ -44,161 +51,90 @@ const featured = [
 
 const recent = [
   { name: "kernel", note: "Core runtime updates and release metadata." },
-  { name: "package-search", note: "Search indexing and FTS-backed discovery." },
-  { name: "registry", note: "Publishing, indexing, and source snapshots." },
+  { name: "miniriot", note: "Actor runtime release published from source." },
+  { name: "suri", note: "Package index metadata refreshed." },
 ];
 ---
 
-<section class="hero">
-  <div class="shell hero-grid">
-    <div class="hero-copy">
-      <div class="eyebrow">OCaml package discovery</div>
-      <h1>Find, explore, and publish OCaml packages</h1>
-      <p>
-        Search packages, browse categories, and discover the libraries, tools, and
-        frameworks that power the growing OCaml ecosystem.
+<section class="border-b border-border">
+  <div class="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6">
+    <div class="mx-auto grid max-w-3xl gap-5 text-center">
+      <p class="text-sm text-muted-foreground">
+        The Riot&apos;s community package registry
       </p>
 
       <SearchForm
         large
-        placeholder="Search by package name, keyword, owner, or repository..."
+        autofocus
+        placeholder="Search packages, descriptions, owners, or repositories..."
       />
-
-      <div class="popular-links">
-        <span>Popular:</span>
-        <a href="/?q=kernel">kernel</a>
-        <a href="/?q=miniriot">miniriot</a>
-        <a href="/?q=suri">suri</a>
-        <a href="/?q=sqlite">sqlite</a>
-      </div>
-    </div>
-
-    <div class="hero-sidecards">
-      <article class="sidecard">
-        <div class="sidecard-label">Registry</div>
-        <div class="sidecard-title">Published packages</div>
-        <p>Source-backed releases, stable install docs, and searchable metadata.</p>
-      </article>
-      <article class="sidecard">
-        <div class="sidecard-label">Discovery</div>
-        <div class="sidecard-title">Categories and search</div>
-        <p>Browse by package name, repository, owner, description, and release history.</p>
-      </article>
-      <article class="sidecard">
-        <div class="sidecard-label">Publishing</div>
-        <div class="sidecard-title">Explicit package publishing</div>
-        <p>Claim package names, publish semver releases, and make them instantly visible.</p>
-      </article>
     </div>
   </div>
 </section>
 
-<section class="section-block" id="categories">
-  <div class="shell">
-    <div class="section-header">
-      <div>
-        <h2>Popular categories</h2>
-        <p>Jump into the ecosystem through common areas of development.</p>
-      </div>
-    </div>
+<section class="py-8">
+  <div class="mx-auto grid w-full max-w-6xl gap-4 px-4 sm:grid-cols-3 sm:px-6">
+    <Card size="sm" className="rounded-md shadow-none">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="text-sm">Popular categories</CardTitle>
+        <CardDescription>Jump into the ecosystem through common areas of development.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        {categories.map((category) => (
+          <article class="grid gap-1 border-b border-border/70 pb-3 last:border-b-0 last:pb-0">
+            <h3 class="text-sm font-medium text-foreground">{category.title}</h3>
+            <p class="text-xs leading-5 text-muted-foreground">{category.description}</p>
+            <div class="flex flex-wrap gap-1">
+              {category.tags.map((tag) => (
+                <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </article>
+        ))}
+      </CardContent>
+    </Card>
 
-    <div class="category-grid">
-      {categories.map((category) => (
-        <article class="category-card">
-          <h3>{category.title}</h3>
-          <p>{category.description}</p>
-          <div class="tag-row">
-            {category.tags.map((tag) => <span>{tag}</span>)}
-          </div>
-        </article>
-      ))}
-    </div>
-  </div>
-</section>
-
-<section class="section-block">
-  <div class="shell content-grid">
-    <div class="main-feed">
-      <section class="content-card">
-        <div class="section-header">
-          <div>
-            <h2>Featured packages</h2>
-            <p>Useful packages to start exploring the registry.</p>
-          </div>
-        </div>
-
-        <div class="result-list">
-          {featured.map((item) => (
-            <article class="result-card">
-              <div class="result-main">
-                <div class="result-title-row">
-                  <a href={`/p/${item.name}`} class="result-name">{item.name}</a>
-                  <span class="version-pill">v{item.version}</span>
-                </div>
-                <p>{item.description}</p>
+    <Card size="sm" className="rounded-md shadow-none">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="text-sm">Featured packages</CardTitle>
+        <CardDescription>Useful packages to start exploring the registry.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-2">
+        {featured.map((item) => (
+          <article class="grid gap-1 border-b border-border/70 pb-2 last:border-b-0 last:pb-0">
+            <div class="flex items-start justify-between gap-2">
+              <div class="grid gap-1">
+                <a href={`/p/${item.name}`} class="text-sm font-medium text-foreground hover:text-primary">
+                  {item.name}
+                </a>
+                <p class="text-xs leading-5 text-muted-foreground">{item.description}</p>
               </div>
-              <div class="result-meta">
-                <a class="mini-link" href={`/p/${item.name}`}>Details</a>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+              <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                v{item.version}
+              </span>
+            </div>
+          </article>
+        ))}
+      </CardContent>
+    </Card>
 
-      <section class="content-card" id="recent">
-        <div class="section-header">
-          <div>
-            <h2>Recently updated</h2>
-            <p>Fresh registry activity and package updates.</p>
-          </div>
-        </div>
-
-        <ul class="simple-list">
-          {recent.map((item) => (
-            <li>
-              <div>
-                <a href={`/?q=${encodeURIComponent(item.name)}`}>{item.name}</a>
-                <p>{item.note}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </div>
-
-    <aside class="sidebar">
-      <section class="content-card">
-        <h3>Browse</h3>
-        <ul class="sidebar-links">
-          <li><a href="/">All packages</a></li>
-          <li><a href="/#categories">Categories</a></li>
-          <li><a href="/#recent">Recently updated</a></li>
-          <li><a href="https://search.pkgs.ml/?q=kernel" target="_blank" rel="noreferrer">Search API</a></li>
-        </ul>
-      </section>
-
-      <section class="content-card">
-        <h3>For publishers</h3>
-        <p>
-          Publish your package, manage its metadata, and make it discoverable
-          across the registry and search.
-        </p>
-        <a href="/login" class="button button-primary button-block">Learn about publishing</a>
-      </section>
-
-      <section class="content-card">
-        <h3>Developer signals</h3>
-        <div class="signal-grid">
-          <div class="signal-card">
-            <div class="sidecard-label">Package cards</div>
-            <div>Name, version, description, repository, and source locator.</div>
-          </div>
-          <div class="signal-card">
-            <div class="sidecard-label">Registry metadata</div>
-            <div>Indexed releases, dependencies, categories, and package ownership.</div>
-          </div>
-        </div>
-      </section>
-    </aside>
+    <Card size="sm" className="rounded-md shadow-none">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="text-sm">Recently updated</CardTitle>
+        <CardDescription>Fresh registry activity and package updates.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-2">
+        {recent.map((item) => (
+          <article class="grid gap-1 border-b border-border/70 pb-2 last:border-b-0 last:pb-0">
+            <a href={`/?q=${encodeURIComponent(item.name)}`} class="text-sm font-medium text-foreground hover:text-primary">
+              {item.name}
+            </a>
+            <p class="text-xs leading-5 text-muted-foreground">{item.note}</p>
+          </article>
+        ))}
+      </CardContent>
+    </Card>
   </div>
 </section>

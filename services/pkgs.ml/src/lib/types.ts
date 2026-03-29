@@ -53,3 +53,39 @@ export interface PackageFact {
   href?: string;
   code?: boolean;
 }
+
+export interface UserRecord {
+  user_id: string;
+  github_id: number;
+  github_login: string;
+  github_name?: string;
+  github_avatar_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SessionResponse {
+  authenticated: boolean;
+  user?: UserRecord;
+}
+
+export interface ApiTokenSummary {
+  token_id: string;
+  user_id: string;
+  github_login: string;
+  name: string;
+  capabilities: string[];
+  created_at: string;
+  last_used_at?: string;
+  revoked_at?: string;
+}
+
+export interface ApiTokensResponse {
+  user: UserRecord;
+  tokens: ApiTokenSummary[];
+}
+
+export interface CreateApiTokenResponse {
+  plaintext_token: string;
+  token: ApiTokenSummary;
+}

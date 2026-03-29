@@ -1,4 +1,12 @@
 ---
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import type { IndexedPackageRelease, PackageIndexDocument } from "../lib/types.ts";
 
 interface Props {
@@ -16,61 +24,70 @@ const referenceItems = [
 ];
 ---
 
-<section class="section-block section-tight">
-  <div class="shell package-body-grid">
-    <aside class="docs-sidebar">
-      <div class="tab-strip">
-        <button class="tab-pill tab-pill-active" type="button">Pages</button>
-        <button class="tab-pill" type="button">Reference</button>
-      </div>
-
-      <div class="sidebar-group">
-        <div class="sidebar-heading">Modules</div>
-        <ul>
-          <li><a href="#pkg-module">{document.name}</a></li>
-          <li><a href="#pkg-submodule">{document.name}.Core</a></li>
-          <li><a href="#pkg-support">{document.name}.Support</a></li>
-        </ul>
-      </div>
-
-      {referenceItems.slice(1).map((item) => (
-        <div class="sidebar-group">
-          <div class="sidebar-heading">{item}</div>
-          <ul>
-            <li><a href={`#${item.toLowerCase()}`}>{document.name}.{item.toLowerCase()}</a></li>
-          </ul>
+<section class="mx-auto w-full max-w-6xl px-4 pb-10 sm:px-6">
+  <div class="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+    <Card size="sm" className="rounded-md shadow-none lg:self-start">
+      <CardContent className="grid gap-5 py-3">
+        <div class="flex items-center gap-2">
+          <button class:list={[buttonVariants({ variant: "secondary", size: "sm" }), "rounded-md"]} type="button">
+            Pages
+          </button>
+          <button class:list={[buttonVariants({ variant: "ghost", size: "sm" }), "rounded-md"]} type="button">
+            Reference
+          </button>
         </div>
-      ))}
-    </aside>
 
-    <section class="docs-content">
-      <article class="docs-card">
-        <div class="docs-card-header">
-          <div>
-            <div class="sidecard-label">Documentation scaffold</div>
-            <h2>{document.name} module docs</h2>
+        <div class="grid gap-4 text-xs">
+          <div class="grid gap-2">
+            <div class="font-medium uppercase tracking-wide text-muted-foreground">Modules</div>
+            <ul class="grid gap-1 text-foreground">
+              <li><a href="#pkg-module" class="hover:text-primary">{document.name}</a></li>
+              <li><a href="#pkg-submodule" class="hover:text-primary">{document.name}.Core</a></li>
+              <li><a href="#pkg-support" class="hover:text-primary">{document.name}.Support</a></li>
+            </ul>
           </div>
-          <span class="version-pill">v{release.version}</span>
-        </div>
 
-        <p>
-          This is the reserved documentation area for generated package docs. The
-          left navigation is already structured for Pages and Reference content,
-          and the main column can expand later with rendered modules, types,
-          exceptions, and function docs.
-        </p>
-
-        <div class="docs-placeholder-grid">
-          <section class="placeholder-panel" id="pkg-module">
-            <h3>Pages</h3>
-            <p>Overview pages, guides, and examples will live here.</p>
-          </section>
-          <section class="placeholder-panel" id="pkg-submodule">
-            <h3>Reference</h3>
-            <p>Module and symbol documentation will fill the main reference panels here.</p>
-          </section>
+          {referenceItems.slice(1).map((item) => (
+            <div class="grid gap-2">
+              <div class="font-medium uppercase tracking-wide text-muted-foreground">{item}</div>
+              <ul class="grid gap-1 text-foreground">
+                <li><a href={`#${item.toLowerCase()}`} class="hover:text-primary">{document.name}.{item.toLowerCase()}</a></li>
+              </ul>
+            </div>
+          ))}
         </div>
-      </article>
-    </section>
+      </CardContent>
+    </Card>
+
+    <Card className="min-h-[28rem] rounded-md shadow-none">
+      <CardHeader className="border-b border-border">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle className="text-sm">{document.name} documentation</CardTitle>
+            <CardDescription>
+              Generated docs will live here once package docs rendering lands.
+            </CardDescription>
+          </div>
+          <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            v{release.version}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4 py-4">
+        <section class="grid gap-2 rounded-md border border-dashed border-border bg-muted/30 p-4" id="pkg-module">
+          <h2 class="text-sm font-semibold tracking-tight text-foreground">Pages</h2>
+          <p class="text-xs leading-5 text-muted-foreground">
+            Package guides, tutorials, and overview pages will render here.
+          </p>
+        </section>
+
+        <section class="grid gap-2 rounded-md border border-dashed border-border bg-muted/30 p-4" id="pkg-submodule">
+          <h2 class="text-sm font-semibold tracking-tight text-foreground">Reference</h2>
+          <p class="text-xs leading-5 text-muted-foreground">
+            Modules, types, exceptions, and functions will render in this column.
+          </p>
+        </section>
+      </CardContent>
+    </Card>
   </div>
 </section>

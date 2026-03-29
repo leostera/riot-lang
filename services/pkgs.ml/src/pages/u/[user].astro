@@ -1,0 +1,169 @@
+---
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import SiteLayout from "../../layouts/SiteLayout.astro";
+import { fetchSession } from "../../lib/auth";
+import { fetchPackagesByOwner } from "../../lib/search.ts";
+
+const user = Astro.params.user ?? "user";
+const packages = await fetchPackagesByOwner(user);
+const session = await fetchSession(Astro.request);
+const isCurrentUser =
+  session.authenticated &&
+  session.user !== undefined &&
+  session.user.github_login.toLowerCase() === user.toLowerCase();
+
+const latestUpdate = packages[0]?.updated_at
+  ? new Intl.DateTimeFormat("en", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(new Date(packages[0].updated_at))
+  : "No packages yet";
+---
+
+<SiteLayout
+  title={`@${user} · pkgs.ml`}
+  description={`Published OCaml packages for @${user}.`}
+  navSearchQuery={user}
+>
+  <section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+    <div class="grid gap-4">
+      <nav class="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <a href="/" class="hover:text-foreground">All packages</a>
+        <span>/</span>
+        <span class="text-foreground">@{user}</span>
+      </nav>
+
+      <div class="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <div class="grid gap-4 lg:self-start">
+          <Card className="rounded-md shadow-none">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="text-sm">@{user}</CardTitle>
+              <CardDescription>
+                Public packages published from repositories owned by this user.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 py-4">
+              <div class="grid gap-1">
+                <div class="text-[11px] text-muted-foreground">Published packages</div>
+                <div class="text-sm font-medium text-foreground">
+                  {packages.length} package{packages.length === 1 ? "" : "s"}
+                </div>
+              </div>
+
+              <div class="grid gap-1">
+                <div class="text-[11px] text-muted-foreground">Latest update</div>
+                <div class="text-sm text-foreground">{latestUpdate}</div>
+              </div>
+
+              <div class="grid gap-1">
+                <div class="text-[11px] text-muted-foreground">Source provider</div>
+                <div class="text-sm text-foreground">GitHub</div>
+              </div>
+
+              <div class="grid gap-2 border-t border-border pt-4 text-xs text-muted-foreground">
+                <a
+                  href={`https://github.com/${user}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  class="hover:text-foreground"
+                >
+                  GitHub profile
+                </a>
+                {
+                  isCurrentUser ? (
+                    <a href={`/u/${user}/tokens`} class="hover:text-foreground">Manage tokens</a>
+                  ) : null
+                }
+                <a href={`/?q=${encodeURIComponent(user)}`} class="hover:text-foreground">
+                  Search by owner
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="rounded-md shadow-none">
+          <CardHeader className="border-b border-border">
+            <CardTitle className="text-sm">Published packages</CardTitle>
+            <CardDescription>
+              One result per package, sourced from the search index.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 py-4">
+            {
+              packages.length === 0 ? (
+                <div class="grid gap-2 rounded-md border border-dashed border-border bg-muted/30 p-4">
+                  <h3 class="text-sm font-semibold tracking-tight text-foreground">
+                    No public packages yet
+                  </h3>
+                  <p class="text-xs leading-5 text-muted-foreground">
+                    No indexed packages currently match repositories owned by <code>{user}</code>.
+                  </p>
+                </div>
+              ) : (
+                <div class="grid gap-3">
+                  {packages.map((result) => (
+                    <Card size="sm" className="rounded-md shadow-none">
+                      <CardContent className="grid gap-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                        <div class="grid gap-2">
+                          <div class="flex flex-wrap items-center gap-2">
+                            <a
+                              href={`/p/${result.package_name}`}
+                              class="text-sm font-semibold tracking-tight text-foreground hover:text-primary"
+                            >
+                              {result.package_name}
+                            </a>
+                            <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              v{result.latest_version}
+                            </span>
+                          </div>
+
+                          <p class="text-xs leading-5 text-muted-foreground">
+                            {result.description || "No package description has been published yet."}
+                          </p>
+
+                          <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                            <span>{result.repo_owner}/{result.repo_name}</span>
+                            <span>{result.subdir || "repo root"}</span>
+                            <span>
+                              {result.release_count} version{result.release_count === 1 ? "" : "s"}
+                            </span>
+                            <span>{result.license || "License pending"}</span>
+                          </div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 text-[11px] sm:justify-end">
+                          <a
+                            class="text-muted-foreground hover:text-foreground"
+                            href={`/p/${result.package_name}`}
+                          >
+                            Package page
+                          </a>
+                          <a
+                            class="text-muted-foreground hover:text-foreground"
+                            href={result.repo_url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Repository
+                          </a>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )
+            }
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

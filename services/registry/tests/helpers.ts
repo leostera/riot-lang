@@ -96,6 +96,59 @@ export class FakeR2Bucket {
     return head;
   }
 
+  async delete(keys: string | string[]): Promise<void> {
+    if (Array.isArray(keys)) {
+      for (const key of keys) {
+        this.objects.delete(key);
+      }
+
+      return;
+    }
+
+    this.objects.delete(keys);
+  }
+
+  async list(
+    options?: R2ListOptions,
+  ): Promise<R2Objects> {
+    const prefix = options?.prefix ?? "";
+    const keys = [...this.objects.keys()]
+      .filter((key) => key.startsWith(prefix))
+      .sort();
+
+    return {
+      objects: keys.map((key) => {
+        const object = this.objects.get(key);
+        if (object === undefined) {
+          throw new Error(`Missing object for key ${key}.`);
+        }
+
+        return {
+          key,
+          size: object.body.byteLength,
+          etag: "fake-etag",
+          httpEtag: "fake-etag",
+          uploaded: new Date(),
+          checksums: {},
+          version: "1",
+          httpMetadata: object.httpMetadata,
+          customMetadata: {},
+          range: undefined,
+          storageClass: "Standard",
+          ssecKeyMd5: undefined,
+          writeHttpMetadata(headers: Headers): void {
+            if (object.httpMetadata?.contentType !== undefined) {
+              headers.set("content-type", object.httpMetadata.contentType);
+            }
+          },
+        } as unknown as R2Object;
+      }),
+      delimitedPrefixes: [],
+      truncated: false,
+      cursor: undefined,
+    } as R2Objects;
+  }
+
   async text(key: string): Promise<string | null> {
     const object = this.objects.get(key);
     return object === undefined ? null : new TextDecoder().decode(object.body);

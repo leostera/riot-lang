@@ -1,3 +1,16 @@
+import {
+  buildClearedSessionCookie,
+  buildSessionCookie,
+  completeGitHubAuthorization,
+  createGitHubAuthorizationUrl,
+  createPublishApiToken,
+  logoutSession,
+  readAuthenticatedSession,
+  requireAuthenticatedSession,
+  requirePublishActor,
+  resolveReturnTo,
+  revokeApiToken,
+} from "./auth.ts";
 import { getConfig } from "./config.ts";
 import { HttpError } from "./errors.ts";
 import { immutableHeaders, json, methodNotAllowed } from "./http.ts";
@@ -16,8 +29,16 @@ import {
   prettySourceUrl,
   sourceArchiveKey,
   sourceRoutePath,
+  listApiTokenRecords,
 } from "./storage.ts";
-import type { Env, PackageLocator, PublishedPackageRelease, RequestLogEntry } from "./types.ts";
+import type {
+  ApiTokenRecord,
+  AuthenticatedActor,
+  Env,
+  PackageLocator,
+  PublishedPackageRelease,
+  RequestLogEntry,
+} from "./types.ts";
 
 export async function handleRequest(
   request: Request,
@@ -82,9 +103,98 @@ async function routeRequest(
         manifest: "/package/<locator>/-/manifest/<sha>.json",
         source: "/package/<locator>/-/source/<sha>.tar.gz",
         publish: "/package/<locator>/-/publish?ref=<selector>",
+        auth_github_start: "/auth/github/start?return_to=<url>",
+        auth_github_callback: "/auth/github/callback?code=<code>&state=<state>",
+        auth_logout: "/auth/logout",
+        me: "/api/v1/me",
+        tokens: "/api/v1/me/tokens",
       },
       cdn_base_url: getConfig(env).cdnBaseUrl,
     });
+  }
+
+  if (path === "auth/github/start") {
+    if (request.method !== "GET") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET"]);
+    }
+
+    logEntry.route = "auth.github.start";
+    const authorizationUrl = await createGitHubAuthorizationUrl(
+      env,
+      url,
+      url.searchParams.get("return_to"),
+    );
+    return redirect(authorizationUrl);
+  }
+
+  if (path === "auth/github/callback") {
+    if (request.method !== "GET") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET"]);
+    }
+
+    logEntry.route = "auth.github.callback";
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    if (code === null || state === null) {
+      throw new HttpError(
+        400,
+        "invalid_oauth_callback",
+        "GitHub OAuth callback requires both code and state parameters.",
+      );
+    }
+
+    const { session, returnTo } = await completeGitHubAuthorization(env, url, code, state);
+    return redirect(returnTo, {
+      "set-cookie": buildSessionCookie(env, session),
+    });
+  }
+
+  if (path === "auth/logout") {
+    if (request.method !== "POST") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["POST"]);
+    }
+
+    logEntry.route = "auth.logout";
+    return await handleLogout(request, env, url);
+  }
+
+  if (path === "api/v1/me") {
+    if (request.method !== "GET") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET"]);
+    }
+
+    logEntry.route = "api.me";
+    return await handleCurrentSession(request, env);
+  }
+
+  if (path === "api/v1/me/tokens") {
+    if (request.method === "GET") {
+      logEntry.route = "api.me.tokens";
+      return await handleListTokens(request, env);
+    }
+
+    if (request.method === "POST") {
+      logEntry.route = "api.me.tokens.create";
+      return await handleCreateToken(request, env);
+    }
+
+    logEntry.route = "method_not_allowed";
+    return methodNotAllowed(["GET", "POST"]);
+  }
+
+  if (path.startsWith("api/v1/me/tokens/")) {
+    if (request.method !== "DELETE") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["DELETE"]);
+    }
+
+    logEntry.route = "api.me.tokens.delete";
+    const tokenId = decodeURIComponent(path.slice("api/v1/me/tokens/".length));
+    return await handleDeleteToken(request, env, tokenId);
   }
 
   if (!path.startsWith("package/")) {
@@ -198,9 +308,9 @@ async function handlePublish(
   selector: string,
   logEntry: RequestLogEntry,
 ): Promise<Response> {
-  requireRootAuth(request, env);
+  const actor = await requirePublishActor(request, env);
 
-  const publishResult = await publishThroughCoordinator(env, locator, selector);
+  const publishResult = await publishThroughCoordinator(env, locator, selector, actor);
   const requestUrl = new URL(request.url);
   logEntry.resolved_sha = publishResult.resolvedSha;
 
@@ -295,6 +405,7 @@ async function publishThroughCoordinator(
   env: Env,
   locator: PackageLocator,
   selector: string,
+  actor: AuthenticatedActor,
 ): Promise<PublishedPackageRelease> {
   const id = env.PUBLICATION_COORDINATOR.idFromName("global");
   const stub = env.PUBLICATION_COORDINATOR.get(id);
@@ -307,6 +418,7 @@ async function publishThroughCoordinator(
       operation: "publish",
       locator: locator.normalized,
       selector,
+      actor,
     }),
   });
 
@@ -388,23 +500,137 @@ async function handleSource(
   return Response.redirect(prettySourceUrl(getConfig(env), locator, sha), 307);
 }
 
+async function handleLogout(request: Request, env: Env, url: URL): Promise<Response> {
+  await logoutSession(request, env);
+  const returnTo =
+    (await readReturnToFromRequest(request)) ?? url.searchParams.get("return_to");
+
+  if (wantsJson(request)) {
+    return json(
+      { ok: true },
+      {
+        headers: {
+          "set-cookie": buildClearedSessionCookie(env),
+        },
+      },
+    );
+  }
+
+  return redirect(resolveReturnTo(env, returnTo), {
+    "set-cookie": buildClearedSessionCookie(env),
+  });
+}
+
+async function handleCurrentSession(request: Request, env: Env): Promise<Response> {
+  const authenticated = await readAuthenticatedSession(request, env);
+  if (authenticated === null) {
+    return json({
+      authenticated: false,
+    });
+  }
+
+  return json({
+    authenticated: true,
+    user: authenticated.user,
+  });
+}
+
+async function handleListTokens(request: Request, env: Env): Promise<Response> {
+  const { user } = await requireAuthenticatedSession(request, env);
+  const records = await listApiTokenRecords(env.ML_PKGS_CDN, user.user_id);
+
+  return json({
+    user,
+    tokens: records.filter((record) => record.revoked_at === undefined).map(serializeTokenRecord),
+  });
+}
+
+async function handleCreateToken(request: Request, env: Env): Promise<Response> {
+  const { user } = await requireAuthenticatedSession(request, env);
+  const payload = await readBodyObject(request);
+  const rawName = payload.name;
+
+  if (typeof rawName !== "string") {
+    throw new HttpError(400, "invalid_token_name", "Token creation requires a name string.");
+  }
+
+  const { plaintext, record } = await createPublishApiToken(env, user, rawName);
+  return json(
+    {
+      plaintext_token: plaintext,
+      token: serializeTokenRecord(record),
+    },
+    { status: 201 },
+  );
+}
+
+async function handleDeleteToken(
+  request: Request,
+  env: Env,
+  tokenId: string,
+): Promise<Response> {
+  const { user } = await requireAuthenticatedSession(request, env);
+  const revoked = await revokeApiToken(env, user, tokenId);
+  if (revoked === null) {
+    throw new HttpError(404, "token_not_found", "Token does not exist.");
+  }
+
+  return json({
+    token: serializeTokenRecord(revoked),
+  });
+}
+
 function trimSlashes(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
 }
 
-function requireRootAuth(request: Request, env: Env): void {
-  if (typeof env.ROOT_AUTH_TOKEN !== "string" || env.ROOT_AUTH_TOKEN.length === 0) {
-    throw new HttpError(
-      503,
-      "publish_auth_not_configured",
-      "Publish auth is not configured for this registry.",
-    );
+async function readBodyObject(request: Request): Promise<Record<string, unknown>> {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return (await request.json()) as Record<string, unknown>;
   }
 
-  const authorization = request.headers.get("authorization");
-  if (authorization !== `Bearer ${env.ROOT_AUTH_TOKEN}`) {
-    throw new HttpError(401, "unauthorized", "Publish requests require valid root auth.");
+  if (
+    contentType.includes("application/x-www-form-urlencoded") ||
+    contentType.includes("multipart/form-data")
+  ) {
+    const form = await request.formData();
+    const entries = [...form.entries()].map(([key, value]) => [key, String(value)]);
+    return Object.fromEntries(entries);
   }
+
+  return {};
+}
+
+async function readReturnToFromRequest(request: Request): Promise<string | null> {
+  const body = await readBodyObject(request);
+  return typeof body.return_to === "string" ? body.return_to : null;
+}
+
+function serializeTokenRecord(record: ApiTokenRecord): Record<string, unknown> {
+  return {
+    token_id: record.token_id,
+    user_id: record.user_id,
+    github_login: record.github_login,
+    name: record.name,
+    capabilities: record.capabilities,
+    created_at: record.created_at,
+    last_used_at: record.last_used_at,
+    revoked_at: record.revoked_at,
+  };
+}
+
+function wantsJson(request: Request): boolean {
+  return request.headers.get("accept")?.includes("application/json") ?? false;
+}
+
+function redirect(location: string, extraHeaders?: Record<string, string>): Response {
+  const headers = new Headers(extraHeaders);
+  headers.set("location", location);
+  return new Response(null, {
+    status: 302,
+    headers,
+  });
 }
 
 function normalizeError(error: unknown): HttpError {

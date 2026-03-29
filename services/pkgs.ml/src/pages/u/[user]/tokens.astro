@@ -1,24 +1,205 @@
 ---
-import SiteLayout from "../../../src/layouts/SiteLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import SiteLayout from "../../../layouts/SiteLayout.astro";
+import { createApiToken, fetchApiTokens, fetchSession, revokeApiToken } from "../../../lib/auth";
 
 const user = Astro.params.user ?? "user";
+const session = await fetchSession(Astro.request);
+
+if (!session.authenticated || !session.user) {
+  return Astro.redirect(`/login?return_to=${encodeURIComponent(Astro.url.toString())}`);
+}
+
+if (session.user.github_login.toLowerCase() !== user.toLowerCase()) {
+  return Astro.redirect(`/u/${session.user.github_login}/tokens`);
+}
+
+let createdToken: string | null = null;
+let createdTokenName: string | null = null;
+let errorMessage: string | null = null;
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const action = String(form.get("action") ?? "");
+
+  try {
+    if (action === "create") {
+      const name = String(form.get("name") ?? "");
+      const created = await createApiToken(Astro.request, name);
+      createdToken = created.plaintext_token;
+      createdTokenName = created.token.name;
+    } else if (action === "revoke") {
+      const tokenId = String(form.get("token_id") ?? "");
+      if (tokenId.length > 0) {
+        await revokeApiToken(Astro.request, tokenId);
+      }
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message === "unauthorized") {
+      return Astro.redirect(`/login?return_to=${encodeURIComponent(Astro.url.toString())}`);
+    }
+
+    errorMessage =
+      error instanceof Error ? error.message : "Token request failed for an unknown reason.";
+  }
+}
+
+const tokenResponse = await fetchApiTokens(Astro.request);
 ---
 
-<SiteLayout title={`${user} tokens · pkgs.ml`} description="API token management on pkgs.ml" showNavSearch>
-  <section class="section-block">
-    <div class="shell">
-      <section class="content-card">
-        <div class="section-header">
-          <div>
-            <h2>{user} tokens</h2>
-            <p>Create and manage package publishing tokens from this account page.</p>
-          </div>
+<SiteLayout
+  title={`${user} tokens · pkgs.ml`}
+  description="Publish token management on pkgs.ml"
+  navSearchQuery={user}
+>
+  <section class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+    <div class="grid gap-4">
+      <nav class="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <a href="/" class="hover:text-foreground">All packages</a>
+        <span>/</span>
+        <a href={`/u/${user}`} class="hover:text-foreground">{user}</a>
+        <span>/</span>
+        <span class="text-foreground">tokens</span>
+      </nav>
+
+      <div class="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <Card className="rounded-md shadow-none lg:self-start">
+          <CardHeader className="border-b border-border">
+            <CardTitle className="text-sm">Publish credentials</CardTitle>
+            <CardDescription>
+              Create and revoke tokens used by <code>tusk publish</code>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 py-4">
+            <div class="grid gap-1">
+              <div class="text-[11px] text-muted-foreground">GitHub account</div>
+              <div class="text-sm font-medium text-foreground">@{session.user.github_login}</div>
+            </div>
+
+            <div class="grid gap-1">
+              <div class="text-[11px] text-muted-foreground">Capabilities</div>
+              <div class="text-sm text-foreground">publish</div>
+            </div>
+
+            <div class="grid gap-1">
+              <div class="text-[11px] text-muted-foreground">Active tokens</div>
+              <div class="text-sm text-foreground">{tokenResponse.tokens.length}</div>
+            </div>
+
+            <p class="text-xs leading-5 text-muted-foreground">
+              Plaintext tokens are shown once when created. Store them somewhere safe before
+              leaving this page.
+            </p>
+          </CardContent>
+        </Card>
+
+        <div class="grid gap-4">
+          {
+            createdToken !== null ? (
+              <Card className="rounded-md border-emerald-700/20 bg-emerald-50 shadow-none">
+                <CardHeader className="border-b border-emerald-700/15">
+                  <CardTitle className="text-sm text-emerald-950">New publish token created</CardTitle>
+                  <CardDescription className="text-emerald-900/80">
+                    Save this token now. It will not be shown again.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 py-4">
+                  <div class="text-xs text-emerald-950/80">
+                    Token name: <span class="font-medium">{createdTokenName}</span>
+                  </div>
+                  <code class="overflow-x-auto rounded-md border border-emerald-700/20 bg-white px-3 py-2 text-xs text-emerald-950">
+                    {createdToken}
+                  </code>
+                </CardContent>
+              </Card>
+            ) : null
+          }
+
+          {
+            errorMessage !== null ? (
+              <Card className="rounded-md border-destructive/20 bg-destructive/5 shadow-none">
+                <CardHeader className="border-b border-destructive/15">
+                  <CardTitle className="text-sm text-destructive">Token request failed</CardTitle>
+                </CardHeader>
+                <CardContent className="py-4 text-sm text-muted-foreground">
+                  {errorMessage}
+                </CardContent>
+              </Card>
+            ) : null
+          }
+
+          <Card className="rounded-md shadow-none">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="text-sm">Create publish token</CardTitle>
+              <CardDescription>
+                Named credentials for CLI publishing. Each token currently grants publish access.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="py-4">
+              <form method="post" class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <input type="hidden" name="action" value="create" />
+                <label class="grid gap-2 text-xs text-muted-foreground">
+                  Token name
+                  <Input
+                    name="name"
+                    type="text"
+                    placeholder="CI publish"
+                    className="rounded-md text-sm"
+                    required
+                  />
+                </label>
+                <Button type="submit" className="rounded-md">Create token</Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-md shadow-none">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="text-sm">Active tokens</CardTitle>
+              <CardDescription>
+                Revoke credentials you no longer need. Revocation is immediate.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 py-4">
+              {
+                tokenResponse.tokens.length === 0 ? (
+                  <div class="rounded-md border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground">
+                    No active publish tokens yet.
+                  </div>
+                ) : (
+                  tokenResponse.tokens.map((token) => (
+                    <div class="grid gap-3 rounded-md border border-border bg-background px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                      <div class="grid gap-1">
+                        <div class="text-sm font-medium text-foreground">{token.name}</div>
+                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                          <span>Created {new Date(token.created_at).toLocaleDateString("en")}</span>
+                          <span>
+                            Last used{" "}
+                            {token.last_used_at
+                              ? new Date(token.last_used_at).toLocaleDateString("en")
+                              : "never"}
+                          </span>
+                          <span>{token.capabilities.join(", ")}</span>
+                        </div>
+                      </div>
+
+                      <form method="post">
+                        <input type="hidden" name="action" value="revoke" />
+                        <input type="hidden" name="token_id" value={token.token_id} />
+                        <Button type="submit" variant="outline" className="rounded-md">
+                          Revoke
+                        </Button>
+                      </form>
+                    </div>
+                  ))
+                )
+              }
+            </CardContent>
+          </Card>
         </div>
-        <p>
-          Token creation, rotation, and revocation will live here once account-backed auth
-          exists in the registry.
-        </p>
-      </section>
+      </div>
     </div>
   </section>
 </SiteLayout>

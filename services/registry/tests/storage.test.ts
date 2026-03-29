@@ -23,6 +23,8 @@ describe("registry storage", () => {
     const config: IndexConfig = {
       cdnBaseUrl: "https://cdn.pkgs.ml",
       indexBasePath: "index/v1",
+      authCookieDomain: "pkgs.ml",
+      pkgsWebBaseUrl: "https://pkgs.ml",
     };
 
     expect(packageIndexKey(config, "x")).toBe("index/v1/1/x.json");

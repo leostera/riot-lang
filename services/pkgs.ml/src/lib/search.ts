@@ -1,5 +1,5 @@
 import { getConfig } from "./config.ts";
-import type { SearchResponse } from "./types.ts";
+import type { SearchResponse, SearchResult } from "./types.ts";
 
 export async function fetchSearchResults(query: string): Promise<SearchResponse> {
   const trimmed = query.trim();
@@ -17,4 +17,25 @@ export async function fetchSearchResults(query: string): Promise<SearchResponse>
   }
 
   return (await response.json()) as SearchResponse;
+}
+
+export async function fetchPackagesByOwner(owner: string): Promise<SearchResult[]> {
+  const trimmed = owner.trim();
+  const response = await fetch(
+    `${getConfig().searchBaseUrl}/?q=${encodeURIComponent(trimmed)}&limit=100`,
+    {
+      headers: {
+        accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Owner search request failed: ${response.status}`);
+  }
+
+  const payload = (await response.json()) as SearchResponse;
+  return payload.results
+    .filter((result) => result.repo_owner.toLowerCase() === trimmed.toLowerCase())
+    .sort((left, right) => left.package_name.localeCompare(right.package_name));
 }

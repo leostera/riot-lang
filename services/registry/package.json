@@ -6,7 +6,7 @@
     "check": "tsc --noEmit",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "bun test tests/routes.test.ts tests/storage.test.ts tests/indexing.test.ts",
+    "test": "bun test tests/routes.test.ts tests/storage.test.ts tests/indexing.test.ts tests/auth.test.ts",
     "test:e2e": "bun test tests/e2e.test.ts"
   },
   "devDependencies": {
@@ -16,6 +16,8 @@
     "wrangler": "latest"
   },
   "dependencies": {
+    "arctic": "^3.7.0",
+    "cookie": "^1.1.1",
     "smol-toml": "^1.6.1",
     "spdx-expression-validate": "^2.0.0"
   }
