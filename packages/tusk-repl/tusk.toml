@@ -1,9 +1,11 @@
 [package]
 name = "tusk-repl"
 version = "0.1.0"
+description = "Read-eval-print loop support for Tusk tooling."
+license = "Apache-2.0"
+public = true
 
 [dependencies]
 std = "*"
 # Add dependencies here
-
 

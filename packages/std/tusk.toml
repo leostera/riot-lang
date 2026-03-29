@@ -1,6 +1,9 @@
 [package]
 name = "std"
 version = "0.1.0"
+description = "Shared standard library surface for Riot and Tusk."
+license = "Apache-2.0"
+public = true
 
 [tusk.fix]
 rules = [ "-no-stdlib" ]

@@ -1,6 +1,9 @@
 [package]
 name = "mcp"
 version = "0.1.0"
+description = "Model Context Protocol transports and data types."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/mcp.ml"

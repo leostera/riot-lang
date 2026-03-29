@@ -1,6 +1,9 @@
 [package]
 name = "http"
 version = "0.1.0"
+description = "HTTP protocol parsing, rendering, and wire-level types."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/http.ml"

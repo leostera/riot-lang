@@ -1,6 +1,9 @@
 [package]
 name = "tusk-fix"
 version = "0.1.0"
+description = "Linting and auto-fix pipeline for OCaml workspaces."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/tusk_fix.ml"

@@ -1,6 +1,9 @@
 [package]
 name = "ceibo"
 version = "0.1.0"
+description = "Generic red-green syntax trees for lossless incremental parsers."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/ceibo.ml"

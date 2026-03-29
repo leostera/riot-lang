@@ -1,6 +1,9 @@
 [package]
 name = "tusk-executor"
 version = "0.1.0"
+description = "Build execution and result aggregation for Tusk."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/tusk_executor.ml"

@@ -1,6 +1,9 @@
 [package]
 name = "sqlx"
 version = "0.1.0"
+description = "High-level SQL API for Riot applications."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/sqlx.ml"

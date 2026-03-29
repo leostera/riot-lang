@@ -1,6 +1,9 @@
 [package]
 name = "tusk-init"
 version = "0.1.0"
+description = "Workspace and package scaffolding for Tusk."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/tusk_init.ml"

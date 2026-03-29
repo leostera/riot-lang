@@ -1,6 +1,9 @@
 [package]
 name = "tusk-eval"
 version = "0.1.0"
+description = "OCaml evaluation tooling for the Tusk toolchain."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/tusk_eval.ml"

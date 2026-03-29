@@ -4,6 +4,8 @@ license = "Apache-2.0"
 description = "Actor-model multi-core runtime for OCaml 5"
 public = true
 version = "0.0.1"
+categories = ["runtime", "actors"]
+keywords = ["actors", "scheduler", "mailbox"]
 
 [tusk.fix]
 rules = [ "-no-stdlib" ]

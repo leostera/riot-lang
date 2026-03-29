@@ -1,6 +1,9 @@
 [package]
 name = "fixme"
 version = "0.1.0"
+description = "Shared rule-authoring types for the tusk-fix linting pipeline."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/fixme.ml"

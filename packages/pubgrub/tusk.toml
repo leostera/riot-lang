@@ -1,6 +1,9 @@
 [package]
 name = "pubgrub"
 version = "0.1.0"
+description = "PubGrub version solver for package dependency resolution."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/pubgrub.ml"
@@ -15,5 +18,4 @@ path = "examples/simple.ml"
 [[bin]]
 name = "solver_tests"
 path = "tests/solver_tests.ml"
-
 

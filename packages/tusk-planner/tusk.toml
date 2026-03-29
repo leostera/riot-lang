@@ -1,6 +1,9 @@
 [package]
 name = "tusk-planner"
 version = "0.1.0"
+description = "Dependency graph construction and build planning for Tusk."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/Tusk_planner.ml"

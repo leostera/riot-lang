@@ -4,6 +4,8 @@ description = "Low-level primitives for the Riot stack"
 version = "0.0.1"
 license = "Apache-2.0"
 public = true
+categories = ["runtime", "concurrency"]
+keywords = ["ffi", "io", "primitives"]
 
 [tusk.fix]
 rules = [ "-no-stdlib" ]

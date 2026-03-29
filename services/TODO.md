@@ -19,5 +19,6 @@
 
 ## Follow-up
 
+- [done] Add publish metadata (`description`, `license`, `public`, missing versions) to all real workspace package manifests so the repo can be bulk-published in live e2e.
 - [pending] Decide whether to rename `SEARCH_DB` to a more accurate binding once the metadata migration is complete.
 - [pending] Decide whether `claimKey` / `releaseKey` should become API URLs or remain compatibility-only logical ids.

@@ -45,7 +45,9 @@ those upstreams. This is useful for on-premise or private testing setups.
 Legacy compatibility aliases under `registry.pkgs.ml` and `/api/v1`/`/package/.../-/...` remain available during the transition.
 
 The Worker logs every request into `ml-pkgs-cdn/requests/...`.
-The Worker also uses a D1 binding for search indexing and query serving.
+The Worker also uses a D1 binding for registry control-plane metadata:
+auth, sessions, API tokens, package claims, published releases, search, and
+derived web views.
 
 ## Live smoke tests
 

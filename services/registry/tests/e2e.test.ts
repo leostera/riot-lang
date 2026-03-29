@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, test } from "bun:test";
+import { parse as parseToml } from "smol-toml";
 
 const baseUrl = trimTrailingSlash(process.env.REGISTRY_E2E_BASE_URL) ?? "https://api.pkgs.ml";
 const packageLocator =
@@ -401,6 +404,28 @@ describe("riot package registry live e2e", () => {
     );
     expect(Array.isArray(categories.categories)).toBe(true);
   });
+
+  livePublishTest("all workspace packages publish successfully", async () => {
+    const repoRoot = repoRootFromLocator(publishPackageLocator);
+    const members = readWorkspacePublishMembers();
+
+    expect(members.length).toBeGreaterThan(0);
+
+    for (const member of members) {
+      const expectedManifest = readPackageManifest(member);
+      const locator = `${repoRoot}/${member}`;
+      const publication = await publishPackageAt(locator);
+
+      expect(publication.package).toBe(locator);
+      expect(publication.package_name).toBe(expectedManifest.name);
+      expect(publication.package_version).toBe(expectedManifest.version);
+      expect(publication.resolved_sha).toMatch(/^[0-9a-f]{40}$/);
+      expect(publication.claim.key).toBe(`claims/${expectedManifest.name}.json`);
+      expect(publication.release.key).toBe(
+        `releases/${expectedManifest.name}/${expectedManifest.version}.json`,
+      );
+    }
+  });
 });
 
 async function resolvePublication(): Promise<ResolvePayload> {
@@ -413,12 +438,16 @@ async function resolvePublication(): Promise<ResolvePayload> {
 }
 
 async function publishPackage(): Promise<PublishPayload> {
+  return await publishPackageAt(publishPackageLocator);
+}
+
+async function publishPackageAt(locator: string): Promise<PublishPayload> {
   if (rootAuthToken === null) {
     throw new Error("REGISTRY_E2E_ROOT_AUTH_TOKEN must be set to publish live packages.");
   }
 
   const response = await fetch(
-    `${baseUrl}/v1/packages/${publishPackageLocator}/publish?ref=${encodeURIComponent(selector)}`,
+    `${baseUrl}/v1/packages/${locator}/publish?ref=${encodeURIComponent(selector)}`,
     {
       method: "POST",
       headers: {
@@ -427,8 +456,54 @@ async function publishPackage(): Promise<PublishPayload> {
     },
   );
 
-  expect(response.status).toBe(200);
+  if (response.status !== 200) {
+    throw new Error(
+      `Publish failed for ${locator} with status ${response.status}: ${await response.text()}`,
+    );
+  }
+
   return (await response.json()) as PublishPayload;
+}
+
+function readWorkspacePublishMembers(): string[] {
+  const rootTuskToml = readFileSync(new URL("../../../tusk.toml", import.meta.url), "utf8");
+  const workspace = parseToml(rootTuskToml) as {
+    workspace?: { members?: unknown };
+  };
+  const members = workspace.workspace?.members;
+
+  if (!Array.isArray(members)) {
+    throw new Error("Workspace members are missing from the repository tusk.toml.");
+  }
+
+  return members.filter((member): member is string => {
+    return typeof member === "string" && !member.includes("tests/fixtures");
+  });
+}
+
+function readPackageManifest(member: string): { name: string; version: string } {
+  const manifestSource = readFileSync(new URL(`../../../${member}/tusk.toml`, import.meta.url), "utf8");
+  const parsed = parseToml(manifestSource) as {
+    package?: { name?: unknown; version?: unknown };
+  };
+
+  if (typeof parsed.package?.name !== "string" || typeof parsed.package?.version !== "string") {
+    throw new Error(`Workspace member ${member} is missing package.name or package.version.`);
+  }
+
+  return {
+    name: parsed.package.name,
+    version: parsed.package.version,
+  };
+}
+
+function repoRootFromLocator(locator: string): string {
+  const parts = locator.split("/");
+  if (parts.length < 3) {
+    throw new Error(`Cannot derive repo root from locator ${locator}.`);
+  }
+
+  return parts.slice(0, 3).join("/");
 }
 
 function trimTrailingSlash(value: string | undefined): string | null {

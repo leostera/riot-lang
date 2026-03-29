@@ -1,6 +1,9 @@
 [package]
 name = "syn"
 version = "0.1.0"
+description = "Parser, lexer, CST, and diagnostics toolkit."
+license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/syn.ml"
