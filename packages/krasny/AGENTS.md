@@ -24,6 +24,8 @@
 18. Render grouped `type ... and ...` members from each member's `Syn.Cst.TypeDeclaration.owned_trivia`; do not reparse between-member source gaps once `syn` has attached `and`-token leading trivia to the following member.
 19. Keep adjacent standalone ordinary docstrings visually separate in top-level joins; do not compact them into a single tight run just because they are both trivia items.
 20. Render record bodies and inline record constructor arguments from `Syn.CstBuilder.record_field_items_of_fields`; do not inspect raw record syntax children or closing-token trivia to rediscover terminal `}`-owned comments/docstrings.
+21. When lowering falls back to verbatim/source reconstruction, rebuild node text from real token bodies plus later tokens' `leading_trivia`; do not concatenate bare token texts or assume comment/docstring trivia still appears as standalone red tokens.
+22. Preserve verbatim top-level structure output when lowering a parameterized `let` binding that would otherwise become `= fun ... -> ...` immediately before a toplevel expression phrase; do not introduce a parse ambiguity by reformatting across phrase boundaries.
 
 ## Validate
 

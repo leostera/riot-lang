@@ -97,12 +97,20 @@ let split_trailing_comment_block text =
 
 let source_of_syntax_node (node : Syn.Cst.syntax_node) =
   let buffer = IO.Buffer.create 1024 in
-  Syn.Ceibo.Red.SyntaxNode.preorder node (function
-    | Syn.Ceibo.Red.Token token ->
-        IO.Buffer.add_string buffer (Syn.Ceibo.Red.SyntaxToken.text token)
-    | Syn.Ceibo.Red.Node _ ->
-        ());
-  IO.Buffer.contents buffer |> trim_trailing_newlines
+  let append_token ?(include_leading_trivia = true) token =
+    if include_leading_trivia then
+      Syn.Ceibo.Red.SyntaxToken.leading_trivia token
+      |> List.iter (fun trivia ->
+             IO.Buffer.add_string buffer (Syn.Ceibo.Red.SyntaxTrivia.text trivia));
+    IO.Buffer.add_string buffer (Syn.Ceibo.Red.SyntaxToken.text token)
+  in
+  match Syn.Ceibo.Red.SyntaxNode.tokens node with
+  | [] ->
+      ""
+  | first :: rest ->
+      append_token ~include_leading_trivia:false first;
+      List.iter append_token rest;
+      IO.Buffer.contents buffer |> trim_trailing_newlines
 
 let source_of_token token = Syn.Cst.Token.text token
 let source_of_ident ident = Syn.Cst.Ident.segments ident |> List.map source_of_token |> String.concat "."
@@ -177,12 +185,18 @@ let fresh_match_parameter_name syntax_node =
 let syntax_node_has_comment_like_trivia (node : Syn.Cst.syntax_node) =
   let found = ref false in
   Syn.Ceibo.Red.SyntaxNode.preorder node (function
-    | Syn.Ceibo.Red.Token token -> (
-        match Syn.Ceibo.Red.SyntaxToken.kind token with
-        | Syn.SyntaxKind.COMMENT | Syn.SyntaxKind.DOCSTRING ->
-            found := true
-        | _ ->
-            ())
+    | Syn.Ceibo.Red.Token token ->
+        if
+          Syn.Ceibo.Red.SyntaxToken.leading_trivia token
+          |> List.exists (fun trivia ->
+                 match Syn.Ceibo.Red.SyntaxTrivia.kind trivia with
+                 | Syn.SyntaxKind.COMMENT
+                 | Syn.SyntaxKind.DOCSTRING ->
+                     true
+                 | _ ->
+                     false)
+        then
+          found := true
     | Syn.Ceibo.Red.Node _ ->
         ());
   !found

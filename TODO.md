@@ -43,7 +43,7 @@ For every slice below:
 - [x] Member ownership is reliable for constructors, fields, `and` groups, and nested modules
 - [x] Doc kind is explicit in the CST
 - [x] `krasny/lower.ml` no longer does normal-path trivia archaeology
-- [ ] `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast` passes
+- [x] `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast` passes
 
 ## Execution Plan
 
@@ -235,10 +235,10 @@ For every slice below:
 
 ### 10. Final Validation
 
-- [ ] `timeout 120 tusk build ceibo syn krasny`
-- [ ] `timeout 180 tusk test syn:cst_tests`
-- [ ] `timeout 180 tusk test krasny:format_tests`
-- [ ] `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast`
+- [x] `timeout 120 tusk build ceibo syn krasny`
+- [x] `timeout 180 tusk test syn:cst_tests`
+- [x] `timeout 180 tusk test krasny:format_tests`
+- [x] `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast`
 
 ## Current Notes
 
@@ -269,8 +269,10 @@ For every slice below:
 - [ ] Current state: dead `krasny/lower.ml` member-level docstring archaeology is gone: the old trailing-docstring scanners, `allow_terminal_docstrings`/`render_remaining_trivia` type-declaration knobs, and grouped-type nontrivia-end helpers were deleted without changing formatter output on the focused grouped/nested/doc-spacing regressions
 - [ ] Current state: `CstBuilder.record_field_items_of_fields` now exposes record bodies as ordered `RecordField`/`Comment`/`Docstring` streams sourced from field first-token trivia plus the closing `}` token's remaining `leading_trivia`, so `krasny` no longer interleaves raw record children or recovers terminal `}` trivia by hand; fixtures `0744` and `0922` pin top-level and inline-record terminal doc cases
 - [ ] Current state: the direct `syn:cst_tests` ownership inventory now covers top-level module overviews, the first type after `open`, repeated adjacent ordinary docstrings, section headings between declarations, constructor/record member ownership, nested module headings, and plain comments mixed with docstrings, so those cases no longer depend only on `krasny` fixtures
+- [ ] Current state: `krasny` verbatim/source fallbacks now rebuild text from real token bodies plus later-token `leading_trivia`, so alias patterns, first-class modules, and boolean `if` conditions no longer depend on phantom trivia tokens inside `SyntaxNode.tokens`
+- [ ] Current state: top-level lowered `let ... = fun ... -> ...` output now preserves the original source span when a parameterized binding is immediately followed by an expression phrase, preventing phrase-boundary ambiguities like `ocaml_multi_indices.ml` during workspace verification
 - [ ] Current state: module/class top-level keyword probes, bracket attribute/extension probes, functor application / `(val ...)` module-expression probes, parenthesized module-type lookahead in module expressions, declaration-local `module type of` probes, application/infix/tuple/assign/sequence expression continuations, paren and bracket local-open vs index expression disambiguation, postfix custom-index/operator-like probes, dotted module/module-type/type-name/qualified-field path continuations, local-open core type path lookahead, `include module type of`, `let open` expression detection, the polymorphic/local-open/local-abstract type probes, tuple/as/cons/or pattern continuations, local-open pattern path disambiguation, literal range-pattern probes, and grouped structure/signature type-declaration uppercase-body disambiguation no longer rely on trivia-skipping control flow; inline-comment alias-vs-variant, grouped GADT, and `module type of` declaration cases are pinned in `syn:cst_tests`
 - [ ] Current state: top-level file loops and nested `struct`/`sig` body loops no longer thread trivia through `tokens_to_green []`
 - [ ] Current state: red traversal now follows the same contract as green for parser-built trees; leading trivia lives on tokens and `SyntaxNode.tokens` stays trivia-free
 - [ ] Current state: `print-ceibo` fixture coverage now includes a mixed comment/docstring bridge case
-- [ ] The next concrete slice is the section 9 formatter-fixture audit: make sure new formatter fixtures stay reserved for renderer/layout problems now that the ownership cases are pinned directly in `syn:cst_tests`
+- [ ] The next concrete slice is the remaining dead-token cleanup in `krasny`: delete helper code that still filters impossible `WHITESPACE`/`COMMENT`/`DOCSTRING` syntax tokens now that trivia lives only on token `leading_trivia`

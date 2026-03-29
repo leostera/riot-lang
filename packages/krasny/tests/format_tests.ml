@@ -212,6 +212,65 @@ let optional_fun = fun ?(y = 0) -> y + 1
         in
         assert_idempotent ~source ~msg:"typed/labeled forms should stay stable";
         Ok ());
+    Test.case "format keeps alias patterns idempotent" (fun () ->
+        let source =
+          {|open Std
+
+let request = fun (Conn conn as c) () -> ()
+|}
+        in
+        assert_idempotent ~source ~msg:"alias patterns should stay stable";
+        Ok ());
+    Test.case "format keeps first-class module expressions idempotent" (fun () ->
+        let source =
+          {|open Std
+
+module Protocol = struct
+  module Http1 = struct end
+end
+
+let packed = (module Protocol.Http1)
+|}
+        in
+        assert_idempotent
+          ~source
+          ~msg:"first-class module expressions should stay stable";
+        Ok ());
+    Test.case "format keeps boolean if conditions with matches idempotent" (fun () ->
+        let source =
+          {|open Std
+
+let status_char mode summary =
+  if
+    match mode with
+    | Runner.Check -> summary.needs_formatting = 0 && summary.failed_files = 0
+    | Runner.Verify -> summary.unsafe_to_format = 0 && summary.failed_files = 0
+    | Runner.Format -> summary.failed_files = 0
+  then
+    "."
+  else
+    "!"
+|}
+        in
+        assert_idempotent
+          ~source
+          ~msg:"boolean match conditions should stay stable";
+        Ok ());
+    Test.case "format keeps top-level lowered fun phrases separated" (fun () ->
+        let source =
+          {|open Std
+
+let ( .??[] ) () () = ();;
+
+(()).??[(();
+         ())]
+;;
+|}
+        in
+        assert_idempotent
+          ~source
+          ~msg:"top-level expression phrases should stay outside lowered fun bindings";
+        Ok ());
     Test.case "format preserves syntax hash for selected codebase files"
       (fun () ->
         List.iter assert_roundtrip_hash workspace_files;

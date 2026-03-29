@@ -65,10 +65,28 @@ let is_operator_like_text = fun text ->
   in
   String.length text > 0 && (is_keyword_operator_name text || contains_non_identifier_char 0)
 
+let text_of_syntax_node = fun syntax_node ->
+  Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
+  |> function
+  | [] ->
+      ""
+  | first :: rest ->
+      let first_text = Syn.Ceibo.Red.SyntaxToken.text first in
+      let rest_text =
+        rest
+        |> List.map (fun token ->
+               let leading =
+                 Syn.Ceibo.Red.SyntaxToken.leading_trivia token
+                 |> List.map Syn.Ceibo.Red.SyntaxTrivia.text
+                 |> String.concat ""
+               in
+               leading ^ Syn.Ceibo.Red.SyntaxToken.text token)
+        |> String.concat ""
+      in
+      first_text ^ rest_text
+
 let doc_of_verbatim_syntax_node = fun node ->
-  Syn.Ceibo.Red.SyntaxNode.tokens node
-  |> List.map (fun token -> Doc.text (Syn.Ceibo.Red.SyntaxToken.text token))
-  |> Doc.concat
+  text_of_syntax_node node |> Doc.text
 
 let doc_of_verbatim_syntax_node_from_current_source = fun ctx node ->
   match ctx.source with
@@ -155,11 +173,6 @@ let doc_of_verbatim_syntax_node_span_from_current_source = fun ctx node ->
       doc_of_verbatim_syntax_node node
 
 let doc_of_node = doc_of_verbatim_syntax_node
-
-let text_of_syntax_node = fun syntax_node ->
-  Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-  |> List.map Syn.Ceibo.Red.SyntaxToken.text
-  |> String.concat ""
 
 let string_contains_substring = fun text pattern ->
   let text_length = String.length text in
@@ -296,21 +309,8 @@ let is_comment_like_token = fun syntax_token ->
   | _ ->
       false
 
-let syntax_node_has_comment_like_token = fun syntax_node ->
-  Syn.Ceibo.Red.SyntaxNode.tokens syntax_node |> List.exists is_comment_like_token
-
 let is_whitespace_token = fun syntax_token ->
   Syn.Ceibo.Red.SyntaxToken.kind syntax_token = Syn.SyntaxKind.WHITESPACE
-
-let text_of_tokens_between_spans = fun syntax_node ~start_offset ~end_offset ->
-  if end_offset <= start_offset then
-    ""
-  else
-    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node |> List.filter
-      (fun syntax_token ->
-        let span = Syn.Ceibo.Red.SyntaxToken.span syntax_token in
-        span.start >= start_offset && span.end_ <= end_offset) |> List.map
-    Syn.Ceibo.Red.SyntaxToken.text |> String.concat "" |> String.trim
 
 let doc_of_ident = fun ident ->
   Syn.Cst.Ident.segments ident |> List.map doc_of_token |> Doc.join (Doc.text ".")
@@ -593,35 +593,6 @@ let trailing_comment_suffix_doc = fun ?source ?before syntax_node ->
         loop acc separator rest
   in
   loop None Doc.empty trailing_tokens
-
-let trailing_comment_like_token_count = fun syntax_node ->
-  let node_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
-  let tokens_within_span =
-    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.filter
-      (fun syntax_token ->
-        let span = Syn.Ceibo.Red.SyntaxToken.span syntax_token in
-        span.end_ <= node_span.end_)
-  in
-  let trailing_tokens =
-    let rec collect = fun acc ->
-      function
-      | [] ->
-          acc
-      | token :: rest when is_whitespace_token token || is_comment_like_token token ->
-          collect (token :: acc) rest
-      | _ ->
-          acc
-    in
-    tokens_within_span |> List.rev |> collect []
-  in
-  trailing_tokens |> List.fold_left
-    (fun count token ->
-      if is_comment_like_token token then
-        count + 1
-      else
-        count)
-    0
 
 let push_pending_break = fun pending ~position break_count ->
   if break_count <= 0 then
@@ -1660,7 +1631,7 @@ let render_variant_constructor_arguments = fun ?source ?(prefer_multiline_inline
         match source_node with
         | Some source_node when fields_have_owned_trivia
         || has_standalone_record_trivia
-        || (Syn.Ceibo.Red.SyntaxNode.tokens source_node |> List.exists whitespace_has_newline) ->
+        || syntax_node_has_internal_newline source_node ->
             Doc.indent 2 (render_record_definition ?source fields)
         | Some _ when prefer_multiline_inline_record ->
             Doc.indent 2 (render_record_definition ?source fields)
@@ -2508,7 +2479,7 @@ let rec expression_is_simple_after_equals =
   | _ ->
       false
 and apply_expression_is_simple_after_equals = fun ({ syntax_node; _ } : Syn.Cst.apply_expression) ->
-  if syntax_node_has_comment_like_token syntax_node then
+  if Source.syntax_node_has_comment_like_trivia syntax_node then
     false
   else
     let source = text_of_syntax_node syntax_node |> String.trim in
@@ -2665,8 +2636,6 @@ let make_lowerer ctx =
   | Syn.Cst.Expression.List { syntax_node; elements; _ } ->
       if elements = [] then
         Doc.concat [ Doc.lbracket; Doc.rbracket ]
-      else if List.exists is_comment_like_token (Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node) then
-        render_list_expression_with_comments syntax_node elements
       else if List.length elements >= multiline_list_threshold then
         render_multiline_list_expression elements
       else
@@ -2961,83 +2930,6 @@ and render_multiline_list_expression elements =
       Doc.rbracket;
     ]
 
-and render_list_expression_with_comments syntax_node elements =
-  let rendered_elements =
-    elements
-    |> List.map (fun expression ->
-           ( Syn.Ceibo.Red.SyntaxNode.offset (Syn.Cst.Expression.syntax_node expression),
-             render_expression expression ))
-  in
-  let rec find_rendered offset = function
-    | [] ->
-        None
-    | (candidate_offset, doc) :: _
-      when candidate_offset = offset ->
-        Some doc
-    | _ :: rest ->
-        find_rendered offset rest
-  in
-  let rec loop acc separator = function
-    | [] ->
-        Option.unwrap_or acc ~default:Doc.empty
-    | child :: rest -> (
-        match child with
-        | Syn.Ceibo.Red.Token syntax_token when is_whitespace_token syntax_token ->
-            loop acc (separator_of_whitespace_token syntax_token) rest
-        | Syn.Ceibo.Red.Token syntax_token when is_comment_like_token syntax_token ->
-            let doc = Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token) in
-            let acc =
-              match acc with
-              | None ->
-                  Some doc
-              | Some current ->
-                  Some (Doc.concat [ current; separator; doc ])
-            in
-            loop acc Doc.empty rest
-        | Syn.Ceibo.Red.Token syntax_token ->
-            let text = Syn.Ceibo.Red.SyntaxToken.text syntax_token in
-            if text = "[" || text = "]" then
-              loop acc separator rest
-            else
-              let doc = Doc.text text in
-              let acc =
-                match acc with
-                | None ->
-                    Some doc
-                | Some current ->
-                    Some (Doc.concat [ current; separator; doc ])
-              in
-              loop acc Doc.empty rest
-        | Syn.Ceibo.Red.Node node ->
-            let offset = Syn.Ceibo.Red.SyntaxNode.offset node in
-            let doc =
-              match find_rendered offset rendered_elements with
-              | Some rendered ->
-                  rendered
-              | None ->
-                  doc_of_verbatim_syntax_node node
-            in
-            let acc =
-              match acc with
-              | None ->
-                  Some doc
-              | Some current ->
-                  Some (Doc.concat [ current; separator; doc ])
-            in
-            loop acc Doc.empty rest)
-  in
-  let body =
-    loop None Doc.empty (Syn.Ceibo.Red.SyntaxNode.children_list syntax_node)
-  in
-  Doc.concat
-    [
-      Doc.lbracket;
-      Doc.line;
-      Doc.indent 2 body;
-      Doc.line;
-      Doc.rbracket;
-    ]
-
 and render_apply_argument = function
   | Syn.Cst.Positional
       (Syn.Cst.Expression.Function _ as expression) ->
@@ -3159,111 +3051,17 @@ and apply_argument_prefers_break = function
 
 and render_infix_expression ({ syntax_node; left; operator_token; right; _ } :
       Syn.Cst.infix_expression) =
-  if List.exists is_comment_like_token (Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node) then
-    let left_offset = Syn.Ceibo.Red.SyntaxNode.offset (Syn.Cst.Expression.syntax_node left) in
-    let right_offset = Syn.Ceibo.Red.SyntaxNode.offset (Syn.Cst.Expression.syntax_node right) in
-    let rec loop acc separator = function
-      | [] ->
-          Option.unwrap_or acc ~default:Doc.empty
-      | child :: rest -> (
-          match child with
-          | Syn.Ceibo.Red.Token syntax_token when is_whitespace_token syntax_token ->
-              loop acc (separator_of_whitespace_token syntax_token) rest
-          | Syn.Ceibo.Red.Token syntax_token when is_comment_like_token syntax_token ->
-              let doc = Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token) in
-              let acc =
-                match acc with
-                | None ->
-                    Some doc
-                | Some current ->
-                    Some (Doc.concat [ current; separator; doc ])
-              in
-              loop acc Doc.empty rest
-          | Syn.Ceibo.Red.Token syntax_token ->
-              let doc = Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token) in
-              let acc =
-                match acc with
-                | None ->
-                    Some doc
-                | Some current ->
-                    Some (Doc.concat [ current; separator; doc ])
-              in
-              loop acc Doc.empty rest
-          | Syn.Ceibo.Red.Node node ->
-              let node_offset = Syn.Ceibo.Red.SyntaxNode.offset node in
-              let doc =
-                if node_offset = left_offset then
-                  render_expression left
-                else if node_offset = right_offset then
-                  render_expression right
-                else
-                  doc_of_verbatim_syntax_node node
-              in
-              let acc =
-                match acc with
-                | None ->
-                    Some doc
-                | Some current ->
-                    Some (Doc.concat [ current; separator; doc ])
-              in
-              loop acc Doc.empty rest)
-    in
-    loop None Doc.empty (children_in_source_order syntax_node)
-  else
-    let operator = token_text operator_token in
-    let parts =
-      infix_chain operator
-        (Syn.Cst.Expression.Infix { syntax_node; left; operator_token; right; attributes = [] })
-    in
-    Doc.group
-      (join_map
-         (Doc.concat [ Doc.break (); Doc.text operator; Doc.space ])
-         render_expression parts)
+  let operator = token_text operator_token in
+  let parts =
+    infix_chain operator
+      (Syn.Cst.Expression.Infix { syntax_node; left; operator_token; right; attributes = [] })
+  in
+  Doc.group
+    (join_map
+       (Doc.concat [ Doc.break (); Doc.text operator; Doc.space ])
+       render_expression parts)
 
 and render_apply_expression ({ syntax_node; callee; argument; _ } : Syn.Cst.apply_expression) =
-  if List.exists is_comment_like_token (Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node) then
-    let callee_offset = Syn.Ceibo.Red.SyntaxNode.offset (Syn.Cst.Expression.syntax_node callee) in
-    let argument_offset = Syn.Ceibo.Red.SyntaxNode.offset (syntax_node_of_apply_argument argument) in
-    let rec loop acc separator = function
-      | [] ->
-          Option.unwrap_or acc ~default:Doc.empty
-      | child :: rest -> (
-          match child with
-          | Syn.Ceibo.Red.Token syntax_token when is_whitespace_token syntax_token ->
-              loop acc (separator_of_whitespace_token syntax_token) rest
-          | Syn.Ceibo.Red.Token syntax_token when is_comment_like_token syntax_token ->
-              let doc = Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token) in
-              let acc =
-                match acc with
-                | None ->
-                    Some doc
-                | Some current ->
-                    Some (Doc.concat [ current; separator; doc ])
-              in
-              loop acc Doc.empty rest
-          | Syn.Ceibo.Red.Token _ ->
-              loop acc separator rest
-          | Syn.Ceibo.Red.Node node ->
-              let node_offset = Syn.Ceibo.Red.SyntaxNode.offset node in
-              let doc =
-                if node_offset = callee_offset then
-                  render_expression callee
-                else if node_offset = argument_offset then
-                  render_apply_argument argument
-                else
-                  doc_of_verbatim_syntax_node node
-              in
-              let acc =
-                match acc with
-                | None ->
-                    Some doc
-                | Some current ->
-                    Some (Doc.concat [ current; separator; doc ])
-              in
-              loop acc Doc.empty rest)
-    in
-    loop None Doc.empty (children_in_source_order syntax_node)
-  else
   let rec collect_arguments acc = function
     | Syn.Cst.Expression.Apply { callee; argument; _ } ->
         collect_arguments (argument :: acc) callee
@@ -3682,48 +3480,47 @@ and render_if_expression_block
     let has_comment_like =
       List.exists
         (fun token ->
-          match Syn.Ceibo.Red.SyntaxToken.kind token with
-          | Syn.SyntaxKind.COMMENT
-          | Syn.SyntaxKind.DOCSTRING ->
-              true
-          | _ ->
-              false)
+          Syn.Ceibo.Red.SyntaxToken.leading_trivia token
+          |> List.exists (fun trivia ->
+                 match Syn.Ceibo.Red.SyntaxTrivia.kind trivia with
+                 | Syn.SyntaxKind.COMMENT
+                 | Syn.SyntaxKind.DOCSTRING ->
+                     true
+                 | _ ->
+                     false))
         tokens
     in
     if (not has_boolean_operator) || has_comment_like then
       render_expression condition
     else
-      let rec loop acc pending_space = function
+      let rec loop acc = function
         | [] ->
             List.rev acc
         | token :: rest ->
-            let kind = Syn.Ceibo.Red.SyntaxToken.kind token in
             let text = Syn.Ceibo.Red.SyntaxToken.text token in
-            (match kind with
-            | Syn.SyntaxKind.WHITESPACE ->
-                loop acc true rest
-            | _ when text = "&&" || text = "||" ->
-                let rec drop_leading_whitespace = function
-                  | next :: tail
-                    when Syn.Ceibo.Red.SyntaxToken.kind next = Syn.SyntaxKind.WHITESPACE ->
-                      drop_leading_whitespace tail
-                  | remaining ->
-                      remaining
-                in
-                loop
-                  (Doc.space :: Doc.text text :: Doc.break () :: acc)
-                  false
-                  (drop_leading_whitespace rest)
-            | _ ->
-                let acc =
-                  if pending_space then
-                    Doc.text text :: Doc.space :: acc
-                  else
-                    Doc.text text :: acc
-                in
-                loop acc false rest)
+            if text = "&&" || text = "||" then
+              loop
+                (Doc.space :: Doc.text text :: Doc.break () :: acc)
+                rest
+            else
+              let has_leading_layout =
+                Syn.Ceibo.Red.SyntaxToken.leading_trivia token
+                |> List.is_empty
+                |> not
+              in
+              let acc =
+                if has_leading_layout then
+                  Doc.text text :: Doc.space :: acc
+                else
+                  Doc.text text :: acc
+              in
+              loop acc rest
       in
-      Doc.concat (loop [] false tokens)
+      match tokens with
+      | [] ->
+          render_expression condition
+      | first :: rest ->
+          Doc.concat (loop [ Doc.text (Syn.Ceibo.Red.SyntaxToken.text first) ] rest)
   in
   let condition_doc =
     render_condition_with_boolean_breaks condition
@@ -5091,10 +4888,12 @@ and render_signature_item_owned_trivia =
   | Syn.Cst.SignatureItem.Comment _ ->
       None
 
-and render_structure_entry ~source ~source_offset ~span ~trailing_suffix ~is_last_item item =
+and render_structure_entry ~source ~source_offset ~span ~preserve_verbatim
+    ~trailing_suffix ~is_last_item item =
   let rendered_source = source_of_relative_span ~source ~source_offset span in
   let should_preserve_verbatim =
-    string_contains_substring rendered_source "[@"
+    preserve_verbatim
+    || string_contains_substring rendered_source "[@"
     || string_contains_substring rendered_source "[%%expect"
   in
   let trailing_suffix =
@@ -5490,6 +5289,14 @@ and type_declaration_owned_trivia_end = fun decl ->
          Int.max acc (type_declaration_owned_trivia_end declaration))
        current
 
+and structure_item_requires_verbatim_before_expression item next_item =
+  match item, next_item with
+  | Syn.Cst.StructureItem.LetBinding binding, Syn.Cst.StructureItem.Expression _ ->
+      not (List.is_empty binding.parameters)
+      && not (syntax_node_has_explicit_fun_rhs binding.syntax_node)
+  | _ ->
+      false
+
 and render_structure_top_level_items ~source ~source_offset ~source_node:_source_node ~items =
   let rec join_entries = function
     | [] ->
@@ -5619,12 +5426,20 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
             match run_items with
             | [ item ] ->
                 render_structure_entry ~source ~source_offset ~span:base_span
-                  ~trailing_suffix:None ~is_last_item:(remaining = []) item
+                  ~preserve_verbatim:false ~trailing_suffix:None
+                  ~is_last_item:(remaining = []) item
             | _ ->
                 assert false
         in
         loop (entry :: acc) remaining
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
+        let preserve_verbatim =
+          match rest with
+          | (next, _) :: _ ->
+              structure_item_requires_verbatim_before_expression item next
+          | [] ->
+              false
+        in
         let next_boundary =
           match rest with
           | (_, (next_span : Syn.Ceibo.Span.t)) :: _ ->
@@ -5653,7 +5468,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node:_source
         in
         let entry =
           render_structure_entry ~source ~source_offset ~span:base_span
-            ~trailing_suffix ~is_last_item:(rest = []) item
+            ~preserve_verbatim ~trailing_suffix ~is_last_item:(rest = []) item
         in
         loop (entry :: acc) rest
   in
