@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 68
+        "end": 67
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "FUN_EXPR",
               "span": {
-                "start": 9,
+                "start": 7,
                 "end": 67
               }
             },
@@ -96,7 +96,7 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 13,
+                    "start": 12,
                     "end": 14
                   }
                 },
@@ -105,7 +105,7 @@
                   "syntax_node": {
                     "kind": "IDENT_PATTERN",
                     "span": {
-                      "start": 13,
+                      "start": 12,
                       "end": 14
                     }
                   },
@@ -135,7 +135,7 @@
                 "syntax_node": {
                   "kind": "LET_EXPR",
                   "span": {
-                    "start": 20,
+                    "start": 17,
                     "end": 67
                   }
                 },
@@ -169,7 +169,7 @@
                   "syntax_node": {
                     "kind": "IDENT_PATTERN",
                     "span": {
-                      "start": 24,
+                      "start": 23,
                       "end": 25
                     }
                   },
@@ -188,8 +188,8 @@
                   "syntax_node": {
                     "kind": "MATCH_EXPR",
                     "span": {
-                      "start": 28,
-                      "end": 57
+                      "start": 27,
+                      "end": 56
                     }
                   },
                   "keyword_token": {
@@ -213,7 +213,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 34,
+                        "start": 33,
                         "end": 35
                       }
                     },
@@ -222,7 +222,7 @@
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
-                          "start": 34,
+                          "start": 33,
                           "end": 35
                         }
                       },
@@ -241,7 +241,7 @@
                       "syntax_node": {
                         "kind": "MATCH_CASE",
                         "span": {
-                          "start": 41,
+                          "start": 40,
                           "end": 47
                         }
                       },
@@ -260,7 +260,7 @@
                         "syntax_node": {
                           "kind": "INT_LITERAL",
                           "span": {
-                            "start": 41,
+                            "start": 40,
                             "end": 42
                           }
                         },
@@ -269,7 +269,7 @@
                           "syntax_node": {
                             "kind": "INT_LITERAL",
                             "span": {
-                              "start": 41,
+                              "start": 40,
                               "end": 42
                             }
                           },
@@ -295,7 +295,7 @@
                           "syntax_node": {
                             "kind": "INT_LITERAL",
                             "span": {
-                              "start": 46,
+                              "start": 45,
                               "end": 47
                             }
                           },
@@ -318,7 +318,7 @@
                       "syntax_node": {
                         "kind": "MATCH_CASE",
                         "span": {
-                          "start": 48,
+                          "start": 47,
                           "end": 56
                         }
                       },
@@ -344,7 +344,7 @@
                         "syntax_node": {
                           "kind": "WILDCARD_PATTERN",
                           "span": {
-                            "start": 50,
+                            "start": 49,
                             "end": 51
                           }
                         }
@@ -357,7 +357,7 @@
                           "syntax_node": {
                             "kind": "INT_LITERAL",
                             "span": {
-                              "start": 55,
+                              "start": 54,
                               "end": 56
                             }
                           },
@@ -384,7 +384,7 @@
                   "syntax_node": {
                     "kind": "INFIX_EXPR",
                     "span": {
-                      "start": 62,
+                      "start": 59,
                       "end": 67
                     }
                   },
@@ -393,7 +393,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 62,
+                        "start": 59,
                         "end": 63
                       }
                     },
@@ -402,7 +402,7 @@
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
-                          "start": 62,
+                          "start": 59,
                           "end": 63
                         }
                       },
@@ -431,7 +431,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 66,
+                          "start": 65,
                           "end": 67
                         }
                       },

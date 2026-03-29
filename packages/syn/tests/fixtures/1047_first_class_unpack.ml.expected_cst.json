@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 38
+        "end": 37
       }
     },
     "items": [
@@ -18,7 +18,7 @@
             "kind": "LET_MODULE_EXPR",
             "span": {
               "start": 0,
-              "end": 38
+              "end": 37
             }
           },
           "module_name_token": {
@@ -34,7 +34,7 @@
             "syntax_node": {
               "kind": "FIRST_CLASS_MODULE_EXPR",
               "span": {
-                "start": 15,
+                "start": 14,
                 "end": 26
               }
             },
@@ -43,7 +43,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 20,
+                  "start": 19,
                   "end": 21
                 }
               },
@@ -52,7 +52,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 20,
+                    "start": 19,
                     "end": 21
                   }
                 },
@@ -73,7 +73,7 @@
                 "syntax_node": {
                   "kind": "MODULE_TYPE_PATH",
                   "span": {
-                    "start": 24,
+                    "start": 23,
                     "end": 25
                   }
                 },
@@ -93,8 +93,8 @@
             "syntax_node": {
               "kind": "FIELD_ACCESS_EXPR",
               "span": {
-                "start": 30,
-                "end": 38
+                "start": 29,
+                "end": 37
               }
             },
             "receiver": {
@@ -102,7 +102,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 30,
+                  "start": 29,
                   "end": 31
                 }
               },
@@ -111,7 +111,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 30,
+                    "start": 29,
                     "end": 31
                   }
                 },

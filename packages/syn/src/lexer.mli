@@ -25,8 +25,9 @@ open Std
     
     The token stream has these properties:
     - Tokens are in source order
-    - Token spans are contiguous (no gaps)
-    - All source bytes are covered by some token
+    - Token body spans are body-only; preceding trivia is stored on
+      `leading_trivia`
+    - All source bytes are covered by token bodies or token `leading_trivia`
     - Malformed tokens (unclosed strings) are still tokenized
     
     # Example Usage
@@ -50,11 +51,13 @@ open Std
     let source = "(* comment *) let x = 1" in
     let tokens = Lexer.tokenize source in
     
-    (* All trivia is preserved in the token stream *)
+    (* Leading trivia is preserved on the next real token *)
     let has_comment = List.exists (fun tok ->
-      match tok.kind with
-      | Token.Comment _ -> true
-      | _ -> false
+      List.exists (fun trivia ->
+        match trivia.Token.kind with
+        | Token.CommentTrivia _ -> true
+        | _ -> false
+      ) tok.leading_trivia
     ) tokens in
     Printf.printf "Has comment: %b\n" has_comment
     ```
@@ -77,20 +80,18 @@ open Std
 
 (** # Types *)
 
-type t
 (** Lexer state (cursor over source). *)
-
+type t
 (** # Construction *)
 
-val create : string -> t
 (** `create source` creates a new lexer for the given source code.
 
     Example: ```ocaml let lexer = Lexer.create "let x = 1" in let tok =
     Lexer.next lexer ``` *)
+val create : string -> t
 
 (** # Tokenization *)
 
-val next : t -> Token.delimiter list -> Token.t
 (** `next lexer delim_stack` returns the next token from the source.
 
     Advances the lexer position past the returned token. Returns EOF token when
@@ -102,14 +103,17 @@ val next : t -> Token.delimiter list -> Token.t
     lexer [] in (* first token *) let tok2 = Lexer.next lexer [] in (* second
     token *) (* ... *) let last = Lexer.next lexer [] in (* eventually returns
     EOF *) ``` *)
+val next : t -> Token.delimiter list -> Token.t
 
-val tokenize : string -> Token.t list
 (** `tokenize source` lexes the entire source into a token list.
 
     This is a convenience function that creates a lexer, repeatedly calls `next`
-    until EOF, and returns all tokens (including trivia).
+    until EOF, and returns all tokens. Non-EOF trivia is attached to the next
+    real token's `leading_trivia`, and trailing file trivia is preserved on the
+    EOF token's `leading_trivia`.
 
     The returned list always ends with an EOF token.
 
     Example: ```ocaml let tokens = Lexer.tokenize "let x = 42" in List.length
-    tokens (* typically 6: let, ws, x, ws, =, ws, 42, EOF *) ``` *)
+    tokens (* typically 5: let, x, =, 42, EOF *) ``` *)
+val tokenize : string -> Token.t list

@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 119
+        "end": 118
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "TYPE_MUTUAL_DECL",
             "span": {
               "start": 0,
-              "end": 119
+              "end": 118
             }
           },
           "declarations": [
@@ -43,14 +43,14 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 15,
+                    "start": 14,
                     "end": 36
                   }
                 },
                 "signature_syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 15,
+                    "start": 14,
                     "end": 36
                   }
                 }
@@ -69,7 +69,7 @@
                   "syntax_node": {
                     "kind": "STRUCT_EXPR",
                     "span": {
-                      "start": 39,
+                      "start": 38,
                       "end": 63
                     }
                   },
@@ -77,8 +77,8 @@
                     {
                       "kind": "LET_BINDING",
                       "span": {
-                        "start": 48,
-                        "end": 60
+                        "start": 45,
+                        "end": 59
                       }
                     }
                   ]
@@ -88,14 +88,14 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 15,
+                      "start": 14,
                       "end": 36
                     }
                   },
                   "signature_syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 15,
+                      "start": 14,
                       "end": 36
                     }
                   }
@@ -108,7 +108,7 @@
               "syntax_node": {
                 "kind": "MODULE_DECL",
                 "span": {
-                  "start": 68,
+                  "start": 67,
                   "end": 118
                 }
               },
@@ -126,14 +126,14 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 72,
+                    "start": 71,
                     "end": 93
                   }
                 },
                 "signature_syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 72,
+                    "start": 71,
                     "end": 93
                   }
                 }
@@ -143,7 +143,7 @@
                 "syntax_node": {
                   "kind": "MODULE_DECL",
                   "span": {
-                    "start": 68,
+                    "start": 67,
                     "end": 118
                   }
                 },
@@ -152,7 +152,7 @@
                   "syntax_node": {
                     "kind": "STRUCT_EXPR",
                     "span": {
-                      "start": 96,
+                      "start": 95,
                       "end": 118
                     }
                   },
@@ -160,7 +160,7 @@
                     {
                       "kind": "LET_BINDING",
                       "span": {
-                        "start": 105,
+                        "start": 102,
                         "end": 114
                       }
                     }
@@ -171,14 +171,14 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 72,
+                      "start": 71,
                       "end": 93
                     }
                   },
                   "signature_syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 72,
+                      "start": 71,
                       "end": 93
                     }
                   }

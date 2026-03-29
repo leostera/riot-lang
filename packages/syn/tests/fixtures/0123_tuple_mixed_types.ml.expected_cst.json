@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 27
+        "end": 26
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "PAREN_EXPR",
               "span": {
-                "start": 8,
+                "start": 7,
                 "end": 26
               }
             },
@@ -133,7 +133,7 @@
                     "syntax_node": {
                       "kind": "STRING_LITERAL",
                       "span": {
-                        "start": 12,
+                        "start": 11,
                         "end": 19
                       }
                     },
@@ -159,7 +159,7 @@
                     "syntax_node": {
                       "kind": "BOOL_LITERAL",
                       "span": {
-                        "start": 21,
+                        "start": 20,
                         "end": 25
                       }
                     },

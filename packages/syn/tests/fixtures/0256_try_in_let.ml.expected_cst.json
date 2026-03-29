@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 43
+        "end": 42
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "LET_EXPR",
               "span": {
-                "start": 10,
+                "start": 7,
                 "end": 42
               }
             },
@@ -104,7 +104,7 @@
               "syntax_node": {
                 "kind": "IDENT_PATTERN",
                 "span": {
-                  "start": 14,
+                  "start": 13,
                   "end": 15
                 }
               },
@@ -123,8 +123,8 @@
               "syntax_node": {
                 "kind": "TRY_EXPR",
                 "span": {
-                  "start": 18,
-                  "end": 36
+                  "start": 17,
+                  "end": 35
                 }
               },
               "keyword_token": {
@@ -148,7 +148,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 22,
+                    "start": 21,
                     "end": 23
                   }
                 },
@@ -157,7 +157,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 22,
+                      "start": 21,
                       "end": 23
                     }
                   },
@@ -176,7 +176,7 @@
                   "syntax_node": {
                     "kind": "MATCH_CASE",
                     "span": {
-                      "start": 29,
+                      "start": 28,
                       "end": 35
                     }
                   },
@@ -195,8 +195,8 @@
                     "syntax_node": {
                       "kind": "CONSTRUCTOR_PATTERN",
                       "span": {
-                        "start": 29,
-                        "end": 31
+                        "start": 28,
+                        "end": 30
                       }
                     },
                     "constructor_path": {
@@ -204,8 +204,8 @@
                       "syntax_node": {
                         "kind": "CONSTRUCTOR_PATTERN",
                         "span": {
-                          "start": 29,
-                          "end": 31
+                          "start": 28,
+                          "end": 30
                         }
                       },
                       "name_token": {
@@ -228,7 +228,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 34,
+                          "start": 33,
                           "end": 35
                         }
                       },
@@ -255,7 +255,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 41,
+                  "start": 38,
                   "end": 42
                 }
               },
@@ -264,7 +264,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 41,
+                    "start": 38,
                     "end": 42
                   }
                 },

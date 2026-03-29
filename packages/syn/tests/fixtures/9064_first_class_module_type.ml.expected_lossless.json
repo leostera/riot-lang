@@ -1,42 +1,357 @@
 {
+  "tokens": [
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "text": "type",
+      "leading_trivia": []
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 5,
+        "end": 14
+      },
+      "text": "transport",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 4,
+            "end": 5
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "=",
+      "span": {
+        "start": 15,
+        "end": 16
+      },
+      "text": "=",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 14,
+            "end": 15
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "(",
+      "span": {
+        "start": 17,
+        "end": 18
+      },
+      "text": "(",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 16,
+            "end": 17
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 18,
+        "end": 24
+      },
+      "text": "module",
+      "leading_trivia": []
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 25,
+        "end": 34
+      },
+      "text": "Transport",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 24,
+            "end": 25
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": ")",
+      "span": {
+        "start": 34,
+        "end": 35
+      },
+      "text": ")",
+      "leading_trivia": []
+    },
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 36,
+        "end": 40
+      },
+      "text": "type",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 35,
+            "end": 36
+          },
+          "text": "\n",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 41,
+        "end": 47
+      },
+      "text": "driver",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 40,
+            "end": 41
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "=",
+      "span": {
+        "start": 48,
+        "end": 49
+      },
+      "text": "=",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 47,
+            "end": 48
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "(",
+      "span": {
+        "start": 50,
+        "end": 51
+      },
+      "text": "(",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 49,
+            "end": 50
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 51,
+        "end": 57
+      },
+      "text": "module",
+      "leading_trivia": []
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 58,
+        "end": 64
+      },
+      "text": "Driver",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 57,
+            "end": 58
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 65,
+        "end": 69
+      },
+      "text": "with",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 64,
+            "end": 65
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 70,
+        "end": 74
+      },
+      "text": "type",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 69,
+            "end": 70
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 75,
+        "end": 81
+      },
+      "text": "config",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 74,
+            "end": 75
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "=",
+      "span": {
+        "start": 82,
+        "end": 83
+      },
+      "text": "=",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 81,
+            "end": 82
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 84,
+        "end": 87
+      },
+      "text": "int",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 83,
+            "end": 84
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": ")",
+      "span": {
+        "start": 87,
+        "end": 88
+      },
+      "text": ")",
+      "leading_trivia": []
+    },
+    {
+      "kind": "end of file",
+      "span": {
+        "start": 89,
+        "end": 89
+      },
+      "text": "",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 88,
+            "end": 89
+          },
+          "text": "\n",
+          "kind": "whitespace"
+        }
+      ]
+    }
+  ],
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 89,
+    "width": 88,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 36,
+        "width": 35,
         "children": [
           {
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": "type",
-            "width": 4
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
+            "width": 4,
+            "full_width": 4,
+            "leading_trivia": []
           },
           {
             "type": "node",
-            "kind": "MODULE_PATH",
+            "kind": "IDENT_EXPR",
             "width": 10,
             "children": [
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "transport",
-                "width": 9
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "width": 9,
+                "full_width": 10,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               }
             ]
           },
@@ -44,47 +359,61 @@
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": "=",
-            "width": 1
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
+            "width": 1,
+            "full_width": 2,
+            "leading_trivia": [
+              {
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
           },
           {
             "type": "node",
             "kind": "FIRST_CLASS_MODULE_TYPE",
-            "width": 18,
+            "width": 19,
             "children": [
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "(",
-                "width": 1
+                "width": 1,
+                "full_width": 2,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "module",
-                "width": 6
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "width": 6,
+                "full_width": 6,
+                "leading_trivia": []
               },
               {
                 "type": "node",
                 "kind": "MODULE_TYPE_PATH",
-                "width": 9,
+                "width": 10,
                 "children": [
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
                     "text": "Transport",
-                    "width": 9
+                    "width": 9,
+                    "full_width": 10,
+                    "leading_trivia": [
+                      {
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
                   }
                 ]
               },
@@ -92,15 +421,11 @@
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": ")",
-                "width": 1
+                "width": 1,
+                "full_width": 1,
+                "leading_trivia": []
               }
             ]
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": "\n",
-            "width": 1
           }
         ]
       },
@@ -113,30 +438,34 @@
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": "type",
-            "width": 4
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
+            "width": 4,
+            "full_width": 5,
+            "leading_trivia": [
+              {
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
+              }
+            ]
           },
           {
             "type": "node",
-            "kind": "MODULE_PATH",
+            "kind": "IDENT_EXPR",
             "width": 7,
             "children": [
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "driver",
-                "width": 6
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "width": 6,
+                "full_width": 7,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               }
             ]
           },
@@ -144,36 +473,42 @@
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": "=",
-            "width": 1
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
+            "width": 1,
+            "full_width": 2,
+            "leading_trivia": [
+              {
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
           },
           {
             "type": "node",
             "kind": "FIRST_CLASS_MODULE_TYPE",
-            "width": 38,
+            "width": 39,
             "children": [
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "(",
-                "width": 1
+                "width": 1,
+                "full_width": 2,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "module",
-                "width": 6
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "width": 6,
+                "full_width": 6,
+                "leading_trivia": []
               },
               {
                 "type": "node",
@@ -184,13 +519,15 @@
                     "type": "token",
                     "kind": "IDENT_EXPR",
                     "text": "Driver",
-                    "width": 6
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
+                    "width": 6,
+                    "full_width": 7,
+                    "leading_trivia": [
+                      {
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
                   }
                 ]
               },
@@ -198,30 +535,34 @@
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "with",
-                "width": 4
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "width": 4,
+                "full_width": 5,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "node",
                 "kind": "TYPE_CONSTRAINT",
-                "width": 17,
+                "width": 18,
                 "children": [
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
                     "text": "type",
-                    "width": 4
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
+                    "width": 4,
+                    "full_width": 5,
+                    "leading_trivia": [
+                      {
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
                   },
                   {
                     "type": "node",
@@ -232,13 +573,15 @@
                         "type": "token",
                         "kind": "IDENT_EXPR",
                         "text": "config",
-                        "width": 6
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
+                        "width": 6,
+                        "full_width": 7,
+                        "leading_trivia": [
+                          {
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
+                          }
+                        ]
                       }
                     ]
                   },
@@ -246,24 +589,34 @@
                     "type": "token",
                     "kind": "IDENT_EXPR",
                     "text": "=",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
+                    "width": 1,
+                    "full_width": 2,
+                    "leading_trivia": [
+                      {
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
                   },
                   {
                     "type": "node",
                     "kind": "TYPE_CONSTR",
-                    "width": 3,
+                    "width": 4,
                     "children": [
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",
                         "text": "int",
-                        "width": 3
+                        "width": 3,
+                        "full_width": 4,
+                        "leading_trivia": [
+                          {
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
+                          }
+                        ]
                       }
                     ]
                   }
@@ -273,15 +626,11 @@
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": ")",
-                "width": 1
+                "width": 1,
+                "full_width": 1,
+                "leading_trivia": []
               }
             ]
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": "\n",
-            "width": 1
           }
         ]
       }

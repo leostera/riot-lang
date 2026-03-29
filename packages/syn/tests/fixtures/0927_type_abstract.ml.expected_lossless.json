@@ -1,42 +1,87 @@
 {
+  "tokens": [
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "text": "type",
+      "leading_trivia": []
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 5,
+        "end": 6
+      },
+      "text": "t",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 4,
+            "end": 5
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "end of file",
+      "span": {
+        "start": 7,
+        "end": 7
+      },
+      "text": "",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 6,
+            "end": 7
+          },
+          "text": "\n",
+          "kind": "whitespace"
+        }
+      ]
+    }
+  ],
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 7,
+    "width": 6,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 7,
+        "width": 6,
         "children": [
           {
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": "type",
-            "width": 4
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
+            "width": 4,
+            "full_width": 4,
+            "leading_trivia": []
           },
           {
             "type": "node",
-            "kind": "MODULE_PATH",
+            "kind": "IDENT_EXPR",
             "width": 2,
             "children": [
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "t",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": "\n",
-                "width": 1
+                "width": 1,
+                "full_width": 2,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               }
             ]
           }

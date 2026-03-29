@@ -3,8 +3,7 @@ open Std
 type 'ctx walker = {
   apply_argument : 'ctx -> Cst.apply_argument -> 'ctx;
   attribute : 'ctx -> Cst.attribute -> 'ctx;
-  binding_operator_binding :
-    'ctx -> Cst.binding_operator_binding -> 'ctx;
+  binding_operator_binding : 'ctx -> Cst.binding_operator_binding -> 'ctx;
   class_declaration : 'ctx -> Cst.class_declaration -> 'ctx;
   class_expression : 'ctx -> Cst.ClassExpression.t -> 'ctx;
   class_field : 'ctx -> Cst.class_field -> 'ctx;
@@ -25,10 +24,8 @@ type 'ctx walker = {
   module_declaration : 'ctx -> Cst.ModuleDeclaration.t -> 'ctx;
   module_expression : 'ctx -> Cst.ModuleExpression.t -> 'ctx;
   module_type : 'ctx -> Cst.ModuleType.t -> 'ctx;
-  module_type_constraint :
-    'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
-  module_type_declaration :
-    'ctx -> Cst.ModuleTypeDeclaration.t -> 'ctx;
+  module_type_constraint : 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
+  module_type_declaration : 'ctx -> Cst.ModuleTypeDeclaration.t -> 'ctx;
   object_member : 'ctx -> Cst.ObjectMember.t -> 'ctx;
   object_type_field : 'ctx -> Cst.object_type_field -> 'ctx;
   open_statement : 'ctx -> Cst.OpenStatement.t -> 'ctx;
@@ -38,8 +35,7 @@ type 'ctx walker = {
   payload : 'ctx -> Cst.Payload.t -> 'ctx;
   record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
   record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
-  recursive_module_declaration :
-    'ctx -> Cst.RecursiveModuleDeclaration.t -> 'ctx;
+  recursive_module_declaration : 'ctx -> Cst.RecursiveModuleDeclaration.t -> 'ctx;
   row_field : 'ctx -> Cst.RowField.t -> 'ctx;
   signature_item : 'ctx -> Cst.SignatureItem.t -> 'ctx;
   source_file : 'ctx -> Cst.SourceFile.t -> 'ctx;
@@ -54,51 +50,38 @@ type 'ctx walker = {
   variant_constructor : 'ctx -> Cst.VariantConstructor.t -> 'ctx;
   descend_apply_argument : 'ctx -> Cst.apply_argument -> 'ctx;
   descend_attribute : 'ctx -> Cst.attribute -> 'ctx;
-  descend_binding_operator_binding :
-    'ctx -> Cst.binding_operator_binding -> 'ctx;
+  descend_binding_operator_binding : 'ctx -> Cst.binding_operator_binding -> 'ctx;
   descend_class_declaration : 'ctx -> Cst.class_declaration -> 'ctx;
   descend_class_expression : 'ctx -> Cst.ClassExpression.t -> 'ctx;
   descend_class_field : 'ctx -> Cst.class_field -> 'ctx;
   descend_class_type : 'ctx -> Cst.ClassType.t -> 'ctx;
-  descend_class_type_declaration :
-    'ctx -> Cst.class_type_declaration -> 'ctx;
-  descend_class_type_field :
-    'ctx -> Cst.ClassTypeField.t -> 'ctx;
+  descend_class_type_declaration : 'ctx -> Cst.class_type_declaration -> 'ctx;
+  descend_class_type_field : 'ctx -> Cst.ClassTypeField.t -> 'ctx;
   descend_core_type : 'ctx -> Cst.CoreType.t -> 'ctx;
-  descend_exception_declaration :
-    'ctx -> Cst.exception_declaration -> 'ctx;
+  descend_exception_declaration : 'ctx -> Cst.exception_declaration -> 'ctx;
   descend_expression : 'ctx -> Cst.Expression.t -> 'ctx;
   descend_extension : 'ctx -> Cst.extension -> 'ctx;
-  descend_external_declaration :
-    'ctx -> Cst.external_declaration -> 'ctx;
-  descend_functor_parameter :
-    'ctx -> Cst.FunctorParameter.t -> 'ctx;
+  descend_external_declaration : 'ctx -> Cst.external_declaration -> 'ctx;
+  descend_functor_parameter : 'ctx -> Cst.FunctorParameter.t -> 'ctx;
   descend_implementation : 'ctx -> Cst.implementation -> 'ctx;
   descend_include_statement : 'ctx -> Cst.include_statement -> 'ctx;
   descend_interface : 'ctx -> Cst.interface -> 'ctx;
   descend_let_binding : 'ctx -> Cst.LetBinding.t -> 'ctx;
   descend_match_case : 'ctx -> Cst.match_case -> 'ctx;
-  descend_module_declaration :
-    'ctx -> Cst.ModuleDeclaration.t -> 'ctx;
-  descend_module_expression :
-    'ctx -> Cst.ModuleExpression.t -> 'ctx;
+  descend_module_declaration : 'ctx -> Cst.ModuleDeclaration.t -> 'ctx;
+  descend_module_expression : 'ctx -> Cst.ModuleExpression.t -> 'ctx;
   descend_module_type : 'ctx -> Cst.ModuleType.t -> 'ctx;
-  descend_module_type_constraint :
-    'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
-  descend_module_type_declaration :
-    'ctx -> Cst.ModuleTypeDeclaration.t -> 'ctx;
+  descend_module_type_constraint : 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
+  descend_module_type_declaration : 'ctx -> Cst.ModuleTypeDeclaration.t -> 'ctx;
   descend_object_member : 'ctx -> Cst.ObjectMember.t -> 'ctx;
-  descend_object_type_field :
-    'ctx -> Cst.object_type_field -> 'ctx;
+  descend_object_type_field : 'ctx -> Cst.object_type_field -> 'ctx;
   descend_open_statement : 'ctx -> Cst.OpenStatement.t -> 'ctx;
   descend_parameter : 'ctx -> Cst.Parameter.t -> 'ctx;
   descend_pattern : 'ctx -> Cst.Pattern.t -> 'ctx;
   descend_pattern_payload : 'ctx -> Cst.PatternPayload.t -> 'ctx;
   descend_payload : 'ctx -> Cst.Payload.t -> 'ctx;
-  descend_record_expression :
-    'ctx -> Cst.RecordExpression.t -> 'ctx;
-  descend_record_type_field :
-    'ctx -> Cst.record_type_field -> 'ctx;
+  descend_record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
+  descend_record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
   descend_recursive_module_declaration :
     'ctx -> Cst.RecursiveModuleDeclaration.t -> 'ctx;
   descend_row_field : 'ctx -> Cst.RowField.t -> 'ctx;
@@ -107,147 +90,91 @@ type 'ctx walker = {
   descend_structure_item : 'ctx -> Cst.StructureItem.t -> 'ctx;
   descend_type_binder : 'ctx -> Cst.TypeBinder.t -> 'ctx;
   descend_type_constraint : 'ctx -> Cst.TypeConstraint.t -> 'ctx;
-  descend_type_declaration :
-    'ctx -> Cst.TypeDeclaration.t -> 'ctx;
+  descend_type_declaration : 'ctx -> Cst.TypeDeclaration.t -> 'ctx;
   descend_type_definition : 'ctx -> Cst.TypeDefinition.t -> 'ctx;
   descend_type_extension : 'ctx -> Cst.TypeExtension.t -> 'ctx;
   descend_type_parameter : 'ctx -> Cst.TypeParameter.t -> 'ctx;
-  descend_value_declaration :
-    'ctx -> Cst.value_declaration -> 'ctx;
-  descend_variant_constructor :
-    'ctx -> Cst.VariantConstructor.t -> 'ctx;
+  descend_value_declaration : 'ctx -> Cst.value_declaration -> 'ctx;
+  descend_variant_constructor : 'ctx -> Cst.VariantConstructor.t -> 'ctx;
 }
 
 type 'ctx visitor = {
-  visit_apply_argument :
-    'ctx -> 'ctx walker -> Cst.apply_argument -> 'ctx;
-  visit_attribute :
-    'ctx -> 'ctx walker -> Cst.attribute -> 'ctx;
-  visit_binding_operator_binding :
-    'ctx -> 'ctx walker -> Cst.binding_operator_binding -> 'ctx;
-  visit_class_declaration :
-    'ctx -> 'ctx walker -> Cst.class_declaration -> 'ctx;
-  visit_class_expression :
-    'ctx -> 'ctx walker -> Cst.ClassExpression.t -> 'ctx;
-  visit_class_field :
-    'ctx -> 'ctx walker -> Cst.class_field -> 'ctx;
-  visit_class_type :
-    'ctx -> 'ctx walker -> Cst.ClassType.t -> 'ctx;
-  visit_class_type_declaration :
-    'ctx -> 'ctx walker -> Cst.class_type_declaration -> 'ctx;
-  visit_class_type_field :
-    'ctx -> 'ctx walker -> Cst.ClassTypeField.t -> 'ctx;
-  visit_core_type :
-    'ctx -> 'ctx walker -> Cst.CoreType.t -> 'ctx;
-  visit_exception_declaration :
-    'ctx -> 'ctx walker -> Cst.exception_declaration -> 'ctx;
-  visit_expression :
-    'ctx -> 'ctx walker -> Cst.Expression.t -> 'ctx;
-  visit_extension :
-    'ctx -> 'ctx walker -> Cst.extension -> 'ctx;
-  visit_external_declaration :
-    'ctx -> 'ctx walker -> Cst.external_declaration -> 'ctx;
-  visit_functor_parameter :
-    'ctx -> 'ctx walker -> Cst.FunctorParameter.t -> 'ctx;
-  visit_implementation :
-    'ctx -> 'ctx walker -> Cst.implementation -> 'ctx;
-  visit_include_statement :
-    'ctx -> 'ctx walker -> Cst.include_statement -> 'ctx;
-  visit_interface :
-    'ctx -> 'ctx walker -> Cst.interface -> 'ctx;
-  visit_let_binding :
-    'ctx -> 'ctx walker -> Cst.LetBinding.t -> 'ctx;
-  visit_match_case :
-    'ctx -> 'ctx walker -> Cst.match_case -> 'ctx;
-  visit_module_declaration :
-    'ctx -> 'ctx walker -> Cst.ModuleDeclaration.t -> 'ctx;
-  visit_module_expression :
-    'ctx -> 'ctx walker -> Cst.ModuleExpression.t -> 'ctx;
-  visit_module_type :
-    'ctx -> 'ctx walker -> Cst.ModuleType.t -> 'ctx;
-  visit_module_type_constraint :
-    'ctx -> 'ctx walker -> Cst.ModuleTypeConstraint.t -> 'ctx;
-  visit_module_type_declaration :
-    'ctx -> 'ctx walker -> Cst.ModuleTypeDeclaration.t -> 'ctx;
-  visit_object_member :
-    'ctx -> 'ctx walker -> Cst.ObjectMember.t -> 'ctx;
-  visit_object_type_field :
-    'ctx -> 'ctx walker -> Cst.object_type_field -> 'ctx;
-  visit_open_statement :
-    'ctx -> 'ctx walker -> Cst.OpenStatement.t -> 'ctx;
-  visit_parameter :
-    'ctx -> 'ctx walker -> Cst.Parameter.t -> 'ctx;
-  visit_pattern :
-    'ctx -> 'ctx walker -> Cst.Pattern.t -> 'ctx;
-  visit_pattern_payload :
-    'ctx -> 'ctx walker -> Cst.PatternPayload.t -> 'ctx;
-  visit_payload :
-    'ctx -> 'ctx walker -> Cst.Payload.t -> 'ctx;
-  visit_record_expression :
-    'ctx -> 'ctx walker -> Cst.RecordExpression.t -> 'ctx;
-  visit_record_type_field :
-    'ctx -> 'ctx walker -> Cst.record_type_field -> 'ctx;
+  visit_apply_argument : 'ctx -> 'ctx walker -> Cst.apply_argument -> 'ctx;
+  visit_attribute : 'ctx -> 'ctx walker -> Cst.attribute -> 'ctx;
+  visit_binding_operator_binding : 'ctx -> 'ctx walker -> Cst.binding_operator_binding -> 'ctx;
+  visit_class_declaration : 'ctx -> 'ctx walker -> Cst.class_declaration -> 'ctx;
+  visit_class_expression : 'ctx -> 'ctx walker -> Cst.ClassExpression.t -> 'ctx;
+  visit_class_field : 'ctx -> 'ctx walker -> Cst.class_field -> 'ctx;
+  visit_class_type : 'ctx -> 'ctx walker -> Cst.ClassType.t -> 'ctx;
+  visit_class_type_declaration : 'ctx -> 'ctx walker -> Cst.class_type_declaration -> 'ctx;
+  visit_class_type_field : 'ctx -> 'ctx walker -> Cst.ClassTypeField.t -> 'ctx;
+  visit_core_type : 'ctx -> 'ctx walker -> Cst.CoreType.t -> 'ctx;
+  visit_exception_declaration : 'ctx -> 'ctx walker -> Cst.exception_declaration -> 'ctx;
+  visit_expression : 'ctx -> 'ctx walker -> Cst.Expression.t -> 'ctx;
+  visit_extension : 'ctx -> 'ctx walker -> Cst.extension -> 'ctx;
+  visit_external_declaration : 'ctx -> 'ctx walker -> Cst.external_declaration -> 'ctx;
+  visit_functor_parameter : 'ctx -> 'ctx walker -> Cst.FunctorParameter.t -> 'ctx;
+  visit_implementation : 'ctx -> 'ctx walker -> Cst.implementation -> 'ctx;
+  visit_include_statement : 'ctx -> 'ctx walker -> Cst.include_statement -> 'ctx;
+  visit_interface : 'ctx -> 'ctx walker -> Cst.interface -> 'ctx;
+  visit_let_binding : 'ctx -> 'ctx walker -> Cst.LetBinding.t -> 'ctx;
+  visit_match_case : 'ctx -> 'ctx walker -> Cst.match_case -> 'ctx;
+  visit_module_declaration : 'ctx -> 'ctx walker -> Cst.ModuleDeclaration.t -> 'ctx;
+  visit_module_expression : 'ctx -> 'ctx walker -> Cst.ModuleExpression.t -> 'ctx;
+  visit_module_type : 'ctx -> 'ctx walker -> Cst.ModuleType.t -> 'ctx;
+  visit_module_type_constraint : 'ctx -> 'ctx walker -> Cst.ModuleTypeConstraint.t -> 'ctx;
+  visit_module_type_declaration : 'ctx -> 'ctx walker -> Cst.ModuleTypeDeclaration.t -> 'ctx;
+  visit_object_member : 'ctx -> 'ctx walker -> Cst.ObjectMember.t -> 'ctx;
+  visit_object_type_field : 'ctx -> 'ctx walker -> Cst.object_type_field -> 'ctx;
+  visit_open_statement : 'ctx -> 'ctx walker -> Cst.OpenStatement.t -> 'ctx;
+  visit_parameter : 'ctx -> 'ctx walker -> Cst.Parameter.t -> 'ctx;
+  visit_pattern : 'ctx -> 'ctx walker -> Cst.Pattern.t -> 'ctx;
+  visit_pattern_payload : 'ctx -> 'ctx walker -> Cst.PatternPayload.t -> 'ctx;
+  visit_payload : 'ctx -> 'ctx walker -> Cst.Payload.t -> 'ctx;
+  visit_record_expression : 'ctx -> 'ctx walker -> Cst.RecordExpression.t -> 'ctx;
+  visit_record_type_field : 'ctx -> 'ctx walker -> Cst.record_type_field -> 'ctx;
   visit_recursive_module_declaration :
     'ctx -> 'ctx walker -> Cst.RecursiveModuleDeclaration.t -> 'ctx;
-  visit_row_field :
-    'ctx -> 'ctx walker -> Cst.RowField.t -> 'ctx;
-  visit_signature_item :
-    'ctx -> 'ctx walker -> Cst.SignatureItem.t -> 'ctx;
-  visit_source_file :
-    'ctx -> 'ctx walker -> Cst.SourceFile.t -> 'ctx;
-  visit_structure_item :
-    'ctx -> 'ctx walker -> Cst.StructureItem.t -> 'ctx;
-  visit_type_binder :
-    'ctx -> 'ctx walker -> Cst.TypeBinder.t -> 'ctx;
-  visit_type_constraint :
-    'ctx -> 'ctx walker -> Cst.TypeConstraint.t -> 'ctx;
-  visit_type_declaration :
-    'ctx -> 'ctx walker -> Cst.TypeDeclaration.t -> 'ctx;
-  visit_type_definition :
-    'ctx -> 'ctx walker -> Cst.TypeDefinition.t -> 'ctx;
-  visit_type_extension :
-    'ctx -> 'ctx walker -> Cst.TypeExtension.t -> 'ctx;
-  visit_type_parameter :
-    'ctx -> 'ctx walker -> Cst.TypeParameter.t -> 'ctx;
-  visit_value_declaration :
-    'ctx -> 'ctx walker -> Cst.value_declaration -> 'ctx;
-  visit_variant_constructor :
-    'ctx -> 'ctx walker -> Cst.VariantConstructor.t -> 'ctx;
+  visit_row_field : 'ctx -> 'ctx walker -> Cst.RowField.t -> 'ctx;
+  visit_signature_item : 'ctx -> 'ctx walker -> Cst.SignatureItem.t -> 'ctx;
+  visit_source_file : 'ctx -> 'ctx walker -> Cst.SourceFile.t -> 'ctx;
+  visit_structure_item : 'ctx -> 'ctx walker -> Cst.StructureItem.t -> 'ctx;
+  visit_type_binder : 'ctx -> 'ctx walker -> Cst.TypeBinder.t -> 'ctx;
+  visit_type_constraint : 'ctx -> 'ctx walker -> Cst.TypeConstraint.t -> 'ctx;
+  visit_type_declaration : 'ctx -> 'ctx walker -> Cst.TypeDeclaration.t -> 'ctx;
+  visit_type_definition : 'ctx -> 'ctx walker -> Cst.TypeDefinition.t -> 'ctx;
+  visit_type_extension : 'ctx -> 'ctx walker -> Cst.TypeExtension.t -> 'ctx;
+  visit_type_parameter : 'ctx -> 'ctx walker -> Cst.TypeParameter.t -> 'ctx;
+  visit_value_declaration : 'ctx -> 'ctx walker -> Cst.value_declaration -> 'ctx;
+  visit_variant_constructor : 'ctx -> 'ctx walker -> Cst.VariantConstructor.t -> 'ctx;
 }
 
-let rec descend_attribute walk ctx (attribute : Cst.attribute) =
+let rec descend_attribute = fun walk ctx (attribute : Cst.attribute) ->
   match attribute.payload with
   | Some payload ->
       walk.payload ctx payload
   | None ->
       ctx
-
-and descend_extension walk ctx (extension : Cst.extension) =
-  let ctx =
-    List.fold_left walk.attribute ctx extension.attributes
-  in
+and descend_extension = fun walk ctx (extension : Cst.extension) ->
+  let ctx = List.fold_left walk.attribute ctx extension.attributes in
   match extension.payload with
   | Some payload ->
       walk.payload ctx payload
   | None ->
       ctx
-
-and descend_payload walk ctx (payload : Cst.Payload.t) =
+and descend_payload = fun walk ctx (payload : Cst.Payload.t) ->
   match payload with
-  | Cst.Payload.Structure _ | Cst.Payload.Signature _ ->
+  | Cst.Payload.Structure _
+  | Cst.Payload.Signature _ ->
       ctx
   | Cst.Payload.Type core_type ->
       walk.core_type ctx core_type
   | Cst.Payload.Pattern pattern_payload ->
       walk.pattern_payload ctx pattern_payload
-
-and descend_pattern_payload _walk ctx _pattern_payload = ctx
-
-and descend_type_binder _walk ctx _type_binder = ctx
-
-and descend_type_parameter _walk ctx _type_parameter = ctx
-
-and descend_parameter walk ctx parameter =
+and descend_pattern_payload = fun _walk ctx _pattern_payload -> ctx
+and descend_type_binder = fun _walk ctx _type_binder -> ctx
+and descend_type_parameter = fun _walk ctx _type_parameter -> ctx
+and descend_parameter = fun walk ctx parameter ->
   match parameter with
   | Cst.Parameter.Positional _
   | Cst.Parameter.Labeled _
@@ -255,8 +182,7 @@ and descend_parameter walk ctx parameter =
       ctx
   | Cst.Parameter.LocallyAbstract { binders; _ } ->
       List.fold_left walk.type_binder ctx binders
-
-and descend_pattern walk ctx (pattern : Cst.Pattern.t) =
+and descend_pattern = fun walk ctx (pattern : Cst.Pattern.t) ->
   match pattern with
   | Cst.Pattern.Identifier { attributes; _ }
   | Cst.Pattern.Wildcard { attributes; _ }
@@ -299,11 +225,11 @@ and descend_pattern walk ctx (pattern : Cst.Pattern.t) =
       let ctx = List.fold_left walk.pattern ctx arguments in
       List.fold_left walk.attribute ctx attributes
   | Cst.Pattern.Tuple { elements; attributes; _ } ->
-      let ctx =
-        List.fold_left
-          (fun ctx (element : Cst.tuple_pattern_element) ->
-            walk.pattern ctx element.pattern)
-          ctx elements
+      let ctx = List.fold_left
+        (fun ctx (element : Cst.tuple_pattern_element) ->
+          walk.pattern ctx element.pattern)
+        ctx
+        elements
       in
       List.fold_left walk.attribute ctx attributes
   | Cst.Pattern.List { elements; attributes; _ }
@@ -318,7 +244,8 @@ and descend_pattern walk ctx (pattern : Cst.Pattern.t) =
             match field.pattern with
             | Some pattern -> walk.pattern ctx pattern
             | None -> ctx)
-          ctx fields
+          ctx
+          fields
       in
       List.fold_left walk.attribute ctx attributes
   | Cst.Pattern.Cons { head; tail; attributes; _ } ->
@@ -332,15 +259,14 @@ and descend_pattern walk ctx (pattern : Cst.Pattern.t) =
       let ctx = walk.pattern ctx pattern in
       let ctx = walk.core_type ctx type_ in
       List.fold_left walk.attribute ctx attributes
-  | Cst.Pattern.Effect
-      { effect_pattern; continuation; attributes; _ } ->
+  | Cst.Pattern.Effect { effect_pattern; continuation; attributes; _ } ->
       let ctx = walk.pattern ctx effect_pattern in
       let ctx = walk.pattern ctx continuation in
       List.fold_left walk.attribute ctx attributes
-
-and descend_core_type walk ctx (core_type : Cst.CoreType.t) =
+and descend_core_type = fun walk ctx (core_type : Cst.CoreType.t) ->
   match core_type with
-  | Cst.CoreType.Wildcard _ | Cst.CoreType.Var _ ->
+  | Cst.CoreType.Wildcard _
+  | Cst.CoreType.Var _ ->
       ctx
   | Cst.CoreType.Extension extension ->
       walk.extension ctx extension
@@ -370,39 +296,32 @@ and descend_core_type walk ctx (core_type : Cst.CoreType.t) =
       walk.module_type ctx module_type
   | Cst.CoreType.Object { fields; _ } ->
       List.fold_left walk.object_type_field ctx fields
-
-and descend_exception_declaration _walk ctx _decl = ctx
-
-and descend_object_type_field walk ctx (field : Cst.object_type_field) =
+and descend_exception_declaration = fun _walk ctx _decl -> ctx
+and descend_object_type_field = fun walk ctx (field : Cst.object_type_field) ->
   walk.core_type ctx field.field_type
-
-and descend_record_type_field walk ctx (field : Cst.record_type_field) =
+and descend_record_type_field = fun walk ctx (field : Cst.record_type_field) ->
   let ctx = List.fold_left walk.attribute ctx field.attributes in
   walk.core_type ctx field.field_type
-
-and descend_row_field walk ctx row_field =
+and descend_row_field = fun walk ctx row_field ->
   match row_field with
   | Cst.RowField.Tag tag ->
       let ctx = List.fold_left walk.attribute ctx tag.attributes in
-      (match tag.payload_type with
-      | Some payload_type -> walk.core_type ctx payload_type
-      | None -> ctx)
+      (
+        match tag.payload_type with
+        | Some payload_type -> walk.core_type ctx payload_type
+        | None -> ctx
+      )
   | Cst.RowField.Inherit { type_; _ } ->
       walk.core_type ctx type_
-
-and descend_type_constraint walk ctx (constraint_ : Cst.TypeConstraint.t) =
+and descend_type_constraint = fun walk ctx (constraint_ : Cst.TypeConstraint.t) ->
   let ctx = walk.core_type ctx constraint_.left in
   walk.core_type ctx constraint_.right
-
-and descend_module_type_constraint walk ctx
-    (constraint_ : Cst.ModuleTypeConstraint.t) =
+and descend_module_type_constraint = fun walk ctx (constraint_ : Cst.ModuleTypeConstraint.t) ->
   let ctx = walk.core_type ctx constraint_.constrained_type in
   walk.core_type ctx constraint_.replacement_type
-
-and descend_functor_parameter walk ctx (parameter : Cst.FunctorParameter.t) =
+and descend_functor_parameter = fun walk ctx (parameter : Cst.FunctorParameter.t) ->
   walk.module_type ctx parameter.module_type
-
-and descend_module_type walk ctx (module_type : Cst.ModuleType.t) =
+and descend_module_type = fun walk ctx (module_type : Cst.ModuleType.t) ->
   match module_type with
   | Cst.ModuleType.Path _
   | Cst.ModuleType.TypeOf _
@@ -421,8 +340,7 @@ and descend_module_type walk ctx (module_type : Cst.ModuleType.t) =
       walk.attribute ctx attribute
   | Cst.ModuleType.Extension extension ->
       walk.extension ctx extension
-
-and descend_class_type walk ctx (class_type : Cst.ClassType.t) =
+and descend_class_type = fun walk ctx (class_type : Cst.ClassType.t) ->
   match class_type with
   | Cst.ClassType.Path _ ->
       ctx
@@ -440,8 +358,7 @@ and descend_class_type walk ctx (class_type : Cst.ClassType.t) =
       walk.attribute ctx attribute
   | Cst.ClassType.Extension extension ->
       walk.extension ctx extension
-
-and descend_class_type_field walk ctx (field : Cst.ClassTypeField.t) =
+and descend_class_type_field = fun walk ctx (field : Cst.ClassTypeField.t) ->
   match field with
   | Cst.ClassTypeField.Inherit { class_type; _ } ->
       walk.class_type ctx class_type
@@ -456,8 +373,7 @@ and descend_class_type_field walk ctx (field : Cst.ClassTypeField.t) =
       walk.attribute ctx attribute
   | Cst.ClassTypeField.Extension extension ->
       walk.extension ctx extension
-
-and descend_type_definition walk ctx (type_definition : Cst.TypeDefinition.t) =
+and descend_type_definition = fun walk ctx (type_definition : Cst.TypeDefinition.t) ->
   match type_definition with
   | Cst.TypeDefinition.Abstract
   | Cst.TypeDefinition.Extensible _ ->
@@ -471,18 +387,15 @@ and descend_type_definition walk ctx (type_definition : Cst.TypeDefinition.t) =
   | Cst.TypeDefinition.Record { fields; _ } ->
       List.fold_left
         (fun ctx field ->
-          let ctx =
-            List.fold_left walk.attribute ctx (Cst.RecordField.attributes field)
-          in
+          let ctx = List.fold_left walk.attribute ctx (Cst.RecordField.attributes field) in
           walk.core_type ctx (Cst.RecordField.field_type field))
-        ctx fields
+        ctx
+        fields
   | Cst.TypeDefinition.Variant { constructors; _ } ->
       List.fold_left walk.variant_constructor ctx constructors
   | Cst.TypeDefinition.PolyVariant poly_variant ->
       List.fold_left walk.row_field ctx (Cst.PolyVariant.fields poly_variant)
-
-and descend_variant_constructor walk ctx
-    (constructor : Cst.VariantConstructor.t) =
+and descend_variant_constructor = fun walk ctx (constructor : Cst.VariantConstructor.t) ->
   let ctx = List.fold_left walk.attribute ctx (Cst.VariantConstructor.attributes constructor) in
   let ctx =
     match Cst.VariantConstructor.arguments constructor with
@@ -491,11 +404,10 @@ and descend_variant_constructor walk ctx
     | Some (Cst.ConstructorArguments.Record fields) ->
         List.fold_left
           (fun ctx field ->
-            let ctx =
-              List.fold_left walk.attribute ctx (Cst.RecordField.attributes field)
-            in
+            let ctx = List.fold_left walk.attribute ctx (Cst.RecordField.attributes field) in
             walk.core_type ctx (Cst.RecordField.field_type field))
-          ctx fields
+          ctx
+          fields
     | None ->
         ctx
   in
@@ -511,11 +423,8 @@ and descend_variant_constructor walk ctx
       walk.core_type ctx result_type
   | None ->
       ctx
-
-and descend_type_declaration walk ctx (declaration : Cst.TypeDeclaration.t) =
-  let ctx =
-    List.fold_left walk.type_parameter ctx (Cst.TypeDeclaration.type_params declaration)
-  in
+and descend_type_declaration = fun walk ctx (declaration : Cst.TypeDeclaration.t) ->
+  let ctx = List.fold_left walk.type_parameter ctx (Cst.TypeDeclaration.type_params declaration) in
   let ctx =
     match Cst.TypeDeclaration.manifest_alias declaration with
     | Some manifest_alias ->
@@ -523,22 +432,13 @@ and descend_type_declaration walk ctx (declaration : Cst.TypeDeclaration.t) =
     | None ->
         ctx
   in
-  let ctx =
-    walk.type_definition ctx (Cst.TypeDeclaration.type_definition declaration)
-  in
-  let ctx =
-    List.fold_left walk.type_constraint ctx (Cst.TypeDeclaration.constraints declaration)
-  in
-  List.fold_left walk.type_declaration ctx
-    (Cst.TypeDeclaration.and_declarations declaration)
-
-and descend_type_extension walk ctx (declaration : Cst.TypeExtension.t) =
-  let ctx =
-    List.fold_left walk.type_parameter ctx (Cst.TypeExtension.type_params declaration)
-  in
+  let ctx = walk.type_definition ctx (Cst.TypeDeclaration.type_definition declaration) in
+  let ctx = List.fold_left walk.type_constraint ctx (Cst.TypeDeclaration.constraints declaration) in
+  List.fold_left walk.type_declaration ctx (Cst.TypeDeclaration.and_declarations declaration)
+and descend_type_extension = fun walk ctx (declaration : Cst.TypeExtension.t) ->
+  let ctx = List.fold_left walk.type_parameter ctx (Cst.TypeExtension.type_params declaration) in
   List.fold_left walk.variant_constructor ctx (Cst.TypeExtension.constructors declaration)
-
-and descend_module_expression walk ctx (module_expression : Cst.ModuleExpression.t) =
+and descend_module_expression = fun walk ctx (module_expression : Cst.ModuleExpression.t) ->
   match module_expression with
   | Cst.ModuleExpression.Path _
   | Cst.ModuleExpression.Structure _ ->
@@ -551,25 +451,24 @@ and descend_module_expression walk ctx (module_expression : Cst.ModuleExpression
       walk.module_expression ctx argument
   | Cst.ModuleExpression.ApplyUnit { callee; _ } ->
       walk.module_expression ctx callee
-  | Cst.ModuleExpression.Constraint
-      { module_expression; module_type; _ } ->
+  | Cst.ModuleExpression.Constraint { module_expression; module_type; _ } ->
       let ctx = walk.module_expression ctx module_expression in
       walk.module_type ctx module_type
   | Cst.ModuleExpression.ModuleUnpack { expression; module_type; _ } ->
       let ctx = walk.expression ctx expression in
-      (match module_type with
-      | Some module_type -> walk.module_type ctx module_type
-      | None -> ctx)
+      (
+        match module_type with
+        | Some module_type -> walk.module_type ctx module_type
+        | None -> ctx
+      )
   | Cst.ModuleExpression.Parenthesized { inner; _ } ->
       walk.module_expression ctx inner
-  | Cst.ModuleExpression.Attribute
-      { module_expression; attribute; _ } ->
+  | Cst.ModuleExpression.Attribute { module_expression; attribute; _ } ->
       let ctx = walk.module_expression ctx module_expression in
       walk.attribute ctx attribute
   | Cst.ModuleExpression.Extension extension ->
       walk.extension ctx extension
-
-and descend_object_member walk ctx (member : Cst.ObjectMember.t) =
+and descend_object_member = fun walk ctx (member : Cst.ObjectMember.t) ->
   match member with
   | Cst.ObjectMember.Method method_ ->
       let ctx = List.fold_left walk.attribute ctx method_.attributes in
@@ -578,9 +477,11 @@ and descend_object_member walk ctx (member : Cst.ObjectMember.t) =
         | Some body -> walk.expression ctx body
         | None -> ctx
       in
-      (match method_.type_ with
-      | Some type_ -> walk.core_type ctx type_
-      | None -> ctx)
+      (
+        match method_.type_ with
+        | Some type_ -> walk.core_type ctx type_
+        | None -> ctx
+      )
   | Cst.ObjectMember.Value value ->
       let ctx = List.fold_left walk.attribute ctx value.attributes in
       let ctx =
@@ -588,9 +489,11 @@ and descend_object_member walk ctx (member : Cst.ObjectMember.t) =
         | Some body -> walk.expression ctx body
         | None -> ctx
       in
-      (match value.type_ with
-      | Some type_ -> walk.core_type ctx type_
-      | None -> ctx)
+      (
+        match value.type_ with
+        | Some type_ -> walk.core_type ctx type_
+        | None -> ctx
+      )
   | Cst.ObjectMember.Inherit inherit_ ->
       let ctx = List.fold_left walk.attribute ctx inherit_.attributes in
       walk.expression ctx inherit_.expression
@@ -599,34 +502,36 @@ and descend_object_member walk ctx (member : Cst.ObjectMember.t) =
   | Cst.ObjectMember.Initializer init_member -> (
       match init_member.body with
       | Some body -> walk.expression ctx body
-      | None -> ctx)
-
-and descend_apply_argument walk ctx argument =
+      | None -> ctx
+    )
+and descend_apply_argument = fun walk ctx argument ->
   match argument with
   | Cst.Positional expression ->
       walk.expression ctx expression
-  | Cst.Labeled { value; _ } | Cst.Optional { value; _ } -> (
+  | Cst.Labeled { value; _ }
+  | Cst.Optional { value; _ } -> (
       match value with
       | Some value -> walk.expression ctx value
-      | None -> ctx)
-
-and descend_record_expression walk ctx (record_expression : Cst.RecordExpression.t) =
+      | None -> ctx
+    )
+and descend_record_expression = fun walk ctx (record_expression : Cst.RecordExpression.t) ->
   match record_expression with
   | Cst.RecordExpression.Literal { fields; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       List.fold_left
         (fun ctx (field : Cst.record_expression_field) ->
           walk.expression ctx field.value)
-        ctx fields
+        ctx
+        fields
   | Cst.RecordExpression.Update { base; fields; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.expression ctx base in
       List.fold_left
         (fun ctx (field : Cst.record_expression_field) ->
           walk.expression ctx field.value)
-        ctx fields
-
-and descend_match_case walk ctx (case : Cst.match_case) =
+        ctx
+        fields
+and descend_match_case = fun walk ctx (case : Cst.match_case) ->
   let ctx = walk.pattern ctx case.pattern in
   let ctx =
     match case.guard with
@@ -634,20 +539,23 @@ and descend_match_case walk ctx (case : Cst.match_case) =
     | None -> ctx
   in
   walk.expression ctx case.body
-
-and descend_expression walk ctx (expression : Cst.Expression.t) =
+and descend_expression = fun walk ctx (expression : Cst.Expression.t) ->
   match expression with
-  | Cst.Expression.Path _ | Cst.Expression.Operator _
-  | Cst.Expression.Literal _ | Cst.Expression.Unreachable _
+  | Cst.Expression.Path _
+  | Cst.Expression.Operator _
+  | Cst.Expression.Literal _
+  | Cst.Expression.Unreachable _
   | Cst.Expression.New _ ->
       ctx
   | Cst.Expression.Extension extension ->
       walk.extension ctx extension
   | Cst.Expression.Constructor { payload; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
-      (match payload with
-      | Some payload -> walk.expression ctx payload
-      | None -> ctx)
+      (
+        match payload with
+        | Some payload -> walk.expression ctx payload
+        | None -> ctx
+      )
   | Cst.Expression.Object { self_pattern; members; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx =
@@ -658,23 +566,24 @@ and descend_expression walk ctx (expression : Cst.Expression.t) =
       List.fold_left walk.object_member ctx members
   | Cst.Expression.PolyVariant { payload; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
-      (match payload with
-      | Some payload -> walk.expression ctx payload
-      | None -> ctx)
-  | Cst.Expression.ModulePack
-      { module_expression; module_type; attributes; _ } ->
+      (
+        match payload with
+        | Some payload -> walk.expression ctx payload
+        | None -> ctx
+      )
+  | Cst.Expression.ModulePack { module_expression; module_type; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.module_expression ctx module_expression in
-      (match module_type with
-      | Some module_type -> walk.module_type ctx module_type
-      | None -> ctx)
-  | Cst.Expression.LetModule
-      { module_expression; body; attributes; _ } ->
+      (
+        match module_type with
+        | Some module_type -> walk.module_type ctx module_type
+        | None -> ctx
+      )
+  | Cst.Expression.LetModule { module_expression; body; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.module_expression ctx module_expression in
       walk.expression ctx body
-  | Cst.Expression.LetException
-      { exception_declaration; body; attributes; _ } ->
+  | Cst.Expression.LetException { exception_declaration; body; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.exception_declaration ctx exception_declaration in
       walk.expression ctx body
@@ -688,7 +597,13 @@ and descend_expression walk ctx (expression : Cst.Expression.t) =
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.expression ctx condition in
       walk.expression ctx body
-  | Cst.Expression.For { start_expr; end_expr; body; attributes; _ } ->
+  | Cst.Expression.For {
+    start_expr;
+    end_expr;
+    body;
+    attributes;
+    _
+  } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.expression ctx start_expr in
       let ctx = walk.expression ctx end_expr in
@@ -717,7 +632,8 @@ and descend_expression walk ctx (expression : Cst.Expression.t) =
           match field.value with
           | Some value -> walk.expression ctx value
           | None -> ctx)
-        ctx fields
+        ctx
+        fields
   | Cst.Expression.InstanceVariableAssign { value; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       walk.expression ctx value
@@ -741,8 +657,13 @@ and descend_expression walk ctx (expression : Cst.Expression.t) =
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.expression ctx expression in
       walk.core_type ctx type_
-  | Cst.Expression.Coerce
-      { expression; from_type; to_type; attributes; _ } ->
+  | Cst.Expression.Coerce {
+    expression;
+    from_type;
+    to_type;
+    attributes;
+    _
+  } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.expression ctx expression in
       let ctx =
@@ -764,23 +685,35 @@ and descend_expression walk ctx (expression : Cst.Expression.t) =
   | Cst.Expression.Fun { parameters; body; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = List.fold_left walk.parameter ctx parameters in
-      (match body with
-      | Cst.Expression expression ->
-          walk.expression ctx expression
-      | Cst.Cases { cases; _ } ->
-          List.fold_left walk.match_case ctx cases)
+      (
+        match body with
+        | Cst.Expression expression ->
+            walk.expression ctx expression
+        | Cst.Cases { cases; _ } ->
+            List.fold_left walk.match_case ctx cases
+      )
   | Cst.Expression.Function { cases; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       List.fold_left walk.match_case ctx cases
-  | Cst.Expression.LetOperator
-      { binding; and_bindings; body; attributes; _ } ->
+  | Cst.Expression.LetOperator {
+    binding;
+    and_bindings;
+    body;
+    attributes;
+    _
+  } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.binding_operator_binding ctx binding in
-      let ctx =
-        List.fold_left walk.binding_operator_binding ctx and_bindings
-      in
+      let ctx = List.fold_left walk.binding_operator_binding ctx and_bindings in
       walk.expression ctx body
-  | Cst.Expression.Let { parameters; bound_value; and_bindings; body; attributes; _ } ->
+  | Cst.Expression.Let {
+    parameters;
+    bound_value;
+    and_bindings;
+    body;
+    attributes;
+    _
+  } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = List.fold_left walk.parameter ctx parameters in
       let ctx = walk.expression ctx bound_value in
@@ -794,35 +727,34 @@ and descend_expression walk ctx (expression : Cst.Expression.t) =
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.expression ctx body in
       List.fold_left walk.match_case ctx cases
-  | Cst.Expression.If
-      { condition; then_branch; else_branch; attributes; _ } ->
+  | Cst.Expression.If {
+    condition;
+    then_branch;
+    else_branch;
+    attributes;
+    _
+  } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.expression ctx condition in
       let ctx = walk.expression ctx then_branch in
-      (match else_branch with
-      | Some else_branch -> walk.expression ctx else_branch
-      | None -> ctx)
+      (
+        match else_branch with
+        | Some else_branch -> walk.expression ctx else_branch
+        | None -> ctx
+      )
   | Cst.Expression.Parenthesized { inner; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       walk.expression ctx inner
-
-and descend_binding_operator_binding walk ctx
-    (binding : Cst.binding_operator_binding) =
+and descend_binding_operator_binding = fun walk ctx (binding : Cst.binding_operator_binding) ->
   let ctx = walk.pattern ctx binding.binding_pattern in
   walk.expression ctx binding.bound_value
-
-and descend_let_binding walk ctx binding =
-  let ctx =
-    List.fold_left walk.attribute ctx (Cst.LetBinding.attributes binding)
-  in
+and descend_let_binding = fun walk ctx binding ->
+  let ctx = List.fold_left walk.attribute ctx (Cst.LetBinding.attributes binding) in
   let ctx = walk.pattern ctx (Cst.LetBinding.binding_pattern binding) in
-  let ctx =
-    List.fold_left walk.parameter ctx (Cst.LetBinding.parameters binding)
-  in
+  let ctx = List.fold_left walk.parameter ctx (Cst.LetBinding.parameters binding) in
   let ctx = walk.expression ctx (Cst.LetBinding.value binding) in
   List.fold_left walk.let_binding ctx (Cst.LetBinding.and_bindings binding)
-
-and descend_class_field walk ctx (field : Cst.class_field) =
+and descend_class_field = fun walk ctx (field : Cst.class_field) ->
   match field with
   | Cst.ClassField.Method method_ ->
       let ctx =
@@ -830,18 +762,22 @@ and descend_class_field walk ctx (field : Cst.class_field) =
         | Some body -> walk.expression ctx body
         | None -> ctx
       in
-      (match method_.type_ with
-      | Some type_ -> walk.core_type ctx type_
-      | None -> ctx)
+      (
+        match method_.type_ with
+        | Some type_ -> walk.core_type ctx type_
+        | None -> ctx
+      )
   | Cst.ClassField.Value value ->
       let ctx =
         match value.value with
         | Some body -> walk.expression ctx body
         | None -> ctx
       in
-      (match value.type_ with
-      | Some type_ -> walk.core_type ctx type_
-      | None -> ctx)
+      (
+        match value.type_ with
+        | Some type_ -> walk.core_type ctx type_
+        | None -> ctx
+      )
   | Cst.ClassField.Inherit inherit_ ->
       walk.class_expression ctx inherit_.class_expression
   | Cst.ClassField.Constraint { left; right; _ } ->
@@ -850,14 +786,14 @@ and descend_class_field walk ctx (field : Cst.class_field) =
   | Cst.ClassField.Initializer init_field -> (
       match init_field.body with
       | Some body -> walk.expression ctx body
-      | None -> ctx)
+      | None -> ctx
+    )
   | Cst.ClassField.Attribute { field; attribute; _ } ->
       let ctx = walk.class_field ctx field in
       walk.attribute ctx attribute
   | Cst.ClassField.Extension extension ->
       walk.extension ctx extension
-
-and descend_class_expression walk ctx (class_expression : Cst.ClassExpression.t) =
+and descend_class_expression = fun walk ctx (class_expression : Cst.ClassExpression.t) ->
   match class_expression with
   | Cst.ClassExpression.Path _ ->
       ctx
@@ -874,34 +810,35 @@ and descend_class_expression walk ctx (class_expression : Cst.ClassExpression.t)
   | Cst.ClassExpression.Apply { callee; argument; _ } ->
       let ctx = walk.class_expression ctx callee in
       walk.apply_argument ctx argument
-  | Cst.ClassExpression.Let { parameters; bound_value; and_bindings; body; _ } ->
+  | Cst.ClassExpression.Let {
+    parameters;
+    bound_value;
+    and_bindings;
+    body;
+    _
+  } ->
       let ctx = List.fold_left walk.parameter ctx parameters in
       let ctx = walk.expression ctx bound_value in
       let ctx = List.fold_left walk.let_binding ctx and_bindings in
       walk.class_expression ctx body
-  | Cst.ClassExpression.Constraint
-      { class_expression; class_type; _ } ->
+  | Cst.ClassExpression.Constraint { class_expression; class_type; _ } ->
       let ctx = walk.class_expression ctx class_expression in
       walk.class_type ctx class_type
   | Cst.ClassExpression.LocalOpen { class_expression; _ } ->
       walk.class_expression ctx class_expression
   | Cst.ClassExpression.Parenthesized { inner; _ } ->
       walk.class_expression ctx inner
-  | Cst.ClassExpression.Attribute
-      { class_expression; attribute; _ } ->
+  | Cst.ClassExpression.Attribute { class_expression; attribute; _ } ->
       let ctx = walk.class_expression ctx class_expression in
       walk.attribute ctx attribute
   | Cst.ClassExpression.Extension extension ->
       walk.extension ctx extension
-
-and descend_value_declaration walk ctx (declaration : Cst.value_declaration) =
+and descend_value_declaration = fun walk ctx (declaration : Cst.value_declaration) ->
   walk.core_type ctx declaration.type_
-
-and descend_external_declaration walk ctx (declaration : Cst.external_declaration) =
+and descend_external_declaration = fun walk ctx (declaration : Cst.external_declaration) ->
   let ctx = walk.core_type ctx declaration.type_ in
   List.fold_left walk.attribute ctx declaration.attributes
-
-and descend_class_declaration walk ctx (declaration : Cst.class_declaration) =
+and descend_class_declaration = fun walk ctx (declaration : Cst.class_declaration) ->
   let ctx = List.fold_left walk.type_parameter ctx declaration.type_params in
   let ctx =
     match declaration.class_type with
@@ -911,16 +848,14 @@ and descend_class_declaration walk ctx (declaration : Cst.class_declaration) =
   match declaration.class_body with
   | Some class_body -> walk.class_expression ctx class_body
   | None -> ctx
-
-and descend_class_type_declaration walk ctx (declaration : Cst.class_type_declaration) =
+and descend_class_type_declaration = fun walk ctx (declaration : Cst.class_type_declaration) ->
   let ctx = List.fold_left walk.type_parameter ctx declaration.type_params in
   walk.class_type ctx declaration.class_type_body
-
-and descend_module_declaration walk ctx (declaration : Cst.ModuleDeclaration.t) =
-  let ctx =
-    List.fold_left walk.functor_parameter ctx
-      (Cst.ModuleDeclaration.functor_parameters declaration)
-  in
+and descend_module_declaration = fun walk ctx (declaration : Cst.ModuleDeclaration.t) ->
+  let ctx = List.fold_left
+  walk.functor_parameter
+  ctx
+  (Cst.ModuleDeclaration.functor_parameters declaration) in
   let ctx =
     match Cst.ModuleDeclaration.module_type declaration with
     | Some module_type -> walk.module_type ctx module_type
@@ -929,33 +864,28 @@ and descend_module_declaration walk ctx (declaration : Cst.ModuleDeclaration.t) 
   match Cst.ModuleDeclaration.module_expression declaration with
   | Some module_expression -> walk.module_expression ctx module_expression
   | None -> ctx
-
-and descend_recursive_module_declaration walk ctx
-    (declaration : Cst.RecursiveModuleDeclaration.t) =
-  List.fold_left walk.module_declaration ctx
-    (Cst.RecursiveModuleDeclaration.declarations declaration)
-
-and descend_module_type_declaration walk ctx
-    (declaration : Cst.ModuleTypeDeclaration.t) =
+and descend_recursive_module_declaration = fun walk ctx (declaration : Cst.RecursiveModuleDeclaration.t) ->
+  List.fold_left
+  walk.module_declaration
+  ctx
+  (Cst.RecursiveModuleDeclaration.declarations declaration)
+and descend_module_type_declaration = fun walk ctx (declaration : Cst.ModuleTypeDeclaration.t) ->
   match Cst.ModuleTypeDeclaration.module_type declaration with
   | Some module_type -> walk.module_type ctx module_type
   | None -> ctx
-
-and descend_open_statement walk ctx (statement : Cst.OpenStatement.t) =
+and descend_open_statement = fun walk ctx (statement : Cst.OpenStatement.t) ->
   match Cst.OpenStatement.target statement with
   | Cst.OpenStatement.Path _ ->
       ctx
   | Cst.OpenStatement.ModuleExpression module_expression ->
       walk.module_expression ctx module_expression
-
-and descend_include_statement walk ctx (statement : Cst.include_statement) =
+and descend_include_statement = fun walk ctx (statement : Cst.include_statement) ->
   match statement.target with
   | Cst.ModuleExpression module_expression ->
       walk.module_expression ctx module_expression
   | Cst.ModuleType module_type ->
       walk.module_type ctx module_type
-
-and descend_structure_item walk ctx (item : Cst.StructureItem.t) =
+and descend_structure_item = fun walk ctx (item : Cst.StructureItem.t) ->
   match item with
   | Cst.StructureItem.TypeDeclaration declaration ->
       walk.type_declaration ctx declaration
@@ -983,6 +913,8 @@ and descend_structure_item walk ctx (item : Cst.StructureItem.t) =
       walk.open_statement ctx statement
   | Cst.StructureItem.Docstring _ ->
       ctx
+  | Cst.StructureItem.Comment _ ->
+      ctx
   | Cst.StructureItem.ValueDeclaration declaration ->
       walk.value_declaration ctx declaration
   | Cst.StructureItem.ExternalDeclaration declaration ->
@@ -991,8 +923,7 @@ and descend_structure_item walk ctx (item : Cst.StructureItem.t) =
       walk.include_statement ctx statement
   | Cst.StructureItem.ExceptionDeclaration declaration ->
       walk.exception_declaration ctx declaration
-
-and descend_signature_item walk ctx (item : Cst.SignatureItem.t) =
+and descend_signature_item = fun walk ctx (item : Cst.SignatureItem.t) ->
   match item with
   | Cst.SignatureItem.TypeDeclaration declaration ->
       walk.type_declaration ctx declaration
@@ -1016,6 +947,8 @@ and descend_signature_item walk ctx (item : Cst.SignatureItem.t) =
       walk.open_statement ctx statement
   | Cst.SignatureItem.Docstring _ ->
       ctx
+  | Cst.SignatureItem.Comment _ ->
+      ctx
   | Cst.SignatureItem.ValueDeclaration declaration ->
       walk.value_declaration ctx declaration
   | Cst.SignatureItem.ExternalDeclaration declaration ->
@@ -1024,359 +957,278 @@ and descend_signature_item walk ctx (item : Cst.SignatureItem.t) =
       walk.include_statement ctx statement
   | Cst.SignatureItem.ExceptionDeclaration declaration ->
       walk.exception_declaration ctx declaration
-
-and descend_implementation walk ctx (implementation : Cst.implementation) =
+and descend_implementation = fun walk ctx (implementation : Cst.implementation) ->
   List.fold_left walk.structure_item ctx implementation.items
-
-and descend_interface walk ctx (interface : Cst.interface) =
+and descend_interface = fun walk ctx (interface : Cst.interface) ->
   List.fold_left walk.signature_item ctx interface.items
-
-and descend_source_file walk ctx (source_file : Cst.SourceFile.t) =
+and descend_source_file = fun walk ctx (source_file : Cst.SourceFile.t) ->
   match source_file with
   | Cst.Implementation implementation ->
       walk.implementation ctx implementation
   | Cst.Interface interface ->
       walk.interface ctx interface
 
-let default =
-  {
-    visit_apply_argument = (fun ctx walk node -> walk.descend_apply_argument ctx node);
-    visit_attribute = (fun ctx walk node -> walk.descend_attribute ctx node);
-    visit_binding_operator_binding =
-      (fun ctx walk node -> walk.descend_binding_operator_binding ctx node);
-    visit_class_declaration =
-      (fun ctx walk node -> walk.descend_class_declaration ctx node);
-    visit_class_expression =
-      (fun ctx walk node -> walk.descend_class_expression ctx node);
-    visit_class_field =
-      (fun ctx walk node -> walk.descend_class_field ctx node);
-    visit_class_type =
-      (fun ctx walk node -> walk.descend_class_type ctx node);
-    visit_class_type_declaration =
-      (fun ctx walk node -> walk.descend_class_type_declaration ctx node);
-    visit_class_type_field =
-      (fun ctx walk node -> walk.descend_class_type_field ctx node);
-    visit_core_type =
-      (fun ctx walk node -> walk.descend_core_type ctx node);
-    visit_exception_declaration =
-      (fun ctx walk node -> walk.descend_exception_declaration ctx node);
-    visit_expression =
-      (fun ctx walk node -> walk.descend_expression ctx node);
-    visit_extension =
-      (fun ctx walk node -> walk.descend_extension ctx node);
-    visit_external_declaration =
-      (fun ctx walk node -> walk.descend_external_declaration ctx node);
-    visit_functor_parameter =
-      (fun ctx walk node -> walk.descend_functor_parameter ctx node);
-    visit_implementation =
-      (fun ctx walk node -> walk.descend_implementation ctx node);
-    visit_include_statement =
-      (fun ctx walk node -> walk.descend_include_statement ctx node);
-    visit_interface =
-      (fun ctx walk node -> walk.descend_interface ctx node);
-    visit_let_binding =
-      (fun ctx walk node -> walk.descend_let_binding ctx node);
-    visit_match_case =
-      (fun ctx walk node -> walk.descend_match_case ctx node);
-    visit_module_declaration =
-      (fun ctx walk node -> walk.descend_module_declaration ctx node);
-    visit_module_expression =
-      (fun ctx walk node -> walk.descend_module_expression ctx node);
-    visit_module_type =
-      (fun ctx walk node -> walk.descend_module_type ctx node);
-    visit_module_type_constraint =
-      (fun ctx walk node -> walk.descend_module_type_constraint ctx node);
-    visit_module_type_declaration =
-      (fun ctx walk node -> walk.descend_module_type_declaration ctx node);
-    visit_object_member =
-      (fun ctx walk node -> walk.descend_object_member ctx node);
-    visit_object_type_field =
-      (fun ctx walk node -> walk.descend_object_type_field ctx node);
-    visit_open_statement =
-      (fun ctx walk node -> walk.descend_open_statement ctx node);
-    visit_parameter =
-      (fun ctx walk node -> walk.descend_parameter ctx node);
-    visit_pattern =
-      (fun ctx walk node -> walk.descend_pattern ctx node);
-    visit_pattern_payload =
-      (fun ctx walk node -> walk.descend_pattern_payload ctx node);
-    visit_payload =
-      (fun ctx walk node -> walk.descend_payload ctx node);
-    visit_record_expression =
-      (fun ctx walk node -> walk.descend_record_expression ctx node);
-    visit_record_type_field =
-      (fun ctx walk node -> walk.descend_record_type_field ctx node);
-    visit_recursive_module_declaration =
-      (fun ctx walk node ->
-        walk.descend_recursive_module_declaration ctx node);
-    visit_row_field =
-      (fun ctx walk node -> walk.descend_row_field ctx node);
-    visit_signature_item =
-      (fun ctx walk node -> walk.descend_signature_item ctx node);
-    visit_source_file =
-      (fun ctx walk node -> walk.descend_source_file ctx node);
-    visit_structure_item =
-      (fun ctx walk node -> walk.descend_structure_item ctx node);
-    visit_type_binder =
-      (fun ctx walk node -> walk.descend_type_binder ctx node);
-    visit_type_constraint =
-      (fun ctx walk node -> walk.descend_type_constraint ctx node);
-    visit_type_declaration =
-      (fun ctx walk node -> walk.descend_type_declaration ctx node);
-    visit_type_definition =
-      (fun ctx walk node -> walk.descend_type_definition ctx node);
-    visit_type_extension =
-      (fun ctx walk node -> walk.descend_type_extension ctx node);
-    visit_type_parameter =
-      (fun ctx walk node -> walk.descend_type_parameter ctx node);
-    visit_value_declaration =
-      (fun ctx walk node -> walk.descend_value_declaration ctx node);
-    visit_variant_constructor =
-      (fun ctx walk node -> walk.descend_variant_constructor ctx node);
-  }
+let default = {visit_apply_argument = (fun ctx walk node ->
+    walk.descend_apply_argument ctx node); visit_attribute = (fun ctx walk node ->
+    walk.descend_attribute ctx node); visit_binding_operator_binding = (fun ctx walk node ->
+    walk.descend_binding_operator_binding ctx node); visit_class_declaration = (fun ctx walk node ->
+    walk.descend_class_declaration ctx node); visit_class_expression = (fun ctx walk node ->
+    walk.descend_class_expression ctx node); visit_class_field = (fun ctx walk node ->
+    walk.descend_class_field ctx node); visit_class_type = (fun ctx walk node ->
+    walk.descend_class_type ctx node); visit_class_type_declaration = (fun ctx walk node ->
+    walk.descend_class_type_declaration ctx node); visit_class_type_field = (fun ctx walk node ->
+    walk.descend_class_type_field ctx node); visit_core_type = (fun ctx walk node ->
+    walk.descend_core_type ctx node); visit_exception_declaration = (fun ctx walk node ->
+    walk.descend_exception_declaration ctx node); visit_expression = (fun ctx walk node ->
+    walk.descend_expression ctx node); visit_extension = (fun ctx walk node ->
+    walk.descend_extension ctx node); visit_external_declaration = (fun ctx walk node ->
+    walk.descend_external_declaration ctx node); visit_functor_parameter = (fun ctx walk node ->
+    walk.descend_functor_parameter ctx node); visit_implementation = (fun ctx walk node ->
+    walk.descend_implementation ctx node); visit_include_statement = (fun ctx walk node ->
+    walk.descend_include_statement ctx node); visit_interface = (fun ctx walk node ->
+    walk.descend_interface ctx node); visit_let_binding = (fun ctx walk node ->
+    walk.descend_let_binding ctx node); visit_match_case = (fun ctx walk node ->
+    walk.descend_match_case ctx node); visit_module_declaration = (fun ctx walk node ->
+    walk.descend_module_declaration ctx node); visit_module_expression = (fun ctx walk node ->
+    walk.descend_module_expression ctx node); visit_module_type = (fun ctx walk node ->
+    walk.descend_module_type ctx node); visit_module_type_constraint = (fun ctx walk node ->
+    walk.descend_module_type_constraint ctx node); visit_module_type_declaration = (fun ctx walk node ->
+    walk.descend_module_type_declaration ctx node); visit_object_member = (fun ctx walk node ->
+    walk.descend_object_member ctx node); visit_object_type_field = (fun ctx walk node ->
+    walk.descend_object_type_field ctx node); visit_open_statement = (fun ctx walk node ->
+    walk.descend_open_statement ctx node); visit_parameter = (fun ctx walk node ->
+    walk.descend_parameter ctx node); visit_pattern = (fun ctx walk node ->
+    walk.descend_pattern ctx node); visit_pattern_payload = (fun ctx walk node ->
+    walk.descend_pattern_payload ctx node); visit_payload = (fun ctx walk node ->
+    walk.descend_payload ctx node); visit_record_expression = (fun ctx walk node ->
+    walk.descend_record_expression ctx node); visit_record_type_field = (fun ctx walk node ->
+    walk.descend_record_type_field ctx node); visit_recursive_module_declaration = (fun ctx walk node ->
+    walk.descend_recursive_module_declaration ctx node); visit_row_field = (fun ctx walk node ->
+    walk.descend_row_field ctx node); visit_signature_item = (fun ctx walk node ->
+    walk.descend_signature_item ctx node); visit_source_file = (fun ctx walk node ->
+    walk.descend_source_file ctx node); visit_structure_item = (fun ctx walk node ->
+    walk.descend_structure_item ctx node); visit_type_binder = (fun ctx walk node ->
+    walk.descend_type_binder ctx node); visit_type_constraint = (fun ctx walk node ->
+    walk.descend_type_constraint ctx node); visit_type_declaration = (fun ctx walk node ->
+    walk.descend_type_declaration ctx node); visit_type_definition = (fun ctx walk node ->
+    walk.descend_type_definition ctx node); visit_type_extension = (fun ctx walk node ->
+    walk.descend_type_extension ctx node); visit_type_parameter = (fun ctx walk node ->
+    walk.descend_type_parameter ctx node); visit_value_declaration = (fun ctx walk node ->
+    walk.descend_value_declaration ctx node); visit_variant_constructor = (fun ctx walk node ->
+    walk.descend_variant_constructor ctx node)}
 
-let walker visitor =
-  let rec walk =
-    {
-      apply_argument = (fun ctx node -> visitor.visit_apply_argument ctx walk node);
-      attribute = (fun ctx node -> visitor.visit_attribute ctx walk node);
-      binding_operator_binding =
-        (fun ctx node ->
-          visitor.visit_binding_operator_binding ctx walk node);
-      class_declaration =
-        (fun ctx node -> visitor.visit_class_declaration ctx walk node);
-      class_expression =
-        (fun ctx node -> visitor.visit_class_expression ctx walk node);
-      class_field =
-        (fun ctx node -> visitor.visit_class_field ctx walk node);
-      class_type =
-        (fun ctx node -> visitor.visit_class_type ctx walk node);
-      class_type_declaration =
-        (fun ctx node -> visitor.visit_class_type_declaration ctx walk node);
-      class_type_field =
-        (fun ctx node -> visitor.visit_class_type_field ctx walk node);
-      core_type = (fun ctx node -> visitor.visit_core_type ctx walk node);
-      exception_declaration =
-        (fun ctx node -> visitor.visit_exception_declaration ctx walk node);
-      expression = (fun ctx node -> visitor.visit_expression ctx walk node);
-      extension = (fun ctx node -> visitor.visit_extension ctx walk node);
-      external_declaration =
-        (fun ctx node -> visitor.visit_external_declaration ctx walk node);
-      functor_parameter =
-        (fun ctx node -> visitor.visit_functor_parameter ctx walk node);
-      implementation =
-        (fun ctx node -> visitor.visit_implementation ctx walk node);
-      include_statement =
-        (fun ctx node -> visitor.visit_include_statement ctx walk node);
-      interface = (fun ctx node -> visitor.visit_interface ctx walk node);
-      let_binding = (fun ctx node -> visitor.visit_let_binding ctx walk node);
-      match_case = (fun ctx node -> visitor.visit_match_case ctx walk node);
-      module_declaration =
-        (fun ctx node -> visitor.visit_module_declaration ctx walk node);
-      module_expression =
-        (fun ctx node -> visitor.visit_module_expression ctx walk node);
-      module_type = (fun ctx node -> visitor.visit_module_type ctx walk node);
-      module_type_constraint =
-        (fun ctx node ->
-          visitor.visit_module_type_constraint ctx walk node);
-      module_type_declaration =
-        (fun ctx node ->
-          visitor.visit_module_type_declaration ctx walk node);
-      object_member =
-        (fun ctx node -> visitor.visit_object_member ctx walk node);
-      object_type_field =
-        (fun ctx node -> visitor.visit_object_type_field ctx walk node);
-      open_statement =
-        (fun ctx node -> visitor.visit_open_statement ctx walk node);
-      parameter = (fun ctx node -> visitor.visit_parameter ctx walk node);
-      pattern = (fun ctx node -> visitor.visit_pattern ctx walk node);
-      pattern_payload =
-        (fun ctx node -> visitor.visit_pattern_payload ctx walk node);
-      payload = (fun ctx node -> visitor.visit_payload ctx walk node);
-      record_expression =
-        (fun ctx node -> visitor.visit_record_expression ctx walk node);
-      record_type_field =
-        (fun ctx node -> visitor.visit_record_type_field ctx walk node);
-      recursive_module_declaration =
-        (fun ctx node ->
-          visitor.visit_recursive_module_declaration ctx walk node);
-      row_field = (fun ctx node -> visitor.visit_row_field ctx walk node);
-      signature_item =
-        (fun ctx node -> visitor.visit_signature_item ctx walk node);
-      source_file = (fun ctx node -> visitor.visit_source_file ctx walk node);
-      structure_item =
-        (fun ctx node -> visitor.visit_structure_item ctx walk node);
-      type_binder = (fun ctx node -> visitor.visit_type_binder ctx walk node);
-      type_constraint =
-        (fun ctx node -> visitor.visit_type_constraint ctx walk node);
-      type_declaration =
-        (fun ctx node -> visitor.visit_type_declaration ctx walk node);
-      type_definition =
-        (fun ctx node -> visitor.visit_type_definition ctx walk node);
-      type_extension =
-        (fun ctx node -> visitor.visit_type_extension ctx walk node);
-      type_parameter =
-        (fun ctx node -> visitor.visit_type_parameter ctx walk node);
-      value_declaration =
-        (fun ctx node -> visitor.visit_value_declaration ctx walk node);
-      variant_constructor =
-        (fun ctx node -> visitor.visit_variant_constructor ctx walk node);
-      descend_apply_argument = (fun ctx node -> descend_apply_argument walk ctx node);
-      descend_attribute = (fun ctx node -> descend_attribute walk ctx node);
-      descend_binding_operator_binding =
-        (fun ctx node -> descend_binding_operator_binding walk ctx node);
-      descend_class_declaration =
-        (fun ctx node -> descend_class_declaration walk ctx node);
-      descend_class_expression =
-        (fun ctx node -> descend_class_expression walk ctx node);
-      descend_class_field =
-        (fun ctx node -> descend_class_field walk ctx node);
-      descend_class_type =
-        (fun ctx node -> descend_class_type walk ctx node);
-      descend_class_type_declaration =
-        (fun ctx node -> descend_class_type_declaration walk ctx node);
-      descend_class_type_field =
-        (fun ctx node -> descend_class_type_field walk ctx node);
-      descend_core_type = (fun ctx node -> descend_core_type walk ctx node);
-      descend_exception_declaration =
-        (fun ctx node -> descend_exception_declaration walk ctx node);
-      descend_expression = (fun ctx node -> descend_expression walk ctx node);
-      descend_extension = (fun ctx node -> descend_extension walk ctx node);
-      descend_external_declaration =
-        (fun ctx node -> descend_external_declaration walk ctx node);
-      descend_functor_parameter =
-        (fun ctx node -> descend_functor_parameter walk ctx node);
-      descend_implementation =
-        (fun ctx node -> descend_implementation walk ctx node);
-      descend_include_statement =
-        (fun ctx node -> descend_include_statement walk ctx node);
-      descend_interface = (fun ctx node -> descend_interface walk ctx node);
-      descend_let_binding = (fun ctx node -> descend_let_binding walk ctx node);
-      descend_match_case = (fun ctx node -> descend_match_case walk ctx node);
-      descend_module_declaration =
-        (fun ctx node -> descend_module_declaration walk ctx node);
-      descend_module_expression =
-        (fun ctx node -> descend_module_expression walk ctx node);
-      descend_module_type =
-        (fun ctx node -> descend_module_type walk ctx node);
-      descend_module_type_constraint =
-        (fun ctx node -> descend_module_type_constraint walk ctx node);
-      descend_module_type_declaration =
-        (fun ctx node -> descend_module_type_declaration walk ctx node);
-      descend_object_member =
-        (fun ctx node -> descend_object_member walk ctx node);
-      descend_object_type_field =
-        (fun ctx node -> descend_object_type_field walk ctx node);
-      descend_open_statement =
-        (fun ctx node -> descend_open_statement walk ctx node);
-      descend_parameter = (fun ctx node -> descend_parameter walk ctx node);
-      descend_pattern = (fun ctx node -> descend_pattern walk ctx node);
-      descend_pattern_payload =
-        (fun ctx node -> descend_pattern_payload walk ctx node);
-      descend_payload = (fun ctx node -> descend_payload walk ctx node);
-      descend_record_expression =
-        (fun ctx node -> descend_record_expression walk ctx node);
-      descend_record_type_field =
-        (fun ctx node -> descend_record_type_field walk ctx node);
-      descend_recursive_module_declaration =
-        (fun ctx node ->
-          descend_recursive_module_declaration walk ctx node);
-      descend_row_field = (fun ctx node -> descend_row_field walk ctx node);
-      descend_signature_item =
-        (fun ctx node -> descend_signature_item walk ctx node);
-      descend_source_file =
-        (fun ctx node -> descend_source_file walk ctx node);
-      descend_structure_item =
-        (fun ctx node -> descend_structure_item walk ctx node);
-      descend_type_binder =
-        (fun ctx node -> descend_type_binder walk ctx node);
-      descend_type_constraint =
-        (fun ctx node -> descend_type_constraint walk ctx node);
-      descend_type_declaration =
-        (fun ctx node -> descend_type_declaration walk ctx node);
-      descend_type_definition =
-        (fun ctx node -> descend_type_definition walk ctx node);
-      descend_type_extension =
-        (fun ctx node -> descend_type_extension walk ctx node);
-      descend_type_parameter =
-        (fun ctx node -> descend_type_parameter walk ctx node);
-      descend_value_declaration =
-        (fun ctx node -> descend_value_declaration walk ctx node);
-      descend_variant_constructor =
-        (fun ctx node -> descend_variant_constructor walk ctx node);
-    }
+let walker = fun visitor ->
+  let rec walk = {apply_argument = (fun ctx node ->
+      visitor.visit_apply_argument ctx walk node); attribute = (fun ctx node ->
+      visitor.visit_attribute ctx walk node); binding_operator_binding = (fun ctx node ->
+      visitor.visit_binding_operator_binding ctx walk node); class_declaration = (fun ctx node ->
+      visitor.visit_class_declaration ctx walk node); class_expression = (fun ctx node ->
+      visitor.visit_class_expression ctx walk node); class_field = (fun ctx node ->
+      visitor.visit_class_field ctx walk node); class_type = (fun ctx node ->
+      visitor.visit_class_type ctx walk node); class_type_declaration = (fun ctx node ->
+      visitor.visit_class_type_declaration ctx walk node); class_type_field = (fun ctx node ->
+      visitor.visit_class_type_field ctx walk node); core_type = (fun ctx node ->
+      visitor.visit_core_type ctx walk node); exception_declaration = (fun ctx node ->
+      visitor.visit_exception_declaration ctx walk node); expression = (fun ctx node ->
+      visitor.visit_expression ctx walk node); extension = (fun ctx node ->
+      visitor.visit_extension ctx walk node); external_declaration = (fun ctx node ->
+      visitor.visit_external_declaration ctx walk node); functor_parameter = (fun ctx node ->
+      visitor.visit_functor_parameter ctx walk node); implementation = (fun ctx node ->
+      visitor.visit_implementation ctx walk node); include_statement = (fun ctx node ->
+      visitor.visit_include_statement ctx walk node); interface = (fun ctx node ->
+      visitor.visit_interface ctx walk node); let_binding = (fun ctx node ->
+      visitor.visit_let_binding ctx walk node); match_case = (fun ctx node ->
+      visitor.visit_match_case ctx walk node); module_declaration = (fun ctx node ->
+      visitor.visit_module_declaration ctx walk node); module_expression = (fun ctx node ->
+      visitor.visit_module_expression ctx walk node); module_type = (fun ctx node ->
+      visitor.visit_module_type ctx walk node); module_type_constraint = (fun ctx node ->
+      visitor.visit_module_type_constraint ctx walk node); module_type_declaration = (fun ctx node ->
+      visitor.visit_module_type_declaration ctx walk node); object_member = (fun ctx node ->
+      visitor.visit_object_member ctx walk node); object_type_field = (fun ctx node ->
+      visitor.visit_object_type_field ctx walk node); open_statement = (fun ctx node ->
+      visitor.visit_open_statement ctx walk node); parameter = (fun ctx node ->
+      visitor.visit_parameter ctx walk node); pattern = (fun ctx node ->
+      visitor.visit_pattern ctx walk node); pattern_payload = (fun ctx node ->
+      visitor.visit_pattern_payload ctx walk node); payload = (fun ctx node ->
+      visitor.visit_payload ctx walk node); record_expression = (fun ctx node ->
+      visitor.visit_record_expression ctx walk node); record_type_field = (fun ctx node ->
+      visitor.visit_record_type_field ctx walk node); recursive_module_declaration = (fun ctx node ->
+      visitor.visit_recursive_module_declaration ctx walk node); row_field = (fun ctx node ->
+      visitor.visit_row_field ctx walk node); signature_item = (fun ctx node ->
+      visitor.visit_signature_item ctx walk node); source_file = (fun ctx node ->
+      visitor.visit_source_file ctx walk node); structure_item = (fun ctx node ->
+      visitor.visit_structure_item ctx walk node); type_binder = (fun ctx node ->
+      visitor.visit_type_binder ctx walk node); type_constraint = (fun ctx node ->
+      visitor.visit_type_constraint ctx walk node); type_declaration = (fun ctx node ->
+      visitor.visit_type_declaration ctx walk node); type_definition = (fun ctx node ->
+      visitor.visit_type_definition ctx walk node); type_extension = (fun ctx node ->
+      visitor.visit_type_extension ctx walk node); type_parameter = (fun ctx node ->
+      visitor.visit_type_parameter ctx walk node); value_declaration = (fun ctx node ->
+      visitor.visit_value_declaration ctx walk node); variant_constructor = (fun ctx node ->
+      visitor.visit_variant_constructor ctx walk node); descend_apply_argument = (fun ctx node -> descend_apply_argument walk ctx node); descend_attribute = (fun ctx node -> descend_attribute
+    walk
+    ctx
+    node); descend_binding_operator_binding = (fun ctx node -> descend_binding_operator_binding walk ctx node); descend_class_declaration = (fun ctx node -> descend_class_declaration
+    walk
+    ctx
+    node); descend_class_expression = (fun ctx node -> descend_class_expression walk ctx node); descend_class_field = (fun ctx node -> descend_class_field
+    walk
+    ctx
+    node); descend_class_type = (fun ctx node -> descend_class_type walk ctx node); descend_class_type_declaration = (fun ctx node -> descend_class_type_declaration walk ctx node); descend_class_type_field = (fun ctx node -> descend_class_type_field
+    walk
+    ctx
+    node); descend_core_type = (fun ctx node -> descend_core_type walk ctx node); descend_exception_declaration = (fun ctx node -> descend_exception_declaration
+    walk
+    ctx
+    node); descend_expression = (fun ctx node -> descend_expression walk ctx node); descend_extension = (fun ctx node -> descend_extension
+    walk
+    ctx
+    node); descend_external_declaration = (fun ctx node -> descend_external_declaration walk ctx node); descend_functor_parameter = (fun ctx node -> descend_functor_parameter
+    walk
+    ctx
+    node); descend_implementation = (fun ctx node -> descend_implementation walk ctx node); descend_include_statement = (fun ctx node -> descend_include_statement
+    walk
+    ctx
+    node); descend_interface = (fun ctx node -> descend_interface walk ctx node); descend_let_binding = (fun ctx node -> descend_let_binding
+    walk
+    ctx
+    node); descend_match_case = (fun ctx node -> descend_match_case walk ctx node); descend_module_declaration = (fun ctx node -> descend_module_declaration
+    walk
+    ctx
+    node); descend_module_expression = (fun ctx node -> descend_module_expression walk ctx node); descend_module_type = (fun ctx node -> descend_module_type
+    walk
+    ctx
+    node); descend_module_type_constraint = (fun ctx node -> descend_module_type_constraint walk ctx node); descend_module_type_declaration = (fun ctx node -> descend_module_type_declaration walk ctx node); descend_object_member = (fun ctx node -> descend_object_member
+    walk
+    ctx
+    node); descend_object_type_field = (fun ctx node -> descend_object_type_field walk ctx node); descend_open_statement = (fun ctx node -> descend_open_statement
+    walk
+    ctx
+    node); descend_parameter = (fun ctx node -> descend_parameter walk ctx node); descend_pattern = (fun ctx node -> descend_pattern
+    walk
+    ctx
+    node); descend_pattern_payload = (fun ctx node -> descend_pattern_payload walk ctx node); descend_payload = (fun ctx node -> descend_payload
+    walk
+    ctx
+    node); descend_record_expression = (fun ctx node -> descend_record_expression walk ctx node); descend_record_type_field = (fun ctx node -> descend_record_type_field
+    walk
+    ctx
+    node); descend_recursive_module_declaration = (fun ctx node -> descend_recursive_module_declaration walk ctx node); descend_row_field = (fun ctx node -> descend_row_field
+    walk
+    ctx
+    node); descend_signature_item = (fun ctx node -> descend_signature_item walk ctx node); descend_source_file = (fun ctx node -> descend_source_file
+    walk
+    ctx
+    node); descend_structure_item = (fun ctx node -> descend_structure_item walk ctx node); descend_type_binder = (fun ctx node -> descend_type_binder
+    walk
+    ctx
+    node); descend_type_constraint = (fun ctx node -> descend_type_constraint walk ctx node); descend_type_declaration = (fun ctx node -> descend_type_declaration
+    walk
+    ctx
+    node); descend_type_definition = (fun ctx node -> descend_type_definition walk ctx node); descend_type_extension = (fun ctx node -> descend_type_extension
+    walk
+    ctx
+    node); descend_type_parameter = (fun ctx node -> descend_type_parameter walk ctx node); descend_value_declaration = (fun ctx node -> descend_value_declaration
+    walk
+    ctx
+    node); descend_variant_constructor = (fun ctx node -> descend_variant_constructor walk ctx node)}
   in
   walk
 
-let apply_argument visitor ctx node = (walker visitor).apply_argument ctx node
-let attribute visitor ctx node = (walker visitor).attribute ctx node
-let binding_operator_binding visitor ctx node =
-  (walker visitor).binding_operator_binding ctx node
-let class_declaration visitor ctx node =
-  (walker visitor).class_declaration ctx node
-let class_expression visitor ctx node =
-  (walker visitor).class_expression ctx node
-let class_field visitor ctx node = (walker visitor).class_field ctx node
-let class_type visitor ctx node = (walker visitor).class_type ctx node
-let class_type_declaration visitor ctx node =
-  (walker visitor).class_type_declaration ctx node
-let class_type_field visitor ctx node =
-  (walker visitor).class_type_field ctx node
-let core_type visitor ctx node = (walker visitor).core_type ctx node
-let exception_declaration visitor ctx node =
-  (walker visitor).exception_declaration ctx node
-let expression visitor ctx node = (walker visitor).expression ctx node
-let extension visitor ctx node = (walker visitor).extension ctx node
-let external_declaration visitor ctx node =
-  (walker visitor).external_declaration ctx node
-let functor_parameter visitor ctx node =
-  (walker visitor).functor_parameter ctx node
-let implementation visitor ctx node = (walker visitor).implementation ctx node
-let include_statement visitor ctx node =
-  (walker visitor).include_statement ctx node
-let interface visitor ctx node = (walker visitor).interface ctx node
-let let_binding visitor ctx node = (walker visitor).let_binding ctx node
-let match_case visitor ctx node = (walker visitor).match_case ctx node
-let module_declaration visitor ctx node =
-  (walker visitor).module_declaration ctx node
-let module_expression visitor ctx node =
-  (walker visitor).module_expression ctx node
-let module_type visitor ctx node = (walker visitor).module_type ctx node
-let module_type_constraint visitor ctx node =
-  (walker visitor).module_type_constraint ctx node
-let module_type_declaration visitor ctx node =
-  (walker visitor).module_type_declaration ctx node
-let object_member visitor ctx node = (walker visitor).object_member ctx node
-let object_type_field visitor ctx node =
-  (walker visitor).object_type_field ctx node
-let open_statement visitor ctx node = (walker visitor).open_statement ctx node
-let parameter visitor ctx node = (walker visitor).parameter ctx node
-let pattern visitor ctx node = (walker visitor).pattern ctx node
-let pattern_payload visitor ctx node =
-  (walker visitor).pattern_payload ctx node
-let payload visitor ctx node = (walker visitor).payload ctx node
-let record_expression visitor ctx node =
-  (walker visitor).record_expression ctx node
-let record_type_field visitor ctx node =
-  (walker visitor).record_type_field ctx node
-let recursive_module_declaration visitor ctx node =
-  (walker visitor).recursive_module_declaration ctx node
-let row_field visitor ctx node = (walker visitor).row_field ctx node
-let signature_item visitor ctx node = (walker visitor).signature_item ctx node
-let source_file visitor ctx node = (walker visitor).source_file ctx node
-let structure_item visitor ctx node = (walker visitor).structure_item ctx node
-let type_binder visitor ctx node = (walker visitor).type_binder ctx node
-let type_constraint visitor ctx node =
-  (walker visitor).type_constraint ctx node
-let type_declaration visitor ctx node =
-  (walker visitor).type_declaration ctx node
-let type_definition visitor ctx node =
-  (walker visitor).type_definition ctx node
-let type_extension visitor ctx node =
-  (walker visitor).type_extension ctx node
-let type_parameter visitor ctx node =
-  (walker visitor).type_parameter ctx node
-let value_declaration visitor ctx node =
-  (walker visitor).value_declaration ctx node
-let variant_constructor visitor ctx node =
-  (walker visitor).variant_constructor ctx node
+let apply_argument = fun visitor ctx node -> (walker visitor).apply_argument ctx node
+
+let attribute = fun visitor ctx node -> (walker visitor).attribute ctx node
+
+let binding_operator_binding = fun visitor ctx node -> (walker visitor).binding_operator_binding
+ctx
+node
+
+let class_declaration = fun visitor ctx node -> (walker visitor).class_declaration ctx node
+
+let class_expression = fun visitor ctx node -> (walker visitor).class_expression ctx node
+
+let class_field = fun visitor ctx node -> (walker visitor).class_field ctx node
+
+let class_type = fun visitor ctx node -> (walker visitor).class_type ctx node
+
+let class_type_declaration = fun visitor ctx node -> (walker visitor).class_type_declaration ctx node
+
+let class_type_field = fun visitor ctx node -> (walker visitor).class_type_field ctx node
+
+let core_type = fun visitor ctx node -> (walker visitor).core_type ctx node
+
+let exception_declaration = fun visitor ctx node -> (walker visitor).exception_declaration ctx node
+
+let expression = fun visitor ctx node -> (walker visitor).expression ctx node
+
+let extension = fun visitor ctx node -> (walker visitor).extension ctx node
+
+let external_declaration = fun visitor ctx node -> (walker visitor).external_declaration ctx node
+
+let functor_parameter = fun visitor ctx node -> (walker visitor).functor_parameter ctx node
+
+let implementation = fun visitor ctx node -> (walker visitor).implementation ctx node
+
+let include_statement = fun visitor ctx node -> (walker visitor).include_statement ctx node
+
+let interface = fun visitor ctx node -> (walker visitor).interface ctx node
+
+let let_binding = fun visitor ctx node -> (walker visitor).let_binding ctx node
+
+let match_case = fun visitor ctx node -> (walker visitor).match_case ctx node
+
+let module_declaration = fun visitor ctx node -> (walker visitor).module_declaration ctx node
+
+let module_expression = fun visitor ctx node -> (walker visitor).module_expression ctx node
+
+let module_type = fun visitor ctx node -> (walker visitor).module_type ctx node
+
+let module_type_constraint = fun visitor ctx node -> (walker visitor).module_type_constraint ctx node
+
+let module_type_declaration = fun visitor ctx node -> (walker visitor).module_type_declaration ctx node
+
+let object_member = fun visitor ctx node -> (walker visitor).object_member ctx node
+
+let object_type_field = fun visitor ctx node -> (walker visitor).object_type_field ctx node
+
+let open_statement = fun visitor ctx node -> (walker visitor).open_statement ctx node
+
+let parameter = fun visitor ctx node -> (walker visitor).parameter ctx node
+
+let pattern = fun visitor ctx node -> (walker visitor).pattern ctx node
+
+let pattern_payload = fun visitor ctx node -> (walker visitor).pattern_payload ctx node
+
+let payload = fun visitor ctx node -> (walker visitor).payload ctx node
+
+let record_expression = fun visitor ctx node -> (walker visitor).record_expression ctx node
+
+let record_type_field = fun visitor ctx node -> (walker visitor).record_type_field ctx node
+
+let recursive_module_declaration = fun visitor ctx node -> (walker visitor).recursive_module_declaration
+ctx
+node
+
+let row_field = fun visitor ctx node -> (walker visitor).row_field ctx node
+
+let signature_item = fun visitor ctx node -> (walker visitor).signature_item ctx node
+
+let source_file = fun visitor ctx node -> (walker visitor).source_file ctx node
+
+let structure_item = fun visitor ctx node -> (walker visitor).structure_item ctx node
+
+let type_binder = fun visitor ctx node -> (walker visitor).type_binder ctx node
+
+let type_constraint = fun visitor ctx node -> (walker visitor).type_constraint ctx node
+
+let type_declaration = fun visitor ctx node -> (walker visitor).type_declaration ctx node
+
+let type_definition = fun visitor ctx node -> (walker visitor).type_definition ctx node
+
+let type_extension = fun visitor ctx node -> (walker visitor).type_extension ctx node
+
+let type_parameter = fun visitor ctx node -> (walker visitor).type_parameter ctx node
+
+let value_declaration = fun visitor ctx node -> (walker visitor).value_declaration ctx node
+
+let variant_constructor = fun visitor ctx node -> (walker visitor).variant_constructor ctx node

@@ -72,23 +72,6 @@ open Std
 
 (** # Types *)
 
-type parse_result = {
-  source : string;
-      (** The original source text that produced this parse result. *)
-  kind : [ `Implementation | `Interface ];
-      (** Which file grammar produced this parse result. *)
-  tree : (Syntax_kind.t, string) Ceibo.Green.node;
-      (** The parsed green tree.
-
-          This is an immutable, position-independent tree that preserves all
-          source information. It may contain ERROR and MISSING nodes if the
-          source had syntax errors. *)
-  diagnostics : Diagnostic.t list;
-      (** List of parse errors and warnings.
-
-          Empty list means no errors were found. Each diagnostic describes a
-          specific problem with its location in the source. *)
-}
 (** Result of parsing.
 
     The parser **always** returns a parse result, even if the source code is
@@ -99,11 +82,37 @@ type parse_result = {
     - IDE features that work on incomplete code
     - Reporting multiple errors in one pass
     - Incremental parsing (unchanged subtrees can be reused) *)
+type parse_result = {
+  source : string;
+  (** The original source text that produced this parse result. *)
+  tokens : Token.t list;
+  (** The original lexer token stream, before parser-compatibility trivia
+      flattening.
 
+      During the trivia migration this remains the lossless source of token
+      ownership, including `EOF.leading_trivia` for trailing file trivia. *)
+  kind :
+    [
+      | `Implementation
+      | `Interface
+    ];
+  (** Which file grammar produced this parse result. *)
+  tree : (Syntax_kind.t, string) Ceibo.Green.node;
+  (** The parsed green tree.
+
+    This is an immutable, position-independent tree that preserves all
+          source information. It may contain ERROR and MISSING nodes if the
+          source had syntax errors. *)
+  diagnostics : Diagnostic.t list;
+  (** List of parse errors and warnings.
+
+          Empty list means no errors were found. Each diagnostic describes a
+          specific problem with its location in the source. *)
+}
 (** # Parsing *)
 
-val parse_interface : source:string -> Token.t list -> parse_result
 (** Parse an interface file (.mli) *)
+val parse_interface : source:string -> Token.t list -> parse_result
 
-val parse_implementation : source:string -> Token.t list -> parse_result
 (** Parse an implementation file (.ml) *)
+val parse_implementation : source:string -> Token.t list -> parse_result

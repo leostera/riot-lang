@@ -6,10 +6,50 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 424
+        "end": 281
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 16
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* TEST_BELOW *)",
+            "span": {
+              "start": 0,
+              "end": 16
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 18,
+              "end": 62
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Int and float plus and minus operators *)",
+            "span": {
+              "start": 18,
+              "end": 62
+            }
+          }
+        }
+      },
       {
         "tag": "expression",
         "item": {
@@ -17,7 +57,7 @@
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 63,
+              "start": 0,
               "end": 66
             }
           },
@@ -35,7 +75,7 @@
               "syntax_node": {
                 "kind": "PREFIX_EXPR",
                 "span": {
-                  "start": 63,
+                  "start": 0,
                   "end": 65
                 }
               },
@@ -83,7 +123,7 @@
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 68,
+              "start": 67,
               "end": 70
             }
           },
@@ -103,7 +143,7 @@
                 "syntax_node": {
                   "kind": "INT_LITERAL",
                   "span": {
-                    "start": 68,
+                    "start": 67,
                     "end": 69
                   }
                 },
@@ -131,7 +171,7 @@
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 72,
+              "start": 71,
               "end": 77
             }
           },
@@ -149,7 +189,7 @@
               "syntax_node": {
                 "kind": "PREFIX_EXPR",
                 "span": {
-                  "start": 72,
+                  "start": 71,
                   "end": 76
                 }
               },
@@ -197,7 +237,7 @@
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 79,
+              "start": 78,
               "end": 83
             }
           },
@@ -217,7 +257,7 @@
                 "syntax_node": {
                   "kind": "FLOAT_LITERAL",
                   "span": {
-                    "start": 79,
+                    "start": 78,
                     "end": 82
                   }
                 },
@@ -245,7 +285,7 @@
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 85,
+              "start": 84,
               "end": 90
             }
           },
@@ -263,7 +303,7 @@
               "syntax_node": {
                 "kind": "PREFIX_EXPR",
                 "span": {
-                  "start": 85,
+                  "start": 84,
                   "end": 89
                 }
               },
@@ -311,7 +351,7 @@
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 92,
+              "start": 91,
               "end": 96
             }
           },
@@ -331,7 +371,7 @@
                 "syntax_node": {
                   "kind": "FLOAT_LITERAL",
                   "span": {
-                    "start": 92,
+                    "start": 91,
                     "end": 95
                   }
                 },
@@ -353,13 +393,33 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 99,
+              "end": 120
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Prefix operator *)",
+            "span": {
+              "start": 99,
+              "end": 120
+            }
+          }
+        }
+      },
+      {
         "tag": "expression",
         "item": {
           "tag": "sequence",
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 121,
+              "start": 97,
               "end": 125
             }
           },
@@ -377,7 +437,7 @@
               "syntax_node": {
                 "kind": "PREFIX_EXPR",
                 "span": {
-                  "start": 121,
+                  "start": 97,
                   "end": 124
                 }
               },
@@ -437,13 +497,33 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 128,
+              "end": 174
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* With attributes attached to the argument *)",
+            "span": {
+              "start": 128,
+              "end": 174
+            }
+          }
+        }
+      },
+      {
         "tag": "expression",
         "item": {
           "tag": "sequence",
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 175,
+              "start": 126,
               "end": 187
             }
           },
@@ -461,7 +541,7 @@
               "syntax_node": {
                 "kind": "PREFIX_EXPR",
                 "span": {
-                  "start": 175,
+                  "start": 126,
                   "end": 186
                 }
               },
@@ -528,7 +608,7 @@
                       "syntax_node": {
                         "kind": "ATTRIBUTE_EXPR",
                         "span": {
-                          "start": 179,
+                          "start": 178,
                           "end": 185
                         }
                       },
@@ -545,7 +625,7 @@
                         "syntax_node": {
                           "kind": "ATTRIBUTE_EXPR",
                           "span": {
-                            "start": 179,
+                            "start": 178,
                             "end": 185
                           }
                         },
@@ -575,7 +655,7 @@
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 189,
+              "start": 188,
               "end": 201
             }
           },
@@ -593,7 +673,7 @@
               "syntax_node": {
                 "kind": "PREFIX_EXPR",
                 "span": {
-                  "start": 189,
+                  "start": 188,
                   "end": 200
                 }
               },
@@ -660,7 +740,7 @@
                       "syntax_node": {
                         "kind": "ATTRIBUTE_EXPR",
                         "span": {
-                          "start": 193,
+                          "start": 192,
                           "end": 199
                         }
                       },
@@ -677,7 +757,7 @@
                         "syntax_node": {
                           "kind": "ATTRIBUTE_EXPR",
                           "span": {
-                            "start": 193,
+                            "start": 192,
                             "end": 199
                           }
                         },
@@ -707,7 +787,7 @@
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 203,
+              "start": 202,
               "end": 217
             }
           },
@@ -725,7 +805,7 @@
               "syntax_node": {
                 "kind": "PREFIX_EXPR",
                 "span": {
-                  "start": 203,
+                  "start": 202,
                   "end": 216
                 }
               },
@@ -792,7 +872,7 @@
                       "syntax_node": {
                         "kind": "ATTRIBUTE_EXPR",
                         "span": {
-                          "start": 209,
+                          "start": 208,
                           "end": 215
                         }
                       },
@@ -809,7 +889,7 @@
                         "syntax_node": {
                           "kind": "ATTRIBUTE_EXPR",
                           "span": {
-                            "start": 209,
+                            "start": 208,
                             "end": 215
                           }
                         },
@@ -839,7 +919,7 @@
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 219,
+              "start": 218,
               "end": 233
             }
           },
@@ -857,7 +937,7 @@
               "syntax_node": {
                 "kind": "PREFIX_EXPR",
                 "span": {
-                  "start": 219,
+                  "start": 218,
                   "end": 232
                 }
               },
@@ -924,7 +1004,7 @@
                       "syntax_node": {
                         "kind": "ATTRIBUTE_EXPR",
                         "span": {
-                          "start": 225,
+                          "start": 224,
                           "end": 231
                         }
                       },
@@ -941,7 +1021,7 @@
                         "syntax_node": {
                           "kind": "ATTRIBUTE_EXPR",
                           "span": {
-                            "start": 225,
+                            "start": 224,
                             "end": 231
                           }
                         },
@@ -971,7 +1051,7 @@
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 235,
+              "start": 234,
               "end": 250
             }
           },
@@ -989,7 +1069,7 @@
               "syntax_node": {
                 "kind": "PREFIX_EXPR",
                 "span": {
-                  "start": 235,
+                  "start": 234,
                   "end": 249
                 }
               },
@@ -1056,7 +1136,7 @@
                       "syntax_node": {
                         "kind": "ATTRIBUTE_EXPR",
                         "span": {
-                          "start": 242,
+                          "start": 241,
                           "end": 248
                         }
                       },
@@ -1073,7 +1153,7 @@
                         "syntax_node": {
                           "kind": "ATTRIBUTE_EXPR",
                           "span": {
-                            "start": 242,
+                            "start": 241,
                             "end": 248
                           }
                         },
@@ -1103,7 +1183,7 @@
           "syntax_node": {
             "kind": "SEQUENCE_EXPR",
             "span": {
-              "start": 252,
+              "start": 251,
               "end": 267
             }
           },
@@ -1121,7 +1201,7 @@
               "syntax_node": {
                 "kind": "PREFIX_EXPR",
                 "span": {
-                  "start": 252,
+                  "start": 251,
                   "end": 266
                 }
               },
@@ -1188,7 +1268,7 @@
                       "syntax_node": {
                         "kind": "ATTRIBUTE_EXPR",
                         "span": {
-                          "start": 259,
+                          "start": 258,
                           "end": 265
                         }
                       },
@@ -1205,7 +1285,7 @@
                         "syntax_node": {
                           "kind": "ATTRIBUTE_EXPR",
                           "span": {
-                            "start": 259,
+                            "start": 258,
                             "end": 265
                           }
                         },
@@ -1235,7 +1315,7 @@
           "syntax_node": {
             "kind": "PREFIX_EXPR",
             "span": {
-              "start": 269,
+              "start": 268,
               "end": 281
             }
           },
@@ -1319,7 +1399,7 @@
                     "syntax_node": {
                       "kind": "ATTRIBUTE_EXPR",
                       "span": {
-                        "start": 274,
+                        "start": 273,
                         "end": 280
                       }
                     },
@@ -1336,7 +1416,7 @@
                       "syntax_node": {
                         "kind": "ATTRIBUTE_EXPR",
                         "span": {
-                          "start": 274,
+                          "start": 273,
                           "end": 280
                         }
                       },
@@ -1354,6 +1434,26 @@
                   }
                 ]
               }
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 283,
+              "end": 423
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* TEST\n flags = \"-dparsetree -dno-locations -stop-after parsing\";\n setup-ocamlc.byte-build-env;\n ocamlc.byte;\n check-ocamlc.byte-output;\n*)",
+            "span": {
+              "start": 283,
+              "end": 423
             }
           }
         }

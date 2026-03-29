@@ -64,39 +64,39 @@ For every slice below:
     - focused token construction tests
     - `timeout 120 tusk build ceibo syn`
 
-- [ ] Add EOF-owned trailing file trivia
+- [x] Add EOF-owned trailing file trivia
   - introduce an EOF token/sentinel whose `leading_trivia` owns trailing file trivia
   - keep file-end comments/docstrings lossless
   - verification:
     - focused EOF/file-end tests
     - `timeout 120 tusk build ceibo syn`
 
-- [ ] Update Ceibo docs/helpers to describe token-attached trivia
+- [x] Update Ceibo docs/helpers to describe token-attached trivia
   - remove assumptions that trivia exists as tree children
   - verification:
     - docs match the landed representation
 
 ### 2. Remove Trivia-As-Children From Trees
 
-- [ ] Stop constructing standalone trivia children in the green tree
+- [x] Stop constructing standalone trivia children in the green tree
   - tree children should be non-trivia syntax only
   - verification:
     - `timeout 120 tusk build ceibo syn`
 
-- [ ] Stop exposing standalone trivia children in the red tree
+- [x] Stop exposing standalone trivia children in the red tree
   - traversal helpers should not rely on filtering trivia out of child lists
   - verification:
     - focused Ceibo traversal tests
     - `timeout 120 tusk build ceibo syn`
 
-- [ ] Keep `syn print-ceibo` lossless after the representation change
+- [x] Keep `syn print-ceibo` lossless after the representation change
   - verification:
     - direct before/after print-ceibo checks on files with mixed comments/docstrings
     - `timeout 120 tusk build ceibo syn`
 
 ### 3. Syn Lexer / Parser Migration
 
-- [ ] Make the lexer accumulate trivia onto the next real token
+- [x] Make the lexer accumulate trivia onto the next real token
   - `Whitespace` / `Comment` / `Docstring` stop behaving like ordinary parser tokens
   - preserve exact trivia ordering
   - verification:
@@ -110,7 +110,7 @@ For every slice below:
     - focused parser tests on awkward comment placements
     - `timeout 120 tusk build syn`
 
-- [ ] Update token cursor / parser helper APIs for token-attached trivia
+- [x] Update token cursor / parser helper APIs for token-attached trivia
   - helpers should work on real tokens directly
   - verification:
     - focused parser helper tests if needed
@@ -243,5 +243,14 @@ For every slice below:
 ## Current Notes
 
 - [ ] Treat the existing `owned_trivia` expansion as a migration aid, not the final model
-- [ ] Current state: Ceibo green/red tokens now have token-attached `leading_trivia`, but the lexer/parser still populate `[]` and still store trivia as standalone tree children
-- [ ] The next concrete slice is EOF-owned trailing file trivia, with the lexer/parser still otherwise unchanged
+- [ ] Current state: Ceibo docs and builder helpers now describe token-attached trivia explicitly, including EOF-owned trailing file trivia
+- [ ] Current state: Ceibo green/red tokens have token-attached `leading_trivia`; `syn` now also uses EOF `leading_trivia` to own trailing file trivia
+- [ ] Current state: `Parser.parse_result.tokens` and `syn print-ceibo` preserve the original lexer token stream, so lossless token ownership no longer depends on trivia tree children
+- [ ] Current state: `Lexer.tokenize` now emits only real tokens plus EOF, with all non-EOF trivia attached to the next real token
+- [ ] Current state: `Token_cursor` now works on real tokens directly and exposes helper APIs for consuming the current token's leading trivia without reintroducing trivia tokens into the main parser stream
+- [ ] Current state: the parser still has explicit `consume_trivia` flows, but they now mostly live in syntax-preserving production paths and ambiguity checks, not in the old trivia-token control-flow scaffolding
+- [ ] Current state: module/class top-level keyword probes, bracket attribute/extension probes, functor application / `(val ...)` module-expression probes, parenthesized module-type lookahead in module expressions, application/infix/tuple/assign/sequence expression continuations, paren and bracket local-open vs index expression disambiguation, postfix custom-index/operator-like probes, dotted module/module-type/type-name/qualified-field path continuations, local-open core type path lookahead, `include module type of`, `let open` expression detection, the polymorphic/local-open/local-abstract type probes, tuple/as/cons/or pattern continuations, local-open pattern path disambiguation, and literal range-pattern probes no longer rely on trivia-skipping control flow; inline-comment cases are pinned in `syn:cst_tests`
+- [ ] Current state: top-level file loops and nested `struct`/`sig` body loops no longer thread trivia through `tokens_to_green []`
+- [ ] Current state: red traversal now follows the same contract as green for parser-built trees; leading trivia lives on tokens and `SyntaxNode.tokens` stays trivia-free
+- [ ] Current state: `print-ceibo` fixture coverage now includes a mixed comment/docstring bridge case
+- [ ] The next concrete slice is removing explicit parser trivia consumption from the remaining branch-sensitive declaration/type ambiguity helpers that still speculatively parse and rewind, especially the type-declaration probe that parses an uppercase-starting type body before deciding whether it is really a variant representation, while keeping offsets and diagnostics stable

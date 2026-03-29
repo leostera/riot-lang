@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 29
+        "end": 28
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "EXCEPTION_DECL",
             "span": {
               "start": 0,
-              "end": 13
+              "end": 11
             }
           },
           "name_token": {
@@ -36,7 +36,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 13,
+              "start": 11,
               "end": 28
             }
           },
@@ -63,7 +63,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 17,
+                "start": 16,
                 "end": 18
               }
             },
@@ -90,7 +90,7 @@
             "syntax_node": {
               "kind": "APPLY_EXPR",
               "span": {
-                "start": 21,
+                "start": 20,
                 "end": 28
               }
             },
@@ -99,7 +99,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 21,
+                  "start": 20,
                   "end": 26
                 }
               },
@@ -108,7 +108,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 21,
+                    "start": 20,
                     "end": 26
                   }
                 },
@@ -129,7 +129,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 27,
+                    "start": 26,
                     "end": 28
                   }
                 },
@@ -138,7 +138,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 27,
+                      "start": 26,
                       "end": 28
                     }
                   },

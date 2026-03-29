@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 27
+        "end": 26
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "IF_EXPR",
               "span": {
-                "start": 8,
+                "start": 7,
                 "end": 26
               }
             },
@@ -103,7 +103,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 11,
+                  "start": 10,
                   "end": 12
                 }
               },
@@ -112,7 +112,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 11,
+                    "start": 10,
                     "end": 12
                   }
                 },
@@ -131,7 +131,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 18,
+                  "start": 17,
                   "end": 19
                 }
               },
@@ -140,7 +140,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 18,
+                    "start": 17,
                     "end": 19
                   }
                 },
@@ -159,7 +159,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 25,
+                  "start": 24,
                   "end": 26
                 }
               },
@@ -168,7 +168,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 25,
+                    "start": 24,
                     "end": 26
                   }
                 },

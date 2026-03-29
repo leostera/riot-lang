@@ -1,49 +1,186 @@
 {
+  "tokens": [
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 0,
+        "end": 6
+      },
+      "text": "module",
+      "leading_trivia": []
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 7,
+        "end": 16
+      },
+      "text": "WebSocket",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 6,
+            "end": 7
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": ":",
+      "span": {
+        "start": 17,
+        "end": 18
+      },
+      "text": ":",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 16,
+            "end": 17
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 19,
+        "end": 25
+      },
+      "text": "module",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 18,
+            "end": 19
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 26,
+        "end": 30
+      },
+      "text": "type",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 25,
+            "end": 26
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 31,
+        "end": 33
+      },
+      "text": "of",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 30,
+            "end": 31
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 34,
+        "end": 43
+      },
+      "text": "Websocket",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 33,
+            "end": 34
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "end of file",
+      "span": {
+        "start": 44,
+        "end": 44
+      },
+      "text": "",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 43,
+            "end": 44
+          },
+          "text": "\n",
+          "kind": "whitespace"
+        }
+      ]
+    }
+  ],
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 44,
+    "width": 43,
     "children": [
       {
         "type": "node",
         "kind": "MODULE_DECL",
-        "width": 44,
+        "width": 43,
         "children": [
           {
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": "module",
-            "width": 6
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
+            "width": 6,
+            "full_width": 6,
+            "leading_trivia": []
           },
           {
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": "WebSocket",
-            "width": 9
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
+            "width": 9,
+            "full_width": 10,
+            "leading_trivia": [
+              {
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
           },
           {
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": ":",
-            "width": 1
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
+            "width": 1,
+            "full_width": 2,
+            "leading_trivia": [
+              {
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
           },
           {
             "type": "node",
@@ -54,37 +191,43 @@
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "module",
-                "width": 6
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "width": 6,
+                "full_width": 7,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "type",
-                "width": 4
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "width": 4,
+                "full_width": 5,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "of",
-                "width": 2
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "width": 2,
+                "full_width": 3,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "node",
@@ -95,13 +238,15 @@
                     "type": "token",
                     "kind": "IDENT_EXPR",
                     "text": "Websocket",
-                    "width": 9
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": "\n",
-                    "width": 1
+                    "width": 9,
+                    "full_width": 10,
+                    "leading_trivia": [
+                      {
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
                   }
                 ]
               }

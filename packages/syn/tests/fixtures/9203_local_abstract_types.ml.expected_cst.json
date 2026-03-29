@@ -6,17 +6,37 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 145
+        "end": 144
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 61
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Test: Multiple type variables in locally abstract types *)",
+            "span": {
+              "start": 0,
+              "end": 61
+            }
+          }
+        }
+      },
       {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 62,
+              "start": 0,
               "end": 107
             }
           },
@@ -43,7 +63,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 66,
+                "start": 65,
                 "end": 70
               }
             },
@@ -70,7 +90,7 @@
               "syntax_node": {
                 "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
                 "span": {
-                  "start": 71,
+                  "start": 70,
                   "end": 81
                 }
               },
@@ -104,8 +124,8 @@
               "syntax_node": {
                 "kind": "TYPED_PATTERN",
                 "span": {
-                  "start": 83,
-                  "end": 90
+                  "start": 81,
+                  "end": 89
                 }
               },
               "pattern": {
@@ -113,8 +133,8 @@
                 "syntax_node": {
                   "kind": "TYPED_PATTERN",
                   "span": {
-                    "start": 83,
-                    "end": 90
+                    "start": 81,
+                    "end": 89
                   }
                 },
                 "pattern": {
@@ -122,16 +142,16 @@
                   "syntax_node": {
                     "kind": "IDENT_PATTERN",
                     "span": {
-                      "start": 84,
-                      "end": 85
+                      "start": 83,
+                      "end": 84
                     }
                   },
                   "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "x",
                     "span": {
-                      "start": 84,
-                      "end": 85
+                      "start": 83,
+                      "end": 84
                     }
                   }
                 },
@@ -140,8 +160,8 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 88,
-                      "end": 89
+                      "start": 86,
+                      "end": 88
                     }
                   },
                   "constructor_path": {
@@ -149,16 +169,16 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 88,
-                        "end": 89
+                        "start": 86,
+                        "end": 88
                       }
                     },
                     "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "a",
                       "span": {
-                        "start": 88,
-                        "end": 89
+                        "start": 87,
+                        "end": 88
                       }
                     }
                   },
@@ -169,8 +189,8 @@
                 "kind": "IDENT_EXPR",
                 "text": "x",
                 "span": {
-                  "start": 84,
-                  "end": 85
+                  "start": 83,
+                  "end": 84
                 }
               }
             }
@@ -180,7 +200,7 @@
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
-                "start": 62,
+                "start": 0,
                 "end": 107
               }
             },
@@ -189,7 +209,7 @@
               "syntax_node": {
                 "kind": "APPLY_EXPR",
                 "span": {
-                  "start": 96,
+                  "start": 95,
                   "end": 107
                 }
               },
@@ -198,8 +218,8 @@
                 "syntax_node": {
                   "kind": "FIELD_ACCESS_EXPR",
                   "span": {
-                    "start": 96,
-                    "end": 106
+                    "start": 95,
+                    "end": 105
                   }
                 },
                 "receiver": {
@@ -207,7 +227,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 96,
+                      "start": 95,
                       "end": 99
                     }
                   },
@@ -216,7 +236,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 96,
+                        "start": 95,
                         "end": 99
                       }
                     },
@@ -246,7 +266,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 106,
+                      "start": 105,
                       "end": 107
                     }
                   },
@@ -255,7 +275,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 106,
+                        "start": 105,
                         "end": 107
                       }
                     },
@@ -276,8 +296,8 @@
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 92,
-                  "end": 94
+                  "start": 91,
+                  "end": 93
                 }
               },
               "constructor_path": {
@@ -285,8 +305,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 92,
-                    "end": 94
+                    "start": 91,
+                    "end": 93
                   }
                 },
                 "name_token": {
@@ -311,7 +331,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 108,
+              "start": 107,
               "end": 144
             }
           },
@@ -338,7 +358,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 112,
+                "start": 111,
                 "end": 113
               }
             },
@@ -365,7 +385,7 @@
               "syntax_node": {
                 "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
                 "span": {
-                  "start": 114,
+                  "start": 113,
                   "end": 126
                 }
               },
@@ -410,8 +430,8 @@
               "syntax_node": {
                 "kind": "IDENT_PATTERN",
                 "span": {
-                  "start": 128,
-                  "end": 129
+                  "start": 126,
+                  "end": 128
                 }
               },
               "pattern": {
@@ -419,16 +439,16 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 128,
-                    "end": 129
+                    "start": 126,
+                    "end": 128
                   }
                 },
                 "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "x",
                   "span": {
-                    "start": 128,
-                    "end": 129
+                    "start": 127,
+                    "end": 128
                   }
                 }
               },
@@ -436,8 +456,8 @@
                 "kind": "IDENT_EXPR",
                 "text": "x",
                 "span": {
-                  "start": 128,
-                  "end": 129
+                  "start": 127,
+                  "end": 128
                 }
               }
             },
@@ -446,8 +466,8 @@
               "syntax_node": {
                 "kind": "IDENT_PATTERN",
                 "span": {
-                  "start": 130,
-                  "end": 131
+                  "start": 128,
+                  "end": 130
                 }
               },
               "pattern": {
@@ -455,16 +475,16 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 130,
-                    "end": 131
+                    "start": 128,
+                    "end": 130
                   }
                 },
                 "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "y",
                   "span": {
-                    "start": 130,
-                    "end": 131
+                    "start": 129,
+                    "end": 130
                   }
                 }
               },
@@ -472,8 +492,8 @@
                 "kind": "IDENT_EXPR",
                 "text": "y",
                 "span": {
-                  "start": 130,
-                  "end": 131
+                  "start": 129,
+                  "end": 130
                 }
               }
             },
@@ -482,8 +502,8 @@
               "syntax_node": {
                 "kind": "IDENT_PATTERN",
                 "span": {
-                  "start": 132,
-                  "end": 133
+                  "start": 130,
+                  "end": 132
                 }
               },
               "pattern": {
@@ -491,16 +511,16 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 132,
-                    "end": 133
+                    "start": 130,
+                    "end": 132
                   }
                 },
                 "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "z",
                   "span": {
-                    "start": 132,
-                    "end": 133
+                    "start": 131,
+                    "end": 132
                   }
                 }
               },
@@ -508,8 +528,8 @@
                 "kind": "IDENT_EXPR",
                 "text": "z",
                 "span": {
-                  "start": 132,
-                  "end": 133
+                  "start": 131,
+                  "end": 132
                 }
               }
             }
@@ -519,7 +539,7 @@
             "syntax_node": {
               "kind": "PAREN_EXPR",
               "span": {
-                "start": 135,
+                "start": 134,
                 "end": 144
               }
             },
@@ -583,7 +603,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 139,
+                      "start": 138,
                       "end": 140
                     }
                   },
@@ -592,7 +612,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 139,
+                        "start": 138,
                         "end": 140
                       }
                     },
@@ -611,7 +631,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 142,
+                      "start": 141,
                       "end": 143
                     }
                   },
@@ -620,7 +640,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 142,
+                        "start": 141,
                         "end": 143
                       }
                     },

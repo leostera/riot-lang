@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 33
+        "end": 32
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "RECORD_UPDATE_EXPR",
               "span": {
-                "start": 8,
+                "start": 7,
                 "end": 32
               }
             },
@@ -80,8 +80,8 @@
               "syntax_node": {
                 "kind": "RECORD_FIELD",
                 "span": {
-                  "start": 10,
-                  "end": 17
+                  "start": 9,
+                  "end": 16
                 }
               },
               "path": {
@@ -89,8 +89,8 @@
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
-                    "start": 10,
-                    "end": 17
+                    "start": 9,
+                    "end": 16
                   }
                 },
                 "name_token": {
@@ -108,7 +108,7 @@
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
-                    "start": 22,
+                    "start": 21,
                     "end": 30
                   }
                 },
@@ -117,7 +117,7 @@
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
-                      "start": 22,
+                      "start": 21,
                       "end": 30
                     }
                   },
@@ -145,7 +145,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 28,
+                        "start": 27,
                         "end": 30
                       }
                     },

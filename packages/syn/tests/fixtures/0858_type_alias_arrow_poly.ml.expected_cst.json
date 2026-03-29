@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 50
+        "end": 49
       }
     },
     "items": [
@@ -17,16 +17,16 @@
             "kind": "TYPE_DECL",
             "span": {
               "start": 0,
-              "end": 50
+              "end": 49
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 8,
-                "end": 15
+                "start": 7,
+                "end": 14
               }
             },
             "name_token": {
@@ -43,7 +43,7 @@
               "syntax_node": {
                 "kind": "TYPE_PARAM",
                 "span": {
-                  "start": 5,
+                  "start": 4,
                   "end": 7
                 }
               },
@@ -53,7 +53,7 @@
                 "syntax_node": {
                   "kind": "TYPE_VAR",
                   "span": {
-                    "start": 5,
+                    "start": 4,
                     "end": 7
                   }
                 },
@@ -73,8 +73,8 @@
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
-                "start": 17,
-                "end": 50
+                "start": 16,
+                "end": 49
               }
             },
             "manifest": {
@@ -82,8 +82,8 @@
               "syntax_node": {
                 "kind": "TYPE_ARROW",
                 "span": {
-                  "start": 17,
-                  "end": 50
+                  "start": 16,
+                  "end": 49
                 }
               },
               "label": null,
@@ -92,7 +92,7 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 17,
+                    "start": 16,
                     "end": 27
                   }
                 },
@@ -129,7 +129,7 @@
                     "syntax_node": {
                       "kind": "TYPE_VAR",
                       "span": {
-                        "start": 24,
+                        "start": 23,
                         "end": 26
                       }
                     },
@@ -149,8 +149,8 @@
                 "syntax_node": {
                   "kind": "TYPE_ARROW",
                   "span": {
-                    "start": 31,
-                    "end": 50
+                    "start": 30,
+                    "end": 49
                   }
                 },
                 "label": null,
@@ -159,8 +159,8 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 31,
-                      "end": 39
+                      "start": 30,
+                      "end": 38
                     }
                   },
                   "constructor_path": {
@@ -168,8 +168,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 31,
-                        "end": 39
+                        "start": 30,
+                        "end": 38
                       }
                     },
                     "name_token": {
@@ -187,7 +187,7 @@
                       "syntax_node": {
                         "kind": "TYPE_VAR",
                         "span": {
-                          "start": 31,
+                          "start": 30,
                           "end": 33
                         }
                       },
@@ -207,8 +207,8 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 42,
-                      "end": 50
+                      "start": 41,
+                      "end": 49
                     }
                   },
                   "constructor_path": {
@@ -216,8 +216,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 42,
-                        "end": 50
+                        "start": 41,
+                        "end": 49
                       }
                     },
                     "name_token": {
@@ -235,7 +235,7 @@
                       "syntax_node": {
                         "kind": "TYPE_VAR",
                         "span": {
-                          "start": 42,
+                          "start": 41,
                           "end": 44
                         }
                       },

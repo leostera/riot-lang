@@ -1,14 +1,17 @@
 open Std
 
-let expressions_of_apply_argument = function
+let expressions_of_apply_argument =
+  function
   | Cst.Positional expression ->
       [ expression ]
-  | Cst.Labeled { value; _ } | Cst.Optional { value; _ } ->
+  | Cst.Labeled { value; _ }
+  | Cst.Optional { value; _ } ->
       Option.to_list value
 
-let expressions_of_parameter (_ : Cst.Parameter.t) = []
+let expressions_of_parameter = fun (_ : Cst.Parameter.t) -> []
 
-let rec expressions_of_object_member = function
+let rec expressions_of_object_member =
+  function
   | Cst.ObjectMember.Method { body; _ } ->
       Option.to_list body
   | Cst.ObjectMember.Value { value; _ } ->
@@ -19,22 +22,24 @@ let rec expressions_of_object_member = function
       []
   | Cst.ObjectMember.Initializer { body; _ } ->
       Option.to_list body
-
-and expressions_of_class_field = function
+and expressions_of_class_field =
+  function
   | Cst.ClassField.Method { body; _ } ->
       Option.to_list body
   | Cst.ClassField.Value { value; _ } ->
       Option.to_list value
-  | Cst.ClassField.Inherit _ | Cst.ClassField.Constraint _
+  | Cst.ClassField.Inherit _
+  | Cst.ClassField.Constraint _
   | Cst.ClassField.Extension _ ->
       []
   | Cst.ClassField.Initializer { body; _ } ->
       Option.to_list body
   | Cst.ClassField.Attribute { field; _ } ->
       expressions_of_class_field field
-
-and expressions_of_class_expression = function
-  | Cst.ClassExpression.Path _ | Cst.ClassExpression.Extension _ ->
+and expressions_of_class_expression =
+  function
+  | Cst.ClassExpression.Path _
+  | Cst.ClassExpression.Extension _ ->
       []
   | Cst.ClassExpression.Structure { fields; _ } ->
       fields |> List.concat_map expressions_of_class_field
@@ -42,7 +47,13 @@ and expressions_of_class_expression = function
       expressions_of_class_expression body
   | Cst.ClassExpression.Apply { callee; argument; _ } ->
       expressions_of_class_expression callee @ expressions_of_apply_argument argument
-  | Cst.ClassExpression.Let { parameters; bound_value; and_bindings; body; _ } ->
+  | Cst.ClassExpression.Let {
+    parameters;
+    bound_value;
+    and_bindings;
+    body;
+    _
+  } ->
       [ bound_value ]
       @ (and_bindings |> List.map Cst.LetBinding.value)
       @ (parameters |> List.concat_map expressions_of_parameter)
@@ -55,8 +66,8 @@ and expressions_of_class_expression = function
       expressions_of_class_expression inner
   | Cst.ClassExpression.Attribute { class_expression; _ } ->
       expressions_of_class_expression class_expression
-
-and expressions_of_module_expression = function
+and expressions_of_module_expression =
+  function
   | Cst.ModuleExpression.Path _
   | Cst.ModuleExpression.Structure _
   | Cst.ModuleExpression.Extension _ ->
@@ -64,8 +75,7 @@ and expressions_of_module_expression = function
   | Cst.ModuleExpression.Functor { body; _ } ->
       expressions_of_module_expression body
   | Cst.ModuleExpression.Apply { callee; argument; _ } ->
-      expressions_of_module_expression callee
-      @ expressions_of_module_expression argument
+      expressions_of_module_expression callee @ expressions_of_module_expression argument
   | Cst.ModuleExpression.ApplyUnit { callee; _ } ->
       expressions_of_module_expression callee
   | Cst.ModuleExpression.Constraint { module_expression; _ }
@@ -76,7 +86,8 @@ and expressions_of_module_expression = function
   | Cst.ModuleExpression.Parenthesized { inner; _ } ->
       expressions_of_module_expression inner
 
-let children_of_expression = function
+let children_of_expression =
+  function
   | Cst.Expression.Path _
   | Cst.Expression.Operator _
   | Cst.Expression.Literal _
@@ -116,8 +127,7 @@ let children_of_expression = function
       [ collection; index ]
   | Cst.Expression.ObjectOverride { fields; _ } ->
       fields
-      |> List.concat_map (fun (field : Cst.object_override_field) ->
-             Option.to_list field.value)
+      |> List.concat_map (fun (field : Cst.object_override_field) -> Option.to_list field.value)
   | Cst.Expression.InstanceVariableAssign { value; _ } ->
       [ value ]
   | Cst.Expression.FieldAssign { target; value; _ } ->
@@ -137,13 +147,9 @@ let children_of_expression = function
   | Cst.Expression.Array { elements; _ } ->
       elements
   | Cst.Expression.Record (Cst.RecordExpression.Literal { fields; _ }) ->
-      fields
-      |> List.map (fun (field : Cst.record_expression_field) -> field.value)
+      fields |> List.map (fun (field : Cst.record_expression_field) -> field.value)
   | Cst.Expression.Record (Cst.RecordExpression.Update { base; fields; _ }) ->
-      base
-      :: List.map
-           (fun (field : Cst.record_expression_field) -> field.value)
-           fields
+      base :: List.map (fun (field : Cst.record_expression_field) -> field.value) fields
   | Cst.Expression.LocalOpen { body; _ } ->
       [ body ]
   | Cst.Expression.Fun { body; _ } -> (
@@ -152,63 +158,71 @@ let children_of_expression = function
           [ expression ]
       | Cst.Cases { cases; _ } ->
           cases
-          |> List.concat_map (fun ({ guard; body; _ } : Cst.match_case) ->
-                 Option.to_list guard @ [ body ]))
+          |> List.concat_map (fun ({ guard; body; _ } : Cst.match_case) -> Option.to_list guard
+          @ [ body ])
+    )
   | Cst.Expression.Function { cases; _ } ->
       cases
-      |> List.concat_map (fun ({ guard; body; _ } : Cst.match_case) ->
-             Option.to_list guard @ [ body ])
+      |> List.concat_map (fun ({ guard; body; _ } : Cst.match_case) -> Option.to_list guard
+      @ [ body ])
   | Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
       [ binding.bound_value ]
       @ List.map (fun ({ bound_value; _ } : Cst.binding_operator_binding) -> bound_value) and_bindings
       @ [ body ]
-  | Cst.Expression.Let { parameters; bound_value; and_bindings; body; _ } ->
+  | Cst.Expression.Let {
+    parameters;
+    bound_value;
+    and_bindings;
+    body;
+    _
+  } ->
       [ bound_value ]
       @ List.map Cst.LetBinding.value and_bindings
       @ (parameters |> List.concat_map expressions_of_parameter)
       @ [ body ]
   | Cst.Expression.Match { scrutinee; cases; _ } ->
       [ scrutinee ]
-      @
-      (cases
-      |> List.concat_map (fun ({ guard; body; _ } : Cst.match_case) ->
-             Option.to_list guard @ [ body ]))
+      @ (cases
+      |> List.concat_map (fun ({ guard; body; _ } : Cst.match_case) -> Option.to_list guard
+      @ [ body ]))
   | Cst.Expression.Try { body; cases; _ } ->
       [ body ]
-      @
-      (cases
-      |> List.concat_map (fun ({ guard; body; _ } : Cst.match_case) ->
-             Option.to_list guard @ [ body ]))
+      @ (cases
+      |> List.concat_map (fun ({ guard; body; _ } : Cst.match_case) -> Option.to_list guard
+      @ [ body ]))
   | Cst.Expression.If { condition; then_branch; else_branch; _ } ->
       [ condition; then_branch ] @ Option.to_list else_branch
   | Cst.Expression.Parenthesized { inner; _ } ->
       [ inner ]
 
-let rec fold_expression f acc expr =
+let rec fold_expression = fun f acc expr ->
   let acc = f acc expr in
-  children_of_expression expr
-  |> List.fold_left (fold_expression f) acc
+  children_of_expression expr |> List.fold_left (fold_expression f) acc
 
-let iter_expression f expr =
+let iter_expression = fun f expr ->
   fold_expression
     (fun () expression ->
       f expression;
       ())
-    () expr
+    ()
+    expr
 
-let exists_expression predicate expr =
+let exists_expression = fun predicate expr ->
   let found = ref false in
-  let rec go expression =
-    if not !found then (
-      if predicate expression then
-        found := true
-      else
-        children_of_expression expression |> List.iter go)
+  let rec go = fun expression ->
+    if not !found then
+      (
+        if predicate expression then
+          found := true
+        else
+          children_of_expression expression |> List.iter go
+      )
   in
   go expr;
   !found
 
-let children_of_core_type = function
+let children_of_core_type =
+  function
   | Cst.CoreType.Wildcard _
   | Cst.CoreType.Var _
   | Cst.CoreType.Extension _ ->
@@ -228,39 +242,42 @@ let children_of_core_type = function
   | Cst.CoreType.Tuple { elements; _ } ->
       elements
   | Cst.CoreType.PolyVariant { fields; _ } ->
-      fields
-      |> List.concat_map (function
-           | Cst.RowField.Tag tag ->
-               Option.to_list tag.payload_type
-           | Cst.RowField.Inherit { type_; _ } ->
-               [ type_ ])
+      fields |> List.concat_map
+        (
+          function
+          | Cst.RowField.Tag tag ->
+              Option.to_list tag.payload_type
+          | Cst.RowField.Inherit { type_; _ } ->
+              [ type_ ]
+        )
   | Cst.CoreType.Record { fields; _ } ->
-      fields
-      |> List.map (fun (field : Cst.record_type_field) -> field.field_type)
+      fields |> List.map (fun (field : Cst.record_type_field) -> field.field_type)
   | Cst.CoreType.FirstClassModule _
   | Cst.CoreType.Object _ ->
       []
 
-let rec fold_core_type f acc type_ =
+let rec fold_core_type = fun f acc type_ ->
   let acc = f acc type_ in
-  children_of_core_type type_
-  |> List.fold_left (fold_core_type f) acc
+  children_of_core_type type_ |> List.fold_left (fold_core_type f) acc
 
-let iter_core_type f type_ =
+let iter_core_type = fun f type_ ->
   fold_core_type
     (fun () core_type ->
       f core_type;
       ())
-    () type_
+    ()
+    type_
 
-let exists_core_type predicate type_ =
+let exists_core_type = fun predicate type_ ->
   let found = ref false in
-  let rec go core_type =
-    if not !found then (
-      if predicate core_type then
-        found := true
-      else
-        children_of_core_type core_type |> List.iter go)
+  let rec go = fun core_type ->
+    if not !found then
+      (
+        if predicate core_type then
+          found := true
+        else
+          children_of_core_type core_type |> List.iter go
+      )
   in
   go type_;
   !found

@@ -3,26 +3,89 @@ open Std.IO
 
 type t = Cursor.t
 
-let create source = Cursor.create source
-let is_whitespace = function ' ' | '\t' | '\n' | '\r' -> true | _ -> false
+let create = fun source -> Cursor.create source
 
-let is_ident_start = function
-  | 'a' .. 'z' | 'A' .. 'Z' | '_' -> true
+let make_token = fun ~kind ~span -> {Token.kind; span; leading_trivia = []}
+
+let is_whitespace =
+  function
+  | ' '
+  | '\t'
+  | '\n'
+  | '\r' -> true
   | _ -> false
 
-let is_ident_continue = function
-  | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '\'' -> true
+let is_ident_start =
+  function
+  | 'a' .. 'z'
+  | 'A' .. 'Z'
+  | '_' -> true
   | _ -> false
 
-let is_digit = function '0' .. '9' -> true | _ -> false
-let is_digit_or_underscore = function '0' .. '9' | '_' -> true | _ -> false
-let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
-let is_hex_digit = function '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true | _ -> false
-let is_hex_digit_or_underscore = function '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' | '_' -> true | _ -> false
-let is_octal_digit = function '0' .. '7' -> true | _ -> false
-let is_octal_digit_or_underscore = function '0' .. '7' | '_' -> true | _ -> false
-let is_binary_digit = function '0' | '1' -> true | _ -> false
-let is_binary_digit_or_underscore = function '0' | '1' | '_' -> true | _ -> false
+let is_ident_continue =
+  function
+  | 'a' .. 'z'
+  | 'A' .. 'Z'
+  | '0' .. '9'
+  | '_'
+  | '\'' -> true
+  | _ -> false
+
+let is_digit =
+  function
+  | '0' .. '9' -> true
+  | _ -> false
+
+let is_digit_or_underscore =
+  function
+  | '0' .. '9'
+  | '_' -> true
+  | _ -> false
+
+let is_alpha =
+  function
+  | 'a' .. 'z'
+  | 'A' .. 'Z' -> true
+  | _ -> false
+
+let is_hex_digit =
+  function
+  | '0' .. '9'
+  | 'a' .. 'f'
+  | 'A' .. 'F' -> true
+  | _ -> false
+
+let is_hex_digit_or_underscore =
+  function
+  | '0' .. '9'
+  | 'a' .. 'f'
+  | 'A' .. 'F'
+  | '_' -> true
+  | _ -> false
+
+let is_octal_digit =
+  function
+  | '0' .. '7' -> true
+  | _ -> false
+
+let is_octal_digit_or_underscore =
+  function
+  | '0' .. '7'
+  | '_' -> true
+  | _ -> false
+
+let is_binary_digit =
+  function
+  | '0'
+  | '1' -> true
+  | _ -> false
+
+let is_binary_digit_or_underscore =
+  function
+  | '0'
+  | '1'
+  | '_' -> true
+  | _ -> false
 
 type quoted_string_info = {
   pipe_offset : int;
@@ -30,30 +93,39 @@ type quoted_string_info = {
   is_extension : bool;
 }
 
-let is_quoted_string_header_char = function
+let is_quoted_string_header_char =
+  function
   | '%' -> true
   | c -> is_ident_continue c
 
-let trim_right text =
-  let rec loop i =
-    if i < 0 then ""
+let trim_right = fun text ->
+  let rec loop = fun i ->
+    if i < 0 then
+      ""
     else
       match String.get text i with
-      | ' ' | '\t' | '\n' | '\r' -> loop (i - 1)
+      | ' '
+      | '\t'
+      | '\n'
+      | '\r' -> loop (i - 1)
       | _ -> String.sub text 0 (i + 1)
   in
   loop (String.length text - 1)
 
-let delimiter_of_quoted_string_header header ~is_extension =
+let delimiter_of_quoted_string_header = fun header ~is_extension ->
   if not is_extension then
     header
   else
     let trimmed = trim_right header in
-    let rec find_last_space i =
-      if i < 0 then None
+    let rec find_last_space = fun i ->
+      if i < 0 then
+        None
       else
         match String.get trimmed i with
-        | ' ' | '\t' | '\n' | '\r' -> Some i
+        | ' '
+        | '\t'
+        | '\n'
+        | '\r' -> Some i
         | _ -> find_last_space (i - 1)
     in
     match find_last_space (String.length trimmed - 1) with
@@ -62,7 +134,7 @@ let delimiter_of_quoted_string_header header ~is_extension =
     | _ ->
         ""
 
-let rec find_quoted_string_pipe_offset cursor offset ~is_extension =
+let rec find_quoted_string_pipe_offset = fun cursor offset ~is_extension ->
   match Cursor.peek_n cursor offset with
   | Some '|' -> Some offset
   | Some c when is_extension && (is_quoted_string_header_char c || is_whitespace c) ->
@@ -72,8 +144,8 @@ let rec find_quoted_string_pipe_offset cursor offset ~is_extension =
   | Some _ -> None
   | None -> None
 
-let delimiter_matches_after_pipe cursor delimiter =
-  let rec loop index =
+let delimiter_matches_after_pipe = fun cursor delimiter ->
+  let rec loop = fun index ->
     if index = String.length delimiter then
       match Cursor.peek_n cursor (index + 1) with
       | Some '}' -> true
@@ -87,7 +159,7 @@ let delimiter_matches_after_pipe cursor delimiter =
   in
   loop 0
 
-let quoted_string_info_at_cursor cursor =
+let quoted_string_info_at_cursor = fun cursor ->
   match Cursor.peek cursor with
   | Some '{' -> (
       let header_start, is_extension =
@@ -97,7 +169,8 @@ let quoted_string_info_at_cursor cursor =
         | Some '%' -> (
             match Cursor.peek_n cursor 2 with
             | Some '%' -> (3, true)
-            | _ -> (2, true))
+            | _ -> (2, true)
+          )
         | Some c when is_ident_continue c ->
             (1, false)
         | _ ->
@@ -114,25 +187,26 @@ let quoted_string_info_at_cursor cursor =
               if pipe_offset = header_start then
                 ""
               else
-                Cursor.slice cursor (Cursor.position cursor + header_start)
-                  (pipe_offset - header_start)
+                Cursor.slice
+                cursor
+                (Cursor.position cursor + header_start)
+                (pipe_offset - header_start)
             in
-            let delimiter =
-              delimiter_of_quoted_string_header header ~is_extension
-            in
+            let delimiter = delimiter_of_quoted_string_header header ~is_extension in
             if is_extension && pipe_offset = header_start then
               None
             else
-              Some { pipe_offset; delimiter; is_extension })
+              Some {pipe_offset; delimiter; is_extension}
+    )
   | _ ->
       None
 
-let lex_whitespace cursor start =
+let lex_whitespace = fun cursor start ->
   Cursor.skip_while cursor is_whitespace;
   let end_ = Cursor.position cursor in
-  { Token.kind = Token.Whitespace; span = Ceibo.Span.make ~start ~end_ }
+  make_token ~kind:Token.Whitespace ~span:(Ceibo.Span.make ~start ~end_)
 
-let try_skip_quoted_string cursor =
+let try_skip_quoted_string = fun cursor ->
   match quoted_string_info_at_cursor cursor with
   | None ->
       false
@@ -140,7 +214,7 @@ let try_skip_quoted_string cursor =
       for _ = 0 to pipe_offset do
         Cursor.advance cursor
       done;
-      let rec skip_body () =
+      let rec skip_body = fun () ->
         match Cursor.peek cursor with
         | None ->
             ()
@@ -157,53 +231,52 @@ let try_skip_quoted_string cursor =
       skip_body ();
       true
 
-let rec lex_block_comment cursor depth content_start token_start =
+let rec lex_block_comment = fun cursor depth content_start token_start ->
   match Cursor.peek cursor with
   | None ->
-      let value =
-        Cursor.slice cursor content_start
-          (Cursor.position cursor - content_start)
-      in
+      let value = Cursor.slice cursor content_start (Cursor.position cursor - content_start) in
       let end_ = Cursor.position cursor in
-      {
-        Token.kind = Token.Comment { value; terminated = false };
-        span = { start = token_start; end_ };
-      }
+      make_token
+        ~kind:(Token.Comment {value; terminated = false})
+        ~span:{start = token_start; end_}
   | Some '(' -> (
       Cursor.advance cursor;
       match Cursor.peek cursor with
       | Some '*' ->
           Cursor.advance cursor;
           lex_block_comment cursor (depth + 1) content_start token_start
-      | _ -> lex_block_comment cursor depth content_start token_start)
+      | _ -> lex_block_comment cursor depth content_start token_start
+    )
   | Some '*' -> (
       Cursor.advance cursor;
       match Cursor.peek cursor with
       | Some ')' ->
           Cursor.advance cursor;
           if depth = 1 then
-            let value =
-              Cursor.slice cursor content_start
-                (Cursor.position cursor - content_start - 2)
-            in
+            let value = Cursor.slice
+            cursor
+            content_start
+            (Cursor.position cursor - content_start - 2) in
             let end_ = Cursor.position cursor in
-            {
-              Token.kind = Token.Comment { value; terminated = true };
-              span = { start = token_start; end_ };
-            }
-          else lex_block_comment cursor (depth - 1) content_start token_start
-      | _ -> lex_block_comment cursor depth content_start token_start)
+            make_token
+              ~kind:(Token.Comment {value; terminated = true})
+              ~span:{start = token_start; end_}
+          else
+            lex_block_comment cursor (depth - 1) content_start token_start
+      | _ -> lex_block_comment cursor depth content_start token_start
+    )
   | Some '{' ->
       if try_skip_quoted_string cursor then
         lex_block_comment cursor depth content_start token_start
       else (
         Cursor.advance cursor;
-        lex_block_comment cursor depth content_start token_start)
+        lex_block_comment cursor depth content_start token_start
+      )
   | Some _ ->
       Cursor.advance cursor;
       lex_block_comment cursor depth content_start token_start
 
-let lex_comment cursor token_start =
+let lex_comment = fun cursor token_start ->
   Cursor.advance cursor;
   (* skip '(' *)
   Cursor.advance cursor;
@@ -211,87 +284,81 @@ let lex_comment cursor token_start =
   (* Check if it's a docstring *)
   let is_docstring =
     match Cursor.peek cursor with
-    | Some '*'
-      when
-        match Cursor.peek_n cursor 1 with
-        | Some ')' | Some '*' -> false
-        | _ -> true ->
+    | Some '*' when match Cursor.peek_n cursor 1 with
+    | Some ')'
+    | Some '*' -> false
+    | _ -> true ->
         Cursor.advance cursor;
         (* skip the second '*' for docstrings *)
         true
     | _ -> false
   in
   let content_start = Cursor.position cursor in
-
-  let rec lex_content depth =
+  let rec lex_content = fun depth ->
     match Cursor.peek cursor with
     | None ->
-        let value =
-          Cursor.slice cursor content_start
-            (Cursor.position cursor - content_start)
-        in
+        let value = Cursor.slice cursor content_start (Cursor.position cursor - content_start) in
         let end_ = Cursor.position cursor in
         if is_docstring then
-          {
-            Token.kind = Token.Docstring { value; terminated = false };
-            span = { start = token_start; end_ };
-          }
+          make_token
+            ~kind:(Token.Docstring {value; terminated = false})
+            ~span:{start = token_start; end_}
         else
-          {
-            Token.kind = Token.Comment { value; terminated = false };
-            span = { start = token_start; end_ };
-          }
+          make_token
+            ~kind:(Token.Comment {value; terminated = false})
+            ~span:{start = token_start; end_}
     | Some '(' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '*' ->
             Cursor.advance cursor;
             lex_content (depth + 1)
-        | _ -> lex_content depth)
+        | _ -> lex_content depth
+      )
     | Some '*' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some ')' ->
             Cursor.advance cursor;
             if depth = 1 then
-              let value =
-                Cursor.slice cursor content_start
-                  (Cursor.position cursor - content_start - 2)
-              in
+              let value = Cursor.slice cursor content_start (Cursor.position cursor
+              - content_start
+              - 2) in
               let end_ = Cursor.position cursor in
               if is_docstring then
-                {
-                  Token.kind = Token.Docstring { value; terminated = true };
-                  span = { start = token_start; end_ };
-                }
+                make_token
+                  ~kind:(Token.Docstring {value; terminated = true})
+                  ~span:{start = token_start; end_}
               else
-                {
-                  Token.kind = Token.Comment { value; terminated = true };
-                  span = { start = token_start; end_ };
-                }
-            else lex_content (depth - 1)
-        | _ -> lex_content depth)
+                make_token
+                  ~kind:(Token.Comment {value; terminated = true})
+                  ~span:{start = token_start; end_}
+            else
+              lex_content (depth - 1)
+        | _ -> lex_content depth
+      )
     | Some '{' ->
         if try_skip_quoted_string cursor then
           lex_content depth
         else (
           Cursor.advance cursor;
-          lex_content depth)
+          lex_content depth
+        )
     | Some _ ->
         Cursor.advance cursor;
         lex_content depth
   in
   lex_content 1
 
-let lex_ident cursor delim_stack token_start =
+let lex_ident = fun cursor delim_stack token_start ->
   let start = Cursor.position cursor in
   Cursor.skip_while cursor is_ident_continue;
   let len = Cursor.position cursor - start in
   let ident = Cursor.slice cursor start len in
   let end_ = Cursor.position cursor in
-
   let kind =
-    if ident = "_" then Token.Underscore
+    if ident = "_" then
+      Token.Underscore
     else
       match Keyword.of_string ident with
       | Some kw -> (
@@ -299,22 +366,30 @@ let lex_ident cursor delim_stack token_start =
             let delim = Token.delimiter_of_keyword kw |> Option.unwrap in
             Token.OpenDelim delim
           else if Keyword.is_closing kw then
-            (* Match 'end' to the correct closing delimiter based on stack *)
             match delim_stack with
             | d :: _ -> Token.CloseDelim d
-            | [] -> Token.CloseDelim BeginEnd (* Default fallback *)
+            | [] -> Token.CloseDelim BeginEnd
+            (* Default fallback *)
           else
             (* Operator keywords can be used as identifiers in bindings like: let lnot = ... *)
             (* Treat them as identifiers to simplify parsing *)
             match kw with
-            | Lnot | Land | Lor | Lxor | Lsl | Lsr | Asr | Mod ->
+            | Lnot
+            | Land
+            | Lor
+            | Lxor
+            | Lsl
+            | Lsr
+            | Asr
+            | Mod ->
                 Token.Ident ident
-            | _ -> Token.Keyword kw)
+            | _ -> Token.Keyword kw
+        )
       | None -> Token.Ident ident
   in
-  { Token.kind; span = { start = token_start; end_ } }
+  make_token ~kind ~span:{start = token_start; end_}
 
-let lex_raw_ident cursor token_start =
+let lex_raw_ident = fun cursor token_start ->
   Cursor.advance cursor;
   Cursor.advance cursor;
   let start = Cursor.position cursor in
@@ -322,16 +397,20 @@ let lex_raw_ident cursor token_start =
   let len = Cursor.position cursor - start in
   let ident = Cursor.slice cursor start len in
   let end_ = Cursor.position cursor in
-  { Token.kind = Token.Ident ("\\#" ^ ident); span = { start = token_start; end_ } }
+  make_token ~kind:(Token.Ident ("\\#" ^ ident)) ~span:{start = token_start; end_}
 
-let lex_number cursor token_start =
+let lex_number = fun cursor token_start ->
   (* Helper to remove underscores from a string *)
-  let remove_underscores s =
+  let remove_underscores = fun s ->
     let buf = Buffer.create (String.length s) in
-    String.iter (fun c -> if c != '_' then Buffer.add_char buf c) s;
+    String.iter
+      (fun c ->
+        if c != '_' then
+          Buffer.add_char buf c)
+      s;
     Buffer.contents buf
   in
-  let consume_numeric_suffix () =
+  let consume_numeric_suffix = fun () ->
     match Cursor.peek cursor with
     | Some c when is_alpha c ->
         Cursor.advance cursor;
@@ -339,15 +418,17 @@ let lex_number cursor token_start =
     | _ ->
         false
   in
-
   (* Check if this is a hex/octal/binary literal: 0x, 0o, 0b *)
   (* At this point, cursor is AT the first digit (not consumed yet) *)
   match (Cursor.peek cursor, Cursor.peek_n cursor 1) with
   | (Some '0', Some ('x' | 'X')) ->
-      (* Hexadecimal literal: 0xABCD *)
-      Cursor.advance cursor; (* consume '0' *)
-      Cursor.advance cursor; (* consume 'x' *)
-      let hex_digits_raw = Cursor.take_while cursor is_hex_digit_or_underscore in
+      Cursor.advance cursor;
+      (* consume '0' *)
+      Cursor.advance cursor;
+      (* consume 'x' *)
+      let hex_digits_raw =
+        Cursor.take_while cursor is_hex_digit_or_underscore
+      in
       let hex_digits = remove_underscores hex_digits_raw in
       let _ = consume_numeric_suffix () in
       let hex_str = "0x" ^ hex_digits in
@@ -356,15 +437,15 @@ let lex_number cursor token_start =
         | Some i -> Token.Literal (Int i)
         | None -> Token.Literal (Int 0)
       in
-      {
-        Token.kind;
-        span = Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor);
-      }
+      make_token ~kind ~span:(Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor))
   | (Some '0', Some ('o' | 'O')) ->
-      (* Octal literal: 0o777 *)
-      Cursor.advance cursor; (* consume '0' *)
-      Cursor.advance cursor; (* consume 'o' *)
-      let octal_digits_raw = Cursor.take_while cursor is_octal_digit_or_underscore in
+      Cursor.advance cursor;
+      (* consume '0' *)
+      Cursor.advance cursor;
+      (* consume 'o' *)
+      let octal_digits_raw =
+        Cursor.take_while cursor is_octal_digit_or_underscore
+      in
       let octal_digits = remove_underscores octal_digits_raw in
       let _ = consume_numeric_suffix () in
       let octal_str = "0o" ^ octal_digits in
@@ -373,15 +454,15 @@ let lex_number cursor token_start =
         | Some i -> Token.Literal (Int i)
         | None -> Token.Literal (Int 0)
       in
-      {
-        Token.kind;
-        span = Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor);
-      }
+      make_token ~kind ~span:(Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor))
   | (Some '0', Some ('b' | 'B')) ->
-      (* Binary literal: 0b1010 *)
-      Cursor.advance cursor; (* consume '0' *)
-      Cursor.advance cursor; (* consume 'b' *)
-      let binary_digits_raw = Cursor.take_while cursor is_binary_digit_or_underscore in
+      Cursor.advance cursor;
+      (* consume '0' *)
+      Cursor.advance cursor;
+      (* consume 'b' *)
+      let binary_digits_raw =
+        Cursor.take_while cursor is_binary_digit_or_underscore
+      in
       let binary_digits = remove_underscores binary_digits_raw in
       let _ = consume_numeric_suffix () in
       let binary_str = "0b" ^ binary_digits in
@@ -390,14 +471,11 @@ let lex_number cursor token_start =
         | Some i -> Token.Literal (Int i)
         | None -> Token.Literal (Int 0)
       in
-      {
-        Token.kind;
-        span = Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor);
-      }
+      make_token ~kind ~span:(Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor))
   | _ ->
-      (* Regular decimal number (possibly with float) *)
-      (* Take digits and underscores *)
-      let num_str_raw = Cursor.take_while cursor is_digit_or_underscore in
+      let num_str_raw =
+        Cursor.take_while cursor is_digit_or_underscore
+      in
       (* Remove underscores for parsing *)
       let num_str = remove_underscores num_str_raw in
       let end_ = Cursor.position cursor in
@@ -407,58 +485,59 @@ let lex_number cursor token_start =
             let _ = consume_numeric_suffix () in
             Token.Literal (Int 0)
         | Some '.' -> (
-            (* Check if next char after dot is a digit (not an operator like -.) *)
             match Cursor.peek_n cursor 1 with
             | Some c when is_digit c -> (
                 Cursor.advance cursor;
-                let frac_raw = Cursor.take_while cursor is_digit_or_underscore in
+                let frac_raw =
+                  Cursor.take_while cursor is_digit_or_underscore
+                in
                 let frac = remove_underscores frac_raw in
                 let _ = consume_numeric_suffix () in
                 let float_str = num_str ^ "." ^ frac in
                 match float_of_string_opt float_str with
                 | Some f -> Token.Literal (Float f)
-                | None -> Token.Literal (Float 0.0))
+                | None -> Token.Literal (Float 0.0)
+              )
             | Some '.' -> (
-                (* Dot-dot and similar forms are not float literals. *)
                 match int_of_string_opt num_str with
                 | Some i -> Token.Literal (Int i)
-                | None -> Token.Literal (Int 0))
+                | None -> Token.Literal (Int 0)
+              )
             | Some c when is_alpha c -> (
                 Cursor.advance cursor;
                 let _ = consume_numeric_suffix () in
-                Token.Literal (Float 0.0))
+                Token.Literal (Float 0.0)
+              )
             | _ -> (
-                (* Accept shorthand floats like [1.] and [3.] *)
                 Cursor.advance cursor;
                 let _ = consume_numeric_suffix () in
                 let float_str = num_str ^ "." in
                 match float_of_string_opt float_str with
                 | Some f -> Token.Literal (Float f)
-                | None -> Token.Literal (Float 0.0)))
+                | None -> Token.Literal (Float 0.0)
+              )
+          )
         | _ -> (
             match int_of_string_opt num_str with
             | Some i -> Token.Literal (Int i)
-            | None -> Token.Literal (Int 0))
+            | None -> Token.Literal (Int 0)
+          )
       in
-      {
-        Token.kind;
-        span = Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor);
-      }
+      make_token ~kind ~span:(Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor))
 
-let lex_string cursor token_start =
+let lex_string = fun cursor token_start ->
   Cursor.advance cursor;
   let start = Cursor.position cursor in
-  let rec loop () =
+  let rec loop = fun () ->
     match Cursor.peek cursor with
-    | None -> (Cursor.slice cursor start (Cursor.position cursor - start), false)
+    | None ->
+        (Cursor.slice cursor start (Cursor.position cursor - start), false)
     | Some '\\' ->
         Cursor.advance cursor;
         Cursor.advance cursor;
         loop ()
     | Some '"' ->
-        let value =
-          Cursor.slice cursor start (Cursor.position cursor - start)
-        in
+        let value = Cursor.slice cursor start (Cursor.position cursor - start) in
         Cursor.advance cursor;
         (value, true)
     | Some _ ->
@@ -467,13 +546,12 @@ let lex_string cursor token_start =
   in
   let value, terminated = loop () in
   let end_ = Cursor.position cursor in
-  {
-    Token.kind = Token.Literal (String { value; terminated });
-    span = { start = token_start; end_ };
-  }
+  make_token
+    ~kind:(Token.Literal (String {value; terminated}))
+    ~span:{start = token_start; end_}
 
-let lex_quoted_string cursor token_start =
-  let rec find_pipe_offset offset =
+let lex_quoted_string = fun cursor token_start ->
+  let rec find_pipe_offset = fun offset ->
     match Cursor.peek_n cursor offset with
     | Some '|' ->
         Some offset
@@ -494,14 +572,12 @@ let lex_quoted_string cursor token_start =
         Cursor.advance cursor
       done;
       let start = Cursor.position cursor in
-      let rec loop () =
+      let rec loop = fun () ->
         match Cursor.peek cursor with
         | None ->
             (Cursor.slice cursor start (Cursor.position cursor - start), false)
         | Some '|' when delimiter_matches_after_pipe cursor delimiter ->
-            let value =
-              Cursor.slice cursor start (Cursor.position cursor - start)
-            in
+            let value = Cursor.slice cursor start (Cursor.position cursor - start) in
             Cursor.advance cursor;
             for _ = 0 to String.length delimiter - 1 do
               Cursor.advance cursor
@@ -514,26 +590,22 @@ let lex_quoted_string cursor token_start =
       in
       let value, terminated = loop () in
       let end_ = Cursor.position cursor in
-      {
-        Token.kind = Token.Literal (String { value; terminated });
-        span = { start = token_start; end_ };
-      }
+      make_token
+        ~kind:(Token.Literal (String {value; terminated}))
+        ~span:{start = token_start; end_}
   | None ->
       Cursor.advance cursor;
       let end_ = Cursor.position cursor in
-      {
-        Token.kind = Token.OpenDelim Brace;
-        span = Ceibo.Span.make ~start:token_start ~end_;
-      }
+      make_token ~kind:(Token.OpenDelim Brace) ~span:(Ceibo.Span.make ~start:token_start ~end_)
 
-let lex_char cursor token_start =
+let lex_char = fun cursor token_start ->
   Cursor.advance cursor;
-
-  let parse_escape_sequence () =
+  let parse_escape_sequence = fun () ->
     Cursor.advance cursor;
     (* Skip the backslash *)
     match Cursor.peek cursor with
-    | None -> None
+    | None ->
+        None
     | Some 'n' ->
         Cursor.advance cursor;
         Some '\n'
@@ -559,7 +631,6 @@ let lex_char cursor token_start =
         Cursor.advance cursor;
         Some ' '
     | Some ('0' .. '9' as c) -> (
-        (* Octal escape: \ddd (3 digits) *)
         let d1 = Char.code c - Char.code '0' in
         Cursor.advance cursor;
         match Cursor.peek cursor with
@@ -571,13 +642,17 @@ let lex_char cursor token_start =
                 let d3 = Char.code c3 - Char.code '0' in
                 Cursor.advance cursor;
                 let code = (d1 * 64) + (d2 * 8) + d3 in
-                if code <= 255 then Some (Char.chr code) else None
-            | _ -> Some (Char.chr ((d1 * 8) + d2)))
-        | _ -> Some (Char.chr d1))
+                if code <= 255 then
+                  Some (Char.chr code)
+                else
+                  None
+            | _ -> Some (Char.chr ((d1 * 8) + d2))
+          )
+        | _ -> Some (Char.chr d1)
+      )
     | Some 'x' -> (
-        (* Hex escape: \xhh (2 hex digits) *)
         Cursor.advance cursor;
-        let hex_to_int c =
+        let hex_to_int = fun c ->
           match c with
           | '0' .. '9' -> Some (Char.code c - Char.code '0')
           | 'a' .. 'f' -> Some (Char.code c - Char.code 'a' + 10)
@@ -595,19 +670,22 @@ let lex_char cursor token_start =
                     | Some h2 ->
                         Cursor.advance cursor;
                         Some (Char.chr ((h1 * 16) + h2))
-                    | None -> None)
-                | None -> None)
-            | None -> None)
-        | None -> None)
+                    | None -> None
+                  )
+                | None -> None
+              )
+            | None -> None
+          )
+        | None -> None
+      )
     | Some c ->
-        (* Unknown escape sequence - just take the character *)
         Cursor.advance cursor;
         Some c
   in
-
   let kind =
     match Cursor.peek cursor with
-    | None -> Token.Unknown '\''
+    | None ->
+        Token.Unknown '\''
     | Some '\\' -> (
         match parse_escape_sequence () with
         | Some char_value -> (
@@ -615,75 +693,67 @@ let lex_char cursor token_start =
             | Some '\'' ->
                 Cursor.advance cursor;
                 Token.Literal (Char char_value)
-            | _ -> Token.Unknown '\'')
-        | None -> Token.Unknown '\'')
+            | _ -> Token.Unknown '\''
+          )
+        | None -> Token.Unknown '\''
+      )
     | Some c -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '\'' ->
             Cursor.advance cursor;
             Token.Literal (Char c)
-        | _ -> Token.Unknown '\'')
+        | _ -> Token.Unknown '\''
+      )
   in
   let end_ = Cursor.position cursor in
-  { Token.kind; span = { start = token_start; end_ } }
+  make_token ~kind ~span:{start = token_start; end_}
 
-let lex_type_var cursor token_start =
+let lex_type_var = fun cursor token_start ->
   (* Type variable: 'ident
      The quote has already been seen, now consume it and return Quote token.
      The next call to `next` will lex the identifier. *)
   Cursor.advance cursor;
   let end_ = Cursor.position cursor in
-  { Token.kind = Token.Quote; span = { start = token_start; end_ } }
+  make_token ~kind:Token.Quote ~span:{start = token_start; end_}
 
-let next cursor delim_stack =
+let next = fun cursor delim_stack ->
   let start = Cursor.position cursor in
   if Cursor.is_eof cursor then
-    { Token.kind = Token.EOF; span = { start; end_ = start } }
+    make_token ~kind:Token.EOF ~span:{start; end_ = start}
   else
     match Cursor.peek cursor with
-    | None -> { Token.kind = Token.EOF; span = { start; end_ = start } }
-    | Some c when is_whitespace c -> lex_whitespace cursor start
+    | None ->
+        make_token ~kind:Token.EOF ~span:{start; end_ = start}
+    | Some c when is_whitespace c ->
+        lex_whitespace cursor start
     | Some '(' -> (
         match Cursor.peek_n cursor 1 with
         | Some '*' -> lex_comment cursor start
         | _ ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            {
-              Token.kind = Token.OpenDelim Paren;
-              span = Ceibo.Span.make ~start ~end_;
-            })
+            make_token ~kind:(Token.OpenDelim Paren) ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some ')' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        {
-          Token.kind = Token.CloseDelim Paren;
-          span = Ceibo.Span.make ~start ~end_;
-        }
+        make_token ~kind:(Token.CloseDelim Paren) ~span:(Ceibo.Span.make ~start ~end_)
     | Some '[' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '|' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            {
-              Token.kind = Token.OpenDelim Array;
-              span = Ceibo.Span.make ~start ~end_;
-            }
+            make_token ~kind:(Token.OpenDelim Array) ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            {
-              Token.kind = Token.OpenDelim Bracket;
-              span = Ceibo.Span.make ~start ~end_;
-            })
+            make_token ~kind:(Token.OpenDelim Bracket) ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some ']' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        {
-          Token.kind = Token.CloseDelim Bracket;
-          span = Ceibo.Span.make ~start ~end_;
-        }
+        make_token ~kind:(Token.CloseDelim Bracket) ~span:(Ceibo.Span.make ~start ~end_)
     | Some '{' -> (
         match Cursor.peek_n cursor 1 with
         | Some '|' ->
@@ -693,244 +763,236 @@ let next cursor delim_stack =
         | _ ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            {
-              Token.kind = Token.OpenDelim Brace;
-              span = Ceibo.Span.make ~start ~end_;
-            })
+            make_token ~kind:(Token.OpenDelim Brace) ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '}' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        {
-          Token.kind = Token.CloseDelim Brace;
-          span = Ceibo.Span.make ~start ~end_;
-        }
+        make_token ~kind:(Token.CloseDelim Brace) ~span:(Ceibo.Span.make ~start ~end_)
     | Some '+' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '.' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.PlusDot; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.PlusDot ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Plus; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Plus ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '-' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '>' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Arrow; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.Arrow ~span:(Ceibo.Span.make ~start ~end_)
         | Some '.' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.MinusDot; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.MinusDot ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Minus; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Minus ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '*' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '*' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.StarStar; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.StarStar ~span:(Ceibo.Span.make ~start ~end_)
         | Some '.' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.StarDot; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.StarDot ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Star; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Star ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '/' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '.' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.SlashDot; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.SlashDot ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Slash; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Slash ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '%' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '>' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            {
-              Token.kind = Token.PercentGt;
-              span = Ceibo.Span.make ~start ~end_;
-            }
+            make_token ~kind:Token.PercentGt ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Percent; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Percent ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '^' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.Caret; span = Ceibo.Span.make ~start ~end_ }
+        make_token ~kind:Token.Caret ~span:(Ceibo.Span.make ~start ~end_)
     | Some '=' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '>' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.FatArrow; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.FatArrow ~span:(Ceibo.Span.make ~start ~end_)
         | Some '=' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.EqEq; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.EqEq ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Eq; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Eq ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '<' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '=' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.LtEq; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.LtEq ~span:(Ceibo.Span.make ~start ~end_)
         | Some '-' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            {
-              Token.kind = Token.LeftArrow;
-              span = Ceibo.Span.make ~start ~end_;
-            }
+            make_token ~kind:Token.LeftArrow ~span:(Ceibo.Span.make ~start ~end_)
         | Some '>' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Ne; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.Ne ~span:(Ceibo.Span.make ~start ~end_)
         | Some '%' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            {
-              Token.kind = Token.LtPercent;
-              span = Ceibo.Span.make ~start ~end_;
-            }
+            make_token ~kind:Token.LtPercent ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Lt; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Lt ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '>' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '=' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.GtEq; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.GtEq ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Gt; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Gt ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '!' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '=' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.BangEq; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.BangEq ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Bang; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Bang ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '&' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '&' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.And; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.And ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            {
-              Token.kind = Token.Ampersand;
-              span = Ceibo.Span.make ~start ~end_;
-            })
+            make_token ~kind:Token.Ampersand ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '|' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '|' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Or; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.Or ~span:(Ceibo.Span.make ~start ~end_)
         | Some '>' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.PipeGt; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.PipeGt ~span:(Ceibo.Span.make ~start ~end_)
         | Some ']' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            {
-              Token.kind = Token.CloseDelim Array;
-              span = Ceibo.Span.make ~start ~end_;
-            }
+            make_token ~kind:(Token.CloseDelim Array) ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Pipe; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Pipe ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some ':' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some ':' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            {
-              Token.kind = Token.ColonColon;
-              span = Ceibo.Span.make ~start ~end_;
-            }
+            make_token ~kind:Token.ColonColon ~span:(Ceibo.Span.make ~start ~end_)
         | Some '=' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.ColonEq; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.ColonEq ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Colon; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Colon ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some ';' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.Semi; span = Ceibo.Span.make ~start ~end_ }
+        make_token ~kind:Token.Semi ~span:(Ceibo.Span.make ~start ~end_)
     | Some ',' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.Comma; span = Ceibo.Span.make ~start ~end_ }
+        make_token ~kind:Token.Comma ~span:(Ceibo.Span.make ~start ~end_)
     | Some '.' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '.' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.DotDot; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.DotDot ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Dot; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.Dot ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '?' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.Question; span = Ceibo.Span.make ~start ~end_ }
+        make_token ~kind:Token.Question ~span:(Ceibo.Span.make ~start ~end_)
     | Some '@' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '@' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.AtAt; span = Ceibo.Span.make ~start ~end_ }
+            make_token ~kind:Token.AtAt ~span:(Ceibo.Span.make ~start ~end_)
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.At; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:Token.At ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '#' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.Hash; span = Ceibo.Span.make ~start ~end_ }
+        make_token ~kind:Token.Hash ~span:(Ceibo.Span.make ~start ~end_)
     | Some '~' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.Tilde; span = Ceibo.Span.make ~start ~end_ }
+        make_token ~kind:Token.Tilde ~span:(Ceibo.Span.make ~start ~end_)
     | Some '`' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.Backtick; span = Ceibo.Span.make ~start ~end_ }
+        make_token ~kind:Token.Backtick ~span:(Ceibo.Span.make ~start ~end_)
     | Some '$' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.Dollar; span = Ceibo.Span.make ~start ~end_ }
-    | Some '"' -> lex_string cursor start
+        make_token ~kind:Token.Dollar ~span:(Ceibo.Span.make ~start ~end_)
+    | Some '"' ->
+        lex_string cursor start
     | Some '\\' -> (
         match Cursor.peek_n cursor 1 with
         | Some '#' -> (
@@ -939,54 +1001,71 @@ let next cursor delim_stack =
             | _ ->
                 Cursor.advance cursor;
                 let end_ = Cursor.position cursor in
-                { Token.kind = Token.Unknown '\\'; span = Ceibo.Span.make ~start ~end_ })
+                make_token ~kind:(Token.Unknown '\\') ~span:(Ceibo.Span.make ~start ~end_)
+          )
         | _ ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Unknown '\\'; span = Ceibo.Span.make ~start ~end_ })
+            make_token ~kind:(Token.Unknown '\\') ~span:(Ceibo.Span.make ~start ~end_)
+      )
     | Some '\'' -> (
-        (* Distinguish between type variable 'a and character literal 'a' *)
         match Cursor.peek_n cursor 1 with
         | Some c when is_ident_start c || c = '_' -> (
-            (* Could be type variable 'a or char literal 'a' *)
-            (* Check if there's a closing quote at position 2 *)
             match Cursor.peek_n cursor 2 with
             | Some '\'' ->
-                (* It's a single-char literal like 'a' *)
                 lex_char cursor start
             | _ ->
-                (* It's a type variable: 'a, 'foo, '_ignore *)
-                lex_type_var cursor start)
+                lex_type_var cursor start
+          )
         | Some '\\' -> (
             match (Cursor.peek_n cursor 2, Cursor.peek_n cursor 3) with
             | Some '#', Some c when is_ident_start c ->
                 lex_type_var cursor start
             | _ ->
-                lex_char cursor start)
+                lex_char cursor start
+          )
         | _ ->
-            (* Character literal: 'x', '\n', etc. *)
-            lex_char cursor start)
-    | Some c when is_digit c -> lex_number cursor start
-    | Some c when is_ident_start c -> lex_ident cursor delim_stack start
+            lex_char cursor start
+      )
+    | Some c when is_digit c ->
+        lex_number cursor start
+    | Some c when is_ident_start c ->
+        lex_ident cursor delim_stack start
     | Some c ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.Unknown c; span = Ceibo.Span.make ~start ~end_ }
+        make_token ~kind:(Token.Unknown c) ~span:(Ceibo.Span.make ~start ~end_)
 
-let tokenize source =
+let tokenize = fun source ->
   let cursor = create source in
-  let rec lex_all delim_stack acc =
+  let attach_pending_trivia = fun token pending_rev ->
+    Token.with_leading_trivia token (List.rev_append pending_rev token.Token.leading_trivia)
+  in
+  let rec lex_all = fun delim_stack pending_trivia_rev acc ->
     yield ();
     let token = next cursor delim_stack in
     let new_stack =
       match token.Token.kind with
-      | Token.OpenDelim d -> d :: delim_stack
+      | Token.OpenDelim d ->
+          d :: delim_stack
       | Token.CloseDelim _ -> (
-          match delim_stack with _ :: rest -> rest | [] -> delim_stack)
-      | _ -> delim_stack
+          match delim_stack with
+          | _ :: rest -> rest
+          | [] -> delim_stack
+        )
+      | _ ->
+          delim_stack
     in
-    match token.Token.kind with
-    | Token.EOF -> List.rev (token :: acc)
-    | _ -> lex_all new_stack (token :: acc)
+    match Token.trivia_of_token token with
+    | Some trivia ->
+        lex_all new_stack (trivia :: pending_trivia_rev) acc
+    | None -> (
+        let token = attach_pending_trivia token pending_trivia_rev in
+        match token.Token.kind with
+        | Token.EOF ->
+            List.rev (token :: acc)
+        | _ ->
+            lex_all new_stack [] (token :: acc)
+      )
   in
-  lex_all [] []
+  lex_all [] [] []

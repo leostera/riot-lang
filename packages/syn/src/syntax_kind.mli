@@ -28,7 +28,6 @@ open Std
     (* Check what kind of node we have *) match Ceibo.Green.kind node with |
     Syntax_kind.LET_EXPR -> (* handle let expression *) | Syntax_kind.IDENT_EXPR
     -> (* handle identifier *) | _ -> (* other cases *) ``` *)
-
 type t =
   (* ===================================================================== *)
   (* TRIVIA - Non-semantic whitespace and comments *)
@@ -202,16 +201,14 @@ type t =
 
           When the parser expects a token but doesn't find it, it creates a
           MISSING node (zero-width) to maintain tree structure. *)
-
-val to_string : t -> string
 (** `to_string kind` converts a syntax kind to a human-readable string.
 
     Useful for debugging and error messages.
 
     Example: ```ocaml Syntax_kind.to_string LET_EXPR = "LET_EXPR"
     Syntax_kind.to_string INT_LITERAL = "INT_LITERAL" ``` *)
+val to_string : t -> string
 
-val from_string : string -> t option
 (** `from_string str` parses a syntax kind from its string representation.
 
     Returns [Some kind] if the string matches a valid syntax kind, [None]
@@ -221,3 +218,4 @@ val from_string : string -> t option
 
     Example: ```ocaml Syntax_kind.from_string "LET_EXPR" = Some LET_EXPR
     Syntax_kind.from_string "INVALID" = None ``` *)
+val from_string : string -> t option

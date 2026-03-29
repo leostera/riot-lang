@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 63
+        "end": 62
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "MODULE_TYPE_DECL",
             "span": {
               "start": 0,
-              "end": 63
+              "end": 62
             }
           },
           "module_type_name": {
@@ -33,14 +33,14 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 16,
+                "start": 15,
                 "end": 62
               }
             },
             "signature_syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 16,
+                "start": 15,
                 "end": 62
               }
             }

@@ -28,49 +28,31 @@
 
 open Std
 
-type syntax_node = (Syntax_kind.t, string) Ceibo.Red.syntax_node
 (** A red-tree node from Ceibo.
 
     Every major CST value keeps its originating `syntax_node`, which lets tools
     recover spans, inspect retained trivia, or fall back to lower-level syntax
     when the public CST does not expose a dedicated field.
 *)
-
-type syntax_token = (Syntax_kind.t, string) Ceibo.Red.syntax_token
 (** A red-tree token from Ceibo.
 
     Tokens are surfaced directly only when the exact spelling matters to CST
     consumers, for example identifier names, operator symbols, or literal text.
 *)
-
-type green_node = (Syntax_kind.t, string) Ceibo.Green.node
+type syntax_node = (Syntax_kind.t, string) Ceibo.Red.syntax_node
 (** A green-tree node from Ceibo.
 
     This appears in the public interface for consumers that need to bridge
     between the immutable green tree and the lifted CST, but most callers stay
     at the `syntax_node` level.
 *)
-
+type syntax_token = (Syntax_kind.t, string) Ceibo.Red.syntax_token
 (** Thin wrapper around a Ceibo token with helpers for common token-oriented
     queries.
 
     Use `text` when you care about the source spelling and `span` when you need
     source coordinates.
 *)
-module Token : sig
-  (** A CST token wrapper.
-
-      This is used throughout the CST anywhere the concrete spelling is part of
-      the public shape, for example the `name_token` in `let x = ...` or the
-      `operator_token` in `a + b`.
-  *)
-  type t = { syntax_token : syntax_token }
-
-  val syntax_token : t -> syntax_token
-  val text : t -> string
-  val span : t -> Ceibo.Span.t
-end
-
 (** Dotted identifiers and paths.
 
     The same representation is used for value paths, type constructor paths, and
@@ -87,32 +69,40 @@ end
     `Map.Make(Key).t` is represented only for the dotted segments that the CST
     lifts directly; richer functor application syntax is modeled elsewhere.
 *)
-module Ident : sig
-  type t =
-    | Ident of {
-        syntax_node : syntax_node;
-        name_token : Token.t;
-      }
-        (** A single unqualified segment such as `x`, `result`, or `List`. *)
-    | Qualified of {
-        syntax_node : syntax_node;
-        prefix : t;
-        dot_token : Token.t;
-        name_token : Token.t;
-      }
-        (** A dotted path segment appended to an earlier path.
+type green_node = (Syntax_kind.t, string) Ceibo.Green.node
+module Token : sig
+  (** A CST token wrapper.
 
-            Examples include `Std.List`, `M.N`, and `Foo.Bar.baz`.
-        *)
+      This is used throughout the CST anywhere the concrete spelling is part of
+      the public shape, for example the `name_token` in `let x = ...` or the
+      `operator_token` in `a + b`.
+  *)
+  type t = {
+    syntax_token : syntax_token;
+  }
+  val syntax_token : t -> syntax_token
 
-  val syntax_node : t -> syntax_node
-  val segments : t -> Token.t list
-  val last_segment : t -> Token.t option
-  val name : t -> string option
-  val from_string : string -> t
-  val equal : t -> t -> bool
+  val text : t -> string
+
+  val span : t -> Ceibo.Span.t
 end
 
+type docstring = {
+  syntax_node : syntax_node;
+  docstring_token : Token.t;
+}
+type comment = {
+  syntax_node : syntax_node;
+  comment_token : Token.t;
+}
+type trivia =
+  | Docstring of docstring
+  | Comment of comment
+type owned_trivia = {
+  leading : trivia list;
+  inner : trivia list;
+  trailing : trivia list;
+}
 (** An OCaml attribute attached to some surrounding grammar node.
 
     This covers item, type, pattern, expression, and module-language attributes.
@@ -131,6 +121,36 @@ end
     [@@@warning "-32"]
     ```
 *)
+module Ident : sig
+  type t =
+    | Ident of {
+        syntax_node : syntax_node;
+        name_token : Token.t;
+      }
+    (** A single unqualified segment such as `x`, `result`, or `List`. *)
+    | Qualified of {
+        syntax_node : syntax_node;
+        prefix : t;
+        dot_token : Token.t;
+        name_token : Token.t;
+      }
+    (** A dotted path segment appended to an earlier path.
+
+            Examples include `Std.List`, `M.N`, and `Foo.Bar.baz`.
+        *)
+  val syntax_node : t -> syntax_node
+
+  val segments : t -> Token.t list
+
+  val last_segment : t -> Token.t option
+
+  val name : t -> string option
+
+  val from_string : string -> t
+
+  val equal : t -> t -> bool
+end
+
 type attribute = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
@@ -869,6 +889,8 @@ and class_type_field =
           Example: `[%%foo]`.
       *)
 
+
+
 (** Core type syntax.
 
     This covers the type grammar that appears in annotations, manifests,
@@ -886,6 +908,23 @@ and class_type_field =
 
     This view stays faithful to the parsed source. Parentheses, local opens,
     attributes, and extensions remain explicit instead of being normalized away.
+*)
+(** A single `with`-constraint inside a module type.
+
+    Examples:
+
+    ```ocaml,norun
+    S with type t = int
+    S with type t := int
+    ```
+*)
+(** A type equality constraint attached to a declaration.
+
+    Example:
+
+    ```ocaml,norun
+    type ('a, 'b) t constraint 'a = 'b
+    ```
 *)
 module CoreType : sig
   type t = core_type =
@@ -952,18 +991,14 @@ module CoreType : sig
         syntax_node : syntax_node;
         fields : object_type_field list;
       }
-
   val syntax_node : t -> syntax_node
 end
 
-(** A single `with`-constraint inside a module type.
+(** A function-arrow label.
 
-    Examples:
-
-    ```ocaml,norun
-    S with type t = int
-    S with type t := int
-    ```
+    This preserves whether the argument was unlabeled, labeled, or optional.
+    The label itself is kept as written rather than normalized into a plain
+    string.
 *)
 module ModuleTypeConstraint : sig
   type t = module_type_constraint = {
@@ -974,45 +1009,6 @@ module ModuleTypeConstraint : sig
   }
 end
 
-(** A type equality constraint attached to a declaration.
-
-    Example:
-
-    ```ocaml,norun
-    type ('a, 'b) t constraint 'a = 'b
-    ```
-*)
-module TypeConstraint : sig
-  type t = type_constraint = {
-    syntax_node : syntax_node;
-    left : core_type;
-    right : core_type;
-  }
-end
-
-(** A function-arrow label.
-
-    This preserves whether the argument was unlabeled, labeled, or optional.
-    The label itself is kept as written rather than normalized into a plain
-    string.
-*)
-module ArrowLabel : sig
-  type t = arrow_label =
-    | Named of {
-        sigil_token : Token.t option;
-        label_token : Token.t;
-      }
-    | OptionalNamed of {
-        sigil_token : Token.t;
-        label_token : Token.t;
-      }
-
-  val sigil_token : t -> Token.t option
-  val label_token : t -> Token.t
-  val name : t -> string
-  val is_optional : t -> bool
-end
-
 (** A named functor parameter together with its module type.
 
     Example:
@@ -1021,11 +1017,11 @@ end
     functor (X : S) -> T
     ```
 *)
-module FunctorParameter : sig
-  type t = functor_parameter = {
+module TypeConstraint : sig
+  type t = type_constraint = {
     syntax_node : syntax_node;
-    name_token : Token.t;
-    module_type : module_type;
+    left : core_type;
+    right : core_type;
   }
 end
 
@@ -1043,6 +1039,48 @@ end
     Signature bodies are still represented by their `signature_syntax_node`
     anchor today. That keeps the CST faithful and lossless without pretending
     signature items are already reified more deeply than they are.
+*)
+module ArrowLabel : sig
+  type t = arrow_label =
+    | Named of {
+        sigil_token : Token.t option;
+        label_token : Token.t;
+      }
+    | OptionalNamed of {
+        sigil_token : Token.t;
+        label_token : Token.t;
+      }
+  val sigil_token : t -> Token.t option
+
+  val label_token : t -> Token.t
+
+  val name : t -> string
+
+  val is_optional : t -> bool
+end
+
+(** Class type syntax.
+
+    Examples:
+
+    ```ocaml,norun
+    service
+    object method run : unit -> unit end
+    label:int -> service
+    ```
+*)
+module FunctorParameter : sig
+  type t = functor_parameter = {
+    syntax_node : syntax_node;
+    name_token : Token.t;
+    module_type : module_type;
+  }
+end
+
+(** A field inside a class type signature.
+
+    This covers inherited class types, values, methods, constraints, and the
+    attribute/extension shells that can wrap them.
 *)
 module ModuleType : sig
   type t = module_type =
@@ -1075,18 +1113,19 @@ module ModuleType : sig
         attribute : attribute;
       }
     | Extension of extension
-
   val syntax_node : t -> syntax_node
 end
 
-(** Class type syntax.
+(** How a string literal is delimited in source.
+
+    `"..."` uses `DoubleQuote`, while OCaml's quoted-string form uses
+    `Quoted { marker }`, where `marker` is the identifier between `{` and `|`.
 
     Examples:
 
     ```ocaml,norun
-    service
-    object method run : unit -> unit end
-    label:int -> service
+    "hello"
+    {tag|hello|tag}
     ```
 *)
 module ClassType : sig
@@ -1113,15 +1152,9 @@ module ClassType : sig
         attribute : attribute;
       }
     | Extension of extension
-
   val syntax_node : t -> syntax_node
 end
 
-(** A field inside a class type signature.
-
-    This covers inherited class types, values, methods, constraints, and the
-    attribute/extension shells that can wrap them.
-*)
 module ClassTypeField : sig
   type t = class_type_field =
     | Inherit of {
@@ -1151,63 +1184,40 @@ module ClassTypeField : sig
         attribute : attribute;
       }
     | Extension of extension
-
   val syntax_node : t -> syntax_node
 end
 
-(** How a string literal is delimited in source.
-
-    `"..."` uses `DoubleQuote`, while OCaml's quoted-string form uses
-    `Quoted { marker }`, where `marker` is the identifier between `{` and `|`.
-
-    Examples:
-
-    ```ocaml,norun
-    "hello"
-    {tag|hello|tag}
-    ```
-*)
+(** The numeric base of an integer literal. *)
 type string_delimiter =
   | DoubleQuote
-      (** An ordinary double-quoted string such as `"hello"`. *)
-  | Quoted of { marker : string }
-      (** A quoted string such as `{sql|select 1|sql}`.
+  (** An ordinary double-quoted string such as `"hello"`. *)
+  | Quoted of {
+      marker : string;
+    }
+  (** A quoted string such as `{sql|select 1|sql}`.
 
           `marker` stores the identifier between `{` and `|`.
       *)
-
-(** The numeric base of an integer literal. *)
+(** The explicit sign written in a float exponent. *)
 type integer_base =
   | Decimal
-      (** Base-10 digits, such as `42` or `1_000`. *)
+  (** Base-10 digits, such as `42` or `1_000`. *)
   | Hexadecimal
-      (** Base-16 digits, introduced with `0x` or `0X`. *)
+  (** Base-16 digits, introduced with `0x` or `0X`. *)
   | Octal
-      (** Base-8 digits, introduced with `0o` or `0O`. *)
+  (** Base-8 digits, introduced with `0o` or `0O`. *)
   | Binary
-      (** Base-2 digits, introduced with `0b` or `0B`. *)
-
-(** The explicit sign written in a float exponent. *)
-type exponent_sign =
-  | Positive
-      (** A `+` exponent sign, as in `1.0e+5`. *)
-  | Negative
-      (** A `-` exponent sign, as in `1.0e-5`. *)
-
+  (** Base-2 digits, introduced with `0b` or `0B`. *)
 (** A string literal with delimiter and body details preserved.
 
     `contents` stores the literal body exactly as written between the
     delimiters. Escape sequences remain escaped.
 *)
-type string_constant = {
-  syntax_node : syntax_node;
-  literal_token : Token.t;
-  delimiter : string_delimiter;
-  contents : string;
-  terminated : bool;
-  attributes : attribute list;
-}
-
+type exponent_sign =
+  | Positive
+  (** A `+` exponent sign, as in `1.0e+5`. *)
+  | Negative
+  (** A `-` exponent sign, as in `1.0e-5`. *)
 (** An integer literal with its base and optional suffix preserved.
 
     `digits` stores the exact digits as written, including underscores.
@@ -1220,6 +1230,18 @@ type string_constant = {
     0b1111_0000l
     ```
 *)
+type string_constant = {
+  syntax_node : syntax_node;
+  literal_token : Token.t;
+  delimiter : string_delimiter;
+  contents : string;
+  terminated : bool;
+  attributes : attribute list;
+}
+(** The exponent part of a floating-point literal.
+
+    Examples include the `e-5` in `1.0e-5` and the `E10` in `3.14E10`.
+*)
 type integer_constant = {
   syntax_node : syntax_node;
   literal_token : Token.t;
@@ -1229,17 +1251,6 @@ type integer_constant = {
   suffix : string option;
   attributes : attribute list;
 }
-
-(** The exponent part of a floating-point literal.
-
-    Examples include the `e-5` in `1.0e-5` and the `E10` in `3.14E10`.
-*)
-type float_exponent = {
-  marker : string;
-  sign : exponent_sign option;
-  digits : string;
-}
-
 (** A floating-point literal with its written pieces preserved.
 
     `integral_digits` and `fractional_digits` keep underscores exactly as they
@@ -1253,6 +1264,15 @@ type float_exponent = {
     1.2g
     ```
 *)
+type float_exponent = {
+  marker : string;
+  sign : exponent_sign option;
+  digits : string;
+}
+(** A character literal with its inner contents preserved exactly as written.
+
+    For example, `contents = "\\n"` for the literal `'\n'`.
+*)
 type float_constant = {
   syntax_node : syntax_node;
   literal_token : Token.t;
@@ -1262,63 +1282,61 @@ type float_constant = {
   suffix : string option;
   attributes : attribute list;
 }
-
-(** A character literal with its inner contents preserved exactly as written.
-
-    For example, `contents = "\\n"` for the literal `'\n'`.
-*)
+(** A boolean literal such as `true` or `false`. *)
 type char_constant = {
   syntax_node : syntax_node;
   literal_token : Token.t;
   contents : string;
   attributes : attribute list;
 }
+(** Literal forms accepted directly in pattern and expression position.
 
-(** A boolean literal such as `true` or `false`. *)
+    The constructors intentionally preserve the written constant structure
+    instead of collapsing everything to a single token.
+*)
+(** Alias of {!Constant} used for direct literal patterns. *)
 type bool_constant = {
   syntax_node : syntax_node;
   literal_token : Token.t;
   value : bool;
   attributes : attribute list;
 }
-
-(** Literal forms accepted directly in pattern and expression position.
-
-    The constructors intentionally preserve the written constant structure
-    instead of collapsing everything to a single token.
-*)
+(** Alias for `PatternLiteral.t`. *)
 module Constant : sig
   type t =
     | String of string_constant
-        (** String literals such as `"hello"` or `{tag|hello|tag}`. *)
+    (** String literals such as `"hello"` or `{tag|hello|tag}`. *)
     | Int of integer_constant
-        (** Integer literals such as `0`, `42`, or `0xffL`. *)
+    (** Integer literals such as `0`, `42`, or `0xffL`. *)
     | Float of float_constant
-        (** Floating-point literals such as `3.14` or `2.0e-5`. *)
+    (** Floating-point literals such as `3.14` or `2.0e-5`. *)
     | Char of char_constant
-        (** Character literals such as `'a'` or `'\n'`. *)
+    (** Character literals such as `'a'` or `'\n'`. *)
     | Bool of bool_constant
-        (** Boolean literals `true` and `false`. *)
+    (** Boolean literals `true` and `false`. *)
     | Unit of {
         syntax_node : syntax_node;
         attributes : attribute list;
       }
-        (** The unit literal `()`. *)
-
+    (** The unit literal `()`. *)
   val syntax_node : t -> syntax_node
 end
 
-(** Alias of {!Constant} used for direct literal patterns. *)
 module PatternLiteral = Constant
-
-(** Alias for `PatternLiteral.t`. *)
-type pattern_literal = PatternLiteral.t
 
 (** Namespace helpers for `type_binder`.
 
     The constructors mirror `type_binder` exactly, so the binder grammar
     documented above applies here unchanged.
 *)
+(** Pattern syntax.
+
+    Patterns appear in `let` bindings, function parameters, `match` cases,
+    `try ... with` handlers, object self patterns, and effect handlers. This
+    type covers the common structural forms directly and uses the record payload
+    types below to expose the relevant nested grammar.
+*)
+type pattern_literal = PatternLiteral.t
 module TypeBinder : sig
   type t = type_binder =
     | Quoted of {
@@ -1328,20 +1346,15 @@ module TypeBinder : sig
     | Bare of {
         name_token : Token.t;
       }
-
   val name_token : t -> Token.t
+
   val name : t -> string
+
   val text : t -> string
+
   val is_quoted : t -> bool
 end
 
-(** Pattern syntax.
-
-    Patterns appear in `let` bindings, function parameters, `match` cases,
-    `try ... with` handlers, object self patterns, and effect handlers. This
-    type covers the common structural forms directly and uses the record payload
-    types below to expose the relevant nested grammar.
-*)
 type pattern =
   | Identifier of identifier_pattern
       (** A binding-name pattern such as `x`, `value`, or `state`. *)
@@ -1755,20 +1768,26 @@ and parenthesized_pattern = {
   attributes : attribute list;
 }
 
+
+
 (** A positional function parameter.
 
     This covers ordinary unlabeled parameters in `fun` expressions and
     function-like `let` bindings, such as `x`, `_`, or `(x : int)`.
+*)
+(** A labeled parameter introduced with `~`.
+
+    Examples include `~x` and `~label`.
 *)
 type positional_parameter = {
   syntax_node : syntax_node;
   pattern : pattern;
   name_token : Token.t option;
 }
+(** An optional parameter introduced with `?`.
 
-(** A labeled parameter introduced with `~`.
-
-    Examples include `~x` and `~label`.
+    This covers both plain optional parameters like `?x` and parameters with a
+    default such as `?(x = 0)`.
 *)
 type labeled_parameter = {
   syntax_node : syntax_node;
@@ -1777,21 +1796,6 @@ type labeled_parameter = {
   binding_name_token : Token.t option;
   binding_pattern : pattern option;
 }
-
-(** An optional parameter introduced with `?`.
-
-    This covers both plain optional parameters like `?x` and parameters with a
-    default such as `?(x = 0)`.
-*)
-type optional_parameter = {
-  syntax_node : syntax_node;
-  sigil_token : Token.t;
-  label_token : Token.t;
-  binding_name_token : Token.t option;
-  has_default : bool;
-  binding_pattern : pattern option;
-}
-
 (** A locally abstract type parameter in function parameter position.
 
     Examples:
@@ -1801,11 +1805,14 @@ type optional_parameter = {
     (type a b)
     ```
 *)
-type locally_abstract_type_parameter = {
+type optional_parameter = {
   syntax_node : syntax_node;
-  binders : type_binder list;
+  sigil_token : Token.t;
+  label_token : Token.t;
+  binding_name_token : Token.t option;
+  has_default : bool;
+  binding_pattern : pattern option;
 }
-
 (** Function parameter syntax.
 
     Parameters appear in `fun` expressions and in function-shaped `let`
@@ -1813,42 +1820,48 @@ type locally_abstract_type_parameter = {
     abstract parameters so tooling can reason about the source-level calling
     convention directly.
 *)
-type parameter =
-  | Positional of positional_parameter
-      (** An ordinary unlabeled parameter such as `x` or `(x : int)`. *)
-  | Labeled of labeled_parameter
-      (** A labeled parameter such as `~x`. *)
-  | Optional of optional_parameter
-      (** An optional parameter such as `?x` or `?(x = 0)`. *)
-  | LocallyAbstract of locally_abstract_type_parameter
-      (** A locally abstract type binder such as `(type a)`. *)
-
+type locally_abstract_type_parameter = {
+  syntax_node : syntax_node;
+  binders : type_binder list;
+}
 (** Namespace helpers for `parameter`.
 
     The constructors mirror `parameter` exactly, so the parameter grammar
     documented above applies here unchanged.
 *)
+(** Alias of {!Constant} used for direct literal expressions. *)
+type parameter =
+  | Positional of positional_parameter
+  (** An ordinary unlabeled parameter such as `x` or `(x : int)`. *)
+  | Labeled of labeled_parameter
+  (** A labeled parameter such as `~x`. *)
+  | Optional of optional_parameter
+  (** An optional parameter such as `?x` or `?(x = 0)`. *)
+  | LocallyAbstract of locally_abstract_type_parameter
+  (** A locally abstract type binder such as `(type a)`. *)
+(** Alias for `Literal.t`. *)
 module Parameter : sig
   type t = parameter =
     | Positional of positional_parameter
     | Labeled of labeled_parameter
     | Optional of optional_parameter
     | LocallyAbstract of locally_abstract_type_parameter
-
   val syntax_node : t -> syntax_node
+
   val sigil_token : t -> Token.t option
+
   val name_token : t -> Token.t option
+
   val name : t -> string option
+
   val is_named : t -> bool
+
   val has_default : t -> bool
+
   val binding_pattern : t -> pattern option
 end
 
-(** Alias of {!Constant} used for direct literal expressions. *)
 module Literal = Constant
-
-(** Alias for `Literal.t`. *)
-type literal = Literal.t
 
 (** An exception declaration header.
 
@@ -1863,11 +1876,12 @@ type literal = Literal.t
     exception Panic of string
     ```
 *)
+type literal = Literal.t
 type exception_declaration = {
   syntax_node : syntax_node;
   name_token : Token.t;
+  owned_trivia : owned_trivia;
 }
-
 (** Expression syntax.
 
     This is the main term-level grammar family. It covers evaluated expressions,
@@ -3121,12 +3135,25 @@ and module_expression =
           Example: `[%driver]`.
       *)
 
+
+
 (** Expression syntax.
 
     This is the main value-language tree used by lint rules and other syntax
     consumers. The constructors intentionally preserve surface distinctions such
     as `fun` versus `function`, `record` literals versus updates, and explicit
     parentheses.
+*)
+(** A member inside an object expression body. *)
+(** Class expression syntax.
+
+    Examples:
+
+    ```ocaml,norun
+    object method run = () end
+    fun x -> object end
+    C(arg)
+    ```
 *)
 module Expression : sig
   type t = expression =
@@ -3173,12 +3200,12 @@ module Expression : sig
     | Try of try_expression
     | If of if_expression
     | Parenthesized of parenthesized_expression
-
   val syntax_node : t -> syntax_node
+
   val attributes : t -> attribute list
 end
 
-(** A member inside an object expression body. *)
+(** A field inside a class structure body. *)
 module ObjectMember : sig
   type t = object_member =
     | Method of object_method
@@ -3186,55 +3213,6 @@ module ObjectMember : sig
     | Inherit of object_inherit
     | Extension of extension
     | Initializer of object_initializer
-
-  val syntax_node : t -> syntax_node
-end
-
-(** Class expression syntax.
-
-    Examples:
-
-    ```ocaml,norun
-    object method run = () end
-    fun x -> object end
-    C(arg)
-    ```
-*)
-module ClassExpression : sig
-  type t = class_expression =
-    | Path of Ident.t
-    | Structure of class_structure
-    | Fun of class_fun_expression
-    | Apply of class_apply_expression
-    | Let of class_let_expression
-    | Constraint of class_constraint_expression
-    | LocalOpen of local_open_class_expression
-    | Parenthesized of parenthesized_class_expression
-    | Attribute of {
-        syntax_node : syntax_node;
-        class_expression : class_expression;
-        attribute : attribute;
-      }
-    | Extension of extension
-
-  val syntax_node : t -> syntax_node
-end
-
-(** A field inside a class structure body. *)
-module ClassField : sig
-  type t = class_field =
-    | Method of class_method
-    | Value of class_value
-    | Inherit of class_inherit
-    | Constraint of class_constraint
-    | Initializer of class_initializer
-    | Attribute of {
-        syntax_node : syntax_node;
-        field : class_field;
-        attribute : attribute;
-      }
-    | Extension of extension
-
   val syntax_node : t -> syntax_node
 end
 
@@ -3252,6 +3230,52 @@ end
     Structure bodies currently preserve their top-level item anchors via
     `item_syntax_nodes` rather than exposing a second fully typed item tree
     here.
+*)
+module ClassExpression : sig
+  type t = class_expression =
+    | Path of Ident.t
+    | Structure of class_structure
+    | Fun of class_fun_expression
+    | Apply of class_apply_expression
+    | Let of class_let_expression
+    | Constraint of class_constraint_expression
+    | LocalOpen of local_open_class_expression
+    | Parenthesized of parenthesized_class_expression
+    | Attribute of {
+        syntax_node : syntax_node;
+        class_expression : class_expression;
+        attribute : attribute;
+      }
+    | Extension of extension
+  val syntax_node : t -> syntax_node
+end
+
+(** Pattern syntax helper namespace.
+
+    This mirrors `pattern` exactly and exists mainly so callers can write
+    qualified matches such as `Pattern.Constructor ...` when that reads more
+    clearly than matching the raw variant directly.
+*)
+module ClassField : sig
+  type t = class_field =
+    | Method of class_method
+    | Value of class_value
+    | Inherit of class_inherit
+    | Constraint of class_constraint
+    | Initializer of class_initializer
+    | Attribute of {
+        syntax_node : syntax_node;
+        field : class_field;
+        attribute : attribute;
+      }
+    | Extension of extension
+  val syntax_node : t -> syntax_node
+end
+
+(** Helper view over `infix_expression`.
+
+    This module is convenient when callers specifically want to work with infix
+    operators and use helper accessors such as `operator`.
 *)
 module ModuleExpression : sig
   type t = module_expression =
@@ -3294,15 +3318,13 @@ module ModuleExpression : sig
         attribute : attribute;
       }
     | Extension of extension
-
   val syntax_node : t -> syntax_node
 end
 
-(** Pattern syntax helper namespace.
+(** Helper view over `record_expression`.
 
-    This mirrors `pattern` exactly and exists mainly so callers can write
-    qualified matches such as `Pattern.Constructor ...` when that reads more
-    clearly than matching the raw variant directly.
+    The constructors mirror `record_expression` exactly, so the literal/update
+    distinction documented above applies here unchanged.
 *)
 module Pattern : sig
   type t = pattern =
@@ -3329,15 +3351,14 @@ module Pattern : sig
     | Effect of effect_pattern
     | LocalOpen of local_open_pattern
     | Parenthesized of parenthesized_pattern
-
   val syntax_node : t -> syntax_node
+
   val attributes : t -> attribute list
 end
 
-(** Helper view over `infix_expression`.
+(** A type variable as it appears in a declaration parameter list.
 
-    This module is convenient when callers specifically want to work with infix
-    operators and use helper accessors such as `operator`.
+    Examples include `'a` in `type 'a t = ...` and `_` in `type _ t = ...`.
 *)
 module InfixExpression : sig
   type t = infix_expression = {
@@ -3347,42 +3368,17 @@ module InfixExpression : sig
     right : expression;
     attributes : attribute list;
   }
-
   val syntax_node : t -> syntax_node
+
   val left : t -> Expression.t
+
   val operator_token : t -> Token.t
+
   val operator : t -> string
+
   val right : t -> Expression.t
+
   val attributes : t -> attribute list
-end
-
-(** Helper view over `record_expression`.
-
-    The constructors mirror `record_expression` exactly, so the literal/update
-    distinction documented above applies here unchanged.
-*)
-module RecordExpression : sig
-  type t = record_expression =
-    | Literal of record_literal_expression
-    | Update of record_update_expression
-
-  val syntax_node : t -> syntax_node
-end
-
-(** A type variable as it appears in a declaration parameter list.
-
-    Examples include `'a` in `type 'a t = ...` and `_` in `type _ t = ...`.
-*)
-module TypeVariable : sig
-  type t = {
-    syntax_node : syntax_node;
-    name_token : Token.t;
-  }
-
-  val syntax_node : t -> syntax_node
-  val name_token : t -> Token.t
-  val name : t -> string
-  val text : t -> string
 end
 
 (** A single type parameter in a type or class declaration.
@@ -3393,18 +3389,11 @@ end
     Examples include `+'a` in `type +'a t = ...`, `!'a`-style injective
     parameters, and `_` in `type _ t = ...`.
 *)
-module TypeParameterVariance : sig
-  type t =
-    | Covariant of {
-        marker_token : Token.t;
-      }
-        (** A `+` variance marker, as in `type +'a t = ...`. *)
-    | Contravariant of {
-        marker_token : Token.t;
-      }
-        (** A `-` variance marker, as in `type -'a sink = ...`. *)
-
-  val marker_token : t -> Token.t
+module RecordExpression : sig
+  type t = record_expression =
+    | Literal of record_literal_expression
+    | Update of record_update_expression
+  val syntax_node : t -> syntax_node
 end
 
 (** A full declared type parameter.
@@ -3421,18 +3410,18 @@ end
     _ 
     ```
 *)
-module TypeParameter : sig
+module TypeVariable : sig
   type t = {
     syntax_node : syntax_node;
-    variance : TypeParameterVariance.t option;
-    is_injective : bool;
-    type_variable : TypeVariable.t option;
+    name_token : Token.t;
   }
-
   val syntax_node : t -> syntax_node
-  val variance : t -> TypeParameterVariance.t option
-  val is_injective : t -> bool
-  val type_variable : t -> TypeVariable.t option
+
+  val name_token : t -> Token.t
+
+  val name : t -> string
+
+  val text : t -> string
 end
 
 (** Helper view over `private_flag`.
@@ -3440,17 +3429,17 @@ end
     This keeps the written `private` keyword when one was present instead of
     flattening the declaration down to a boolean.
 *)
-module PrivateFlag : sig
-  type t = private_flag =
-    | Public
-        (** A public declaration such as `type t = int`. *)
-    | Private of {
-        private_token : Token.t;
+module TypeParameterVariance : sig
+  type t =
+    | Covariant of {
+        marker_token : Token.t;
       }
-        (** A private declaration such as `type t = private int`. *)
-
-  val private_token : t -> Token.t option
-  val is_private : t -> bool
+    (** A `+` variance marker, as in `type +'a t = ...`. *)
+    | Contravariant of {
+        marker_token : Token.t;
+      }
+    (** A `-` variance marker, as in `type -'a sink = ...`. *)
+  val marker_token : t -> Token.t
 end
 
 (** A field inside a record type definition.
@@ -3458,21 +3447,20 @@ end
     Covers entries such as `name : string`, `mutable count : int`, and
     `count : int [@deprecated]`.
 *)
-module RecordField : sig
+module TypeParameter : sig
   type t = {
     syntax_node : syntax_node;
-    field_name : Token.t;
-    field_type : core_type;
-    is_mutable : bool;
-    attributes : attribute list;
+    variance : TypeParameterVariance.t option;
+    is_injective : bool;
+    type_variable : TypeVariable.t option;
   }
-
   val syntax_node : t -> syntax_node
-  val field_name_token : t -> Token.t
-  val field_type : t -> core_type
-  val name : t -> string
-  val is_mutable : t -> bool
-  val attributes : t -> attribute list
+
+  val variance : t -> TypeParameterVariance.t option
+
+  val is_injective : t -> bool
+
+  val type_variable : t -> TypeVariable.t option
 end
 
 (** Structured argument forms for variant constructors.
@@ -3488,27 +3476,17 @@ end
     type _ expr = Val : 'a -> 'a expr
     ```
 *)
-module ConstructorArguments : sig
-  type t =
-    | Tuple of core_type list
-        (** Positional constructor arguments.
+module PrivateFlag : sig
+  type t = private_flag =
+    | Public
+    (** A public declaration such as `type t = int`. *)
+    | Private of {
+        private_token : Token.t;
+      }
+    (** A private declaration such as `type t = private int`. *)
+  val private_token : t -> Token.t option
 
-            Examples:
-
-            ```ocaml,norun
-            type t = Pair of int * string
-            type t = Wrapped of (int * string)
-            ```
-        *)
-    | Record of RecordField.t list
-        (** Inline record constructor arguments.
-
-            Example:
-
-            ```ocaml,norun
-            type t = Person of { name : string; age : int }
-            ```
-        *)
+  val is_private : t -> bool
 end
 
 (** A constructor inside a variant type definition or type extension.
@@ -3530,6 +3508,83 @@ end
     type _ expr = Val : 'a -> 'a expr
     ```
 *)
+module RecordField : sig
+  type t = {
+    syntax_node : syntax_node;
+    field_name : Token.t;
+    field_type : core_type;
+    is_mutable : bool;
+    attributes : attribute list;
+    owned_trivia : owned_trivia;
+  }
+  val syntax_node : t -> syntax_node
+
+  val field_name_token : t -> Token.t
+
+  val field_type : t -> core_type
+
+  val name : t -> string
+
+  val is_mutable : t -> bool
+
+  val attributes : t -> attribute list
+
+  val owned_trivia : t -> owned_trivia
+end
+
+(** Helper view over `poly_variant_tag`.
+
+    The structure matches `poly_variant_tag` exactly and is typically used while
+    inspecting polymorphic variant type definitions.
+*)
+module ConstructorArguments : sig
+  (** Inline record constructor arguments.
+
+            Example:
+
+            ```ocaml,norun
+            type t = Person of { name : string; age : int }
+            ```
+        *)
+  type t =
+    | Tuple of core_type list
+    (** Positional constructor arguments.
+
+            Examples:
+
+            ```ocaml,norun
+            type t = Pair of int * string
+            type t = Wrapped of (int * string)
+            ```
+        *)
+    | Record of RecordField.t list
+    (** Inline record constructor arguments.
+
+            Example:
+
+            ```ocaml,norun
+            type t = Person of { name : string; age : int }
+            ```
+        *)
+  (** Inline record constructor arguments.
+
+            Example:
+
+            ```ocaml,norun
+            type t = Person of { name : string; age : int }
+            ```
+        *)
+  (** Inline record constructor arguments.
+
+            Example:
+
+            ```ocaml,norun
+            type t = Person of { name : string; age : int }
+            ```
+        *)
+end
+
+(** Helper view over `poly_variant_bound`. *)
 module VariantConstructor : sig
   type t = {
     syntax_node : syntax_node;
@@ -3538,21 +3593,29 @@ module VariantConstructor : sig
     arguments : ConstructorArguments.t option;
     payload_type : core_type option;
     result_type : core_type option;
+    owned_trivia : owned_trivia;
   }
-
   val syntax_node : t -> syntax_node
+
   val attributes : t -> attribute list
+
   val constructor_name_token : t -> Token.t
+
   val arguments : t -> ConstructorArguments.t option
+
   val payload_type : t -> core_type option
+
   val result_type : t -> core_type option
+
+  val owned_trivia : t -> owned_trivia
+
   val name : t -> string
 end
 
-(** Helper view over `poly_variant_tag`.
+(** Helper view over `row_field`.
 
-    The structure matches `poly_variant_tag` exactly and is typically used while
-    inspecting polymorphic variant type definitions.
+    This distinguishes explicit variant tags from inherited rows such as
+    `color` in `[ color | `Yellow ]`.
 *)
 module PolyVariantTag : sig
   type t = poly_variant_tag = {
@@ -3561,15 +3624,18 @@ module PolyVariantTag : sig
     tag_name : Token.t;
     payload_type : core_type option;
   }
-
   val syntax_node : t -> syntax_node
+
   val attributes : t -> attribute list
+
   val tag_name_token : t -> Token.t
+
   val payload_type : t -> core_type option
+
   val name : t -> string
 end
 
-(** Helper view over `poly_variant_bound`. *)
+(** Helper view over `poly_variant`. *)
 module PolyVariantBound : sig
   type t = poly_variant_bound =
     | Exact
@@ -3579,14 +3645,13 @@ module PolyVariantBound : sig
     | LowerBound of {
         marker_token : Token.t;
       }
-
   val marker_token : t -> Token.t option
 end
 
-(** Helper view over `row_field`.
+(** The right-hand side of a `type` declaration.
 
-    This distinguishes explicit variant tags from inherited rows such as
-    `color` in `[ color | `Yellow ]`.
+    This is intentionally a broad summary layer over the successful parse. The
+    most common declaration shapes are modeled directly. 
 *)
 module RowField : sig
   type t = row_field =
@@ -3595,35 +3660,55 @@ module RowField : sig
         syntax_node : syntax_node;
         type_ : core_type;
       }
-
   val syntax_node : t -> syntax_node
+
   val tag : t -> PolyVariantTag.t option
+
   val inherited_type : t -> core_type option
 end
 
-(** Helper view over `poly_variant`. *)
+(** A `type` declaration item.
+
+    Examples:
+
+    ```ocaml,norun
+    type t = int
+    type ('a, 'b) pair = 'a * 'b
+    type t := string
+    ```
+*)
 module PolyVariant : sig
   type t = poly_variant = {
     syntax_node : syntax_node;
     kind : poly_variant_bound;
     fields : row_field list;
   }
-
   val syntax_node : t -> syntax_node
+
   val kind : t -> PolyVariantBound.t
+
   val fields : t -> RowField.t list
+
   val tags : t -> PolyVariantTag.t list
 end
 
-(** The right-hand side of a `type` declaration.
+(** A `type ... += ...` extension item.
 
-    This is intentionally a broad summary layer over the successful parse. The
-    most common declaration shapes are modeled directly. 
+    Examples:
+
+    ```ocaml,norun
+    type _ Effect.t += Yield : unit Effect.t
+    type message += Ack
+    ```
 *)
 module TypeDefinition : sig
+  (** A polymorphic variant definition such as
+            `type t = [ `A | `B of int ]` or
+            `type t = [ color | `Yellow ]`.
+        *)
   type t =
     | Abstract
-        (** An abstract declaration with no manifest.
+    (** An abstract declaration with no manifest.
 
             Example:
 
@@ -3635,7 +3720,7 @@ module TypeDefinition : sig
         syntax_node : syntax_node;
         manifest : core_type;
       }
-        (** A manifest alias.
+    (** A manifest alias.
 
             Examples:
 
@@ -3648,7 +3733,7 @@ module TypeDefinition : sig
     | Extensible of {
         syntax_node : syntax_node;
       }
-        (** An extensible variant declaration introduced with `= ..`.
+    (** An extensible variant declaration introduced with `= ..`.
 
             Example:
 
@@ -3660,7 +3745,7 @@ module TypeDefinition : sig
         syntax_node : syntax_node;
         module_type : module_type;
       }
-        (** A manifest first-class module type.
+    (** A manifest first-class module type.
 
             Example: `type handler = (module Handler with type t = int)`.
         *)
@@ -3668,38 +3753,41 @@ module TypeDefinition : sig
         syntax_node : syntax_node;
         fields : object_type_field list;
       }
-        (** An object type definition such as `type t = < run : unit -> unit >`. *)
+    (** An object type definition such as `type t = < run : unit -> unit >`. *)
     | Record of {
         syntax_node : syntax_node;
         fields : RecordField.t list;
       }
-        (** A record type definition such as
+    (** A record type definition such as
             `type t = { name : string; mutable count : int }`. *)
     | Variant of {
         syntax_node : syntax_node;
         constructors : VariantConstructor.t list;
       }
-        (** A variant definition whose constructors are lifted structurally.
+    (** A variant definition whose constructors are lifted structurally.
 
             This includes ordinary constructors like `type t = A | B of int`
             and GADT-style constructors like `type _ expr = Int : int expr`.
         *)
     | PolyVariant of PolyVariant.t
-        (** A polymorphic variant definition such as
+    (** A polymorphic variant definition such as
+            `type t = [ `A | `B of int ]` or
+            `type t = [ color | `Yellow ]`.
+        *)
+  (** A polymorphic variant definition such as
+            `type t = [ `A | `B of int ]` or
+            `type t = [ color | `Yellow ]`.
+        *)
+  (** A polymorphic variant definition such as
             `type t = [ `A | `B of int ]` or
             `type t = [ color | `Yellow ]`.
         *)
 end
 
-(** A `type` declaration item.
+(** Helper view over `let_binding`.
 
-    Examples:
-
-    ```ocaml,norun
-    type t = int
-    type ('a, 'b) pair = 'a * 'b
-    type t := string
-    ```
+    This is useful both for top-level `let` items and for nested `and` bindings
+    collected from expression forms.
 *)
 module TypeDeclaration : sig
   type t = {
@@ -3713,90 +3801,43 @@ module TypeDeclaration : sig
     and_declarations : t list;
     is_nonrec : bool;
     is_destructive_substitution : bool;
+    owned_trivia : owned_trivia;
   }
-
   val syntax_node : t -> syntax_node
+
   val type_name : t -> Ident.t
+
   val type_params : t -> TypeParameter.t list
+
   val type_definition : t -> TypeDefinition.t
+
   (** Preserves the leading manifest alias in declarations such as
       `type t = Base.t = A | B`.
   *)
   val manifest_alias : t -> core_type option
+
   val private_flag : t -> private_flag
+
   (** Preserves whether the declaration was written with `private`.
 
       Examples include `type t = private int` and
       `type color = private Red | Blue`.
   *)
   val constraints : t -> TypeConstraint.t list
+
   val and_declarations : t -> t list
+
   (** `true` for `type nonrec t = ...`. *)
   val is_nonrec : t -> bool
+
   (** `true` for interface destructive substitutions such as `type t := string`. *)
   val is_destructive_substitution : t -> bool
+
+  val owned_trivia : t -> owned_trivia
+
   val is_private : t -> bool
+
   val name_token : t -> Token.t
-end
-
-(** A `type ... += ...` extension item.
-
-    Examples:
-
-    ```ocaml,norun
-    type _ Effect.t += Yield : unit Effect.t
-    type message += Ack
-    ```
-*)
-module TypeExtension : sig
-  type t = {
-    syntax_node : syntax_node;
-    type_name : Ident.t;
-    type_params : TypeParameter.t list;
-    constructors : VariantConstructor.t list;
-  }
-
-  val syntax_node : t -> syntax_node
-  val type_name : t -> Ident.t
-  val type_params : t -> TypeParameter.t list
-  val constructors : t -> VariantConstructor.t list
-  val name_token : t -> Token.t
-end
-
-(** Helper view over `let_binding`.
-
-    This is useful both for top-level `let` items and for nested `and` bindings
-    collected from expression forms.
-*)
-module LetBinding : sig
-  type t = let_binding = {
-    syntax_node : syntax_node;
-    keyword_token : Token.t;
-    rec_token : Token.t option;
-    equals_token : Token.t;
-    attributes : attribute list;
-    binding_pattern : pattern;
-    binding_name : Token.t option;
-    parameters : Parameter.t list;
-    value : expression;
-    and_bindings : let_binding list;
-    is_recursive : bool;
-  }
-
-  val syntax_node : t -> syntax_node
-  val keyword_token : t -> Token.t
-  val rec_token : t -> Token.t option
-  val equals_token : t -> Token.t
-  val attributes : t -> attribute list
-  val binding_pattern : t -> Pattern.t
-  val binding_name_token : t -> Token.t option
-  val name : t -> string
-  val parameters : t -> Parameter.t list
-  val value : t -> Expression.t
-  val and_bindings : t -> t list
-  val value_syntax_node : t -> syntax_node
-  val is_recursive : t -> bool
-  val is_function : t -> bool
 end
 
 (** A single module binding.
@@ -3814,26 +3855,25 @@ end
     module F (X : S) : T = struct end
     ```
 *)
-module ModuleDeclaration : sig
+module TypeExtension : sig
   type t = {
     syntax_node : syntax_node;
-    module_name : Token.t;
-    functor_parameters : functor_parameter list;
-    module_type : module_type option;
-    module_expression : module_expression option;
-    is_destructive_substitution : bool;
-    is_recursive : bool;
+    type_name : Ident.t;
+    type_params : TypeParameter.t list;
+    constructors : VariantConstructor.t list;
+    owned_trivia : owned_trivia;
   }
-
   val syntax_node : t -> syntax_node
-  val module_name_token : t -> Token.t
-  val functor_parameters : t -> functor_parameter list
-  val module_type : t -> module_type option
-  val module_expression : t -> module_expression option
-  (** `true` for destructive substitutions such as `module Alias := M`. *)
-  val is_destructive_substitution : t -> bool
-  val is_recursive : t -> bool
-  val name : t -> string
+
+  val type_name : t -> Ident.t
+
+  val type_params : t -> TypeParameter.t list
+
+  val constructors : t -> VariantConstructor.t list
+
+  val owned_trivia : t -> owned_trivia
+
+  val name_token : t -> Token.t
 end
 
 (** A recursive module structure item.
@@ -3848,14 +3888,47 @@ end
     and B : T = Y
     ```
 *)
-module RecursiveModuleDeclaration : sig
-  type t = {
+module LetBinding : sig
+  type t = let_binding = {
     syntax_node : syntax_node;
-    declarations : ModuleDeclaration.t list;
+    keyword_token : Token.t;
+    rec_token : Token.t option;
+    equals_token : Token.t;
+    attributes : attribute list;
+    binding_pattern : pattern;
+    binding_name : Token.t option;
+    parameters : Parameter.t list;
+    value : expression;
+    and_bindings : let_binding list;
+    is_recursive : bool;
   }
-
   val syntax_node : t -> syntax_node
-  val declarations : t -> ModuleDeclaration.t list
+
+  val keyword_token : t -> Token.t
+
+  val rec_token : t -> Token.t option
+
+  val equals_token : t -> Token.t
+
+  val attributes : t -> attribute list
+
+  val binding_pattern : t -> Pattern.t
+
+  val binding_name_token : t -> Token.t option
+
+  val name : t -> string
+
+  val parameters : t -> Parameter.t list
+
+  val value : t -> Expression.t
+
+  val and_bindings : t -> t list
+
+  val value_syntax_node : t -> syntax_node
+
+  val is_recursive : t -> bool
+
+  val is_function : t -> bool
 end
 
 (** A `module type` declaration item.
@@ -3868,19 +3941,34 @@ end
     module type Alias := Source
     ```
 *)
-module ModuleTypeDeclaration : sig
+module ModuleDeclaration : sig
   type t = {
     syntax_node : syntax_node;
-    module_type_name : Token.t;
+    module_name : Token.t;
+    functor_parameters : functor_parameter list;
     module_type : module_type option;
+    module_expression : module_expression option;
     is_destructive_substitution : bool;
+    is_recursive : bool;
+    owned_trivia : owned_trivia;
   }
-
   val syntax_node : t -> syntax_node
-  val module_type_name_token : t -> Token.t
+
+  val module_name_token : t -> Token.t
+
+  val functor_parameters : t -> functor_parameter list
+
   val module_type : t -> module_type option
-  (** `true` for destructive substitutions such as `module type Alias := S`. *)
+
+  val module_expression : t -> module_expression option
+
+  (** `true` for destructive substitutions such as `module Alias := M`. *)
   val is_destructive_substitution : t -> bool
+
+  val is_recursive : t -> bool
+
+  val owned_trivia : t -> owned_trivia
+
   val name : t -> string
 end
 
@@ -3888,37 +3976,17 @@ end
 
     Covers both `open M` and `open! M`.
 *)
-module OpenStatement : sig
-  type target =
-    | Path of Ident.t
-        (** A path-style open target such as `open Std.List`.
-
-            This is the only form accepted in signatures.
-        *)
-    | ModuleExpression of module_expression
-        (** An implementation open target lifted through `module_expression`.
-
-            Examples:
-
-            ```ocaml,norun
-            open Std.List
-            open Make(Std)
-            open struct let value = 1 end
-            ```
-        *)
-
+module RecursiveModuleDeclaration : sig
   type t = {
     syntax_node : syntax_node;
-    target : target;
-    bang_token : Token.t option;
+    declarations : ModuleDeclaration.t list;
+    owned_trivia : owned_trivia;
   }
-
   val syntax_node : t -> syntax_node
-  val target : t -> target
-  val module_expression : t -> module_expression option
-  val module_path : t -> Ident.t option
-  val bang_token : t -> Token.t option
-  val has_bang : t -> bool
+
+  val declarations : t -> ModuleDeclaration.t list
+
+  val owned_trivia : t -> owned_trivia
 end
 
 (** A standalone docstring item.
@@ -3927,15 +3995,26 @@ end
     definition and instead contribute directly to the surrounding module or
     signature documentation.
 *)
-module Docstring : sig
+module ModuleTypeDeclaration : sig
   type t = {
     syntax_node : syntax_node;
-    docstring_token : Token.t;
+    module_type_name : Token.t;
+    module_type : module_type option;
+    is_destructive_substitution : bool;
+    owned_trivia : owned_trivia;
   }
-
   val syntax_node : t -> syntax_node
-  val token : t -> Token.t
-  val text : t -> string
+
+  val module_type_name_token : t -> Token.t
+
+  val module_type : t -> module_type option
+
+  (** `true` for destructive substitutions such as `module type Alias := S`. *)
+  val is_destructive_substitution : t -> bool
+
+  val owned_trivia : t -> owned_trivia
+
+  val name : t -> string
 end
 
 (** A `val` declaration item.
@@ -3950,12 +4029,115 @@ end
     val ( + ) : int -> int -> int
     ```
 *)
+module OpenStatement : sig
+  type target =
+    | Path of Ident.t
+    (** A path-style open target such as `open Std.List`.
+
+            This is the only form accepted in signatures.
+        *)
+    | ModuleExpression of module_expression
+    (** An implementation open target lifted through `module_expression`.
+
+            Examples:
+
+            ```ocaml,norun
+            open Std.List
+            open Make(Std)
+            open struct let value = 1 end
+            ```
+        *)
+  type t = {
+    syntax_node : syntax_node;
+    target : target;
+    bang_token : Token.t option;
+    owned_trivia : owned_trivia;
+  }
+  val syntax_node : t -> syntax_node
+
+  val target : t -> target
+
+  val module_expression : t -> module_expression option
+
+  val module_path : t -> Ident.t option
+
+  val bang_token : t -> Token.t option
+
+  val has_bang : t -> bool
+
+  val owned_trivia : t -> owned_trivia
+end
+
+module Docstring : sig
+  type t = docstring = {
+    syntax_node : syntax_node;
+    docstring_token : Token.t;
+  }
+  val syntax_node : t -> syntax_node
+
+  val token : t -> Token.t
+
+  val text : t -> string
+end
+
+module Comment : sig
+  type t = comment = {
+    syntax_node : syntax_node;
+    comment_token : Token.t;
+  }
+  val syntax_node : t -> syntax_node
+
+  val token : t -> Token.t
+
+  val text : t -> string
+end
+
+module Trivia : sig
+  type t = trivia =
+    | Docstring of docstring
+    | Comment of comment
+  val syntax_node : t -> syntax_node
+
+  val token : t -> Token.t
+
+  val text : t -> string
+
+  val is_docstring : t -> bool
+
+  val is_comment : t -> bool
+end
+
+module OwnedTrivia : sig
+  type t = owned_trivia = {
+    leading : trivia list;
+    inner : trivia list;
+    trailing : trivia list;
+  }
+  val empty : t
+
+  val leading : t -> trivia list
+
+  val inner : t -> trivia list
+
+  val trailing : t -> trivia list
+
+  val is_empty : t -> bool
+end
+
+(** A `val` declaration item.
+
+    Example:
+
+    ```ocaml,norun
+    val parse : string -> t
+    ```
+*)
 type value_declaration = {
   syntax_node : syntax_node;
   name_token : Token.t;
   type_ : core_type;
+  owned_trivia : owned_trivia;
 }
-
 (** An `external` declaration item.
 
     `primitive_name_tokens` preserves primitive names in source order, so
@@ -3967,13 +4149,21 @@ type value_declaration = {
     external strlen : string -> int = "caml_strlen"
     ```
 *)
-type external_declaration = {
-  syntax_node : syntax_node;
-  name_token : Token.t;
-  type_ : core_type;
-  primitive_name_tokens : Token.t list;
-  attributes : attribute list;
-}
+module ValueDeclaration : sig
+  type t = value_declaration = {
+    syntax_node : syntax_node;
+    name_token : Token.t;
+    type_ : core_type;
+    owned_trivia : owned_trivia;
+  }
+  val syntax_node : t -> syntax_node
+
+  val name_token : t -> Token.t
+
+  val type_ : t -> core_type
+
+  val owned_trivia : t -> owned_trivia
+end
 
 (** A `class` declaration item.
 
@@ -3989,14 +4179,14 @@ type external_declaration = {
 
     can be represented without flattening one form into the other.
 *)
-type class_declaration = {
+type external_declaration = {
   syntax_node : syntax_node;
-  type_params : TypeParameter.t list;
-  class_name : Token.t;
-  class_type : class_type option;
-  class_body : class_expression option;
+  name_token : Token.t;
+  type_ : core_type;
+  primitive_name_tokens : Token.t list;
+  attributes : attribute list;
+  owned_trivia : owned_trivia;
 }
-
 (** A `class type` declaration item.
 
     `class_type_body` is always present because class-type declarations are
@@ -4008,53 +4198,70 @@ type class_declaration = {
     class type service = object method run : unit -> unit end
     ```
 *)
-type class_type_declaration = {
+type class_declaration = {
   syntax_node : syntax_node;
   type_params : TypeParameter.t list;
-  class_type_name : Token.t;
-  class_type_body : class_type;
+  class_name : Token.t;
+  class_type : class_type option;
+  class_body : class_expression option;
+  owned_trivia : owned_trivia;
 }
-
 (** The payload of an `include` item.
 
     Implementations include module expressions such as `include M` or
     `include F(X)`, while signatures include module types such as `include S`.
 *)
-type include_target =
-  | ModuleExpression of module_expression
-      (** An included module expression such as `include M` or `include F(X)`. *)
-  | ModuleType of module_type
-      (** An included module type such as `include S` inside a signature. *)
-
+type class_type_declaration = {
+  syntax_node : syntax_node;
+  type_params : TypeParameter.t list;
+  class_type_name : Token.t;
+  class_type_body : class_type;
+  owned_trivia : owned_trivia;
+}
 (** An `include` item.
 
     This keeps the include target in its native grammar family instead of
     collapsing implementation and interface includes to a shared raw path.
 *)
-type include_statement = {
-  syntax_node : syntax_node;
-  target : include_target;
-}
-
+type include_target =
+  | ModuleExpression of module_expression
+  (** An included module expression such as `include M` or `include F(X)`. *)
+  | ModuleType of module_type
+  (** An included module type such as `include S` inside a signature. *)
 (** A pattern payload together with its optional `when` guard.
 
     This is the payload shape used by pattern-oriented attributes and
     extensions.
+*)
+(** Helper view over attribute and extension payloads.
+
+    This is useful when a consumer wants to branch on payload family without
+    inspecting the surrounding attribute or extension shell directly.
+*)
+type include_statement = {
+  syntax_node : syntax_node;
+  target : include_target;
+  owned_trivia : owned_trivia;
+}
+(** Top-level items that can appear in an implementation source file.
+
+    This covers structure items such as `let`, `module`, `type`, floating
+    attributes, and standalone expressions.
 *)
 module PatternPayload : sig
   type t = pattern_payload = {
     pattern_syntax_node : syntax_node;
     guard_syntax_node : syntax_node option;
   }
-
   val pattern_syntax_node : t -> syntax_node
+
   val guard_syntax_node : t -> syntax_node option
 end
 
-(** Helper view over attribute and extension payloads.
+(** Top-level items that can appear in an interface source file.
 
-    This is useful when a consumer wants to branch on payload family without
-    inspecting the surrounding attribute or extension shell directly.
+    This covers signature items such as `val`, `module`, `type`, `class`, and
+    floating signature attributes or extensions.
 *)
 module Payload : sig
   type t = payload =
@@ -4066,17 +4273,20 @@ module Payload : sig
       }
     | Type of core_type
     | Pattern of pattern_payload
-
   val item_syntax_nodes : t -> syntax_node list option
+
   val core_type : t -> core_type option
+
   val pattern_syntax_node : t -> syntax_node option
+
   val guard_syntax_node : t -> syntax_node option
 end
 
-(** Top-level items that can appear in an implementation source file.
+(** A parsed implementation source file.
 
-    This covers structure items such as `let`, `module`, `type`, floating
-    attributes, and standalone expressions.
+    `items` preserves the original source ordering. Consumers that want to work
+    with specific item families should iterate that list directly so
+    interleaved `let`, `module`, attribute, and expression items stay in order.
 *)
 module StructureItem : sig
   type t =
@@ -4106,6 +4316,8 @@ module StructureItem : sig
         (** An `open` item. *)
     | Docstring of Docstring.t
         (** A standalone top-level docstring item. *)
+    | Comment of Comment.t
+        (** A standalone top-level comment item. *)
     | ValueDeclaration of value_declaration
         (** A `val` declaration item. *)
     | ExternalDeclaration of external_declaration
@@ -4118,11 +4330,6 @@ module StructureItem : sig
   val syntax_node : t -> syntax_node
 end
 
-(** Top-level items that can appear in an interface source file.
-
-    This covers signature items such as `val`, `module`, `type`, `class`, and
-    floating signature attributes or extensions.
-*)
 module SignatureItem : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
@@ -4147,6 +4354,8 @@ module SignatureItem : sig
         (** An `open` item. *)
     | Docstring of Docstring.t
         (** A standalone top-level docstring item. *)
+    | Comment of Comment.t
+        (** A standalone top-level comment item. *)
     | ValueDeclaration of value_declaration
         (** A `val` declaration item. *)
     | ExternalDeclaration of external_declaration
@@ -4159,53 +4368,48 @@ module SignatureItem : sig
   val syntax_node : t -> syntax_node
 end
 
-(** A parsed implementation source file.
-
-    `items` preserves the original source ordering. Consumers that want to work
-    with specific item families should iterate that list directly so
-    interleaved `let`, `module`, attribute, and expression items stay in order.
-*)
-type implementation = {
-  syntax_node : syntax_node;
-  items : StructureItem.t list;
-}
-
 (** A parsed interface source file.
 
     `items` preserves the original source ordering. Consumers that want to find
     particular declaration families should iterate the signature items directly
     instead of relying on flattened projections.
 *)
+type implementation = {
+  syntax_node : syntax_node;
+  items : StructureItem.t list;
+}
+(** A parsed source file, distinguished by whether the grammar was an
+    implementation or an interface. *)
 type interface = {
   syntax_node : syntax_node;
   items : SignatureItem.t list;
 }
-
-(** A parsed source file, distinguished by whether the grammar was an
-    implementation or an interface. *)
+(** Alias for the full-file CST root. *)
 type t =
   | Implementation of implementation
-      (** An implementation file such as an `.ml`. *)
+  (** An implementation file such as an `.ml`. *)
   | Interface of interface
-      (** An interface file such as an `.mli`. *)
-
-(** Alias for the full-file CST root. *)
-type source_file = t
-
+  (** An interface file such as an `.mli`. *)
 (** Namespace helpers for the file-level CST root.
 
     This provides convenient access to the common projections shared by both
     `Implementation` and `Interface` roots while keeping the ordered item lists
     as the canonical file body.
 *)
+(** Returns the root `syntax_node` for the parsed source file. *)
+type source_file = t
 module SourceFile : sig
   type t = source_file
-
   val syntax_node : t -> syntax_node
+
   val structure_items : t -> StructureItem.t list option
+
   val signature_items : t -> SignatureItem.t list option
-  val kind : t -> [ `Implementation | `Interface ]
+
+  val kind : t -> [
+    | `Implementation
+    | `Interface
+  ]
 end
 
-(** Returns the root `syntax_node` for the parsed source file. *)
 val syntax_node_of_source_file : source_file -> syntax_node

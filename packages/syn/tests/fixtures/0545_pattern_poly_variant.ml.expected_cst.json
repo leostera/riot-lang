@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 23
+        "end": 22
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "PAREN_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 12
               }
             },
@@ -69,7 +69,7 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 10,
+                    "start": 9,
                     "end": 11
                   }
                 },
@@ -91,7 +91,7 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 15,
+                "start": 14,
                 "end": 22
               }
             },
@@ -100,7 +100,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 15,
+                  "start": 14,
                   "end": 22
                 }
               },

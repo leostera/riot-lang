@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 41
+        "end": 40
       }
     },
     "items": [
@@ -17,16 +17,16 @@
             "kind": "TYPE_DECL",
             "span": {
               "start": 0,
-              "end": 41
+              "end": 40
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 5,
-                "end": 11
+                "start": 4,
+                "end": 10
               }
             },
             "name_token": {
@@ -45,7 +45,7 @@
               "kind": "TYPE_DECL",
               "span": {
                 "start": 0,
-                "end": 41
+                "end": 40
               }
             },
             "constructors": [
@@ -53,8 +53,8 @@
                 "syntax_node": {
                   "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 13,
-                    "end": 24
+                    "start": 12,
+                    "end": 23
                   }
                 },
                 "constructor_name": {
@@ -64,14 +64,77 @@
                     "start": 13,
                     "end": 16
                   }
+                },
+                "arguments": {
+                  "tag": "tuple",
+                  "elements": [
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 19,
+                          "end": 23
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 19,
+                            "end": 23
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 20,
+                            "end": 23
+                          }
+                        }
+                      },
+                      "arguments": []
+                    }
+                  ]
+                },
+                "payload_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 19,
+                      "end": 23
+                    }
+                  },
+                  "constructor_path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 19,
+                        "end": 23
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "int",
+                      "span": {
+                        "start": 20,
+                        "end": 23
+                      }
+                    }
+                  },
+                  "arguments": []
                 }
               },
               {
                 "syntax_node": {
                   "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 26,
-                    "end": 41
+                    "start": 25,
+                    "end": 40
                   }
                 },
                 "constructor_name": {
@@ -81,6 +144,69 @@
                     "start": 26,
                     "end": 31
                   }
+                },
+                "arguments": {
+                  "tag": "tuple",
+                  "elements": [
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 34,
+                          "end": 40
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 34,
+                            "end": 40
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "float",
+                          "span": {
+                            "start": 35,
+                            "end": 40
+                          }
+                        }
+                      },
+                      "arguments": []
+                    }
+                  ]
+                },
+                "payload_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 34,
+                      "end": 40
+                    }
+                  },
+                  "constructor_path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 34,
+                        "end": 40
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "float",
+                      "span": {
+                        "start": 35,
+                        "end": 40
+                      }
+                    }
+                  },
+                  "arguments": []
                 }
               }
             ]

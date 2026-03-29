@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 17
+        "end": 16
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "UNIT_LITERAL",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 6
               }
             },
@@ -52,7 +52,7 @@
               "syntax_node": {
                 "kind": "UNIT_LITERAL",
                 "span": {
-                  "start": 4,
+                  "start": 3,
                   "end": 6
                 }
               }
@@ -65,7 +65,7 @@
             "syntax_node": {
               "kind": "ASSIGN_EXPR",
               "span": {
-                "start": 9,
+                "start": 8,
                 "end": 16
               }
             },
@@ -74,7 +74,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 9,
+                  "start": 8,
                   "end": 10
                 }
               },
@@ -83,7 +83,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 9,
+                    "start": 8,
                     "end": 10
                   }
                 },
@@ -112,7 +112,7 @@
                 "syntax_node": {
                   "kind": "INT_LITERAL",
                   "span": {
-                    "start": 14,
+                    "start": 13,
                     "end": 16
                   }
                 },

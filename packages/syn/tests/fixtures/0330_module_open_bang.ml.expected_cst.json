@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 17
+        "end": 16
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "LET_BINDING",
             "span": {
               "start": 0,
-              "end": 17
+              "end": 16
             }
           },
           "keyword_token": {
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,8 +70,8 @@
             "syntax_node": {
               "kind": "ARRAY_INDEX_EXPR",
               "span": {
-                "start": 8,
-                "end": 17
+                "start": 7,
+                "end": 16
               }
             },
             "collection": {
@@ -79,7 +79,7 @@
               "syntax_node": {
                 "kind": "PAREN_EXPR",
                 "span": {
-                  "start": 8,
+                  "start": 7,
                   "end": 11
                 }
               },

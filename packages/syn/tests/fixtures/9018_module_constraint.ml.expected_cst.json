@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 62
+        "end": 61
       }
     },
     "items": [
@@ -36,8 +36,8 @@
               "syntax_node": {
                 "kind": "MODULE_TYPE_PATH",
                 "span": {
-                  "start": 11,
-                  "end": 13
+                  "start": 10,
+                  "end": 12
                 }
               },
               "name_token": {
@@ -64,7 +64,7 @@
               "syntax_node": {
                 "kind": "STRUCT_EXPR",
                 "span": {
-                  "start": 15,
+                  "start": 14,
                   "end": 61
                 }
               },
@@ -72,14 +72,14 @@
                 {
                   "kind": "TYPE_DECL",
                   "span": {
-                    "start": 24,
-                    "end": 40
+                    "start": 21,
+                    "end": 36
                   }
                 },
                 {
                   "kind": "LET_BINDING",
                   "span": {
-                    "start": 40,
+                    "start": 36,
                     "end": 57
                   }
                 }
@@ -92,8 +92,8 @@
                 "syntax_node": {
                   "kind": "MODULE_TYPE_PATH",
                   "span": {
-                    "start": 11,
-                    "end": 13
+                    "start": 10,
+                    "end": 12
                   }
                 },
                 "name_token": {

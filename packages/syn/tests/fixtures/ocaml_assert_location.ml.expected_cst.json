@@ -6,17 +6,37 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 124
+        "end": 91
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 68
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* TEST_BELOW\n(* Blank lines added here to preserve locations. *)\n*)",
+            "span": {
+              "start": 0,
+              "end": 68
+            }
+          }
+        }
+      },
       {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 70,
+              "start": 0,
               "end": 91
             }
           },
@@ -43,7 +63,7 @@
             "syntax_node": {
               "kind": "UNIT_LITERAL",
               "span": {
-                "start": 74,
+                "start": 73,
                 "end": 76
               }
             },
@@ -52,7 +72,7 @@
               "syntax_node": {
                 "kind": "UNIT_LITERAL",
                 "span": {
-                  "start": 74,
+                  "start": 73,
                   "end": 76
                 }
               }
@@ -65,7 +85,7 @@
             "syntax_node": {
               "kind": "ASSERT_EXPR",
               "span": {
-                "start": 79,
+                "start": 78,
                 "end": 91
               }
             },
@@ -76,7 +96,7 @@
                 "syntax_node": {
                   "kind": "BOOL_LITERAL",
                   "span": {
-                    "start": 86,
+                    "start": 85,
                     "end": 91
                   }
                 },
@@ -94,6 +114,26 @@
           },
           "and_bindings": [],
           "is_recursive": false
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 93,
+              "end": 123
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* TEST\n exit_status = \"2\";\n*)",
+            "span": {
+              "start": 93,
+              "end": 123
+            }
+          }
         }
       }
     ]

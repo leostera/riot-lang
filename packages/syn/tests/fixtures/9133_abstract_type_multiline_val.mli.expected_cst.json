@@ -6,18 +6,38 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 215
+        "end": 214
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 70
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Abstract type followed by multiline val with optional parameters *)",
+            "span": {
+              "start": 0,
+              "end": 70
+            }
+          }
+        }
+      },
       {
         "tag": "module_declaration",
         "item": {
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 71,
-              "end": 215
+              "start": 0,
+              "end": 214
             }
           },
           "module_name": {
@@ -34,14 +54,14 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 87,
+                "start": 86,
                 "end": 214
               }
             },
             "signature_syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 87,
+                "start": 86,
                 "end": 214
               }
             }

@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 34
+        "end": 33
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 9
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "FUN_EXPR",
               "span": {
-                "start": 12,
+                "start": 11,
                 "end": 33
               }
             },
@@ -96,7 +96,7 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 16,
+                    "start": 15,
                     "end": 17
                   }
                 },
@@ -105,7 +105,7 @@
                   "syntax_node": {
                     "kind": "IDENT_PATTERN",
                     "span": {
-                      "start": 16,
+                      "start": 15,
                       "end": 17
                     }
                   },
@@ -132,7 +132,7 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 18,
+                    "start": 17,
                     "end": 19
                   }
                 },
@@ -141,7 +141,7 @@
                   "syntax_node": {
                     "kind": "IDENT_PATTERN",
                     "span": {
-                      "start": 18,
+                      "start": 17,
                       "end": 19
                     }
                   },
@@ -168,7 +168,7 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 20,
+                    "start": 19,
                     "end": 21
                   }
                 },
@@ -177,7 +177,7 @@
                   "syntax_node": {
                     "kind": "IDENT_PATTERN",
                     "span": {
-                      "start": 20,
+                      "start": 19,
                       "end": 21
                     }
                   },
@@ -207,7 +207,7 @@
                 "syntax_node": {
                   "kind": "APPLY_EXPR",
                   "span": {
-                    "start": 25,
+                    "start": 24,
                     "end": 33
                   }
                 },
@@ -216,7 +216,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 25,
+                      "start": 24,
                       "end": 26
                     }
                   },
@@ -225,7 +225,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 25,
+                        "start": 24,
                         "end": 26
                       }
                     },
@@ -246,7 +246,7 @@
                     "syntax_node": {
                       "kind": "PAREN_EXPR",
                       "span": {
-                        "start": 27,
+                        "start": 26,
                         "end": 33
                       }
                     },
@@ -310,7 +310,7 @@
                           "syntax_node": {
                             "kind": "IDENT_EXPR",
                             "span": {
-                              "start": 31,
+                              "start": 30,
                               "end": 32
                             }
                           },
@@ -319,7 +319,7 @@
                             "syntax_node": {
                               "kind": "IDENT_EXPR",
                               "span": {
-                                "start": 31,
+                                "start": 30,
                                 "end": 32
                               }
                             },

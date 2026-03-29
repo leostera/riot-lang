@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 26
+        "end": 25
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 8
               }
             },
@@ -70,8 +70,8 @@
               "syntax_node": {
                 "kind": "LABELED_PARAM",
                 "span": {
-                  "start": 9,
-                  "end": 12
+                  "start": 8,
+                  "end": 11
                 }
               },
               "sigil_token": {
@@ -98,8 +98,8 @@
               "syntax_node": {
                 "kind": "LABELED_PARAM",
                 "span": {
-                  "start": 12,
-                  "end": 15
+                  "start": 11,
+                  "end": 14
                 }
               },
               "sigil_token": {
@@ -127,7 +127,7 @@
             "syntax_node": {
               "kind": "RECORD_EXPR",
               "span": {
-                "start": 17,
+                "start": 16,
                 "end": 25
               }
             },
@@ -137,7 +137,7 @@
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
-                    "start": 19,
+                    "start": 18,
                     "end": 20
                   }
                 },
@@ -146,7 +146,7 @@
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
-                      "start": 19,
+                      "start": 18,
                       "end": 20
                     }
                   },
@@ -172,7 +172,7 @@
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
-                      "start": 19,
+                      "start": 18,
                       "end": 20
                     }
                   },
@@ -181,7 +181,7 @@
                     "syntax_node": {
                       "kind": "RECORD_FIELD",
                       "span": {
-                        "start": 19,
+                        "start": 18,
                         "end": 20
                       }
                     },
@@ -201,8 +201,8 @@
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
-                    "start": 22,
-                    "end": 24
+                    "start": 21,
+                    "end": 23
                   }
                 },
                 "field_path": {
@@ -210,8 +210,8 @@
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
-                      "start": 22,
-                      "end": 24
+                      "start": 21,
+                      "end": 23
                     }
                   },
                   "name_token": {
@@ -236,8 +236,8 @@
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
-                      "start": 22,
-                      "end": 24
+                      "start": 21,
+                      "end": 23
                     }
                   },
                   "path": {
@@ -245,8 +245,8 @@
                     "syntax_node": {
                       "kind": "RECORD_FIELD",
                       "span": {
-                        "start": 22,
-                        "end": 24
+                        "start": 21,
+                        "end": 23
                       }
                     },
                     "name_token": {

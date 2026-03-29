@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 29
+        "end": 28
       }
     },
     "items": [
@@ -17,16 +17,16 @@
             "kind": "TYPE_DECL",
             "span": {
               "start": 0,
-              "end": 29
+              "end": 28
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 14,
-                "end": 19
+                "start": 13,
+                "end": 18
               }
             },
             "name_token": {
@@ -71,7 +71,7 @@
               "syntax_node": {
                 "kind": "TYPE_PARAM",
                 "span": {
-                  "start": 10,
+                  "start": 9,
                   "end": 12
                 }
               },
@@ -81,7 +81,7 @@
                 "syntax_node": {
                   "kind": "TYPE_VAR",
                   "span": {
-                    "start": 10,
+                    "start": 9,
                     "end": 12
                   }
                 },
@@ -101,8 +101,8 @@
             "syntax_node": {
               "kind": "TYPE_TUPLE",
               "span": {
-                "start": 21,
-                "end": 29
+                "start": 20,
+                "end": 28
               }
             },
             "manifest": {
@@ -110,8 +110,8 @@
               "syntax_node": {
                 "kind": "TYPE_TUPLE",
                 "span": {
-                  "start": 21,
-                  "end": 29
+                  "start": 20,
+                  "end": 28
                 }
               },
               "elements": [
@@ -120,7 +120,7 @@
                   "syntax_node": {
                     "kind": "TYPE_VAR",
                     "span": {
-                      "start": 21,
+                      "start": 20,
                       "end": 23
                     }
                   },
@@ -138,16 +138,16 @@
                   "syntax_node": {
                     "kind": "TYPE_VAR",
                     "span": {
-                      "start": 27,
-                      "end": 29
+                      "start": 25,
+                      "end": 28
                     }
                   },
                   "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "b",
                     "span": {
-                      "start": 28,
-                      "end": 29
+                      "start": 27,
+                      "end": 28
                     }
                   }
                 }

@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 69
+        "end": 68
       }
     },
     "items": [
@@ -33,7 +33,7 @@
             "syntax_node": {
               "kind": "LOCAL_OPEN_TYPE",
               "span": {
-                "start": 13,
+                "start": 12,
                 "end": 46
               }
             },
@@ -42,7 +42,7 @@
               "syntax_node": {
                 "kind": "MODULE_PATH",
                 "span": {
-                  "start": 13,
+                  "start": 12,
                   "end": 24
                 }
               },
@@ -51,7 +51,7 @@
                 "syntax_node": {
                   "kind": "MODULE_PATH",
                   "span": {
-                    "start": 13,
+                    "start": 12,
                     "end": 24
                   }
                 },
@@ -97,7 +97,7 @@
                   "kind": "TYPE_CONSTR",
                   "span": {
                     "start": 26,
-                    "end": 34
+                    "end": 33
                   }
                 },
                 "constructor_path": {
@@ -106,7 +106,7 @@
                     "kind": "TYPE_CONSTR",
                     "span": {
                       "start": 26,
-                      "end": 34
+                      "end": 33
                     }
                   },
                   "name_token": {
@@ -125,7 +125,7 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 37,
+                    "start": 36,
                     "end": 45
                   }
                 },
@@ -134,7 +134,7 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 37,
+                      "start": 36,
                       "end": 45
                     }
                   },
@@ -159,7 +159,7 @@
           "syntax_node": {
             "kind": "VAL_DECL",
             "span": {
-              "start": 47,
+              "start": 46,
               "end": 68
             }
           },
@@ -176,7 +176,7 @@
             "syntax_node": {
               "kind": "LOCAL_OPEN_TYPE",
               "span": {
-                "start": 58,
+                "start": 57,
                 "end": 68
               }
             },
@@ -185,7 +185,7 @@
               "syntax_node": {
                 "kind": "MODULE_PATH",
                 "span": {
-                  "start": 58,
+                  "start": 57,
                   "end": 59
                 }
               },
@@ -232,7 +232,7 @@
                     "kind": "TYPE_CONSTR",
                     "span": {
                       "start": 61,
-                      "end": 63
+                      "end": 62
                     }
                   },
                   "constructor_path": {
@@ -241,7 +241,7 @@
                       "kind": "TYPE_CONSTR",
                       "span": {
                         "start": 61,
-                        "end": 63
+                        "end": 62
                       }
                     },
                     "name_token": {

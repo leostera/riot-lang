@@ -6,10 +6,50 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 1176
+        "end": 718
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 151
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* TEST_BELOW\nFiller_text_added_\nto_preserve_locations_while_tran\nslating_from_old_syntax__Filler_\ntext_added_to_pre\nserve_locations_while_translati\n*)",
+            "span": {
+              "start": 0,
+              "end": 151
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 153,
+              "end": 169
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Structures *)",
+            "span": {
+              "start": 153,
+              "end": 169
+            }
+          }
+        }
+      },
       {
         "tag": "expression",
         "item": {
@@ -17,7 +57,7 @@
           "syntax_node": {
             "kind": "APPLY_EXPR",
             "span": {
-              "start": 170,
+              "start": 0,
               "end": 250
             }
           },
@@ -26,7 +66,7 @@
             "syntax_node": {
               "kind": "APPLY_EXPR",
               "span": {
-                "start": 170,
+                "start": 0,
                 "end": 217
               }
             },
@@ -36,7 +76,7 @@
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 170,
+                    "start": 0,
                     "end": 193
                   }
                 },
@@ -53,7 +93,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 170,
+                      "start": 0,
                       "end": 193
                     }
                   },
@@ -62,7 +102,7 @@
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
-                        "start": 170,
+                        "start": 0,
                         "end": 193
                       }
                     },
@@ -104,7 +144,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 194,
+                      "start": 193,
                       "end": 217
                     }
                   },
@@ -121,7 +161,7 @@
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
-                        "start": 194,
+                        "start": 193,
                         "end": 217
                       }
                     },
@@ -130,7 +170,7 @@
                       "syntax_node": {
                         "kind": "EXTENSION_EXPR",
                         "span": {
-                          "start": 194,
+                          "start": 193,
                           "end": 217
                         }
                       },
@@ -174,7 +214,7 @@
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 218,
+                    "start": 217,
                     "end": 250
                   }
                 },
@@ -191,7 +231,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 218,
+                      "start": 217,
                       "end": 250
                     }
                   },
@@ -200,7 +240,7 @@
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
-                        "start": 218,
+                        "start": 217,
                         "end": 250
                       }
                     },
@@ -238,13 +278,33 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 252,
+              "end": 268
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Signatures *)",
+            "span": {
+              "start": 252,
+              "end": 268
+            }
+          }
+        }
+      },
+      {
         "tag": "module_type_declaration",
         "item": {
           "syntax_node": {
             "kind": "MODULE_TYPE_DECL",
             "span": {
-              "start": 269,
-              "end": 387
+              "start": 250,
+              "end": 353
             }
           },
           "module_type_name": {
@@ -260,14 +320,14 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 285,
+                "start": 284,
                 "end": 353
               }
             },
             "signature_syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 285,
+                "start": 284,
                 "end": 353
               }
             }
@@ -276,12 +336,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 355,
+              "end": 386
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Expressions/Pattern/Types *)",
+            "span": {
+              "start": 355,
+              "end": 386
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 387,
+              "start": 353,
               "end": 463
             }
           },
@@ -308,7 +388,7 @@
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 391,
+                "start": 390,
                 "end": 413
               }
             },
@@ -316,7 +396,7 @@
               "syntax_node": {
                 "kind": "EXTENSION_EXPR",
                 "span": {
-                  "start": 391,
+                  "start": 390,
                   "end": 413
                 }
               },
@@ -333,7 +413,7 @@
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 391,
+                    "start": 390,
                     "end": 413
                   }
                 },
@@ -342,7 +422,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 391,
+                      "start": 390,
                       "end": 413
                     }
                   },
@@ -383,7 +463,7 @@
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
-                "start": 387,
+                "start": 353,
                 "end": 463
               }
             },
@@ -393,7 +473,7 @@
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 441,
+                    "start": 440,
                     "end": 463
                   }
                 },
@@ -410,7 +490,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 441,
+                      "start": 440,
                       "end": 463
                     }
                   },
@@ -419,7 +499,7 @@
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
-                        "start": 441,
+                        "start": 440,
                         "end": 463
                       }
                     },
@@ -459,7 +539,7 @@
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 416,
+                    "start": 415,
                     "end": 438
                   }
                 },
@@ -476,7 +556,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 416,
+                      "start": 415,
                       "end": 438
                     }
                   },
@@ -485,7 +565,7 @@
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
-                        "start": 416,
+                        "start": 415,
                         "end": 438
                       }
                     },
@@ -530,7 +610,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 465,
+              "start": 463,
               "end": 570
             }
           },
@@ -557,7 +637,7 @@
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 469,
+                "start": 468,
                 "end": 500
               }
             },
@@ -565,7 +645,7 @@
               "syntax_node": {
                 "kind": "EXTENSION_EXPR",
                 "span": {
-                  "start": 469,
+                  "start": 468,
                   "end": 500
                 }
               },
@@ -582,7 +662,7 @@
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 469,
+                    "start": 468,
                     "end": 500
                   }
                 },
@@ -591,7 +671,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 469,
+                      "start": 468,
                       "end": 500
                     }
                   },
@@ -632,7 +712,7 @@
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
-                "start": 465,
+                "start": 463,
                 "end": 570
               }
             },
@@ -642,7 +722,7 @@
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 539,
+                    "start": 536,
                     "end": 570
                   }
                 },
@@ -659,7 +739,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 539,
+                      "start": 536,
                       "end": 570
                     }
                   },
@@ -668,7 +748,7 @@
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
-                        "start": 539,
+                        "start": 536,
                         "end": 570
                       }
                     },
@@ -708,7 +788,7 @@
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 503,
+                    "start": 502,
                     "end": 534
                   }
                 },
@@ -725,7 +805,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 503,
+                      "start": 502,
                       "end": 534
                     }
                   },
@@ -734,7 +814,7 @@
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
-                        "start": 503,
+                        "start": 502,
                         "end": 534
                       }
                     },
@@ -779,7 +859,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 572,
+              "start": 570,
               "end": 718
             }
           },
@@ -806,7 +886,7 @@
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 576,
+                "start": 575,
                 "end": 602
               }
             },
@@ -814,7 +894,7 @@
               "syntax_node": {
                 "kind": "EXTENSION_EXPR",
                 "span": {
-                  "start": 576,
+                  "start": 575,
                   "end": 602
                 }
               },
@@ -831,7 +911,7 @@
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 576,
+                    "start": 575,
                     "end": 602
                   }
                 },
@@ -840,7 +920,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 576,
+                      "start": 575,
                       "end": 602
                     }
                   },
@@ -881,7 +961,7 @@
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
-                "start": 572,
+                "start": 570,
                 "end": 718
               }
             },
@@ -890,7 +970,7 @@
               "syntax_node": {
                 "kind": "APPLY_EXPR",
                 "span": {
-                  "start": 636,
+                  "start": 633,
                   "end": 718
                 }
               },
@@ -900,7 +980,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 636,
+                      "start": 633,
                       "end": 662
                     }
                   },
@@ -917,7 +997,7 @@
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
-                        "start": 636,
+                        "start": 633,
                         "end": 662
                       }
                     },
@@ -926,7 +1006,7 @@
                       "syntax_node": {
                         "kind": "EXTENSION_EXPR",
                         "span": {
-                          "start": 636,
+                          "start": 633,
                           "end": 662
                         }
                       },
@@ -968,7 +1048,7 @@
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
-                        "start": 680,
+                        "start": 662,
                         "end": 718
                       }
                     },
@@ -985,7 +1065,7 @@
                       "syntax_node": {
                         "kind": "EXTENSION_EXPR",
                         "span": {
-                          "start": 680,
+                          "start": 662,
                           "end": 718
                         }
                       },
@@ -994,7 +1074,7 @@
                         "syntax_node": {
                           "kind": "EXTENSION_EXPR",
                           "span": {
-                            "start": 680,
+                            "start": 662,
                             "end": 718
                           }
                         },
@@ -1036,7 +1116,7 @@
                 "syntax_node": {
                   "kind": "EXTENSION_EXPR",
                   "span": {
-                    "start": 605,
+                    "start": 604,
                     "end": 631
                   }
                 },
@@ -1053,7 +1133,7 @@
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
-                      "start": 605,
+                      "start": 604,
                       "end": 631
                     }
                   },
@@ -1062,7 +1142,7 @@
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
-                        "start": 605,
+                        "start": 604,
                         "end": 631
                       }
                     },
@@ -1099,6 +1179,186 @@
           },
           "and_bindings": [],
           "is_recursive": false
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 720,
+              "end": 777
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Double quotes inside quoted strings inside comments *)",
+            "span": {
+              "start": 720,
+              "end": 777
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 778,
+              "end": 794
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* {|\"|}, and *)",
+            "span": {
+              "start": 778,
+              "end": 794
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 795,
+              "end": 818
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* [%foo {|\"|}], and *)",
+            "span": {
+              "start": 795,
+              "end": 818
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 819,
+              "end": 866
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* {%foo|\"|} should be valid inside comments *)",
+            "span": {
+              "start": 819,
+              "end": 866
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 868,
+              "end": 931
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Comment delimiters inside quoted strings inside comments: *)",
+            "span": {
+              "start": 868,
+              "end": 931
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 932,
+              "end": 949
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* {|*)|}, and *)",
+            "span": {
+              "start": 932,
+              "end": 949
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 950,
+              "end": 980
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* [%foo {bar|*)|bar}], and *)",
+            "span": {
+              "start": 950,
+              "end": 980
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 981,
+              "end": 1036
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* {%foo bar|*)|bar} should be valid inside comments *)",
+            "span": {
+              "start": 981,
+              "end": 1036
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 1038,
+              "end": 1175
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* TEST\n flags = \"-dparsetree\";\n ocamlc_byte_exit_status = \"2\";\n setup-ocamlc.byte-build-env;\n ocamlc.byte;\n check-ocamlc.byte-output;\n*)",
+            "span": {
+              "start": 1038,
+              "end": 1175
+            }
+          }
         }
       }
     ]

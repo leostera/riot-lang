@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 24
+        "end": 23
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "LET_BINDING",
             "span": {
               "start": 0,
-              "end": 24
+              "end": 23
             }
           },
           "keyword_token": {
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -66,54 +66,43 @@
           },
           "parameters": [],
           "value": {
-            "tag": "index",
+            "tag": "local_open",
             "syntax_node": {
-              "kind": "ARRAY_INDEX_EXPR",
+              "kind": "LOCAL_OPEN_EXPR",
               "span": {
-                "start": 8,
-                "end": 24
+                "start": 7,
+                "end": 23
               }
             },
-            "collection": {
-              "tag": "constructor",
+            "module_path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 7,
+                  "end": 9
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "A",
                 "span": {
                   "start": 8,
                   "end": 9
                 }
-              },
-              "constructor_path": {
-                "tag": "ident",
-                "syntax_node": {
-                  "kind": "IDENT_EXPR",
-                  "span": {
-                    "start": 8,
-                    "end": 9
-                  }
-                },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "A",
-                  "span": {
-                    "start": 8,
-                    "end": 9
-                  }
-                }
-              },
-              "payload": null
+              }
             },
-            "index": {
-              "tag": "index",
+            "body": {
+              "tag": "local_open",
               "syntax_node": {
-                "kind": "ARRAY_INDEX_EXPR",
+                "kind": "LOCAL_OPEN_EXPR",
                 "span": {
                   "start": 11,
                   "end": 22
                 }
               },
-              "collection": {
-                "tag": "constructor",
+              "module_path": {
+                "tag": "ident",
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
@@ -121,27 +110,16 @@
                     "end": 12
                   }
                 },
-                "constructor_path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "IDENT_EXPR",
-                    "span": {
-                      "start": 11,
-                      "end": 12
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "B",
-                    "span": {
-                      "start": 11,
-                      "end": 12
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "B",
+                  "span": {
+                    "start": 11,
+                    "end": 12
                   }
-                },
-                "payload": null
+                }
               },
-              "index": {
+              "body": {
                 "tag": "field_access",
                 "syntax_node": {
                   "kind": "FIELD_ACCESS_EXPR",
@@ -186,8 +164,10 @@
                     "end": 21
                   }
                 }
-              }
-            }
+              },
+              "via_let_open": false
+            },
+            "via_let_open": false
           },
           "and_bindings": [],
           "is_recursive": false

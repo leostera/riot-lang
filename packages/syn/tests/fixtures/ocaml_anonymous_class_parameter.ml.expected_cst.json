@@ -6,18 +6,58 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 402
+        "end": 401
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 96
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* TEST\n flags = \"-i\";\n setup-ocamlc.byte-build-env;\n ocamlc.byte;\n check-ocamlc.byte-output;\n*)",
+            "span": {
+              "start": 0,
+              "end": 96
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 98,
+              "end": 326
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* This test is valid OCaml code.\n   It uses an anonymous type variable as a formal parameter in a class\n   declaration. This used to be rejected by the parser, even though the\n   printer (ocamlc -i) could in fact produce it. *)",
+            "span": {
+              "start": 98,
+              "end": 326
+            }
+          }
+        }
+      },
       {
         "tag": "class_declaration",
         "item": {
           "syntax_node": {
             "kind": "CLASS_DECL",
             "span": {
-              "start": 328,
-              "end": 402
+              "start": 0,
+              "end": 401
             }
           },
           "type_params": [
@@ -53,7 +93,7 @@
               "syntax_node": {
                 "kind": "TYPE_PARAM",
                 "span": {
-                  "start": 339,
+                  "start": 338,
                   "end": 340
                 }
               },
@@ -63,7 +103,7 @@
                 "syntax_node": {
                   "kind": "TYPE_VAR",
                   "span": {
-                    "start": 339,
+                    "start": 338,
                     "end": 340
                   }
                 },
@@ -92,7 +132,7 @@
             "syntax_node": {
               "kind": "OBJECT_EXPR",
               "span": {
-                "start": 350,
+                "start": 347,
                 "end": 401
               }
             },
@@ -103,8 +143,8 @@
                 "syntax_node": {
                   "kind": "OBJECT_METHOD",
                   "span": {
-                    "start": 361,
-                    "end": 398
+                    "start": 356,
+                    "end": 395
                   }
                 },
                 "name_token": {
@@ -120,7 +160,7 @@
                   "syntax_node": {
                     "kind": "FUN_EXPR",
                     "span": {
-                      "start": 385,
+                      "start": 384,
                       "end": 395
                     }
                   },
@@ -146,7 +186,7 @@
                       "syntax_node": {
                         "kind": "IDENT_PATTERN",
                         "span": {
-                          "start": 389,
+                          "start": 388,
                           "end": 390
                         }
                       },
@@ -155,7 +195,7 @@
                         "syntax_node": {
                           "kind": "IDENT_PATTERN",
                           "span": {
-                            "start": 389,
+                            "start": 388,
                             "end": 390
                           }
                         },
@@ -185,7 +225,7 @@
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
-                          "start": 394,
+                          "start": 393,
                           "end": 395
                         }
                       },
@@ -194,7 +234,7 @@
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
-                            "start": 394,
+                            "start": 393,
                             "end": 395
                           }
                         },
@@ -215,7 +255,7 @@
                   "syntax_node": {
                     "kind": "TYPE_ARROW",
                     "span": {
-                      "start": 374,
+                      "start": 373,
                       "end": 382
                     }
                   },
@@ -225,7 +265,7 @@
                     "syntax_node": {
                       "kind": "TYPE_VAR",
                       "span": {
-                        "start": 374,
+                        "start": 373,
                         "end": 376
                       }
                     },
@@ -243,7 +283,7 @@
                     "syntax_node": {
                       "kind": "TYPE_VAR",
                       "span": {
-                        "start": 380,
+                        "start": 379,
                         "end": 382
                       }
                     },

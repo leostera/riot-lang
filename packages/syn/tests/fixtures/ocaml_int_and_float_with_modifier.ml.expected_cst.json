@@ -6,17 +6,37 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 660
+        "end": 520
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 151
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* TEST_BELOW\nFiller_text_added_\nto_preserve_locations_while_tran\nslating_from_old_syntax__Filler_\ntext_added_to_pre\nserve_locations_while_translati\n*)",
+            "span": {
+              "start": 0,
+              "end": 151
+            }
+          }
+        }
+      },
       {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 153,
+              "start": 0,
               "end": 241
             }
           },
@@ -43,7 +63,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 157,
+                "start": 156,
                 "end": 181
               }
             },
@@ -72,7 +92,7 @@
               "syntax_node": {
                 "kind": "INT_LITERAL",
                 "span": {
-                  "start": 186,
+                  "start": 183,
                   "end": 241
                 }
               },
@@ -100,7 +120,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 243,
+              "start": 241,
               "end": 334
             }
           },
@@ -127,7 +147,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 247,
+                "start": 246,
                 "end": 273
               }
             },
@@ -156,7 +176,7 @@
               "syntax_node": {
                 "kind": "FLOAT_LITERAL",
                 "span": {
-                  "start": 278,
+                  "start": 275,
                   "end": 334
                 }
               },
@@ -184,7 +204,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 336,
+              "start": 334,
               "end": 353
             }
           },
@@ -211,7 +231,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 340,
+                "start": 339,
                 "end": 345
               }
             },
@@ -240,7 +260,7 @@
               "syntax_node": {
                 "kind": "INT_LITERAL",
                 "span": {
-                  "start": 348,
+                  "start": 347,
                   "end": 353
                 }
               },
@@ -268,7 +288,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 354,
+              "start": 353,
               "end": 371
             }
           },
@@ -295,7 +315,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 358,
+                "start": 357,
                 "end": 363
               }
             },
@@ -324,7 +344,7 @@
               "syntax_node": {
                 "kind": "INT_LITERAL",
                 "span": {
-                  "start": 366,
+                  "start": 365,
                   "end": 371
                 }
               },
@@ -352,7 +372,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 372,
+              "start": 371,
               "end": 393
             }
           },
@@ -379,7 +399,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 376,
+                "start": 375,
                 "end": 385
               }
             },
@@ -408,7 +428,7 @@
               "syntax_node": {
                 "kind": "INT_LITERAL",
                 "span": {
-                  "start": 388,
+                  "start": 387,
                   "end": 393
                 }
               },
@@ -436,7 +456,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 394,
+              "start": 393,
               "end": 426
             }
           },
@@ -463,7 +483,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 398,
+                "start": 397,
                 "end": 418
               }
             },
@@ -492,7 +512,7 @@
               "syntax_node": {
                 "kind": "INT_LITERAL",
                 "span": {
-                  "start": 421,
+                  "start": 420,
                   "end": 426
                 }
               },
@@ -520,7 +540,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 427,
+              "start": 426,
               "end": 456
             }
           },
@@ -547,7 +567,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 431,
+                "start": 430,
                 "end": 448
               }
             },
@@ -576,7 +596,7 @@
               "syntax_node": {
                 "kind": "INT_LITERAL",
                 "span": {
-                  "start": 451,
+                  "start": 450,
                   "end": 456
                 }
               },
@@ -604,7 +624,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 457,
+              "start": 456,
               "end": 490
             }
           },
@@ -631,7 +651,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 461,
+                "start": 460,
                 "end": 482
               }
             },
@@ -658,7 +678,7 @@
             "syntax_node": {
               "kind": "APPLY_EXPR",
               "span": {
-                "start": 485,
+                "start": 484,
                 "end": 490
               }
             },
@@ -669,7 +689,7 @@
                 "syntax_node": {
                   "kind": "FLOAT_LITERAL",
                   "span": {
-                    "start": 485,
+                    "start": 484,
                     "end": 489
                   }
                 },
@@ -726,7 +746,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 491,
+              "start": 490,
               "end": 520
             }
           },
@@ -753,7 +773,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 495,
+                "start": 494,
                 "end": 513
               }
             },
@@ -782,7 +802,7 @@
               "syntax_node": {
                 "kind": "FLOAT_LITERAL",
                 "span": {
-                  "start": 516,
+                  "start": 515,
                   "end": 520
                 }
               },
@@ -802,6 +822,26 @@
           },
           "and_bindings": [],
           "is_recursive": false
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 522,
+              "end": 659
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* TEST\n flags = \"-dparsetree\";\n ocamlc_byte_exit_status = \"2\";\n setup-ocamlc.byte-build-env;\n ocamlc.byte;\n check-ocamlc.byte-output;\n*)",
+            "span": {
+              "start": 522,
+              "end": 659
+            }
+          }
         }
       }
     ]

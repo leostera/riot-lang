@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 165
+        "end": 164
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "TYPE_DECL",
             "span": {
               "start": 0,
-              "end": 124
+              "end": 122
             }
           },
           "type_name": {
@@ -25,8 +25,8 @@
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
-                "start": 7,
-                "end": 16
+                "start": 6,
+                "end": 15
               }
             },
             "prefix": {
@@ -34,8 +34,8 @@
               "syntax_node": {
                 "kind": "MODULE_PATH",
                 "span": {
-                  "start": 7,
-                  "end": 16
+                  "start": 6,
+                  "end": 15
                 }
               },
               "name_token": {
@@ -69,7 +69,7 @@
               "syntax_node": {
                 "kind": "TYPE_PARAM",
                 "span": {
-                  "start": 5,
+                  "start": 4,
                   "end": 6
                 }
               },
@@ -79,7 +79,7 @@
                 "syntax_node": {
                   "kind": "TYPE_VAR",
                   "span": {
-                    "start": 5,
+                    "start": 4,
                     "end": 6
                   }
                 },
@@ -99,8 +99,8 @@
               "syntax_node": {
                 "kind": "TYPE_VARIANT_CONSTR",
                 "span": {
-                  "start": 23,
-                  "end": 124
+                  "start": 22,
+                  "end": 122
                 }
               },
               "constructor_name": {
@@ -110,6 +110,510 @@
                   "start": 23,
                   "end": 30
                 }
+              },
+              "arguments": {
+                "tag": "tuple",
+                "elements": [
+                  {
+                    "tag": "record",
+                    "syntax_node": {
+                      "kind": "TYPE_RECORD",
+                      "span": {
+                        "start": 32,
+                        "end": 99
+                      }
+                    },
+                    "fields": [
+                      {
+                        "syntax_node": {
+                          "kind": "TYPE_RECORD_FIELD",
+                          "span": {
+                            "start": 34,
+                            "end": 92
+                          }
+                        },
+                        "field_name": {
+                          "kind": "IDENT_EXPR",
+                          "text": "selector",
+                          "span": {
+                            "start": 41,
+                            "end": 49
+                          }
+                        },
+                        "field_type": {
+                          "tag": "arrow",
+                          "syntax_node": {
+                            "kind": "TYPE_ARROW",
+                            "span": {
+                              "start": 51,
+                              "end": 92
+                            }
+                          },
+                          "label": null,
+                          "parameter_type": {
+                            "tag": "constr",
+                            "syntax_node": {
+                              "kind": "TYPE_CONSTR",
+                              "span": {
+                                "start": 51,
+                                "end": 61
+                              }
+                            },
+                            "constructor_path": {
+                              "tag": "qualified",
+                              "syntax_node": {
+                                "kind": "TYPE_CONSTR",
+                                "span": {
+                                  "start": 51,
+                                  "end": 61
+                                }
+                              },
+                              "prefix": {
+                                "tag": "ident",
+                                "syntax_node": {
+                                  "kind": "TYPE_CONSTR",
+                                  "span": {
+                                    "start": 51,
+                                    "end": 61
+                                  }
+                                },
+                                "name_token": {
+                                  "kind": "IDENT_EXPR",
+                                  "text": "Message",
+                                  "span": {
+                                    "start": 52,
+                                    "end": 59
+                                  }
+                                }
+                              },
+                              "dot_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": ".",
+                                "span": {
+                                  "start": 59,
+                                  "end": 60
+                                }
+                              },
+                              "name_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": "t",
+                                "span": {
+                                  "start": 60,
+                                  "end": 61
+                                }
+                              }
+                            },
+                            "arguments": []
+                          },
+                          "result_type": {
+                            "tag": "poly_variant",
+                            "syntax_node": {
+                              "kind": "TYPE_POLY_VARIANT",
+                              "span": {
+                                "start": 64,
+                                "end": 92
+                              }
+                            },
+                            "kind": {
+                              "tag": "exact"
+                            },
+                            "fields": [
+                              {
+                                "tag": "tag",
+                                "field": {
+                                  "syntax_node": {
+                                    "kind": "POLY_VARIANT_TAG",
+                                    "span": {
+                                      "start": 66,
+                                      "end": 82
+                                    }
+                                  },
+                                  "tag_name": {
+                                    "kind": "IDENT_EXPR",
+                                    "text": "select",
+                                    "span": {
+                                      "start": 68,
+                                      "end": 74
+                                    }
+                                  },
+                                  "payload_type": {
+                                    "tag": "var",
+                                    "syntax_node": {
+                                      "kind": "TYPE_VAR",
+                                      "span": {
+                                        "start": 77,
+                                        "end": 82
+                                      }
+                                    },
+                                    "name_token": {
+                                      "kind": "IDENT_EXPR",
+                                      "text": "msg",
+                                      "span": {
+                                        "start": 79,
+                                        "end": 82
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "tag": "tag",
+                                "field": {
+                                  "syntax_node": {
+                                    "kind": "POLY_VARIANT_TAG",
+                                    "span": {
+                                      "start": 84,
+                                      "end": 90
+                                    }
+                                  },
+                                  "tag_name": {
+                                    "kind": "IDENT_EXPR",
+                                    "text": "skip",
+                                    "span": {
+                                      "start": 86,
+                                      "end": 90
+                                    }
+                                  },
+                                  "payload_type": null
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "is_mutable": false
+                      }
+                    ]
+                  }
+                ]
+              },
+              "payload_type": {
+                "tag": "arrow",
+                "syntax_node": {
+                  "kind": "TYPE_ARROW",
+                  "span": {
+                    "start": 32,
+                    "end": 122
+                  }
+                },
+                "label": null,
+                "parameter_type": {
+                  "tag": "record",
+                  "syntax_node": {
+                    "kind": "TYPE_RECORD",
+                    "span": {
+                      "start": 32,
+                      "end": 99
+                    }
+                  },
+                  "fields": [
+                    {
+                      "syntax_node": {
+                        "kind": "TYPE_RECORD_FIELD",
+                        "span": {
+                          "start": 34,
+                          "end": 92
+                        }
+                      },
+                      "field_name": {
+                        "kind": "IDENT_EXPR",
+                        "text": "selector",
+                        "span": {
+                          "start": 41,
+                          "end": 49
+                        }
+                      },
+                      "field_type": {
+                        "tag": "arrow",
+                        "syntax_node": {
+                          "kind": "TYPE_ARROW",
+                          "span": {
+                            "start": 51,
+                            "end": 92
+                          }
+                        },
+                        "label": null,
+                        "parameter_type": {
+                          "tag": "constr",
+                          "syntax_node": {
+                            "kind": "TYPE_CONSTR",
+                            "span": {
+                              "start": 51,
+                              "end": 61
+                            }
+                          },
+                          "constructor_path": {
+                            "tag": "qualified",
+                            "syntax_node": {
+                              "kind": "TYPE_CONSTR",
+                              "span": {
+                                "start": 51,
+                                "end": 61
+                              }
+                            },
+                            "prefix": {
+                              "tag": "ident",
+                              "syntax_node": {
+                                "kind": "TYPE_CONSTR",
+                                "span": {
+                                  "start": 51,
+                                  "end": 61
+                                }
+                              },
+                              "name_token": {
+                                "kind": "IDENT_EXPR",
+                                "text": "Message",
+                                "span": {
+                                  "start": 52,
+                                  "end": 59
+                                }
+                              }
+                            },
+                            "dot_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": ".",
+                              "span": {
+                                "start": 59,
+                                "end": 60
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "t",
+                              "span": {
+                                "start": 60,
+                                "end": 61
+                              }
+                            }
+                          },
+                          "arguments": []
+                        },
+                        "result_type": {
+                          "tag": "poly_variant",
+                          "syntax_node": {
+                            "kind": "TYPE_POLY_VARIANT",
+                            "span": {
+                              "start": 64,
+                              "end": 92
+                            }
+                          },
+                          "kind": {
+                            "tag": "exact"
+                          },
+                          "fields": [
+                            {
+                              "tag": "tag",
+                              "field": {
+                                "syntax_node": {
+                                  "kind": "POLY_VARIANT_TAG",
+                                  "span": {
+                                    "start": 66,
+                                    "end": 82
+                                  }
+                                },
+                                "tag_name": {
+                                  "kind": "IDENT_EXPR",
+                                  "text": "select",
+                                  "span": {
+                                    "start": 68,
+                                    "end": 74
+                                  }
+                                },
+                                "payload_type": {
+                                  "tag": "var",
+                                  "syntax_node": {
+                                    "kind": "TYPE_VAR",
+                                    "span": {
+                                      "start": 77,
+                                      "end": 82
+                                    }
+                                  },
+                                  "name_token": {
+                                    "kind": "IDENT_EXPR",
+                                    "text": "msg",
+                                    "span": {
+                                      "start": 79,
+                                      "end": 82
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "tag": "tag",
+                              "field": {
+                                "syntax_node": {
+                                  "kind": "POLY_VARIANT_TAG",
+                                  "span": {
+                                    "start": 84,
+                                    "end": 90
+                                  }
+                                },
+                                "tag_name": {
+                                  "kind": "IDENT_EXPR",
+                                  "text": "skip",
+                                  "span": {
+                                    "start": 86,
+                                    "end": 90
+                                  }
+                                },
+                                "payload_type": null
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "is_mutable": false
+                    }
+                  ]
+                },
+                "result_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 108,
+                      "end": 122
+                    }
+                  },
+                  "constructor_path": {
+                    "tag": "qualified",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 108,
+                        "end": 122
+                      }
+                    },
+                    "prefix": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 108,
+                          "end": 122
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "Effect",
+                        "span": {
+                          "start": 114,
+                          "end": 120
+                        }
+                      }
+                    },
+                    "dot_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 120,
+                        "end": 121
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 121,
+                        "end": 122
+                      }
+                    }
+                  },
+                  "arguments": [
+                    {
+                      "tag": "var",
+                      "syntax_node": {
+                        "kind": "TYPE_VAR",
+                        "span": {
+                          "start": 108,
+                          "end": 113
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "msg",
+                        "span": {
+                          "start": 110,
+                          "end": 113
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "result_type": {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 108,
+                    "end": 122
+                  }
+                },
+                "constructor_path": {
+                  "tag": "qualified",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 108,
+                      "end": 122
+                    }
+                  },
+                  "prefix": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 108,
+                        "end": 122
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Effect",
+                      "span": {
+                        "start": 114,
+                        "end": 120
+                      }
+                    }
+                  },
+                  "dot_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 120,
+                      "end": 121
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "span": {
+                      "start": 121,
+                      "end": 122
+                    }
+                  }
+                },
+                "arguments": [
+                  {
+                    "tag": "var",
+                    "syntax_node": {
+                      "kind": "TYPE_VAR",
+                      "span": {
+                        "start": 108,
+                        "end": 113
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "msg",
+                      "span": {
+                        "start": 110,
+                        "end": 113
+                      }
+                    }
+                  }
+                ]
               }
             }
           ]
@@ -121,8 +625,8 @@
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 124,
-              "end": 165
+              "start": 122,
+              "end": 164
             }
           },
           "type_name": {
@@ -130,8 +634,8 @@
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
-                "start": 131,
-                "end": 140
+                "start": 130,
+                "end": 139
               }
             },
             "prefix": {
@@ -139,8 +643,8 @@
               "syntax_node": {
                 "kind": "MODULE_PATH",
                 "span": {
-                  "start": 131,
-                  "end": 140
+                  "start": 130,
+                  "end": 139
                 }
               },
               "name_token": {
@@ -174,7 +678,7 @@
               "syntax_node": {
                 "kind": "TYPE_PARAM",
                 "span": {
-                  "start": 129,
+                  "start": 128,
                   "end": 130
                 }
               },
@@ -184,7 +688,7 @@
                 "syntax_node": {
                   "kind": "TYPE_VAR",
                   "span": {
-                    "start": 129,
+                    "start": 128,
                     "end": 130
                   }
                 },
@@ -204,8 +708,8 @@
               "syntax_node": {
                 "kind": "TYPE_VARIANT_CONSTR",
                 "span": {
-                  "start": 143,
-                  "end": 165
+                  "start": 142,
+                  "end": 164
                 }
               },
               "constructor_name": {
@@ -215,6 +719,176 @@
                   "start": 143,
                   "end": 148
                 }
+              },
+              "payload_type": {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 150,
+                    "end": 164
+                  }
+                },
+                "constructor_path": {
+                  "tag": "qualified",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 150,
+                      "end": 164
+                    }
+                  },
+                  "prefix": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 150,
+                        "end": 164
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Effect",
+                      "span": {
+                        "start": 156,
+                        "end": 162
+                      }
+                    }
+                  },
+                  "dot_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 162,
+                      "end": 163
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "span": {
+                      "start": 163,
+                      "end": 164
+                    }
+                  }
+                },
+                "arguments": [
+                  {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 150,
+                        "end": 155
+                      }
+                    },
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 150,
+                          "end": 155
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "unit",
+                        "span": {
+                          "start": 151,
+                          "end": 155
+                        }
+                      }
+                    },
+                    "arguments": []
+                  }
+                ]
+              },
+              "result_type": {
+                "tag": "constr",
+                "syntax_node": {
+                  "kind": "TYPE_CONSTR",
+                  "span": {
+                    "start": 150,
+                    "end": 164
+                  }
+                },
+                "constructor_path": {
+                  "tag": "qualified",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 150,
+                      "end": 164
+                    }
+                  },
+                  "prefix": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 150,
+                        "end": 164
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "Effect",
+                      "span": {
+                        "start": 156,
+                        "end": 162
+                      }
+                    }
+                  },
+                  "dot_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 162,
+                      "end": 163
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "span": {
+                      "start": 163,
+                      "end": 164
+                    }
+                  }
+                },
+                "arguments": [
+                  {
+                    "tag": "constr",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 150,
+                        "end": 155
+                      }
+                    },
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 150,
+                          "end": 155
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "unit",
+                        "span": {
+                          "start": 151,
+                          "end": 155
+                        }
+                      }
+                    },
+                    "arguments": []
+                  }
+                ]
               }
             }
           ]

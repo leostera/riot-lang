@@ -14,6 +14,7 @@ open Std.Collections
 (** Parse result type *)
 type parse_result = {
   source : string;
+  tokens : Token.t list;
   kind :
     [
       | `Implementation
@@ -189,6 +190,92 @@ let green_expr_is_module_path_like = fun expr ->
   | _ ->
       false
 
+let is_custom_index_operator_token =
+  function
+  | Token.At
+  | Token.Question
+  | Token.Percent
+  | Token.Bang ->
+      true
+  | _ ->
+      false
+
+let is_custom_index_open_delim =
+  function
+  | Token.OpenDelim Token.Paren
+  | Token.OpenDelim Token.Bracket
+  | Token.OpenDelim Token.Brace ->
+      true
+  | _ ->
+      false
+
+let has_custom_index_payload_after_dot = fun parser ->
+  let rec loop offset =
+    match (peek_n parser offset).Token.kind with
+    | kind when is_custom_index_operator_token kind ->
+        loop (offset + 1)
+    | kind ->
+        offset > 0 && is_custom_index_open_delim kind
+  in
+  loop 0
+
+let has_dot_ident_continuation = fun parser ->
+  peek_kind parser = Token.Dot
+  &&
+  match (peek_n parser 1).Token.kind with
+  | Token.Ident _ ->
+      true
+  | _ ->
+      false
+
+let has_dot_open_paren_continuation = fun parser ->
+  peek_kind parser = Token.Dot
+  &&
+  match (peek_n parser 1).Token.kind with
+  | Token.OpenDelim Token.Paren ->
+      true
+  | _ ->
+      false
+
+let is_parenthesized_functor_type_start = fun parser ->
+  let starts_with_parameter_name =
+    match peek_kind parser with
+    | Token.Ident name when ident_starts_uppercase name -> true
+    | Token.Underscore -> true
+    | _ -> false
+  in
+  let rec scan offset depth saw_colon =
+    match (peek_n parser offset).Token.kind with
+    | Token.EOF ->
+        false
+    | Token.OpenDelim Token.Paren ->
+        scan (offset + 1) (depth + 1) saw_colon
+    | Token.CloseDelim Token.Paren ->
+        if depth = 0 then
+          saw_colon && (peek_n parser (offset + 1)).Token.kind = Token.Arrow
+        else
+          scan (offset + 1) (depth - 1) saw_colon
+    | Token.Colon when depth = 0 ->
+        scan (offset + 1) depth true
+    | _ ->
+        scan (offset + 1) depth saw_colon
+  in
+  starts_with_parameter_name && scan 1 0 false
+
+let is_parenthesized_module_type_expr_start = fun parser ->
+  let rec scan offset =
+    match (peek_n parser offset).Token.kind with
+    | Token.OpenDelim Token.Paren ->
+        scan (offset + 1)
+    | Token.Keyword Keyword.Module ->
+        (peek_n parser (offset + 1)).Token.kind = Token.Keyword Keyword.Type
+    | Token.OpenDelim Token.SigEnd ->
+        true
+    | _ ->
+        false
+  in
+  scan 0
+
 let can_start_module_expr = fun parser ->
   match peek_kind parser with
   | Token.Keyword Keyword.Functor
@@ -212,6 +299,14 @@ let can_start_module_type_expr = fun parser ->
       true
   | Token.Ident name -> ident_starts_uppercase name
   | _ -> false
+
+let starts_with_module_type_keyword = fun parser ->
+  peek_kind parser = Token.Keyword Keyword.Module
+  && (peek_n parser 1).Token.kind = Token.Keyword Keyword.Type
+
+let starts_with_class_type_keyword = fun parser ->
+  peek_kind parser = Token.Keyword Keyword.Class
+  && (peek_n parser 1).Token.kind = Token.Keyword Keyword.Type
 
 let can_start_class_type_arrow_parameter = fun parser ->
   match peek_kind parser with
@@ -263,15 +358,21 @@ let is_trivia_kind =
     @param diagnostic_fn Function to create diagnostic given the found token
     @return The expected token if found, otherwise the found token (as dummy) *)
 let consume_trivia = fun parser ->
-  let rec loop = fun acc ->
-    let kind = peek_kind parser in
-    if is_trivia_kind kind then
-      let token = consume parser in
-      loop (token :: acc)
-    else
-      List.rev acc
-  in
-  loop []
+  Token_cursor.consume_leading_trivia parser.cursor
+
+let peek_trivia = fun parser ->
+  Token_cursor.peek_leading_trivia parser.cursor
+  |> List.map Token.trivia_to_token
+
+let leading_trivia_contains_newline = fun parser ->
+  Token_cursor.peek_leading_trivia parser.cursor
+  |> List.exists
+       (fun (trivia : Token.trivia) ->
+         match trivia.Token.kind with
+         | Token.WhitespaceTrivia ->
+             String.contains (Token_cursor.view parser.cursor trivia.Token.span) "\n"
+         | _ ->
+             false)
 
 let error_recover_until = fun parser ~sync_tokens ->
   let is_sync_token = fun kind ->
@@ -283,7 +384,7 @@ let error_recover_until = fun parser ~sync_tokens ->
         List.rev acc
     | kind when is_sync_token kind ->
         List.rev acc
-    | Token.Whitespace when String.contains (token_text parser (peek parser)) "\n" ->
+    | _ when leading_trivia_contains_newline parser ->
         List.rev acc
     | _ ->
         let tok = consume parser in
@@ -307,13 +408,13 @@ let expect = fun parser expected_kind diagnostic_fn ->
     
     @param parser The parser state
     @param content_parser Function to parse the content inside parens
-    @return Tuple of (open_paren, trivia_after_open, content, trivia_before_close, close_paren) *)
+    @return Tuple of (open_paren, content, close_paren) *)
 (** Parse content within braces: {content}
     Returns all the parts needed to build a node.
     
     @param parser The parser state
     @param content_parser Function to parse the content inside braces
-    @return Tuple of (open_brace, trivia_after_open, content, trivia_before_close, close_brace) *)
+    @return Tuple of (open_brace, content, close_brace) *)
 (** Parse and expect an identifier.
     Reports diagnostic if not an identifier.
     
@@ -324,27 +425,23 @@ let parse_parens = fun parser content_parser ->
   (* Expect open paren *)
   let open_paren = expect parser (Token.OpenDelim Token.Paren) (fun found -> Diagnostic.unclosed_delimiter ~opener:"(" ~found ~text:(token_text parser found) ~span:(current_span
   parser)) in
-  let trivia_after_open = consume_trivia parser in
   (* Parse content *)
   let content = content_parser parser in
-  let trivia_before_close = consume_trivia parser in
   (* Expect close paren *)
   let close_paren = expect parser (Token.CloseDelim Token.Paren) (fun found -> Diagnostic.unclosed_delimiter ~opener:")" ~found ~text:(token_text parser found) ~span:(expected_span
   parser)) in
-  (open_paren, trivia_after_open, content, trivia_before_close, close_paren)
+  (open_paren, content, close_paren)
 
 let parse_braces = fun parser content_parser ->
   (* Expect open brace *)
   let open_brace = expect parser (Token.OpenDelim Token.Brace) (fun found -> Diagnostic.unclosed_delimiter ~opener:"{" ~found ~text:(token_text parser found) ~span:(current_span
   parser)) in
-  let trivia_after_open = consume_trivia parser in
   (* Parse content *)
   let content = content_parser parser in
-  let trivia_before_close = consume_trivia parser in
   (* Expect close brace *)
   let close_brace = expect parser (Token.CloseDelim Token.Brace) (fun found -> Diagnostic.unclosed_delimiter ~opener:"}" ~found ~text:(token_text parser found) ~span:(expected_span
   parser)) in
-  (open_brace, trivia_after_open, content, trivia_before_close, close_brace)
+  (open_brace, content, close_brace)
 
 let parse_ident = fun parser diagnostic_fn ->
   match peek_kind parser with
@@ -387,13 +484,26 @@ let make_node = fun kind children ->
   Ceibo.Green.make_node ~kind ~children:children_array
 
 (** Make an ERROR node with diagnostic *)
+let green_trivia_of_token_trivia = fun parser (trivia : Token.trivia) ->
+  let kind =
+    trivia.Token.kind
+    |> Token.token_kind_of_trivia_kind
+    |> token_kind_to_syntax_kind
+  in
+  let text = Token_cursor.view parser.cursor trivia.Token.span in
+  let width = String.length text in
+  Ceibo.Green.make_trivia ~kind ~text ~width
+
 let make_token = fun parser token ->
   let token_kind = token.Token.kind in
   let syntax_kind = token_kind_to_syntax_kind token_kind in
   let text = Token_cursor.view parser.cursor token.Token.span in
   let width = String.length text in
+  let leading_trivia =
+    List.map (green_trivia_of_token_trivia parser) token.Token.leading_trivia
+  in
   let green_token =
-    Ceibo.Green.make_token ~leading_trivia:[] ~kind:syntax_kind ~text ~width
+    Ceibo.Green.make_token ~leading_trivia ~kind:syntax_kind ~text ~width
   in
   Ceibo.Green.Token green_token
 
@@ -403,7 +513,13 @@ let make_token = fun parser token ->
     ============================================================================
 *)
 let tokens_to_green = fun parser tokens ->
-  List.map (make_token parser) tokens
+  List.filter_map
+    (fun token ->
+      if is_trivia_kind token.Token.kind then
+        None
+      else
+        Some (make_token parser token))
+    tokens
 
 let make_error_node = fun parser ~diagnostic ~consumed_tokens ->
   report_diagnostic parser diagnostic;
@@ -702,13 +818,11 @@ and parse_typexpr parser =
         | Token.Quote ->
             (* Consume ' *)
             let _ = consume parser in
-            let _ = consume_trivia parser in
             
             (* Expect identifier *)
             (match peek_kind parser with
             | Token.Ident _ | Token.Underscore ->
                 let _ = consume parser in
-                let _ = consume_trivia parser in
                 type_var_count := !type_var_count + 1;
                 scan_for_dot ()
             | _ ->
@@ -737,14 +851,12 @@ and parse_typexpr parser =
       
       (* Consume 'type' keyword *)
       let _ = consume parser in
-      let _ = consume_trivia parser in
       
       (* Scan ahead to see if we have: ident [ident ...] . *)
       let rec scan_for_dot () =
         match peek_kind parser with
         | Token.Ident _ ->
             let _ = consume parser in
-            let _ = consume_trivia parser in
             type_var_count := !type_var_count + 1;
             scan_for_dot ()
         | Token.Dot ->
@@ -1213,56 +1325,49 @@ and parse_parametric_type parser =
   parse_with_arg primary
 
 and is_local_open_type_start parser =
-  let saved_pos = position parser in
-  let rec scan_module_path () =
-    match peek_kind parser with
-    | Token.Ident _ ->
-        let _ = consume parser in
-        let _ = consume_trivia parser in
-        (match peek_kind parser with
-        | Token.Dot ->
-            let _ = consume parser in
-            let _ = consume_trivia parser in
-            (match peek_kind parser with
+  let rec scan_module_path offset =
+    match (peek_n parser offset).Token.kind with
+    | Token.Ident _ -> (
+        match (peek_n parser (offset + 1)).Token.kind with
+        | Token.Dot -> (
+            match (peek_n parser (offset + 2)).Token.kind with
             | Token.Ident _ ->
-                scan_module_path ()
+                scan_module_path (offset + 2)
             | Token.OpenDelim Token.Paren ->
                 true
             | _ ->
-                false)
+                false
+          )
         | _ ->
-            false)
+            false
+      )
     | _ ->
         false
   in
-  let result = scan_module_path () in
-  Token_cursor.set_position parser.cursor saved_pos;
-  result
+  scan_module_path 0
 
 and parse_local_open_type parser =
   let rec collect_module_path acc =
     match peek_kind parser with
     | Token.Ident _ ->
         let ident = consume parser in
-        let trivia_after_ident = consume_trivia parser in
         let acc = acc @ [ make_token parser ident ] in
-        (match peek_kind parser with
-        | Token.Dot ->
+        if has_dot_ident_continuation parser then
+          let trivia_after_ident = consume_trivia parser in
+          let dot = consume parser in
+          let trivia_after_dot = consume_trivia parser in
+          collect_module_path
+            (acc
+            @ tokens_to_green parser trivia_after_ident
+            @ [ make_token parser dot ]
+            @ tokens_to_green parser trivia_after_dot)
+        else if has_dot_open_paren_continuation parser then
+          let trivia_after_ident = consume_trivia parser in
             let dot = consume parser in
             let trivia_after_dot = consume_trivia parser in
-            (match peek_kind parser with
-            | Token.Ident _ ->
-                collect_module_path
-                  (acc
-                  @ tokens_to_green parser trivia_after_ident
-                  @ [ make_token parser dot ]
-                  @ tokens_to_green parser trivia_after_dot)
-            | Token.OpenDelim Token.Paren ->
-                Some (acc, trivia_after_ident, dot, trivia_after_dot)
-            | _ ->
-                None)
-        | _ ->
-            None)
+            Some (acc, trivia_after_ident, dot, trivia_after_dot)
+        else
+          None
     | _ ->
         None
   in
@@ -1888,12 +1993,9 @@ and parse_pattern_no_tuple parser =
 and parse_or_pattern parser =
   let first_pat = parse_tuple_pattern_or_as parser in
 
-  (* Speculatively consume trivia to check for pipe *)
-  let saved_pos = Token_cursor.position parser.cursor in
-  let trivia_after_first = consume_trivia parser in
-
   (* Check for | to continue or-pattern *)
   if peek_kind parser = Token.Pipe then
+    let trivia_after_first = consume_trivia parser in
     (* Parse remaining patterns after | *)
     let rec parse_pipe_patterns acc =
       (* Consume trivia before checking for next pipe *)
@@ -1961,19 +2063,15 @@ and parse_or_pattern parser =
       @ rest_children
     in
     make_node Syntax_kind.OR_PATTERN children
-  else (
-    (* No pipe - restore position to before trivia *)
-    Token_cursor.set_position parser.cursor saved_pos;
-    first_pat)
+  else
+    first_pat
 
 (** Parse or-patterns without allowing top-level tuple commas. *)
 and parse_or_pattern_no_tuple parser =
   let first_pat = parse_as_pattern parser in
 
-  let saved_pos = Token_cursor.position parser.cursor in
-  let trivia_after_first = consume_trivia parser in
-
   if peek_kind parser = Token.Pipe then
+    let trivia_after_first = consume_trivia parser in
     let rec parse_pipe_patterns acc =
       let trivia_before_pipe = consume_trivia parser in
 
@@ -2007,9 +2105,8 @@ and parse_or_pattern_no_tuple parser =
       ([ Ceibo.Green.Node first_pat ]
       @ tokens_to_green parser trivia_after_first
       @ rest_children)
-  else (
-    Token_cursor.set_position parser.cursor saved_pos;
-    first_pat)
+  else
+    first_pat
 
 (** Parse a labeled tuple pattern element such as `~x`, `~x:pat`, or `~(x : t)`. *)
 and parse_labeled_tuple_pattern_element parser =
@@ -2108,12 +2205,9 @@ and parse_tuple_pattern_or_as parser =
     parse_tuple_pattern_element parser
   in
 
-  (* Speculatively consume trivia to check for comma *)
-  let saved_pos = Token_cursor.position parser.cursor in
-  let trivia_after_first = consume_trivia parser in
-
   (* Check if followed by comma (tuple without parens) *)
   if peek_kind parser = Token.Comma then
+    let trivia_after_first = consume_trivia parser in
     (* Parse rest of tuple elements *)
     let rec parse_tuple_rest acc =
       match peek_kind parser with
@@ -2147,9 +2241,7 @@ and parse_tuple_pattern_or_as parser =
       (first_children
       @ tokens_to_green parser trivia_after_first
       @ rest)
-  else (
-    (* No comma - restore position to before trivia *)
-    Token_cursor.set_position parser.cursor saved_pos;
+  else
     match first_pattern_opt with
     | Some first_pattern ->
         first_pattern
@@ -2164,19 +2256,16 @@ and parse_tuple_pattern_or_as parser =
           report_diagnostic parser diagnostic;
           make_node Syntax_kind.ERROR [])
         else
-          make_node Syntax_kind.ERROR [])
+          make_node Syntax_kind.ERROR []
 
 (** Parse as-pattern: p as x *)
 and parse_as_pattern parser =
   let left = parse_cons_pattern parser in
 
-  (* Speculatively consume trivia to check for 'as' keyword *)
-  let saved_pos = Token_cursor.position parser.cursor in
-  let trivia_after_left = consume_trivia parser in
-
   (* Check for 'as' keyword *)
   match peek_kind parser with
   | Token.Keyword Keyword.As ->
+      let trivia_after_left = consume_trivia parser in
       (* Found 'as', consume it and parse identifier *)
       let as_keyword = consume parser in
       let trivia_after_as = consume_trivia parser in
@@ -2202,19 +2291,14 @@ and parse_as_pattern parser =
         @ tokens_to_green parser trivia_after_as
         @ [ make_token parser ident ])
   | _ ->
-      (* No 'as' - restore position to before trivia *)
-      Token_cursor.set_position parser.cursor saved_pos;
       left
 
 (** Parse cons pattern: x :: xs *)
 and parse_cons_pattern parser =
   let left = parse_primary_pattern parser in
-
-  (* Speculatively consume trivia to check for :: operator *)
-  let saved_pos = Token_cursor.position parser.cursor in
-  let trivia_after_left = consume_trivia parser in
   
   if peek_kind parser = Token.ColonColon then
+    let trivia_after_left = consume_trivia parser in
     (* Found ::, consume it and parse right side *)
     let cons_op = consume parser in
     let trivia_after_cons = consume_trivia parser in
@@ -2240,10 +2324,8 @@ and parse_cons_pattern parser =
       @ [ make_token parser cons_op ]
       @ tokens_to_green parser trivia_after_cons
       @ [ Ceibo.Green.Node right ])
-  else (
-    (* No ::, restore position to before trivia *)
-    Token_cursor.set_position parser.cursor saved_pos;
-    left)
+  else
+    left
 
 (** Parse primary pattern: literals, identifiers, constructors, tuples, lists,
     etc. *)
@@ -2319,77 +2401,72 @@ and parse_ident_or_constructor_pattern parser =
         @ argument_nodes)
     in
 
-    let rec collect_path_segments acc acc_trivia =
-      let trivia_after = consume_trivia parser in
+    let rec collect_path_segments acc =
       match peek_kind parser with
       | Token.Dot ->
-          (* Check if this is a module path by looking ahead *)
-          let saved_pos = Token_cursor.position parser.cursor in
-          let dot = consume parser in
-          let trivia_after_dot = consume_trivia parser in
-          (match peek_kind parser with
+          (match (peek_n parser 1).Token.kind with
           | Token.Ident _ ->
+              let trivia_after = consume_trivia parser in
+              let dot = consume parser in
+              let trivia_after_dot = consume_trivia parser in
               let next_ident = consume parser in
-              (* Add the accumulated elements plus dot and next identifier *)
               collect_path_segments
-                (acc @ [ make_token parser dot ] @ tokens_to_green parser trivia_after_dot @ [ make_token parser next_ident ])
-                trivia_after_dot
-          | Token.OpenDelim Token.Paren ->
-              Token_cursor.set_position parser.cursor saved_pos;
-              (acc, trivia_after)
+                (acc
+                @ tokens_to_green parser trivia_after
+                @ [ make_token parser dot ]
+                @ tokens_to_green parser trivia_after_dot
+                @ [ make_token parser next_ident ])
+          | Token.OpenDelim Token.Paren
+          | Token.OpenDelim Token.Brace ->
+              (acc, consume_trivia parser)
           | _ ->
-              Token_cursor.set_position parser.cursor saved_pos;
-              (acc, trivia_after))
+              (acc, consume_trivia parser))
       | _ ->
-          (* No more path segments *)
-          (acc, trivia_after)
+          (acc, consume_trivia parser)
     in
 
     let path_segments, trivia_after_path =
-      collect_path_segments [ make_token parser ident ] []
+      collect_path_segments [ make_token parser ident ]
     in
 
     (* Local open pattern: Module.(pattern) *)
-    if peek_kind parser = Token.Dot then
-      let saved_pos = Token_cursor.position parser.cursor in
+    match peek_kind parser, (peek_n parser 1).Token.kind with
+    | Token.Dot, Token.OpenDelim Token.Paren ->
       let dot = consume parser in
       let trivia_after_dot = consume_trivia parser in
-      match peek_kind parser with
-      | Token.OpenDelim Token.Paren ->
-          let open_paren = consume parser in
-          let trivia_after_open = consume_trivia parser in
-          let inner_pattern = parse_pattern parser in
-          let trivia_before_close = consume_trivia parser in
-          let close_paren =
-            expect parser (Token.CloseDelim Token.Paren) (fun found ->
-                Diagnostic.unclosed_delimiter ~opener:")" ~found
-                  ~text:(token_text parser found)
-                  ~span:(expected_span parser))
-          in
-          let module_path = make_node Syntax_kind.MODULE_PATH path_segments in
-          make_node Syntax_kind.LOCAL_OPEN_PATTERN
-            ([ Ceibo.Green.Node module_path ]
-            @ tokens_to_green parser trivia_after_path
-            @ [ make_token parser dot ]
-            @ tokens_to_green parser trivia_after_dot
-            @ [ make_token parser open_paren ]
-            @ tokens_to_green parser trivia_after_open
-            @ [ Ceibo.Green.Node inner_pattern ]
-            @ tokens_to_green parser trivia_before_close
-            @ [ make_token parser close_paren ])
-      | Token.OpenDelim Token.Brace ->
-          let inner_pattern = parse_record_pattern parser in
-          let module_path = make_node Syntax_kind.MODULE_PATH path_segments in
-          make_node Syntax_kind.LOCAL_OPEN_PATTERN
-            ([ Ceibo.Green.Node module_path ]
-            @ tokens_to_green parser trivia_after_path
-            @ [ make_token parser dot ]
-            @ tokens_to_green parser trivia_after_dot
-            @ [ Ceibo.Green.Node inner_pattern ])
-      | _ ->
-          Token_cursor.set_position parser.cursor saved_pos;
-          make_constructor_pattern path_segments trivia_after_path
-    else
+      let open_paren = consume parser in
+      let trivia_after_open = consume_trivia parser in
+      let inner_pattern = parse_pattern parser in
+      let trivia_before_close = consume_trivia parser in
+      let close_paren =
+        expect parser (Token.CloseDelim Token.Paren) (fun found ->
+            Diagnostic.unclosed_delimiter ~opener:")" ~found
+              ~text:(token_text parser found)
+              ~span:(expected_span parser))
+      in
+      let module_path = make_node Syntax_kind.MODULE_PATH path_segments in
+      make_node Syntax_kind.LOCAL_OPEN_PATTERN
+        ([ Ceibo.Green.Node module_path ]
+        @ tokens_to_green parser trivia_after_path
+        @ [ make_token parser dot ]
+        @ tokens_to_green parser trivia_after_dot
+        @ [ make_token parser open_paren ]
+        @ tokens_to_green parser trivia_after_open
+        @ [ Ceibo.Green.Node inner_pattern ]
+        @ tokens_to_green parser trivia_before_close
+        @ [ make_token parser close_paren ])
+    | Token.Dot, Token.OpenDelim Token.Brace ->
+      let dot = consume parser in
+      let trivia_after_dot = consume_trivia parser in
+      let inner_pattern = parse_record_pattern parser in
+      let module_path = make_node Syntax_kind.MODULE_PATH path_segments in
+      make_node Syntax_kind.LOCAL_OPEN_PATTERN
+        ([ Ceibo.Green.Node module_path ]
+        @ tokens_to_green parser trivia_after_path
+        @ [ make_token parser dot ]
+        @ tokens_to_green parser trivia_after_dot
+        @ [ Ceibo.Green.Node inner_pattern ])
+    | _ ->
       make_constructor_pattern path_segments trivia_after_path
   else
     make_node Syntax_kind.IDENT_PATTERN [ make_token parser ident ]
@@ -2432,11 +2509,8 @@ and parse_primary_pattern parser =
       let tok = consume parser in
       
       (* Check for range pattern: 0 .. 9 *)
-      (* Need to consume trivia first, like cons pattern does *)
-      let saved_pos = Token_cursor.position parser.cursor in
-      let trivia1 = consume_trivia parser in
-      
       if peek_kind parser = Token.DotDot then
+        let trivia1 = consume_trivia parser in
         let dotdot = consume parser in
         let trivia2 = consume_trivia parser in
         match peek_kind parser with
@@ -2449,13 +2523,9 @@ and parse_primary_pattern parser =
               @ tokens_to_green parser trivia2
               @ [make_token parser end_tok])
         | _ ->
-            (* Not a valid range, restore position and return int literal *)
-            Token_cursor.set_position parser.cursor saved_pos;
             make_node Syntax_kind.INT_LITERAL [make_token parser tok]
-      else (
-        (* Not a range, restore position and return int literal *)
-        Token_cursor.set_position parser.cursor saved_pos;
-        make_node Syntax_kind.INT_LITERAL [make_token parser tok])
+      else
+        make_node Syntax_kind.INT_LITERAL [make_token parser tok]
   | Token.Literal (Token.Float _) ->
       let tok = consume parser in
       make_node Syntax_kind.FLOAT_LITERAL [ make_token parser tok ]
@@ -2466,11 +2536,8 @@ and parse_primary_pattern parser =
       let tok = consume parser in
       
       (* Check for range pattern: 'a' .. 'z' *)
-      (* Need to consume trivia first, like cons pattern does *)
-      let saved_pos = Token_cursor.position parser.cursor in
-      let trivia1 = consume_trivia parser in
-      
       if peek_kind parser = Token.DotDot then
+        let trivia1 = consume_trivia parser in
         let dotdot = consume parser in
         let trivia2 = consume_trivia parser in
         match peek_kind parser with
@@ -2483,13 +2550,9 @@ and parse_primary_pattern parser =
               @ tokens_to_green parser trivia2
               @ [make_token parser end_tok])
         | _ ->
-            (* Not a valid range, restore position and return char literal *)
-            Token_cursor.set_position parser.cursor saved_pos;
             make_node Syntax_kind.CHAR_LITERAL [make_token parser tok]
-      else (
-        (* Not a range, restore position and return char literal *)
-        Token_cursor.set_position parser.cursor saved_pos;
-        make_node Syntax_kind.CHAR_LITERAL [make_token parser tok])
+      else
+        make_node Syntax_kind.CHAR_LITERAL [make_token parser tok]
   | Token.Keyword Keyword.True ->
       let tok = consume parser in
       make_node Syntax_kind.BOOL_LITERAL [ make_token parser tok ]
@@ -3125,7 +3188,7 @@ and parse_array_pattern parser =
 
 (** Parse record pattern: { field1; field2 = pat } or {} *)
 and parse_record_pattern parser =
-  let open_brace, trivia_after_open, content, trivia_before_close, close_brace =
+  let open_brace, content, close_brace =
     parse_braces parser (fun parser ->
         (* Check for empty record {} *)
         if peek_kind parser = Token.CloseDelim Token.Brace then []
@@ -3169,9 +3232,7 @@ and parse_record_pattern parser =
 
   make_node Syntax_kind.RECORD_PATTERN
     ([ make_token parser open_brace ]
-    @ tokens_to_green parser trivia_after_open
     @ content
-    @ tokens_to_green parser trivia_before_close
     @ [ make_token parser close_brace ])
 
 (** Parse a qualified field name: [module-path "."] field-name 
@@ -3187,27 +3248,20 @@ and parse_qualified_field parser =
   (* Collect module path segments if present: Ident . Ident . ... *)
   let rec collect_path_segments acc =
     let trivia_after = consume_trivia parser in
-    match peek_kind parser with
-    | Token.Dot ->
-        (* Check if this is a module path by looking ahead *)
-        let dot = consume parser in
-        let trivia_after_dot = consume_trivia parser in
-        (match peek_kind parser with
-        | Token.Ident _ ->
-            let next_ident = consume parser in
-            (* Add the accumulated elements plus dot and next identifier *)
-            collect_path_segments
-              (acc 
-              @ tokens_to_green parser trivia_after
-              @ [ make_token parser dot ] 
-              @ tokens_to_green parser trivia_after_dot 
-              @ [ make_token parser next_ident ])
-        | _ ->
-            (* Not a module path continuation *)
-            (acc, trivia_after))
-    | _ ->
-        (* No more path segments *)
-        (acc, trivia_after)
+    if has_dot_ident_continuation parser then
+      let dot = consume parser in
+      let trivia_after_dot = consume_trivia parser in
+      let next_ident = consume parser in
+      (* Add the accumulated elements plus dot and next identifier *)
+      collect_path_segments
+        (acc
+        @ tokens_to_green parser trivia_after
+        @ [ make_token parser dot ]
+        @ tokens_to_green parser trivia_after_dot
+        @ [ make_token parser next_ident ])
+    else
+      (* No more path segments *)
+      (acc, trivia_after)
   in
   
   collect_path_segments [ make_token parser first_ident ]
@@ -3469,7 +3523,6 @@ and is_attribute_start parser =
   | Token.OpenDelim Token.Bracket ->
       let saved_pos = Token_cursor.position parser.cursor in
       let _ = consume parser in
-      let _ = consume_trivia parser in
       let is_attr =
         match peek_kind parser with
         | Token.At | Token.AtAt -> true
@@ -3485,7 +3538,6 @@ and is_extension_start parser =
   | Token.OpenDelim Token.Bracket ->
       let saved_pos = Token_cursor.position parser.cursor in
       let _ = consume parser in
-      let _ = consume_trivia parser in
       let is_ext = peek_kind parser = Token.Percent in
       Token_cursor.set_position parser.cursor saved_pos;
       is_ext
@@ -3497,7 +3549,6 @@ and is_brace_extension_start parser =
   | Token.OpenDelim Token.Brace ->
       let saved_pos = Token_cursor.position parser.cursor in
       let _ = consume parser in
-      let _ = consume_trivia parser in
       let is_ext = peek_kind parser = Token.Percent in
       Token_cursor.set_position parser.cursor saved_pos;
       is_ext
@@ -3793,7 +3844,7 @@ and parse_labeled_param parser =
   match peek_kind parser with
   | Token.OpenDelim Token.Paren ->
       (* In parentheses: ~(label : TYPE) - parse type annotation, not pattern *)
-      let open_p, trivia_open, content, trivia_close, close_p =
+      let open_p, content, close_p =
         parse_parens parser (fun parser ->
             let label =
               parse_ident parser (fun parser found ->
@@ -3822,9 +3873,7 @@ and parse_labeled_param parser =
         ([ make_token parser tilde ]
         @ tokens_to_green parser trivia_after_tilde
         @ [ make_token parser open_p ]
-        @ tokens_to_green parser trivia_open
         @ content
-        @ tokens_to_green parser trivia_close
         @ [ make_token parser close_p ])
   | Token.Ident _ ->
       (* Not in parentheses: ~label:pattern - parse pattern *)
@@ -3888,16 +3937,14 @@ and parse_optional_param parser =
   match peek_kind parser with
   | Token.OpenDelim Token.Paren ->
       (* ?(label = expr) - with default value *)
-      let open_p, trivia_open, content, trivia_close, close_p =
+      let open_p, content, close_p =
         parse_parens parser parse_default_param_content
       in
       make_node Syntax_kind.OPTIONAL_PARAM_DEFAULT
         ([ make_token parser question ]
         @ tokens_to_green parser trivia_after_q
         @ [ make_token parser open_p ]
-        @ tokens_to_green parser trivia_open
         @ content
-        @ tokens_to_green parser trivia_close
         @ [ make_token parser close_p ])
   | Token.Ident _ ->
       (* ?label, ?label:pattern, or ?label:(binding = expr) *)
@@ -3916,15 +3963,13 @@ and parse_optional_param parser =
             let colon = consume parser in
             let trivia_after_colon = consume_trivia parser in
             if peek_kind parser = Token.OpenDelim Token.Paren then
-              let open_p, trivia_open, content, trivia_close, close_p =
+              let open_p, content, close_p =
                 parse_parens parser parse_default_param_content
               in
               [ make_token parser colon ]
               @ tokens_to_green parser trivia_after_colon
               @ [ make_token parser open_p ]
-              @ tokens_to_green parser trivia_open
               @ content
-              @ tokens_to_green parser trivia_close
               @ [ make_token parser close_p ]
             else
               let pattern = parse_pattern parser in
@@ -4597,13 +4642,7 @@ and parse_primary_expr parser =
   | Token.OpenDelim Token.BeginEnd -> parse_begin_end_expr parser
   | Token.OpenDelim Token.Bracket ->
       (* Check if this is an extension [%...] or a list [...] *)
-      let saved_pos = Token_cursor.position parser.cursor in
-      let _ = consume parser in  (* consume [ *)
-      let _ = consume_trivia parser in
-      let is_extension = peek_kind parser = Token.Percent in
-      Token_cursor.set_position parser.cursor saved_pos;
-      
-      if is_extension then
+      if (peek_n parser 1).Token.kind = Token.Percent then
         parse_extension parser
       else
         parse_list_expr parser
@@ -4693,7 +4732,6 @@ and is_operator_pattern_paren parser =
     match peek_kind parser with
     | tok when is_operator_token tok ->
         let first = consume parser in
-        let _ = consume_trivia parser in
         (match first.Token.kind with
         | Token.Keyword Keyword.Let | Token.Keyword Keyword.And ->
             is_operator_token (peek_kind parser)
@@ -4798,13 +4836,8 @@ and parse_postfix_expr parser =
         parse_postfix method_call
     | Token.OpenDelim Token.Bracket ->
         (* Check if this is an attribute [@...] or array/string indexing with dot *)
-        let saved_pos = Token_cursor.position parser.cursor in
-        let _ = consume parser in
-        let _ = consume_trivia parser in
-        let is_attribute = peek_kind parser = Token.At || peek_kind parser = Token.AtAt in
-        Token_cursor.set_position parser.cursor saved_pos;
-        
-        if is_attribute then
+        let next_kind = (peek_n parser 1).Token.kind in
+        if next_kind = Token.At || next_kind = Token.AtAt then
           let attr = parse_attribute parser in
           let attr_expr = make_node Syntax_kind.ATTRIBUTE_EXPR
             ([ Ceibo.Green.Node expr; Ceibo.Green.Node attr ])
@@ -4814,13 +4847,16 @@ and parse_postfix_expr parser =
           expr
     | Token.Dot -> (
         let dot = consume parser in
-        let trivia_after_dot = consume_trivia parser in
 
         match peek_kind parser with
-        | Token.At | Token.Question | Token.Percent | Token.Bang ->
+        | kind when is_custom_index_operator_token kind ->
+            if not (has_custom_index_payload_after_dot parser) then
+              expr
+            else
+              let trivia_after_dot = consume_trivia parser in
             let rec collect_op_tokens acc =
               match peek_kind parser with
-              | Token.At | Token.Question | Token.Percent | Token.Bang ->
+              | kind when is_custom_index_operator_token kind ->
                   let tok = consume parser in
                   collect_op_tokens (acc @ [ make_token parser tok ])
               | _ ->
@@ -4878,6 +4914,7 @@ and parse_postfix_expr parser =
             | None ->
                 expr)
         | Token.Ident _ ->
+            let trivia_after_dot = consume_trivia parser in
             let field = consume parser in
             let trivia_after_field = consume_trivia parser in
             let field_access =
@@ -4890,57 +4927,81 @@ and parse_postfix_expr parser =
             in
             parse_postfix field_access
         | Token.OpenDelim Token.Paren -> (
+            let trivia_after_dot = consume_trivia parser in
             let open_paren = consume parser in
             let trivia_after_open = consume_trivia parser in
-            let starts_operator_expr =
-              is_operator_token (peek_kind parser)
-              ||
-              match peek_kind parser with
-              | Token.Ident _ ->
-                  let text = token_text parser (peek parser) in
-                  is_keyword_operator_name text
-              | _ ->
-                  false
-            in
-            if starts_operator_expr then
-              let operator_children =
+            if green_expr_is_module_path_like expr then
+              let starts_operator_expr =
+                is_operator_token (peek_kind parser)
+                ||
                 match peek_kind parser with
                 | Token.Ident _ ->
-                    [ make_token parser (consume parser) ]
+                    let text = token_text parser (peek parser) in
+                    is_keyword_operator_name text
                 | _ ->
-                    let rec collect acc =
-                      match peek_kind parser with
-                      | tok when is_operator_token tok ->
-                          let op = consume parser in
-                          collect (acc @ [ make_token parser op ])
-                      | _ ->
-                          acc
-                    in
-                    collect []
+                    false
               in
-              let trivia_after_operator = consume_trivia parser in
-              match peek_kind parser with
-              | Token.CloseDelim Token.Paren ->
-                  let close_paren = consume parser in
-                  let trivia_after_close = consume_trivia parser in
-                  let operator_expr =
-                    make_node Syntax_kind.IDENT_EXPR operator_children
-                  in
-                  let local_open =
-                    make_node Syntax_kind.LOCAL_OPEN_EXPR
-                      ([ Ceibo.Green.Node expr ]
-                      @ [ make_token parser dot ]
-                      @ tokens_to_green parser trivia_after_dot
-                      @ [ make_token parser open_paren ]
-                      @ tokens_to_green parser trivia_after_open
-                      @ [ Ceibo.Green.Node operator_expr ]
-                      @ tokens_to_green parser trivia_after_operator
-                      @ [ make_token parser close_paren ]
-                      @ tokens_to_green parser trivia_after_close)
-                  in
-                  parse_postfix local_open
-              | _ ->
-                  expr
+              if starts_operator_expr then
+                let operator_children =
+                  match peek_kind parser with
+                  | Token.Ident _ ->
+                      [ make_token parser (consume parser) ]
+                  | _ ->
+                      let rec collect acc =
+                        match peek_kind parser with
+                        | tok when is_operator_token tok ->
+                            let op = consume parser in
+                            collect (acc @ [ make_token parser op ])
+                        | _ ->
+                            acc
+                      in
+                      collect []
+                in
+                let trivia_after_operator = consume_trivia parser in
+                match peek_kind parser with
+                | Token.CloseDelim Token.Paren ->
+                    let close_paren = consume parser in
+                    let trivia_after_close = consume_trivia parser in
+                    let operator_expr =
+                      make_node Syntax_kind.IDENT_EXPR operator_children
+                    in
+                    let local_open =
+                      make_node Syntax_kind.LOCAL_OPEN_EXPR
+                        ([ Ceibo.Green.Node expr ]
+                        @ [ make_token parser dot ]
+                        @ tokens_to_green parser trivia_after_dot
+                        @ [ make_token parser open_paren ]
+                        @ tokens_to_green parser trivia_after_open
+                        @ [ Ceibo.Green.Node operator_expr ]
+                        @ tokens_to_green parser trivia_after_operator
+                        @ [ make_token parser close_paren ]
+                        @ tokens_to_green parser trivia_after_close)
+                    in
+                    parse_postfix local_open
+                | _ ->
+                    expr
+              else
+                let body_expr = parse_expr parser in
+                let trivia_after_body = consume_trivia parser in
+                match peek_kind parser with
+                | Token.CloseDelim Token.Paren ->
+                    let close_paren = consume parser in
+                    let trivia_after_close = consume_trivia parser in
+                    let local_open =
+                      make_node Syntax_kind.LOCAL_OPEN_EXPR
+                        ([ Ceibo.Green.Node expr ]
+                        @ [ make_token parser dot ]
+                        @ tokens_to_green parser trivia_after_dot
+                        @ [ make_token parser open_paren ]
+                        @ tokens_to_green parser trivia_after_open
+                        @ [ Ceibo.Green.Node body_expr ]
+                        @ tokens_to_green parser trivia_after_body
+                        @ [ make_token parser close_paren ]
+                        @ tokens_to_green parser trivia_after_close)
+                    in
+                    parse_postfix local_open
+                | _ ->
+                    expr
             else
               let index_expr = parse_expr parser in
               let trivia_after_expr = consume_trivia parser in
@@ -4963,6 +5024,7 @@ and parse_postfix_expr parser =
                   parse_postfix array_index
               | _ -> expr)
         | Token.OpenDelim Token.Bracket -> (
+            let trivia_after_dot = consume_trivia parser in
             if green_expr_is_module_path_like expr then
               let list_expr = parse_list_expr parser in
               let local_open =
@@ -4997,6 +5059,7 @@ and parse_postfix_expr parser =
                   parse_postfix string_index
               | _ -> expr)
         | Token.OpenDelim Token.Brace ->
+            let trivia_after_dot = consume_trivia parser in
             let record_expr = parse_record_expr parser in
             let local_open =
               make_node Syntax_kind.LOCAL_OPEN_EXPR
@@ -5007,6 +5070,7 @@ and parse_postfix_expr parser =
             in
             parse_postfix local_open
         | Token.OpenDelim Token.Array ->
+            let trivia_after_dot = consume_trivia parser in
             let array_expr = parse_array_expr parser in
             let local_open =
               make_node Syntax_kind.LOCAL_OPEN_EXPR
@@ -5026,65 +5090,63 @@ and parse_postfix_expr parser =
     Grammar: expr ::= expr { argument }+ *)
 and parse_application_expr parser =
   let func = parse_postfix_expr parser in
-  let trivia_start = position parser in
-  let trivia_after_func = consume_trivia parser in
 
   (* Keep parsing arguments while we can *)
-  let rec parse_args func_expr func_trivia_start func_trivia =
+  let rec parse_args func_expr =
     (* Check if trivia contains a newline *)
-    let has_newline =
-      List.exists
-        (fun tok ->
-          match tok.Token.kind with
-          | Token.Whitespace ->
-              let text = token_text parser tok in
-              String.contains text "\n"
-          | _ -> false)
-        func_trivia
-    in
-    
-    (* Check if next token is a structure-level keyword *)
-    let is_structure_keyword =
-      match peek_kind parser with
-      | Token.Keyword Keyword.Let
-      | Token.Keyword Keyword.Type
-      | Token.Keyword Keyword.Module
-      | Token.Keyword Keyword.Exception
-      | Token.Keyword Keyword.Open
-      | Token.Keyword Keyword.Include -> true
-      | _ -> false
-    in
-    
-    (* Don't parse as argument if we have newline + structure keyword *)
-    if can_start_arg_expr parser && not (has_newline && is_structure_keyword) then
-      let arg = parse_argument parser in
-      let trivia_after_arg_start = position parser in
-      let trivia_after_arg = consume_trivia parser in
-      (* Build application node: (f arg) *)
-      let app_expr =
-        make_node Syntax_kind.APPLY_EXPR
-          ([ Ceibo.Green.Node func_expr ]
-          @ tokens_to_green parser func_trivia
-          @ [ Ceibo.Green.Node arg ])
+    if can_start_arg_expr parser then
+      let func_trivia = peek_trivia parser in
+      let has_newline =
+        List.exists
+          (fun tok ->
+            match tok.Token.kind with
+            | Token.Whitespace ->
+                let text = token_text parser tok in
+                String.contains text "\n"
+            | _ -> false)
+          func_trivia
       in
-      (* Continue parsing more arguments: ((f arg1) arg2) ... *)
-      parse_args app_expr trivia_after_arg_start trivia_after_arg
-    else (
-      Token_cursor.set_position parser.cursor func_trivia_start;
-      func_expr)
+
+      (* Check if next token is a structure-level keyword *)
+      let is_structure_keyword =
+        match peek_kind parser with
+        | Token.Keyword Keyword.Let
+        | Token.Keyword Keyword.Type
+        | Token.Keyword Keyword.Module
+        | Token.Keyword Keyword.Exception
+        | Token.Keyword Keyword.Open
+        | Token.Keyword Keyword.Include -> true
+        | _ -> false
+      in
+
+      (* Don't parse as argument if we have newline + structure keyword *)
+      if has_newline && is_structure_keyword then
+        func_expr
+      else
+        let func_trivia = consume_trivia parser in
+        let arg = parse_argument parser in
+        (* Build application node: (f arg) *)
+        let app_expr =
+          make_node Syntax_kind.APPLY_EXPR
+            ([ Ceibo.Green.Node func_expr ]
+            @ tokens_to_green parser func_trivia
+            @ [ Ceibo.Green.Node arg ])
+        in
+        (* Continue parsing more arguments: ((f arg1) arg2) ... *)
+        parse_args app_expr
+    else
+      func_expr
   in
-  parse_args func trivia_start trivia_after_func
+  parse_args func
 
 (** Parse binary expression with precedence climbing. This handles expressions
     like: 1 + 2 * 3, x || y && z, etc. *)
 and parse_binary_expr parser min_prec =
   (* Parse left side (which may include function application) *)
   let left = parse_application_expr parser in
-  let trivia_after_left_start = position parser in
-  let trivia_after_left = consume_trivia parser in
 
   (* Keep parsing operators while they have higher precedence *)
-  let rec climb left left_trivia_start left_trivia =
+  let rec climb left =
     let current_operator =
       match peek_kind parser with
       | Token.Gt when parser.object_update_depth > 0 -> None
@@ -5092,6 +5154,7 @@ and parse_binary_expr parser min_prec =
     in
     match current_operator with
     | Some (prec, is_right_assoc) when prec >= min_prec ->
+        let left_trivia = consume_trivia parser in
         let op = consume parser in
         let op_text = token_text parser op in
         let trivia_after_op = consume_trivia parser in
@@ -5161,8 +5224,6 @@ and parse_binary_expr parser min_prec =
           (* Normal case: parse right side *)
           let next_min_prec = if is_right_assoc then prec else prec + 1 in
           let right = parse_binary_expr parser next_min_prec in
-          let trivia_after_right_start = position parser in
-          let trivia_after_right = consume_trivia parser in
 
           (* Build binary expression node *)
           let bin_expr =
@@ -5175,26 +5236,24 @@ and parse_binary_expr parser min_prec =
           in
 
           (* Continue climbing with the new left side *)
-          climb bin_expr trivia_after_right_start trivia_after_right
+          climb bin_expr
     | _ ->
         (* No more operators, return current expression *)
-        let () = Token_cursor.set_position parser.cursor left_trivia_start in
         left
   in
 
-  climb left trivia_after_left_start trivia_after_left
+  climb left
 
 (** Parse tuple expression: e1, e2, e3
     This is lower precedence than binary operators.
     Grammar: expr ::= expr { "," expr }+ *)
 and parse_tuple_expr parser =
   let first = parse_binary_expr parser 0 in
-  let trivia_after_first_start = position parser in
-  let trivia_after_first = consume_trivia parser in
 
   (* Check if we have a comma (tuple) *)
   match peek_kind parser with
   | Token.Comma ->
+      let trivia_after_first = consume_trivia parser in
       (* Parse comma-separated elements *)
       let rec parse_elements acc =
         match peek_kind parser with
@@ -5222,8 +5281,6 @@ and parse_tuple_expr parser =
 
       make_node Syntax_kind.TUPLE_EXPR elements
   | _ ->
-      (* Not a tuple, just return the expression *)
-      let () = Token_cursor.set_position parser.cursor trivia_after_first_start in
       first
 
 (** Parse expression (top-level entry point) *)
@@ -5232,12 +5289,11 @@ and parse_expr parser = parse_sequence_expr parser
 (** Parse assignment expression: lvalue <- expr or ref := expr *)
 and parse_assign_expr parser =
   let left = parse_tuple_expr parser in
-  let trivia_after_left_start = position parser in
-  let trivia_after_left = consume_trivia parser in
   
   (* Check for assignment operator *)
   match peek_kind parser with
   | Token.LeftArrow | Token.ColonEq ->
+    let trivia_after_left = consume_trivia parser in
     let arrow = consume parser in
     let trivia_after_arrow = consume_trivia parser in
     let right =
@@ -5269,17 +5325,15 @@ and parse_assign_expr parser =
       @ tokens_to_green parser trivia_after_arrow
       @ [ Ceibo.Green.Node right ])
   | _ ->
-    let () = Token_cursor.set_position parser.cursor trivia_after_left_start in
     left
 
 (** Parse sequence expression: expr1; expr2; expr3 *)
 and parse_sequence_expr parser =
   let first = parse_assign_expr parser in
-  let trivia_before_first_semi_start = Token_cursor.position parser.cursor in
-  let trivia_before_first_semi = consume_trivia parser in
 
   (* Check if we have semicolons to make a sequence *)
   if peek_kind parser = Token.Semi then (
+    let trivia_before_first_semi = consume_trivia parser in
     let parts =
       ref
         ([ Ceibo.Green.Node first ]
@@ -5333,9 +5387,8 @@ and parse_sequence_expr parser =
     parse_rest ();
 
     make_node Syntax_kind.SEQUENCE_EXPR !parts)
-  else (
-    Token_cursor.set_position parser.cursor trivia_before_first_semi_start;
-    first)
+  else
+    first
 
 (** Parse parenthesized expression or unit: (expr) or () *)
 and parse_paren_expr parser =
@@ -5677,7 +5730,6 @@ and parse_list_expr parser =
       (* Check if this is actually an extension [%...] or attribute [@...] *)
       let saved_pos = Token_cursor.position parser.cursor in
       let _ = consume parser in  (* consume [ *)
-      let _ = consume_trivia parser in
       let is_extension = peek_kind parser = Token.Percent in
       let is_attribute = peek_kind parser = Token.At || peek_kind parser = Token.AtAt in
       Token_cursor.set_position parser.cursor saved_pos;
@@ -6005,21 +6057,21 @@ and parse_record_field parser =
         (* Check for module path: Module.field *)
         let rec parse_path acc =
           let trivia = consume_trivia parser in
-          if peek_kind parser = Token.Dot then
+          if has_dot_ident_continuation parser then
             let dot = consume parser in
             let trivia2 = consume_trivia parser in
-            match peek_kind parser with
-            | Token.Ident _ ->
-                let next = consume parser in
-                parse_path (acc @ tokens_to_green parser trivia 
-                           @ [make_token parser dot] 
-                           @ tokens_to_green parser trivia2 
-                           @ [make_token parser next])
-            | _ -> acc @ tokens_to_green parser trivia
-          else acc @ tokens_to_green parser trivia
+            let next = consume parser in
+            parse_path
+              (acc
+              @ tokens_to_green parser trivia
+              @ [ make_token parser dot ]
+              @ tokens_to_green parser trivia2
+              @ [ make_token parser next ])
+          else
+            acc @ tokens_to_green parser trivia
         in
-        [make_token parser first] @ parse_path []
-    | _ -> [make_token parser (peek parser)]
+        [ make_token parser first ] @ parse_path []
+    | _ -> [ make_token parser (peek parser) ]
   in
 
   let trivia_after_name = consume_trivia parser in
@@ -7081,13 +7133,7 @@ and parse_let_in_expr parser =
             match peek_kind parser with
             | Token.OpenDelim Token.Paren ->
                 (* Check if this is (val ...) unpacking *)
-                let saved_pos = Token_cursor.position parser.cursor in
-                let _ = consume parser in
-                let _ = consume_trivia parser in
-                let is_val_unpack = peek_kind parser = Token.Keyword Keyword.Val in
-                Token_cursor.set_position parser.cursor saved_pos;
-                
-                if is_val_unpack then
+                if (peek_n parser 1).Token.kind = Token.Keyword Keyword.Val then
                   (* Parse: (val expr : SIG) *)
                   let lparen = consume parser in
                   let trivia1 = consume_trivia parser in
@@ -8445,23 +8491,18 @@ and parse_type_decl parser =
                       (* Check for module path like Message.t *)
                       let rec parse_path_segments acc =
                         let trivia = consume_trivia parser in
-                        match peek_kind parser with
-                        | Token.Dot ->
-                            (* Could be module path *)
-                            let dot = consume parser in
-                            let trivia_after_dot = consume_trivia parser in
-                            (match peek_kind parser with
-                            | Token.Ident _ ->
-                                let next_ident = consume parser in
-                                parse_path_segments (acc @ tokens_to_green parser trivia
-                                                    @ [ make_token parser dot ]
-                                                    @ tokens_to_green parser trivia_after_dot
-                                                    @ [ make_token parser next_ident ])
-                            | _ ->
-                                (* Dot but no ident after - backtrack *)
-                                acc @ tokens_to_green parser trivia)
-                        | _ ->
-                            acc @ tokens_to_green parser trivia
+                        if has_dot_ident_continuation parser then
+                          let dot = consume parser in
+                          let trivia_after_dot = consume_trivia parser in
+                          let next_ident = consume parser in
+                          parse_path_segments
+                            (acc
+                            @ tokens_to_green parser trivia
+                            @ [ make_token parser dot ]
+                            @ tokens_to_green parser trivia_after_dot
+                            @ [ make_token parser next_ident ])
+                        else
+                          acc @ tokens_to_green parser trivia
                       in
                       let path_parts = parse_path_segments [] in
                       if List.length path_parts = 0 then
@@ -8910,7 +8951,6 @@ and parse_type_decl parser =
                           (* by peeking ahead for 'of' or '|' keywords *)
                           let saved_pos = Token_cursor.position parser.cursor in
                           let _ = consume parser in  (* consume the uppercase ident *)
-                          let _ = consume_trivia parser in
                           let is_variant = 
                             peek_kind parser = Token.Keyword Keyword.Of || 
                             peek_kind parser = Token.Pipe
@@ -9306,21 +9346,18 @@ and parse_module_path_or_expr parser =
       let first_ident = consume parser in
       let rec parse_path acc =
         let trivia = consume_trivia parser in
-        match peek_kind parser with
-        | Token.Dot ->
-            (* Check if next token is an identifier *)
-            let dot = consume parser in
-            let trivia_after_dot = consume_trivia parser in
-            (match peek_kind parser with
-            | Token.Ident _ ->
-                let ident = consume parser in
-                parse_path (acc @ tokens_to_green parser trivia @ [ make_token parser dot ]
-                           @ tokens_to_green parser trivia_after_dot @ [ make_token parser ident ])
-            | _ ->
-                (* Not a path continuation, return what we have *)
-                acc @ tokens_to_green parser trivia)
-        | _ ->
-            acc @ tokens_to_green parser trivia
+        if has_dot_ident_continuation parser then
+          let dot = consume parser in
+          let trivia_after_dot = consume_trivia parser in
+          let ident = consume parser in
+          parse_path
+            (acc
+            @ tokens_to_green parser trivia
+            @ [ make_token parser dot ]
+            @ tokens_to_green parser trivia_after_dot
+            @ [ make_token parser ident ])
+        else
+          acc @ tokens_to_green parser trivia
       in
       let path_children = [ make_token parser first_ident ] @ parse_path [] in
       make_node Syntax_kind.MODULE_PATH path_children
@@ -9339,19 +9376,18 @@ and parse_module_type_path parser =
       let first_ident = consume parser in
       let rec parse_path acc =
         let trivia = consume_trivia parser in
-        match peek_kind parser with
-        | Token.Dot ->
-            let dot = consume parser in
-            let trivia_after_dot = consume_trivia parser in
-            (match peek_kind parser with
-            | Token.Ident _ ->
-                let ident = consume parser in
-                parse_path (acc @ tokens_to_green parser trivia @ [ make_token parser dot ]
-                           @ tokens_to_green parser trivia_after_dot @ [ make_token parser ident ])
-            | _ ->
-                acc @ tokens_to_green parser trivia)
-        | _ ->
-            acc @ tokens_to_green parser trivia
+        if has_dot_ident_continuation parser then
+          let dot = consume parser in
+          let trivia_after_dot = consume_trivia parser in
+          let ident = consume parser in
+          parse_path
+            (acc
+            @ tokens_to_green parser trivia
+            @ [ make_token parser dot ]
+            @ tokens_to_green parser trivia_after_dot
+            @ [ make_token parser ident ])
+        else
+          acc @ tokens_to_green parser trivia
       in
       let path_children = [ make_token parser first_ident ] @ parse_path [] in
       make_node Syntax_kind.MODULE_TYPE_PATH path_children
@@ -9376,10 +9412,8 @@ and parse_module_type_expr parser =
         (* Check if this is "module type of" *)
         let saved_pos = position parser in
         advance parser; (* Skip 'module' *)
-        let trivia1 = consume_trivia parser in
         if peek_kind parser = Token.Keyword Keyword.Type then (
           advance parser; (* Skip 'type' *)
-          let trivia2 = consume_trivia parser in
           if peek_kind parser = Token.Keyword Keyword.Of then (
             (* This is "module type of" *)
             Token_cursor.set_position parser.cursor saved_pos;
@@ -9514,82 +9548,51 @@ and parse_module_type_expr parser =
     | Token.OpenDelim Token.Paren ->
         let lparen = consume parser in
         let trivia_after_lparen = consume_trivia parser in
-        let saved_pos = Token_cursor.position parser.cursor in
-        let is_functor_param =
-          match peek_kind parser with
-          | Token.Ident name when ident_starts_uppercase name -> true
-          | Token.Underscore -> true
-          | _ -> false
-        in
-        if is_functor_param then (
+        if is_parenthesized_functor_type_start parser then (
           let param_name = consume parser in
           let trivia_after_param_name = consume_trivia parser in
-          if peek_kind parser = Token.Colon then (
-            let colon = consume parser in
-            let trivia_after_colon = consume_trivia parser in
-            let param_type = parse_module_type_expr parser in
-            let trivia_after_param_type = consume_trivia parser in
-            let rparen =
-              expect parser (Token.CloseDelim Token.Paren) (fun found ->
-                  Diagnostic.unclosed_delimiter ~opener:")" ~found
-                    ~text:(token_text parser found)
-                    ~span:(expected_span parser))
-            in
-            let trivia_after_rparen = consume_trivia parser in
-            if peek_kind parser = Token.Arrow then
-              let arrow = consume parser in
-              let trivia_after_arrow = consume_trivia parser in
-              let return_type = parse_module_type_expr parser in
-              let param =
-                make_node Syntax_kind.FUNCTOR_PARAM
-                  ([ make_token parser lparen ]
-                  @ tokens_to_green parser trivia_after_lparen
-                  @ [ make_token parser param_name ]
-                  @ tokens_to_green parser trivia_after_param_name
-                  @ [ make_token parser colon ]
-                  @ tokens_to_green parser trivia_after_colon
-                  @ [ Ceibo.Green.Node param_type ]
-                  @ tokens_to_green parser trivia_after_param_type
-                  @ [ make_token parser rparen ])
-              in
-              make_node Syntax_kind.FUNCTOR_TYPE
-                ([ Ceibo.Green.Node param ]
-                @ tokens_to_green parser trivia_after_rparen
-                @ [ make_token parser arrow ]
-                @ tokens_to_green parser trivia_after_arrow
-                @ [ Ceibo.Green.Node return_type ])
-            else (
-              Token_cursor.set_position parser.cursor saved_pos;
-              let inner = parse_module_type_expr parser in
-              let trivia_before_rparen = consume_trivia parser in
-              let rparen =
-                expect parser (Token.CloseDelim Token.Paren) (fun found ->
-                    Diagnostic.unclosed_delimiter ~opener:")" ~found
-                      ~text:(token_text parser found)
-                      ~span:(expected_span parser))
-              in
-              make_node Syntax_kind.PAREN_EXPR
-                ([ make_token parser lparen ]
-                @ tokens_to_green parser trivia_after_lparen
-                @ [ Ceibo.Green.Node inner ]
-                @ tokens_to_green parser trivia_before_rparen
-                @ [ make_token parser rparen ]))
-          ) else (
-            Token_cursor.set_position parser.cursor saved_pos;
-            let inner = parse_module_type_expr parser in
-            let trivia_before_rparen = consume_trivia parser in
-            let rparen =
-              expect parser (Token.CloseDelim Token.Paren) (fun found ->
-                  Diagnostic.unclosed_delimiter ~opener:")" ~found
-                    ~text:(token_text parser found)
-                    ~span:(expected_span parser))
-            in
-            make_node Syntax_kind.PAREN_EXPR
+          let colon =
+            expect parser Token.Colon (fun found ->
+                Diagnostic.invalid_expression ~found
+                  ~text:(token_text parser found)
+                  ~span:(expected_span parser))
+          in
+          let trivia_after_colon = consume_trivia parser in
+          let param_type = parse_module_type_expr parser in
+          let trivia_after_param_type = consume_trivia parser in
+          let rparen =
+            expect parser (Token.CloseDelim Token.Paren) (fun found ->
+                Diagnostic.unclosed_delimiter ~opener:")" ~found
+                  ~text:(token_text parser found)
+                  ~span:(expected_span parser))
+          in
+          let trivia_after_rparen = consume_trivia parser in
+          let arrow =
+            expect parser Token.Arrow (fun found ->
+                Diagnostic.invalid_expression ~found
+                  ~text:(token_text parser found)
+                  ~span:(expected_span parser))
+          in
+          let trivia_after_arrow = consume_trivia parser in
+          let return_type = parse_module_type_expr parser in
+          let param =
+            make_node Syntax_kind.FUNCTOR_PARAM
               ([ make_token parser lparen ]
               @ tokens_to_green parser trivia_after_lparen
-              @ [ Ceibo.Green.Node inner ]
-              @ tokens_to_green parser trivia_before_rparen
-              @ [ make_token parser rparen ])))
+              @ [ make_token parser param_name ]
+              @ tokens_to_green parser trivia_after_param_name
+              @ [ make_token parser colon ]
+              @ tokens_to_green parser trivia_after_colon
+              @ [ Ceibo.Green.Node param_type ]
+              @ tokens_to_green parser trivia_after_param_type
+              @ [ make_token parser rparen ])
+          in
+          make_node Syntax_kind.FUNCTOR_TYPE
+            ([ Ceibo.Green.Node param ]
+            @ tokens_to_green parser trivia_after_rparen
+            @ [ make_token parser arrow ]
+            @ tokens_to_green parser trivia_after_arrow
+            @ [ Ceibo.Green.Node return_type ]))
         else
           let inner = parse_module_type_expr parser in
           let trivia_before_rparen = consume_trivia parser in
@@ -9763,26 +9766,11 @@ and parse_module_expr parser =
                     @ [ Ceibo.Green.Node sig_type ]
                     @ tokens_to_green parser trivia_after_sig_type
                 | None -> [])
-            in
+          in
             make_node Syntax_kind.FIRST_CLASS_MODULE_EXPR children
           else
-            let saved_pos = Token_cursor.position parser.cursor in
-            let rec is_module_type_expr_start () =
-              match peek_kind parser with
-              | Token.OpenDelim Token.Paren ->
-                  let _ = consume parser in
-                  let _ = consume_trivia parser in
-                  is_module_type_expr_start ()
-              | Token.Keyword Keyword.Module ->
-                  let _ = consume parser in
-                  let _ = consume_trivia parser in
-                  peek_kind parser = Token.Keyword Keyword.Type
-              | Token.OpenDelim Token.SigEnd -> true
-              | _ -> false
-            in
-            let is_module_type_expr = is_module_type_expr_start () in
-            Token_cursor.set_position parser.cursor saved_pos;
-            if is_module_type_expr then parse_module_type_expr parser
+            if is_parenthesized_module_type_expr_start parser then
+              parse_module_type_expr parser
             else parse_module_expr parser
         in
         let trivia_before_rparen = consume_trivia parser in
@@ -9812,27 +9800,18 @@ and parse_module_expr parser =
           (* Check if this is a module path by looking for dots *)
           let rec parse_path_rest acc =
             let trivia = consume_trivia parser in
-            match peek_kind parser with
-            | Token.Dot ->
-                (* Speculatively check if this is a module path continuation *)
-                let saved_pos = Token_cursor.position parser.cursor in
-                let dot = consume parser in
-                let trivia_after_dot = consume_trivia parser in
-                (match peek_kind parser with
-                | Token.Ident _ ->
-                    (* This is a module path continuation *)
-                    let ident = consume parser in
-                    parse_path_rest
-                      (acc @ tokens_to_green parser trivia
-                      @ [ make_token parser dot ]
-                      @ tokens_to_green parser trivia_after_dot
-                      @ [ make_token parser ident ])
-                | _ ->
-                    (* Not a module path, restore position *)
-                    Token_cursor.set_position parser.cursor saved_pos;
-                    acc @ tokens_to_green parser trivia)
-            | _ ->
-                acc @ tokens_to_green parser trivia
+            if has_dot_ident_continuation parser then
+              let dot = consume parser in
+              let trivia_after_dot = consume_trivia parser in
+              let ident = consume parser in
+              parse_path_rest
+                (acc
+                @ tokens_to_green parser trivia
+                @ [ make_token parser dot ]
+                @ tokens_to_green parser trivia_after_dot
+                @ [ make_token parser ident ])
+            else
+              acc @ tokens_to_green parser trivia
           in
           let path_parts = parse_path_rest [] in
           if List.length path_parts = 0 then
@@ -9855,11 +9834,8 @@ and parse_module_expr parser =
   
   (* Parse functor applications: M(X)(Y)(Z) and generative applications M() *)
   let rec parse_applications expr =
-    (* Only consume trivia speculatively if we might see an application *)
-    let saved_pos = Token_cursor.position parser.cursor in
-    let trivia = consume_trivia parser in
-    
     if peek_kind parser = Token.OpenDelim Token.Paren then
+      let trivia = consume_trivia parser in
       let lparen = consume parser in
       let trivia_after_lparen = consume_trivia parser in
       let app =
@@ -9890,11 +9866,8 @@ and parse_module_expr parser =
             @ [ make_token parser rparen ])
       in
       parse_applications app
-    else (
-      (* No application - restore position to before trivia *)
-      Token_cursor.set_position parser.cursor saved_pos;
+    else
       expr
-    )
   in
   
   parse_applications base
@@ -9903,7 +9876,6 @@ and parse_module_expr parser =
 and parse_struct_expr parser =
   (* Consume 'struct' keyword *)
   let struct_kw = consume parser in
-  let trivia_after_struct = consume_trivia parser in
 
   (* Parse structure items until 'end' *)
   let rec parse_items acc =
@@ -9913,14 +9885,11 @@ and parse_struct_expr parser =
         List.rev acc
     | _ ->
         let item = parse_structure_item ~in_block:true parser in
-        let trivia = consume_trivia parser in
-        parse_items
-          ((tokens_to_green parser trivia @ [ Ceibo.Green.Node item ]) @ acc)
+        parse_items ([ Ceibo.Green.Node item ] @ acc)
   in
   let items = parse_items [] in
 
   (* Consume 'end' keyword *)
-  let trivia_before_end = consume_trivia parser in
   let end_kw =
     expect parser (Token.CloseDelim Token.StructEnd) (fun found ->
         Diagnostic.unclosed_delimiter ~opener:"struct" ~found
@@ -9931,16 +9900,13 @@ and parse_struct_expr parser =
   (* Build STRUCT_EXPR node *)
   make_node Syntax_kind.STRUCT_EXPR
     ([ make_token parser struct_kw ]
-    @ tokens_to_green parser trivia_after_struct
     @ items
-    @ tokens_to_green parser trivia_before_end
     @ [ make_token parser end_kw ])
 
 (** Parse sig...end expression *)
 and parse_sig_expr parser =
   (* Consume 'sig' keyword *)
   let sig_kw = consume parser in
-  let trivia_after_sig = consume_trivia parser in
 
   (* Parse signature items until 'end' *)
   let rec parse_items acc =
@@ -9950,14 +9916,11 @@ and parse_sig_expr parser =
         List.rev acc
     | _ ->
         let item = parse_signature_item parser in
-        let trivia = consume_trivia parser in
-        parse_items
-          ((tokens_to_green parser trivia @ [ Ceibo.Green.Node item ]) @ acc)
+        parse_items ([ Ceibo.Green.Node item ] @ acc)
   in
   let items = parse_items [] in
 
   (* Consume 'end' keyword *)
-  let trivia_before_end = consume_trivia parser in
   let end_kw =
     expect parser (Token.CloseDelim Token.SigEnd) (fun found ->
         Diagnostic.unclosed_delimiter ~opener:"sig" ~found
@@ -9969,9 +9932,7 @@ and parse_sig_expr parser =
   make_node Syntax_kind.IDENT_EXPR
     (* TODO: Add proper SIG_EXPR syntax kind *)
     ([ make_token parser sig_kw ]
-    @ tokens_to_green parser trivia_after_sig
     @ items
-    @ tokens_to_green parser trivia_before_end
     @ [ make_token parser end_kw ])
 
 (** Parse external declaration: external name : type = "primitive" *)
@@ -10409,15 +10370,7 @@ and parse_include_stmt ~signature parser =
     | Token.OpenDelim Token.SigEnd ->
         parse_sig_expr parser
     | Token.Keyword Keyword.Module ->
-        (* Check if this is "module type of" *)
-        let saved_pos = Token_cursor.position parser.cursor in
-        let _ = consume parser in (* Skip 'module' *)
-        let _ = consume_trivia parser in
-        let is_module_type_of = peek_kind parser = Token.Keyword Keyword.Type in
-        (* Restore position *)
-        Token_cursor.set_position parser.cursor saved_pos;
-        
-        if is_module_type_of then
+        if starts_with_module_type_keyword parser then
           (* Parse as module type expression: include module type of M *)
           parse_module_type_expr parser
         else
@@ -10455,7 +10408,6 @@ and parse_structure_item ?(in_block = false) parser =
       (* let open ... in and let module ... in are expression forms. *)
       let saved_pos0 = position parser in
       advance parser;
-      let _ = consume_trivia parser in
       let starts_let_expr =
         match peek_kind parser with
         | Token.Keyword Keyword.Open
@@ -10530,23 +10482,12 @@ and parse_structure_item ?(in_block = false) parser =
         else parse_let_binding parser
   | Token.Keyword Keyword.Type -> parse_type_decl parser
   | Token.Keyword Keyword.Module ->
-      (* Check if this is 'module type' or 'module' by peeking past trivia *)
-      (* Save current position *)
-      let saved_pos = position parser in
-      advance parser; (* Skip 'module' *)
-      let _ = consume_trivia parser in (* Skip trivia *)
-      let is_module_type = peek_kind parser = Token.Keyword Keyword.Type in
-      (* Restore position *)
-      Token_cursor.set_position parser.cursor saved_pos;
-      (if is_module_type then parse_module_type_decl parser
+      (if starts_with_module_type_keyword parser then
+         parse_module_type_decl parser
       else parse_module_decl parser)
   | Token.Keyword Keyword.Class ->
-      let saved_pos = position parser in
-      advance parser;
-      let _ = consume_trivia parser in
-      let is_class_type = peek_kind parser = Token.Keyword Keyword.Type in
-      Token_cursor.set_position parser.cursor saved_pos;
-      if is_class_type then parse_class_type_decl parser else parse_class_decl parser
+      if starts_with_class_type_keyword parser then parse_class_type_decl parser
+      else parse_class_decl parser
   | Token.Keyword Keyword.External -> parse_external_decl parser
   | Token.Keyword Keyword.Exception -> parse_exception_decl parser
   | Token.Keyword Keyword.Open -> parse_open_stmt ~signature:false parser
@@ -10661,23 +10602,12 @@ and parse_signature_item parser =
   | Token.Keyword Keyword.Val -> parse_val_decl parser
   | Token.Keyword Keyword.Type -> parse_type_decl parser
   | Token.Keyword Keyword.Module ->
-      (* Check if this is 'module type' or 'module' by peeking past trivia *)
-      (* Save current position *)
-      let saved_pos = position parser in
-      advance parser; (* Skip 'module' *)
-      let _ = consume_trivia parser in (* Skip trivia *)
-      let is_module_type = peek_kind parser = Token.Keyword Keyword.Type in
-      (* Restore position *)
-      Token_cursor.set_position parser.cursor saved_pos;
-      (if is_module_type then parse_module_type_decl parser
+      (if starts_with_module_type_keyword parser then
+         parse_module_type_decl parser
       else parse_module_decl parser)
   | Token.Keyword Keyword.Class ->
-      let saved_pos = position parser in
-      advance parser;
-      let _ = consume_trivia parser in
-      let is_class_type = peek_kind parser = Token.Keyword Keyword.Type in
-      Token_cursor.set_position parser.cursor saved_pos;
-      if is_class_type then parse_class_type_decl parser else parse_class_decl parser
+      if starts_with_class_type_keyword parser then parse_class_type_decl parser
+      else parse_class_decl parser
   | Token.Keyword Keyword.External -> parse_external_decl parser
   | Token.Keyword Keyword.Exception -> parse_exception_decl parser
   | Token.Keyword Keyword.Open -> parse_open_stmt ~signature:true parser
@@ -10793,9 +10723,6 @@ and parse ~cst_kind ~parse_item ~source ~tokens =
     loop None [] diagnostics
   in
 
-  (* Consume all trivia at the start *)
-  let leading_trivia = consume_trivia parser in
-
   (* Parse items until EOF *)
   let rec parse_items acc =
     yield ();
@@ -10803,24 +10730,20 @@ and parse ~cst_kind ~parse_item ~source ~tokens =
     else if peek_kind parser = Token.EOF then List.rev acc
     else if peek_kind parser = Token.Semi then
       let semi = consume parser in
-      let trivia = consume_trivia parser in
-      parse_items
-        ((tokens_to_green parser trivia @ [ make_token parser semi ]) @ acc)
+      parse_items ([ make_token parser semi ] @ acc)
     else
       let item = parse_item parser in
-      let trivia = consume_trivia parser in
-      parse_items
-        ((tokens_to_green parser trivia @ [ Ceibo.Green.Node item ]) @ acc)
+      parse_items ([ Ceibo.Green.Node item ] @ acc)
   in
   let items = parse_items [] in
 
   (* Build SOURCE_FILE with ALL trivia preserved *)
-  let children = tokens_to_green parser leading_trivia @ items in
+  let children = items in
 
   let tree = make_node Syntax_kind.SOURCE_FILE children in
 
   let diagnostics = List.rev (Cell.get parser.diagnostics) |> dedupe_diagnostics in
-  { source; kind = cst_kind; tree; diagnostics }
+  { source; tokens; kind = cst_kind; tree; diagnostics }
 
 (** Parse interface file (.mli) *)
 let parse_interface = fun ~source tokens -> parse ~cst_kind:`Interface ~parse_item:parse_signature_item ~source ~tokens

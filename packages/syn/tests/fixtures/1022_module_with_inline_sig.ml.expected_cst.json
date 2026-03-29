@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 59
+        "end": 58
       }
     },
     "items": [
@@ -34,14 +34,14 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 11,
+                "start": 10,
                 "end": 32
               }
             },
             "signature_syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 11,
+                "start": 10,
                 "end": 32
               }
             }
@@ -60,7 +60,7 @@
               "syntax_node": {
                 "kind": "STRUCT_EXPR",
                 "span": {
-                  "start": 35,
+                  "start": 34,
                   "end": 58
                 }
               },
@@ -68,7 +68,7 @@
                 {
                   "kind": "LET_BINDING",
                   "span": {
-                    "start": 44,
+                    "start": 41,
                     "end": 54
                   }
                 }
@@ -79,14 +79,14 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 11,
+                  "start": 10,
                   "end": 32
                 }
               },
               "signature_syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 11,
+                  "start": 10,
                   "end": 32
                 }
               }

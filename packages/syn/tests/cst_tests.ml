@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Syn
 
 let expect_some = fun value ~msg ->
@@ -11,6 +12,7 @@ let sample_ml = Path.v "sample.ml"
 let sample_mli = Path.v "sample.mli"
 
 type parsed = {
+  tokens : Syn.Token.t list;
   tree : (Syn.SyntaxKind.t, string) Ceibo.Green.node;
   diagnostics : Syn.Diagnostic.t list;
   cst : Syn.Cst.source_file option;
@@ -22,7 +24,12 @@ let with_optional_cst = fun result ->
     | Ok cst -> Some cst
     | Error _ -> None
   in
-  {tree = result.Syn.Parser.tree; diagnostics = result.Syn.Parser.diagnostics; cst}
+  {
+    tokens = result.Syn.Parser.tokens;
+    tree = result.Syn.Parser.tree;
+    diagnostics = result.Syn.Parser.diagnostics;
+    cst
+  }
 
 let parse_ml = fun source -> Syn.parse ~filename:sample_ml source |> with_optional_cst
 
@@ -57,6 +64,22 @@ let top_level_let_bindings = fun cst ->
       | _ ->
           None
     )
+
+let token_trivia_kinds = fun token ->
+  token.Syn.Token.leading_trivia
+  |> List.map (fun (trivia : Syn.Token.trivia) -> trivia.Syn.Token.kind)
+
+let green_token_kinds = fun node ->
+  let rec loop acc =
+    function
+    | Ceibo.Green.Token token ->
+        token.kind :: acc
+    | Ceibo.Green.Node node ->
+        Ceibo.Green.children node
+        |> Array.to_list
+        |> List.fold_left loop acc
+  in
+  loop [] (Ceibo.Green.Node node) |> List.rev
 
 let tests =
   [
@@ -111,6 +134,175 @@ let tests =
               ~actual:(Ceibo.Red.SyntaxToken.span syntax_token);
             Ok ()
         | _ -> Error "expected two trivia entries");
+    Test.case "ceibo builder helpers can construct tokens with leading trivia"
+      (fun () ->
+        let comment =
+          Ceibo.Green.make_trivia ~kind:Syn.SyntaxKind.COMMENT
+            ~text:"(*hi*)" ~width:6
+        in
+        match
+          Ceibo.Builder.make_token_with_leading_trivia
+            ~leading_trivia:[ comment ]
+            ~kind:Syn.SyntaxKind.IDENT_EXPR ~text:"x" ~width:1
+        with
+        | Ceibo.Green.Token token ->
+            Test.assert_equal ~expected:1
+              ~actual:(List.length (Ceibo.Green.leading_trivia token));
+            Ok ()
+        | Ceibo.Green.Node _ -> Error "expected token element");
+    Test.case "lexer attaches trailing file trivia to EOF leading trivia"
+      (fun () ->
+        let tokens = Syn.Lexer.tokenize "let x = 1\n(* tail *)\n" in
+        match List.rev tokens with
+        | eof :: _ ->
+            Test.assert_equal ~expected:Syn.Token.EOF ~actual:eof.Syn.Token.kind;
+            (match token_trivia_kinds eof with
+            | [
+             Syn.Token.WhitespaceTrivia;
+             Syn.Token.CommentTrivia { terminated = true; _ };
+             Syn.Token.WhitespaceTrivia;
+            ] ->
+                Ok ()
+            | _ ->
+                Error "expected EOF to own trailing whitespace/comment trivia")
+        | [] -> Error "expected token stream to end with EOF");
+    Test.case "lexer attaches mixed leading trivia onto the next real token"
+      (fun () ->
+        let tokens = Syn.Lexer.tokenize "(** doc *)\n(* comment *)\nlet x = 1" in
+        match tokens with
+        | let_kw :: ident :: eq :: int_literal :: eof :: [] ->
+            Test.assert_equal ~expected:(Syn.Token.Keyword Syn.Keyword.Let)
+              ~actual:let_kw.Syn.Token.kind;
+            Test.assert_equal ~expected:(Syn.Token.Ident "x")
+              ~actual:ident.Syn.Token.kind;
+            Test.assert_equal ~expected:Syn.Token.Eq
+              ~actual:eq.Syn.Token.kind;
+            Test.assert_equal ~expected:(Syn.Token.Literal (Syn.Token.Int 1))
+              ~actual:int_literal.Syn.Token.kind;
+            Test.assert_equal ~expected:Syn.Token.EOF ~actual:eof.Syn.Token.kind;
+            (match token_trivia_kinds let_kw with
+            | [
+             Syn.Token.DocstringTrivia { terminated = true; _ };
+             Syn.Token.WhitespaceTrivia;
+             Syn.Token.CommentTrivia { terminated = true; _ };
+             Syn.Token.WhitespaceTrivia;
+            ] ->
+                Ok ()
+            | _ ->
+                Error "expected let token to own docstring/comment leading trivia")
+        | _ ->
+            Error "expected lexer to emit only real tokens plus EOF");
+    Test.case "parser consumes real-token streams without reintroducing trivia tokens"
+      (fun () ->
+        let source = "(** doc *)\n(* comment *)\nlet x = 1" in
+        let result = parse_ml source in
+        Test.assert_equal ~expected:[] ~actual:result.diagnostics;
+        (match List.map (fun token -> token.Syn.Token.kind) result.tokens with
+        | [
+         Syn.Token.Keyword Syn.Keyword.Let;
+         Syn.Token.Ident "x";
+         Syn.Token.Eq;
+         Syn.Token.Literal (Syn.Token.Int 1);
+         Syn.Token.EOF;
+        ] ->
+            Ok ()
+        | _ ->
+            Error "expected parser to preserve the lexer real-token stream"));
+    Test.case "parser compatibility keeps trailing file comments visible"
+      (fun () ->
+        let result = parse_ml "let x = 1\n(* tail *)\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding _
+          :: Syn.Cst.StructureItem.Comment comment
+          :: _ ->
+            Test.assert_equal ~expected:"tail"
+              ~actual:(Syn.Cst.Comment.text comment |> String.trim);
+            Ok ()
+        | _ -> Error "expected trailing file comment after let binding");
+    Test.case "parse results retain original tokens with EOF-owned trailing trivia"
+      (fun () ->
+        let result = parse_ml "let x = 1\n(* tail *)\n" in
+        match List.rev result.tokens with
+        | eof :: _ ->
+            Test.assert_equal ~expected:Syn.Token.EOF ~actual:eof.Syn.Token.kind;
+            (match token_trivia_kinds eof with
+            | [
+             Syn.Token.WhitespaceTrivia;
+             Syn.Token.CommentTrivia { terminated = true; _ };
+             Syn.Token.WhitespaceTrivia;
+            ] ->
+                Ok ()
+            | _ ->
+                Error "expected parse result tokens to preserve EOF-owned trailing trivia")
+        | [] -> Error "expected token stream to end with EOF");
+    Test.case "green tree no longer materializes standalone trivia tokens"
+      (fun () ->
+        let source =
+          "(* lead *)\n\
+           let x =\n\
+             (* inner *)\n\
+             1\n"
+        in
+        let result = parse_ml source in
+        let token_kinds = green_token_kinds result.tree in
+        Test.assert_false
+          (List.exists
+             (fun kind ->
+               match kind with
+               | Syn.SyntaxKind.WHITESPACE
+               | Syn.SyntaxKind.COMMENT
+               | Syn.SyntaxKind.DOCSTRING ->
+                   true
+               | _ ->
+                   false)
+             token_kinds);
+        Test.assert_equal ~expected:(String.length source)
+          ~actual:(Ceibo.Green.width (Ceibo.Green.Node result.tree));
+        Ok ());
+    Test.case "red tree traversal stays trivia-free while first token keeps leading trivia"
+      (fun () ->
+        let source =
+          "(* lead *)\n\
+           let x =\n\
+             (* inner *)\n\
+             1\n"
+        in
+        let result = parse_ml source in
+        let root = Ceibo.Red.new_root result.tree in
+        let token_kinds =
+          Ceibo.Red.SyntaxNode.tokens root
+          |> List.map Ceibo.Red.SyntaxToken.kind
+        in
+        Test.assert_false
+          (List.exists
+             (fun kind ->
+               match kind with
+               | Syn.SyntaxKind.WHITESPACE
+               | Syn.SyntaxKind.COMMENT
+               | Syn.SyntaxKind.DOCSTRING ->
+                   true
+               | _ ->
+                   false)
+             token_kinds);
+        match Ceibo.Red.SyntaxNode.first_token root with
+        | Some token ->
+            (match
+               Ceibo.Red.SyntaxToken.leading_trivia token
+               |> List.map Ceibo.Red.SyntaxTrivia.kind
+             with
+            | [
+             Syn.SyntaxKind.COMMENT;
+             Syn.SyntaxKind.WHITESPACE;
+            ] ->
+                Ok ()
+            | _ ->
+                Error "expected first token to own leading comment and whitespace trivia")
+        | None -> Error "expected root to have a first token");
     Test.case "cst exists for diagnostics-free parse" (fun () ->
         let result = parse_ml "type userProfile = int\n" in
         Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
@@ -159,6 +351,21 @@ let tests =
               ~actual:(Syn.Cst.Token.text (Syn.Cst.TypeExtension.name_token decl));
             Ok ()
         | _ -> Error "expected first item to be a type extension");
+    Test.case
+      "cst type extensions preserve module-path names across inline comments"
+      (fun () ->
+        let result = parse_ml "type Message (* c *).t += Added\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.TypeExtension decl :: _ ->
+            Test.assert_equal ~expected:"t"
+              ~actual:(Syn.Cst.Token.text (Syn.Cst.TypeExtension.name_token decl));
+            Ok ()
+        | _ -> Error "expected commented type extension");
     Test.case "cst type extensions are preserved in interfaces" (fun () ->
         let result = parse_mli "type Message.t += Added\n" in
         let cst =
@@ -1026,6 +1233,36 @@ let tests =
             Ok ()
         | _ ->
             Error "expected module declaration with functor application");
+    Test.case
+      "cst module declarations preserve functor applications across inline comments"
+      (fun () ->
+        let result = parse_ml "module M = F (* c *) (X)\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
+            {
+              module_expression =
+                Some
+                  (Syn.Cst.ModuleExpression.Apply
+                    {
+                      callee = Syn.Cst.ModuleExpression.Path functor_path;
+                      argument = Syn.Cst.ModuleExpression.Path arg_path;
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "F")
+              ~actual:(Syn.Cst.Ident.name functor_path);
+            Test.assert_equal ~expected:(Some "X")
+              ~actual:(Syn.Cst.Ident.name arg_path);
+            Ok ()
+        | _ ->
+            Error "expected commented module application");
     Test.case "cst module declarations preserve unit functor applications"
       (fun () ->
         let result = parse_ml "module M = F()\n" in
@@ -1111,6 +1348,43 @@ let tests =
             Ok ()
         | _ ->
             Error "expected module declaration with unpacked first-class module");
+    Test.case
+      "cst module declarations preserve parenthesized module-type-of lookahead with comments"
+      (fun () ->
+        let result =
+          parse_ml "module M = ((module (* c *) type of N))\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
+            {
+              module_type =
+                Some
+                  (Syn.Cst.ModuleType.Parenthesized
+                    {
+                      inner =
+                        Syn.Cst.ModuleType.Parenthesized
+                          {
+                            inner =
+                              Syn.Cst.ModuleType.TypeOf { module_path; _ };
+                            _;
+                          };
+                      _;
+                    });
+              module_expression = None;
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "N")
+              ~actual:(Syn.Cst.Ident.name module_path);
+            Ok ()
+        | _ ->
+            Error
+              "expected module declaration with parenthesized module-type-of body");
     Test.case "cst recursive module items preserve grouped bindings" (fun () ->
         let result =
           parse_ml
@@ -1227,6 +1501,21 @@ let tests =
               ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
             Ok ()
         | _ -> Error "expected first item to be a module type declaration");
+    Test.case "cst module type lookahead survives inline comments" (fun () ->
+        let result = parse_ml "module (* c *) type S = sig end\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let items = structure_items cst in
+        match items with
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration decl :: _ ->
+            Test.assert_equal ~expected:"S"
+              ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
+            Ok ()
+        | _ ->
+            Error "expected first item to be a commented module type declaration");
     Test.case "cst interface module type declarations expose declared names"
       (fun () ->
         let result = parse_mli "module type Foo_bar = sig end\n" in
@@ -2183,6 +2472,46 @@ let tests =
               ~actual:(Syn.Cst.Ident.name constructor_path);
             Ok ()
         | _ -> Error "expected interface class type declaration");
+    Test.case "cst interface class type lookahead survives inline comments"
+      (fun () ->
+        let result =
+          parse_mli "class (* c *) type ct = object method x : int end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ClassTypeDeclaration
+            {
+              class_type_name;
+              class_type_body =
+                Syn.Cst.ClassType.Signature
+                  {
+                    fields =
+                      [
+                        Syn.Cst.ClassTypeField.Method
+                          {
+                            name_token;
+                            type_ =
+                              Syn.Cst.CoreType.Constr { constructor_path; _ };
+                            _;
+                          };
+                      ];
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"ct"
+              ~actual:(Syn.Cst.Token.text class_type_name);
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:(Some "int")
+              ~actual:(Syn.Cst.Ident.name constructor_path);
+            Ok ()
+        | _ -> Error "expected commented interface class type declaration");
     Test.case "cst class type declarations preserve path, local-open, and extension bodies"
       (fun () ->
         let result =
@@ -2615,6 +2944,46 @@ let tests =
             Test.assert_equal ~expected:[ true; true ] ~actual:quoted;
             Ok ()
         | _ -> Error "expected explicitly polymorphic value declaration");
+    Test.case
+      "cst value declarations lift explicit polymorphic core types with inline comments"
+      (fun () ->
+        let result =
+          parse_mli "val id : 'a (* c *) 'b (* d *) . 'a -> 'b -> 'a\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration
+            {
+              type_ =
+                Syn.Cst.CoreType.Poly
+                  {
+                    binders;
+                    body =
+                      Syn.Cst.CoreType.Arrow
+                        {
+                          result_type = Syn.Cst.CoreType.Arrow _;
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            let binder_text =
+              binders |> List.map Syn.Cst.TypeBinder.text
+            in
+            let quoted =
+              binders |> List.map Syn.Cst.TypeBinder.is_quoted
+            in
+            Test.assert_equal ~expected:[ "'a"; "'b" ] ~actual:binder_text;
+            Test.assert_equal ~expected:[ true; true ] ~actual:quoted;
+            Ok ()
+        | _ ->
+            Error "expected commented explicitly polymorphic value declaration");
     Test.case "cst value declarations preserve package core types"
       (fun () ->
         let result =
@@ -2698,6 +3067,110 @@ let tests =
               ~actual:(Syn.Cst.Ident.name result_path);
             Ok ()
         | _ -> Error "expected local-open core type");
+    Test.case
+      "cst value declarations preserve locally opened core types with inline comments"
+      (fun () ->
+        let result =
+          parse_mli "val decode : Outer.Inner. (* c *) (request -> response)\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration
+            {
+              type_ =
+                Syn.Cst.CoreType.LocalOpen
+                  {
+                    module_path =
+                      Syn.Cst.Ident.Qualified
+                        {
+                          prefix =
+                            Syn.Cst.Ident.Ident { name_token = outer_module; _ };
+                          name_token = inner_module;
+                          _;
+                        };
+                    type_ =
+                      Syn.Cst.CoreType.Arrow
+                        {
+                          parameter_type =
+                            Syn.Cst.CoreType.Constr
+                              { constructor_path = parameter_path; _ };
+                          result_type =
+                            Syn.Cst.CoreType.Constr
+                              { constructor_path = result_path; _ };
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Outer"
+              ~actual:(Syn.Cst.Token.text outer_module);
+            Test.assert_equal ~expected:"Inner"
+              ~actual:(Syn.Cst.Token.text inner_module);
+            Test.assert_equal ~expected:(Some "request")
+              ~actual:(Syn.Cst.Ident.name parameter_path);
+            Test.assert_equal ~expected:(Some "response")
+              ~actual:(Syn.Cst.Ident.name result_path);
+            Ok ()
+        | _ ->
+            Error "expected commented local-open core type");
+    Test.case
+      "cst value declarations preserve locally opened core types with comments before dots"
+      (fun () ->
+        let result =
+          parse_mli "val decode : Outer.Inner (* c *).(request -> response)\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration
+            {
+              type_ =
+                Syn.Cst.CoreType.LocalOpen
+                  {
+                    module_path =
+                      Syn.Cst.Ident.Qualified
+                        {
+                          prefix =
+                            Syn.Cst.Ident.Ident { name_token = outer_module; _ };
+                          name_token = inner_module;
+                          _;
+                        };
+                    type_ =
+                      Syn.Cst.CoreType.Arrow
+                        {
+                          parameter_type =
+                            Syn.Cst.CoreType.Constr
+                              { constructor_path = parameter_path; _ };
+                          result_type =
+                            Syn.Cst.CoreType.Constr
+                              { constructor_path = result_path; _ };
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Outer"
+              ~actual:(Syn.Cst.Token.text outer_module);
+            Test.assert_equal ~expected:"Inner"
+              ~actual:(Syn.Cst.Token.text inner_module);
+            Test.assert_equal ~expected:(Some "request")
+              ~actual:(Syn.Cst.Ident.name parameter_path);
+            Test.assert_equal ~expected:(Some "response")
+              ~actual:(Syn.Cst.Ident.name result_path);
+            Ok ()
+        | _ ->
+            Error "expected commented local-open core type before dot");
     Test.case "cst external declarations preserve primitive names" (fun () ->
         let result =
           parse_ml
@@ -2792,6 +3265,25 @@ let tests =
               ~actual:(Syn.Cst.Ident.name module_path);
             Ok ()
         | _ -> Error "expected first item to be an include statement");
+    Test.case "cst include module type of lookahead survives inline comments"
+      (fun () ->
+        let result =
+          parse_mli "include module (* c *) type of Stdlib.Array\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.IncludeStatement
+            { target = Syn.Cst.ModuleType (Syn.Cst.ModuleType.TypeOf { module_path; _ }); _ }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "Array")
+              ~actual:(Syn.Cst.Ident.name module_path);
+            Ok ()
+        | _ ->
+            Error "expected commented include module type of statement");
     Test.case "cst implementation includes preserve module-expression targets" (fun () ->
         let result = parse_ml "include Std.List\n" in
         let cst =
@@ -3031,6 +3523,27 @@ let tests =
                 Error "expected expression attribute with structure payload")
         | _ ->
             Error "expected expression attribute with structure payload");
+    Test.case "cst expression attributes survive inline comments after bracket"
+      (fun () ->
+        let result = parse_ml "let _ = value [ (* c *) @foo 1 + 2]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding { value; _ } :: _ ->
+            let attributes = Syn.Cst.Expression.attributes value in
+            Test.assert_equal ~expected:1 ~actual:(List.length attributes);
+            (match attributes with
+            | { name; payload = Some (Syn.Cst.Payload.Structure _); _ } :: _ ->
+                Test.assert_equal ~expected:(Some "foo")
+                  ~actual:(Syn.Cst.Ident.name name);
+                Ok ()
+            | _ ->
+                Error "expected commented expression attribute payload")
+        | _ ->
+            Error "expected let binding with commented expression attribute");
     Test.case "cst extensions lift typed `:` payloads" (fun () ->
         let result = parse_ml "let _ = [%foo: int -> string]\n" in
         let cst =
@@ -3067,6 +3580,31 @@ let tests =
             Ok ()
         | _ ->
             Error "expected typed extension payload");
+    Test.case "cst extensions survive inline comments after bracket" (fun () ->
+        let result = parse_ml "let _ = [ (* c *) %foo: int -> string]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Extension
+                  {
+                    name;
+                    payload = Some (Syn.Cst.Payload.Type (Syn.Cst.CoreType.Arrow _));
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "foo")
+              ~actual:(Syn.Cst.Ident.name name);
+            Ok ()
+        | _ ->
+            Error "expected commented typed extension payload");
     Test.case "cst exception declarations preserve declared names" (fun () ->
         let result = parse_ml "exception Not_found\n" in
         let cst =
@@ -3822,6 +4360,42 @@ let tests =
               ~actual:(Syn.Cst.Ident.name path);
             Ok ()
         | _ -> Error "expected polymorphic let-binding value");
+    Test.case
+      "cst let binding annotations preserve locally abstract core types with inline comments"
+      (fun () ->
+        let source =
+          "let id : type (* c *) a. a -> a = fun x -> x\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Typed
+                  {
+                    expression = Syn.Cst.Expression.Fun _;
+                    type_ = Syn.Cst.CoreType.Poly { binders; _ };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            let binder_text =
+              binders |> List.map Syn.Cst.TypeBinder.text
+            in
+            let quoted =
+              binders |> List.map Syn.Cst.TypeBinder.is_quoted
+            in
+            Test.assert_equal ~expected:[ "a" ] ~actual:binder_text;
+            Test.assert_equal ~expected:[ false ] ~actual:quoted;
+            Ok ()
+        | _ ->
+            Error "expected commented locally abstract core type annotation");
     Test.case "cst let bindings expose infix string concatenation values" (fun () ->
         let source = "let banner = \"a\" ^ \"b\" ^ \"c\"\n" in
         let result = parse_ml source in
@@ -3855,6 +4429,24 @@ let tests =
                   ~actual:(Syn.Cst.InfixExpression.operator expr);
                 Ok ()
             | _ -> Error "expected infix expression value")
+        | _ -> Error "expected first item to be a let binding");
+    Test.case "cst let bindings preserve infix expressions across inline comments"
+      (fun () ->
+        let source = "let banner = \"a\" (* c *) ^ \"b\"\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding binding :: _ -> (
+            match Syn.Cst.LetBinding.value binding with
+            | Syn.Cst.Expression.Infix expr ->
+                Test.assert_equal ~expected:"^"
+                  ~actual:(Syn.Cst.InfixExpression.operator expr);
+                Ok ()
+            | _ -> Error "expected commented infix expression value")
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst let bindings expose if expressions and unit else branches" (fun () ->
         let source = "let render ok = if ok then log () else ()\n" in
@@ -4781,6 +5373,32 @@ let tests =
         | _ ->
             Error
               "expected let-in body to remain a three-part sequence");
+    Test.case "cst begin-end sequences survive inline comments before semicolons"
+      (fun () ->
+        let source = "let wrapped = begin log \"start\" (* c *); log \"done\" end\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Parenthesized
+                  {
+                    grouping = Syn.Cst.BeginEnd;
+                    inner =
+                      Syn.Cst.Expression.Sequence
+                        { expressions = [ _; _ ]; _ };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Ok ()
+        | _ -> Error "expected commented begin-end sequence");
     Test.case "cst constructor expressions preserve bare and applied forms"
       (fun () ->
         let source =
@@ -4827,6 +5445,42 @@ let tests =
                 | _ -> Error "expected constructor payload to remain literal")
             | _ -> Error "expected constructor-shaped expression values")
         | _ -> Error "expected three let bindings");
+    Test.case "cst tuple expressions survive inline comments before commas"
+      (fun () ->
+        let source = "let pair = (left (* c *), right)\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Parenthesized
+                  {
+                    inner =
+                      Syn.Cst.Expression.Tuple
+                        {
+                          elements =
+                            [
+                              Syn.Cst.Expression.Path { path = left_path; _ };
+                              Syn.Cst.Expression.Path { path = right_path; _ };
+                            ];
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "left")
+              ~actual:(Syn.Cst.Ident.name left_path);
+            Test.assert_equal ~expected:(Some "right")
+              ~actual:(Syn.Cst.Ident.name right_path);
+            Ok ()
+        | _ -> Error "expected commented tuple expression");
     Test.case "cst apply expressions preserve labeled arguments structurally"
       (fun () ->
         let source = "let x = f ~y:1\n" in
@@ -4899,6 +5553,36 @@ let tests =
               ~actual:(Syn.Cst.Token.text label_token);
             Ok ()
         | _ -> Error "expected optional shorthand apply argument");
+    Test.case "cst apply expressions survive inline comments before positional args"
+      (fun () ->
+        let source = "let x = f (* c *) y\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Apply
+                  {
+                    callee = Syn.Cst.Expression.Path { path = callee_path; _ };
+                    argument =
+                      Syn.Cst.Positional
+                        (Syn.Cst.Expression.Path { path = arg_path; _ });
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "f")
+              ~actual:(Syn.Cst.Ident.name callee_path);
+            Test.assert_equal ~expected:(Some "y")
+              ~actual:(Syn.Cst.Ident.name arg_path);
+            Ok ()
+        | _ -> Error "expected commented positional apply expression");
     Test.case "cst local opens preserve module paths from token-only syntax"
       (fun () ->
         let source = "let x =\n  let open List in\n  map f xs\n" in
@@ -4926,6 +5610,33 @@ let tests =
               ~actual:(Syn.Cst.Token.text module_name);
             Ok ()
         | _ -> Error "expected local open expression");
+    Test.case "cst local opens via let survive inline comments after let"
+      (fun () ->
+        let source = "let x = let (* c *) open List in map f xs\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LocalOpen
+                  {
+                    module_path = Syn.Cst.Ident.Ident { name_token = module_name; _ };
+                    via_let_open = true;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"List"
+              ~actual:(Syn.Cst.Token.text module_name);
+            Ok ()
+        | _ ->
+            Error "expected commented let-open local open expression");
     Test.case "cst prefix local opens preserve module paths and body expressions"
       (fun () ->
         let source = "let x = M.{ field = 42 }\n" in
@@ -4954,6 +5665,62 @@ let tests =
               ~actual:(Syn.Cst.Token.text module_name);
             Ok ()
         | _ -> Error "expected prefix local open expression");
+    Test.case
+      "cst prefix local opens preserve paren bodies across inline comments"
+      (fun () ->
+        let source = "let x = M (* c *).(build value)\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LocalOpen
+                  {
+                    module_path = Syn.Cst.Ident.Ident { name_token = module_name; _ };
+                    body = Syn.Cst.Expression.Apply _;
+                    via_let_open = false;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"M"
+              ~actual:(Syn.Cst.Token.text module_name);
+            Ok ()
+        | _ -> Error "expected commented paren local open expression");
+    Test.case
+      "cst prefix local opens preserve list bodies across inline comments"
+      (fun () ->
+        let source = "let x = List.(* c *)[1; 2; 3]\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LocalOpen
+                  {
+                    module_path = Syn.Cst.Ident.Ident { name_token = module_name; _ };
+                    body = Syn.Cst.Expression.List _;
+                    via_let_open = false;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"List"
+              ~actual:(Syn.Cst.Token.text module_name);
+            Ok ()
+        | _ -> Error "expected commented bracket local open expression");
     Test.case "cst local open patterns preserve module paths and wrapped patterns"
       (fun () ->
         let source =
@@ -5018,6 +5785,72 @@ let tests =
               ~actual:(Syn.Cst.Token.text binding_name);
             Ok ()
         | _ -> Error "expected local open pattern");
+    Test.case
+      "cst local open patterns survive inline comments before the local-open dot"
+      (fun () ->
+        let source =
+          "let unwrap = function\n| Outer.Inner (* c *).(Some x) -> x\n| _ -> 0\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Function
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.LocalOpen
+                            {
+                              module_path =
+                                Syn.Cst.Ident.Qualified
+                                  {
+                                    prefix =
+                                      Syn.Cst.Ident.Ident
+                                        { name_token = outer_module; _ };
+                                    name_token = inner_module;
+                                    _;
+                                  };
+                              pattern =
+                                Syn.Cst.Pattern.Constructor
+                                  {
+                                    constructor_path =
+                                      Syn.Cst.Ident.Ident
+                                        { name_token = constructor_name; _ };
+                                    arguments =
+                                      [
+                                        Syn.Cst.Pattern.Identifier
+                                          { name_token = binding_name; _ };
+                                      ];
+                                    _;
+                                  };
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Outer"
+              ~actual:(Syn.Cst.Token.text outer_module);
+            Test.assert_equal ~expected:"Inner"
+              ~actual:(Syn.Cst.Token.text inner_module);
+            Test.assert_equal ~expected:"Some"
+              ~actual:(Syn.Cst.Token.text constructor_name);
+            Test.assert_equal ~expected:"x"
+              ~actual:(Syn.Cst.Token.text binding_name);
+            Ok ()
+        | _ ->
+            Error "expected commented local open pattern");
     Test.case "cst local open record patterns preserve module paths and record fields"
       (fun () ->
         let source =
@@ -5192,6 +6025,68 @@ let tests =
             Ok ()
         | _ -> Error "expected qualified first-class module path");
     Test.case
+      "cst qualified module paths survive inline comments before dots"
+      (fun () ->
+        let source =
+          "let x = (module Std (* c *).Net.TcpClient : Std.Net (* d *).Transport)\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.ModulePack
+                  {
+                    module_expression =
+                      Syn.Cst.ModuleExpression.Path
+                        (Syn.Cst.Ident.Qualified
+                          {
+                            prefix =
+                              Syn.Cst.Ident.Qualified
+                                {
+                                  prefix = Syn.Cst.Ident.Ident { name_token = root; _ };
+                                  name_token = mid;
+                                  _;
+                                };
+                            name_token = leaf;
+                            _;
+                          });
+                    module_type =
+                      Some
+                        (Syn.Cst.ModuleType.Path
+                          (Syn.Cst.Ident.Qualified
+                            {
+                              prefix =
+                                Syn.Cst.Ident.Qualified
+                                  {
+                                    prefix = Syn.Cst.Ident.Ident { name_token = type_root; _ };
+                                    name_token = type_mid;
+                                    _;
+                                  };
+                              name_token = type_leaf;
+                              _;
+                            }));
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"Std" ~actual:(Syn.Cst.Token.text root);
+            Test.assert_equal ~expected:"Net" ~actual:(Syn.Cst.Token.text mid);
+            Test.assert_equal ~expected:"TcpClient"
+              ~actual:(Syn.Cst.Token.text leaf);
+            Test.assert_equal ~expected:"Std" ~actual:(Syn.Cst.Token.text type_root);
+            Test.assert_equal ~expected:"Net" ~actual:(Syn.Cst.Token.text type_mid);
+            Test.assert_equal ~expected:"Transport"
+              ~actual:(Syn.Cst.Token.text type_leaf);
+            Ok ()
+        | _ -> Error "expected commented qualified first-class module path");
+    Test.case
       "cst first-class module expressions preserve structured packed payloads"
       (fun () ->
         let source = "let x = (module struct let y = 1 end : S)\n" in
@@ -5255,6 +6150,40 @@ let tests =
               ~actual:(Syn.Cst.Ident.name result_type);
             Ok ()
         | _ -> Error "expected module type declaration with functor body");
+    Test.case
+      "cst module type functor lookahead survives inline comments in parameters"
+      (fun () ->
+        let result =
+          parse_ml "module type F = functor (X (* c *) : S) -> T\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration
+            {
+              module_type =
+                Some
+                  (Syn.Cst.ModuleType.Functor
+                    {
+                      parameters =
+                        [ { name_token; module_type = Syn.Cst.ModuleType.Path param_type; _ } ];
+                      result = Syn.Cst.ModuleType.Path result_type;
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"X"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal ~expected:(Some "S")
+              ~actual:(Syn.Cst.Ident.name param_type);
+            Test.assert_equal ~expected:(Some "T")
+              ~actual:(Syn.Cst.Ident.name result_type);
+            Ok ()
+        | _ -> Error "expected commented module type functor body");
     Test.case "cst let-module expressions preserve module name and body"
       (fun () ->
         let source = "let run driver = let module D = (val driver) in D.execute ()\n" in
@@ -5291,6 +6220,45 @@ let tests =
               ~actual:(Syn.Cst.Ident.name module_path);
             Ok ()
         | _ -> Error "expected let-module expression");
+    Test.case
+      "cst let-module expressions preserve commented first-class module unpacking"
+      (fun () ->
+        let source =
+          "let run driver = let module D = ( (* c *) val driver ) in D.execute ()\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LetModule
+                  {
+                    module_name_token;
+                    module_expression =
+                      Syn.Cst.ModuleExpression.ModuleUnpack
+                        {
+                          expression =
+                            Syn.Cst.Expression.Path { path = module_path; _ };
+                          module_type = None;
+                          _;
+                        };
+                    body = Syn.Cst.Expression.Apply _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"D"
+              ~actual:(Syn.Cst.Token.text module_name_token);
+            Test.assert_equal ~expected:(Some "driver")
+              ~actual:(Syn.Cst.Ident.name module_path);
+            Ok ()
+        | _ -> Error "expected commented let-module expression");
     Test.case "cst field access preserves nested qualified field access structurally" (fun () ->
         let source = "let render record = record.Module.field\n" in
         let result = parse_ml source in
@@ -5344,6 +6312,26 @@ let tests =
             Test.assert_equal ~expected:5
               ~actual:(depth (Syn.Cst.LetBinding.value binding));
             Ok ()
+        | _ -> Error "expected first item to be a let binding");
+    Test.case "cst preserves parenthesized expressions with inner comments"
+      (fun () ->
+        let source = "let wrapped = ( (* c *) value )\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for commented parenthesized expression"
+          |> Result.expect
+               ~msg:"expected CST for commented parenthesized expression"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding binding :: _ -> (
+            match Syn.Cst.LetBinding.value binding with
+            | Syn.Cst.Expression.Parenthesized
+                { inner = Syn.Cst.Expression.Path _; _ } ->
+                Ok ()
+            | _ ->
+                Error "expected commented parenthesized expression to stay grouped"
+          )
         | _ -> Error "expected first item to be a let binding");
     Test.case "cst function cases preserve constructor tuple patterns structurally"
       (fun () ->
@@ -5520,6 +6508,199 @@ let tests =
               ~actual:(Syn.Cst.Token.text alias_name);
             Ok ()
         | _ -> Error "expected faithful alias typed pattern structure");
+    Test.case "cst or patterns survive inline comments before pipe"
+      (fun () ->
+        let source =
+          "let render value = match value with | None (* c *) | Some _ -> 0 | _ -> 1\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Or
+                            {
+                              alternatives =
+                                [
+                                  Syn.Cst.Pattern.Constructor
+                                    { constructor_path = none_path; arguments = []; _ };
+                                  Syn.Cst.Pattern.Constructor
+                                    {
+                                      constructor_path = some_path;
+                                      arguments = [ Syn.Cst.Pattern.Wildcard _ ];
+                                      _;
+                                    };
+                                ];
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "None")
+              ~actual:(Syn.Cst.Ident.name none_path);
+            Test.assert_equal ~expected:(Some "Some")
+              ~actual:(Syn.Cst.Ident.name some_path);
+            Ok ()
+        | _ -> Error "expected commented or pattern structure");
+    Test.case "cst alias patterns survive inline comments before as"
+      (fun () ->
+        let source =
+          "let render value = match value with | user (* c *) as current_user -> current_user\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Alias
+                            {
+                              pattern =
+                                Syn.Cst.Pattern.Identifier
+                                  { name_token = user_name; _ };
+                              name_token = alias_name;
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"user"
+              ~actual:(Syn.Cst.Token.text user_name);
+            Test.assert_equal ~expected:"current_user"
+              ~actual:(Syn.Cst.Token.text alias_name);
+            Ok ()
+        | _ -> Error "expected commented alias pattern structure");
+    Test.case "cst cons patterns survive inline comments before coloncolon"
+      (fun () ->
+        let source =
+          "let first xs = match xs with | head (* c *) :: tail -> head | [] -> 0\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Cons
+                            {
+                              head =
+                                Syn.Cst.Pattern.Identifier
+                                  { name_token = head_name; _ };
+                              tail =
+                                Syn.Cst.Pattern.Identifier
+                                  { name_token = tail_name; _ };
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"head"
+              ~actual:(Syn.Cst.Token.text head_name);
+            Test.assert_equal ~expected:"tail"
+              ~actual:(Syn.Cst.Token.text tail_name);
+            Ok ()
+        | _ -> Error "expected commented cons pattern structure");
+    Test.case "cst tuple patterns survive inline comments before commas"
+      (fun () ->
+        let source =
+          "let project pair = match pair with | (left (* c *), right) -> left\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Parenthesized
+                            {
+                              inner =
+                                Syn.Cst.Pattern.Tuple
+                                  {
+                                    elements =
+                                      [
+                                        {
+                                          pattern =
+                                            Syn.Cst.Pattern.Identifier
+                                              { name_token = left_name; _ };
+                                          _;
+                                        };
+                                        {
+                                          pattern =
+                                            Syn.Cst.Pattern.Identifier
+                                              { name_token = right_name; _ };
+                                          _;
+                                        };
+                                      ];
+                                    _;
+                                  };
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"left"
+              ~actual:(Syn.Cst.Token.text left_name);
+            Test.assert_equal ~expected:"right"
+              ~actual:(Syn.Cst.Token.text right_name);
+            Ok ()
+        | _ -> Error "expected commented tuple pattern structure");
     Test.case "cst lazy patterns preserve the wrapped pattern" (fun () ->
         let source = "let f x = match x with | (lazy y) -> y\n" in
         let result = parse_ml source in
@@ -5643,6 +6824,53 @@ let tests =
             Test.assert_equal ~expected:"z" ~actual:upper_contents;
             Ok ()
         | _ -> Error "expected range pattern structure");
+    Test.case "cst range patterns survive inline comments before dotdot"
+      (fun () ->
+        let source =
+          "let f x = match x with | 'a' (* c *) .. 'z' -> \"lowercase\" | _ -> \"other\"\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Match
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Range
+                            {
+                              lower =
+                                Syn.Cst.PatternLiteral.Char
+                                  { literal_token = lower_token; contents = lower_contents; _ };
+                              upper =
+                                Syn.Cst.PatternLiteral.Char
+                                  { literal_token = upper_token; contents = upper_contents; _ };
+                              _;
+                            };
+                        _;
+                      }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"'a'"
+              ~actual:(Syn.Cst.Token.text lower_token);
+            Test.assert_equal ~expected:"a" ~actual:lower_contents;
+            Test.assert_equal ~expected:"'z'"
+              ~actual:(Syn.Cst.Token.text upper_token);
+            Test.assert_equal ~expected:"z" ~actual:upper_contents;
+            Ok ()
+        | _ ->
+            Error "expected commented range pattern structure");
     Test.case "cst literals preserve structured constant details" (fun () ->
         let source = "let x = 0xffL\nlet y = 1.2g\nlet z = {|hello|}\n" in
         let result = parse_ml source in
@@ -5985,6 +7213,115 @@ let tests =
               ~actual:(Syn.Cst.Token.text operator_token);
             Ok ()
         | _ -> Error "expected assign(index(...)) expression");
+    Test.case "cst index expressions survive inline comments before dot-paren"
+      (fun () ->
+        let source = "let x = arr (* c *).(0)\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Index
+                  {
+                    collection = Syn.Cst.Expression.Path { path = collection_path; _ };
+                    index =
+                      Syn.Cst.Expression.Literal (Syn.Cst.Literal.Int _);
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "arr")
+              ~actual:(Syn.Cst.Ident.name collection_path);
+            Ok ()
+        | _ -> Error "expected commented index expression");
+    Test.case "cst string index expressions survive inline comments before brackets"
+      (fun () ->
+        let source = "let x = text.(* c *)[0]\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Index
+                  {
+                    collection = Syn.Cst.Expression.Path { path = collection_path; _ };
+                    index =
+                      Syn.Cst.Expression.Literal (Syn.Cst.Literal.Int _);
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "text")
+              ~actual:(Syn.Cst.Ident.name collection_path);
+            Ok ()
+        | _ -> Error "expected commented string index expression");
+    Test.case "cst custom index expressions survive inline comments before operators"
+      (fun () ->
+        let source = "let x = table.(* c *)?[\"key\"]\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Index
+                  {
+                    collection = Syn.Cst.Expression.Path { path = collection_path; _ };
+                    index =
+                      Syn.Cst.Expression.Literal (Syn.Cst.Literal.String _);
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "table")
+              ~actual:(Syn.Cst.Ident.name collection_path);
+            Ok ()
+        | _ -> Error "expected commented custom index expression");
+    Test.case "cst assign expressions survive inline comments before arrows"
+      (fun () ->
+        let source = "let x = arr.(0) (* c *) <- 5\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Assign
+                  {
+                    operator_token;
+                    target = Syn.Cst.Expression.Index _;
+                    value =
+                      Syn.Cst.Expression.Literal (Syn.Cst.Literal.Int _);
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"<-"
+              ~actual:(Syn.Cst.Token.text operator_token);
+            Ok ()
+        | _ -> Error "expected commented assign expression");
     Test.case "cst field assignments preserve field-access targets" (fun () ->
         let source = "let () = obj.field <- 10\n" in
         let result = parse_ml source in
@@ -6175,6 +7512,26 @@ let tests =
               ~actual:(Syn.Cst.Ident.name name_field);
             Ok ()
         | _ -> Error "expected record pattern structure");
+    Test.case "cst record patterns preserve inner comments around fields" (fun () ->
+        let source = "let { (* c *) foo } = record\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for commented record pattern"
+          |> Result.expect ~msg:"expected CST for commented record pattern"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              binding_pattern =
+                Syn.Cst.Pattern.Record { fields = [ { field_path; pattern = None; _ } ]; _ };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "foo")
+              ~actual:(Syn.Cst.Ident.name field_path);
+            Ok ()
+        | _ -> Error "expected commented record pattern structure");
     Test.case "cst record patterns preserve open wildcard tails" (fun () ->
         let source = "let x = match r with { user; _ } -> user\n" in
         let result = parse_ml source in

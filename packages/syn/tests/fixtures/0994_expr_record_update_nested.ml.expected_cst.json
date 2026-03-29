@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 60
+        "end": 59
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 8
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "RECORD_UPDATE_EXPR",
               "span": {
-                "start": 11,
+                "start": 10,
                 "end": 59
               }
             },
@@ -80,8 +80,8 @@
               "syntax_node": {
                 "kind": "RECORD_FIELD",
                 "span": {
-                  "start": 13,
-                  "end": 17
+                  "start": 12,
+                  "end": 16
                 }
               },
               "path": {
@@ -89,8 +89,8 @@
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
-                    "start": 13,
-                    "end": 17
+                    "start": 12,
+                    "end": 16
                   }
                 },
                 "name_token": {
@@ -108,7 +108,7 @@
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
-                    "start": 22,
+                    "start": 21,
                     "end": 57
                   }
                 },
@@ -117,7 +117,7 @@
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
-                      "start": 22,
+                      "start": 21,
                       "end": 57
                     }
                   },
@@ -143,7 +143,7 @@
                   "syntax_node": {
                     "kind": "RECORD_UPDATE_EXPR",
                     "span": {
-                      "start": 29,
+                      "start": 28,
                       "end": 57
                     }
                   },
@@ -153,8 +153,8 @@
                     "syntax_node": {
                       "kind": "RECORD_FIELD",
                       "span": {
-                        "start": 31,
-                        "end": 40
+                        "start": 30,
+                        "end": 39
                       }
                     },
                     "path": {
@@ -162,8 +162,8 @@
                       "syntax_node": {
                         "kind": "RECORD_FIELD",
                         "span": {
-                          "start": 31,
-                          "end": 40
+                          "start": 30,
+                          "end": 39
                         }
                       },
                       "prefix": {
@@ -171,8 +171,8 @@
                         "syntax_node": {
                           "kind": "RECORD_FIELD",
                           "span": {
-                            "start": 31,
-                            "end": 40
+                            "start": 30,
+                            "end": 39
                           }
                         },
                         "name_token": {
@@ -207,7 +207,7 @@
                       "syntax_node": {
                         "kind": "RECORD_FIELD",
                         "span": {
-                          "start": 45,
+                          "start": 44,
                           "end": 55
                         }
                       },
@@ -216,7 +216,7 @@
                         "syntax_node": {
                           "kind": "RECORD_FIELD",
                           "span": {
-                            "start": 45,
+                            "start": 44,
                             "end": 55
                           }
                         },
@@ -244,7 +244,7 @@
                           "syntax_node": {
                             "kind": "INT_LITERAL",
                             "span": {
-                              "start": 53,
+                              "start": 52,
                               "end": 55
                             }
                           },

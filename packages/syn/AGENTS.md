@@ -24,6 +24,10 @@
 18. Keep nested `sig ... end` and `struct ... end` syntax-node lifts normalized the same way as file-level lifts; callers should not have to provide extra source text just to get correct trivia ownership.
 19. Keep raw trivia ownership explicit on declaration nodes that can carry inline comments/docstrings, even before higher-level sequence normalization decides whether adjacent docstrings stay standalone or attach to a neighbor.
 20. Keep token-attached trivia as the source of truth; do not reintroduce standalone trivia tree children in Ceibo once the migration lands.
+21. Keep `Lexer.tokenize` emitting only real tokens plus `Token.EOF`, with trailing file trivia on `Token.EOF.leading_trivia`.
+22. Keep `Parser.parse_result.tokens` as the original lexer token stream during the migration so tools can stay lossless before trivia children disappear from the tree.
+23. Keep parser-built green trees trivia-free in normal paths: parser control flow may still consume token-attached leading trivia explicitly during the migration, but green child arrays should represent trivia through token `leading_trivia`, not standalone trivia elements.
+24. Keep red traversal aligned with that same contract for parser-built trees: `SyntaxNode.children`, `direct_tokens`, and `tokens` should already be trivia-free, with comments/docstrings reachable through `SyntaxToken.leading_trivia`.
 
 ## Validate
 

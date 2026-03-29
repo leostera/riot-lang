@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 18
+        "end": 17
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "LET_BINDING",
             "span": {
               "start": 0,
-              "end": 18
+              "end": 17
             }
           },
           "keyword_token": {
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -66,44 +66,33 @@
           },
           "parameters": [],
           "value": {
-            "tag": "index",
+            "tag": "local_open",
             "syntax_node": {
-              "kind": "ARRAY_INDEX_EXPR",
+              "kind": "LOCAL_OPEN_EXPR",
               "span": {
-                "start": 8,
-                "end": 18
+                "start": 7,
+                "end": 17
               }
             },
-            "collection": {
-              "tag": "constructor",
+            "module_path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 7,
+                  "end": 9
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "M",
                 "span": {
                   "start": 8,
                   "end": 9
                 }
-              },
-              "constructor_path": {
-                "tag": "ident",
-                "syntax_node": {
-                  "kind": "IDENT_EXPR",
-                  "span": {
-                    "start": 8,
-                    "end": 9
-                  }
-                },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "M",
-                  "span": {
-                    "start": 8,
-                    "end": 9
-                  }
-                }
-              },
-              "payload": null
+              }
             },
-            "index": {
+            "body": {
               "tag": "infix",
               "syntax_node": {
                 "kind": "INFIX_EXPR",
@@ -153,7 +142,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 15,
+                    "start": 14,
                     "end": 16
                   }
                 },
@@ -162,7 +151,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 15,
+                      "start": 14,
                       "end": 16
                     }
                   },
@@ -176,7 +165,8 @@
                   }
                 }
               }
-            }
+            },
+            "via_let_open": false
           },
           "and_bindings": [],
           "is_recursive": false

@@ -6,17 +6,37 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 488
+        "end": 487
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 19
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Basic functor *)",
+            "span": {
+              "start": 0,
+              "end": 19
+            }
+          }
+        }
+      },
       {
         "tag": "module_declaration",
         "item": {
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 20,
+              "start": 0,
               "end": 64
             }
           },
@@ -33,8 +53,8 @@
               "syntax_node": {
                 "kind": "FUNCTOR_PARAM",
                 "span": {
-                  "start": 29,
-                  "end": 37
+                  "start": 28,
+                  "end": 36
                 }
               },
               "name_token": {
@@ -52,7 +72,7 @@
                   "syntax_node": {
                     "kind": "MODULE_TYPE_PATH",
                     "span": {
-                      "start": 34,
+                      "start": 33,
                       "end": 35
                     }
                   },
@@ -74,7 +94,7 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 39,
+                "start": 38,
                 "end": 64
               }
             },
@@ -82,8 +102,8 @@
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 48,
-                  "end": 61
+                  "start": 45,
+                  "end": 60
                 }
               }
             ]
@@ -93,12 +113,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 66,
+              "end": 91
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Multiple parameters *)",
+            "span": {
+              "start": 66,
+              "end": 91
+            }
+          }
+        }
+      },
+      {
         "tag": "module_declaration",
         "item": {
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 92,
+              "start": 64,
               "end": 150
             }
           },
@@ -115,8 +155,8 @@
               "syntax_node": {
                 "kind": "FUNCTOR_PARAM",
                 "span": {
-                  "start": 101,
-                  "end": 109
+                  "start": 100,
+                  "end": 108
                 }
               },
               "name_token": {
@@ -134,7 +174,7 @@
                   "syntax_node": {
                     "kind": "MODULE_TYPE_PATH",
                     "span": {
-                      "start": 106,
+                      "start": 105,
                       "end": 107
                     }
                   },
@@ -153,8 +193,8 @@
               "syntax_node": {
                 "kind": "FUNCTOR_PARAM",
                 "span": {
-                  "start": 109,
-                  "end": 117
+                  "start": 108,
+                  "end": 116
                 }
               },
               "name_token": {
@@ -172,7 +212,7 @@
                   "syntax_node": {
                     "kind": "MODULE_TYPE_PATH",
                     "span": {
-                      "start": 114,
+                      "start": 113,
                       "end": 115
                     }
                   },
@@ -194,7 +234,7 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 119,
+                "start": 118,
                 "end": 150
               }
             },
@@ -202,8 +242,8 @@
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 128,
-                  "end": 147
+                  "start": 125,
+                  "end": 146
                 }
               }
             ]
@@ -213,12 +253,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 152,
+              "end": 177
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Functor application *)",
+            "span": {
+              "start": 152,
+              "end": 177
+            }
+          }
+        }
+      },
+      {
         "tag": "module_declaration",
         "item": {
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 178,
+              "start": 150,
               "end": 193
             }
           },
@@ -237,7 +297,7 @@
             "syntax_node": {
               "kind": "MODULE_APPLICATION",
               "span": {
-                "start": 189,
+                "start": 188,
                 "end": 193
               }
             },
@@ -248,7 +308,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 189,
+                    "start": 188,
                     "end": 190
                   }
                 },
@@ -289,12 +349,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 195,
+              "end": 230
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Multiple functor applications *)",
+            "span": {
+              "start": 195,
+              "end": 230
+            }
+          }
+        }
+      },
+      {
         "tag": "module_declaration",
         "item": {
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 231,
+              "start": 193,
               "end": 252
             }
           },
@@ -313,7 +393,7 @@
             "syntax_node": {
               "kind": "MODULE_APPLICATION",
               "span": {
-                "start": 242,
+                "start": 241,
                 "end": 252
               }
             },
@@ -322,7 +402,7 @@
               "syntax_node": {
                 "kind": "MODULE_APPLICATION",
                 "span": {
-                  "start": 242,
+                  "start": 241,
                   "end": 249
                 }
               },
@@ -331,7 +411,7 @@
                 "syntax_node": {
                   "kind": "MODULE_APPLICATION",
                   "span": {
-                    "start": 242,
+                    "start": 241,
                     "end": 246
                   }
                 },
@@ -342,7 +422,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 242,
+                        "start": 241,
                         "end": 243
                       }
                     },
@@ -427,12 +507,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 254,
+              "end": 278
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Nested application *)",
+            "span": {
+              "start": 254,
+              "end": 278
+            }
+          }
+        }
+      },
+      {
         "tag": "module_declaration",
         "item": {
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 279,
+              "start": 252,
               "end": 300
             }
           },
@@ -451,7 +551,7 @@
             "syntax_node": {
               "kind": "MODULE_APPLICATION",
               "span": {
-                "start": 290,
+                "start": 289,
                 "end": 300
               }
             },
@@ -462,7 +562,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 290,
+                    "start": 289,
                     "end": 291
                   }
                 },
@@ -565,12 +665,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 302,
+              "end": 341
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Functor with explicit return type *)",
+            "span": {
+              "start": 302,
+              "end": 341
+            }
+          }
+        }
+      },
+      {
         "tag": "module_declaration",
         "item": {
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 342,
+              "start": 300,
               "end": 390
             }
           },
@@ -587,8 +707,8 @@
               "syntax_node": {
                 "kind": "FUNCTOR_PARAM",
                 "span": {
-                  "start": 351,
-                  "end": 359
+                  "start": 350,
+                  "end": 358
                 }
               },
               "name_token": {
@@ -606,7 +726,7 @@
                   "syntax_node": {
                     "kind": "MODULE_TYPE_PATH",
                     "span": {
-                      "start": 356,
+                      "start": 355,
                       "end": 357
                     }
                   },
@@ -629,8 +749,8 @@
               "syntax_node": {
                 "kind": "MODULE_TYPE_PATH",
                 "span": {
-                  "start": 361,
-                  "end": 363
+                  "start": 360,
+                  "end": 362
                 }
               },
               "name_token": {
@@ -648,7 +768,7 @@
             "syntax_node": {
               "kind": "MODULE_DECL",
               "span": {
-                "start": 342,
+                "start": 300,
                 "end": 390
               }
             },
@@ -657,7 +777,7 @@
               "syntax_node": {
                 "kind": "STRUCT_EXPR",
                 "span": {
-                  "start": 365,
+                  "start": 364,
                   "end": 390
                 }
               },
@@ -665,8 +785,8 @@
                 {
                   "kind": "TYPE_DECL",
                   "span": {
-                    "start": 374,
-                    "end": 387
+                    "start": 371,
+                    "end": 386
                   }
                 }
               ]
@@ -678,8 +798,8 @@
                 "syntax_node": {
                   "kind": "MODULE_TYPE_PATH",
                   "span": {
-                    "start": 361,
-                    "end": 363
+                    "start": 360,
+                    "end": 362
                   }
                 },
                 "name_token": {
@@ -698,13 +818,33 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 392,
+              "end": 430
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Include with functor application *)",
+            "span": {
+              "start": 392,
+              "end": 430
+            }
+          }
+        }
+      },
+      {
         "tag": "include_statement",
         "item": {
           "syntax_node": {
             "kind": "INCLUDE_STMT",
             "span": {
-              "start": 431,
-              "end": 478
+              "start": 390,
+              "end": 443
             }
           },
           "target": {
@@ -714,7 +854,7 @@
               "syntax_node": {
                 "kind": "MODULE_APPLICATION",
                 "span": {
-                  "start": 439,
+                  "start": 438,
                   "end": 443
                 }
               },
@@ -725,7 +865,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 439,
+                      "start": 438,
                       "end": 440
                     }
                   },
@@ -765,13 +905,33 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 445,
+              "end": 477
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Include with simple module *)",
+            "span": {
+              "start": 445,
+              "end": 477
+            }
+          }
+        }
+      },
+      {
         "tag": "include_statement",
         "item": {
           "syntax_node": {
             "kind": "INCLUDE_STMT",
             "span": {
-              "start": 478,
-              "end": 488
+              "start": 443,
+              "end": 487
             }
           },
           "target": {
@@ -781,10 +941,10 @@
               "path": {
                 "tag": "ident",
                 "syntax_node": {
-                  "kind": "MODULE_PATH",
+                  "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 486,
-                    "end": 488
+                    "start": 485,
+                    "end": 487
                   }
                 },
                 "name_token": {

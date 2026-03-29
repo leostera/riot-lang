@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 54
+        "end": 53
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "LET_BINDING",
             "span": {
               "start": 0,
-              "end": 54
+              "end": 53
             }
           },
           "keyword_token": {
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,8 +70,8 @@
             "syntax_node": {
               "kind": "MATCH_EXPR",
               "span": {
-                "start": 8,
-                "end": 54
+                "start": 7,
+                "end": 53
               }
             },
             "keyword_token": {
@@ -95,7 +95,7 @@
               "syntax_node": {
                 "kind": "POLY_VARIANT_EXPR",
                 "span": {
-                  "start": 14,
+                  "start": 13,
                   "end": 28
                 }
               },
@@ -112,7 +112,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 17,
+                    "start": 16,
                     "end": 28
                   }
                 },
@@ -155,7 +155,7 @@
                     "syntax_node": {
                       "kind": "PAREN_EXPR",
                       "span": {
-                        "start": 21,
+                        "start": 20,
                         "end": 27
                       }
                     },
@@ -200,7 +200,7 @@
                           "syntax_node": {
                             "kind": "INT_LITERAL",
                             "span": {
-                              "start": 25,
+                              "start": 24,
                               "end": 26
                             }
                           },
@@ -228,7 +228,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 34,
+                    "start": 33,
                     "end": 53
                   }
                 },
@@ -247,7 +247,7 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_PATTERN",
                     "span": {
-                      "start": 34,
+                      "start": 33,
                       "end": 48
                     }
                   },
@@ -264,7 +264,7 @@
                     "syntax_node": {
                       "kind": "PAREN_PATTERN",
                       "span": {
-                        "start": 37,
+                        "start": 36,
                         "end": 48
                       }
                     },
@@ -290,7 +290,7 @@
                         "syntax_node": {
                           "kind": "PAREN_PATTERN",
                           "span": {
-                            "start": 41,
+                            "start": 40,
                             "end": 47
                           }
                         },
@@ -316,7 +316,7 @@
                             "syntax_node": {
                               "kind": "IDENT_PATTERN",
                               "span": {
-                                "start": 45,
+                                "start": 44,
                                 "end": 46
                               }
                             },
@@ -340,7 +340,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 52,
+                      "start": 51,
                       "end": 53
                     }
                   },
@@ -349,7 +349,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 52,
+                        "start": 51,
                         "end": 53
                       }
                     },

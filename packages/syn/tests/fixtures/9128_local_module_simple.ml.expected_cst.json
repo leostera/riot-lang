@@ -6,18 +6,38 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 104
+        "end": 103
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 36
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Simple local module definition *)",
+            "span": {
+              "start": 0,
+              "end": 36
+            }
+          }
+        }
+      },
       {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 37,
-              "end": 104
+              "start": 0,
+              "end": 103
             }
           },
           "keyword_token": {
@@ -43,7 +63,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 41,
+                "start": 40,
                 "end": 47
               }
             },
@@ -70,8 +90,8 @@
             "syntax_node": {
               "kind": "LET_MODULE_EXPR",
               "span": {
-                "start": 52,
-                "end": 104
+                "start": 49,
+                "end": 103
               }
             },
             "module_name_token": {
@@ -87,7 +107,7 @@
               "syntax_node": {
                 "kind": "STRUCT_EXPR",
                 "span": {
-                  "start": 67,
+                  "start": 66,
                   "end": 94
                 }
               },
@@ -95,7 +115,7 @@
                 {
                   "kind": "LET_BINDING",
                   "span": {
-                    "start": 78,
+                    "start": 73,
                     "end": 88
                   }
                 }
@@ -106,8 +126,8 @@
               "syntax_node": {
                 "kind": "FIELD_ACCESS_EXPR",
                 "span": {
-                  "start": 100,
-                  "end": 104
+                  "start": 97,
+                  "end": 103
                 }
               },
               "receiver": {
@@ -115,7 +135,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 100,
+                    "start": 97,
                     "end": 101
                   }
                 },
@@ -124,7 +144,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 100,
+                      "start": 97,
                       "end": 101
                     }
                   },

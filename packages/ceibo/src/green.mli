@@ -3,31 +3,39 @@
 open Std
 open Std.Collections
 
-(** A token with syntax kind, text content, and character width *)
-(** A node with syntax kind, computed width, and child elements *)
+(** Trivia that appears immediately before a token. *)
 type ('kind, 'text) trivia = {
   kind : 'kind;
   text : 'text;
   width : int;
 }
+
+(** A token with syntax kind, text content, token-body width, and leading trivia.
+
+    Tokens own trivia that appears immediately before them. Trivia is not
+    represented as a standalone tree child. *)
 type ('kind, 'text) token = {
   kind : 'kind;
   text : 'text;
   width : int;
   leading_trivia : ('kind, 'text) trivia list;
 }
+
+(** A node with syntax kind, computed width, and non-trivia child elements. *)
 type ('kind, 'text) node = {
   kind : 'kind;
   width : int;
   children : ('kind, 'text) element array;
 }
 
-(** Create a token with the given kind, text, and width *)
 (** An element is either a token or a node *)
 and ('kind, 'text) element =
   | Token of ('kind, 'text) token
   | Node of ('kind, 'text) node
+
 val make_trivia : kind:'kind -> text:'text -> width:int -> ('kind, 'text) trivia
+
+(** Create a token with the given kind, text, width, and leading trivia. *)
 val make_token : leading_trivia:('kind, 'text) trivia list ->
 kind:'kind ->
 text:'text ->
@@ -43,8 +51,11 @@ val make_node_list : kind:'kind -> ('kind, 'text) element list -> ('kind, 'text)
 (** Get the width of an element *)
 val width : ('kind, 'text) element -> int
 val trivia_width : ('kind, 'text) trivia -> int
+(** Get only the token body width, excluding leading trivia. *)
 val token_width : ('kind, 'text) token -> int
+(** Get the full token width, including leading trivia. *)
 val token_full_width : ('kind, 'text) token -> int
+(** Get the trivia owned by this token. *)
 val leading_trivia : ('kind, 'text) token -> ('kind, 'text) trivia list
 
 (** Get the kind of an element *)
@@ -74,7 +85,7 @@ val child_count : ('kind, 'text) node -> int
 (** Get the child at the given index *)
 val child : ('kind, 'text) node -> int -> ('kind, 'text) element option
 
-(** Get all children of a node *)
+(** Get all non-trivia children of a node. *)
 val children : ('kind, 'text) node -> ('kind, 'text) element array
 
 (** Convert an element to JSON *)

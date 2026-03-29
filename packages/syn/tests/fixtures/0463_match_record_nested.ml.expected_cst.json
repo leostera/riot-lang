@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 76
+        "end": 75
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "LET_BINDING",
             "span": {
               "start": 0,
-              "end": 76
+              "end": 75
             }
           },
           "keyword_token": {
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,8 +70,8 @@
             "syntax_node": {
               "kind": "MATCH_EXPR",
               "span": {
-                "start": 8,
-                "end": 76
+                "start": 7,
+                "end": 75
               }
             },
             "keyword_token": {
@@ -95,7 +95,7 @@
               "syntax_node": {
                 "kind": "RECORD_EXPR",
                 "span": {
-                  "start": 14,
+                  "start": 13,
                   "end": 39
                 }
               },
@@ -105,7 +105,7 @@
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
-                      "start": 16,
+                      "start": 15,
                       "end": 37
                     }
                   },
@@ -114,7 +114,7 @@
                     "syntax_node": {
                       "kind": "RECORD_FIELD",
                       "span": {
-                        "start": 16,
+                        "start": 15,
                         "end": 37
                       }
                     },
@@ -140,7 +140,7 @@
                     "syntax_node": {
                       "kind": "RECORD_EXPR",
                       "span": {
-                        "start": 24,
+                        "start": 23,
                         "end": 37
                       }
                     },
@@ -150,7 +150,7 @@
                         "syntax_node": {
                           "kind": "RECORD_FIELD",
                           "span": {
-                            "start": 26,
+                            "start": 25,
                             "end": 35
                           }
                         },
@@ -159,7 +159,7 @@
                           "syntax_node": {
                             "kind": "RECORD_FIELD",
                             "span": {
-                              "start": 26,
+                              "start": 25,
                               "end": 35
                             }
                           },
@@ -187,7 +187,7 @@
                             "syntax_node": {
                               "kind": "INT_LITERAL",
                               "span": {
-                                "start": 34,
+                                "start": 33,
                                 "end": 35
                               }
                             },
@@ -218,7 +218,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 45,
+                    "start": 44,
                     "end": 75
                   }
                 },
@@ -237,7 +237,7 @@
                   "syntax_node": {
                     "kind": "RECORD_PATTERN",
                     "span": {
-                      "start": 45,
+                      "start": 44,
                       "end": 70
                     }
                   },
@@ -246,7 +246,7 @@
                       "syntax_node": {
                         "kind": "RECORD_FIELD_PATTERN",
                         "span": {
-                          "start": 47,
+                          "start": 46,
                           "end": 68
                         }
                       },
@@ -255,7 +255,7 @@
                         "syntax_node": {
                           "kind": "RECORD_FIELD_PATTERN",
                           "span": {
-                            "start": 47,
+                            "start": 46,
                             "end": 68
                           }
                         },
@@ -273,7 +273,7 @@
                         "syntax_node": {
                           "kind": "RECORD_PATTERN",
                           "span": {
-                            "start": 55,
+                            "start": 54,
                             "end": 68
                           }
                         },
@@ -282,7 +282,7 @@
                             "syntax_node": {
                               "kind": "RECORD_FIELD_PATTERN",
                               "span": {
-                                "start": 57,
+                                "start": 56,
                                 "end": 66
                               }
                             },
@@ -291,7 +291,7 @@
                               "syntax_node": {
                                 "kind": "RECORD_FIELD_PATTERN",
                                 "span": {
-                                  "start": 57,
+                                  "start": 56,
                                   "end": 66
                                 }
                               },
@@ -309,7 +309,7 @@
                               "syntax_node": {
                                 "kind": "IDENT_PATTERN",
                                 "span": {
-                                  "start": 65,
+                                  "start": 64,
                                   "end": 66
                                 }
                               },
@@ -340,7 +340,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 74,
+                      "start": 73,
                       "end": 75
                     }
                   },
@@ -349,7 +349,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 74,
+                        "start": 73,
                         "end": 75
                       }
                     },

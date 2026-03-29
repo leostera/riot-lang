@@ -6,17 +6,77 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 1539
+        "end": 1538
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 66
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Test trailing semicolons in list, array, and record literals *)",
+            "span": {
+              "start": 0,
+              "end": 66
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 68,
+              "end": 87
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* === LISTS === *)",
+            "span": {
+              "start": 68,
+              "end": 87
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 89,
+              "end": 133
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Single element with trailing semicolon *)",
+            "span": {
+              "start": 89,
+              "end": 133
+            }
+          }
+        }
+      },
       {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 134,
+              "start": 0,
               "end": 158
             }
           },
@@ -43,7 +103,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 138,
+                "start": 137,
                 "end": 149
               }
             },
@@ -70,7 +130,7 @@
             "syntax_node": {
               "kind": "LIST_EXPR",
               "span": {
-                "start": 152,
+                "start": 151,
                 "end": 158
               }
             },
@@ -82,7 +142,7 @@
                   "syntax_node": {
                     "kind": "INT_LITERAL",
                     "span": {
-                      "start": 154,
+                      "start": 153,
                       "end": 155
                     }
                   },
@@ -107,12 +167,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 160,
+              "end": 207
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Multiple elements with trailing semicolon *)",
+            "span": {
+              "start": 160,
+              "end": 207
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 208,
+              "start": 158,
               "end": 240
             }
           },
@@ -139,7 +219,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 212,
+                "start": 211,
                 "end": 225
               }
             },
@@ -166,7 +246,7 @@
             "syntax_node": {
               "kind": "LIST_EXPR",
               "span": {
-                "start": 228,
+                "start": 227,
                 "end": 240
               }
             },
@@ -178,7 +258,7 @@
                   "syntax_node": {
                     "kind": "INT_LITERAL",
                     "span": {
-                      "start": 230,
+                      "start": 229,
                       "end": 231
                     }
                   },
@@ -203,7 +283,7 @@
                   "syntax_node": {
                     "kind": "INT_LITERAL",
                     "span": {
-                      "start": 233,
+                      "start": 232,
                       "end": 234
                     }
                   },
@@ -228,7 +308,7 @@
                   "syntax_node": {
                     "kind": "INT_LITERAL",
                     "span": {
-                      "start": 236,
+                      "start": 235,
                       "end": 237
                     }
                   },
@@ -253,12 +333,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 242,
+              "end": 291
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Empty list - no trailing semicolon possible *)",
+            "span": {
+              "start": 242,
+              "end": 291
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 292,
+              "start": 240,
               "end": 311
             }
           },
@@ -285,7 +385,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 296,
+                "start": 295,
                 "end": 306
               }
             },
@@ -312,7 +412,7 @@
             "syntax_node": {
               "kind": "LIST_EXPR",
               "span": {
-                "start": 309,
+                "start": 308,
                 "end": 311
               }
             },
@@ -323,12 +423,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 313,
+              "end": 356
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Nested lists with trailing semicolons *)",
+            "span": {
+              "start": 313,
+              "end": 356
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 357,
+              "start": 311,
               "end": 404
             }
           },
@@ -355,7 +475,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 361,
+                "start": 360,
                 "end": 372
               }
             },
@@ -382,7 +502,7 @@
             "syntax_node": {
               "kind": "LIST_EXPR",
               "span": {
-                "start": 375,
+                "start": 374,
                 "end": 404
               }
             },
@@ -392,7 +512,7 @@
                 "syntax_node": {
                   "kind": "LIST_EXPR",
                   "span": {
-                    "start": 379,
+                    "start": 376,
                     "end": 388
                   }
                 },
@@ -404,7 +524,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 381,
+                          "start": 380,
                           "end": 382
                         }
                       },
@@ -429,7 +549,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 384,
+                          "start": 383,
                           "end": 385
                         }
                       },
@@ -454,7 +574,7 @@
                 "syntax_node": {
                   "kind": "LIST_EXPR",
                   "span": {
-                    "start": 392,
+                    "start": 389,
                     "end": 401
                   }
                 },
@@ -466,7 +586,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 394,
+                          "start": 393,
                           "end": 395
                         }
                       },
@@ -491,7 +611,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 397,
+                          "start": 396,
                           "end": 398
                         }
                       },
@@ -518,12 +638,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 406,
+              "end": 464
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* List with complex expressions and trailing semicolon *)",
+            "span": {
+              "start": 406,
+              "end": 464
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 465,
+              "start": 404,
               "end": 514
             }
           },
@@ -550,7 +690,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 469,
+                "start": 468,
                 "end": 481
               }
             },
@@ -577,7 +717,7 @@
             "syntax_node": {
               "kind": "LIST_EXPR",
               "span": {
-                "start": 484,
+                "start": 483,
                 "end": 514
               }
             },
@@ -587,7 +727,7 @@
                 "syntax_node": {
                   "kind": "INFIX_EXPR",
                   "span": {
-                    "start": 488,
+                    "start": 485,
                     "end": 493
                   }
                 },
@@ -598,7 +738,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 488,
+                        "start": 485,
                         "end": 489
                       }
                     },
@@ -631,7 +771,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 492,
+                        "start": 491,
                         "end": 493
                       }
                     },
@@ -655,7 +795,7 @@
                 "syntax_node": {
                   "kind": "INFIX_EXPR",
                   "span": {
-                    "start": 497,
+                    "start": 494,
                     "end": 502
                   }
                 },
@@ -666,7 +806,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 497,
+                        "start": 494,
                         "end": 498
                       }
                     },
@@ -699,7 +839,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 501,
+                        "start": 500,
                         "end": 502
                       }
                     },
@@ -723,7 +863,7 @@
                 "syntax_node": {
                   "kind": "INFIX_EXPR",
                   "span": {
-                    "start": 506,
+                    "start": 503,
                     "end": 511
                   }
                 },
@@ -734,7 +874,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 506,
+                        "start": 503,
                         "end": 507
                       }
                     },
@@ -767,7 +907,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 510,
+                        "start": 509,
                         "end": 511
                       }
                     },
@@ -793,12 +933,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 516,
+              "end": 547
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* List in function argument *)",
+            "span": {
+              "start": 516,
+              "end": 547
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 548,
+              "start": 514,
               "end": 594
             }
           },
@@ -825,7 +985,7 @@
             "syntax_node": {
               "kind": "WILDCARD_PATTERN",
               "span": {
-                "start": 552,
+                "start": 551,
                 "end": 553
               }
             }
@@ -837,7 +997,7 @@
             "syntax_node": {
               "kind": "APPLY_EXPR",
               "span": {
-                "start": 556,
+                "start": 555,
                 "end": 594
               }
             },
@@ -846,7 +1006,7 @@
               "syntax_node": {
                 "kind": "APPLY_EXPR",
                 "span": {
-                  "start": 556,
+                  "start": 555,
                   "end": 581
                 }
               },
@@ -855,8 +1015,8 @@
                 "syntax_node": {
                   "kind": "FIELD_ACCESS_EXPR",
                   "span": {
-                    "start": 556,
-                    "end": 565
+                    "start": 555,
+                    "end": 564
                   }
                 },
                 "receiver": {
@@ -864,7 +1024,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 556,
+                      "start": 555,
                       "end": 560
                     }
                   },
@@ -873,7 +1033,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 556,
+                        "start": 555,
                         "end": 560
                       }
                     },
@@ -903,7 +1063,7 @@
                   "syntax_node": {
                     "kind": "PAREN_EXPR",
                     "span": {
-                      "start": 565,
+                      "start": 564,
                       "end": 581
                     }
                   },
@@ -955,7 +1115,7 @@
                         "syntax_node": {
                           "kind": "IDENT_PATTERN",
                           "span": {
-                            "start": 570,
+                            "start": 569,
                             "end": 571
                           }
                         },
@@ -964,7 +1124,7 @@
                           "syntax_node": {
                             "kind": "IDENT_PATTERN",
                             "span": {
-                              "start": 570,
+                              "start": 569,
                               "end": 571
                             }
                           },
@@ -994,7 +1154,7 @@
                         "syntax_node": {
                           "kind": "INFIX_EXPR",
                           "span": {
-                            "start": 575,
+                            "start": 574,
                             "end": 580
                           }
                         },
@@ -1003,7 +1163,7 @@
                           "syntax_node": {
                             "kind": "IDENT_EXPR",
                             "span": {
-                              "start": 575,
+                              "start": 574,
                               "end": 576
                             }
                           },
@@ -1012,7 +1172,7 @@
                             "syntax_node": {
                               "kind": "IDENT_EXPR",
                               "span": {
-                                "start": 575,
+                                "start": 574,
                                 "end": 576
                               }
                             },
@@ -1041,7 +1201,7 @@
                             "syntax_node": {
                               "kind": "INT_LITERAL",
                               "span": {
-                                "start": 579,
+                                "start": 578,
                                 "end": 580
                               }
                             },
@@ -1072,7 +1232,7 @@
                 "syntax_node": {
                   "kind": "LIST_EXPR",
                   "span": {
-                    "start": 582,
+                    "start": 581,
                     "end": 594
                   }
                 },
@@ -1084,7 +1244,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 584,
+                          "start": 583,
                           "end": 585
                         }
                       },
@@ -1109,7 +1269,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 587,
+                          "start": 586,
                           "end": 588
                         }
                       },
@@ -1134,7 +1294,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 590,
+                          "start": 589,
                           "end": 591
                         }
                       },
@@ -1161,13 +1321,33 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 596,
+              "end": 658
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Pattern matching with list containing trailing semicolon *)",
+            "span": {
+              "start": 596,
+              "end": 658
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 659,
-              "end": 808
+              "start": 594,
+              "end": 739
             }
           },
           "keyword_token": {
@@ -1193,7 +1373,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 663,
+                "start": 662,
                 "end": 672
               }
             },
@@ -1220,8 +1400,8 @@
               "syntax_node": {
                 "kind": "IDENT_PATTERN",
                 "span": {
-                  "start": 674,
-                  "end": 675
+                  "start": 672,
+                  "end": 674
                 }
               },
               "pattern": {
@@ -1229,16 +1409,16 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 674,
-                    "end": 675
+                    "start": 672,
+                    "end": 674
                   }
                 },
                 "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "x",
                   "span": {
-                    "start": 674,
-                    "end": 675
+                    "start": 673,
+                    "end": 674
                   }
                 }
               },
@@ -1246,8 +1426,8 @@
                 "kind": "IDENT_EXPR",
                 "text": "x",
                 "span": {
-                  "start": 674,
-                  "end": 675
+                  "start": 673,
+                  "end": 674
                 }
               }
             }
@@ -1257,8 +1437,8 @@
             "syntax_node": {
               "kind": "MATCH_EXPR",
               "span": {
-                "start": 677,
-                "end": 808
+                "start": 676,
+                "end": 739
               }
             },
             "keyword_token": {
@@ -1282,7 +1462,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 683,
+                  "start": 682,
                   "end": 684
                 }
               },
@@ -1291,7 +1471,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 683,
+                    "start": 682,
                     "end": 684
                   }
                 },
@@ -1310,7 +1490,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 692,
+                    "start": 689,
                     "end": 705
                   }
                 },
@@ -1336,7 +1516,7 @@
                   "syntax_node": {
                     "kind": "LIST_PATTERN",
                     "span": {
-                      "start": 694,
+                      "start": 693,
                       "end": 700
                     }
                   },
@@ -1346,7 +1526,7 @@
                       "syntax_node": {
                         "kind": "IDENT_PATTERN",
                         "span": {
-                          "start": 696,
+                          "start": 695,
                           "end": 697
                         }
                       },
@@ -1367,7 +1547,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 704,
+                      "start": 703,
                       "end": 705
                     }
                   },
@@ -1376,7 +1556,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 704,
+                        "start": 703,
                         "end": 705
                       }
                     },
@@ -1395,7 +1575,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 708,
+                    "start": 705,
                     "end": 728
                   }
                 },
@@ -1421,7 +1601,7 @@
                   "syntax_node": {
                     "kind": "LIST_PATTERN",
                     "span": {
-                      "start": 710,
+                      "start": 709,
                       "end": 719
                     }
                   },
@@ -1431,7 +1611,7 @@
                       "syntax_node": {
                         "kind": "IDENT_PATTERN",
                         "span": {
-                          "start": 712,
+                          "start": 711,
                           "end": 713
                         }
                       },
@@ -1449,7 +1629,7 @@
                       "syntax_node": {
                         "kind": "IDENT_PATTERN",
                         "span": {
-                          "start": 715,
+                          "start": 714,
                           "end": 716
                         }
                       },
@@ -1470,7 +1650,7 @@
                   "syntax_node": {
                     "kind": "INFIX_EXPR",
                     "span": {
-                      "start": 723,
+                      "start": 722,
                       "end": 728
                     }
                   },
@@ -1479,7 +1659,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 723,
+                        "start": 722,
                         "end": 724
                       }
                     },
@@ -1488,7 +1668,7 @@
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
-                          "start": 723,
+                          "start": 722,
                           "end": 724
                         }
                       },
@@ -1515,7 +1695,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 727,
+                        "start": 726,
                         "end": 728
                       }
                     },
@@ -1524,7 +1704,7 @@
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
-                          "start": 727,
+                          "start": 726,
                           "end": 728
                         }
                       },
@@ -1544,7 +1724,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 731,
+                    "start": 728,
                     "end": 739
                   }
                 },
@@ -1570,7 +1750,7 @@
                   "syntax_node": {
                     "kind": "WILDCARD_PATTERN",
                     "span": {
-                      "start": 733,
+                      "start": 732,
                       "end": 734
                     }
                   }
@@ -1583,7 +1763,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 738,
+                        "start": 737,
                         "end": 739
                       }
                     },
@@ -1609,12 +1789,52 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 741,
+              "end": 761
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* === ARRAYS === *)",
+            "span": {
+              "start": 741,
+              "end": 761
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 763,
+              "end": 807
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Single element with trailing semicolon *)",
+            "span": {
+              "start": 763,
+              "end": 807
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 808,
+              "start": 739,
               "end": 835
             }
           },
@@ -1641,7 +1861,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 812,
+                "start": 811,
                 "end": 824
               }
             },
@@ -1668,7 +1888,7 @@
             "syntax_node": {
               "kind": "ARRAY_EXPR",
               "span": {
-                "start": 827,
+                "start": 826,
                 "end": 835
               }
             },
@@ -1680,7 +1900,7 @@
                   "syntax_node": {
                     "kind": "INT_LITERAL",
                     "span": {
-                      "start": 830,
+                      "start": 829,
                       "end": 831
                     }
                   },
@@ -1705,12 +1925,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 837,
+              "end": 884
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Multiple elements with trailing semicolon *)",
+            "span": {
+              "start": 837,
+              "end": 884
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 885,
+              "start": 835,
               "end": 920
             }
           },
@@ -1737,7 +1977,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 889,
+                "start": 888,
                 "end": 903
               }
             },
@@ -1764,7 +2004,7 @@
             "syntax_node": {
               "kind": "ARRAY_EXPR",
               "span": {
-                "start": 906,
+                "start": 905,
                 "end": 920
               }
             },
@@ -1776,7 +2016,7 @@
                   "syntax_node": {
                     "kind": "INT_LITERAL",
                     "span": {
-                      "start": 909,
+                      "start": 908,
                       "end": 910
                     }
                   },
@@ -1801,7 +2041,7 @@
                   "syntax_node": {
                     "kind": "INT_LITERAL",
                     "span": {
-                      "start": 912,
+                      "start": 911,
                       "end": 913
                     }
                   },
@@ -1826,7 +2066,7 @@
                   "syntax_node": {
                     "kind": "INT_LITERAL",
                     "span": {
-                      "start": 915,
+                      "start": 914,
                       "end": 916
                     }
                   },
@@ -1851,12 +2091,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 922,
+              "end": 972
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Empty array - no trailing semicolon possible *)",
+            "span": {
+              "start": 922,
+              "end": 972
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 973,
+              "start": 920,
               "end": 995
             }
           },
@@ -1883,7 +2143,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 977,
+                "start": 976,
                 "end": 988
               }
             },
@@ -1910,7 +2170,7 @@
             "syntax_node": {
               "kind": "ARRAY_EXPR",
               "span": {
-                "start": 991,
+                "start": 990,
                 "end": 995
               }
             },
@@ -1921,12 +2181,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 997,
+              "end": 1041
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Nested arrays with trailing semicolons *)",
+            "span": {
+              "start": 997,
+              "end": 1041
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 1042,
+              "start": 995,
               "end": 1096
             }
           },
@@ -1953,7 +2233,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 1046,
+                "start": 1045,
                 "end": 1058
               }
             },
@@ -1980,7 +2260,7 @@
             "syntax_node": {
               "kind": "ARRAY_EXPR",
               "span": {
-                "start": 1061,
+                "start": 1060,
                 "end": 1096
               }
             },
@@ -1990,7 +2270,7 @@
                 "syntax_node": {
                   "kind": "ARRAY_EXPR",
                   "span": {
-                    "start": 1066,
+                    "start": 1063,
                     "end": 1077
                   }
                 },
@@ -2002,7 +2282,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 1069,
+                          "start": 1068,
                           "end": 1070
                         }
                       },
@@ -2027,7 +2307,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 1072,
+                          "start": 1071,
                           "end": 1073
                         }
                       },
@@ -2052,7 +2332,7 @@
                 "syntax_node": {
                   "kind": "ARRAY_EXPR",
                   "span": {
-                    "start": 1081,
+                    "start": 1078,
                     "end": 1092
                   }
                 },
@@ -2064,7 +2344,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 1084,
+                          "start": 1083,
                           "end": 1085
                         }
                       },
@@ -2089,7 +2369,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 1087,
+                          "start": 1086,
                           "end": 1088
                         }
                       },
@@ -2116,12 +2396,52 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 1098,
+              "end": 1143
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* === SEQUENCES IN DIFFERENT CONTEXTS === *)",
+            "span": {
+              "start": 1098,
+              "end": 1143
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 1145,
+              "end": 1239
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Sequence in list with trailing semicolon - each list element is a parenthesized sequence *)",
+            "span": {
+              "start": 1145,
+              "end": 1239
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 1240,
+              "start": 1096,
               "end": 1309
             }
           },
@@ -2148,7 +2468,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 1244,
+                "start": 1243,
                 "end": 1255
               }
             },
@@ -2175,7 +2495,7 @@
             "syntax_node": {
               "kind": "LIST_EXPR",
               "span": {
-                "start": 1258,
+                "start": 1257,
                 "end": 1309
               }
             },
@@ -2185,7 +2505,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 1260,
+                    "start": 1259,
                     "end": 1282
                   }
                 },
@@ -2270,7 +2590,7 @@
                             "syntax_node": {
                               "kind": "STRING_LITERAL",
                               "span": {
-                                "start": 1275,
+                                "start": 1274,
                                 "end": 1278
                               }
                             },
@@ -2298,7 +2618,7 @@
                         "syntax_node": {
                           "kind": "INT_LITERAL",
                           "span": {
-                            "start": 1280,
+                            "start": 1279,
                             "end": 1281
                           }
                         },
@@ -2324,7 +2644,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 1284,
+                    "start": 1283,
                     "end": 1306
                   }
                 },
@@ -2409,7 +2729,7 @@
                             "syntax_node": {
                               "kind": "STRING_LITERAL",
                               "span": {
-                                "start": 1299,
+                                "start": 1298,
                                 "end": 1302
                               }
                             },
@@ -2437,7 +2757,7 @@
                         "syntax_node": {
                           "kind": "INT_LITERAL",
                           "span": {
-                            "start": 1304,
+                            "start": 1303,
                             "end": 1305
                           }
                         },
@@ -2465,12 +2785,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 1311,
+              "end": 1358
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Sequence in array with trailing semicolon *)",
+            "span": {
+              "start": 1311,
+              "end": 1358
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 1359,
+              "start": 1309,
               "end": 1431
             }
           },
@@ -2497,7 +2837,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 1363,
+                "start": 1362,
                 "end": 1375
               }
             },
@@ -2524,7 +2864,7 @@
             "syntax_node": {
               "kind": "ARRAY_EXPR",
               "span": {
-                "start": 1378,
+                "start": 1377,
                 "end": 1431
               }
             },
@@ -2534,7 +2874,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 1381,
+                    "start": 1380,
                     "end": 1403
                   }
                 },
@@ -2619,7 +2959,7 @@
                             "syntax_node": {
                               "kind": "STRING_LITERAL",
                               "span": {
-                                "start": 1396,
+                                "start": 1395,
                                 "end": 1399
                               }
                             },
@@ -2647,7 +2987,7 @@
                         "syntax_node": {
                           "kind": "INT_LITERAL",
                           "span": {
-                            "start": 1401,
+                            "start": 1400,
                             "end": 1402
                           }
                         },
@@ -2673,7 +3013,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 1405,
+                    "start": 1404,
                     "end": 1427
                   }
                 },
@@ -2758,7 +3098,7 @@
                             "syntax_node": {
                               "kind": "STRING_LITERAL",
                               "span": {
-                                "start": 1420,
+                                "start": 1419,
                                 "end": 1423
                               }
                             },
@@ -2786,7 +3126,7 @@
                         "syntax_node": {
                           "kind": "INT_LITERAL",
                           "span": {
-                            "start": 1425,
+                            "start": 1424,
                             "end": 1426
                           }
                         },
@@ -2814,12 +3154,32 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 1433,
+              "end": 1468
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* List with let..in expressions *)",
+            "span": {
+              "start": 1433,
+              "end": 1468
+            }
+          }
+        }
+      },
+      {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 1469,
+              "start": 1431,
               "end": 1538
             }
           },
@@ -2846,7 +3206,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 1473,
+                "start": 1472,
                 "end": 1484
               }
             },
@@ -2873,7 +3233,7 @@
             "syntax_node": {
               "kind": "LIST_EXPR",
               "span": {
-                "start": 1487,
+                "start": 1486,
                 "end": 1538
               }
             },
@@ -2883,7 +3243,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 1491,
+                    "start": 1488,
                     "end": 1511
                   }
                 },
@@ -2943,7 +3303,7 @@
                     "syntax_node": {
                       "kind": "IDENT_PATTERN",
                       "span": {
-                        "start": 1496,
+                        "start": 1495,
                         "end": 1497
                       }
                     },
@@ -2964,7 +3324,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 1500,
+                          "start": 1499,
                           "end": 1501
                         }
                       },
@@ -2988,7 +3348,7 @@
                     "syntax_node": {
                       "kind": "INFIX_EXPR",
                       "span": {
-                        "start": 1505,
+                        "start": 1504,
                         "end": 1510
                       }
                     },
@@ -2997,7 +3357,7 @@
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
-                          "start": 1505,
+                          "start": 1504,
                           "end": 1506
                         }
                       },
@@ -3006,7 +3366,7 @@
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
-                            "start": 1505,
+                            "start": 1504,
                             "end": 1506
                           }
                         },
@@ -3035,7 +3395,7 @@
                         "syntax_node": {
                           "kind": "INT_LITERAL",
                           "span": {
-                            "start": 1509,
+                            "start": 1508,
                             "end": 1510
                           }
                         },
@@ -3062,7 +3422,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 1515,
+                    "start": 1512,
                     "end": 1535
                   }
                 },
@@ -3122,7 +3482,7 @@
                     "syntax_node": {
                       "kind": "IDENT_PATTERN",
                       "span": {
-                        "start": 1520,
+                        "start": 1519,
                         "end": 1521
                       }
                     },
@@ -3143,7 +3503,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 1524,
+                          "start": 1523,
                           "end": 1525
                         }
                       },
@@ -3167,7 +3527,7 @@
                     "syntax_node": {
                       "kind": "INFIX_EXPR",
                       "span": {
-                        "start": 1529,
+                        "start": 1528,
                         "end": 1534
                       }
                     },
@@ -3176,7 +3536,7 @@
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
-                          "start": 1529,
+                          "start": 1528,
                           "end": 1530
                         }
                       },
@@ -3185,7 +3545,7 @@
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
-                            "start": 1529,
+                            "start": 1528,
                             "end": 1530
                           }
                         },
@@ -3214,7 +3574,7 @@
                         "syntax_node": {
                           "kind": "INT_LITERAL",
                           "span": {
-                            "start": 1533,
+                            "start": 1532,
                             "end": 1534
                           }
                         },

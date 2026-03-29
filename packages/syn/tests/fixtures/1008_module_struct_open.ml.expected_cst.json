@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 64
+        "end": 63
       }
     },
     "items": [
@@ -35,7 +35,7 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 11,
+                "start": 10,
                 "end": 63
               }
             },
@@ -43,14 +43,14 @@
               {
                 "kind": "OPEN_STMT",
                 "span": {
-                  "start": 20,
-                  "end": 33
+                  "start": 17,
+                  "end": 29
                 }
               },
               {
                 "kind": "LET_BINDING",
                 "span": {
-                  "start": 33,
+                  "start": 29,
                   "end": 59
                 }
               }

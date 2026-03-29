@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 34
+        "end": 33
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "LET_BINDING",
             "span": {
               "start": 0,
-              "end": 34
+              "end": 33
             }
           },
           "keyword_token": {
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -66,44 +66,33 @@
           },
           "parameters": [],
           "value": {
-            "tag": "index",
+            "tag": "local_open",
             "syntax_node": {
-              "kind": "ARRAY_INDEX_EXPR",
+              "kind": "LOCAL_OPEN_EXPR",
               "span": {
-                "start": 8,
-                "end": 34
+                "start": 7,
+                "end": 33
               }
             },
-            "collection": {
-              "tag": "constructor",
+            "module_path": {
+              "tag": "ident",
               "syntax_node": {
                 "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 7,
+                  "end": 12
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "List",
                 "span": {
                   "start": 8,
                   "end": 12
                 }
-              },
-              "constructor_path": {
-                "tag": "ident",
-                "syntax_node": {
-                  "kind": "IDENT_EXPR",
-                  "span": {
-                    "start": 8,
-                    "end": 12
-                  }
-                },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "List",
-                  "span": {
-                    "start": 8,
-                    "end": 12
-                  }
-                }
-              },
-              "payload": null
+              }
             },
-            "index": {
+            "body": {
               "tag": "apply",
               "syntax_node": {
                 "kind": "APPLY_EXPR",
@@ -147,7 +136,7 @@
                   "syntax_node": {
                     "kind": "LIST_EXPR",
                     "span": {
-                      "start": 21,
+                      "start": 20,
                       "end": 32
                     }
                   },
@@ -159,7 +148,7 @@
                         "syntax_node": {
                           "kind": "INT_LITERAL",
                           "span": {
-                            "start": 23,
+                            "start": 22,
                             "end": 24
                           }
                         },
@@ -184,7 +173,7 @@
                         "syntax_node": {
                           "kind": "INT_LITERAL",
                           "span": {
-                            "start": 26,
+                            "start": 25,
                             "end": 27
                           }
                         },
@@ -209,7 +198,7 @@
                         "syntax_node": {
                           "kind": "INT_LITERAL",
                           "span": {
-                            "start": 29,
+                            "start": 28,
                             "end": 30
                           }
                         },
@@ -230,7 +219,8 @@
                   ]
                 }
               }
-            }
+            },
+            "via_let_open": false
           },
           "and_bindings": [],
           "is_recursive": false

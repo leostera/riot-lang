@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 10
+        "end": 9
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "OPEN_STMT",
             "span": {
               "start": 0,
-              "end": 10
+              "end": 9
             }
           },
           "target": {
@@ -27,10 +27,10 @@
               "path": {
                 "tag": "ident",
                 "syntax_node": {
-                  "kind": "MODULE_PATH",
+                  "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 5,
-                    "end": 10
+                    "start": 4,
+                    "end": 9
                   }
                 },
                 "name_token": {
@@ -47,10 +47,10 @@
           "module_path": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 5,
-                "end": 10
+                "start": 4,
+                "end": 9
               }
             },
             "name_token": {

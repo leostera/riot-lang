@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 22
+        "end": 21
       }
     },
     "items": [
@@ -17,16 +17,16 @@
             "kind": "TYPE_DECL",
             "span": {
               "start": 0,
-              "end": 22
+              "end": 21
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 5,
-                "end": 7
+                "start": 4,
+                "end": 6
               }
             },
             "name_token": {
@@ -44,7 +44,7 @@
             "syntax_node": {
               "kind": "TYPE_POLY_VARIANT",
               "span": {
-                "start": 9,
+                "start": 8,
                 "end": 21
               }
             },
@@ -66,8 +66,8 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 12,
-                      "end": 15
+                      "start": 11,
+                      "end": 14
                     }
                   },
                   "tag_name": {
@@ -87,8 +87,8 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 17,
-                      "end": 20
+                      "start": 16,
+                      "end": 19
                     }
                   },
                   "tag_name": {

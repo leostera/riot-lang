@@ -23,9 +23,17 @@ Ceibo implements the red-green syntax tree architecture popularized by:
 The green tree represents abstract syntax with **no position information**:
 
 ```ocaml
+type green_trivia = {
+  kind: int;        (* Trivia kind ID *)
+  text: string;     (* Trivia text *)
+  width: int;       (* Trivia byte width *)
+}
+
 type green_token = {
-  kind: int;        (* Token kind ID *)
-  text: string;     (* Token text *)
+  kind: int;                (* Token kind ID *)
+  text: string;             (* Token body text *)
+  width: int;               (* Token body width *)
+  leading_trivia: green_trivia list;
 }
 
 type green_node = {
@@ -75,7 +83,7 @@ type syntax_token = {
 
 ```ocaml
 (* Build green nodes bottom-up *)
-let token = GreenToken.make ~kind:INT ~text:"42"
+let token = Green.make_token ~leading_trivia:[] ~kind:INT ~text:"42" ~width:2
 let node = GreenNode.make ~kind:LIT_EXPR ~children:[Token token]
 ```
 
@@ -127,17 +135,13 @@ Preserve all whitespace and comments:
 (* Original source *)
 "let x =  1  (* comment *)"
 
-(* Green tree includes all trivia *)
+(* Trivia is attached to the next token *)
 [
-  Token(LET, "let");
-  Trivia(SPACE, " ");
-  Token(IDENT, "x");
-  Trivia(SPACE, " ");
-  Token(EQ, "=");
-  Trivia(SPACES, "  ");
-  Token(INT, "1");
-  Trivia(SPACES, "  ");
-  Trivia(COMMENT, "(* comment *)");
+  Token(LET, "let", leading_trivia = []);
+  Token(IDENT, "x", leading_trivia = [Trivia(SPACE, " ")]);
+  Token(EQ, "=", leading_trivia = [Trivia(SPACE, " ")]);
+  Token(INT, "1", leading_trivia = [Trivia(SPACES, "  ")]);
+  EOF(leading_trivia = [Trivia(SPACES, "  "); Trivia(COMMENT, "(* comment *)")]);
 ]
 ```
 

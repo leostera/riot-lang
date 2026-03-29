@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 14
+        "end": 13
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "OPEN_STMT",
             "span": {
               "start": 0,
-              "end": 14
+              "end": 13
             }
           },
           "target": {
@@ -29,8 +29,8 @@
                 "syntax_node": {
                   "kind": "MODULE_PATH",
                   "span": {
-                    "start": 5,
-                    "end": 14
+                    "start": 4,
+                    "end": 13
                   }
                 },
                 "prefix": {
@@ -38,8 +38,8 @@
                   "syntax_node": {
                     "kind": "MODULE_PATH",
                     "span": {
-                      "start": 5,
-                      "end": 14
+                      "start": 4,
+                      "end": 13
                     }
                   },
                   "name_token": {
@@ -75,8 +75,8 @@
             "syntax_node": {
               "kind": "MODULE_PATH",
               "span": {
-                "start": 5,
-                "end": 14
+                "start": 4,
+                "end": 13
               }
             },
             "prefix": {
@@ -84,8 +84,8 @@
               "syntax_node": {
                 "kind": "MODULE_PATH",
                 "span": {
-                  "start": 5,
-                  "end": 14
+                  "start": 4,
+                  "end": 13
                 }
               },
               "name_token": {

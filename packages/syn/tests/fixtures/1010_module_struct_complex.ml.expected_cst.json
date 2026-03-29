@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 90
+        "end": 89
       }
     },
     "items": [
@@ -35,7 +35,7 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 11,
+                "start": 10,
                 "end": 89
               }
             },
@@ -43,28 +43,28 @@
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 20,
-                  "end": 36
+                  "start": 17,
+                  "end": 32
                 }
               },
               {
                 "kind": "EXCEPTION_DECL",
                 "span": {
-                  "start": 36,
-                  "end": 55
+                  "start": 32,
+                  "end": 51
                 }
               },
               {
                 "kind": "LET_BINDING",
                 "span": {
-                  "start": 55,
+                  "start": 51,
                   "end": 69
                 }
               },
               {
                 "kind": "LET_BINDING",
                 "span": {
-                  "start": 72,
+                  "start": 69,
                   "end": 85
                 }
               }

@@ -196,6 +196,16 @@ let standalone_trivia_item_from_lexed_token = fun ~source ~comment_item_of_comme
       |> Cst.Token.syntax_token in
       standalone_trivia_item_from_token ~comment_item_of_comment ~docstring_item_of_docstring syntax_token
 
+let flatten_lexed_trivia_tokens = fun tokens ->
+  tokens
+  |> List.concat_map (fun ({ Token.leading_trivia; _ } as token) ->
+       let leading = List.map Token.trivia_to_token leading_trivia in
+       match Token.trivia_of_token token with
+       | Some _ ->
+           leading @ [ token ]
+       | None ->
+           leading)
+
 let source_file_items_from_child = fun ~comment_item_of_comment ~docstring_item_of_docstring ~owned_trivia_spans_of_item items_from_node ->
   function
   | Ceibo.Red.Node node when not (is_trivia (Ceibo.Red.SyntaxNode.kind node)) ->
@@ -465,13 +475,10 @@ let is_constant_syntax_kind =
       false
 
 let direct_non_trivia_nodes = fun node -> Ceibo.Red.SyntaxNode.direct_nodes node
-|> List.filter (fun child -> not (is_trivia (Ceibo.Red.SyntaxNode.kind child)))
 
 let direct_non_trivia_tokens = fun node -> Ceibo.Red.SyntaxNode.direct_tokens node
-|> List.filter (fun tok -> not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)))
 
 let subtree_non_trivia_tokens = fun node -> Ceibo.Red.SyntaxNode.tokens node
-|> List.filter (fun tok -> not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)))
 
 let span_of_syntax_node_nontrivia_bounds = fun syntax_node ->
   let full_span = Ceibo.Red.SyntaxNode.span syntax_node in
@@ -2060,7 +2067,17 @@ let rec simple_pattern_name_token = fun node ->
   | _ ->
       None
 
-let is_attribute_node = fun node -> Ceibo.Red.SyntaxNode.kind node = Syntax_kind.ATTRIBUTE_EXPR
+let rec standalone_attribute_node = fun node ->
+  Ceibo.Red.SyntaxNode.kind node = Syntax_kind.ATTRIBUTE_EXPR
+  && (
+    match direct_non_trivia_nodes node with
+    | [] ->
+        true
+    | children ->
+        List.for_all standalone_attribute_node children
+  )
+
+let is_attribute_node = standalone_attribute_node
 
 let is_extension_node = fun node -> Ceibo.Red.SyntaxNode.kind node = Syntax_kind.EXTENSION_EXPR
 
@@ -3455,15 +3472,6 @@ let parameter_with_attributes = fun parameter attributes ->
     )
   | _, Cst.Parameter.LocallyAbstract _ ->
       parameter
-
-let standalone_attribute_node = fun node ->
-  Ceibo.Red.SyntaxNode.kind node = Syntax_kind.ATTRIBUTE_EXPR && not
-    (
-      direct_non_trivia_nodes node |> List.exists
-        (fun child ->
-          let kind = Ceibo.Red.SyntaxNode.kind child in
-          is_parameter_like_kind kind || is_pattern_syntax_kind kind)
-    )
 
 let parameter_candidate_node = fun node ->
   let kind = Ceibo.Red.SyntaxNode.kind node in
@@ -6940,6 +6948,7 @@ let build_source_file_body = fun ~source ~comment_item_of_comment ~docstring_ite
   |> List.concat_map (fun (_, _, item) -> owned_trivia_spans_of_item item) in
   let trivia_entries =
     Lexer.tokenize source
+    |> flatten_lexed_trivia_tokens
     |> List.filter is_standalone_trivia_token
     |> List.filter (fun ({ Token.span; _ } : Token.t) -> not (List.exists (fun owned_span -> span_contains
     owned_span

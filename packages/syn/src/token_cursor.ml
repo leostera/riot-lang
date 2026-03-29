@@ -4,58 +4,97 @@ open Std.Collections
 type t = {
   tokens : Token.t array;
   mutable pos : int;
+  mutable leading_trivia_consumed : bool;
   length : int;
-  source : string; (* Keep source for view function *)
+  source : string;
+  (* Keep source for view function *)
 }
 
-let create ~source tokens =
+let create = fun ~source tokens ->
   let tokens = Array.of_list tokens in
-  { tokens; pos = 0; length = Array.length tokens; source }
+  {tokens; pos = 0; leading_trivia_consumed = false; length = Array.length tokens; source}
 
-let position t = t.pos
-let set_position t pos = t.pos <- pos
-let is_eof t = t.pos >= t.length
+let position = fun t -> (t.pos * 2) + (if t.leading_trivia_consumed then 1 else 0)
 
-let eof_token () =
-  { Token.kind = Token.EOF; span = Ceibo.Span.make ~start:0 ~end_:0 }
+let set_position = fun t pos ->
+  t.pos <- pos / 2;
+  t.leading_trivia_consumed <- pos mod 2 = 1
 
-let peek t = if is_eof t then eof_token () else t.tokens.(t.pos)
+let is_eof = fun t -> t.pos >= t.length
 
-let peek_n t n =
-  if t.pos + n >= t.length then eof_token () else t.tokens.(t.pos + n)
+let eof_token = fun () -> {
+  Token.kind = Token.EOF;
+  span = Ceibo.Span.make ~start:0 ~end_:0;
+  leading_trivia = [];
+}
 
-let advance t = if not (is_eof t) then t.pos <- t.pos + 1
+let peek = fun t ->
+  if is_eof t then
+    eof_token ()
+  else
+    t.tokens.(t.pos)
 
-let skip_while t f =
+let peek_n = fun t n ->
+  if t.pos + n >= t.length then
+    eof_token ()
+  else
+    t.tokens.(t.pos + n)
+
+let advance = fun t ->
+  if not (is_eof t) then (
+    t.pos <- t.pos + 1
+  ; t.leading_trivia_consumed <- false
+  )
+
+let skip_while = fun t f ->
   while (not (is_eof t)) && f (peek t) do
     advance t
   done
 
-let take_while t f =
+let take_while = fun t f ->
   let start = t.pos in
   skip_while t f;
   let len = t.pos - start in
   Array.sub t.tokens start len |> Array.to_list
 
-let slice t start len = Array.sub t.tokens start len |> Array.to_list
+let slice = fun t start len -> Array.sub t.tokens start len |> Array.to_list
 
-(** Get a substring view of the source at the given span *)
-let view t span =
+(** Get the last consumed non-trivia token. Returns first token if at start. *)
+let view = fun t span ->
   let start_pos = span.Ceibo.Span.start in
   let end_pos = span.Ceibo.Span.end_ in
   String.sub t.source start_pos (end_pos - start_pos)
 
-(** Get the last consumed non-trivia token. Returns first token if at start. *)
-let last_token t =
-  let rec find_last_non_trivia idx =
-    if idx < 0 then if t.length > 0 then t.tokens.(0) else eof_token ()
+let peek_leading_trivia = fun t ->
+  if is_eof t || t.leading_trivia_consumed then
+    []
+  else
+    t.tokens.(t.pos).Token.leading_trivia
+
+let consume_leading_trivia = fun t ->
+  let trivia = peek_leading_trivia t in
+  t.leading_trivia_consumed <- true;
+  List.map Token.trivia_to_token trivia
+
+let last_token = fun t ->
+  let rec find_last_non_trivia = fun idx ->
+    if idx < 0 then
+      if t.length > 0 then
+        t.tokens.(0)
+      else
+        eof_token ()
     else
       let tok = t.tokens.(idx) in
       match tok.Token.kind with
-      | Token.Whitespace | Token.Comment _ | Token.Docstring _ ->
+      | Token.Whitespace
+      | Token.Comment _
+      | Token.Docstring _ ->
           find_last_non_trivia (idx - 1)
       | _ -> tok
   in
-  if t.pos > 0 then find_last_non_trivia (t.pos - 1)
-  else if t.length > 0 then t.tokens.(0)
-  else eof_token ()
+  if t.pos > 0 then
+    find_last_non_trivia (t.pos - 1)
+  else if t.length > 0 then
+    t.tokens.(0)
+  else
+    eof_token ()

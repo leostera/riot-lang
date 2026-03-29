@@ -18,25 +18,25 @@ type build_cst_error =
   | Parse_diagnostics of Diagnostic.t list
   | Cst_builder_error of CstBuilder.error
 
-let tokenize source = Lexer.tokenize source
+let tokenize = fun source -> Lexer.tokenize source
 
-let build_cst (result : Parser.parse_result) =
+let build_cst = fun (result : Parser.parse_result) ->
   if List.length result.Parser.diagnostics > 0 then
     Error (Parse_diagnostics result.Parser.diagnostics)
   else
-    match CstBuilder.create_from_ceibo ~kind:result.Parser.kind result.tree with
+    match CstBuilder.create_from_ceibo ~kind:result.Parser.kind ~source:result.Parser.source result.tree with
     | Ok cst -> Ok cst
     | Error err -> Error (Cst_builder_error err)
 
-let parse_interface source =
+let parse_interface = fun source ->
   let tokens = Lexer.tokenize source in
   Parser.parse_interface ~source tokens
 
-let parse_implementation source =
+let parse_implementation = fun source ->
   let tokens = Lexer.tokenize source in
   Parser.parse_implementation ~source tokens
 
-let parse ~filename source =
+let parse = fun ~filename source ->
   match Path.extension filename with
   | Some ".mli" -> parse_interface source
   | _ -> parse_implementation source

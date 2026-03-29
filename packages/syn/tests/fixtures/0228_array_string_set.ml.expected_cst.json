@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 21
+        "end": 20
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "ASSIGN_EXPR",
               "span": {
-                "start": 8,
+                "start": 7,
                 "end": 20
               }
             },
@@ -79,8 +79,8 @@
               "syntax_node": {
                 "kind": "STRING_INDEX_EXPR",
                 "span": {
-                  "start": 8,
-                  "end": 14
+                  "start": 7,
+                  "end": 13
                 }
               },
               "collection": {
@@ -88,7 +88,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 8,
+                    "start": 7,
                     "end": 9
                   }
                 },
@@ -97,7 +97,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 8,
+                      "start": 7,
                       "end": 9
                     }
                   },
@@ -152,7 +152,7 @@
                 "syntax_node": {
                   "kind": "CHAR_LITERAL",
                   "span": {
-                    "start": 17,
+                    "start": 16,
                     "end": 20
                   }
                 },

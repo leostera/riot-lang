@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 39
+        "end": 38
       }
     },
     "items": [
@@ -17,16 +17,16 @@
             "kind": "TYPE_DECL",
             "span": {
               "start": 0,
-              "end": 39
+              "end": 38
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 5,
-                "end": 13
+                "start": 4,
+                "end": 12
               }
             },
             "name_token": {
@@ -44,7 +44,7 @@
             "syntax_node": {
               "kind": "TYPE_RECORD",
               "span": {
-                "start": 15,
+                "start": 14,
                 "end": 38
               }
             },
@@ -53,8 +53,8 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 17,
-                    "end": 37
+                    "start": 16,
+                    "end": 36
                   }
                 },
                 "field_name": {
@@ -70,8 +70,8 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 33,
-                      "end": 37
+                      "start": 32,
+                      "end": 36
                     }
                   },
                   "constructor_path": {
@@ -79,8 +79,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 33,
-                        "end": 37
+                        "start": 32,
+                        "end": 36
                       }
                     },
                     "name_token": {

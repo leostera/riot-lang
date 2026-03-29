@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 20
+        "end": 19
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "LET_BINDING",
             "span": {
               "start": 0,
-              "end": 20
+              "end": 19
             }
           },
           "keyword_token": {
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,8 +70,8 @@
             "syntax_node": {
               "kind": "POLY_VARIANT_EXPR",
               "span": {
-                "start": 8,
-                "end": 20
+                "start": 7,
+                "end": 19
               }
             },
             "tag_token": {
@@ -87,8 +87,8 @@
               "syntax_node": {
                 "kind": "POLY_VARIANT_EXPR",
                 "span": {
-                  "start": 14,
-                  "end": 20
+                  "start": 13,
+                  "end": 19
                 }
               },
               "tag_token": {

@@ -105,7 +105,7 @@ module Green : sig
     width : int;
   }
 
-  (** Green token - leaf node containing source text.
+  (** Green token - leaf node containing source text and its leading trivia.
 
       Tokens represent atomic elements like keywords, identifiers, and literals.
       Parametrized by:
@@ -114,8 +114,11 @@ module Green : sig
 
       Each token has:
       - A kind (what type of token)
-      - The source text
-      - Width (byte length for positioning) *)
+      - The token body text
+      - Width of just the token body
+      - Leading trivia that appears immediately before the token body
+
+      Trivia is not represented as a standalone child element in the tree. *)
   (** Green node - interior node with children.
 
       Nodes represent grammatical constructions like expressions and
@@ -123,7 +126,7 @@ module Green : sig
 
       Each node has:
       - A kind (what type of node)
-      - Children (array of tokens/nodes)
+      - Children (array of non-trivia tokens/nodes)
       - Width (total byte length of all children, cached) *)
   type ('kind, 'text) token = {
     kind : 'kind;
@@ -157,14 +160,16 @@ module Green : sig
   (** ## Construction *)
 
   (** ## Construction *)
-  (** `make_trivia ~kind ~text ~width` creates a trivia entry. *)
+  (** `make_trivia ~kind ~text ~width` creates a trivia entry that can be
+      attached to a token's `leading_trivia`. *)
   val make_trivia : kind:'kind -> text:'text -> width:int -> ('kind, 'text) trivia
 
-  (** `make_token ~kind ~text ~width` creates a new token.
+    (** `make_token ~leading_trivia ~kind ~text ~width` creates a new token.
 
-      The width should be the byte length of the text for correct positioning.
+      The width should be the byte length of the token body text for correct
+      positioning.
 
-      Example: `make_token ~kind:IDENT ~text:"foo" ~width:3` *)
+      Example: `make_token ~leading_trivia:[] ~kind:IDENT ~text:"foo" ~width:3` *)
   val make_token : leading_trivia:('kind, 'text) trivia list ->
   kind:'kind ->
   text:'text ->
@@ -321,13 +326,16 @@ module Red : sig
     (** `child node i` returns the child at index `i` (lazy fabrication). *)
     val child : ('kind, 'text) syntax_node -> int -> ('kind, 'text) syntax_element option
 
-    (** `children node` returns all children. *)
+    (** `children node` returns all non-trivia children.
+
+        Trivia remains attached to tokens and does not appear as a standalone
+        child element. *)
     val children : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element array
 
-    (** `children_list node` returns all children as a list. *)
+    (** `children_list node` returns all non-trivia children as a list. *)
     val children_list : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element list
 
-    (** `direct_tokens node` returns only the direct token children. *)
+    (** `direct_tokens node` returns only the direct non-trivia token children. *)
     val direct_tokens : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
 
     (** `direct_nodes node` returns only the direct node children. *)
@@ -383,6 +391,8 @@ module Red : sig
     val kind : ('kind, 'text) syntax_token -> 'kind
 
     val text : ('kind, 'text) syntax_token -> 'text
+    (** `leading_trivia token` returns the trivia attached to the token in
+        source order, with absolute offsets and spans. *)
     val leading_trivia : ('kind, 'text) syntax_token -> ('kind, 'text) syntax_trivia list
   end
 
@@ -409,8 +419,10 @@ end
 
     The builder provides two styles:
 
-    1. **Stack-based**: Use `create`, `start_node`, `token`, `finish_node`,
-    `build` 2. **Direct**: Use `make_token` and `make_node` helper functions
+    1. **Stack-based**: Use `create`, `start_node`, `token`,
+    `token_with_leading_trivia`, `finish_node`, `build`
+    2. **Direct**: Use `make_token`, `make_token_with_leading_trivia`, and
+    `make_node` helper functions
 
     ## Stack-Based Example
 
@@ -432,8 +444,19 @@ module Builder : sig
   type ('kind, 'text) t
   val create : unit -> ('kind, 'text) t
 
-  (** `token builder ~kind ~text ~width` adds a token to the current node. *)
+  (** `token builder ~kind ~text ~width` adds a token with no leading trivia to
+      the current node. *)
   val token : ('kind, 'text) t -> kind:'kind -> text:'text -> width:int -> ('kind, 'text) t
+
+  (** `token_with_leading_trivia builder ~leading_trivia ~kind ~text ~width`
+      adds a token with explicit leading trivia to the current node. *)
+  val token_with_leading_trivia :
+    ('kind, 'text) t ->
+    leading_trivia:('kind, 'text) Green.trivia list ->
+    kind:'kind ->
+    text:'text ->
+    width:int ->
+    ('kind, 'text) t
 
   (** `start_node builder ~kind` starts a new node (pushes stack frame). *)
   val start_node : ('kind, 'text) t -> kind:'kind -> ('kind, 'text) t
@@ -450,8 +473,18 @@ module Builder : sig
 
   (** ## Direct Construction *)
 
-  (** `make_token ~kind ~text ~width` creates a token element directly. *)
+  (** `make_token ~kind ~text ~width` creates a token element directly with no
+      leading trivia. *)
   val make_token : kind:'kind -> text:'text -> width:int -> ('kind, 'text) Green.element
+
+  (** `make_token_with_leading_trivia ~leading_trivia ~kind ~text ~width`
+      creates a token element directly with explicit leading trivia. *)
+  val make_token_with_leading_trivia :
+    leading_trivia:('kind, 'text) Green.trivia list ->
+    kind:'kind ->
+    text:'text ->
+    width:int ->
+    ('kind, 'text) Green.element
 
   val make_node : kind:'kind -> ('kind, 'text) Green.element list -> ('kind, 'text) Green.element
   (** `make_node ~kind elements` creates a node element directly from a list. *)

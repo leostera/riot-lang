@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 37
+        "end": 36
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "OBJECT_EXPR",
               "span": {
-                "start": 10,
+                "start": 7,
                 "end": 36
               }
             },
@@ -81,8 +81,8 @@
                 "syntax_node": {
                   "kind": "OBJECT_INHERIT",
                   "span": {
-                    "start": 21,
-                    "end": 33
+                    "start": 16,
+                    "end": 30
                   }
                 },
                 "attributes": [],
@@ -91,7 +91,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 29,
+                      "start": 28,
                       "end": 30
                     }
                   },
@@ -100,7 +100,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 29,
+                        "start": 28,
                         "end": 30
                       }
                     },

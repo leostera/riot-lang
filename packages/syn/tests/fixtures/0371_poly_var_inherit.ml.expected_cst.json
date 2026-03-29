@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 33
+        "end": 32
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "LET_BINDING",
             "span": {
               "start": 0,
-              "end": 33
+              "end": 32
             }
           },
           "keyword_token": {
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,8 +70,8 @@
             "syntax_node": {
               "kind": "MATCH_EXPR",
               "span": {
-                "start": 8,
-                "end": 33
+                "start": 7,
+                "end": 32
               }
             },
             "keyword_token": {
@@ -95,7 +95,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 14,
+                  "start": 13,
                   "end": 15
                 }
               },
@@ -104,7 +104,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 14,
+                    "start": 13,
                     "end": 15
                   }
                 },
@@ -123,7 +123,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 21,
+                    "start": 20,
                     "end": 32
                   }
                 },
@@ -142,8 +142,8 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_TYPE_PATTERN",
                     "span": {
-                      "start": 21,
-                      "end": 28
+                      "start": 20,
+                      "end": 27
                     }
                   },
                   "type_path": {
@@ -151,8 +151,8 @@
                     "syntax_node": {
                       "kind": "POLY_VARIANT_TYPE_PATTERN",
                       "span": {
-                        "start": 21,
-                        "end": 28
+                        "start": 20,
+                        "end": 27
                       }
                     },
                     "name_token": {
@@ -173,7 +173,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 31,
+                        "start": 30,
                         "end": 32
                       }
                     },

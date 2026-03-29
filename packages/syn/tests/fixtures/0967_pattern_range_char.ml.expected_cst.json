@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 102
+        "end": 101
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "LET_BINDING",
             "span": {
               "start": 0,
-              "end": 102
+              "end": 101
             }
           },
           "keyword_token": {
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,8 +70,8 @@
               "syntax_node": {
                 "kind": "IDENT_PATTERN",
                 "span": {
-                  "start": 7,
-                  "end": 8
+                  "start": 5,
+                  "end": 7
                 }
               },
               "pattern": {
@@ -79,16 +79,16 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 7,
-                    "end": 8
+                    "start": 5,
+                    "end": 7
                   }
                 },
                 "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "x",
                   "span": {
-                    "start": 7,
-                    "end": 8
+                    "start": 6,
+                    "end": 7
                   }
                 }
               },
@@ -96,8 +96,8 @@
                 "kind": "IDENT_EXPR",
                 "text": "x",
                 "span": {
-                  "start": 7,
-                  "end": 8
+                  "start": 6,
+                  "end": 7
                 }
               }
             }
@@ -107,8 +107,8 @@
             "syntax_node": {
               "kind": "MATCH_EXPR",
               "span": {
-                "start": 12,
-                "end": 102
+                "start": 9,
+                "end": 101
               }
             },
             "keyword_token": {
@@ -132,7 +132,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 18,
+                  "start": 17,
                   "end": 19
                 }
               },
@@ -141,7 +141,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 18,
+                    "start": 17,
                     "end": 19
                   }
                 },
@@ -160,7 +160,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 27,
+                    "start": 24,
                     "end": 54
                   }
                 },
@@ -186,7 +186,7 @@
                   "syntax_node": {
                     "kind": "RANGE_PATTERN",
                     "span": {
-                      "start": 29,
+                      "start": 28,
                       "end": 39
                     }
                   },
@@ -195,7 +195,7 @@
                     "syntax_node": {
                       "kind": "RANGE_PATTERN",
                       "span": {
-                        "start": 29,
+                        "start": 28,
                         "end": 39
                       }
                     },
@@ -214,7 +214,7 @@
                     "syntax_node": {
                       "kind": "RANGE_PATTERN",
                       "span": {
-                        "start": 29,
+                        "start": 28,
                         "end": 39
                       }
                     },
@@ -237,7 +237,7 @@
                     "syntax_node": {
                       "kind": "STRING_LITERAL",
                       "span": {
-                        "start": 43,
+                        "start": 42,
                         "end": 54
                       }
                     },
@@ -261,7 +261,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 57,
+                    "start": 54,
                     "end": 84
                   }
                 },
@@ -287,7 +287,7 @@
                   "syntax_node": {
                     "kind": "RANGE_PATTERN",
                     "span": {
-                      "start": 59,
+                      "start": 58,
                       "end": 69
                     }
                   },
@@ -296,7 +296,7 @@
                     "syntax_node": {
                       "kind": "RANGE_PATTERN",
                       "span": {
-                        "start": 59,
+                        "start": 58,
                         "end": 69
                       }
                     },
@@ -315,7 +315,7 @@
                     "syntax_node": {
                       "kind": "RANGE_PATTERN",
                       "span": {
-                        "start": 59,
+                        "start": 58,
                         "end": 69
                       }
                     },
@@ -338,7 +338,7 @@
                     "syntax_node": {
                       "kind": "STRING_LITERAL",
                       "span": {
-                        "start": 73,
+                        "start": 72,
                         "end": 84
                       }
                     },
@@ -362,7 +362,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 87,
+                    "start": 84,
                     "end": 101
                   }
                 },
@@ -388,7 +388,7 @@
                   "syntax_node": {
                     "kind": "WILDCARD_PATTERN",
                     "span": {
-                      "start": 89,
+                      "start": 88,
                       "end": 90
                     }
                   }
@@ -401,7 +401,7 @@
                     "syntax_node": {
                       "kind": "STRING_LITERAL",
                       "span": {
-                        "start": 94,
+                        "start": 93,
                         "end": 101
                       }
                     },

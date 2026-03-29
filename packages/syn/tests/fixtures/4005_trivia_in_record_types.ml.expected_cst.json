@@ -6,27 +6,67 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 573
+        "end": 572
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 51
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Test that trivia is preserved in record types *)",
+            "span": {
+              "start": 0,
+              "end": 51
+            }
+          }
+        }
+      },
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 53,
+              "end": 72
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Simple record *)",
+            "span": {
+              "start": 53,
+              "end": 72
+            }
+          }
+        }
+      },
       {
         "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 73,
-              "end": 145
+              "start": 0,
+              "end": 106
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 78,
-                "end": 81
+                "start": 77,
+                "end": 80
               }
             },
             "name_token": {
@@ -44,7 +84,7 @@
             "syntax_node": {
               "kind": "TYPE_RECORD",
               "span": {
-                "start": 83,
+                "start": 82,
                 "end": 106
               }
             },
@@ -53,7 +93,7 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 85,
+                    "start": 84,
                     "end": 92
                   }
                 },
@@ -70,7 +110,7 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 89,
+                      "start": 88,
                       "end": 92
                     }
                   },
@@ -79,7 +119,7 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 89,
+                        "start": 88,
                         "end": 92
                       }
                     },
@@ -100,8 +140,8 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 94,
-                    "end": 105
+                    "start": 93,
+                    "end": 104
                   }
                 },
                 "field_name": {
@@ -117,8 +157,8 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 98,
-                      "end": 105
+                      "start": 97,
+                      "end": 104
                     }
                   },
                   "constructor_path": {
@@ -126,8 +166,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 98,
-                        "end": 105
+                        "start": 97,
+                        "end": 104
                       }
                     },
                     "name_token": {
@@ -149,22 +189,42 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 108,
+              "end": 144
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Record with comments on fields *)",
+            "span": {
+              "start": 108,
+              "end": 144
+            }
+          }
+        }
+      },
+      {
         "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 145,
-              "end": 269
+              "start": 106,
+              "end": 233
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 150,
-                "end": 153
+                "start": 149,
+                "end": 152
               }
             },
             "name_token": {
@@ -182,7 +242,7 @@
             "syntax_node": {
               "kind": "TYPE_RECORD",
               "span": {
-                "start": 155,
+                "start": 154,
                 "end": 233
               }
             },
@@ -191,7 +251,7 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 184,
+                    "start": 156,
                     "end": 191
                   }
                 },
@@ -208,7 +268,7 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 188,
+                      "start": 187,
                       "end": 191
                     }
                   },
@@ -217,7 +277,7 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 188,
+                        "start": 187,
                         "end": 191
                       }
                     },
@@ -238,7 +298,7 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 220,
+                    "start": 192,
                     "end": 230
                   }
                 },
@@ -255,7 +315,7 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 224,
+                      "start": 223,
                       "end": 230
                     }
                   },
@@ -264,7 +324,7 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 224,
+                        "start": 223,
                         "end": 230
                       }
                     },
@@ -287,22 +347,42 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 235,
+              "end": 268
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Record with inline comments *)",
+            "span": {
+              "start": 235,
+              "end": 268
+            }
+          }
+        }
+      },
+      {
         "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 269,
-              "end": 376
+              "start": 233,
+              "end": 341
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 274,
-                "end": 277
+                "start": 273,
+                "end": 276
               }
             },
             "name_token": {
@@ -320,7 +400,7 @@
             "syntax_node": {
               "kind": "TYPE_RECORD",
               "span": {
-                "start": 279,
+                "start": 278,
                 "end": 341
               }
             },
@@ -329,7 +409,7 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 281,
+                    "start": 280,
                     "end": 311
                   }
                 },
@@ -346,7 +426,7 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 308,
+                      "start": 296,
                       "end": 311
                     }
                   },
@@ -355,7 +435,7 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 308,
+                        "start": 296,
                         "end": 311
                       }
                     },
@@ -376,8 +456,8 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 329,
-                    "end": 340
+                    "start": 312,
+                    "end": 339
                   }
                 },
                 "field_name": {
@@ -393,8 +473,8 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 333,
-                      "end": 340
+                      "start": 332,
+                      "end": 339
                     }
                   },
                   "constructor_path": {
@@ -402,8 +482,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 333,
-                        "end": 340
+                        "start": 332,
+                        "end": 339
                       }
                     },
                     "name_token": {
@@ -425,22 +505,42 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 343,
+              "end": 375
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Mutable record with trivia *)",
+            "span": {
+              "start": 343,
+              "end": 375
+            }
+          }
+        }
+      },
+      {
         "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 376,
-              "end": 494
+              "start": 341,
+              "end": 447
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 381,
-                "end": 384
+                "start": 380,
+                "end": 383
               }
             },
             "name_token": {
@@ -458,7 +558,7 @@
             "syntax_node": {
               "kind": "TYPE_RECORD",
               "span": {
-                "start": 386,
+                "start": 385,
                 "end": 447
               }
             },
@@ -467,7 +567,7 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 388,
+                    "start": 387,
                     "end": 430
                   }
                 },
@@ -484,7 +584,7 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 427,
+                      "start": 426,
                       "end": 430
                     }
                   },
@@ -493,7 +593,7 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 427,
+                        "start": 426,
                         "end": 430
                       }
                     },
@@ -514,8 +614,8 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 432,
-                    "end": 446
+                    "start": 431,
+                    "end": 445
                   }
                 },
                 "field_name": {
@@ -531,8 +631,8 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 439,
-                      "end": 446
+                      "start": 438,
+                      "end": 445
                     }
                   },
                   "constructor_path": {
@@ -540,8 +640,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 439,
-                        "end": 446
+                        "start": 438,
+                        "end": 445
                       }
                     },
                     "name_token": {
@@ -563,22 +663,42 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 449,
+              "end": 493
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Record with type parameters and trivia *)",
+            "span": {
+              "start": 449,
+              "end": 493
+            }
+          }
+        }
+      },
+      {
         "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 494,
-              "end": 573
+              "start": 447,
+              "end": 572
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 502,
-                "end": 505
+                "start": 501,
+                "end": 504
               }
             },
             "name_token": {
@@ -595,7 +715,7 @@
               "syntax_node": {
                 "kind": "TYPE_PARAM",
                 "span": {
-                  "start": 499,
+                  "start": 498,
                   "end": 501
                 }
               },
@@ -605,7 +725,7 @@
                 "syntax_node": {
                   "kind": "TYPE_VAR",
                   "span": {
-                    "start": 499,
+                    "start": 498,
                     "end": 501
                   }
                 },
@@ -625,7 +745,7 @@
             "syntax_node": {
               "kind": "TYPE_RECORD",
               "span": {
-                "start": 507,
+                "start": 506,
                 "end": 572
               }
             },
@@ -634,7 +754,7 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 509,
+                    "start": 508,
                     "end": 551
                   }
                 },
@@ -651,7 +771,7 @@
                   "syntax_node": {
                     "kind": "TYPE_VAR",
                     "span": {
-                      "start": 549,
+                      "start": 532,
                       "end": 551
                     }
                   },
@@ -670,8 +790,8 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 553,
-                    "end": 571
+                    "start": 552,
+                    "end": 570
                   }
                 },
                 "field_name": {
@@ -687,8 +807,8 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 564,
-                      "end": 571
+                      "start": 563,
+                      "end": 570
                     }
                   },
                   "constructor_path": {
@@ -696,8 +816,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 564,
-                        "end": 571
+                        "start": 563,
+                        "end": 570
                       }
                     },
                     "name_token": {

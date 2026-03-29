@@ -6,17 +6,37 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 168
+        "end": 167
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 48
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* All prefix operators as function arguments *)",
+            "span": {
+              "start": 0,
+              "end": 48
+            }
+          }
+        }
+      },
       {
         "tag": "let_binding",
         "item": {
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 49,
+              "start": 0,
               "end": 62
             }
           },
@@ -43,7 +63,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 53,
+                "start": 52,
                 "end": 54
               }
             },
@@ -70,7 +90,7 @@
             "syntax_node": {
               "kind": "APPLY_EXPR",
               "span": {
-                "start": 57,
+                "start": 56,
                 "end": 62
               }
             },
@@ -79,7 +99,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 57,
+                  "start": 56,
                   "end": 60
                 }
               },
@@ -88,7 +108,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 57,
+                    "start": 56,
                     "end": 60
                   }
                 },
@@ -111,7 +131,7 @@
                   "syntax_node": {
                     "kind": "INT_LITERAL",
                     "span": {
-                      "start": 61,
+                      "start": 60,
                       "end": 62
                     }
                   },
@@ -141,7 +161,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 63,
+              "start": 62,
               "end": 75
             }
           },
@@ -168,7 +188,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 67,
+                "start": 66,
                 "end": 68
               }
             },
@@ -197,7 +217,7 @@
               "syntax_node": {
                 "kind": "FLOAT_LITERAL",
                 "span": {
-                  "start": 71,
+                  "start": 70,
                   "end": 75
                 }
               },
@@ -225,7 +245,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 77,
+              "start": 75,
               "end": 93
             }
           },
@@ -252,7 +272,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 81,
+                "start": 80,
                 "end": 82
               }
             },
@@ -279,7 +299,7 @@
             "syntax_node": {
               "kind": "APPLY_EXPR",
               "span": {
-                "start": 85,
+                "start": 84,
                 "end": 93
               }
             },
@@ -288,7 +308,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 85,
+                  "start": 84,
                   "end": 88
                 }
               },
@@ -297,7 +317,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 85,
+                    "start": 84,
                     "end": 88
                   }
                 },
@@ -318,7 +338,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 89,
+                    "start": 88,
                     "end": 93
                   }
                 },
@@ -395,7 +415,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 94,
+              "start": 93,
               "end": 113
             }
           },
@@ -422,7 +442,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 98,
+                "start": 97,
                 "end": 99
               }
             },
@@ -449,7 +469,7 @@
             "syntax_node": {
               "kind": "APPLY_EXPR",
               "span": {
-                "start": 102,
+                "start": 101,
                 "end": 113
               }
             },
@@ -458,7 +478,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 102,
+                  "start": 101,
                   "end": 105
                 }
               },
@@ -467,7 +487,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 102,
+                    "start": 101,
                     "end": 105
                   }
                 },
@@ -488,7 +508,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 106,
+                    "start": 105,
                     "end": 113
                   }
                 },
@@ -565,7 +585,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 114,
+              "start": 113,
               "end": 130
             }
           },
@@ -592,7 +612,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 118,
+                "start": 117,
                 "end": 119
               }
             },
@@ -619,7 +639,7 @@
             "syntax_node": {
               "kind": "APPLY_EXPR",
               "span": {
-                "start": 122,
+                "start": 121,
                 "end": 130
               }
             },
@@ -628,7 +648,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 122,
+                  "start": 121,
                   "end": 125
                 }
               },
@@ -637,7 +657,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 122,
+                    "start": 121,
                     "end": 125
                   }
                 },
@@ -658,7 +678,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 126,
+                    "start": 125,
                     "end": 130
                   }
                 },
@@ -738,7 +758,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 131,
+              "start": 130,
               "end": 148
             }
           },
@@ -765,7 +785,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 135,
+                "start": 134,
                 "end": 136
               }
             },
@@ -792,7 +812,7 @@
             "syntax_node": {
               "kind": "APPLY_EXPR",
               "span": {
-                "start": 139,
+                "start": 138,
                 "end": 148
               }
             },
@@ -801,7 +821,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 139,
+                  "start": 138,
                   "end": 142
                 }
               },
@@ -810,7 +830,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 139,
+                    "start": 138,
                     "end": 142
                   }
                 },
@@ -831,7 +851,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 143,
+                    "start": 142,
                     "end": 148
                   }
                 },
@@ -908,7 +928,7 @@
           "syntax_node": {
             "kind": "LET_BINDING",
             "span": {
-              "start": 149,
+              "start": 148,
               "end": 167
             }
           },
@@ -935,7 +955,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 153,
+                "start": 152,
                 "end": 154
               }
             },
@@ -962,7 +982,7 @@
             "syntax_node": {
               "kind": "APPLY_EXPR",
               "span": {
-                "start": 157,
+                "start": 156,
                 "end": 167
               }
             },
@@ -971,7 +991,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 157,
+                  "start": 156,
                   "end": 161
                 }
               },
@@ -980,7 +1000,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 157,
+                    "start": 156,
                     "end": 161
                   }
                 },
@@ -1001,7 +1021,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 162,
+                    "start": 161,
                     "end": 167
                   }
                 },

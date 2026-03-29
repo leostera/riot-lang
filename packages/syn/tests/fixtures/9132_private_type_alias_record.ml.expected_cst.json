@@ -6,27 +6,47 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 112
+        "end": 111
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 51
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Private type alias with record representation *)",
+            "span": {
+              "start": 0,
+              "end": 51
+            }
+          }
+        }
+      },
       {
         "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 52,
-              "end": 112
+              "start": 0,
+              "end": 111
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 57,
-                "end": 63
+                "start": 56,
+                "end": 62
               }
             },
             "name_token": {
@@ -44,7 +64,7 @@
             "syntax_node": {
               "kind": "TYPE_RECORD",
               "span": {
-                "start": 86,
+                "start": 85,
                 "end": 111
               }
             },
@@ -53,7 +73,7 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 90,
+                    "start": 87,
                     "end": 97
                   }
                 },
@@ -70,7 +90,7 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 94,
+                      "start": 93,
                       "end": 97
                     }
                   },
@@ -79,7 +99,7 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 94,
+                        "start": 93,
                         "end": 97
                       }
                     },
@@ -100,7 +120,7 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 101,
+                    "start": 98,
                     "end": 108
                   }
                 },
@@ -117,7 +137,7 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 105,
+                      "start": 104,
                       "end": 108
                     }
                   },
@@ -126,7 +146,7 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 105,
+                        "start": 104,
                         "end": 108
                       }
                     },
@@ -150,8 +170,8 @@
             "syntax_node": {
               "kind": "TYPE_CONSTR",
               "span": {
-                "start": 65,
-                "end": 76
+                "start": 64,
+                "end": 75
               }
             },
             "constructor_path": {
@@ -159,8 +179,8 @@
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 65,
-                  "end": 76
+                  "start": 64,
+                  "end": 75
                 }
               },
               "prefix": {
@@ -168,8 +188,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 65,
-                    "end": 76
+                    "start": 64,
+                    "end": 75
                   }
                 },
                 "name_token": {

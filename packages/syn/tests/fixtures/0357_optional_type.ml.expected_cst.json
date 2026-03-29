@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 28
+        "end": 27
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "TYPED_EXPR",
               "span": {
-                "start": 8,
+                "start": 7,
                 "end": 27
               }
             },
@@ -107,7 +107,7 @@
               "syntax_node": {
                 "kind": "TYPE_ARROW",
                 "span": {
-                  "start": 13,
+                  "start": 12,
                   "end": 26
                 }
               },
@@ -136,7 +136,7 @@
                   "kind": "TYPE_CONSTR",
                   "span": {
                     "start": 16,
-                    "end": 20
+                    "end": 19
                   }
                 },
                 "constructor_path": {
@@ -145,7 +145,7 @@
                     "kind": "TYPE_CONSTR",
                     "span": {
                       "start": 16,
-                      "end": 20
+                      "end": 19
                     }
                   },
                   "name_token": {
@@ -164,7 +164,7 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 23,
+                    "start": 22,
                     "end": 26
                   }
                 },
@@ -173,7 +173,7 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 23,
+                      "start": 22,
                       "end": 26
                     }
                   },

@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 62
+        "end": 61
       }
     },
     "items": [
@@ -50,7 +50,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 8,
+                "start": 7,
                 "end": 11
               }
             },
@@ -77,7 +77,7 @@
             "syntax_node": {
               "kind": "FUN_EXPR",
               "span": {
-                "start": 14,
+                "start": 13,
                 "end": 61
               }
             },
@@ -103,7 +103,7 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 18,
+                    "start": 17,
                     "end": 19
                   }
                 },
@@ -112,7 +112,7 @@
                   "syntax_node": {
                     "kind": "IDENT_PATTERN",
                     "span": {
-                      "start": 18,
+                      "start": 17,
                       "end": 19
                     }
                   },
@@ -139,7 +139,7 @@
                 "syntax_node": {
                   "kind": "IDENT_PATTERN",
                   "span": {
-                    "start": 20,
+                    "start": 19,
                     "end": 21
                   }
                 },
@@ -148,7 +148,7 @@
                   "syntax_node": {
                     "kind": "IDENT_PATTERN",
                     "span": {
-                      "start": 20,
+                      "start": 19,
                       "end": 21
                     }
                   },
@@ -178,7 +178,7 @@
                 "syntax_node": {
                   "kind": "IF_EXPR",
                   "span": {
-                    "start": 25,
+                    "start": 24,
                     "end": 61
                   }
                 },
@@ -211,7 +211,7 @@
                   "syntax_node": {
                     "kind": "INFIX_EXPR",
                     "span": {
-                      "start": 28,
+                      "start": 27,
                       "end": 33
                     }
                   },
@@ -220,7 +220,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 28,
+                        "start": 27,
                         "end": 29
                       }
                     },
@@ -229,7 +229,7 @@
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
-                          "start": 28,
+                          "start": 27,
                           "end": 29
                         }
                       },
@@ -258,7 +258,7 @@
                       "syntax_node": {
                         "kind": "INT_LITERAL",
                         "span": {
-                          "start": 32,
+                          "start": 31,
                           "end": 33
                         }
                       },
@@ -282,7 +282,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 39,
+                      "start": 38,
                       "end": 40
                     }
                   },
@@ -291,7 +291,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 39,
+                        "start": 38,
                         "end": 40
                       }
                     },
@@ -310,7 +310,7 @@
                   "syntax_node": {
                     "kind": "APPLY_EXPR",
                     "span": {
-                      "start": 46,
+                      "start": 45,
                       "end": 61
                     }
                   },
@@ -319,7 +319,7 @@
                     "syntax_node": {
                       "kind": "APPLY_EXPR",
                       "span": {
-                        "start": 46,
+                        "start": 45,
                         "end": 51
                       }
                     },
@@ -328,7 +328,7 @@
                       "syntax_node": {
                         "kind": "IDENT_EXPR",
                         "span": {
-                          "start": 46,
+                          "start": 45,
                           "end": 49
                         }
                       },
@@ -337,7 +337,7 @@
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
-                            "start": 46,
+                            "start": 45,
                             "end": 49
                           }
                         },
@@ -358,7 +358,7 @@
                         "syntax_node": {
                           "kind": "IDENT_EXPR",
                           "span": {
-                            "start": 50,
+                            "start": 49,
                             "end": 51
                           }
                         },
@@ -367,7 +367,7 @@
                           "syntax_node": {
                             "kind": "IDENT_EXPR",
                             "span": {
-                              "start": 50,
+                              "start": 49,
                               "end": 51
                             }
                           },
@@ -390,7 +390,7 @@
                       "syntax_node": {
                         "kind": "PAREN_EXPR",
                         "span": {
-                          "start": 52,
+                          "start": 51,
                           "end": 61
                         }
                       },
@@ -464,7 +464,7 @@
                               "syntax_node": {
                                 "kind": "IDENT_EXPR",
                                 "span": {
-                                  "start": 55,
+                                  "start": 54,
                                   "end": 58
                                 }
                               },
@@ -473,7 +473,7 @@
                                 "syntax_node": {
                                   "kind": "IDENT_EXPR",
                                   "span": {
-                                    "start": 55,
+                                    "start": 54,
                                     "end": 58
                                   }
                                 },
@@ -496,7 +496,7 @@
                             "syntax_node": {
                               "kind": "IDENT_EXPR",
                               "span": {
-                                "start": 59,
+                                "start": 58,
                                 "end": 60
                               }
                             },
@@ -505,7 +505,7 @@
                               "syntax_node": {
                                 "kind": "IDENT_EXPR",
                                 "span": {
-                                  "start": 59,
+                                  "start": 58,
                                   "end": 60
                                 }
                               },

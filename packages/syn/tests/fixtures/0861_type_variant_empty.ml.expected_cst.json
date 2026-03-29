@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 32
+        "end": 31
       }
     },
     "items": [
@@ -17,16 +17,16 @@
             "kind": "TYPE_DECL",
             "span": {
               "start": 0,
-              "end": 32
+              "end": 31
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 5,
-                "end": 11
+                "start": 4,
+                "end": 10
               }
             },
             "name_token": {
@@ -45,7 +45,7 @@
               "kind": "TYPE_DECL",
               "span": {
                 "start": 0,
-                "end": 32
+                "end": 31
               }
             },
             "constructors": [
@@ -53,8 +53,8 @@
                 "syntax_node": {
                   "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 13,
-                    "end": 17
+                    "start": 12,
+                    "end": 16
                   }
                 },
                 "constructor_name": {
@@ -64,14 +64,15 @@
                     "start": 13,
                     "end": 16
                   }
-                }
+                },
+                "payload_type": null
               },
               {
                 "syntax_node": {
                   "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 19,
-                    "end": 25
+                    "start": 18,
+                    "end": 24
                   }
                 },
                 "constructor_name": {
@@ -81,14 +82,15 @@
                     "start": 19,
                     "end": 24
                   }
-                }
+                },
+                "payload_type": null
               },
               {
                 "syntax_node": {
                   "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 27,
-                    "end": 32
+                    "start": 26,
+                    "end": 31
                   }
                 },
                 "constructor_name": {
@@ -98,7 +100,8 @@
                     "start": 27,
                     "end": 31
                   }
-                }
+                },
+                "payload_type": null
               }
             ]
           },

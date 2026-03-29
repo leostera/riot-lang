@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 17
+        "end": 16
       }
     },
     "items": [
@@ -35,7 +35,7 @@
             "syntax_node": {
               "kind": "MODULE_APPLICATION",
               "span": {
-                "start": 11,
+                "start": 10,
                 "end": 16
               }
             },
@@ -44,10 +44,10 @@
               "path": {
                 "tag": "ident",
                 "syntax_node": {
-                  "kind": "MODULE_PATH",
+                  "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 11,
-                    "end": 13
+                    "start": 10,
+                    "end": 12
                   }
                 },
                 "name_token": {

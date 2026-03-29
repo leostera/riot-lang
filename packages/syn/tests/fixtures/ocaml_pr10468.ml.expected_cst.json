@@ -6,18 +6,38 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 187
+        "end": 186
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 40
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* TEST\n flags = \"-dsource\";\n expect;\n*)",
+            "span": {
+              "start": 0,
+              "end": 40
+            }
+          }
+        }
+      },
       {
         "tag": "module_type_declaration",
         "item": {
           "syntax_node": {
             "kind": "MODULE_TYPE_DECL",
             "span": {
-              "start": 42,
-              "end": 91
+              "start": 0,
+              "end": 89
             }
           },
           "module_type_name": {
@@ -33,14 +53,14 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 58,
+                "start": 57,
                 "end": 89
               }
             },
             "signature_syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 58,
+                "start": 57,
                 "end": 89
               }
             }
@@ -54,7 +74,7 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 91,
+              "start": 89,
               "end": 186
             }
           },
@@ -71,7 +91,7 @@
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 91,
+                "start": 89,
                 "end": 186
               }
             },
@@ -91,8 +111,8 @@
               {
                 "kind": "APPLY_EXPR",
                 "span": {
-                  "start": 94,
-                  "end": 185
+                  "start": 0,
+                  "end": 184
                 }
               }
             ]

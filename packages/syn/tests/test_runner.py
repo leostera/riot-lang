@@ -118,6 +118,18 @@ class TestRunner:
 
     def did_timeout(self, output: str, returncode: int) -> bool:
         return returncode == -1 and output.startswith("TIMEOUT:")
+
+    def token_start(self, token: Dict) -> int:
+        if "start" in token:
+            return token["start"]
+        span = token.get("span", {})
+        return span.get("start", 0)
+
+    def token_end(self, token: Dict) -> int:
+        if "end" in token:
+            return token["end"]
+        span = token.get("span", {})
+        return span.get("end", 0)
     
     def run_syn_json(self, args: List[str], file_path: Path) -> Optional[Dict]:
         """Run syn command expecting JSON output."""
@@ -195,8 +207,10 @@ class TestRunner:
         # Add text to tokens
         tokens = tokens_data if isinstance(tokens_data, list) else []
         for token in tokens:
-            start = token.get("start", 0)
-            end = token.get("end", 0)
+            start = self.token_start(token)
+            end = self.token_end(token)
+            token["start"] = start
+            token["end"] = end
             token["text"] = source[start:end]
         
         if verbose:
@@ -218,10 +232,18 @@ class TestRunner:
         # Extract tokens from red tree
         red_tokens = []
         self.extract_tokens_from_red_tree(red_tree, red_tokens)
-        
-        # Calculate coverage
+
+        # Calculate coverage from the lexer token stream plus token leading trivia.
         covered = [False] * source_len
-        for token in red_tokens:
+        for token in tokens:
+            for trivia in token.get("leading_trivia", []):
+                span = trivia.get("span", {})
+                start = span.get("start", 0)
+                end = span.get("end", start)
+                for i in range(start, end):
+                    if i < source_len:
+                        covered[i] = True
+
             start = token["start"]
             end = max(token["end"], start + len(token.get("text", "")))
             for i in range(start, end):
@@ -232,7 +254,7 @@ class TestRunner:
         
         if verbose:
             print(f"\n{BLUE}Source file length:{NC} {source_len} bytes")
-            print(f"{BLUE}Red tree coverage:{NC} {covered_count}/{source_len} bytes")
+            print(f"{BLUE}Token stream coverage:{NC} {covered_count}/{source_len} bytes")
             print(f"{BLUE}Red tree tokens:{NC} {len(red_tokens)}")
         
         # Find first gap
@@ -306,7 +328,7 @@ class TestRunner:
             
             # Last token before gap
             last_before_gap = None
-            for token in red_tokens:
+            for token in tokens:
                 if token["end"] <= first_gap:
                     if last_before_gap is None or token["end"] > last_before_gap["end"]:
                         last_before_gap = token
@@ -368,7 +390,7 @@ class TestRunner:
     
     def validate_widths(self, node, path: str = "root") -> Tuple[bool, Optional[str]]:
         """
-        Validate that all node widths equal sum of children widths.
+        Validate that all node widths equal sum of children full widths.
         Returns (is_valid, error_message).
         """
         if not isinstance(node, dict):
@@ -384,9 +406,11 @@ class TestRunner:
                 return False, f"{path}: token text length {len(text)} != width {width}"
         
         elif node_type == "node":
-            # Node width should equal sum of children widths
+            # Node width should equal the sum of child full widths. Tokens now carry
+            # leading trivia outside their body width, so `full_width` is the lossless
+            # measure and plain `width` only covers token text.
             children = node.get("children", [])
-            children_sum = sum(child.get("width", 0) for child in children)
+            children_sum = sum(child.get("full_width", child.get("width", 0)) for child in children)
             node_width = node.get("width", 0)
             
             if children_sum != node_width:

@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 149
+        "end": 148
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "CLASS_DECL",
             "span": {
               "start": 0,
-              "end": 55
+              "end": 54
             }
           },
           "type_params": [],
@@ -34,7 +34,7 @@
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
-                "start": 16,
+                "start": 15,
                 "end": 54
               }
             },
@@ -44,8 +44,8 @@
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 16,
-                  "end": 24
+                  "start": 15,
+                  "end": 23
                 }
               },
               "constructor_path": {
@@ -53,8 +53,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 16,
-                    "end": 24
+                    "start": 15,
+                    "end": 23
                   }
                 },
                 "name_token": {
@@ -73,7 +73,7 @@
               "syntax_node": {
                 "kind": "OBJECT_EXPR",
                 "span": {
-                  "start": 27,
+                  "start": 26,
                   "end": 54
                 }
               },
@@ -83,8 +83,8 @@
                   "syntax_node": {
                     "kind": "OBJECT_METHOD",
                     "span": {
-                      "start": 34,
-                      "end": 51
+                      "start": 33,
+                      "end": 50
                     }
                   },
                   "name_token": {
@@ -100,8 +100,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 47,
-                        "end": 51
+                        "start": 46,
+                        "end": 50
                       }
                     },
                     "constructor_path": {
@@ -109,8 +109,8 @@
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 47,
-                          "end": 51
+                          "start": 46,
+                          "end": 50
                         }
                       },
                       "name_token": {
@@ -138,8 +138,8 @@
           "syntax_node": {
             "kind": "CLASS_TYPE_DECL",
             "span": {
-              "start": 55,
-              "end": 107
+              "start": 54,
+              "end": 106
             }
           },
           "type_params": [],
@@ -156,7 +156,7 @@
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
-                "start": 76,
+                "start": 75,
                 "end": 106
               }
             },
@@ -166,8 +166,8 @@
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 76,
-                  "end": 84
+                  "start": 75,
+                  "end": 83
                 }
               },
               "constructor_path": {
@@ -175,8 +175,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 76,
-                    "end": 84
+                    "start": 75,
+                    "end": 83
                   }
                 },
                 "name_token": {
@@ -195,7 +195,7 @@
               "syntax_node": {
                 "kind": "TYPE_ARROW",
                 "span": {
-                  "start": 87,
+                  "start": 86,
                   "end": 106
                 }
               },
@@ -205,8 +205,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 87,
-                    "end": 96
+                    "start": 86,
+                    "end": 95
                   }
                 },
                 "constructor_path": {
@@ -214,8 +214,8 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 87,
-                      "end": 96
+                      "start": 86,
+                      "end": 95
                     }
                   },
                   "name_token": {
@@ -236,7 +236,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 99,
+                      "start": 98,
                       "end": 106
                     }
                   },
@@ -260,8 +260,8 @@
           "syntax_node": {
             "kind": "CLASS_TYPE_DECL",
             "span": {
-              "start": 107,
-              "end": 149
+              "start": 106,
+              "end": 148
             }
           },
           "type_params": [],
@@ -278,7 +278,7 @@
             "syntax_node": {
               "kind": "PAREN_EXPR",
               "span": {
-                "start": 128,
+                "start": 127,
                 "end": 148
               }
             },
@@ -298,7 +298,7 @@
                   "kind": "TYPE_CONSTR",
                   "span": {
                     "start": 129,
-                    "end": 137
+                    "end": 136
                   }
                 },
                 "constructor_path": {
@@ -307,7 +307,7 @@
                     "kind": "TYPE_CONSTR",
                     "span": {
                       "start": 129,
-                      "end": 137
+                      "end": 136
                     }
                   },
                   "name_token": {
@@ -328,7 +328,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 140,
+                      "start": 139,
                       "end": 147
                     }
                   },

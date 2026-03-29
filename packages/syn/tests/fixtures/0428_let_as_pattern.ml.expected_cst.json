@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 41
+        "end": 40
       }
     },
     "items": [
@@ -51,7 +51,7 @@
             "syntax_node": {
               "kind": "PAREN_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 20
               }
             },
@@ -96,7 +96,7 @@
                   "syntax_node": {
                     "kind": "WILDCARD_PATTERN",
                     "span": {
-                      "start": 10,
+                      "start": 9,
                       "end": 11
                     }
                   }
@@ -118,7 +118,7 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 23,
+                "start": 22,
                 "end": 27
               }
             },
@@ -127,7 +127,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 23,
+                  "start": 22,
                   "end": 27
                 }
               },
@@ -147,7 +147,7 @@
             "syntax_node": {
               "kind": "PAREN_EXPR",
               "span": {
-                "start": 31,
+                "start": 30,
                 "end": 40
               }
             },
@@ -211,7 +211,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 35,
+                      "start": 34,
                       "end": 39
                     }
                   },
@@ -220,7 +220,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 35,
+                        "start": 34,
                         "end": 39
                       }
                     },

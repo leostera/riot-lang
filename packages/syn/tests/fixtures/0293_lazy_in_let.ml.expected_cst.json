@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 45
+        "end": 44
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "LET_EXPR",
               "span": {
-                "start": 10,
+                "start": 7,
                 "end": 44
               }
             },
@@ -104,7 +104,7 @@
               "syntax_node": {
                 "kind": "IDENT_PATTERN",
                 "span": {
-                  "start": 14,
+                  "start": 13,
                   "end": 15
                 }
               },
@@ -123,7 +123,7 @@
               "syntax_node": {
                 "kind": "LAZY_EXPR",
                 "span": {
-                  "start": 18,
+                  "start": 17,
                   "end": 37
                 }
               },
@@ -132,7 +132,7 @@
                 "syntax_node": {
                   "kind": "PAREN_EXPR",
                   "span": {
-                    "start": 23,
+                    "start": 22,
                     "end": 37
                   }
                 },
@@ -199,7 +199,7 @@
                         "syntax_node": {
                           "kind": "UNIT_LITERAL",
                           "span": {
-                            "start": 34,
+                            "start": 33,
                             "end": 36
                           }
                         }
@@ -215,7 +215,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 43,
+                  "start": 40,
                   "end": 44
                 }
               },
@@ -224,7 +224,7 @@
                 "syntax_node": {
                   "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 43,
+                    "start": 40,
                     "end": 44
                   }
                 },

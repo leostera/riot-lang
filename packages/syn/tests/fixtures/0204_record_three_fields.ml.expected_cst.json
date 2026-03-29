@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 32
+        "end": 31
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 5
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "RECORD_EXPR",
               "span": {
-                "start": 8,
+                "start": 7,
                 "end": 31
               }
             },
@@ -80,7 +80,7 @@
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
-                    "start": 10,
+                    "start": 9,
                     "end": 15
                   }
                 },
@@ -89,7 +89,7 @@
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
-                      "start": 10,
+                      "start": 9,
                       "end": 15
                     }
                   },
@@ -117,7 +117,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 14,
+                        "start": 13,
                         "end": 15
                       }
                     },
@@ -141,7 +141,7 @@
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
-                    "start": 17,
+                    "start": 16,
                     "end": 22
                   }
                 },
@@ -150,7 +150,7 @@
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
-                      "start": 17,
+                      "start": 16,
                       "end": 22
                     }
                   },
@@ -178,7 +178,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 21,
+                        "start": 20,
                         "end": 22
                       }
                     },
@@ -202,7 +202,7 @@
                 "syntax_node": {
                   "kind": "RECORD_FIELD",
                   "span": {
-                    "start": 24,
+                    "start": 23,
                     "end": 29
                   }
                 },
@@ -211,7 +211,7 @@
                   "syntax_node": {
                     "kind": "RECORD_FIELD",
                     "span": {
-                      "start": 24,
+                      "start": 23,
                       "end": 29
                     }
                   },
@@ -239,7 +239,7 @@
                     "syntax_node": {
                       "kind": "INT_LITERAL",
                       "span": {
-                        "start": 28,
+                        "start": 27,
                         "end": 29
                       }
                     },

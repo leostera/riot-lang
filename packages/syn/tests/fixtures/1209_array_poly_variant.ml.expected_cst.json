@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 79
+        "end": 78
       }
     },
     "items": [
@@ -43,7 +43,7 @@
             "syntax_node": {
               "kind": "IDENT_PATTERN",
               "span": {
-                "start": 4,
+                "start": 3,
                 "end": 10
               }
             },
@@ -70,7 +70,7 @@
             "syntax_node": {
               "kind": "ARRAY_EXPR",
               "span": {
-                "start": 13,
+                "start": 12,
                 "end": 78
               }
             },
@@ -80,7 +80,7 @@
                 "syntax_node": {
                   "kind": "POLY_VARIANT_EXPR",
                   "span": {
-                    "start": 18,
+                    "start": 15,
                     "end": 34
                   }
                 },
@@ -97,7 +97,7 @@
                   "syntax_node": {
                     "kind": "PAREN_EXPR",
                     "span": {
-                      "start": 23,
+                      "start": 22,
                       "end": 34
                     }
                   },
@@ -160,7 +160,7 @@
                           "syntax_node": {
                             "kind": "INT_LITERAL",
                             "span": {
-                              "start": 29,
+                              "start": 28,
                               "end": 30
                             }
                           },
@@ -185,7 +185,7 @@
                           "syntax_node": {
                             "kind": "INT_LITERAL",
                             "span": {
-                              "start": 32,
+                              "start": 31,
                               "end": 33
                             }
                           },
@@ -212,7 +212,7 @@
                 "syntax_node": {
                   "kind": "POLY_VARIANT_EXPR",
                   "span": {
-                    "start": 38,
+                    "start": 35,
                     "end": 54
                   }
                 },
@@ -229,7 +229,7 @@
                   "syntax_node": {
                     "kind": "PAREN_EXPR",
                     "span": {
-                      "start": 43,
+                      "start": 42,
                       "end": 54
                     }
                   },
@@ -292,7 +292,7 @@
                           "syntax_node": {
                             "kind": "INT_LITERAL",
                             "span": {
-                              "start": 47,
+                              "start": 46,
                               "end": 50
                             }
                           },
@@ -317,7 +317,7 @@
                           "syntax_node": {
                             "kind": "INT_LITERAL",
                             "span": {
-                              "start": 52,
+                              "start": 51,
                               "end": 53
                             }
                           },
@@ -344,7 +344,7 @@
                 "syntax_node": {
                   "kind": "POLY_VARIANT_EXPR",
                   "span": {
-                    "start": 58,
+                    "start": 55,
                     "end": 74
                   }
                 },
@@ -361,7 +361,7 @@
                   "syntax_node": {
                     "kind": "PAREN_EXPR",
                     "span": {
-                      "start": 63,
+                      "start": 62,
                       "end": 74
                     }
                   },
@@ -424,7 +424,7 @@
                           "syntax_node": {
                             "kind": "INT_LITERAL",
                             "span": {
-                              "start": 67,
+                              "start": 66,
                               "end": 68
                             }
                           },
@@ -449,7 +449,7 @@
                           "syntax_node": {
                             "kind": "INT_LITERAL",
                             "span": {
-                              "start": 70,
+                              "start": 69,
                               "end": 73
                             }
                           },

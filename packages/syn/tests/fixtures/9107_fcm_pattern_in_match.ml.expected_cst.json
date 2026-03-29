@@ -6,10 +6,30 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 64
+        "end": 63
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 16
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* TEST_BELOW *)",
+            "span": {
+              "start": 0,
+              "end": 16
+            }
+          }
+        }
+      },
       {
         "tag": "expression",
         "item": {
@@ -17,8 +37,8 @@
           "syntax_node": {
             "kind": "MATCH_EXPR",
             "span": {
-              "start": 18,
-              "end": 64
+              "start": 0,
+              "end": 63
             }
           },
           "keyword_token": {
@@ -42,7 +62,7 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 24,
+                "start": 23,
                 "end": 25
               }
             },
@@ -51,7 +71,7 @@
               "syntax_node": {
                 "kind": "IDENT_EXPR",
                 "span": {
-                  "start": 24,
+                  "start": 23,
                   "end": 25
                 }
               },
@@ -70,8 +90,8 @@
               "syntax_node": {
                 "kind": "MATCH_CASE",
                 "span": {
-                  "start": 31,
-                  "end": 55
+                  "start": 30,
+                  "end": 54
                 }
               },
               "bar_token": {
@@ -96,7 +116,7 @@
                 "syntax_node": {
                   "kind": "FIRST_CLASS_MODULE_PATTERN",
                   "span": {
-                    "start": 33,
+                    "start": 32,
                     "end": 43
                   }
                 },
@@ -116,8 +136,8 @@
                 "syntax_node": {
                   "kind": "FIELD_ACCESS_EXPR",
                   "span": {
-                    "start": 47,
-                    "end": 55
+                    "start": 46,
+                    "end": 54
                   }
                 },
                 "receiver": {
@@ -125,7 +145,7 @@
                   "syntax_node": {
                     "kind": "IDENT_EXPR",
                     "span": {
-                      "start": 47,
+                      "start": 46,
                       "end": 48
                     }
                   },
@@ -134,7 +154,7 @@
                     "syntax_node": {
                       "kind": "IDENT_EXPR",
                       "span": {
-                        "start": 47,
+                        "start": 46,
                         "end": 48
                       }
                     },
@@ -162,7 +182,7 @@
               "syntax_node": {
                 "kind": "MATCH_CASE",
                 "span": {
-                  "start": 55,
+                  "start": 54,
                   "end": 63
                 }
               },
@@ -188,7 +208,7 @@
                 "syntax_node": {
                   "kind": "WILDCARD_PATTERN",
                   "span": {
-                    "start": 57,
+                    "start": 56,
                     "end": 58
                   }
                 }
@@ -201,7 +221,7 @@
                   "syntax_node": {
                     "kind": "INT_LITERAL",
                     "span": {
-                      "start": 62,
+                      "start": 61,
                       "end": 63
                     }
                   },

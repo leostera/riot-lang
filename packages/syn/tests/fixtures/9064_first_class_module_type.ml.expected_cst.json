@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 89
+        "end": 88
       }
     },
     "items": [
@@ -17,16 +17,16 @@
             "kind": "TYPE_DECL",
             "span": {
               "start": 0,
-              "end": 36
+              "end": 35
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 5,
-                "end": 15
+                "start": 4,
+                "end": 14
               }
             },
             "name_token": {
@@ -44,7 +44,7 @@
             "syntax_node": {
               "kind": "FIRST_CLASS_MODULE_TYPE",
               "span": {
-                "start": 17,
+                "start": 16,
                 "end": 35
               }
             },
@@ -55,7 +55,7 @@
                 "syntax_node": {
                   "kind": "MODULE_TYPE_PATH",
                   "span": {
-                    "start": 25,
+                    "start": 24,
                     "end": 34
                   }
                 },
@@ -79,17 +79,17 @@
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 36,
-              "end": 89
+              "start": 35,
+              "end": 88
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 41,
-                "end": 48
+                "start": 40,
+                "end": 47
               }
             },
             "name_token": {
@@ -107,7 +107,7 @@
             "syntax_node": {
               "kind": "FIRST_CLASS_MODULE_TYPE",
               "span": {
-                "start": 50,
+                "start": 49,
                 "end": 88
               }
             },
@@ -116,7 +116,7 @@
               "syntax_node": {
                 "kind": "FIRST_CLASS_MODULE_TYPE",
                 "span": {
-                  "start": 50,
+                  "start": 49,
                   "end": 88
                 }
               },
@@ -127,8 +127,8 @@
                   "syntax_node": {
                     "kind": "MODULE_TYPE_PATH",
                     "span": {
-                      "start": 58,
-                      "end": 65
+                      "start": 57,
+                      "end": 64
                     }
                   },
                   "name_token": {
@@ -146,7 +146,7 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTRAINT",
                     "span": {
-                      "start": 70,
+                      "start": 69,
                       "end": 87
                     }
                   },
@@ -155,8 +155,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 75,
-                        "end": 82
+                        "start": 74,
+                        "end": 81
                       }
                     },
                     "constructor_path": {
@@ -164,8 +164,8 @@
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 75,
-                          "end": 82
+                          "start": 74,
+                          "end": 81
                         }
                       },
                       "name_token": {
@@ -184,7 +184,7 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 84,
+                        "start": 83,
                         "end": 87
                       }
                     },
@@ -193,7 +193,7 @@
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 84,
+                          "start": 83,
                           "end": 87
                         }
                       },

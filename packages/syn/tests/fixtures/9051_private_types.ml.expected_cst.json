@@ -6,27 +6,47 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 231
+        "end": 230
       }
     },
     "items": [
+      {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 0,
+              "end": 31
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Private type declarations *)",
+            "span": {
+              "start": 0,
+              "end": 31
+            }
+          }
+        }
+      },
       {
         "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 32,
-              "end": 99
+              "start": 0,
+              "end": 69
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 37,
-                "end": 39
+                "start": 36,
+                "end": 38
               }
             },
             "name_token": {
@@ -44,7 +64,7 @@
             "syntax_node": {
               "kind": "TYPE_RECORD",
               "span": {
-                "start": 49,
+                "start": 48,
                 "end": 69
               }
             },
@@ -53,7 +73,7 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 51,
+                    "start": 50,
                     "end": 58
                   }
                 },
@@ -70,7 +90,7 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 55,
+                      "start": 54,
                       "end": 58
                     }
                   },
@@ -79,7 +99,7 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 55,
+                        "start": 54,
                         "end": 58
                       }
                     },
@@ -100,8 +120,8 @@
                 "syntax_node": {
                   "kind": "TYPE_RECORD_FIELD",
                   "span": {
-                    "start": 60,
-                    "end": 68
+                    "start": 59,
+                    "end": 67
                   }
                 },
                 "field_name": {
@@ -117,8 +137,8 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 64,
-                      "end": 68
+                      "start": 63,
+                      "end": 67
                     }
                   },
                   "constructor_path": {
@@ -126,8 +146,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 64,
-                        "end": 68
+                        "start": 63,
+                        "end": 67
                       }
                     },
                     "name_token": {
@@ -160,22 +180,42 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 71,
+              "end": 98
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Private abstract type *)",
+            "span": {
+              "start": 71,
+              "end": 98
+            }
+          }
+        }
+      },
+      {
         "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 99,
-              "end": 143
+              "start": 69,
+              "end": 119
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 104,
-                "end": 110
+                "start": 103,
+                "end": 109
               }
             },
             "name_token": {
@@ -206,22 +246,42 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 121,
+              "end": 142
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Private variant *)",
+            "span": {
+              "start": 121,
+              "end": 142
+            }
+          }
+        }
+      },
+      {
         "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 143,
-              "end": 209
+              "start": 119,
+              "end": 182
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 148,
-                "end": 154
+                "start": 147,
+                "end": 153
               }
             },
             "name_token": {
@@ -239,8 +299,8 @@
             "syntax_node": {
               "kind": "TYPE_DECL",
               "span": {
-                "start": 143,
-                "end": 209
+                "start": 119,
+                "end": 182
               }
             },
             "constructors": [
@@ -248,8 +308,8 @@
                 "syntax_node": {
                   "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 164,
-                    "end": 168
+                    "start": 163,
+                    "end": 167
                   }
                 },
                 "constructor_name": {
@@ -259,14 +319,15 @@
                     "start": 164,
                     "end": 167
                   }
-                }
+                },
+                "payload_type": null
               },
               {
                 "syntax_node": {
                   "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 170,
-                    "end": 176
+                    "start": 169,
+                    "end": 175
                   }
                 },
                 "constructor_name": {
@@ -276,14 +337,15 @@
                     "start": 170,
                     "end": 175
                   }
-                }
+                },
+                "payload_type": null
               },
               {
                 "syntax_node": {
                   "kind": "TYPE_VARIANT_CONSTR",
                   "span": {
-                    "start": 178,
-                    "end": 209
+                    "start": 177,
+                    "end": 182
                   }
                 },
                 "constructor_name": {
@@ -293,7 +355,8 @@
                     "start": 178,
                     "end": 182
                   }
-                }
+                },
+                "payload_type": null
               }
             ]
           },
@@ -312,22 +375,42 @@
         }
       },
       {
+        "tag": "comment",
+        "item": {
+          "syntax_node": {
+            "kind": "COMMENT",
+            "span": {
+              "start": 184,
+              "end": 208
+            }
+          },
+          "comment_token": {
+            "kind": "COMMENT",
+            "text": "(* Private type alias *)",
+            "span": {
+              "start": 184,
+              "end": 208
+            }
+          }
+        }
+      },
+      {
         "tag": "type_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 209,
-              "end": 231
+              "start": 182,
+              "end": 230
             }
           },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
-              "kind": "MODULE_PATH",
+              "kind": "IDENT_EXPR",
               "span": {
-                "start": 214,
-                "end": 217
+                "start": 213,
+                "end": 216
               }
             },
             "name_token": {
@@ -345,8 +428,8 @@
             "syntax_node": {
               "kind": "TYPE_CONSTR",
               "span": {
-                "start": 227,
-                "end": 231
+                "start": 226,
+                "end": 230
               }
             },
             "manifest": {
@@ -354,8 +437,8 @@
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 227,
-                  "end": 231
+                  "start": 226,
+                  "end": 230
                 }
               },
               "constructor_path": {
@@ -363,8 +446,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 227,
-                    "end": 231
+                    "start": 226,
+                    "end": 230
                   }
                 },
                 "name_token": {

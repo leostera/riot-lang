@@ -33,13 +33,16 @@ module SyntaxNode : sig
   (** Get a child by index *)
   val child : ('kind, 'text) syntax_node -> int -> ('kind, 'text) syntax_element option
 
-  (** Get all children *)
+  (** Get all non-trivia children.
+
+      Trivia is attached to tokens and can be accessed through
+      `SyntaxToken.leading_trivia`. *)
   val children : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element array
 
-  (** Get all children as a list *)
+  (** Get all non-trivia children as a list. *)
   val children_list : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element list
 
-  (** Get only the direct token children *)
+  (** Get only the direct non-trivia token children *)
   val direct_tokens : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
 
   (** Get only the direct node children *)
@@ -104,7 +107,10 @@ module SyntaxToken : sig
 
   val text : ('kind, 'text) syntax_token -> 'text
 
-  (** Get the leading trivia attached to this token *)
+  (** Get the leading trivia attached to this token.
+
+      Each returned trivia entry has its own absolute offset/span and appears in
+      source order immediately before the token body span. *)
   val leading_trivia : ('kind, 'text) syntax_token -> ('kind, 'text) syntax_trivia list
 end
 

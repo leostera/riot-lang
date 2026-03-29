@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 202
+        "end": 201
       }
     },
     "items": [
@@ -17,7 +17,7 @@
             "kind": "EXTERNAL_DECL",
             "span": {
               "start": 0,
-              "end": 64
+              "end": 63
             }
           },
           "name_token": {
@@ -33,8 +33,8 @@
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
-                "start": 24,
-                "end": 39
+                "start": 23,
+                "end": 38
               }
             },
             "label": null,
@@ -43,8 +43,8 @@
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 24,
-                  "end": 30
+                  "start": 23,
+                  "end": 29
                 }
               },
               "constructor_path": {
@@ -52,8 +52,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 24,
-                    "end": 30
+                    "start": 23,
+                    "end": 29
                   }
                 },
                 "name_token": {
@@ -72,8 +72,8 @@
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 33,
-                  "end": 39
+                  "start": 32,
+                  "end": 38
                 }
               },
               "constructor_path": {
@@ -81,8 +81,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 33,
-                    "end": 39
+                    "start": 32,
+                    "end": 38
                   }
                 },
                 "name_token": {
@@ -116,8 +116,8 @@
           "syntax_node": {
             "kind": "EXTERNAL_DECL",
             "span": {
-              "start": 64,
-              "end": 128
+              "start": 63,
+              "end": 127
             }
           },
           "name_token": {
@@ -133,8 +133,8 @@
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
-                "start": 88,
-                "end": 103
+                "start": 87,
+                "end": 102
               }
             },
             "label": null,
@@ -143,8 +143,8 @@
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 88,
-                  "end": 94
+                  "start": 87,
+                  "end": 93
                 }
               },
               "constructor_path": {
@@ -152,8 +152,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 88,
-                    "end": 94
+                    "start": 87,
+                    "end": 93
                   }
                 },
                 "name_token": {
@@ -172,8 +172,8 @@
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 97,
-                  "end": 103
+                  "start": 96,
+                  "end": 102
                 }
               },
               "constructor_path": {
@@ -181,8 +181,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 97,
-                    "end": 103
+                    "start": 96,
+                    "end": 102
                   }
                 },
                 "name_token": {
@@ -216,8 +216,8 @@
           "syntax_node": {
             "kind": "EXTERNAL_DECL",
             "span": {
-              "start": 128,
-              "end": 202
+              "start": 127,
+              "end": 201
             }
           },
           "name_token": {
@@ -233,8 +233,8 @@
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
-                "start": 157,
-                "end": 172
+                "start": 156,
+                "end": 171
               }
             },
             "label": null,
@@ -243,8 +243,8 @@
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 157,
-                  "end": 163
+                  "start": 156,
+                  "end": 162
                 }
               },
               "constructor_path": {
@@ -252,8 +252,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 157,
-                    "end": 163
+                    "start": 156,
+                    "end": 162
                   }
                 },
                 "name_token": {
@@ -272,8 +272,8 @@
               "syntax_node": {
                 "kind": "TYPE_CONSTR",
                 "span": {
-                  "start": 166,
-                  "end": 172
+                  "start": 165,
+                  "end": 171
                 }
               },
               "constructor_path": {
@@ -281,8 +281,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 166,
-                    "end": 172
+                    "start": 165,
+                    "end": 171
                   }
                 },
                 "name_token": {
