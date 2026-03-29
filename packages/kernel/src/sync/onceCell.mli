@@ -18,29 +18,29 @@
       let cfg = OnceCell.get_or_init config (fun () -> default_config ())
     ]} *)
 
-
 open Global0
 
-type 'a t
 (** A cell that holds an optional value and can only be set once *)
-
-val create : unit -> 'a t
 (** Create an empty OnceCell *)
+type 'a t
+val create : unit -> 'a t
 
-val get : 'a t -> 'a option
 (** Get the value if initialized *)
+val get : 'a t -> 'a option
 
-val get_or_init : 'a t -> (unit -> 'a) -> 'a
 (** Get the value, initializing it if necessary *)
+(** Try to get the value, initializing it if necessary, propagating errors *)
+val get_or_init : 'a t -> (unit -> 'a) -> 'a
 
 val get_or_try_init : 'a t -> (unit -> ('a, 'e) result) -> ('a, 'e) result
-(** Try to get the value, initializing it if necessary, propagating errors *)
 
-val set : 'a t -> 'a -> (unit, [ `AlreadyInitialized ]) result
 (** Set the value if not already set, returns error if already initialized *)
+val set : 'a t -> 'a -> (unit, [
+  | `AlreadyInitialized
+]) result
 
-val is_initialized : 'a t -> bool
 (** Check if the cell has been initialized *)
+val is_initialized : 'a t -> bool
 
-val take : 'a t -> 'a option
 (** Take the value out of the cell, leaving it uninitialized *)
+val take : 'a t -> 'a option

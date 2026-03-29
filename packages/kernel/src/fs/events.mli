@@ -3,26 +3,22 @@
 open Global0
 open IO
 
-type t
 (** File system event watcher handle *)
-
-type watch_id = int
 (** Watch identifier *)
-
+type t
+type watch_id = int
 type event = {
   path : string;
   flags : int32;
   event_id : int64;
 }
-
+(** Create a new file system watcher *)
 type event_kind =
   | Created
   | Modified
   | Deleted
   | Renamed
   | Metadata
-
-(** Create a new file system watcher *)
 val create : unit -> (t, error) result
 
 (** Watch a path for changes *)
@@ -36,22 +32,39 @@ val get_fd : t -> Fd.t
 
 (** Flag constants *)
 val flag_created : int32
+
 val flag_removed : int32
+
 val flag_modified : int32
+
 val flag_renamed : int32
+
 val flag_metadata : int32
+
 val flag_is_file : int32
+
 val flag_is_dir : int32
+
 val flag_is_symlink : int32
+
 val flag_inode_meta_mod : int32
+
 val flag_finder_info_mod : int32
+
 val flag_xattr_mod : int32
+
 val flag_own_event : int32
+
 val flag_mount : int32
+
 val flag_unmount : int32
+
 val flag_root_changed : int32
+
 val flag_must_scan_subdirs : int32
+
 val flag_user_dropped : int32
+
 val flag_kernel_dropped : int32
 
 (** Decode event flags into kind *)

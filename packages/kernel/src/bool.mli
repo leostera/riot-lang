@@ -1,1 +1,1 @@
-  include module type of Stdlib.Bool
+include module type of Stdlib.Bool

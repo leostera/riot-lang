@@ -1,5 +1,4 @@
 (** Low-level time operations for Kernel *)
-
 type tm = {
   tm_sec : int;
   tm_min : int;
@@ -13,11 +12,13 @@ type tm = {
 }
 
 external gettimeofday : unit -> float = "caml_kernel_gettimeofday"
+
 external localtime : float -> tm = "caml_kernel_localtime"
+
 external gmtime : float -> tm = "caml_kernel_gmtime"
+
 external mktime : tm -> float * tm = "caml_kernel_mktime"
 
-external monotonic_time_nanos : unit -> int64
-  = "caml_kernel_monotonic_time_nanos"
+external monotonic_time_nanos : unit -> int64 = "caml_kernel_monotonic_time_nanos"
 
 let sleep = Unix.sleepf

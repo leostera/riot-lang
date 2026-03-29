@@ -69,20 +69,18 @@
     ```
 *)
 
-type 'a t
 (** The type of hash sets containing elements of type ['a]. Elements are stored
     in an unordered fashion with uniqueness guaranteed by hashing. *)
-
+type 'a t
 (** {1 Creation} *)
 
-val create : unit -> 'a t
 (** Creates a new empty hash set.
 
     ## Examples
 
     ```ocaml let set = HashSet.create () in assert (HashSet.is_empty set) ``` *)
+val create : unit -> 'a t
 
-val with_capacity : int -> 'a t
 (** Creates a new empty hash set with specified initial capacity.
 
     Pre-allocating capacity can improve performance when the approximate size is
@@ -92,8 +90,8 @@ val with_capacity : int -> 'a t
 
     ```ocaml let set = HashSet.with_capacity 1000 in (* Can insert ~1000
     elements without rehashing *) ``` *)
+val with_capacity : int -> 'a t
 
-val of_list : 'a list -> 'a t
 (** Creates a hash set from a list of elements. Duplicate elements in the input
     list are automatically deduplicated.
 
@@ -102,10 +100,10 @@ val of_list : 'a list -> 'a t
     ```ocaml let set = HashSet.of_list [1; 2; 2; 3; 3; 3] in HashSet.len set; (*
     3 - duplicates removed *) HashSet.to_list set (* [1; 2; 3] - order
     unspecified *) ``` *)
+val of_list : 'a list -> 'a t
 
 (** {1 Basic Operations} *)
 
-val insert : 'a t -> 'a -> bool
 (** Adds a value to the set. Returns [true] if the value was newly inserted,
     [false] if it already existed.
 
@@ -118,8 +116,8 @@ val insert : 'a t -> 'a -> bool
 
     - Time: O(1) average, O(n) worst case during rehashing
     - Space: O(1) amortized *)
+val insert : 'a t -> 'a -> bool
 
-val remove : 'a t -> 'a -> bool
 (** Removes a value from the set. Returns [true] if the value was present and
     removed, [false] if it wasn't in the set.
 
@@ -131,8 +129,8 @@ val remove : 'a t -> 'a -> bool
     ## Complexity
 
     - Time: O(1) average, O(n) worst case *)
+val remove : 'a t -> 'a -> bool
 
-val contains : 'a t -> 'a -> bool
 (** Returns [true] if the value exists in the set.
 
     ## Examples
@@ -143,8 +141,8 @@ val contains : 'a t -> 'a -> bool
     ## Complexity
 
     - Time: O(1) average, O(n) worst case *)
+val contains : 'a t -> 'a -> bool
 
-val len : 'a t -> int
 (** Returns the number of unique elements in the set.
 
     ## Examples
@@ -154,8 +152,8 @@ val len : 'a t -> int
     ## Complexity
 
     - Time: O(1) *)
+val len : 'a t -> int
 
-val is_empty : 'a t -> bool
 (** Returns [true] if the set contains no elements.
 
     ## Examples
@@ -166,8 +164,8 @@ val is_empty : 'a t -> bool
     ## Complexity
 
     - Time: O(1) *)
+val is_empty : 'a t -> bool
 
-val clear : 'a t -> unit
 (** Removes all elements from the set.
 
     ## Examples
@@ -179,10 +177,10 @@ val clear : 'a t -> unit
 
     - Time: O(1)
     - Space: Capacity is preserved for reuse *)
+val clear : 'a t -> unit
 
 (** {1 Iteration} *)
 
-val iter : 'a t -> fn:('a -> unit) -> unit
 (** Applies function [fn] to each element in the set. The iteration order is
     unspecified and may change between runs.
 
@@ -194,8 +192,8 @@ val iter : 'a t -> fn:('a -> unit) -> unit
     ## Complexity
 
     - Time: O(n) *)
+val iter : 'a t -> fn:('a -> unit) -> unit
 
-val into_iter : 'a t -> 'a Iter.Iterator.t
 (** Converts the set into an immutable iterator.
 
     ## Examples
@@ -207,8 +205,8 @@ val into_iter : 'a t -> 'a Iter.Iterator.t
     |> Iterator.map ~fn:(fun x -> x * 2)
     |> Iterator.to_list
     ``` *)
+val into_iter : 'a t -> 'a Iter.Iterator.t
 
-val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 (** Returns a mutable iterator over the set's elements.
 
     ## Examples
@@ -216,8 +214,8 @@ val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
     ```ocaml let set = HashSet.of_list [1; 2; 3] in let iter =
     HashSet.to_mut_iter set in Iter.MutIterator.to_list iter (* [1; 2; 3] -
     order not guaranteed *) ``` *)
+val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 
-val fold : 'a t -> init:'acc -> fn:('acc -> 'a -> 'acc) -> 'acc
 (** Folds over all elements in the set. The iteration order is unspecified.
 
     ## Examples
@@ -228,8 +226,6 @@ val fold : 'a t -> init:'acc -> fn:('acc -> 'a -> 'acc) -> 'acc
     ## Complexity
 
     - Time: O(n) *)
-
-val to_list : 'a t -> 'a list
 (** Converts the set to a list. The order of elements is unspecified.
 
     ## Examples
@@ -241,10 +237,12 @@ val to_list : 'a t -> 'a list
 
     - Time: O(n)
     - Space: O(n) *)
+val fold : 'a t -> init:'acc -> fn:('acc -> 'a -> 'acc) -> 'acc
+
+val to_list : 'a t -> 'a list
 
 (** {1 Set Operations} *)
 
-val union : 'a t -> 'a t -> 'a t
 (** Returns a new set containing all elements from both sets.
 
     ## Examples
@@ -257,8 +255,8 @@ val union : 'a t -> 'a t -> 'a t
 
     - Time: O(n + m) where n = len(set1), m = len(set2)
     - Space: O(n + m) *)
+val union : 'a t -> 'a t -> 'a t
 
-val intersection : 'a t -> 'a t -> 'a t
 (** Returns a new set containing only elements present in both sets.
 
     ## Examples
@@ -271,8 +269,8 @@ val intersection : 'a t -> 'a t -> 'a t
 
     - Time: O(min(n, m))
     - Space: O(min(n, m)) *)
+val intersection : 'a t -> 'a t -> 'a t
 
-val difference : 'a t -> 'a t -> 'a t
 (** Returns a new set containing elements in [set1] but not in [set2].
 
     ## Examples
@@ -285,8 +283,8 @@ val difference : 'a t -> 'a t -> 'a t
 
     - Time: O(n) where n = len(set1)
     - Space: O(n) *)
+val difference : 'a t -> 'a t -> 'a t
 
-val symmetric_difference : 'a t -> 'a t -> 'a t
 (** Returns a new set containing elements in either set, but not both.
     Equivalent to [(set1 ∪ set2) - (set1 ∩ set2)].
 
@@ -300,8 +298,8 @@ val symmetric_difference : 'a t -> 'a t -> 'a t
 
     - Time: O(n + m)
     - Space: O(n + m) *)
+val symmetric_difference : 'a t -> 'a t -> 'a t
 
-val is_subset : 'a t -> 'a t -> bool
 (** Returns [true] if all elements of [set1] are in [set2].
 
     ## Examples
@@ -313,8 +311,8 @@ val is_subset : 'a t -> 'a t -> bool
     ## Complexity
 
     - Time: O(n) where n = len(set1) *)
+val is_subset : 'a t -> 'a t -> bool
 
-val is_superset : 'a t -> 'a t -> bool
 (** Returns [true] if [set1] contains all elements of [set2]. Equivalent to
     [is_subset set2 set1].
 
@@ -326,8 +324,8 @@ val is_superset : 'a t -> 'a t -> bool
     ## Complexity
 
     - Time: O(m) where m = len(set2) *)
+val is_superset : 'a t -> 'a t -> bool
 
-val is_disjoint : 'a t -> 'a t -> bool
 (** Returns [true] if the sets have no common elements.
 
     ## Examples
@@ -341,3 +339,4 @@ val is_disjoint : 'a t -> 'a t -> bool
     ## Complexity
 
     - Time: O(min(n, m)) *)
+val is_disjoint : 'a t -> 'a t -> bool

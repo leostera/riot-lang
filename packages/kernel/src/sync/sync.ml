@@ -1,5 +1,4 @@
 (** Synchronization primitives *)
-
 module Atomic = Atomic
 module Cell = Cell
 module Mutex = Mutex

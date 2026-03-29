@@ -23,20 +23,19 @@
       let value2 = LazyCell.get data (* No print, returns cached *)
     ]} *)
 
-type 'a t
 (** A lazy cell that computes its value on first access *)
-
-val create : (unit -> 'a) -> 'a t
 (** Create a lazy cell with the given initialization function *)
+type 'a t
+val create : (unit -> 'a) -> 'a t
 
-val get : 'a t -> 'a
 (** Get the value, computing it if necessary (alias for force) *)
-
-val force : 'a t -> 'a
 (** Force the computation and get the value *)
+val get : 'a t -> 'a
+
+(** Check if the value has been computed *)
+val force : 'a t -> 'a
 
 val is_initialized : 'a t -> bool
-(** Check if the value has been computed *)
 
-val take : 'a t -> 'a option
 (** Take the value out if initialized, leaving it uninitialized *)
+val take : 'a t -> 'a option
