@@ -108,95 +108,6 @@ let text_of_syntax_node = fun syntax_node ->
       in
       first_text ^ rest_text
 
-let doc_of_source_preserved_syntax_node = fun node ->
-  text_of_syntax_node node |> Doc.text
-
-let doc_of_source_preserved_syntax_node_from_current_source = fun ctx node ->
-  match ctx.source with
-  | Some source ->
-      Doc.text (Source.source_of_node_from_source source node)
-  | None ->
-      doc_of_source_preserved_syntax_node node
-
-let doc_of_source_preserved_syntax_node_span_from_current_source = fun ctx node ->
-  let trim_trailing_layout = fun text ->
-    let rec find_last_non_layout = fun index ->
-      if index < 0 then
-        (-1)
-      else
-        match text.[index] with
-        | ' '
-        | '\t'
-        | '\n'
-        | '\r' ->
-            find_last_non_layout (index - 1)
-        | _ ->
-            index
-    in
-    let last = find_last_non_layout (String.length text - 1) in
-    if last < 0 then
-      ""
-    else
-      String.sub text 0 (last + 1)
-  in
-  let strip_trailing_partial_item_prefix = fun text ->
-    let text = trim_trailing_layout text in
-    let keywords = [
-      "let";
-      "type";
-      "module";
-      "open";
-      "include";
-      "external";
-      "val";
-      "exception";
-      "and"
-    ] in
-    let drop_keyword = fun keyword ->
-      let text_length = String.length text in
-      let keyword_length = String.length keyword in
-      if
-        text_length >= keyword_length
-        && String.sub text (text_length - keyword_length) keyword_length = keyword
-      then
-        let before_index = text_length - keyword_length - 1 in
-        let has_boundary_before =
-          before_index < 0
-          || match String.get text before_index with
-          | ' '
-          | '\t'
-          | '\n'
-          | '\r' ->
-              true
-          | _ ->
-              false
-        in
-        if has_boundary_before then
-          Some (String.sub text 0 (text_length - keyword_length))
-        else
-          None
-      else
-        None
-    in
-    match List.find_map drop_keyword keywords with
-    | Some stripped ->
-        trim_trailing_layout stripped
-    | None ->
-        text
-  in
-  match ctx.source with
-  | Some source ->
-      let span = Syn.Ceibo.Red.SyntaxNode.span node in
-      let source_length = String.length source in
-      let start = Int.max 0 (Int.min span.start source_length) in
-      let end_ = Int.max start (Int.min span.end_ source_length) in
-      let slice = String.sub source start (end_ - start) in
-      Doc.text (strip_trailing_partial_item_prefix slice)
-  | None ->
-      doc_of_source_preserved_syntax_node node
-
-let doc_of_node = doc_of_source_preserved_syntax_node
-
 let string_contains_substring = fun text pattern ->
   let text_length = String.length text in
   let pattern_length = String.length pattern in
@@ -2438,12 +2349,6 @@ type lowerer = {
 }
 
 let make_lowerer ctx =
-  let doc_of_source_preserved_syntax_node_from_current_source =
-    doc_of_source_preserved_syntax_node_from_current_source ctx
-  in
-  let doc_of_source_preserved_syntax_node_span_from_current_source =
-    doc_of_source_preserved_syntax_node_span_from_current_source ctx
-  in
   let render_trivia_between_spans = render_trivia_between_spans ctx in
   let render_type_declaration_with_keyword keyword decl =
     render_type_declaration_with_keyword ctx keyword decl
