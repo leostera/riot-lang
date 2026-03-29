@@ -276,6 +276,19 @@ exception Nested = Std.Result.Error
         in
         Test.assert_equal ~expected:formatted ~actual:reparsed;
         Ok ());
+    Test.case "format fails for module-expression and module-type extensions"
+      (fun () ->
+        let source =
+          {|module type S = [%foo]
+module M = [%foo]
+|}
+        in
+        match parse_ml source |> Krasny.format with
+        | Ok _ ->
+            panic
+              "module-expression and module-type extensions should fail formatting instead of preserving source"
+        | Error _ ->
+            Ok ());
     Test.case "format keeps boolean if conditions with matches idempotent" (fun () ->
         let source =
           {|open Std

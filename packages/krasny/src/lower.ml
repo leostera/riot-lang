@@ -4307,8 +4307,9 @@ and render_module_type_doc = function
       Doc.concat [ Doc.lparen; render_module_type_doc inner; Doc.rparen ]
   | Syn.Cst.ModuleType.Attribute { module_type; attribute; _ } ->
       Doc.concat [ render_module_type_doc module_type; Doc.space; render_attribute attribute ]
-  | module_type ->
-      doc_of_node (Syn.Cst.ModuleType.syntax_node module_type)
+  | Syn.Cst.ModuleType.Extension extension ->
+      unsupported_syntax ~context:[ "module_type" ] ~syntax_node:extension.syntax_node
+        "module-type extensions do not have a structural formatter yet"
 
 and render_module_application_argument = function
   | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } ->
@@ -4381,8 +4382,9 @@ and render_module_expression_doc = function
       Doc.concat [ Doc.lparen; render_module_expression_doc inner; Doc.rparen ]
   | Syn.Cst.ModuleExpression.Attribute { module_expression; attribute; _ } ->
       Doc.concat [ render_module_expression_doc module_expression; Doc.space; render_attribute attribute ]
-  | module_expression ->
-      doc_of_node (Syn.Cst.ModuleExpression.syntax_node module_expression)
+  | Syn.Cst.ModuleExpression.Extension extension ->
+      unsupported_syntax ~context:[ "module_expression" ] ~syntax_node:extension.syntax_node
+        "module-expression extensions do not have a structural formatter yet"
 
 and render_module_declaration_with_keyword keyword_doc
     ({ module_name; functor_parameters; module_type; module_expression; is_destructive_substitution; _ } :

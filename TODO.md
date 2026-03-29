@@ -43,6 +43,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `sig ... end` now has an explicit `SIG_EXPR` syntax kind; `syn` no longer recognizes signature module types by string-sniffing an `IDENT_EXPR` token stream.
 - `krasny` renders top-level, nested, grouped-type, and record-body ownership from CST streams plus per-node `owned_trivia`.
 - top-level type extensions, exception declarations, and floating attributes now lower structurally; unsupported top-level class/class-type/extension items fail explicitly instead of preserving source text.
+- module-expression and module-type extensions now fail explicitly instead of falling through raw `doc_of_node` fallback.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - `lower.ml` still contains source/text heuristics and one remaining source-backed phrase-boundary preservation path that should be treated as debt.
 
