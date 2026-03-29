@@ -505,6 +505,29 @@ and packed =
           ~source
           ~msg:"grouped GADT type declarations should lower structurally instead of preserving source";
         Ok ());
+    Test.case "format inline record constructors from structure, not source newlines"
+      (fun () ->
+        let source =
+          {|type t =
+  | A of {
+      x : int;
+      y : int;
+    }
+  | B
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"inline record constructors should format structurally"
+        in
+        Test.assert_equal
+          ~expected:
+            {|type t =
+  | A of { x : int; y : int }
+  | B
+|}
+          ~actual;
+        Ok ());
     Test.case "format keeps boolean if conditions with matches idempotent" (fun () ->
         let source =
           {|open Std

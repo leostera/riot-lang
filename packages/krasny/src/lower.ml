@@ -1289,9 +1289,8 @@ let render_variant_constructor_arguments = fun ?source ?(prefer_multiline_inline
       in
       (
         match source_node with
-        | Some source_node when fields_have_owned_trivia
-        || has_standalone_record_trivia
-        || syntax_node_has_internal_newline source_node ->
+        | Some _ when fields_have_owned_trivia
+        || has_standalone_record_trivia ->
             Doc.indent 2 (render_record_definition ?source fields)
         | Some _ when prefer_multiline_inline_record ->
             Doc.indent 2 (render_record_definition ?source fields)
