@@ -101,34 +101,51 @@
     - [CIE LUV color space](https://en.wikipedia.org/wiki/CIELUV)
     - [CIE 1931 XYZ](https://en.wikipedia.org/wiki/CIE_1931_color_space) *)
 
-type ansi = [ `ansi of int ]
 (** ANSI 256-color palette entry (0-255) *)
-
-type rgb = [ `rgb of int * int * int ]
 (** RGB color with integer values (0-255 per channel) *)
-
-type lrgb = [ `lrgb of float * float * float ]
+type ansi =
+  [
+  | `ansi of int
+]
 (** Linear RGB (gamma-corrected) with float values for calculations *)
-
-type xyz = [ `xyz of float * float * float ]
+type rgb =
+  [
+  | `rgb of int * int * int
+]
 (** CIE 1931 XYZ color space (device-independent representation) *)
-
-type luv = [ `luv of float * float * float ]
+type lrgb =
+  [
+  | `lrgb of float * float * float
+]
 (** CIE LUV perceptually uniform color space *)
-
-type uv = [ `uv of float * float ]
+type xyz =
+  [
+  | `xyz of float * float * float
+]
 (** Chromaticity coordinates derived from XYZ *)
-
-type color = [ ansi | rgb | xyz | luv | uv ]
+type luv =
+  [
+  | `luv of float * float * float
+]
 (** Union of all color types *)
-
-val to_string : color -> string
+type uv =
+  [
+  | `uv of float * float
+]
 (** Convert any color type to a string representation.
 
     Examples:
     - `ansi 9` → "ANSI(9)"
     - `rgb (255, 128, 0)` → "RGB(255,128,0)"
     - `luv (0.5323, 1.7512, 0.3742)` → "LUV(0.5323,1.7512,0.3742)" *)
+type color = [
+  | ansi
+  | rgb
+  | xyz
+  | luv
+  | uv
+]
+val to_string : color -> string
 
 module ANSI : sig
   val to_rgb : ansi -> rgb
@@ -156,7 +173,6 @@ module White_reference : sig
 end
 
 module Linear_RGB : sig
-  val linearize : rgb -> lrgb
   (** Convert standard RGB to linear RGB by removing gamma correction.
 
       Applies the inverse of sRGB gamma curve:
@@ -165,8 +181,8 @@ module Linear_RGB : sig
 
       Example: ```ocaml let linear = Linear_RGB.linearize (`rgb (128, 128, 128))
       in (* Returns: `lrgb (0.2158, 0.2158, 0.2158) *) ``` *)
+  val linearize : rgb -> lrgb
 
-  val delinearize : lrgb -> rgb
   (** Convert linear RGB back to standard RGB with gamma correction.
 
       Applies sRGB gamma curve:
@@ -174,6 +190,7 @@ module Linear_RGB : sig
       - For values > 0.0031308: srgb = 1.055 * value^(1/2.4) - 0.055
 
       This is the inverse of `linearize`. *)
+  val delinearize : lrgb -> rgb
 
   val to_xyz : lrgb -> xyz
   (** Convert linear RGB to CIE XYZ color space.
@@ -184,7 +201,6 @@ module Linear_RGB : sig
 end
 
 module XYZ : sig
-  val to_linear_rgb : xyz -> lrgb
   (** Convert CIE XYZ to linear RGB.
 
       Uses the XYZ to sRGB transformation matrix (D65 illuminant). This is the
@@ -192,8 +208,8 @@ module XYZ : sig
 
       Note: Some XYZ colors may be outside the RGB gamut, resulting in clamped
       or out-of-range RGB values. *)
+  val to_linear_rgb : xyz -> lrgb
 
-  val to_uv : xyz -> uv
   (** Convert XYZ to chromaticity coordinates.
 
       Extracts the chromaticity (color information without luminance):
@@ -201,14 +217,15 @@ module XYZ : sig
       - v = 9Y / (X + 15Y + 3Z)
 
       Returns (0.0, 0.0) if denominator is zero. *)
+  val to_uv : xyz -> uv
 
-  val to_luv_with_ref : xyz -> wref:xyz -> luv
   (** Convert XYZ to LUV using a custom white reference.
 
       The white reference defines what "white" means in the viewing conditions.
       Different illuminants (D65, D50, etc.) produce different LUV values.
 
       Use this when you need to match specific lighting conditions. *)
+  val to_luv_with_ref : xyz -> wref:xyz -> luv
 
   val to_luv : xyz -> luv
   (** Convert XYZ to LUV using the D65 white reference.
@@ -218,16 +235,16 @@ module XYZ : sig
 end
 
 module LUV : sig
-  val to_xyz_with_ref : luv -> wref:xyz -> xyz
   (** Convert LUV back to XYZ using a custom white reference.
 
       The white reference must match the one used in the forward conversion.
       This is the inverse of `XYZ.to_luv_with_ref`. *)
+  val to_xyz_with_ref : luv -> wref:xyz -> xyz
 
-  val to_xyz : luv -> xyz
   (** Convert LUV to XYZ using the D65 white reference.
 
       This is the inverse of `XYZ.to_luv`. *)
+  val to_xyz : luv -> xyz
 
   val blend : luv -> luv -> mix:float -> luv
   (** Blend two colors in LUV space.

@@ -60,23 +60,22 @@
     - [TERM] contains "color" → Basic ANSI color support
     - Otherwise → No color support *)
 
-type t
 (** Terminal color profile representing color capability level *)
-
-val from_env : unit -> t
 (** [from_env ()] detects the terminal's color capability from environment
     variables like [COLORTERM] and [TERM].
 
     Returns a profile that matches the detected capability. *)
+type t
+val from_env : unit -> t
 
-val default : t
 (** [default] provides a conservative profile for basic terminals.
 
     Assumes 16-color ANSI support, which is widely compatible. *)
+val default : t
 
-val convert : t -> Color.t -> Color.t
 (** [convert profile color] adapts [color] to match the [profile]'s capability.
 
     If the color is already compatible (e.g., ANSI color on ANSI profile), it
     returns the color unchanged. Otherwise, it converts to the closest
     equivalent color the terminal can display. *)
+val convert : t -> Color.t -> Color.t
