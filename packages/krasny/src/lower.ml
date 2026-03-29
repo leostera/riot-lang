@@ -1145,6 +1145,37 @@ let rec render_core_type =
               head
             ]
       )
+  | Syn.Cst.CoreType.Class { hash_token; class_path; arguments; _ } ->
+      let head = Doc.concat [ doc_of_token hash_token; doc_of_ident class_path ] in
+      (
+        match arguments with
+        | [] ->
+            head
+        | [ Syn.Cst.CoreType.Tuple { elements; _ } ] ->
+            Doc.concat [
+              Doc.lparen;
+              join_map (Doc.concat [ Doc.comma; Doc.space ]) render_core_type elements;
+              Doc.rparen;
+              Doc.space;
+              head
+            ]
+        | [ argument ] ->
+            let argument =
+              if core_type_needs_parens_in_application argument then
+                Doc.concat [ Doc.lparen; render_core_type argument; Doc.rparen ]
+              else
+                render_core_type argument
+            in
+            Doc.concat [ argument; Doc.space; head ]
+        | arguments ->
+            Doc.concat [
+              Doc.lparen;
+              join_map (Doc.concat [ Doc.comma; Doc.space ]) render_core_type arguments;
+              Doc.rparen;
+              Doc.space;
+              head
+            ]
+      )
   | Syn.Cst.CoreType.Alias { type_; name_token; _ } ->
       let alias_name = token_text name_token in
       let alias_name =
@@ -1196,14 +1227,19 @@ let rec render_core_type =
       Doc.group (join_map (Doc.concat [ Doc.space; star; Doc.break ~flat:" " () ]) render_core_type elements)
   | Syn.Cst.CoreType.Parenthesized { inner; _ } ->
       Doc.concat [ Doc.lparen; render_core_type inner; Doc.rparen ]
+  | Syn.Cst.CoreType.LocalOpen { module_path; type_; _ } ->
+      Doc.concat [ doc_of_ident module_path; Doc.text ".("; render_core_type type_; Doc.rparen ]
   | Syn.Cst.CoreType.PolyVariant poly_variant ->
       render_poly_variant_type poly_variant
   | Syn.Cst.CoreType.Record { fields; _ } ->
       render_record_type fields
   | Syn.Cst.CoreType.FirstClassModule { module_type; _ } ->
       render_first_class_module_type module_type
-  | other ->
-      doc_of_source_preserved_syntax_node (Syn.Cst.CoreType.syntax_node other)
+  | Syn.Cst.CoreType.Object { fields; _ } ->
+      render_object_type fields
+  | Syn.Cst.CoreType.Extension extension ->
+      unsupported_syntax ~context:[ "core_type" ] ~syntax_node:extension.syntax_node
+        "core-type extensions do not have a structural formatter yet"
 and render_record_core_type_field = fun (field : Syn.Cst.record_type_field) ->
   let type_doc = render_core_type field.field_type in
   let separator =

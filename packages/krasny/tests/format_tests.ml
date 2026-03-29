@@ -289,6 +289,29 @@ module M = [%foo]
               "module-expression and module-type extensions should fail formatting instead of preserving source"
         | Error _ ->
             Ok ());
+    Test.case "format keeps structural core types idempotent" (fun () ->
+        let source =
+          {|val use : #service -> M.(t list) -> < close : unit -> unit; next : int >
+|}
+        in
+        let formatted =
+          parse_mli source |> Krasny.format
+          |> Result.expect
+               ~msg:"class, local-open, and object core types should format structurally"
+        in
+        let reparsed =
+          parse_mli formatted |> Krasny.format
+          |> Result.expect ~msg:"formatted core types should reformat"
+        in
+        Test.assert_equal ~expected:formatted ~actual:reparsed;
+        Ok ());
+    Test.case "format fails for core-type extensions" (fun () ->
+        let source = "val use : [%foo: int]\n" in
+        match parse_mli source |> Krasny.format with
+        | Ok _ ->
+            panic "core-type extensions should fail formatting instead of preserving source"
+        | Error _ ->
+            Ok ());
     Test.case "format keeps boolean if conditions with matches idempotent" (fun () ->
         let source =
           {|open Std
