@@ -55,6 +55,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `let f = fun ...` detection now comes from `Syn.Cst.let_binding` shape instead of scanning tokens after `=`.
 - tuple and `let open ... in` line breaking no longer sniff source length or embedded newlines; `krasny` now relies on structural docs there.
 - simple apply expressions now decide whether they stay after `=` by recursing over CST callee/argument shape instead of scanning source text for keyword substrings.
+- application rendering no longer force-switches layout from raw source length or embedded newlines; it follows structural argument break rules only.
 - inline-record constructor arguments no longer preserve multiline layout just because the original record node contained newlines; they format from field structure and owned trivia only.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.

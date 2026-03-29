@@ -2909,18 +2909,10 @@ and render_apply_expression ({ syntax_node; callee; argument; _ } : Syn.Cst.appl
   in
   let rendered_arguments = arguments |> List.map render_apply_argument in
   let rendered_argument_pairs = List.combine arguments rendered_arguments in
-  let source =
-    text_of_syntax_node syntax_node
-  in
-  let application_prefers_multiline =
-    syntax_node_has_internal_newline syntax_node
-    || normalized_source_length source > 100
-  in
   if
     List.exists
       (fun (argument, doc) -> apply_argument_prefers_break argument || Doc.is_multiline doc)
       rendered_argument_pairs
-    || application_prefers_multiline
   then
     let rec split_inline_prefix acc = function
       | (argument, doc) :: rest

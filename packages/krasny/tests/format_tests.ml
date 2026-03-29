@@ -103,6 +103,25 @@ let tests =
         in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
+    Test.case "format normalizes simple applies from structure, not source newlines"
+      (fun () ->
+        let source =
+          {|let call =
+  run
+    first
+    second
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"simple applies should not preserve source newlines"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let call = run first second
+|}
+          ~actual;
+        Ok ());
     Test.case "format rewrites parameterized let bindings between formatted lets"
       (fun () ->
         let source = "(* intro *)\nlet x = 1 + 2\nlet f x = x + 1\nlet y = 3 + 4\n" in
