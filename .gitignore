@@ -41,3 +41,4 @@ __pycache__
 # TLA+ / TLC generated state directories
 /states/
 /specs/**/states/
+/specs/**/*.old
