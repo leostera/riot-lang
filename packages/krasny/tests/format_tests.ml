@@ -146,6 +146,45 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
 |}
           ~actual:formatted;
         Ok ());
+    Test.case "format normalizes let-open bodies from structure, not source newlines"
+      (fun () ->
+        let source =
+          {|let answer =
+  let open Option in
+  value
+|}
+        in
+        let formatted =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"let-open expressions should format structurally"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let answer =
+  let open Option in value
+|}
+          ~actual:formatted;
+        Ok ());
+    Test.case "format breaks long tuples without source-length sniffing" (fun () ->
+        let source =
+          {|let tuple_value = (left_side_identifier, right_side_identifier, final_identifier, fourth_identifier)
+|}
+        in
+        let formatted =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"long tuples should still break from doc layout"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let tuple_value =
+  ( left_side_identifier,
+    right_side_identifier,
+    final_identifier,
+    fourth_identifier
+  )
+|}
+          ~actual:formatted;
+        Ok ());
     Test.case "verify treats normalized punctuation and parens as safe"
       (fun () ->
         with_tempdir "krasny_runner_verify_semantic_hash" (fun tmpdir ->

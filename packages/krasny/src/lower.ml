@@ -2064,10 +2064,6 @@ let rec expression_keeps_inline_binding_value =
   | _ ->
       false
 
-let tuple_source_is_long = fun syntax_node ->
-  let source = text_of_syntax_node syntax_node |> String.trim in
-  normalized_source_length source > 100
-
 let rec expression_is_pipeline =
   function
   | Syn.Cst.Expression.Infix { operator_token; left; right; _ } ->
@@ -2207,14 +2203,6 @@ let expression_requires_break_after_equals =
       true
   | _ ->
       false
-
-let expression_source_is_long = fun expression ->
-  let source = text_of_syntax_node (Syn.Cst.Expression.syntax_node expression) in
-  normalized_source_length source > 100
-
-let expression_source_has_newline = fun expression ->
-  let source = text_of_syntax_node (Syn.Cst.Expression.syntax_node expression) in
-  string_contains_substring source "\n" || string_contains_substring source "\r\n"
 
 let expression_can_use_delimited_local_open_sugar =
   function
@@ -2364,10 +2352,7 @@ let make_lowerer ctx =
       Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
   | Syn.Cst.Expression.Tuple { elements; _ } ->
       let rendered_elements = List.map render_expression elements in
-      let prefers_multiline =
-        tuple_source_is_long (Syn.Cst.Expression.syntax_node expression)
-        || List.exists Doc.is_multiline rendered_elements
-      in
+      let prefers_multiline = List.exists Doc.is_multiline rendered_elements in
       if prefers_multiline then
         let lines = join_map (Doc.concat [ Doc.comma; Doc.line ]) render_expression elements in
         Doc.concat
@@ -2736,7 +2721,6 @@ and render_local_open_expression
     if
       Doc.is_multiline body_doc
       || expression_requires_break_after_equals body
-      || expression_source_has_newline body
     then
       Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
     else
