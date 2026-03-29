@@ -52,6 +52,7 @@ This file is _yours_. Keep it up to date after every big change.
 - optional parameter defaults and typed binding patterns now survive the `Syn.Cst` lift structurally, and `krasny` renders parameters from CST shape instead of `Source.source_of_parameter`.
 - signature `val` declarations now render names from CST token structure; `krasny` no longer reparses declaration source to recover operator names before `:`.
 - inherited polymorphic-variant rows now render directly from `Syn.Cst.RowField.Inherit.type_`; `krasny` no longer reconstructs inherited row paths by scanning token text.
+- `let f = fun ...` detection now comes from `Syn.Cst.let_binding` shape instead of scanning tokens after `=`.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `lower.ml` still contains source/text heuristics and one remaining source-backed phrase-boundary preservation path that should be treated as debt.
@@ -93,7 +94,6 @@ This file is _yours_. Keep it up to date after every big change.
   - if formatting still needs these, the missing structure belongs in `syn`
 
 - [ ] Remove source-sniffing and token-text heuristics used to make rendering decisions
-  - `syntax_node_has_explicit_fun_rhs`
   - `type_declaration_requires_source_preservation`
   - rendered-source substring checks such as `[@` / `[%%expect]` preservation gates
   - multiline/layout heuristics currently driven by `text_of_syntax_node` or `string_contains_substring`

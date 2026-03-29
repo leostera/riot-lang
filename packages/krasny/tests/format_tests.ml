@@ -86,6 +86,14 @@ let tests =
         in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
+    Test.case "format keeps explicit fun rhs bindings explicit" (fun () ->
+        let source = "let id = fun x -> x\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"explicit fun rhs bindings should format"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
     Test.case "format rewrites parameterized let bindings between formatted lets"
       (fun () ->
         let source = "(* intro *)\nlet x = 1 + 2\nlet f x = x + 1\nlet y = 3 + 4\n" in

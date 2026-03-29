@@ -272,23 +272,13 @@ let nontrivia_bounds_span_of_syntax_node = fun syntax_node ->
         end_ = (Syn.Ceibo.Red.SyntaxToken.span last).end_
       }
 
-let syntax_node_has_explicit_fun_rhs = fun syntax_node ->
-  let tokens =
-    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.map Syn.Ceibo.Red.SyntaxToken.text
-  in
-  let rec loop = fun seen_equals ->
-    function
-    | [] ->
-        false
-    | "=" :: rest ->
-        loop true rest
-    | token :: _ when seen_equals ->
-        token = "fun"
-    | _ :: rest ->
-        loop false rest
-  in
-  loop false tokens
+let binding_has_explicit_fun_rhs = fun (binding : Syn.Cst.let_binding) ->
+  List.is_empty binding.parameters
+  && match binding.value with
+  | Syn.Cst.Expression.Fun _ ->
+      true
+  | _ ->
+      false
 
 let push_pending_break = fun pending ~position break_count ->
   if break_count <= 0 then
@@ -4323,7 +4313,7 @@ and render_let_expression
 
 and render_let_binding_group_item (binding : Syn.Cst.let_binding) =
   let source_has_explicit_fun =
-    syntax_node_has_explicit_fun_rhs binding.syntax_node
+    binding_has_explicit_fun_rhs binding
   in
   render_local_binding ~local_context:false ~keyword_token:binding.keyword_token
     ~source_has_explicit_fun ~rec_token:binding.rec_token
@@ -5179,7 +5169,7 @@ and structure_item_requires_source_preservation_before_expression item next_item
   match item, next_item with
   | Syn.Cst.StructureItem.LetBinding binding, Syn.Cst.StructureItem.Expression _ ->
       not (List.is_empty binding.parameters)
-      && not (syntax_node_has_explicit_fun_rhs binding.syntax_node)
+      && not (binding_has_explicit_fun_rhs binding)
   | _ ->
       false
 
