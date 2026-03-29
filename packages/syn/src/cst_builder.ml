@@ -3883,9 +3883,33 @@ and effect_pattern_from_node = fun node ->
       }
   | _ -> None
 
-let parameter_from_node = fun node ->
+let rec parameter_from_node = fun node ->
+  let rec binding_name_token_from_pattern =
+    function
+    | Cst.Pattern.Identifier { name_token; _ } ->
+        Some name_token
+    | Cst.Pattern.Typed { pattern; _ }
+    | Cst.Pattern.Lazy { pattern; _ }
+    | Cst.Pattern.LocalOpen { pattern; _ } ->
+        binding_name_token_from_pattern pattern
+    | Cst.Pattern.Parenthesized { inner; _ } ->
+        binding_name_token_from_pattern inner
+    | Cst.Pattern.Alias { name_token; _ } ->
+        Some name_token
+    | _ ->
+        None
+  in
   let binding_pattern_from_direct_nodes = fun ~label_name_token direct_nodes ->
     match direct_nodes with
+    | binding_pattern_node :: type_node :: _
+      when is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind binding_pattern_node)
+           && is_type_syntax_kind (Ceibo.Red.SyntaxNode.kind type_node) ->
+        Some (Cst.Pattern.Typed {
+          syntax_node = node;
+          pattern = pattern_from_node binding_pattern_node;
+          type_ = core_type_from_node type_node;
+          attributes = []
+        })
     | binding_pattern_node :: _ when is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind binding_pattern_node) ->
         Some (pattern_from_node binding_pattern_node)
     | type_node :: _ when is_type_syntax_kind (Ceibo.Red.SyntaxNode.kind type_node) ->
@@ -3916,7 +3940,7 @@ let parameter_from_node = fun node ->
             binding_name_token = (
               match binding_pattern with
               | Some pattern ->
-                  simple_pattern_name_token (Cst.Pattern.syntax_node pattern)
+                  binding_name_token_from_pattern pattern
               | None ->
                   None
             );
@@ -3936,11 +3960,12 @@ let parameter_from_node = fun node ->
             binding_name_token = (
               match binding_pattern with
               | Some pattern ->
-                  simple_pattern_name_token (Cst.Pattern.syntax_node pattern)
+                  binding_name_token_from_pattern pattern
               | None ->
                   None
             );
             has_default = false;
+            default_value = None;
             binding_pattern
           }
       | _ -> unsupported_parameter node
@@ -3948,22 +3973,37 @@ let parameter_from_node = fun node ->
   | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> (
       let direct_nodes = direct_non_trivia_nodes node in
       match token_with_text node "?", direct_nodes with
-      | Some sigil_token, binding_pattern_node :: _default_value_node :: _ ->
-          let binding_pattern = pattern_from_node binding_pattern_node in
-          Cst.Parameter.Optional {syntax_node = node; sigil_token = sigil_token; label_token = (
-              match first_ident_token_in_subtree binding_pattern_node with
-              | Some token ->
-                  token
-              | None -> (
-                  match first_ident_token_in_subtree node with
-                  | Some token ->
-                      token
-                  | None ->
-                      bail ~message:"expected optional parameter label during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-                        "parameter.optional_default"
-                      ]
-                )
-            ); binding_name_token = simple_pattern_name_token binding_pattern_node; has_default = true; binding_pattern = Some binding_pattern}
+      | Some sigil_token, _ -> (
+          let label_token =
+            match first_ident_token_in_subtree node with
+            | Some token ->
+                token
+            | None ->
+                bail ~message:"expected optional parameter label during Ceibo -> CST lifting"
+                  ~syntax_node:node ~context:[ "parameter.optional_default" ]
+          in
+          let binding_pattern =
+            binding_pattern_from_direct_nodes ~label_name_token:label_token direct_nodes
+          in
+          let default_value =
+            direct_nodes
+            |> List.rev
+            |> List.find_opt can_lift_expression_node
+            |> Option.map expression_from_node
+          in
+          match binding_pattern, default_value with
+          | Some binding_pattern, Some default_value ->
+              Cst.Parameter.Optional {
+                syntax_node = node;
+                sigil_token = sigil_token;
+                label_token;
+                binding_name_token = binding_name_token_from_pattern binding_pattern;
+                has_default = true;
+                default_value = Some default_value;
+                binding_pattern = Some binding_pattern;
+              }
+          | _ ->
+              unsupported_parameter node)
       | _ -> unsupported_parameter node
     )
   | Syntax_kind.LOCALLY_ABSTRACT_TYPE_PARAM ->
@@ -3975,7 +4015,7 @@ let parameter_from_node = fun node ->
         name_token = simple_pattern_name_token node
       }
 
-let parameter_with_attributes = fun parameter attributes ->
+and parameter_with_attributes = fun parameter attributes ->
   match attributes, parameter with
   | [], _ ->
       parameter
@@ -4007,12 +4047,12 @@ let parameter_with_attributes = fun parameter attributes ->
   | _, Cst.Parameter.LocallyAbstract _ ->
       parameter
 
-let parameter_candidate_node = fun node ->
+and parameter_candidate_node = fun node ->
   let kind = Ceibo.Red.SyntaxNode.kind node in
   is_parameter_like_kind kind
   || (kind = Syntax_kind.ATTRIBUTE_EXPR && not (standalone_attribute_node node))
 
-let parameters_from_nodes = fun nodes ->
+and parameters_from_nodes = fun nodes ->
   let rec loop = fun pending_attributes acc ->
     function
     | [] ->
@@ -4027,7 +4067,7 @@ let parameters_from_nodes = fun nodes ->
   in
   loop [] [] nodes
 
-let rec apply_argument_from_node = fun node ->
+and apply_argument_from_node = fun node ->
   let first_nontrivia_expression_child = fun node ->
     direct_non_trivia_nodes node |> List.find_opt can_lift_expression_node |> Option.map expression_from_node in
   match Ceibo.Red.SyntaxNode.kind node with

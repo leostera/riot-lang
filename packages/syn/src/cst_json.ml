@@ -727,6 +727,7 @@ and parameter_to_json =
     label_token;
     binding_name_token;
     has_default;
+    default_value;
     binding_pattern
   } ->
       Json.Object [
@@ -736,6 +737,7 @@ and parameter_to_json =
         ("label_token", token_to_json label_token);
         ("binding_name_token", option_to_json token_to_json binding_name_token);
         ("has_default", Json.Bool has_default);
+        ("default_value", option_to_json expression_to_json default_value);
         ("binding_pattern", option_to_json pattern_to_json binding_pattern)
       ]
   | Cst.Parameter.LocallyAbstract { syntax_node; binders } ->

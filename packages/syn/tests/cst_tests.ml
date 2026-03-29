@@ -5312,6 +5312,50 @@ let tests =
             Ok ()
         | _ ->
             Error "expected render binding parameters");
+    Test.case "cst let bindings preserve optional parameter defaults structurally"
+      (fun () ->
+        let source =
+          "let apply ?(f : int -> int = fun x -> x * 2) ?timeout:chosen_timeout () = f 1\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match top_level_let_bindings cst with
+        | binding :: _ -> (
+            match Syn.Cst.LetBinding.parameters binding with
+            | Syn.Cst.Parameter.Optional
+                {
+                  label_token;
+                  binding_name_token = Some binding_name_token;
+                  has_default = true;
+                  default_value = Some (Syn.Cst.Expression.Fun _);
+                  binding_pattern = Some (Syn.Cst.Pattern.Typed _);
+                  _;
+                }
+              :: Syn.Cst.Parameter.Optional
+                   {
+                     label_token = renamed_label;
+                     binding_name_token = Some renamed_binding;
+                     has_default = false;
+                     default_value = None;
+                     _;
+                   }
+              :: _ ->
+                Test.assert_equal ~expected:"f"
+                  ~actual:(Syn.Cst.Token.text label_token);
+                Test.assert_equal ~expected:"f"
+                  ~actual:(Syn.Cst.Token.text binding_name_token);
+                Test.assert_equal ~expected:"timeout"
+                  ~actual:(Syn.Cst.Token.text renamed_label);
+                Test.assert_equal ~expected:"chosen_timeout"
+                  ~actual:(Syn.Cst.Token.text renamed_binding);
+                Ok ()
+            | _ ->
+                Error "expected structural optional parameters with preserved defaults")
+        | [] -> Error "expected let binding");
     Test.case "cst let bindings preserve locally abstract type parameters"
       (fun () ->
         let source = "let id (type a b) value = value\n" in

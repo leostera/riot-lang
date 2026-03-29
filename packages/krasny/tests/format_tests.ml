@@ -213,6 +213,17 @@ let optional_fun = fun ?(y = 0) -> y + 1
         in
         assert_idempotent ~source ~msg:"typed/labeled forms should stay stable";
         Ok ());
+    Test.case "format keeps structural named parameters with defaults idempotent"
+      (fun () ->
+        let source =
+          {|let configure ?(timeout : int = 30) ?retry:retries ~point:{ x; y } ~limit:seconds () =
+  (timeout, retries, x, y, seconds)
+|}
+        in
+        assert_idempotent
+          ~source
+          ~msg:"named parameter defaults, renames, and destructuring should format structurally";
+        Ok ());
     Test.case "format keeps alias patterns idempotent" (fun () ->
         let source =
           {|open Std

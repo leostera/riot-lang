@@ -42,6 +42,7 @@
 36. Keep record-body helper streams public and token-order-complete: `CstBuilder.record_field_items_of_fields` must emit normalized `RecordField` items plus any remaining standalone `}`-owned comments/docstrings after field-owned spans are excluded, so downstream renderers never need raw record-node interleaving or closing-token recovery.
 37. Keep `sig ... end` on an explicit `SIG_EXPR` syntax kind. Do not route signature module-type bodies back through `IDENT_EXPR` plus token-text sniffing in the parser or CST builder.
 38. Keep `Cst.owned_trivia` public and explicit: `leading`, `inner`, and `trailing` are the stable CST ownership buckets consumed by `krasny` and CST JSON, not a temporary migration wrapper to hide behind source-gap recovery.
+39. Keep optional parameter structure lossless in `Syn.Cst`: preserve typed binding patterns and `default_value` as real CST fields instead of forcing downstream tools to recover them from parameter source text.
 
 ## Validate
 

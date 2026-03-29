@@ -116,7 +116,6 @@ let source_of_token token = Syn.Cst.Token.text token
 let source_of_ident ident = Syn.Cst.Ident.segments ident |> List.map source_of_token |> String.concat "."
 let source_of_result (result : Syn.Parser.parse_result) = result.source
 let source_of_pattern pattern = source_of_syntax_node (Syn.Cst.Pattern.syntax_node pattern) |> String.trim
-let source_of_parameter parameter = source_of_syntax_node (Syn.Cst.Parameter.syntax_node parameter) |> String.trim
 
 let identifier_character = function
   | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '\'' ->

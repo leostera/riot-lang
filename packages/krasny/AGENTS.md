@@ -27,6 +27,7 @@
 21. Do not add new source-preserving reconstruction paths in `Lower`. Unsupported shapes should fail formatting until `syn` exposes enough structure for a purely structural lowering.
 22. The remaining top-level parameterized-`let` phrase-boundary preservation path is debt, not a model to copy. Do not extend it; replace it with explicit structural phrase-boundary facts when that work is picked up.
 23. Treat `Syn.Ceibo.Red.SyntaxNode.tokens` and `direct_tokens` as real-token-only streams in `krasny`. Do not keep dead filters for impossible `WHITESPACE` / `COMMENT` / `DOCSTRING` token kinds after the token-trivia migration.
+24. Render parameters from `Syn.Cst.Parameter` structure. Do not reintroduce `Source.source_of_parameter` or other raw parameter-text reconstruction once optional defaults and typed binding patterns are preserved structurally.
 
 ## Validate
 

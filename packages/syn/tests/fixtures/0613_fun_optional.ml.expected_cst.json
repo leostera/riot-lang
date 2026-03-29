@@ -118,6 +118,7 @@
                 },
                 "binding_name_token": null,
                 "has_default": false,
+                "default_value": null,
                 "binding_pattern": null
               },
               {
@@ -147,6 +148,7 @@
                 },
                 "binding_name_token": null,
                 "has_default": false,
+                "default_value": null,
                 "binding_pattern": null
               },
               {

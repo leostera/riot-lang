@@ -925,6 +925,7 @@
               },
               "binding_name_token": null,
               "has_default": false,
+              "default_value": null,
               "binding_pattern": null
             },
             {
@@ -961,6 +962,34 @@
                 }
               },
               "has_default": true,
+              "default_value": {
+                "tag": "path",
+                "syntax_node": {
+                  "kind": "IDENT_EXPR",
+                  "span": {
+                    "start": 1201,
+                    "end": 1207
+                  }
+                },
+                "path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "IDENT_EXPR",
+                    "span": {
+                      "start": 1201,
+                      "end": 1207
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "\\#and",
+                    "span": {
+                      "start": 1202,
+                      "end": 1207
+                    }
+                  }
+                }
+              },
               "binding_pattern": {
                 "tag": "identifier",
                 "syntax_node": {
@@ -2173,6 +2202,7 @@
               },
               "binding_name_token": null,
               "has_default": false,
+              "default_value": null,
               "binding_pattern": null
             },
             {

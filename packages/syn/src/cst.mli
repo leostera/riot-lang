@@ -1782,7 +1782,9 @@ and parenthesized_pattern = {
   attributes : attribute list;
 }
 
-
+module Literal = Constant
+(** Alias of {!Constant} used for direct literal expressions. *)
+type literal = Literal.t
 
 (** A positional function parameter.
 
@@ -1793,7 +1795,7 @@ and parenthesized_pattern = {
 
     Examples include `~x` and `~label`.
 *)
-type positional_parameter = {
+and positional_parameter = {
   syntax_node : syntax_node;
   pattern : pattern;
   name_token : Token.t option;
@@ -1803,7 +1805,7 @@ type positional_parameter = {
     This covers both plain optional parameters like `?x` and parameters with a
     default such as `?(x = 0)`.
 *)
-type labeled_parameter = {
+and labeled_parameter = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   label_token : Token.t;
@@ -1819,12 +1821,13 @@ type labeled_parameter = {
     (type a b)
     ```
 *)
-type optional_parameter = {
+and optional_parameter = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
   has_default : bool;
+  default_value : expression option;
   binding_pattern : pattern option;
 }
 (** Function parameter syntax.
@@ -1834,7 +1837,7 @@ type optional_parameter = {
     abstract parameters so tooling can reason about the source-level calling
     convention directly.
 *)
-type locally_abstract_type_parameter = {
+and locally_abstract_type_parameter = {
   syntax_node : syntax_node;
   binders : type_binder list;
 }
@@ -1843,8 +1846,7 @@ type locally_abstract_type_parameter = {
     The constructors mirror `parameter` exactly, so the parameter grammar
     documented above applies here unchanged.
 *)
-(** Alias of {!Constant} used for direct literal expressions. *)
-type parameter =
+and parameter =
   | Positional of positional_parameter
   (** An ordinary unlabeled parameter such as `x` or `(x : int)`. *)
   | Labeled of labeled_parameter
@@ -1853,30 +1855,6 @@ type parameter =
   (** An optional parameter such as `?x` or `?(x = 0)`. *)
   | LocallyAbstract of locally_abstract_type_parameter
   (** A locally abstract type binder such as `(type a)`. *)
-(** Alias for `Literal.t`. *)
-module Parameter : sig
-  type t = parameter =
-    | Positional of positional_parameter
-    | Labeled of labeled_parameter
-    | Optional of optional_parameter
-    | LocallyAbstract of locally_abstract_type_parameter
-  val syntax_node : t -> syntax_node
-
-  val sigil_token : t -> Token.t option
-
-  val name_token : t -> Token.t option
-
-  val name : t -> string option
-
-  val is_named : t -> bool
-
-  val has_default : t -> bool
-
-  val binding_pattern : t -> pattern option
-end
-
-module Literal = Constant
-
 (** An exception declaration header.
 
     This is used both for top-level `exception` items and `let exception ... in`
@@ -1890,8 +1868,7 @@ module Literal = Constant
     exception Panic of string
     ```
 *)
-type literal = Literal.t
-type exception_rhs =
+and exception_rhs =
   | Alias of Ident.t
   | Payload of core_type
 
@@ -2665,7 +2642,7 @@ and fun_expression = {
   syntax_node : syntax_node;
   keyword_token : Token.t;
   arrow_token : Token.t;
-  parameters : Parameter.t list;
+  parameters : parameter list;
   body : fun_body;
   attributes : attribute list;
 }
@@ -2703,7 +2680,7 @@ and let_binding = {
   attributes : attribute list;
   binding_pattern : pattern;
   binding_name : Token.t option;
-  parameters : Parameter.t list;
+  parameters : parameter list;
   value : expression;
   and_bindings : let_binding list;
   is_recursive : bool;
@@ -2755,7 +2732,7 @@ and let_expression = {
   equals_token : Token.t;
   in_token : Token.t;
   binding_pattern : pattern;
-  parameters : Parameter.t list;
+  parameters : parameter list;
   bound_value : expression;
   and_bindings : let_binding list;
   body : expression;
@@ -3022,7 +2999,7 @@ and class_apply_expression = {
 (** Payload for `ClassExpression.Fun`. *)
 and class_fun_expression = {
   syntax_node : syntax_node;
-  parameters : Parameter.t list;
+  parameters : parameter list;
   body : class_expression;
 }
 
@@ -3034,7 +3011,7 @@ and class_let_expression = {
   equals_token : Token.t;
   in_token : Token.t;
   binding_pattern : pattern;
-  parameters : Parameter.t list;
+  parameters : parameter list;
   bound_value : expression;
   and_bindings : let_binding list;
   body : class_expression;
@@ -3222,6 +3199,29 @@ module Expression : sig
   val syntax_node : t -> syntax_node
 
   val attributes : t -> attribute list
+end
+
+module Parameter : sig
+  type t = parameter =
+    | Positional of positional_parameter
+    | Labeled of labeled_parameter
+    | Optional of optional_parameter
+    | LocallyAbstract of locally_abstract_type_parameter
+  val syntax_node : t -> syntax_node
+
+  val sigil_token : t -> Token.t option
+
+  val name_token : t -> Token.t option
+
+  val name : t -> string option
+
+  val is_named : t -> bool
+
+  val has_default : t -> bool
+
+  val default_value : t -> expression option
+
+  val binding_pattern : t -> pattern option
 end
 
 (** A field inside a class structure body. *)

@@ -1021,13 +1021,17 @@ and parenthesized_pattern = {
   attributes : attribute list;
 }
 
-type positional_parameter = {
+module Literal = Constant
+
+type literal = Literal.t
+
+and positional_parameter = {
   syntax_node : syntax_node;
   pattern : pattern;
   name_token : Token.t option;
 }
 
-type labeled_parameter = {
+and labeled_parameter = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   label_token : Token.t;
@@ -1035,96 +1039,28 @@ type labeled_parameter = {
   binding_pattern : pattern option;
 }
 
-type optional_parameter = {
+and optional_parameter = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
   has_default : bool;
+  default_value : expression option;
   binding_pattern : pattern option;
 }
 
-type locally_abstract_type_parameter = {
+and locally_abstract_type_parameter = {
   syntax_node : syntax_node;
   binders : type_binder list;
 }
 
-type parameter =
+and parameter =
   | Positional of positional_parameter
   | Labeled of labeled_parameter
   | Optional of optional_parameter
   | LocallyAbstract of locally_abstract_type_parameter
 
-module Parameter = struct
-  type t = parameter =
-    | Positional of positional_parameter
-    | Labeled of labeled_parameter
-    | Optional of optional_parameter
-    | LocallyAbstract of locally_abstract_type_parameter
-
-  let syntax_node =
-    function
-    | Positional param -> param.syntax_node
-    | Labeled param -> param.syntax_node
-    | Optional param -> param.syntax_node
-    | LocallyAbstract param -> param.syntax_node
-
-  let sigil_token =
-    function
-    | Positional _
-    | LocallyAbstract _ ->
-        None
-    | Labeled param ->
-        Some param.sigil_token
-    | Optional param ->
-        Some param.sigil_token
-
-  let name_token =
-    function
-    | Positional param -> param.name_token
-    | Labeled param -> Some param.label_token
-    | Optional param -> Some param.label_token
-    | LocallyAbstract _ ->
-        None
-
-  let name = fun param ->
-    match name_token param with
-    | Some token -> Some (Token.text token)
-    | None -> None
-
-  let is_named =
-    function
-    | Labeled _
-    | Optional _ -> true
-    | Positional _
-    | LocallyAbstract _ ->
-        false
-
-  let has_default =
-    function
-    | Optional param -> param.has_default
-    | Positional _
-    | Labeled _
-    | LocallyAbstract _ ->
-        false
-
-  let binding_pattern =
-    function
-    | Positional param ->
-        Some param.pattern
-    | Labeled param ->
-        param.binding_pattern
-    | Optional param ->
-        param.binding_pattern
-    | LocallyAbstract _ ->
-        None
-end
-
-module Literal = Constant
-
-type literal = Literal.t
-
-type exception_rhs =
+and exception_rhs =
   | Alias of Ident.t
   | Payload of core_type
 
@@ -1519,7 +1455,7 @@ and fun_expression = {
   syntax_node : syntax_node;
   keyword_token : Token.t;
   arrow_token : Token.t;
-  parameters : Parameter.t list;
+  parameters : parameter list;
   body : fun_body;
   attributes : attribute list;
 }
@@ -1539,7 +1475,7 @@ and let_binding = {
   attributes : attribute list;
   binding_pattern : pattern;
   binding_name : Token.t option;
-  parameters : Parameter.t list;
+  parameters : parameter list;
   value : expression;
   and_bindings : let_binding list;
   is_recursive : bool;
@@ -1567,7 +1503,7 @@ and let_expression = {
   equals_token : Token.t;
   in_token : Token.t;
   binding_pattern : pattern;
-  parameters : Parameter.t list;
+  parameters : parameter list;
   bound_value : expression;
   and_bindings : let_binding list;
   body : expression;
@@ -1706,7 +1642,7 @@ and class_apply_expression = {
 
 and class_fun_expression = {
   syntax_node : syntax_node;
-  parameters : Parameter.t list;
+  parameters : parameter list;
   body : class_expression;
 }
 
@@ -1717,7 +1653,7 @@ and class_let_expression = {
   equals_token : Token.t;
   in_token : Token.t;
   binding_pattern : pattern;
-  parameters : Parameter.t list;
+  parameters : parameter list;
   bound_value : expression;
   and_bindings : let_binding list;
   body : class_expression;
@@ -2012,6 +1948,80 @@ module Expression = struct
         expr.attributes
     | Parenthesized expr ->
         expr.attributes
+end
+
+module Parameter = struct
+  type t = parameter =
+    | Positional of positional_parameter
+    | Labeled of labeled_parameter
+    | Optional of optional_parameter
+    | LocallyAbstract of locally_abstract_type_parameter
+
+  let syntax_node =
+    function
+    | Positional param -> param.syntax_node
+    | Labeled param -> param.syntax_node
+    | Optional param -> param.syntax_node
+    | LocallyAbstract param -> param.syntax_node
+
+  let sigil_token =
+    function
+    | Positional _
+    | LocallyAbstract _ ->
+        None
+    | Labeled param ->
+        Some param.sigil_token
+    | Optional param ->
+        Some param.sigil_token
+
+  let name_token =
+    function
+    | Positional param -> param.name_token
+    | Labeled param -> Some param.label_token
+    | Optional param -> Some param.label_token
+    | LocallyAbstract _ ->
+        None
+
+  let name = fun param ->
+    match name_token param with
+    | Some token -> Some (Token.text token)
+    | None -> None
+
+  let is_named =
+    function
+    | Labeled _
+    | Optional _ -> true
+    | Positional _
+    | LocallyAbstract _ ->
+        false
+
+  let has_default =
+    function
+    | Optional param -> param.has_default
+    | Positional _
+    | Labeled _
+    | LocallyAbstract _ ->
+        false
+
+  let default_value =
+    function
+    | Optional param ->
+        param.default_value
+    | Positional _
+    | Labeled _
+    | LocallyAbstract _ ->
+        None
+
+  let binding_pattern =
+    function
+    | Positional param ->
+        Some param.pattern
+    | Labeled param ->
+        param.binding_pattern
+    | Optional param ->
+        param.binding_pattern
+    | LocallyAbstract _ ->
+        None
 end
 
 module ObjectMember = struct

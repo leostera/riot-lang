@@ -49,6 +49,7 @@ This file is _yours_. Keep it up to date after every big change.
 - class, local-open, and object core types now lower structurally; core-type extensions fail explicitly instead of falling through raw fallback.
 - lazy/operator/poly-variant-inherit/alias/typed/local-open/effect patterns now lower structurally; pattern extensions and typed first-class-module patterns fail explicitly instead of falling through raw fallback.
 - module-pack, assert, lazy, while, for, method-call, new, object-override, instance-variable-assign, typed, polymorphic, and coerce expressions now lower structurally; expression/object extensions fail explicitly instead of falling through raw fallback.
+- optional parameter defaults and typed binding patterns now survive the `Syn.Cst` lift structurally, and `krasny` renders parameters from CST shape instead of `Source.source_of_parameter`.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `lower.ml` still contains source/text heuristics and one remaining source-backed phrase-boundary preservation path that should be treated as debt.
@@ -65,7 +66,6 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Remove source-preserving node fallback from `packages/krasny/src/lower.ml`
   - `text_of_syntax_node`
-  - direct source renderers such as `render_parameter`
   - attribute/module-type string reconstruction such as `render_attribute`, `render_first_class_module_type`, `strip_outer_parens_once`, and `strip_module_prefix`
   - remaining non-top-level fallback branches in expression/module/module-type lowering that still end in `doc_of_node (...)`
   - keep unsupported shapes on the explicit `Cannot_lower` path; do not reintroduce silent source preservation
@@ -141,7 +141,6 @@ This file is _yours_. Keep it up to date after every big change.
     `Source.source_of_syntax_node`,
     `Source.source_of_node_from_source`,
     `Source.source_between`,
-    `Source.source_of_parameter`,
     `Source.syntax_node_has_comment_like_trivia`
 
 - [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing

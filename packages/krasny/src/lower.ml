@@ -1880,11 +1880,10 @@ let pattern_requires_parens_in_named_parameter =
   | _ ->
       true
 
-let render_parameter = fun parameter -> Doc.text (Source.source_of_parameter parameter)
-
 let rec pattern_is_simple_function_parameter =
   function
   | Syn.Cst.Pattern.Identifier _
+  | Syn.Cst.Pattern.Literal { literal = Syn.Cst.Literal.Unit _; _ }
   | Syn.Cst.Pattern.Wildcard _ ->
       true
   | Syn.Cst.Pattern.Typed { pattern; _ }
@@ -3827,6 +3826,77 @@ and split_typed_binding_pattern = function
   | pattern ->
       (pattern, None)
 
+and render_positional_parameter_pattern pattern =
+  let pattern_doc = render_pattern pattern in
+  if pattern_is_simple_function_parameter pattern then
+    pattern_doc
+  else
+    Doc.concat [ Doc.lparen; pattern_doc; Doc.rparen ]
+
+and render_named_parameter_binding_pattern pattern =
+  let pattern, type_ = split_typed_binding_pattern pattern in
+  let pattern_doc =
+    if pattern_requires_parens_in_named_parameter pattern then
+      Doc.concat [ Doc.lparen; render_pattern pattern; Doc.rparen ]
+    else
+      render_pattern pattern
+  in
+  match type_ with
+  | Some type_ ->
+      Doc.concat [ pattern_doc; annotation_colon; render_core_type type_ ]
+  | None ->
+      pattern_doc
+
+and named_parameter_pattern_matches_label ~label_token pattern =
+  let pattern, _ = split_typed_binding_pattern pattern in
+  match pattern with
+  | Syn.Cst.Pattern.Identifier { name_token; _ } ->
+      String.equal (token_text name_token) (token_text label_token)
+  | _ ->
+      false
+
+and render_named_parameter ~sigil_token ~label_token ~binding_pattern =
+  match binding_pattern with
+  | None ->
+      Doc.concat [ doc_of_token sigil_token; doc_of_token label_token ]
+  | Some pattern when named_parameter_pattern_matches_label ~label_token pattern ->
+      let _, type_ = split_typed_binding_pattern pattern in
+      (match type_ with
+      | Some _ ->
+          Doc.concat [
+            doc_of_token sigil_token;
+            Doc.lparen;
+            render_named_parameter_binding_pattern pattern;
+            Doc.rparen;
+          ]
+      | None ->
+          Doc.concat [ doc_of_token sigil_token; doc_of_token label_token ])
+  | Some pattern ->
+      Doc.concat [
+        doc_of_token sigil_token;
+        doc_of_token label_token;
+        Doc.colon;
+        render_named_parameter_binding_pattern pattern;
+      ]
+
+and render_optional_parameter_with_default ~sigil_token ~label_token ~binding_pattern
+    ~default_value =
+  let binding_doc =
+    match binding_pattern with
+    | Some pattern ->
+        render_named_parameter_binding_pattern pattern
+    | None ->
+        doc_of_token label_token
+  in
+  Doc.concat [
+    doc_of_token sigil_token;
+    Doc.lparen;
+    binding_doc;
+    equals;
+    render_expression default_value;
+    Doc.rparen;
+  ]
+
 and render_arrow_parameter_type_doc parameter_type =
   match parameter_type with
   | Syn.Cst.CoreType.Arrow _ ->
@@ -3923,33 +3993,51 @@ and synthesize_binding_type_annotation parameters result_type =
 and render_unsugared_binding_parameter = function
   | Syn.Cst.Parameter.Positional { pattern; _ } ->
       let pattern, _ = split_typed_binding_pattern pattern in
-      let pattern_doc = render_pattern pattern in
-      if pattern_is_simple_function_parameter pattern then
-        pattern_doc
-      else
-        Doc.concat [ Doc.lparen; pattern_doc; Doc.rparen ]
-  | Syn.Cst.Parameter.Labeled { sigil_token; label_token; binding_name_token; _ } ->
-      Doc.concat
-        [
-          doc_of_token sigil_token;
-          Option.unwrap_or
-            (Option.map doc_of_token binding_name_token)
-            ~default:(doc_of_token label_token);
-        ]
+      render_positional_parameter_pattern pattern
+  | Syn.Cst.Parameter.Labeled { sigil_token; label_token; binding_pattern; _ } ->
+      render_named_parameter ~sigil_token ~label_token ~binding_pattern
   | Syn.Cst.Parameter.Optional
-      ({ sigil_token; label_token; binding_name_token; has_default; _ } as parameter) ->
+      { sigil_token; label_token; has_default; binding_pattern; default_value; _ } ->
       if has_default then
-        render_parameter (Syn.Cst.Parameter.Optional parameter)
+        match default_value with
+        | Some default_value ->
+            render_optional_parameter_with_default ~sigil_token ~label_token ~binding_pattern
+              ~default_value
+        | None ->
+            unsupported
+              ~context:[ "parameter"; "optional"; "default" ]
+              "optional parameter default value missing from CST"
       else
-        Doc.concat
-          [
-            doc_of_token sigil_token;
-            Option.unwrap_or
-              (Option.map doc_of_token binding_name_token)
-              ~default:(doc_of_token label_token);
-          ]
+        render_named_parameter ~sigil_token ~label_token ~binding_pattern
   | Syn.Cst.Parameter.LocallyAbstract parameter ->
       render_parameter (Syn.Cst.Parameter.LocallyAbstract parameter)
+
+and render_parameter = function
+  | Syn.Cst.Parameter.Positional { pattern; _ } ->
+      render_positional_parameter_pattern pattern
+  | Syn.Cst.Parameter.Labeled { sigil_token; label_token; binding_pattern; _ } ->
+      render_named_parameter ~sigil_token ~label_token ~binding_pattern
+  | Syn.Cst.Parameter.Optional
+      { sigil_token; label_token; has_default; binding_pattern; default_value; _ } ->
+      if has_default then
+        match default_value with
+        | Some default_value ->
+            render_optional_parameter_with_default ~sigil_token ~label_token ~binding_pattern
+              ~default_value
+        | None ->
+            unsupported
+              ~context:[ "parameter"; "optional"; "default" ]
+              "optional parameter default value missing from CST"
+      else
+        render_named_parameter ~sigil_token ~label_token ~binding_pattern
+  | Syn.Cst.Parameter.LocallyAbstract { binders; _ } ->
+      Doc.concat [
+        Doc.lparen;
+        kw_type;
+        Doc.space;
+        join_map (Doc.concat [ Doc.space ]) render_type_binder binders;
+        Doc.rparen;
+      ]
 
 and render_binding_value ~leading_body_trivia ~force_multiline_body ~parameters ~value =
   match parameters with
