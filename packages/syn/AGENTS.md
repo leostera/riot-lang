@@ -40,6 +40,7 @@
 34. Keep nested `sig ... end` and `struct ... end` helper item streams built from token order, not child-gap archaeology: surface standalone comments/docstrings from each nested item's first-token `leading_trivia` plus the closing token's `leading_trivia`, then let the ordered-item pass normalize ownership exactly like the top level.
 35. Keep grouped `type ... and ...` member-leading trivia sourced from the separator token stream during normalization: later members must inherit the `and` token's `leading_trivia` after raw-node owned-trivia recomputation, not via early lift-time patches that get overwritten.
 36. Keep record-body helper streams public and token-order-complete: `CstBuilder.record_field_items_of_fields` must emit normalized `RecordField` items plus any remaining standalone `}`-owned comments/docstrings after field-owned spans are excluded, so downstream renderers never need raw record-node interleaving or closing-token recovery.
+37. Keep `sig ... end` on an explicit `SIG_EXPR` syntax kind. Do not route signature module-type bodies back through `IDENT_EXPR` plus token-text sniffing in the parser or CST builder.
 
 ## Validate
 
