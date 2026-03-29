@@ -2483,6 +2483,9 @@ let make_lowerer ctx =
   | Syn.Cst.Expression.Extension extension ->
       unsupported_syntax ~context:[ "expression" ] ~syntax_node:extension.syntax_node
         "extension expressions do not have a structural formatter yet"
+  | Syn.Cst.Expression.Unreachable unreachable ->
+      unsupported_syntax ~context:[ "expression" ] ~syntax_node:unreachable.syntax_node
+        "unreachable expressions do not have a structural formatter yet"
   | Syn.Cst.Expression.Literal literal ->
       render_literal literal
   | Syn.Cst.Expression.Object object_ ->
@@ -4442,22 +4445,30 @@ and render_let_binding (binding : Syn.Cst.let_binding) =
   Doc.concat (first :: trailing)
 
 and nested_structure_items_from_module_expression module_expression =
-  Syn.CstBuilder.structure_items_of_module_expression module_expression
-  |> Result.to_option
-  |> function
-  | Some items ->
+  match Syn.CstBuilder.structure_items_of_module_expression module_expression with
+  | Ok (Some items) ->
       items
-  | None ->
-      None
+  | Ok None ->
+      unsupported_syntax ~context:[ "module_expression" ]
+        ~syntax_node:(Syn.Cst.ModuleExpression.syntax_node module_expression)
+        "nested structure module expressions do not have a structural item stream"
+  | Error error ->
+      unsupported
+        ~context:([ "module_expression"; Syn.SyntaxKind.to_string error.syntax_kind ] @ error.context)
+        error.message
 
 and nested_signature_items_from_module_type module_type =
-  Syn.CstBuilder.signature_items_of_module_type module_type
-  |> Result.to_option
-  |> function
-  | Some items ->
+  match Syn.CstBuilder.signature_items_of_module_type module_type with
+  | Ok (Some items) ->
       items
-  | None ->
-      None
+  | Ok None ->
+      unsupported_syntax ~context:[ "module_type" ]
+        ~syntax_node:(Syn.Cst.ModuleType.syntax_node module_type)
+        "nested signature module types do not have a structural item stream"
+  | Error error ->
+      unsupported
+        ~context:([ "module_type"; Syn.SyntaxKind.to_string error.syntax_kind ] @ error.context)
+        error.message
 
 and render_module_type_constraint ~keyword (constraint_ : Syn.Cst.module_type_constraint) =
   let separator =
@@ -4493,19 +4504,18 @@ and render_module_type_doc = function
   | Syn.Cst.ModuleType.TypeOf { module_path; _ } ->
       Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; kw_of; Doc.space; doc_of_ident module_path ]
   | (Syn.Cst.ModuleType.Signature { syntax_node; _ } as module_type) ->
-      (match nested_signature_items_from_module_type module_type with
-      | Some items ->
-          let body = render_signature_items ~source_node:syntax_node items in
-          Doc.concat
-            [
-              Doc.text "sig";
-              Doc.line;
-              Doc.indent 2 body;
-              Doc.line;
-              Doc.text "end";
-            ]
-      | None ->
-          doc_of_source_preserved_syntax_node_from_current_source syntax_node)
+      let body =
+        render_signature_items ~source_node:syntax_node
+          (nested_signature_items_from_module_type module_type)
+      in
+      Doc.concat
+        [
+          Doc.text "sig";
+          Doc.line;
+          Doc.indent 2 body;
+          Doc.line;
+          Doc.text "end";
+        ]
   | Syn.Cst.ModuleType.Functor { parameters; result; _ } ->
       Doc.concat
         [
@@ -4554,19 +4564,18 @@ and render_module_expression_doc = function
   | Syn.Cst.ModuleExpression.Path path ->
       doc_of_ident path
   | (Syn.Cst.ModuleExpression.Structure { syntax_node; item_syntax_nodes = _ } as module_expression) ->
-      (match nested_structure_items_from_module_expression module_expression with
-      | Some items ->
-          let body = render_structure_items ~source_node:syntax_node items in
-          Doc.concat
-            [
-              Doc.text "struct";
-              Doc.line;
-              Doc.indent 2 body;
-              Doc.line;
-              Doc.text "end";
-            ]
-      | None ->
-          doc_of_source_preserved_syntax_node_from_current_source syntax_node)
+      let body =
+        render_structure_items ~source_node:syntax_node
+          (nested_structure_items_from_module_expression module_expression)
+      in
+      Doc.concat
+        [
+          Doc.text "struct";
+          Doc.line;
+          Doc.indent 2 body;
+          Doc.line;
+          Doc.text "end";
+        ]
   | Syn.Cst.ModuleExpression.Functor { parameters; body; _ } ->
       Doc.concat
         [

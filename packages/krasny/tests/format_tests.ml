@@ -389,6 +389,22 @@ let poly = ((fun x -> x) : 'a. 'a -> 'a)
           ~source
           ~msg:"typed and polymorphic expressions should lower through structural core-type rendering";
         Ok ());
+    Test.case "format keeps nested module bodies structural" (fun () ->
+        let source =
+          {|module type S = sig
+  (** x *)
+  val x : int
+end
+
+module M = struct
+  let x = 1
+end
+|}
+        in
+        assert_idempotent
+          ~source
+          ~msg:"nested signature and structure bodies should lower from structural item streams";
+        Ok ());
     Test.case "format keeps boolean if conditions with matches idempotent" (fun () ->
         let source =
           {|open Std
