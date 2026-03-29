@@ -58,8 +58,9 @@ This file is _yours_. Keep it up to date after every big change.
 - application rendering no longer force-switches layout from raw source length or embedded newlines; it follows structural argument break rules only.
 - inline-record constructor arguments no longer preserve multiline layout just because the original record node contained newlines; they format from field structure and owned trivia only.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
+- `Format_core.format` still uses the original parse-result source to preserve trailing-final-newline behavior; that output policy remains debt until it is made explicit instead of source-derived.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
-- `lower.ml` still contains source/text heuristics and one remaining source-backed phrase-boundary preservation path that should be treated as debt.
+- `lower.ml` still contains source/text heuristics, source-backed owned-trivia separator recovery, and one remaining source-backed phrase-boundary preservation path that should be treated as debt.
 
 ## Working Style
 
@@ -73,6 +74,7 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Remove source-preserving node fallback from `packages/krasny/src/lower.ml`
   - `text_of_syntax_node`
+  - token/text reconstruction via `Source.source_of_syntax_node`
   - attribute/module-type string reconstruction such as `render_attribute`, `render_first_class_module_type`, `strip_outer_parens_once`, and `strip_module_prefix`
   - remaining non-top-level fallback branches in expression/module/module-type lowering that still end in `doc_of_node (...)`
   - keep unsupported shapes on the explicit `Cannot_lower` path; do not reintroduce silent source preservation
@@ -80,6 +82,11 @@ This file is _yours_. Keep it up to date after every big change.
 - [x] Remove API-level source-preserving fallback from `packages/krasny/src/format_core.ml` and `packages/krasny/src/lower.ml`
   - `Lower.source_file` now returns an explicit lowering result instead of `None`
   - `Format_core.format` now reports `Cannot_lower` instead of returning `original_source`
+
+- [ ] Remove source-derived output policy from `packages/krasny/src/format_core.ml`
+  - `Format_core.format` should not inspect `Source.source_of_result result` just to preserve the original file's trailing-final-newline state
+  - decide and document an explicit formatter output policy for EOF newlines instead of inheriting it from source text
+  - keep `format`, `write`, CLI formatting, and verify behavior on the same explicit contract
 
 - [ ] Remove raw source-gap parsing from top-level structure/signature rendering
   - `source_gap_has_only_phrase_separators`
@@ -95,6 +102,7 @@ This file is _yours_. Keep it up to date after every big change.
   - `trailing_inline_comment_suffix`
   - `leading_inline_comment_between_offsets`
   - `split_leading_inline_comment_source`
+  - `doc_of_owned_trivia` should not need `separator_doc_between_offsets` plus raw `source` just to recover spacing between adjacent comment/doc items
   - if formatting still needs these, the missing structure belongs in `syn`
 
 - [ ] Remove source-sniffing and token-text heuristics used to make rendering decisions
@@ -105,6 +113,7 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Remove node-text-driven layout heuristics from `lower.ml`
   - `syntax_node_has_internal_newline`
+  - function-binding layout branches in `render_local_binding`
   - list edge-spacing checks that sniff `"[ "` / `" ]"` from `text_of_syntax_node`
   - `tuple_source_is_long`
   - `apply_expression_is_simple_after_equals`
@@ -145,11 +154,14 @@ This file is _yours_. Keep it up to date after every big change.
     `Source.source_of_syntax_node`,
     `Source.source_of_node_from_source`,
     `Source.source_between`,
-    `Source.syntax_node_has_comment_like_trivia`
+    `Source.syntax_node_has_comment_like_trivia`,
+    `Source.source_of_result`
 
 - [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing
   - explicit phrase-separator / top-level phrase-boundary modeling
   - explicit value-declaration printable name modeling
+  - explicit structured attribute/extension payload rendering surface instead of replaying `payload_syntax_node` / `item_syntax_nodes`
+  - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
   - explicit ambiguity-sensitive type-declaration shape markers
   - explicit poly-variant inherit path rendering data if needed
 
