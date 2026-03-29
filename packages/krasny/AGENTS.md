@@ -26,6 +26,7 @@
 20. Render record bodies and inline record constructor arguments from `Syn.CstBuilder.record_field_items_of_fields`; do not inspect raw record syntax children or closing-token trivia to rediscover terminal `}`-owned comments/docstrings.
 21. When lowering falls back to verbatim/source reconstruction, rebuild node text from real token bodies plus later tokens' `leading_trivia`; do not concatenate bare token texts or assume comment/docstring trivia still appears as standalone red tokens.
 22. Preserve verbatim top-level structure output when lowering a parameterized `let` binding that would otherwise become `= fun ... -> ...` immediately before a toplevel expression phrase; do not introduce a parse ambiguity by reformatting across phrase boundaries.
+23. Treat `Syn.Ceibo.Red.SyntaxNode.tokens` and `direct_tokens` as real-token-only streams in `krasny`. Do not keep dead filters for impossible `WHITESPACE` / `COMMENT` / `DOCSTRING` token kinds after the token-trivia migration.
 
 ## Validate
 

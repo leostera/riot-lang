@@ -301,60 +301,21 @@ let syntax_node_has_internal_newline = fun syntax_node ->
   let text = text_of_syntax_node syntax_node |> trim_trailing_layout_whitespace in
   String.contains text "\n"
 
-let is_comment_like_token = fun syntax_token ->
-  match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
-  | Syn.SyntaxKind.COMMENT
-  | Syn.SyntaxKind.DOCSTRING ->
-      true
-  | _ ->
-      false
-
-let is_whitespace_token = fun syntax_token ->
-  Syn.Ceibo.Red.SyntaxToken.kind syntax_token = Syn.SyntaxKind.WHITESPACE
-
 let doc_of_ident = fun ident ->
   Syn.Cst.Ident.segments ident |> List.map doc_of_token |> Doc.join (Doc.text ".")
 
 let doc_of_nontrivia_direct_tokens =
   fun syntax_node ->
-    Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node |> List.filter
-      (fun syntax_token ->
-        match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
-        | Syn.SyntaxKind.WHITESPACE
-        | Syn.SyntaxKind.COMMENT
-        | Syn.SyntaxKind.DOCSTRING ->
-            false
-        | _ ->
-            true) |> List.map (fun syntax_token -> Doc.text
-    (Syn.Ceibo.Red.SyntaxToken.text syntax_token)) |> Doc.concat
+    Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node
+    |> List.map (fun syntax_token -> Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token))
+    |> Doc.concat
 
 let nontrivia_direct_tokens =
-  fun syntax_node ->
-    Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node |> List.filter
-      (fun syntax_token ->
-        match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
-        | Syn.SyntaxKind.WHITESPACE
-        | Syn.SyntaxKind.COMMENT
-        | Syn.SyntaxKind.DOCSTRING ->
-            false
-        | _ ->
-            true)
+  fun syntax_node -> Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node
 
 let nontrivia_bounds_span_of_syntax_node = fun syntax_node ->
   let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
-  let nontrivia_tokens =
-    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.filter
-      (fun syntax_token ->
-        match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
-        | Syn.SyntaxKind.WHITESPACE
-        | Syn.SyntaxKind.COMMENT
-        | Syn.SyntaxKind.DOCSTRING ->
-            false
-        | _ ->
-            true)
-  in
-  match nontrivia_tokens with
+  match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
   | [] ->
       full_span
   | first :: rest ->
@@ -367,15 +328,6 @@ let nontrivia_bounds_span_of_syntax_node = fun syntax_node ->
 let syntax_node_has_explicit_fun_rhs = fun syntax_node ->
   let tokens =
     Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.filter
-      (fun syntax_token ->
-        match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
-        | Syn.SyntaxKind.WHITESPACE
-        | Syn.SyntaxKind.COMMENT
-        | Syn.SyntaxKind.DOCSTRING ->
-            false
-        | _ ->
-            true)
     |> List.map Syn.Ceibo.Red.SyntaxToken.text
   in
   let rec loop = fun seen_equals ->
@@ -390,44 +342,6 @@ let syntax_node_has_explicit_fun_rhs = fun syntax_node ->
         loop false rest
   in
   loop false tokens
-
-let whitespace_has_newline = fun syntax_token ->
-  is_whitespace_token syntax_token && String.contains (Syn.Ceibo.Red.SyntaxToken.text syntax_token) "\n"
-
-let whitespace_has_blank_line = fun syntax_token ->
-  let text = Syn.Ceibo.Red.SyntaxToken.text syntax_token in
-  let rec has_double_newline = fun index ->
-    if index + 1 >= String.length text then
-      false
-    else if text.[index] = '\n' && text.[index + 1] = '\n' then
-      true
-    else
-      has_double_newline (index + 1)
-  in
-  Syn.Ceibo.Red.SyntaxToken.kind syntax_token = Syn.SyntaxKind.WHITESPACE && has_double_newline 0
-
-let separator_of_whitespace_token = fun syntax_token ->
-  if whitespace_has_blank_line syntax_token then
-    blank_line
-  else if whitespace_has_newline syntax_token then
-    Doc.line
-  else
-    Doc.space
-
-let newline_count_of_whitespace_token = fun syntax_token ->
-  let text = Syn.Ceibo.Red.SyntaxToken.text syntax_token in
-  let rec loop = fun index count ->
-    if index >= String.length text then
-      count
-    else if text.[index] = '\n' then
-      loop (index + 1) (count + 1)
-    else
-      loop (index + 1) count
-  in
-  if is_whitespace_token syntax_token then
-    loop 0 0
-  else
-    0
 
 let is_identifier_like_text = fun text ->
   let is_alpha_or_underscore = fun ch ->
@@ -448,15 +362,6 @@ let is_identifier_like_text = fun text ->
 let inherited_poly_variant_path_doc = fun syntax_node ->
   let tokens =
     Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.filter
-      (fun syntax_token ->
-        match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
-        | Syn.SyntaxKind.WHITESPACE
-        | Syn.SyntaxKind.COMMENT
-        | Syn.SyntaxKind.DOCSTRING ->
-            false
-        | _ ->
-            true)
     |> List.map Syn.Ceibo.Red.SyntaxToken.text
   in
   let is_ignorable =
@@ -511,88 +416,6 @@ let inherited_poly_variant_path_doc = fun syntax_node ->
       None
   | segments ->
       Some (Doc.text (String.concat "" segments))
-
-let trailing_comment_suffix_doc = fun ?source ?before syntax_node ->
-  let source_position_is_column_zero =
-    match source with
-    | None ->
-        fun _ -> false
-    | Some source ->
-        let source_length = String.length source in
-        fun position ->
-          let position = Int.max 0 (Int.min position source_length) in
-          let rec find_line_start index =
-            if index <= 0 then
-              0
-            else if Char.equal source.[index - 1] '\n' then
-              index
-            else
-              find_line_start (index - 1)
-          in
-          Int.equal (find_line_start position) position
-  in
-  let node_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
-  let end_before =
-    match before with
-    | None ->
-        node_span.end_
-    | Some before ->
-        Int.min before node_span.end_
-  in
-  let tokens_within_span =
-    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.filter
-      (fun syntax_token ->
-        let span = Syn.Ceibo.Red.SyntaxToken.span syntax_token in
-        span.end_ <= end_before)
-  in
-  let trailing_tokens =
-    let rec collect = fun acc ->
-      function
-      | [] ->
-          acc
-      | token :: rest when is_whitespace_token token || is_comment_like_token token ->
-          collect (token :: acc) rest
-      | _ ->
-          acc
-    in
-    tokens_within_span |> List.rev |> collect []
-  in
-  let trailing_tokens =
-    let rec take acc = function
-      | [] ->
-          List.rev acc
-      | token :: rest when is_comment_like_token token -> (
-          let span = Syn.Ceibo.Red.SyntaxToken.span token in
-          if source_position_is_column_zero span.start then
-            List.rev acc
-          else
-              take (token :: acc) rest)
-      | token :: rest ->
-          take (token :: acc) rest
-    in
-    take [] trailing_tokens
-  in
-  let rec loop = fun acc separator ->
-    function
-    | [] ->
-        acc
-    | token :: rest when is_whitespace_token token ->
-        loop acc (separator_of_whitespace_token token) rest
-    | token :: rest when is_comment_like_token token ->
-        let doc = Doc.text (Syn.Ceibo.Red.SyntaxToken.text token) in
-        let acc =
-          match acc with
-          | None ->
-              Some (Doc.concat [ separator; doc ])
-          | Some current ->
-              Some (Doc.concat [ current; separator; doc ])
-        in
-        loop acc Doc.empty rest
-    | _ :: rest ->
-        loop acc separator rest
-  in
-  loop None Doc.empty trailing_tokens
 
 let push_pending_break = fun pending ~position break_count ->
   if break_count <= 0 then
@@ -830,8 +653,7 @@ let nontrivia_end_before = fun ?before syntax_node ->
     |> List.filter
          (fun syntax_token ->
            let span = Syn.Ceibo.Red.SyntaxToken.span syntax_token in
-           span.end_ <= end_before
-           && not (is_whitespace_token syntax_token || is_comment_like_token syntax_token))
+           span.end_ <= end_before)
   in
   match List.rev tokens with
   | token :: _ ->
@@ -905,19 +727,7 @@ let doc_of_core_type = fun ctx type_ ->
   let syntax_node = Syn.Cst.CoreType.syntax_node type_ in
   let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
   let span =
-    let nontrivia_tokens =
-      Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-      |> List.filter
-        (fun syntax_token ->
-          match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
-          | Syn.SyntaxKind.WHITESPACE
-          | Syn.SyntaxKind.COMMENT
-          | Syn.SyntaxKind.DOCSTRING ->
-              false
-          | _ ->
-              true)
-    in
-    match nontrivia_tokens with
+    match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
     | [] ->
         full_span
     | first :: rest ->
@@ -1150,19 +960,7 @@ let render_type_binder =
       Doc.text (Syn.Cst.TypeBinder.text (Syn.Cst.TypeBinder.Bare binder))
 
 let poly_type_has_explicit_type_keyword = fun syntax_node ->
-  let tokens =
-    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.filter
-      (fun syntax_token ->
-        match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
-        | Syn.SyntaxKind.WHITESPACE
-        | Syn.SyntaxKind.COMMENT
-        | Syn.SyntaxKind.DOCSTRING ->
-            false
-        | _ ->
-            true)
-  in
-  match tokens with
+  match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
   | token :: _ ->
       Syn.Ceibo.Red.SyntaxToken.text token = "type"
   | [] ->
@@ -1699,15 +1497,8 @@ let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comm
       | Some suffix ->
           Doc.concat [ body; suffix ])
   | None ->
-      if include_trailing_comment then
-        match trailing_comment_suffix_doc ?before:end_before
-                (Syn.Cst.VariantConstructor.syntax_node constructor) with
-        | None ->
-            body
-        | Some suffix ->
-            Doc.concat [ body; suffix ]
-      else
-        body
+      let _ = include_trailing_comment in
+      body
 
 let render_variant_definition = fun ?source ~source_node:_ constructors ->
   let constructors_all_inline_records =
@@ -5160,18 +4951,7 @@ and structure_item_uses_verbatim_span = function
 
 and span_of_syntax_node_nontrivia_bounds ?(preserve_leading_trivia = false) syntax_node =
   let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
-  let nontrivia_tokens =
-    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.filter (fun syntax_token ->
-           match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
-           | Syn.SyntaxKind.WHITESPACE
-           | Syn.SyntaxKind.COMMENT
-           | Syn.SyntaxKind.DOCSTRING ->
-               false
-           | _ ->
-               true)
-  in
-  match nontrivia_tokens with
+  match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
   | [] ->
       full_span
   | first :: rest ->
@@ -5186,25 +4966,7 @@ and span_of_syntax_node_nontrivia_bounds ?(preserve_leading_trivia = false) synt
       }
 
 and span_of_syntax_node_nonwhitespace_bounds ?(preserve_leading_trivia = false) syntax_node =
-  let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
-  let nonwhitespace_tokens =
-    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.filter (fun syntax_token ->
-           not (Syn.Ceibo.Red.SyntaxToken.kind syntax_token = Syn.SyntaxKind.WHITESPACE))
-  in
-  match nonwhitespace_tokens with
-  | [] ->
-      full_span
-  | first :: rest ->
-      let last = List.fold_left (fun _ token -> token) first rest in
-      {
-        Syn.Ceibo.Span.start =
-          (if preserve_leading_trivia then
-             full_span.start
-           else
-             (Syn.Ceibo.Red.SyntaxToken.span first).start);
-        end_ = (Syn.Ceibo.Red.SyntaxToken.span last).end_;
-      }
+  span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia syntax_node
 
 and span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node =
   let start_span = span_of_syntax_node_nontrivia_bounds syntax_node in
