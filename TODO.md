@@ -54,6 +54,8 @@ This file is _yours_. Keep it up to date after every big change.
 ## Structural Formatting Debt
 
 - [ ] Remove source-preserving node fallback from `packages/krasny/src/lower.ml`
+  - `text_of_syntax_node`
+  - `doc_of_node`
   - `doc_of_source_preserved_syntax_node`
   - `doc_of_source_preserved_syntax_node_from_current_source`
   - `doc_of_source_preserved_syntax_node_span_from_current_source`
@@ -84,6 +86,28 @@ This file is _yours_. Keep it up to date after every big change.
   - `value_declaration_name_doc`
   - rendered-source substring checks such as `[@` / `[%%expect]` preservation gates
   - multiline/layout heuristics currently driven by `text_of_syntax_node` or `string_contains_substring`
+
+- [ ] Remove node-text-driven layout heuristics from `lower.ml`
+  - `syntax_node_has_internal_newline`
+  - list edge-spacing checks that sniff `"[ "` / `" ]"` from `text_of_syntax_node`
+  - `tuple_source_is_long`
+  - `expression_source_is_long`
+  - `expression_source_has_newline`
+  - application multiline preference derived from raw node text length/newlines
+  - `let exception` rendering that prints `exception_declaration.syntax_node` text directly
+
+- [ ] Remove source-derived “safe to rewrite” gates from top-level formatting
+  - `structure_item_requires_source_preservation_before_expression`
+  - expression-run preservation rules in `render_structure_top_level_items`
+  - replace “preserve this source because rewrite might change meaning” with explicit CST facts or hard failure
+
+- [ ] Remove public/docs-level assumptions that unsupported shapes are preserved from source
+  - `packages/krasny/src/Krasny.mli`
+  - any AGENTS/docs wording that still describes source-preserving fallback as part of the formatter contract
+
+- [ ] Remove impossible-state fallback patterns from formatter hot paths
+  - `assert false` branches in item-run collection/rendering
+  - any remaining “best effort” fallback that hides missing structural support instead of surfacing it
 
 - [ ] Audit every `ctx.source` / `Source.*` use in `packages/krasny/src/lower.ml`
   - classify each site as:
