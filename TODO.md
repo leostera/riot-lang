@@ -220,7 +220,7 @@ For every slice below:
 
 ### 9. Regression Inventory
 
-- [ ] Keep adding direct `syn:cst_tests` for ownership, not just formatter fixtures
+- [x] Keep adding direct `syn:cst_tests` for ownership, not just formatter fixtures
   - top-level module overviews
   - first type after `open`
   - repeated adjacent docstrings
@@ -268,8 +268,9 @@ For every slice below:
 - [ ] Current state: grouped `type ... and ...` members now inherit `and`-token leading trivia during `syn` normalization, and `krasny` renders grouped member docs/comments from per-member `owned_trivia`; fixtures `0920`, `0921`, and `0743` pin the `and`-member comment/doc and adjacent standalone-doc spacing behavior
 - [ ] Current state: dead `krasny/lower.ml` member-level docstring archaeology is gone: the old trailing-docstring scanners, `allow_terminal_docstrings`/`render_remaining_trivia` type-declaration knobs, and grouped-type nontrivia-end helpers were deleted without changing formatter output on the focused grouped/nested/doc-spacing regressions
 - [ ] Current state: `CstBuilder.record_field_items_of_fields` now exposes record bodies as ordered `RecordField`/`Comment`/`Docstring` streams sourced from field first-token trivia plus the closing `}` token's remaining `leading_trivia`, so `krasny` no longer interleaves raw record children or recovers terminal `}` trivia by hand; fixtures `0744` and `0922` pin top-level and inline-record terminal doc cases
+- [ ] Current state: the direct `syn:cst_tests` ownership inventory now covers top-level module overviews, the first type after `open`, repeated adjacent ordinary docstrings, section headings between declarations, constructor/record member ownership, nested module headings, and plain comments mixed with docstrings, so those cases no longer depend only on `krasny` fixtures
 - [ ] Current state: module/class top-level keyword probes, bracket attribute/extension probes, functor application / `(val ...)` module-expression probes, parenthesized module-type lookahead in module expressions, declaration-local `module type of` probes, application/infix/tuple/assign/sequence expression continuations, paren and bracket local-open vs index expression disambiguation, postfix custom-index/operator-like probes, dotted module/module-type/type-name/qualified-field path continuations, local-open core type path lookahead, `include module type of`, `let open` expression detection, the polymorphic/local-open/local-abstract type probes, tuple/as/cons/or pattern continuations, local-open pattern path disambiguation, literal range-pattern probes, and grouped structure/signature type-declaration uppercase-body disambiguation no longer rely on trivia-skipping control flow; inline-comment alias-vs-variant, grouped GADT, and `module type of` declaration cases are pinned in `syn:cst_tests`
 - [ ] Current state: top-level file loops and nested `struct`/`sig` body loops no longer thread trivia through `tokens_to_green []`
 - [ ] Current state: red traversal now follows the same contract as green for parser-built trees; leading trivia lives on tokens and `SyntaxNode.tokens` stays trivia-free
 - [ ] Current state: `print-ceibo` fixture coverage now includes a mixed comment/docstring bridge case
-- [ ] The next concrete slice is expanding the direct `syn:cst_tests` ownership inventory from section 9, especially top-level module overviews, the first type after `open`, repeated adjacent docstrings, and plain comments mixed with docstrings, so renderer fixtures stay reserved for layout-only problems
+- [ ] The next concrete slice is the section 9 formatter-fixture audit: make sure new formatter fixtures stay reserved for renderer/layout problems now that the ownership cases are pinned directly in `syn:cst_tests`

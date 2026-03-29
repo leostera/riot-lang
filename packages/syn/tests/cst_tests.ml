@@ -4370,6 +4370,47 @@ let tests =
             Ok ()
         | _ ->
             Error "expected open statement and value declaration with leading doc");
+    Test.case
+      "cst keeps module overviews standalone before opens and repeated docs on the first type after open"
+      (fun () ->
+        let result =
+          parse_mli
+            "(** JSON-RPC 2.0 Protocol Implementation *)\n\
+             \n\
+             open Std\n\
+             open Std.Data\n\
+             \n\
+             (** Request/response ID type. *)\n\
+             (** Request identifiers. *)\n\
+             type id = string\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.Docstring overview;
+            Syn.Cst.SignatureItem.OpenStatement _;
+            Syn.Cst.SignatureItem.OpenStatement _;
+            Syn.Cst.SignatureItem.TypeDeclaration id_decl ] ->
+            Test.assert_equal
+              ~expected:"(** JSON-RPC 2.0 Protocol Implementation *)"
+              ~actual:(Syn.Cst.Docstring.text overview);
+            Test.assert_equal
+              ~expected:
+                [
+                  "(** Request/response ID type. *)";
+                  "(** Request identifiers. *)";
+                ]
+              ~actual:
+                (Syn.Cst.TypeDeclaration.owned_trivia id_decl
+                 |> Syn.Cst.OwnedTrivia.leading
+                 |> List.map Syn.Cst.Trivia.text);
+            Ok ()
+        | _ ->
+            Error
+              "expected standalone module overview, two opens, and a type declaration with repeated leading docs");
     Test.case "cst preserves standalone implementation docstrings after open statements"
       (fun () ->
         let result =
