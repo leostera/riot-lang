@@ -3,13 +3,11 @@
     Manages mapping between handler IDs and event handler functions.
     Each LiveView instance has its own registry. *)
 
-type 'msg t
 (** Registry that maps handler IDs to event handler functions *)
-
-val create : unit -> 'msg t
 (** Create a new empty registry *)
+type 'msg t
+val create : unit -> 'msg t
 
-val register : 'msg t -> (string -> 'msg) -> string
 (** Register a handler and get a unique ID.
     
     Example:
@@ -17,12 +15,13 @@ val register : 'msg t -> (string -> 'msg) -> string
       let id = register registry (fun _ -> Increment) in
       (* id = "lv-0" *)
     ]} *)
+val register : 'msg t -> (string -> 'msg) -> string
 
-val find : 'msg t -> string -> (string -> 'msg) option
 (** Find a handler by ID *)
+val find : 'msg t -> string -> (string -> 'msg) option
 
-val clear : 'msg t -> unit
 (** Clear all handlers (useful for re-renders) *)
+val clear : 'msg t -> unit
 
-val size : 'msg t -> int
 (** Get number of registered handlers *)
+val size : 'msg t -> int

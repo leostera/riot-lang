@@ -80,17 +80,7 @@
 
 open Std
 
-type t
 (** Abstract session type *)
-
-val middleware :
-  secret:string ->
-  ?cookie_name:string ->
-  ?max_age:int ->
-  ?secure:bool ->
-  ?same_site:Http.Http1.Cookie.same_site ->
-  unit ->
-  (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
 (** Session middleware with encrypted cookie storage.
     
     @param secret Encryption/signing key (required, use 256-bit random value)
@@ -113,8 +103,7 @@ val middleware :
         router routes;
       ]
     ]} *)
-
-val get : Conn.t -> t
+type t
 (** Get session from connection.
     
     Creates new session if none exists or cookie invalid.
@@ -127,8 +116,16 @@ val get : Conn.t -> t
         | Some id -> Printf.printf "User: %s\n" id
         | None -> Printf.printf "Anonymous\n"
     ]} *)
+val middleware : secret:string ->
+?cookie_name:string ->
+?max_age:int ->
+?secure:bool ->
+?same_site:Http.Http1.Cookie.same_site ->
+unit ->
+(conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
 
-val get_value : string -> t -> string option
+val get : Conn.t -> t
+
 (** Get value from session by key.
     
     Returns [None] if key doesn't exist.
@@ -139,8 +136,8 @@ val get_value : string -> t -> string option
       | Some id -> (* Use ID *)
       | None -> (* No user ID *)
     ]} *)
+val get_value : string -> t -> string option
 
-val put : string -> string -> t -> unit
 (** Set value in session. Marks session as modified.
     
     Session will be saved to cookie on response.
@@ -150,8 +147,8 @@ val put : string -> string -> t -> unit
       Session.put "user_id" "123" session;
       Session.put "username" "alice" session;
     ]} *)
+val put : string -> string -> t -> unit
 
-val delete : string -> t -> unit
 (** Delete value from session by key.
     
     Marks session as modified.
@@ -160,8 +157,8 @@ val delete : string -> t -> unit
     {[
       Session.delete "user_id" session
     ]} *)
+val delete : string -> t -> unit
 
-val clear : t -> unit
 (** Clear all session data.
     
     Useful for logout - removes all keys but keeps session.
@@ -173,14 +170,15 @@ val clear : t -> unit
         Session.clear session;
         conn |> Conn.respond ~status:Ok ~body:"Logged out" |> Conn.send
     ]} *)
+val clear : t -> unit
 
-val is_expired : t -> bool
 (** Check if session is expired.
     
     Automatically handled by middleware, but can be useful
     for manual session validation. *)
+val is_expired : t -> bool
 
-val is_modified : t -> bool
 (** Check if session was modified.
     
     Used internally to determine if cookie needs updating. *)
+val is_modified : t -> bool

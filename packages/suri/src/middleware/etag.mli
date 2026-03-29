@@ -59,7 +59,6 @@ open Std
 
 (** {1 Middleware} *)
 
-val middleware : ?weak:bool -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 (** ETag generation middleware.
 
     Generates ETags from response body hash.
@@ -81,3 +80,4 @@ val middleware : ?weak:bool -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
     - Skips if ETag already set
 
     {b Note}: Use with conditional_get middleware for automatic 304 responses. *)
+val middleware : ?weak:bool -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

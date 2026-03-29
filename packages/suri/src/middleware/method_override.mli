@@ -107,7 +107,6 @@ open Std
 
 (** {1 Middleware} *)
 
-val middleware : ?param:string -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 (** Method override middleware.
 
     Checks POST requests for a [_method] parameter and overrides the
@@ -144,3 +143,4 @@ val middleware : ?param:string -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn
         Conn.respond conn ~status:Ok ~body:"Deleted" |> Conn.send
       )
     ]} *)
+val middleware : ?param:string -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

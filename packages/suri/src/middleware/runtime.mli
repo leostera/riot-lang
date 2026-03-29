@@ -65,7 +65,6 @@ open Std
 
 (** {1 Middleware} *)
 
-val middleware : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 (** Runtime header middleware.
 
     Measures request processing time and adds X-Runtime header.
@@ -80,3 +79,4 @@ val middleware : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
     {b Header format}: [X-Runtime: 0.0234] (seconds with 4 decimal places)
 
     {b Performance}: Minimal overhead (microsecond-level timing) *)
+val middleware : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

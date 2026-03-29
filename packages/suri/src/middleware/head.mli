@@ -63,7 +63,6 @@ open Std
 
 (** {1 Middleware} *)
 
-val middleware : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 (** HEAD request handler middleware.
 
     Automatically converts HEAD requests to GET for processing,
@@ -85,3 +84,4 @@ val middleware : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
     {b Note}: This middleware must wrap around your handlers to strip
     the body after response is built. *)
+val middleware : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

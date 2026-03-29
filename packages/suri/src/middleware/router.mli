@@ -112,7 +112,6 @@
 
     {1 API Reference} *)
 
-type handler = Conn.t -> Web_server.Request.t -> Conn.t
 (** A route handler receives the connection and the original request.
     
     Route handlers are terminal - they should return a sent connection.
@@ -132,14 +131,10 @@ type handler = Conn.t -> Web_server.Request.t -> Conn.t
         let body = Web_server.Request.body req in
         Conn.respond conn ~status:Ok ~body:("User " ^ id) |> Conn.send
     ]} *)
-
-type route
 (** A single route definition with pattern, method, and handler. *)
-
-type t = route list
+type handler = Conn.t -> Web_server.Request.t -> Conn.t
 (** A router is a list of routes, matched in order. *)
-
-val any : string -> handler -> route
+type route
 (** Create a route that matches any HTTP method.
     
     Useful for WebSocket routes or handlers that need to accept multiple methods.
@@ -148,16 +143,17 @@ val any : string -> handler -> route
       any "/ws" websocket_handler
       any "/flexible" (fun conn req -> Conn.send conn)
     ]} *)
+type t = route list
+val any : string -> handler -> route
 
-val get : string -> handler -> route
 (** Create a GET route.
 
     {[
       get "/users" (fun conn req ->
         Conn.respond conn ~status:Ok ~body:"List of users" |> Conn.send)
     ]} *)
+val get : string -> handler -> route
 
-val post : string -> handler -> route
 (** Create a POST route.
 
     {[
@@ -165,8 +161,8 @@ val post : string -> handler -> route
         let body = Web_server.Request.body req in
         Conn.respond conn ~status:Created ~body:("Created: " ^ body) |> Conn.send)
     ]} *)
+val post : string -> handler -> route
 
-val put : string -> handler -> route
 (** Create a PUT route.
 
     {[
@@ -175,8 +171,8 @@ val put : string -> handler -> route
         let body = Web_server.Request.body req in
         Conn.respond conn ~status:Ok ~body:("Updated user " ^ id) |> Conn.send)
     ]} *)
+val put : string -> handler -> route
 
-val patch : string -> handler -> route
 (** Create a PATCH route.
 
     {[
@@ -184,8 +180,8 @@ val patch : string -> handler -> route
         let id = List.assoc_opt "id" (Conn.params conn) |> Option.unwrap_or ~default:"" in
         Conn.respond conn ~status:Ok ~body:("Patched user " ^ id) |> Conn.send)
     ]} *)
+val patch : string -> handler -> route
 
-val delete : string -> handler -> route
 (** Create a DELETE route.
 
     {[
@@ -193,16 +189,16 @@ val delete : string -> handler -> route
         let id = List.assoc_opt "id" (Conn.params conn) |> Option.unwrap_or ~default:"" in
         Conn.respond conn ~status:Ok ~body:("Deleted user " ^ id) |> Conn.send)
     ]} *)
+val delete : string -> handler -> route
 
-val head : string -> handler -> route
 (** Create a HEAD route (like GET but no response body).
 
     {[
       head "/resource" (fun conn req ->
         Conn.respond conn ~status:Ok |> Conn.send)
     ]} *)
+val head : string -> handler -> route
 
-val scope : string -> route list -> route
 (** Group routes under a common path prefix.
 
     {[
@@ -214,12 +210,8 @@ val scope : string -> route list -> route
       ]
       (* Creates routes: /api/health, /api/v1/users *)
     ]} *)
+val scope : string -> route list -> route
 
-val websocket : 
-  string -> 
-  (module Channel.Handler.Intf with type args = 'a and type state = 's) -> 
-  'a -> 
-  route
 (** Create a WebSocket route that upgrades HTTP connections to WebSocket.
     
     This route handles both the initial HTTP request (for non-WebSocket clients)
@@ -248,8 +240,11 @@ val websocket :
     ]}
     
     The handler module must implement {!Channel.Handler.Intf}. *)
+val websocket : string ->
+(module Channel.Handler.Intf with type args = 'a and type state = 's) ->
+'a ->
+route
 
-val middleware : t -> Pipeline.middleware
 (** Convert a list of routes into middleware.
 
     This is the main function to use with {!Pipeline}.
@@ -272,3 +267,4 @@ val middleware : t -> Pipeline.middleware
         Router.middleware routes;
       ]
     ]} *)
+val middleware : t -> Pipeline.middleware

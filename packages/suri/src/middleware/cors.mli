@@ -112,15 +112,6 @@
 
 open Std
 
-val middleware :
-  origins:string list ->
-  ?methods:Net.Http.Method.t list ->
-  ?headers:string list ->
-  ?credentials:bool ->
-  ?expose:string list ->
-  ?max_age:int ->
-  unit ->
-  Pipeline.middleware
 (** CORS middleware with simple configuration.
     
     @param origins List of allowed origins. Use ["*"] for all, or exact matches like ["https://example.com"].
@@ -169,3 +160,11 @@ val middleware :
         router routes;
       ]
     ]} *)
+val middleware : origins:string list ->
+?methods:Net.Http.Method.t list ->
+?headers:string list ->
+?credentials:bool ->
+?expose:string list ->
+?max_age:int ->
+unit ->
+Pipeline.middleware

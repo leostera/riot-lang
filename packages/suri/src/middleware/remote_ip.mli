@@ -121,12 +121,6 @@ open Std
 
 (** {1 Middleware} *)
 
-val middleware :
-  ?header:string ->
-  proxies:string list ->
-  conn:Conn.t ->
-  next:(Conn.t -> Conn.t) ->
-  Conn.t
 (** Remote IP middleware - extracts real client IP from proxy headers.
 
     {[
@@ -164,3 +158,8 @@ val middleware :
         router routes;
       ]
     ]} *)
+val middleware : ?header:string ->
+proxies:string list ->
+conn:Conn.t ->
+next:(Conn.t -> Conn.t) ->
+Conn.t

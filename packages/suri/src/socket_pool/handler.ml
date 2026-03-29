@@ -10,12 +10,11 @@ type ('state, 'error) handler = {
   handle_message : Message.t -> Connection.t -> 'state -> ('state, 'error) handler_result;
 }
 
-and t = 
+and t =
   | H : {
-      handler : ('new_state, 'error) handler;
-      state : 'new_state;
-    }
-      -> t
+    handler : ('new_state, 'error) handler;
+    state : 'new_state
+  } -> t
 
 and ('state, 'error) handler_result =
   | Ok
@@ -31,5 +30,5 @@ let default = {
   handle_data = (fun _data _sock state -> Continue state);
   handle_error = (fun err _sock state -> Error (state, err));
   handle_shutdown = (fun _sock _state -> Ok);
-  handle_message = (fun _msg _conn state -> Continue state);
+  handle_message = (fun _msg _conn state -> Continue state)
 }

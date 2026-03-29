@@ -29,7 +29,6 @@
 
 open Std
 
-val logger : Pipeline.middleware
 (** Request logger middleware.
     
     Logs format: [METHOD /path -> STATUS in DURATIONms]
@@ -40,3 +39,4 @@ val logger : Pipeline.middleware
     GET /api/users -> 200 in 5ms
     POST /api/login -> 401 in 2ms
     v} *)
+val logger : Pipeline.middleware

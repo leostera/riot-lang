@@ -147,6 +147,7 @@ open Std
     {1 API Reference} *)
 
 module Conn = Conn
+
 (** {b Connection Context}
 
     Represents the connection state flowing through middleware.
@@ -161,6 +162,7 @@ module Conn = Conn
     See {!Conn} for full API. *)
 
 module Pipeline = Pipeline
+
 (** {b Middleware Pipeline}
 
     A pipeline is just a list of middleware functions.
@@ -180,6 +182,7 @@ module Pipeline = Pipeline
     See {!Pipeline} for full API. *)
 
 module Router = Router
+
 (** {b HTTP Router}
 
     Pattern-based routing with parameter extraction.
@@ -207,6 +210,7 @@ module Router = Router
     See {!Router} for full API. *)
 
 module Logger = Logger
+
 (** {b Request Logger}
 
     Automatic request/response logging with timing.
@@ -241,6 +245,7 @@ module Logger = Logger
     See {!Logger} for full API. *)
 
 module Request_id = Request_id
+
 (** {b Request ID Middleware}
 
     Ensures every request has a unique [x-request-id] header.
@@ -262,6 +267,7 @@ module Request_id = Request_id
     See {!Request_id} for full API. *)
 
 module Debugger = Debugger
+
 (** {b Visual Debugger Middleware}
 
     Beautiful error pages for development with source code inspection.
@@ -295,7 +301,6 @@ module Debugger = Debugger
 
 (** {2 Convenience Functions} *)
 
-val router : Router.route list -> Pipeline.middleware
 (** Create router middleware from a list of routes.
     
     This is a convenience alias for [Router.middleware routes].
@@ -321,8 +326,8 @@ val router : Router.route list -> Pipeline.middleware
         ];
       ]
     ]} *)
+val router : Router.route list -> Pipeline.middleware
 
-val logger : Pipeline.middleware
 (** Request logger middleware.
     
     Convenience alias for [Logger.logger].
@@ -338,8 +343,8 @@ val logger : Pipeline.middleware
     Logs format: [METHOD /path -> STATUS in DURATIONms]
     
     See {!Logger} for full documentation. *)
+val logger : Pipeline.middleware
 
-val request_id : Pipeline.middleware
 (** Request ID middleware.
     
     Convenience alias for [Request_id.request_id].
@@ -357,8 +362,8 @@ val request_id : Pipeline.middleware
     the request (for handlers) and response (for clients).
     
     See {!Request_id} for full documentation. *)
+val request_id : Pipeline.middleware
 
-val debugger : Pipeline.middleware
 (** Visual debugger middleware for development.
     
     Convenience alias for [Debugger.debugger].
@@ -382,8 +387,10 @@ val debugger : Pipeline.middleware
     - Automatic console logging
     
     See {!Debugger} for full documentation and production safety patterns. *)
+val debugger : Pipeline.middleware
 
 module Cors = Cors
+
 (** {b CORS Middleware}
     
     Cross-Origin Resource Sharing for APIs and SPAs.
@@ -408,15 +415,6 @@ module Cors = Cors
     
     See {!Cors} for full documentation and examples. *)
 
-val cors :
-  origins:string list ->
-  ?methods:Net.Http.Method.t list ->
-  ?headers:string list ->
-  ?credentials:bool ->
-  ?expose:string list ->
-  ?max_age:int ->
-  unit ->
-  Pipeline.middleware
 (** CORS middleware - simple and direct.
     
     {[
@@ -441,8 +439,17 @@ val cors :
     - Be specific with [~headers]
     
      See {!Cors.middleware} for full documentation. *)
+val cors : origins:string list ->
+?methods:Net.Http.Method.t list ->
+?headers:string list ->
+?credentials:bool ->
+?expose:string list ->
+?max_age:int ->
+unit ->
+Pipeline.middleware
 
 module Session = Session
+
 (** {b Session Middleware}
     
     Secure cookie-based session management.
@@ -477,14 +484,6 @@ module Session = Session
     
     See {!Session} for full documentation. *)
 
-val session :
-  secret:string ->
-  ?cookie_name:string ->
-  ?max_age:int ->
-  ?secure:bool ->
-  ?same_site:Http.Http1.Cookie.same_site ->
-  unit ->
-  Pipeline.middleware
 (** Session middleware - secure cookie-based sessions.
     
     {[
@@ -525,8 +524,16 @@ val session :
     ]}
     
     See {!Session.middleware} for full documentation. *)
+val session : secret:string ->
+?cookie_name:string ->
+?max_age:int ->
+?secure:bool ->
+?same_site:Http.Http1.Cookie.same_site ->
+unit ->
+Pipeline.middleware
 
 module Csrf = Csrf
+
 (** {b CSRF Protection Middleware}
     
     Cross-Site Request Forgery protection for forms and AJAX requests.
@@ -558,13 +565,6 @@ module Csrf = Csrf
     
     See {!Csrf} for full documentation. *)
 
-val csrf :
-  ?param_name:string ->
-  ?header_name:string ->
-  ?skip_safe_methods:bool ->
-  ?skip:(Conn.t -> bool) ->
-  unit ->
-  Pipeline.middleware
 (** CSRF protection middleware - validates tokens on unsafe requests.
     
     {[
@@ -597,8 +597,15 @@ val csrf :
     ]}
     
     See {!Csrf.middleware} for full documentation. *)
+val csrf : ?param_name:string ->
+?header_name:string ->
+?skip_safe_methods:bool ->
+?skip:(Conn.t -> bool) ->
+unit ->
+Pipeline.middleware
 
 module Body_parser = Body_parser
+
 (** {b Body Parser Middleware}
     
     Automatically parses request bodies based on Content-Type.
@@ -626,7 +633,6 @@ module Body_parser = Body_parser
     
     See {!Body_parser} for full documentation. *)
 
-val body_parser : ?config:Body_parser.config -> unit -> Pipeline.middleware
 (** Body parser middleware - parses request bodies automatically.
     
     {[
@@ -656,8 +662,10 @@ val body_parser : ?config:Body_parser.config -> unit -> Pipeline.middleware
     Bodies exceeding [max_body_size] are not parsed (left empty).
     
     See {!Body_parser.make} for full documentation. *)
+val body_parser : ?config:Body_parser.config -> unit -> Pipeline.middleware
 
 module Static = Static
+
 (** {b Static Files Middleware}
     
     Serve static files from a directory with security, caching, and optional
@@ -688,8 +696,6 @@ module Static = Static
     
     See {!Static} for full documentation. *)
 
-val static :
-  ?config:Static.config -> at:string -> Path.t -> unit -> Pipeline.middleware
 (** Serve static files from a directory.
     
     {[
@@ -737,8 +743,10 @@ val static :
     - Validates paths are within root
     
     See {!Static.middleware} for full documentation. *)
+val static : ?config:Static.config -> at:string -> Path.t -> unit -> Pipeline.middleware
 
 module Basic_auth = Basic_auth
+
 (** {b HTTP Basic Authentication Middleware}
     
     Simple username/password protection for routes.
@@ -777,13 +785,6 @@ module Basic_auth = Basic_auth
     
     See {!Basic_auth} for full documentation. *)
 
-val basic_auth :
-  ?realm:string ->
-  ?skip:(Conn.t -> bool) ->
-  username:string ->
-  password:string ->
-  unit ->
-  Pipeline.middleware
 (** Basic Auth with static credentials.
     
     {[
@@ -817,13 +818,13 @@ val basic_auth :
     - {b REQUIRES HTTPS in production!}
     
     See {!Basic_auth.middleware} for full documentation. *)
+val basic_auth : ?realm:string ->
+?skip:(Conn.t -> bool) ->
+username:string ->
+password:string ->
+unit ->
+Pipeline.middleware
 
-val basic_auth_with_validation :
-  ?realm:string ->
-  ?skip:(Conn.t -> bool) ->
-  validate:'a Basic_auth.validation_fn ->
-  unit ->
-  Pipeline.middleware
 (** Basic Auth with custom validation function.
     
     Use for database lookups, LDAP, or any custom auth logic.
@@ -856,8 +857,14 @@ val basic_auth_with_validation :
     ]}
     
     See {!Basic_auth.middleware_with_validation} for full documentation. *)
+val basic_auth_with_validation : ?realm:string ->
+?skip:(Conn.t -> bool) ->
+validate:'a Basic_auth.validation_fn ->
+unit ->
+Pipeline.middleware
 
 module Accepts = Accepts
+
 (** {b Content Negotiation Middleware}
     
     Validate request Accept and Content-Type headers.
@@ -894,7 +901,6 @@ module Accepts = Accepts
     
     See {!Accepts} for full documentation. *)
 
-val accepts : ?config:Accepts.config -> string list -> Pipeline.middleware
 (** Content negotiation middleware - validates Accept and Content-Type headers.
     
     {[
@@ -935,8 +941,10 @@ val accepts : ?config:Accepts.config -> string list -> Pipeline.middleware
     {b Order matters}: Place before body_parser to avoid parsing unsupported content!
     
     See {!Accepts.middleware} for full documentation. *)
+val accepts : ?config:Accepts.config -> string list -> Pipeline.middleware
 
 module Head = Head
+
 (** {b HEAD Request Handler}
     
     Automatically handles HEAD requests by stripping response bodies.
@@ -961,7 +969,6 @@ module Head = Head
     
     See {!Head} for full documentation. *)
 
-val head : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 (** HEAD request handler middleware.
     
     {[
@@ -973,8 +980,10 @@ val head : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
     
     Automatically strips response bodies for HEAD requests while
     preserving all headers. No configuration required. *)
+val head : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 module Runtime = Runtime
+
 (** {b Request Timing Middleware}
     
     Adds X-Runtime header with request processing time.
@@ -997,7 +1006,6 @@ module Runtime = Runtime
     
     See {!Runtime} for full documentation. *)
 
-val runtime : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 (** Runtime timing middleware.
     
     {[
@@ -1009,8 +1017,10 @@ val runtime : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
     ]}
     
     Adds [X-Runtime] header with processing time in seconds. *)
+val runtime : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 module Method_override = Method_override
+
 (** {b HTTP Method Override}
     
     Allows HTML forms to use PUT/PATCH/DELETE via _method parameter.
@@ -1041,7 +1051,6 @@ module Method_override = Method_override
     
     See {!Method_override} for full documentation. *)
 
-val method_override : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 (** Method override middleware for HTML forms (uses default "_method" param).
     
     {[
@@ -1057,8 +1066,10 @@ val method_override : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
     For custom parameter names, use [Method_override.middleware ~param:"..."].
     
     Place {b after} body_parser so form data is available. *)
+val method_override : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 module Remote_ip = Remote_ip
+
 (** {b Real Client IP Extraction}
     
     Extracts the real client IP address when behind proxies.
@@ -1095,8 +1106,8 @@ module Remote_ip = Remote_ip
     See {!Remote_ip} for full documentation. *)
 
 (* No convenience function - use Remote_ip.middleware ~proxies:[...] directly *)
-
 module Etag = Etag
+
 (** {b ETag Generation}
     
     Automatically generates ETags for response bodies.
@@ -1129,7 +1140,6 @@ module Etag = Etag
     
     See {!Etag} for full documentation. *)
 
-val etag : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 (** ETag generation middleware (uses strong ETags by default).
     
     {[
@@ -1145,8 +1155,10 @@ val etag : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
     
     Generates ETags using SHA256 hash of response body.
     Place before conditional_get in pipeline. *)
+val etag : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 module Conditional_get = Conditional_get
+
 (** {b HTTP Conditional Requests}
     
     Implements 304 Not Modified responses for cached content.
@@ -1189,7 +1201,6 @@ module Conditional_get = Conditional_get
     
     See {!Conditional_get} for full documentation. *)
 
-val conditional_get : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 (** Conditional GET middleware for 304 responses.
     
     {[
@@ -1204,3 +1215,4 @@ val conditional_get : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
     Returns 304 Not Modified when content hasn't changed.
     
     Only applies to GET and HEAD requests. *)
+val conditional_get : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

@@ -4,26 +4,25 @@
 
 open Std
 
-type t
 (** HTTP request with parsed headers and body *)
-
-val of_http : body:string -> Net.Http.Request.t -> t
 (** Create a request from parsed HTTP data *)
+type t
+val of_http : body:string -> Net.Http.Request.t -> t
 
-val method_ : t -> Net.Http.Method.t
 (** Returns the HTTP method *)
+val method_ : t -> Net.Http.Method.t
 
-val uri : t -> string
 (** Returns the request URI *)
+val uri : t -> string
 
-val version : t -> Net.Http.Version.t
 (** Returns the HTTP version *)
+val version : t -> Net.Http.Version.t
 
-val headers : t -> Net.Http.Header.t
 (** Returns the request headers *)
+val headers : t -> Net.Http.Header.t
 
-val body : t -> string
 (** Returns the request body (may be partial) *)
+val body : t -> string
 
-val remaining : t -> int
 (** Returns bytes remaining to read for complete body *)
+val remaining : t -> int

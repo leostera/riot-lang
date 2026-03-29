@@ -79,23 +79,9 @@
 
 open Std
 
-type t = {
-  status : Net.Http.Status.t;
-  headers : Net.Http.Header.t;
-  version : Net.Http.Version.t;
-  body : string;
-}
 (** HTTP response record.
 
     Contains status code, headers, HTTP version, and response body. *)
-
-val make :
-  Net.Http.Status.t ->
-  ?headers:(string * string) list ->
-  ?version:Net.Http.Version.t ->
-  ?body:string ->
-  unit ->
-  t
 (** Create a custom HTTP response.
 
     Use this for non-standard status codes or when you need full control.
@@ -113,33 +99,42 @@ val make :
         ~body:"Hello"
         ()
     ]} *)
+type t = {
+  status : Net.Http.Status.t;
+  headers : Net.Http.Header.t;
+  version : Net.Http.Version.t;
+  body : string;
+}
+val make : Net.Http.Status.t ->
+?headers:(string * string) list ->
+?version:Net.Http.Version.t ->
+?body:string ->
+unit ->
+t
 
-type response =
-  ?headers:(string * string) list ->
-  ?version:Net.Http.Version.t ->
-  ?body:string ->
-  unit ->
-  t
 (** Response builder function type.
 
     All convenience functions below follow this signature. *)
-
+type response = ?headers:(string * string) list ->
+?version:Net.Http.Version.t ->
+?body:string ->
+unit ->
+t
 (** {1 Success Responses (2xx)}
 
     Successful responses indicating the request was received and processed. *)
 
-val ok : response
 (** [200 OK] - Standard success response.
 
     Most common response for successful requests.
 
     Example:
     {[ ok ~body:"Success" () ]} *)
-
 val ok : response
-(** `200 OK` *)
 
-val created : response
+(** `200 OK` *)
+val ok : response
+
 (** [201 Created] - Resource successfully created.
 
     Use for POST requests that create new resources.
@@ -153,19 +148,19 @@ val created : response
           ~body:(user_to_json user)
           ())
     ]} *)
+val created : response
 
-val accepted : response
 (** [202 Accepted] - Request accepted for processing (async).
 
     Use when processing will happen asynchronously.
 
     Example:
     {[ accepted ~body:"Processing started" () ]} *)
+val accepted : response
 
-val non_authoritative_information : response
 (** `203 Non-Authoritative Information` *)
+val non_authoritative_information : response
 
-val no_content : response
 (** [204 No Content] - Success with no response body.
 
     Common for DELETE requests or updates without return data.
@@ -176,30 +171,30 @@ val no_content : response
         delete_user id;
         no_content ())
     ]} *)
+val no_content : response
 
-val reset_content : response
 (** `205 Reset Content` *)
+val reset_content : response
 
-val partial_content : response
 (** `206 Partial Content` *)
+val partial_content : response
 
-val multi_status : response
 (** `207 Multi-Status` (WebDAV) *)
+val multi_status : response
 
-val already_reported : response
 (** `208 Already Reported` (WebDAV) *)
+val already_reported : response
 
-val im_used : response
 (** `226 IM Used` *)
+val im_used : response
 
 (** {1 Redirection Responses (3xx)}
 
     Redirects indicating the client should take additional action. *)
 
-val multiple_choices : response
 (** [300 Multiple Choices] - Multiple redirect options available. *)
+val multiple_choices : response
 
-val moved_permanently : response
 (** [301 Moved Permanently] - Resource permanently moved.
 
     Search engines update their indexes.
@@ -210,8 +205,8 @@ val moved_permanently : response
         ~headers:[("Location", "/new-location")]
         ()
     ]} *)
+val moved_permanently : response
 
-val found : response
 (** [302 Found] - Temporary redirect.
 
     Most common redirect status. Also see {!see_other}.
@@ -220,8 +215,8 @@ val found : response
     {[
       found ~headers:[("Location", "/login")] ()
     ]} *)
+val found : response
 
-val see_other : response
 (** [303 See Other] - Redirect after POST.
 
     Use after successful POST to redirect to GET.
@@ -234,27 +229,27 @@ val see_other : response
           ~headers:[("Location", "/users/" ^ user.id)]
           ())
     ]} *)
+val see_other : response
 
-val not_modified : response
 (** `304 Not Modified` *)
+val not_modified : response
 
-val use_proxy : response
 (** `305 Use Proxy` *)
+val use_proxy : response
 
-val switch_proxy : response
 (** `306 Switch Proxy` *)
+val switch_proxy : response
 
-val temporary_redirect : response
 (** `307 Temporary Redirect` *)
+val temporary_redirect : response
 
-val permanent_redirect : response
 (** `308 Permanent Redirect` *)
+val permanent_redirect : response
 
 (** {1 Client Error Responses (4xx)}
 
     Errors caused by invalid client requests. *)
 
-val bad_request : response
 (** [400 Bad Request] - Invalid request syntax or parameters.
 
     Use for validation errors or malformed requests.
@@ -265,8 +260,8 @@ val bad_request : response
       | Ok data -> ok ~body:(process data) ()
       | Error msg -> bad_request ~body:("Invalid: " ^ msg) ()
     ]} *)
+val bad_request : response
 
-val unauthorized : response
 (** [401 Unauthorized] - Authentication required.
 
     Use when user must log in.
@@ -281,11 +276,11 @@ val unauthorized : response
             ()
       | Some token -> (* ... *)
     ]} *)
+val unauthorized : response
 
-val payment_required : response
 (** [402 Payment Required] - Reserved for future use. *)
+val payment_required : response
 
-val forbidden : response
 (** [403 Forbidden] - Authenticated but not authorized.
 
     User is logged in but doesn't have permission.
@@ -297,8 +292,8 @@ val forbidden : response
       else
         ok ~body:resource ()
     ]} *)
+val forbidden : response
 
-val not_found : response
 (** [404 Not Found] - Resource doesn't exist.
 
     Most common error response.
@@ -309,8 +304,8 @@ val not_found : response
       | Some user -> ok ~body:(user_to_json user) ()
       | None -> not_found ~body:"User not found" ()
     ]} *)
+val not_found : response
 
-val method_not_allowed : response
 (** [405 Method Not Allowed] - HTTP method not supported.
 
     Include [Allow] header with supported methods.
@@ -322,81 +317,81 @@ val method_not_allowed : response
         ~body:"Method not allowed"
         ()
     ]} *)
+val method_not_allowed : response
 
-val not_acceptable : response
 (** `406 Not Acceptable` *)
+val not_acceptable : response
 
-val proxy_authentication_required : response
 (** `407 Proxy Authentication Required` *)
+val proxy_authentication_required : response
 
-val request_timeout : response
 (** `408 Request Timeout` *)
+val request_timeout : response
 
-val conflict : response
 (** `409 Conflict` *)
+val conflict : response
 
-val gone : response
 (** `410 Gone` *)
+val gone : response
 
-val length_required : response
 (** `411 Length Required` *)
+val length_required : response
 
-val precondition_failed : response
 (** `412 Precondition Failed` *)
+val precondition_failed : response
 
-val request_entity_too_large : response
 (** `413 Request Entity Too Large` *)
+val request_entity_too_large : response
 
-val request_uri_too_long : response
 (** `414 Request-URI Too Long` *)
+val request_uri_too_long : response
 
-val unsupported_media_type : response
 (** `415 Unsupported Media Type` *)
+val unsupported_media_type : response
 
-val requested_range_not_satisfiable : response
 (** `416 Requested Range Not Satisfiable` *)
+val requested_range_not_satisfiable : response
 
-val expectation_failed : response
 (** `417 Expectation Failed` *)
+val expectation_failed : response
 
-val im_a_teapot : response
 (** `418 I'm a teapot` *)
+val im_a_teapot : response
 
-val enhance_your_calm : response
 (** `420 Enhance Your Calm` (Twitter) *)
+val enhance_your_calm : response
 
-val unprocessable_entity : response
 (** `422 Unprocessable Entity` (WebDAV) *)
+val unprocessable_entity : response
 
-val locked : response
 (** `423 Locked` (WebDAV) *)
+val locked : response
 
-val failed_dependency : response
 (** `424 Failed Dependency` (WebDAV) *)
+val failed_dependency : response
 
-val upgrade_required : response
 (** `426 Upgrade Required` *)
+val upgrade_required : response
 
-val precondition_required : response
 (** `428 Precondition Required` *)
+val precondition_required : response
 
-val too_many_requests : response
 (** `429 Too Many Requests` *)
+val too_many_requests : response
 
-val request_header_fields_too_large : response
 (** `431 Request Header Fields Too Large` *)
+val request_header_fields_too_large : response
 
-val blocked_by_windows_parental_controls : response
 (** `450 Blocked by Windows Parental Controls` *)
+val blocked_by_windows_parental_controls : response
 
-val client_closed_request : response
 (** `499 Client Closed Request` (nginx) *)
+val client_closed_request : response
 
 (** {1 Server Error Responses (5xx)}
 
     Errors caused by server failures. *)
 
-val internal_server_error : response
 (** [500 Internal Server Error] - Generic server error.
 
     Use when an unexpected error occurs.
@@ -409,19 +404,19 @@ val internal_server_error : response
         Log.error "Request failed: %s" (Printexc.to_string exn);
         internal_server_error ~body:"Internal server error" ()
     ]} *)
+val internal_server_error : response
 
-val not_implemented : response
 (** [501 Not Implemented] - Feature not implemented.
 
     Example:
     {[
       not_implemented ~body:"This feature is coming soon" ()
     ]} *)
+val not_implemented : response
 
-val bad_gateway : response
 (** [502 Bad Gateway] - Invalid response from upstream server. *)
+val bad_gateway : response
 
-val service_unavailable : response
 (** [503 Service Unavailable] - Server temporarily unavailable.
 
     Use during maintenance or when overloaded.
@@ -436,56 +431,57 @@ val service_unavailable : response
       else
         process_request req
     ]} *)
+val service_unavailable : response
 
-val gateway_timeout : response
 (** `504 Gateway Timeout` *)
+val gateway_timeout : response
 
-val http_version_not_supported : response
 (** `505 HTTP Version Not Supported` *)
+val http_version_not_supported : response
 
-val variant_also_negotiates : response
 (** `506 Variant Also Negotiates` *)
+val variant_also_negotiates : response
 
-val insufficient_storage : response
 (** `507 Insufficient Storage` (WebDAV) *)
+val insufficient_storage : response
 
-val loop_detected : response
 (** `508 Loop Detected` (WebDAV) *)
+val loop_detected : response
 
-val bandwidth_limit_exceeded : response
 (** `509 Bandwidth Limit Exceeded` *)
+val bandwidth_limit_exceeded : response
 
-val not_extended : response
 (** `510 Not Extended` *)
+val not_extended : response
 
-val network_authentication_required : response
 (** `511 Network Authentication Required` *)
+val network_authentication_required : response
 
 (** ## Unofficial Status Codes *)
 
-val checkpoint : response
 (** `103 Checkpoint` *)
+val checkpoint : response
 
-val processing : response
 (** `102 Processing` *)
+val processing : response
 
-val continue : response
 (** `100 Continue` *)
+val continue : response
 
-val switching_protocols : response
 (** `101 Switching Protocols` *)
+val switching_protocols : response
 
-val no_response : response
 (** `444 No Response` (nginx) *)
+val no_response : response
 
-val retry_with : response
 (** `449 Retry With` (Microsoft) *)
+val retry_with : response
 
-val wrong_exchange_server : response
 (** `451 Unavailable For Legal Reasons` *)
+val wrong_exchange_server : response
 
-val network_read_timeout_error : response
 (** `598 Network read timeout error` *)
+val network_read_timeout_error : response
 
-val network_connect_timeout_error : response
 (** `599 Network connect timeout error` *)
+val network_connect_timeout_error : response
