@@ -68,6 +68,12 @@ bugs.
 - `PlanBundleToolchainInvalidationBug.cfg`: a failing config showing that the
   current planner bundle key can survive a toolchain change and restore stale
   action hashes.
+- `ActionJsonWarningFlagsRoundTrip.tla`: a PlusCal slice of the warning-flag
+  part of action JSON round-tripping inside cached action graphs.
+- `ActionJsonWarningFlagsRoundTrip.cfg`: a passing smoke config for the
+  single-warning round-trip baseline.
+- `ActionJsonWarningFlagsRoundTripBug.cfg`: a failing config showing that the
+  current action JSON parser drops combined warning payloads.
 - `BugInventory.md`: the running list of bug-shaped properties found by the
   extracted specs. This is the place to accumulate likely bugs before we add
   OCaml regression tests.
@@ -236,6 +242,20 @@ semantics, a first plan stores an action hash derived from `toolchain-v1`, a
 second plan with `toolchain-v2` computes the same bundle key, and the planner
 restores the old `toolchain-v1` action hash.
 
+## What `ActionJsonWarningFlagsRoundTrip.tla` Extracts
+
+This slice moves one level down, into the action JSON used by cached action
+graphs:
+
+- `Ocamlc.flags_to_string` serializes `Warning [...]` flags
+- `Action.to_json` stores those flag strings in action JSON
+- `Action.from_json` parses them back during plan-bundle rehydration
+
+The bug config checks the combined-warning case directly. Under the current
+extracted semantics, the serializer can emit one `-w` payload containing
+multiple warning codes, but the parser only reconstructs the one-code payloads
+`-a` and `-49`, and otherwise falls back to an empty warning list.
+
 ## How To Work On The Spec
 
 `ActionCache.tla` is written primarily in PlusCal. Treat the PlusCal algorithm
@@ -328,6 +348,15 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/PlanBundleToolchainInvalidation.cfg
 ```
 
+And for the action warning-flag round-trip slice:
+
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/ActionJsonWarningFlagsRoundTrip.tla \
+  -config specs/tusk/ActionJsonWarningFlagsRoundTrip.cfg
+```
+
 The bug config is expected to fail under the current implementation-shaped
 semantics:
 
@@ -387,6 +416,13 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/PlanBundleToolchainInvalidationBug.cfg
 ```
 
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/ActionJsonWarningFlagsRoundTrip.tla \
+  -config specs/tusk/ActionJsonWarningFlagsRoundTripBug.cfg
+```
+
 ## Current Findings
 
 `ActionCacheCommandOrderBug.cfg` is designed to expose one concrete design bug:
@@ -435,6 +471,11 @@ planner bundle cache key ignores toolchain identity even though action-node
 hashes include it. A warm-plan cache hit can therefore restore stale action
 hashes computed under an older toolchain.
 
+`ActionJsonWarningFlagsRoundTripBug.cfg` exposes an eighth design bug: combined
+warning payloads do not survive action JSON round-trips. A cached action graph
+can be restored with `Warning []` even when the original planned action carried
+multiple warning codes in one `-w` payload.
+
 ## Validation Notes
 
 These configs are safety-only and intentionally tiny.
@@ -479,3 +520,7 @@ These configs are safety-only and intentionally tiny.
   counterexample where the planner reuses a bundle stored under
   `toolchain-v1` after a switch to `toolchain-v2`, and restores the old action
   hash instead of replanning or rehashing.
+- `ActionJsonWarningFlagsRoundTrip.cfg` currently completes with 4 distinct
+  states and no errors.
+- `ActionJsonWarningFlagsRoundTripBug.cfg` currently fails with a
+  counterexample where `<<"a", "49">>` is restored as an empty warning list.

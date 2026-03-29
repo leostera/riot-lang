@@ -253,6 +253,40 @@ Deferred follow-up:
 - write an OCaml regression test only after we finish the broader bug-inventory
   pass
 
+### 8. Action JSON Round-Trip Must Preserve Combined Warning Flags
+
+Status: `spec-failing`
+
+Spec slice:
+- `ActionJsonWarningFlagsRoundTrip.tla`
+- `ActionJsonWarningFlagsRoundTripBug.cfg`
+
+Property:
+- Action JSON round-trips must preserve `Ocamlc.Warning [...]` flag lists,
+  including combined warning payloads.
+
+Why it looks buggy:
+- `flags_to_string` serializes `Warning [...]` into one `-w` payload that can
+  contain multiple warning codes
+- the current `Action.from_json` warning parser only recognizes `-w -a` and
+  `-w -49`
+- any combined payload such as `-w -a-49` falls through to `Warning []`
+- a warm plan-cache hit can therefore restore compile actions with weaker
+  warning configuration than the original planned graph
+
+Primary source area:
+- `packages/tusk-toolchain/src/ocamlc.ml`
+- `packages/tusk-planner/src/action.ml`
+
+Counterexample shape:
+- the original action carries `Warning [All; NoCmiFile]`
+- serialization emits the combined warning payload `<<"a", "49">>`
+- deserialization restores `Warning []` instead of the original warning list
+
+Deferred follow-up:
+- write an OCaml regression test only after we finish the broader bug-inventory
+  pass
+
 ## Next Candidates To Model
 
 These are not yet bug entries. They are the next properties most likely to

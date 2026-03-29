@@ -209,7 +209,7 @@ Current bug found:
 
 ### 5. `ActionGraph`
 
-Status: `next`
+Status: `partially modeled`
 
 Primary sources:
 - `packages/tusk-planner/src/action_graph.mli`
@@ -233,6 +233,25 @@ Properties:
 - Dependency closure order is deduplicated and dependency-first.
 - Module planning prefers an implementation when both interface and
   implementation are present.
+
+Implemented slice:
+- `ActionJsonWarningFlagsRoundTrip.tla` covers the warning-flag part of action
+  JSON round-tripping inside cached action graphs.
+
+Still open:
+- full action-graph edge round-trip fidelity
+- package path and serialized hash round-trip fidelity
+- non-warning compiler-flag round-trip fidelity
+- linker-field round-trip fidelity
+- dependency-closure ordering for link actions
+- implicit stdlib/shared-library link requirements
+- platform-specific linker flag injection
+
+Current bug found:
+- Combined `Ocamlc.Warning [...]` payloads do not survive action JSON
+  round-trips. The serializer can emit multiple warning codes in one `-w`
+  payload, but the current parser only reconstructs the one-code cases
+  `-a` and `-49`, and otherwise falls back to `Warning []`.
 
 ### 6. `ActionScheduler`
 
