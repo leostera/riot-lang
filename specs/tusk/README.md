@@ -81,6 +81,13 @@ bugs.
 - `ActionSchedulerCompletionAccountingBug.cfg`: a failing config showing that a
   skipped dependent can be recorded without advancing global completion
   accounting.
+- `PackageCoordinatorCacheShortCircuit.tla`: a PlusCal slice of the
+  package-level cache short-circuit path between coordinator cache hits and
+  store export rematerialization.
+- `PackageCoordinatorCacheShortCircuit.cfg`: a passing smoke config for the
+  fully rematerializable package-cache-hit path.
+- `PackageCoordinatorCacheShortCircuitBug.cfg`: a failing config showing that a
+  package can be marked cached even when one export never rematerializes.
 - `BugInventory.md`: the running list of bug-shaped properties found by the
   extracted specs. This is the place to accumulate likely bugs before we add
   OCaml regression tests.
@@ -281,6 +288,22 @@ The bug config checks that quiescent completion law directly. Under the current
 extracted semantics, `A` fails, `B` is marked `Skipped`, `queue.completed`
 contains both nodes, and `completed_count` is still `1`.
 
+## What `PackageCoordinatorCacheShortCircuit.tla` Extracts
+
+This slice moves one level up, into the package-level cache hit path across
+`packages/tusk-executor/src/coordinator.ml` and
+`packages/tusk-store/src/store.ml`:
+
+- the package hash artifact exists
+- some named exports are missing from the target directory
+- the coordinator asks the store to materialize those exports
+- the store currently treats missing export sources as warnings, not failures
+- the coordinator then marks the package `Cached`
+
+The bug config checks the stronger package-cache law directly. Under the
+current extracted semantics, `lib.cmxa` rematerializes, `lib.cmxs` does not,
+and the coordinator still reports the package as cached.
+
 ## How To Work On The Spec
 
 `ActionCache.tla` is written primarily in PlusCal. Treat the PlusCal algorithm
@@ -391,6 +414,15 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/ActionSchedulerCompletionAccounting.cfg
 ```
 
+And for the package-cache short-circuit slice:
+
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/PackageCoordinatorCacheShortCircuit.tla \
+  -config specs/tusk/PackageCoordinatorCacheShortCircuit.cfg
+```
+
 The bug config is expected to fail under the current implementation-shaped
 semantics:
 
@@ -464,6 +496,13 @@ java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
   -config specs/tusk/ActionSchedulerCompletionAccountingBug.cfg
 ```
 
+```sh
+java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.jar" \
+  tlc2.TLC \
+  specs/tusk/PackageCoordinatorCacheShortCircuit.tla \
+  -config specs/tusk/PackageCoordinatorCacheShortCircuitBug.cfg
+```
+
 ## Current Findings
 
 `ActionCacheCommandOrderBug.cfg` is designed to expose one concrete design bug:
@@ -522,6 +561,11 @@ scheduler can record skipped dependents without advancing the executor's global
 completion count. That leaves the system quiescent but under-counted, which is
 exactly the kind of interaction bug the smaller local specs do not catch.
 
+`PackageCoordinatorCacheShortCircuitBug.cfg` exposes a tenth design bug: the
+package coordinator can report a package cache hit even when export
+rematerialization leaves the target directory incomplete. This is a real
+coordinator/store interaction bug, not just a local serializer mismatch.
+
 ## Validation Notes
 
 These configs are safety-only and intentionally tiny.
@@ -575,3 +619,8 @@ These configs are safety-only and intentionally tiny.
 - `ActionSchedulerCompletionAccountingBug.cfg` currently fails with a
   counterexample where `A` is `failed`, `B` is `skipped`, and the scheduler is
   quiescent with `completed_count = 1`.
+- `PackageCoordinatorCacheShortCircuit.cfg` currently completes with 5 distinct
+  states and no errors.
+- `PackageCoordinatorCacheShortCircuitBug.cfg` currently fails with a
+  counterexample where the package is `cached` with only `{"lib.cmxa"}`
+  materialized.

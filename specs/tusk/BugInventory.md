@@ -325,6 +325,42 @@ Deferred follow-up:
 - write an OCaml regression test only after we finish the broader bug-inventory
   pass
 
+### 10. Package Cache Short-Circuit Must Materialize Every Export
+
+Status: `spec-failing`
+
+Spec slice:
+- `PackageCoordinatorCacheShortCircuit.tla`
+- `PackageCoordinatorCacheShortCircuitBug.cfg`
+
+Property:
+- A package-level cache short-circuit must not report the package as cached
+  unless every declared export is present in the target directory afterwards.
+
+Why it looks buggy:
+- `maybe_short_circuit_cached_package` short-circuits on the package hash
+  artifact and then asks the store to materialize missing exports
+- `materialize_package_exports` currently logs a warning and returns `Ok ()`
+  when an export source is missing from the action-level store
+- the coordinator treats that `Ok ()` as successful rematerialization and marks
+  the package `Cached`
+- the target directory can therefore stay incomplete even though the package is
+  reported as a cache hit
+
+Primary source area:
+- `packages/tusk-executor/src/coordinator.ml`
+- `packages/tusk-store/src/store.ml`
+
+Counterexample shape:
+- the package hash artifact exists
+- `lib.cmxa` can be materialized but `lib.cmxs` is missing from the store
+- the coordinator still sets the package status to `Cached`
+- the target directory ends with only `{"lib.cmxa"}` instead of all exports
+
+Deferred follow-up:
+- write an OCaml regression test only after we finish the broader bug-inventory
+  pass
+
 ## Next Candidates To Model
 
 These are not yet bug entries. They are the next properties most likely to

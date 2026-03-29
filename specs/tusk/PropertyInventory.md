@@ -322,7 +322,7 @@ Properties:
 
 ### 8. `PackageCoordinator`
 
-Status: `next`
+Status: `partially modeled`
 
 Primary sources:
 - `packages/tusk-executor/src/coordinator.ml`
@@ -346,6 +346,25 @@ Properties:
   producer.
 - Serial orchestration still succeeds when available parallelism is one.
 - Workspace result accounting tracks built, cached, and failed packages.
+
+Implemented slice:
+- `PackageCoordinatorCacheShortCircuit.tla` covers the package-level cache
+  short-circuit path between coordinator cache hits and export rematerialization
+  from the store.
+
+Still open:
+- lazy planning and activation order for dependency-satisfied packages
+- failed dependency propagation across package runtimes
+- cached-vs-fresh final package status derivation from completed actions
+- pending-planning wakeup behavior
+- serial orchestration with larger dependency chains
+- workspace-level built/cached/failed accounting interactions
+
+Current bug found:
+- Package-level cache short-circuiting can report a package as `Cached` even
+  when not all exports were rematerialized. The coordinator treats
+  `materialize_package_exports` as successful even when the store silently skips
+  missing export sources.
 
 ### 9. `ArtifactStore`
 
