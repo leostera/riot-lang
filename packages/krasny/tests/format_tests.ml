@@ -378,6 +378,17 @@ let counter = object method run = 1 end
               "object and extension expressions should fail formatting instead of preserving source"
         | Error _ ->
             Ok ());
+    Test.case "format keeps typed and polymorphic expressions structural" (fun () ->
+        let source =
+          {|let typed value = (value : source)
+let shaped handler = (handler : < run : int >)
+let poly = ((fun x -> x) : 'a. 'a -> 'a)
+|}
+        in
+        assert_idempotent
+          ~source
+          ~msg:"typed and polymorphic expressions should lower through structural core-type rendering";
+        Ok ());
     Test.case "format keeps boolean if conditions with matches idempotent" (fun () ->
         let source =
           {|open Std

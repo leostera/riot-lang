@@ -724,34 +724,6 @@ let doc_of_owned_trivia = fun ?start ~source trivia ->
   in
   loop None start trivia
 
-let doc_of_core_type = fun ctx type_ ->
-  let syntax_node = Syn.Cst.CoreType.syntax_node type_ in
-  let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
-  let span =
-    match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
-    | [] ->
-        full_span
-    | first :: rest ->
-        let last = List.fold_left (fun _ token -> token) first rest in
-        {
-          Syn.Ceibo.Span.start = (Syn.Ceibo.Red.SyntaxToken.span first).start;
-          end_ = (Syn.Ceibo.Red.SyntaxToken.span last).end_
-        }
-  in
-  match ctx.source with
-  | Some source ->
-      Doc.text (Source.source_of_span source span)
-  | None ->
-      text_of_syntax_node syntax_node |> trim_trailing_layout_whitespace |> Doc.text
-
-let doc_of_module_expression = fun ctx expression ->
-  doc_of_source_preserved_syntax_node_from_current_source ctx
-    (Syn.Cst.ModuleExpression.syntax_node expression)
-
-let doc_of_module_type = fun ctx module_type ->
-  doc_of_source_preserved_syntax_node_from_current_source ctx
-    (Syn.Cst.ModuleType.syntax_node module_type)
-
 let render_attribute = fun (attribute : Syn.Cst.attribute) ->
   Doc.concat
     [ Doc.lbracket; doc_of_token attribute.sigil_token; doc_of_ident attribute.name; (
@@ -2500,9 +2472,6 @@ let make_lowerer ctx =
     doc_of_source_preserved_syntax_node_span_from_current_source ctx
   in
   let render_trivia_between_spans = render_trivia_between_spans ctx in
-  let doc_of_core_type = doc_of_core_type ctx in
-  let doc_of_module_expression = doc_of_module_expression ctx in
-  let doc_of_module_type = doc_of_module_type ctx in
   let render_type_declaration_with_keyword keyword decl =
     render_type_declaration_with_keyword ctx keyword decl
   in
@@ -2774,10 +2743,10 @@ let make_lowerer ctx =
       render_index_expression index
   | Syn.Cst.Expression.Typed { expression; type_; _ } ->
       Doc.concat
-        [ Doc.lparen; render_expression expression; annotation_colon; doc_of_core_type type_; Doc.rparen ]
+        [ Doc.lparen; render_expression expression; annotation_colon; render_core_type type_; Doc.rparen ]
   | Syn.Cst.Expression.Polymorphic { expression; type_; _ } ->
       Doc.concat
-        [ Doc.lparen; render_expression expression; annotation_colon; doc_of_core_type type_; Doc.rparen ]
+        [ Doc.lparen; render_expression expression; annotation_colon; render_core_type type_; Doc.rparen ]
   | Syn.Cst.Expression.Coerce { expression; from_type; to_type; _ } ->
       let from_doc =
         match from_type with
