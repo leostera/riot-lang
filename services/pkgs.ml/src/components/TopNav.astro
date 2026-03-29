@@ -68,10 +68,8 @@ const logoutUrl = buildLogoutUrl(currentUrl);
                 login={session.user.github_login}
                 avatarUrl={session.user.github_avatar_url}
                 size="sm"
+                showLogin={false}
               />
-              <span class="max-w-[9rem] truncate text-xs text-foreground">
-                @{session.user.github_login}
-              </span>
               <span aria-hidden="true" class="text-[10px] text-muted-foreground">▾</span>
             </summary>
 
