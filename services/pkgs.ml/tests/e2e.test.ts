@@ -254,32 +254,27 @@ describe("pkgs.ml live e2e", () => {
   liveAuthenticatedTest("token page shows a new publish token only once", async () => {
     const tokenName = `pkgs-e2e-${Date.now()}`;
     const createResponse = await fetch(
-      `${pkgsBaseUrl}/u/${encodeURIComponent(githubLogin ?? "")}/tokens`,
+      `${pkgsBaseUrl}/api/me/tokens`,
       {
         method: "POST",
         headers: {
-          "content-type": "application/x-www-form-urlencoded",
+          accept: "application/json",
+          "content-type": "application/json",
           cookie: sessionCookie ?? "",
         },
-        body: new URLSearchParams({
-          action: "create",
-          name: tokenName,
-        }).toString(),
+        body: JSON.stringify({ name: tokenName }),
       },
     );
 
-    expect(createResponse.status).toBe(200);
-    const createHtml = await createResponse.text();
-    expect(createHtml).toContain("New publish token created");
-    expect(createHtml).toContain(tokenName);
-
-    const plaintextMatch = createHtml.match(/rpk_[A-Za-z0-9_-]+/);
-    expect(plaintextMatch).not.toBeNull();
-    const plaintextToken = plaintextMatch?.[0] ?? "";
+    expect(createResponse.status).toBe(201);
+    const created = (await createResponse.json()) as {
+      plaintext_token: string;
+      token: { token_id: string; name: string };
+    };
+    expect(created.token.name).toBe(tokenName);
+    const plaintextToken = created.plaintext_token;
+    expect(plaintextToken).toMatch(/^sk-[A-Za-z0-9_-]+$/);
     expect(plaintextToken.length).toBeGreaterThan(0);
-
-    const tokenId = extractTokenIdForName(createHtml, tokenName);
-    expect(tokenId).not.toBeNull();
 
     const revisitResponse = await fetch(
       `${pkgsBaseUrl}/u/${encodeURIComponent(githubLogin ?? "")}/tokens`,
@@ -291,12 +286,12 @@ describe("pkgs.ml live e2e", () => {
     );
     expect(revisitResponse.status).toBe(200);
     const revisitHtml = await revisitResponse.text();
-    expect(revisitHtml).toContain("Publish credentials");
+    expect(revisitHtml).toContain("API Tokens");
     expect(revisitHtml).not.toContain("New publish token created");
     expect(revisitHtml).not.toContain(plaintextToken);
 
     const revokeResponse = await fetch(
-      `${registryBaseUrl}/v1/me/tokens/${encodeURIComponent(tokenId ?? "")}`,
+      `${pkgsBaseUrl}/api/me/tokens/${encodeURIComponent(created.token.token_id)}`,
       {
         method: "DELETE",
         headers: {
@@ -364,19 +359,6 @@ function trimTrailingSlash(value: string | undefined): string | null {
 
 function ownerFromLocator(locator: string): string {
   return locator.split("/")[1] ?? "unknown";
-}
-
-function extractTokenIdForName(html: string, tokenName: string): string | null {
-  const escapedName = escapeRegex(tokenName);
-  const match = html.match(
-    new RegExp(`${escapedName}[\\s\\S]*?name="token_id" value="([^"]+)"`, "i"),
-  );
-
-  return match?.[1] ?? null;
-}
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 interface PublishPayload {

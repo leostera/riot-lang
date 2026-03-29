@@ -124,7 +124,7 @@ describe("riot package registry auth", () => {
       plaintext_token: string;
       token: { token_id: string; name: string };
     };
-    expect(created.plaintext_token.startsWith("rpk_")).toBe(true);
+    expect(created.plaintext_token.startsWith("sk-")).toBe(true);
     expect(created.token.name).toBe("local publish");
 
     const listCtx = new FakeExecutionContext();

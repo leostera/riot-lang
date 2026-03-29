@@ -2,6 +2,8 @@ import { getConfig } from "./config.ts";
 import {
   listPackageIndexDocuments,
   readPackageClaim,
+  readUserLoginRecord,
+  readUserRecord,
   writeCategoriesIndexDocument,
   writeOwnerPackagesDocument,
   writePackageOverviewDocument,
@@ -33,11 +35,13 @@ export async function rebuildWebViews(env: Env): Promise<void> {
       const latestRelease = getLatestRelease(document);
       const claim = await readPackageClaim(env.ML_PKGS_CDN, document.name);
       const owner = claim?.owner_github_login ?? parseCanonicalLocator(latestRelease.canonical_locator).owner;
+      const ownerAvatarUrl = await resolveOwnerAvatarUrl(env, claim, owner);
 
       return {
         document,
         latestRelease,
         owner,
+        ownerAvatarUrl,
       };
     }),
   );
@@ -55,7 +59,7 @@ export async function rebuildWebViews(env: Env): Promise<void> {
     }
   }
 
-  const overviews: PackageOverviewDocument[] = latestEntries.map(({ document, latestRelease, owner }) => ({
+  const overviews: PackageOverviewDocument[] = latestEntries.map(({ document, latestRelease, owner, ownerAvatarUrl }) => ({
     schema_version: 1,
     package_name: document.name,
     latest_version: latestRelease.version,
@@ -73,6 +77,7 @@ export async function rebuildWebViews(env: Env): Promise<void> {
     manifest_key: latestRelease.manifest_key,
     sha: latestRelease.sha,
     owner_github_login: owner,
+    owner_github_avatar_url: ownerAvatarUrl,
     release_count: document.releases.length,
     dependency_count: normalizeDependencies(latestRelease.dependencies).length,
     dependent_count: (dependentsByPackage.get(document.name) ?? []).length,
@@ -217,6 +222,7 @@ function toWebPackageListItem(overview: PackageOverviewDocument): WebPackageList
     description: overview.description,
     license: overview.license,
     owner_github_login: overview.owner_github_login,
+    owner_github_avatar_url: overview.owner_github_avatar_url,
     categories: overview.categories,
     updated_at: overview.updated_at,
     repo_url: overview.repo_url,
@@ -285,10 +291,37 @@ function buildOwnerDocuments(overviews: PackageOverviewDocument[]): OwnerPackage
         schema_version: 1,
         generated_at: new Date().toISOString(),
         owner_github_login: ownerOverviews[0]?.owner_github_login ?? ownerKey,
+        owner_github_avatar_url: ownerOverviews[0]?.owner_github_avatar_url,
         package_count: packages.length,
         latest_update_at: packages[0]?.updated_at,
         packages,
       } satisfies OwnerPackagesDocument;
     })
     .sort((left, right) => left.owner_github_login.localeCompare(right.owner_github_login));
+}
+
+async function resolveOwnerAvatarUrl(
+  env: Env,
+  claim: { owner_user_id?: string; owner_github_login?: string } | null,
+  fallbackGithubLogin: string,
+): Promise<string | undefined> {
+  if (claim?.owner_user_id !== undefined) {
+    const user = await readUserRecord(env.ML_PKGS_CDN, claim.owner_user_id);
+    if (user?.github_avatar_url !== undefined) {
+      return user.github_avatar_url;
+    }
+  }
+
+  const githubLogin = claim?.owner_github_login ?? fallbackGithubLogin;
+  if (githubLogin.length > 0) {
+    const loginRecord = await readUserLoginRecord(env.ML_PKGS_CDN, githubLogin);
+    if (loginRecord !== null) {
+      const user = await readUserRecord(env.ML_PKGS_CDN, loginRecord.user_id);
+      if (user?.github_avatar_url !== undefined) {
+        return user.github_avatar_url;
+      }
+    }
+  }
+
+  return undefined;
 }

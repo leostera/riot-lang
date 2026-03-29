@@ -1,5 +1,6 @@
 ---
 import SearchForm from "@/components/SearchForm.astro";
+import GitHubAvatar from "@/components/GitHubAvatar.astro";
 import { buildGitHubLoginUrl, buildLogoutUrl } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button";
 import type { SessionResponse } from "@/lib/types";
@@ -61,10 +62,14 @@ const logoutUrl = buildLogoutUrl(currentUrl);
               href={`/u/${session.user.github_login}`}
               class:list={[
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "rounded-md",
+                "rounded-md gap-2 px-2",
               ]}
             >
-              @{session.user.github_login}
+              <GitHubAvatar
+                login={session.user.github_login}
+                avatarUrl={session.user.github_avatar_url}
+                size="sm"
+              />
             </a>
             <form action={logoutUrl} method="post">
               <button

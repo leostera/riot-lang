@@ -1,9 +1,10 @@
 ---
+import GitHubAvatar from "@/components/GitHubAvatar.astro";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import SiteLayout from "../../../layouts/SiteLayout.astro";
-import { createApiToken, fetchApiTokens, fetchSession, revokeApiToken } from "../../../lib/auth";
+import { fetchApiTokens, fetchSession } from "../../../lib/auth";
 
 const user = Astro.params.user ?? "user";
 const session = await fetchSession(Astro.request);
@@ -16,36 +17,6 @@ if (session.user.github_login.toLowerCase() !== user.toLowerCase()) {
   return Astro.redirect(`/u/${session.user.github_login}/tokens`);
 }
 
-let createdToken: string | null = null;
-let createdTokenName: string | null = null;
-let errorMessage: string | null = null;
-
-if (Astro.request.method === "POST") {
-  const form = await Astro.request.formData();
-  const action = String(form.get("action") ?? "");
-
-  try {
-    if (action === "create") {
-      const name = String(form.get("name") ?? "");
-      const created = await createApiToken(Astro.request, name);
-      createdToken = created.plaintext_token;
-      createdTokenName = created.token.name;
-    } else if (action === "revoke") {
-      const tokenId = String(form.get("token_id") ?? "");
-      if (tokenId.length > 0) {
-        await revokeApiToken(Astro.request, tokenId);
-      }
-    }
-  } catch (error) {
-    if (error instanceof Error && error.message === "unauthorized") {
-      return Astro.redirect(`/login?return_to=${encodeURIComponent(Astro.url.toString())}`);
-    }
-
-    errorMessage =
-      error instanceof Error ? error.message : "Token request failed for an unknown reason.";
-  }
-}
-
 const tokenResponse = await fetchApiTokens(Astro.request);
 ---
 
@@ -54,7 +25,7 @@ const tokenResponse = await fetchApiTokens(Astro.request);
   description="Publish token management on pkgs.ml"
   navSearchQuery={user}
 >
-  <section class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+  <section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
     <div class="grid gap-4">
       <nav class="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
         <a href="/" class="hover:text-foreground">All packages</a>
@@ -64,142 +35,325 @@ const tokenResponse = await fetchApiTokens(Astro.request);
         <span class="text-foreground">tokens</span>
       </nav>
 
-      <div class="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <Card className="rounded-md shadow-none lg:self-start">
-          <CardHeader className="border-b border-border">
-            <CardTitle className="text-sm">Publish credentials</CardTitle>
-            <CardDescription>
-              Create and revoke tokens used by <code>tusk publish</code>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 py-4">
-            <div class="grid gap-1">
-              <div class="text-[11px] text-muted-foreground">GitHub account</div>
-              <div class="text-sm font-medium text-foreground">@{session.user.github_login}</div>
-            </div>
+      <Card className="rounded-md shadow-none">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-sm">
+            <span class="inline-flex items-center gap-3">
+              <GitHubAvatar
+                login={session.user.github_login}
+                avatarUrl={session.user.github_avatar_url}
+              />
+              <span>API Tokens</span>
+            </span>
+          </CardTitle>
+          <CardDescription>
+            Create and revoke publish credentials used by <code>tusk publish</code>.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 py-4">
+          <form id="create-token-form" class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <label class="grid gap-2 text-xs text-muted-foreground">
+              Token name
+              <Input
+                id="create-token-name"
+                name="name"
+                type="text"
+                placeholder="CI publish"
+                className="rounded-md text-sm"
+                required
+              />
+            </label>
+            <Button id="create-token-button" type="submit" className="rounded-md">
+              Create token
+            </Button>
+          </form>
 
-            <div class="grid gap-1">
-              <div class="text-[11px] text-muted-foreground">Capabilities</div>
-              <div class="text-sm text-foreground">publish</div>
-            </div>
+          <div
+            id="token-error"
+            class="hidden rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          />
+        </CardContent>
+      </Card>
 
-            <div class="grid gap-1">
-              <div class="text-[11px] text-muted-foreground">Active tokens</div>
-              <div class="text-sm text-foreground">{tokenResponse.tokens.length}</div>
-            </div>
-
-            <p class="text-xs leading-5 text-muted-foreground">
-              Plaintext tokens are shown once when created. Store them somewhere safe before
-              leaving this page.
-            </p>
-          </CardContent>
-        </Card>
-
-        <div class="grid gap-4">
+      <Card className="rounded-md shadow-none">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-sm">Active tokens</CardTitle>
+          <CardDescription>
+            Token usage is tracked. Revocation is immediate.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 py-4">
           {
-            createdToken !== null ? (
-              <Card className="rounded-md border-emerald-700/20 bg-emerald-50 shadow-none">
-                <CardHeader className="border-b border-emerald-700/15">
-                  <CardTitle className="text-sm text-emerald-950">New publish token created</CardTitle>
-                  <CardDescription className="text-emerald-900/80">
-                    Save this token now. It will not be shown again.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-3 py-4">
-                  <div class="text-xs text-emerald-950/80">
-                    Token name: <span class="font-medium">{createdTokenName}</span>
-                  </div>
-                  <code class="overflow-x-auto rounded-md border border-emerald-700/20 bg-white px-3 py-2 text-xs text-emerald-950">
-                    {createdToken}
-                  </code>
-                </CardContent>
-              </Card>
+            tokenResponse.tokens.length === 0 ? (
+              <div
+                id="empty-token-state"
+                class="rounded-md border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground"
+              >
+                No active publish tokens yet.
+              </div>
             ) : null
           }
 
-          {
-            errorMessage !== null ? (
-              <Card className="rounded-md border-destructive/20 bg-destructive/5 shadow-none">
-                <CardHeader className="border-b border-destructive/15">
-                  <CardTitle className="text-sm text-destructive">Token request failed</CardTitle>
-                </CardHeader>
-                <CardContent className="py-4 text-sm text-muted-foreground">
-                  {errorMessage}
-                </CardContent>
-              </Card>
-            ) : null
-          }
-
-          <Card className="rounded-md shadow-none">
-            <CardHeader className="border-b border-border">
-              <CardTitle className="text-sm">Create publish token</CardTitle>
-              <CardDescription>
-                Named credentials for CLI publishing. Each token currently grants publish access.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="py-4">
-              <form method="post" class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                <input type="hidden" name="action" value="create" />
-                <label class="grid gap-2 text-xs text-muted-foreground">
-                  Token name
-                  <Input
-                    name="name"
-                    type="text"
-                    placeholder="CI publish"
-                    className="rounded-md text-sm"
-                    required
-                  />
-                </label>
-                <Button type="submit" className="rounded-md">Create token</Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-md shadow-none">
-            <CardHeader className="border-b border-border">
-              <CardTitle className="text-sm">Active tokens</CardTitle>
-              <CardDescription>
-                Revoke credentials you no longer need. Revocation is immediate.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 py-4">
-              {
-                tokenResponse.tokens.length === 0 ? (
-                  <div class="rounded-md border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground">
-                    No active publish tokens yet.
+          <div id="token-list" class="grid gap-3">
+            {tokenResponse.tokens.map((token) => (
+              <div
+                data-token-row
+                data-token-id={token.token_id}
+                class="grid gap-3 rounded-md border border-border bg-background px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
+              >
+                <div class="grid gap-1">
+                  <div class="text-sm font-medium text-foreground">{token.name}</div>
+                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                    <span>Created {new Date(token.created_at).toLocaleDateString("en")}</span>
+                    <span>
+                      Last used{" "}
+                      {token.last_used_at
+                        ? new Date(token.last_used_at).toLocaleDateString("en")
+                        : "never"}
+                    </span>
+                    <span>{token.capabilities.join(", ")}</span>
                   </div>
-                ) : (
-                  tokenResponse.tokens.map((token) => (
-                    <div class="grid gap-3 rounded-md border border-border bg-background px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                      <div class="grid gap-1">
-                        <div class="text-sm font-medium text-foreground">{token.name}</div>
-                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                          <span>Created {new Date(token.created_at).toLocaleDateString("en")}</span>
-                          <span>
-                            Last used{" "}
-                            {token.last_used_at
-                              ? new Date(token.last_used_at).toLocaleDateString("en")
-                              : "never"}
-                          </span>
-                          <span>{token.capabilities.join(", ")}</span>
-                        </div>
-                      </div>
+                </div>
 
-                      <form method="post">
-                        <input type="hidden" name="action" value="revoke" />
-                        <input type="hidden" name="token_id" value={token.token_id} />
-                        <Button type="submit" variant="outline" className="rounded-md">
-                          Revoke
-                        </Button>
-                      </form>
-                    </div>
-                  ))
-                )
-              }
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-md"
+                  data-token-revoke
+                  data-token-id={token.token_id}
+                >
+                  Revoke
+                </Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   </section>
+
+  <dialog
+    id="new-token-dialog"
+    class="w-full max-w-xl rounded-md border border-border bg-background p-0 text-foreground shadow-lg backdrop:bg-black/50"
+  >
+    <div class="grid gap-4 p-5">
+      <div class="grid gap-1">
+        <div class="text-sm font-semibold text-foreground">New publish token created</div>
+        <p class="text-sm text-muted-foreground">
+          Save this token now. It will not be shown again after you close this dialog.
+        </p>
+      </div>
+
+      <div class="grid gap-2">
+        <div class="text-xs text-muted-foreground">
+          Token name: <span id="dialog-token-name" class="font-medium text-foreground"></span>
+        </div>
+        <code
+          id="dialog-token-value"
+          class="overflow-x-auto rounded-md border border-emerald-700/20 bg-emerald-50 px-3 py-2 text-xs text-emerald-950"
+        />
+      </div>
+
+      <div class="flex items-center justify-end gap-2">
+        <Button id="copy-token-button" type="button" variant="outline" className="rounded-md">
+          Copy
+        </Button>
+        <Button id="close-token-dialog" type="button" className="rounded-md">
+          Close
+        </Button>
+      </div>
+    </div>
+  </dialog>
 </SiteLayout>
+
+<script is:inline define:vars={{ currentUrl: Astro.url.toString() }}>
+  const createForm = document.getElementById("create-token-form");
+  const createButton = document.getElementById("create-token-button");
+  const errorBox = document.getElementById("token-error");
+  const dialog = document.getElementById("new-token-dialog");
+  const dialogTokenName = document.getElementById("dialog-token-name");
+  const dialogTokenValue = document.getElementById("dialog-token-value");
+  const copyButton = document.getElementById("copy-token-button");
+  const closeButton = document.getElementById("close-token-dialog");
+  const emptyState = document.getElementById("empty-token-state");
+  const tokenList = document.getElementById("token-list");
+
+  const showError = (message) => {
+    if (!(errorBox instanceof HTMLElement)) {
+      return;
+    }
+
+    errorBox.textContent = message;
+    errorBox.classList.remove("hidden");
+  };
+
+  const clearError = () => {
+    if (!(errorBox instanceof HTMLElement)) {
+      return;
+    }
+
+    errorBox.textContent = "";
+    errorBox.classList.add("hidden");
+  };
+
+  const setBusy = (busy) => {
+    if (createButton instanceof HTMLButtonElement) {
+      createButton.disabled = busy;
+    }
+  };
+
+  const reloadAfterDialog = () => {
+    window.location.reload();
+  };
+
+  createForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearError();
+
+    const form = event.currentTarget;
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+
+    const formData = new FormData(form);
+    const name = String(formData.get("name") ?? "").trim();
+    if (name.length === 0) {
+      showError("Token name must be a non-empty string.");
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      const response = await fetch("/api/me/tokens", {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+      });
+
+      if (response.status === 401) {
+        window.location.href = `/login?return_to=${encodeURIComponent(currentUrl)}`;
+        return;
+      }
+
+      const payload = await response.json();
+      if (!response.ok) {
+        showError(payload?.message ?? `Token creation failed: ${response.status}`);
+        return;
+      }
+
+      if (dialogTokenName instanceof HTMLElement) {
+        dialogTokenName.textContent = payload.token.name;
+      }
+
+      if (dialogTokenValue instanceof HTMLElement) {
+        dialogTokenValue.textContent = payload.plaintext_token;
+      }
+
+      form.reset();
+
+      if (emptyState instanceof HTMLElement && tokenList instanceof HTMLElement) {
+        emptyState.classList.add("hidden");
+      }
+
+      if (dialog instanceof HTMLDialogElement) {
+        dialog.dataset.reloadOnClose = "true";
+        dialog.showModal();
+      } else if (dialog instanceof HTMLElement) {
+        dialog.setAttribute("open", "");
+      }
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Token creation failed.");
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  tokenList?.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const button = target.closest("[data-token-revoke]");
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    const tokenId = button.dataset.tokenId;
+    if (!tokenId) {
+      return;
+    }
+
+    clearError();
+    button.disabled = true;
+
+    try {
+      const response = await fetch(`/api/me/tokens/${encodeURIComponent(tokenId)}`, {
+        method: "DELETE",
+        headers: {
+          accept: "application/json",
+        },
+      });
+
+      if (response.status === 401) {
+        window.location.href = `/login?return_to=${encodeURIComponent(currentUrl)}`;
+        return;
+      }
+
+      const payload = await response.json();
+      if (!response.ok) {
+        showError(payload?.message ?? `Token revocation failed: ${response.status}`);
+        button.disabled = false;
+        return;
+      }
+
+      window.location.reload();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Token revocation failed.");
+      button.disabled = false;
+    }
+  });
+
+  copyButton?.addEventListener("click", async () => {
+    if (!(dialogTokenValue instanceof HTMLElement)) {
+      return;
+    }
+
+    const token = dialogTokenValue.textContent ?? "";
+    if (token.length === 0) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(token);
+      if (copyButton instanceof HTMLButtonElement) {
+        const original = copyButton.textContent;
+        copyButton.textContent = "Copied";
+        window.setTimeout(() => {
+          copyButton.textContent = original ?? "Copy";
+        }, 1500);
+      }
+    } catch {
+      showError("Copy failed. Select the token manually and copy it.");
+    }
+  });
+
+  closeButton?.addEventListener("click", () => {
+    if (dialog instanceof HTMLDialogElement) {
+      dialog.close();
+    } else if (dialog instanceof HTMLElement) {
+      dialog.removeAttribute("open");
+      reloadAfterDialog();
+    }
+  });
+
+  dialog?.addEventListener("close", () => {
+    if (dialog instanceof HTMLDialogElement && dialog.dataset.reloadOnClose === "true") {
+      reloadAfterDialog();
+    }
+  });
+</script>

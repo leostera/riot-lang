@@ -64,21 +64,7 @@ export function buildPackageFacts(
   document: PackageIndexDocument,
   release: IndexedPackageRelease,
 ): PackageFact[] {
-  const ownerPath = `/u/${release.canonical_locator.split("/")[1] ?? "unknown"}`;
-
   return [
-    {
-      label: "Last release",
-      value: formatDate(release.published_at),
-    },
-    ...(release.license
-      ? [
-          {
-            label: "License",
-            value: release.license,
-          } satisfies PackageFact,
-        ]
-      : []),
     {
       label: "Install",
       value: `tusk add ${document.name}`,
@@ -88,15 +74,6 @@ export function buildPackageFacts(
       label: "tusk.toml",
       value: `${document.name} = "${release.version}"`,
       code: true,
-    },
-    {
-      label: "Owners",
-      value: `@${release.canonical_locator.split("/")[1] ?? "unknown"}`,
-      href: ownerPath,
-    },
-    {
-      label: "Dependencies",
-      value: `${release.dependencies.length}`,
     },
   ];
 }

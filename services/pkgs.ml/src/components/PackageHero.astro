@@ -1,29 +1,28 @@
 ---
-import { buildPackageFacts } from "../lib/package-index.ts";
-import type { IndexedPackageRelease, PackageIndexDocument } from "../lib/types.ts";
+import GitHubAvatar from "@/components/GitHubAvatar.astro";
+import { buildPackageFacts, formatDate } from "../lib/package-index.ts";
+import type {
+  IndexedPackageRelease,
+  PackageIndexDocument,
+  PackageOverviewDocument,
+} from "../lib/types.ts";
 
 interface Props {
   document: PackageIndexDocument;
   release: IndexedPackageRelease;
   selectedVersion: string;
+  overview?: PackageOverviewDocument | null;
 }
 
-const { document, release, selectedVersion } = Astro.props;
+const { document, release, selectedVersion, overview = null } = Astro.props;
 const facts = buildPackageFacts(document, release);
 const breadcrumbBits = release.canonical_locator.split("/");
-const owner = breadcrumbBits[1] ?? "unknown";
+const owner = overview?.owner_github_login ?? breadcrumbBits[1] ?? "unknown";
+const ownerAvatarUrl = overview?.owner_github_avatar_url;
 const packageHref = `/p/${document.name}`;
 
 const installFact = facts.find((fact) => fact.label === "Install");
 const tomlFact = facts.find((fact) => fact.label === "tusk.toml");
-const detailFacts = facts.filter((fact) =>
-  [
-    "Last release",
-    "License",
-    "Owners",
-    "Dependencies",
-  ].includes(fact.label),
-);
 ---
 
 <section class="w-full px-4 py-4 sm:px-6 xl:px-8">
@@ -51,8 +50,8 @@ const detailFacts = facts.filter((fact) =>
       </select>
     </nav>
 
-    <div class="grid gap-4 rounded-md border border-border bg-card px-4 py-4 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
-      <div class="grid gap-3 min-w-0">
+    <div class="grid gap-4 rounded-md border border-border bg-card px-4 py-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+      <div class="grid min-w-0 gap-3">
         <div class="grid gap-2">
           <div class="flex flex-wrap items-center gap-2">
             <h1 class="text-xl font-semibold tracking-tight text-foreground">{document.name}</h1>
@@ -72,54 +71,89 @@ const detailFacts = facts.filter((fact) =>
                 <a href={release.homepage} target="_blank" rel="noreferrer" class="hover:text-foreground">Homepage</a>
               ) : null
             }
-            <a
-              href={`https://cdn.pkgs.ml/${release.source_key}`}
-              target="_blank"
-              rel="noreferrer"
-              class="hover:text-foreground"
-            >
-              Source archive
-            </a>
           </div>
         </div>
-
-        <dl class="flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-3 text-xs">
-          {detailFacts.map((fact) => (
-            <div class="flex items-center gap-2">
-              <dt class="text-[11px] text-muted-foreground">{fact.label}</dt>
-              <dd class="text-foreground">
-                {
-                  fact.href ? (
-                    <a href={fact.href} class="hover:text-primary">{fact.value}</a>
-                  ) : (
-                    <span class={fact.code ? "font-mono" : ""}>{fact.value}</span>
-                  )
-                }
-              </dd>
-            </div>
-          ))}
-        </dl>
       </div>
 
-      <div class="grid gap-3 border-t border-border pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-        <div class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          Install
-        </div>
+      <aside class="grid gap-3 border-t border-border pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
         <div class="grid gap-2">
-          <div class="grid gap-1">
-            <div class="text-[11px] text-muted-foreground">{installFact?.label}</div>
-            <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-[11px] text-foreground">
-              {installFact?.value}
-            </code>
+          <div class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Install
           </div>
-          <div class="grid gap-1">
-            <div class="text-[11px] text-muted-foreground">{tomlFact?.label}</div>
-            <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-[11px] text-foreground">
-              {tomlFact?.value}
-            </code>
+          <div class="grid gap-2">
+            <div class="grid gap-1">
+              <div class="text-[11px] text-muted-foreground">{installFact?.label}</div>
+              <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-[11px] text-foreground">
+                {installFact?.value}
+              </code>
+            </div>
+            <div class="grid gap-1">
+              <div class="text-[11px] text-muted-foreground">{tomlFact?.label}</div>
+              <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-[11px] text-foreground">
+                {tomlFact?.value}
+              </code>
+            </div>
           </div>
         </div>
-      </div>
+
+        <dl class="grid gap-y-3 text-xs">
+          <div class="grid gap-1">
+            <dt class="text-[11px] text-muted-foreground">Last release</dt>
+            <dd class="text-foreground">{formatDate(release.published_at)}</dd>
+          </div>
+
+          {
+            release.license ? (
+              <div class="grid gap-1">
+                <dt class="text-[11px] text-muted-foreground">License</dt>
+                <dd class="text-foreground">{release.license}</dd>
+              </div>
+            ) : null
+          }
+
+          <div class="grid gap-1">
+            <dt class="text-[11px] text-muted-foreground">Owner</dt>
+            <dd>
+              <GitHubAvatar
+                login={owner}
+                avatarUrl={ownerAvatarUrl}
+                href={`/u/${owner}`}
+                size="sm"
+              />
+            </dd>
+          </div>
+
+          <div class="grid gap-1">
+            <dt class="text-[11px] text-muted-foreground">Dependencies</dt>
+            <dd class="text-foreground">{overview?.dependency_count ?? release.dependencies.length}</dd>
+          </div>
+
+          <div class="grid gap-1">
+            <dt class="text-[11px] text-muted-foreground">Dependents</dt>
+            <dd class="text-foreground">{overview?.dependent_count ?? 0}</dd>
+          </div>
+
+          <div class="grid gap-1">
+            <dt class="text-[11px] text-muted-foreground">Published versions</dt>
+            <dd class="text-foreground">{overview?.release_count ?? document.releases.length}</dd>
+          </div>
+
+          {
+            (overview?.categories.length ?? 0) > 0 ? (
+              <div class="grid gap-1">
+                <dt class="text-[11px] text-muted-foreground">Categories</dt>
+                <dd class="flex flex-wrap gap-1">
+                  {overview?.categories.map((category) => (
+                    <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
+                      {category}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            ) : null
+          }
+        </dl>
+      </aside>
     </div>
   </div>
 </section>

@@ -34,7 +34,7 @@ import type {
 const SESSION_COOKIE_NAME = "pkgs_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
-const API_TOKEN_PREFIX = "rpk_";
+const API_TOKEN_PREFIX = "sk-";
 
 interface GitHubUserProfile {
   id: number;

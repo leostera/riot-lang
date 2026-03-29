@@ -248,6 +248,7 @@ export interface PackageOverviewDocument {
   manifest_key: string;
   sha: string;
   owner_github_login: string;
+  owner_github_avatar_url?: string;
   release_count: number;
   dependency_count: number;
   dependent_count: number;
@@ -280,6 +281,7 @@ export interface WebPackageListItem {
   description?: string;
   license?: string;
   owner_github_login: string;
+  owner_github_avatar_url?: string;
   categories: string[];
   updated_at: string;
   repo_url: string;
@@ -318,6 +320,7 @@ export interface OwnerPackagesDocument {
   schema_version: 1;
   generated_at: string;
   owner_github_login: string;
+  owner_github_avatar_url?: string;
   package_count: number;
   latest_update_at?: string;
   packages: WebPackageListItem[];

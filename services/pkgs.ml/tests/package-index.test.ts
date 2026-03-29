@@ -43,8 +43,9 @@ describe("buildPackageFacts", () => {
 
     expect(facts.find((fact) => fact.label === "Install")?.value).toBe("tusk add kernel");
     expect(facts.find((fact) => fact.label === "tusk.toml")?.value).toBe('kernel = "0.0.1"');
-    expect(facts.find((fact) => fact.label === "License")?.value).toBe("MIT");
-    expect(facts.find((fact) => fact.label === "Dependencies")?.value).toBe("0");
+    expect(facts.find((fact) => fact.label === "License")).toBeUndefined();
+    expect(facts.find((fact) => fact.label === "Dependencies")).toBeUndefined();
+    expect(facts).toHaveLength(2);
     expect(facts.find((fact) => fact.label === "Versions")).toBeUndefined();
     expect(facts.find((fact) => fact.label === "OCaml")).toBeUndefined();
     expect(facts.find((fact) => fact.label === "Code size")).toBeUndefined();

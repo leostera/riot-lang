@@ -127,7 +127,7 @@ describe("riot package registry live e2e", () => {
       plaintext_token: string;
       token: { token_id: string; name: string };
     };
-    expect(created.plaintext_token.startsWith("rpk_")).toBe(true);
+    expect(created.plaintext_token.startsWith("sk-")).toBe(true);
     expect(created.token.name).toBe(tokenName);
 
     const listResponse = await fetch(`${baseUrl}/v1/me/tokens`, {
