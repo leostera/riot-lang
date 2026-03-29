@@ -5,6 +5,7 @@
 *)
 
 (** Internal layout node with computed values *)
+(** Main layout computation function *)
 type layout_node = {
   element : Element.t;
   style : Style.t;
@@ -13,9 +14,4 @@ type layout_node = {
   mutable computed_position : Geometry.Point.t;
   mutable final_box : Geometry.Rect.t;
 }
-
-val compute : 
-  config:Config.t -> 
-  Element.t -> 
-  Render.command_list
-(** Main layout computation function *)
+val compute : config:Config.t -> Element.t -> Render.command_list
