@@ -237,6 +237,13 @@ let has_dot_open_paren_continuation = fun parser ->
   | _ ->
       false
 
+let uppercase_ident_starts_variant_representation = fun parser ->
+  match peek_kind parser with
+  | Token.Ident name when ident_starts_uppercase name ->
+      not ((peek_n parser 1).Token.kind = Token.Dot)
+  | _ ->
+      false
+
 let is_parenthesized_functor_type_start = fun parser ->
   let starts_with_parameter_name =
     match peek_kind parser with
@@ -8738,14 +8745,15 @@ and parse_type_decl parser =
                     (* Direct record: type t = { ... } *)
                     let record = parse_record_type parser in
                     [ Ceibo.Green.Node record ]
-                | Token.Ident name when String.length name > 0 && 
-                                        (String.get name 0 >= 'A' && String.get name 0 <= 'Z') ->
+                | Token.Ident name when ident_starts_uppercase name ->
                     (* Uppercase identifier - could be variant constructor OR module path *)
                     (* Check if followed by dot to distinguish:
                        - Path.t -> module path (type alias)
                        - Some -> variant constructor *)
-                    let next_tok = Token_cursor.peek_n parser.cursor 1 in
-                    if next_tok.Token.kind = Token.Dot then
+                    if uppercase_ident_starts_variant_representation parser then
+                      (* Variant constructor like Some or None *)
+                      parse_variant_representation parser
+                    else
                       (* Module path like Path.t - parse as type expression *)
                       let type_expr = parse_typexpr parser in
                       let trivia_after_expr = consume_trivia parser in
@@ -8793,9 +8801,6 @@ and parse_type_decl parser =
                           (* Just type equation, no representation *)
                           [ Ceibo.Green.Node type_expr ]
                           @ tokens_to_green parser trivia_after_expr)
-                    else
-                      (* Variant constructor like Some or None *)
-                      parse_variant_representation parser
                 | _ ->
                     (* Check if this is an abstract type (private or not) - no representation *)
                     (match peek_kind parser with
@@ -8945,23 +8950,11 @@ and parse_type_decl parser =
                       | Token.OpenDelim Token.Brace ->
                           let record = parse_record_type parser in
                           [ Ceibo.Green.Node record ]
-                      | Token.Ident name when String.length name > 0 && 
-                                              (String.get name 0 >= 'A' && String.get name 0 <= 'Z') ->
-                          (* Starts with uppercase - check if it's a variant constructor *)
-                          (* by peeking ahead for 'of' or '|' keywords *)
-                          let saved_pos = Token_cursor.position parser.cursor in
-                          let _ = consume parser in  (* consume the uppercase ident *)
-                          let is_variant = 
-                            peek_kind parser = Token.Keyword Keyword.Of || 
-                            peek_kind parser = Token.Pipe
-                          in
-                          Token_cursor.set_position parser.cursor saved_pos;
-                          
-                          if is_variant then
-                            parse_variant_representation parser
-                          else
-                            let type_expr = parse_typexpr parser in
-                            [ Ceibo.Green.Node type_expr ]
+                      | Token.Ident _ when uppercase_ident_starts_variant_representation parser ->
+                          parse_variant_representation parser
+                      | Token.Ident name when ident_starts_uppercase name ->
+                          let type_expr = parse_typexpr parser in
+                          [ Ceibo.Green.Node type_expr ]
                       | _ ->
                           let type_expr = parse_typexpr parser in
                           [ Ceibo.Green.Node type_expr ]
@@ -10652,29 +10645,13 @@ and parse_signature_item parser =
             (* Direct record: type t = { ... } *)
             let record = parse_record_type parser in
             [ Ceibo.Green.Node record ]
-        | Token.Ident name when String.length name > 0 && 
-                                (String.get name 0 >= 'A' && String.get name 0 <= 'Z') ->
-            (* Starts with uppercase identifier - need to disambiguate *)
-            let saved_pos = Token_cursor.position parser.cursor in
+        | Token.Ident _ when uppercase_ident_starts_variant_representation parser ->
+            parse_variant_representation parser
+        | Token.Ident name when ident_starts_uppercase name ->
             let type_expr = parse_typexpr parser in
             let trivia_after_expr = consume_trivia parser in
-            
-            (* After parsing type expr, check if this is actually a variant *)
-            (match peek_kind parser with
-            | Token.Pipe ->
-                let current_pos = Token_cursor.position parser.cursor in
-                if current_pos - saved_pos <= 1 then (
-                  Token_cursor.set_position parser.cursor saved_pos;
-                  parse_variant_representation parser
-                ) else
-                  [ Ceibo.Green.Node type_expr ]
-                  @ tokens_to_green parser trivia_after_expr
-            | Token.Keyword Keyword.Of when Token_cursor.position parser.cursor - saved_pos <= 1 ->
-                Token_cursor.set_position parser.cursor saved_pos;
-                parse_variant_representation parser
-            | _ ->
-                [ Ceibo.Green.Node type_expr ]
-                @ tokens_to_green parser trivia_after_expr)
+            [ Ceibo.Green.Node type_expr ]
+            @ tokens_to_green parser trivia_after_expr
         | _ ->
             (* Parse type expression *)
             let type_expr = parse_typexpr parser in

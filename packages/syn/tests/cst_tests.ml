@@ -564,6 +564,98 @@ let tests =
                 Error "expected two grouped type declarations")
         | _ ->
             Error "expected grouped type declaration");
+    Test.case
+      "cst mutual type declarations keep uppercase and-declarations on the variant path"
+      (fun () ->
+        let result =
+          parse_ml
+            "type head = A\n\
+             and alias = Outer (* c *).Inner.t\n\
+             and variant = B\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
+            match Syn.Cst.TypeDeclaration.type_definition decl,
+                  Syn.Cst.TypeDeclaration.and_declarations decl with
+            | Syn.Cst.TypeDefinition.Variant { constructors = [ head_constr ]; _ },
+              [ alias_decl; variant_decl ] ->
+                Test.assert_equal ~expected:"A"
+                  ~actual:(Syn.Cst.VariantConstructor.name head_constr);
+                (match Syn.Cst.TypeDeclaration.manifest_alias alias_decl with
+                | Some
+                    (Syn.Cst.CoreType.Constr
+                      { constructor_path; arguments = []; _ }) ->
+                    Test.assert_true
+                      (Syn.Cst.Ident.equal constructor_path
+                         (Syn.Cst.Ident.from_string "Outer.Inner.t"))
+                | _ ->
+                    raise
+                      (Failure
+                         "expected grouped alias declaration to keep the qualified type path"));
+                (match Syn.Cst.TypeDeclaration.type_definition variant_decl with
+                | Syn.Cst.TypeDefinition.Variant { constructors = [ variant_constr ]; _ } ->
+                    Test.assert_equal ~expected:"B"
+                      ~actual:(Syn.Cst.VariantConstructor.name variant_constr);
+                    Ok ()
+                | _ ->
+                    Error
+                      "expected trailing grouped declaration to stay a bare variant")
+            | _ ->
+                Error
+                  "expected grouped type declaration with alias and trailing variant")
+        | _ ->
+            Error "expected grouped type declaration");
+    Test.case
+      "cst interface grouped type declarations keep uppercase GADT and-declarations on the variant path"
+      (fun () ->
+        let result =
+          parse_mli
+            "type _ expr = Int : int expr\n\
+             and packed = Packed (* c *) : int expr -> packed\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.TypeDeclaration decl :: _ -> (
+            match Syn.Cst.TypeDeclaration.and_declarations decl with
+            | [ packed_decl ] -> (
+                match Syn.Cst.TypeDeclaration.type_definition packed_decl with
+                | Syn.Cst.TypeDefinition.Variant
+                    { constructors = [ packed_constr ]; _ } ->
+                    Test.assert_equal ~expected:"Packed"
+                      ~actual:(Syn.Cst.VariantConstructor.name packed_constr);
+                    (match Syn.Cst.VariantConstructor.arguments packed_constr with
+                    | Some (Syn.Cst.ConstructorArguments.Tuple [ _ ]) ->
+                        ()
+                    | _ ->
+                        raise
+                          (Failure
+                             "expected grouped GADT constructor to expose its arrow parameter"));
+                    (match Syn.Cst.VariantConstructor.result_type packed_constr with
+                    | Some
+                        (Syn.Cst.CoreType.Constr
+                          { constructor_path; arguments = []; _ }) ->
+                        Test.assert_equal ~expected:(Some "packed")
+                          ~actual:(Syn.Cst.Ident.name constructor_path);
+                        Ok ()
+                    | _ ->
+                        Error
+                          "expected grouped GADT constructor to expose its result type")
+                | _ ->
+                    Error
+                      "expected grouped interface declaration to stay a GADT variant")
+            | _ ->
+                Error "expected one grouped interface type declaration")
+        | _ ->
+            Error "expected grouped interface type declaration");
     Test.case "cst type declarations expose direct type parameters" (fun () ->
         let result =
           parse_ml "type ('a, 'error) resultish = int\n"
