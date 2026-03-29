@@ -90,12 +90,30 @@ let comment_from_token = fun comment_syntax_token -> Cst.Comment.{
   comment_token = Cst.Token.{syntax_token = comment_syntax_token}
 }
 
+let syntax_token_from_trivia = fun trivia ->
+  let span = Ceibo.Red.SyntaxTrivia.span trivia in
+  synthetic_token
+    ~kind:(Ceibo.Red.SyntaxTrivia.kind trivia)
+    ~text:(Ceibo.Red.SyntaxTrivia.text trivia)
+    ~start_offset:span.start
+    ~end_offset:span.end_
+  |> Cst.Token.syntax_token
+
 let trivia_from_token = fun syntax_token ->
   match Ceibo.Red.SyntaxToken.kind syntax_token with
   | Syntax_kind.COMMENT ->
       Some (Cst.Trivia.Comment (comment_from_token syntax_token))
   | Syntax_kind.DOCSTRING ->
       Some (Cst.Trivia.Docstring (docstring_from_token syntax_token))
+  | _ ->
+      None
+
+let trivia_from_syntax_trivia = fun trivia ->
+  match Ceibo.Red.SyntaxTrivia.kind trivia with
+  | Syntax_kind.COMMENT ->
+      Some (Cst.Trivia.Comment (comment_from_token (syntax_token_from_trivia trivia)))
+  | Syntax_kind.DOCSTRING ->
+      Some (Cst.Trivia.Docstring (docstring_from_token (syntax_token_from_trivia trivia)))
   | _ ->
       None
 
@@ -690,6 +708,13 @@ let append_type_declaration_leading_trivia = fun decl trivia ->
     |> fun owned -> owned_trivia_without_matching owned trivia in
     {decl with owned_trivia = owned_trivia_append_leading owned trivia}
 
+let remove_type_declaration_leading_trivia = fun decl trivia ->
+  if trivia = [] then
+    decl
+  else
+    let owned = Cst.TypeDeclaration.owned_trivia decl in
+    {decl with owned_trivia = owned_trivia_without_matching owned trivia}
+
 let append_value_declaration_leading_trivia = fun decl trivia ->
   if trivia = [] then
     decl
@@ -791,6 +816,54 @@ let has_blank_line_between_offsets = fun ~source ~start ~end_ ->
   in
   loop start 0
 
+let variant_constructor_nontrivia_end = fun constructor ->
+  span_of_syntax_node_nontrivia_bounds (Cst.VariantConstructor.syntax_node constructor)
+  |> fun span -> span.end_
+
+let variant_constructor_indent = fun ~source constructor ->
+  source_position_indentation_before source
+    ((Ceibo.Red.SyntaxNode.span (Cst.VariantConstructor.syntax_node constructor)).start)
+  |> Option.unwrap_or ~default:0
+
+let trivia_is_non_section_comment_or_doc = function
+  | Cst.Trivia.Comment _ ->
+      true
+  | Cst.Trivia.Docstring docstring ->
+      not (is_section_docstring_text (Cst.Docstring.text docstring))
+
+let take_member_postfix_trivia_block = fun ~source ~member_end ~member_indent trivia ->
+  let rec loop = fun previous_end acc ->
+    function
+    | ((Cst.Trivia.Comment _ | Cst.Trivia.Docstring _) as entry) :: rest
+      when trivia_is_non_section_comment_or_doc entry
+      && not
+         (has_blank_line_between_offsets ~source
+            ~start:(Option.unwrap_or ~default:member_end previous_end)
+            ~end_:(trivia_span entry).start)
+      && (
+           match trivia_indentation ~source entry with
+           | Some indent ->
+               indent >= member_indent
+           | None ->
+               true) ->
+        loop (Some (trivia_span entry).end_) (entry :: acc) rest
+    | rest ->
+        (List.rev acc, rest)
+  in
+  loop None [] (sort_trivia_by_source trivia)
+
+let trivia_between_offsets_from_syntax_node = fun ~node ~after_offset ~before_offset ->
+  Ceibo.Red.SyntaxNode.tokens node
+  |> List.concat_map
+       (fun syntax_token ->
+         Ceibo.Red.SyntaxToken.leading_trivia syntax_token
+         |> List.filter_map trivia_from_syntax_trivia)
+  |> List.filter
+       (fun trivia ->
+         let span = trivia_span trivia in
+         span.start >= after_offset && span.end_ <= before_offset)
+  |> sort_trivia_by_source
+
 let type_declaration_nontrivia_end = fun decl -> span_of_syntax_node_nontrivia_bounds
 (Cst.TypeDeclaration.syntax_node decl)
 |> fun span -> span.end_
@@ -808,43 +881,81 @@ let take_contiguous_type_docstring_block = fun ~source ~decl_end trailing_trivia
   in
   loop None [] trailing_trivia
 
-let owned_trivia_has_non_section_leading_docstrings = fun owned -> Cst.OwnedTrivia.leading owned
-|> List.exists is_non_section_docstring_trivia
-
-let move_last_constructor_type_docstrings_to_parent = fun constructors ->
+let variant_has_previous_constructor_docstrings = fun constructors ->
   match List.rev constructors with
   | []
   | [ _ ] ->
-      constructors
-  | last :: prev_rev ->
-      let previous_have_docstrings = prev_rev
-      |> List.exists (fun constructor -> owned_trivia_has_docstrings
-      (Cst.VariantConstructor.owned_trivia constructor)) in
-      if previous_have_docstrings then
-        constructors
-      else
-        let owned = Cst.VariantConstructor.owned_trivia last in
-        let bubbled_docstrings, kept_trailing = Cst.OwnedTrivia.trailing owned |> List.partition is_non_section_docstring_trivia in
-        if bubbled_docstrings = [] then
-          constructors
-        else
-          let last = {last with owned_trivia = owned_trivia_with_trailing owned kept_trailing} in
-          List.rev (last :: prev_rev)
+      false
+  | _last :: previous_rev ->
+      previous_rev
+      |> List.exists (fun constructor ->
+             owned_trivia_has_docstrings
+               (Cst.VariantConstructor.owned_trivia constructor))
 
-let normalize_variant_constructor_owned_trivia = fun ~source constructor ->
+let rec normalize_variant_constructor_owned_trivia = fun ~source constructor ->
   let member_indent = source_position_indentation_before source ((Ceibo.Red.SyntaxNode.span
   (Cst.VariantConstructor.syntax_node constructor)).start)
   |> Option.unwrap_or ~default:0 in
   let normalized_owned_trivia, _bubble = split_member_trailing_trivia ~source ~member_indent (Cst.VariantConstructor.owned_trivia
   constructor) in
   {constructor with owned_trivia = normalized_owned_trivia}
+and normalize_variant_constructor_sequence_owned_trivia = fun ~source ~source_node constructors ->
+  let rec loop = fun acc previous ->
+    function
+    | [] ->
+        List.rev (normalize_variant_constructor_owned_trivia ~source previous :: acc)
+    | current :: rest ->
+        let moved_to_previous, _kept_gap =
+          take_member_postfix_trivia_block ~source
+            ~member_end:(variant_constructor_nontrivia_end previous)
+            ~member_indent:(variant_constructor_indent ~source previous)
+            (trivia_between_offsets_from_syntax_node
+               ~node:source_node
+               ~after_offset:(variant_constructor_nontrivia_end previous)
+               ~before_offset:((Ceibo.Red.SyntaxNode.span
+                                  (Cst.VariantConstructor.syntax_node current)).start))
+        in
+        let previous =
+          let owned =
+            Cst.VariantConstructor.owned_trivia previous
+            |> fun owned -> owned_trivia_append_trailing owned moved_to_previous
+          in
+          {previous with owned_trivia = owned}
+          |> normalize_variant_constructor_owned_trivia ~source
+        in
+        loop (previous :: acc) current rest
+  in
+  match constructors with
+  | [] ->
+      []
+  | first :: rest ->
+      loop [] first rest
+
+let update_last_variant_constructor_owned_trivia = fun ~source ~following_trivia constructors ->
+  match List.rev constructors with
+  | [] ->
+      (constructors, following_trivia)
+  | last :: previous_rev ->
+      let moved_to_last, _remaining =
+        take_member_postfix_trivia_block ~source
+          ~member_end:(variant_constructor_nontrivia_end last)
+          ~member_indent:(variant_constructor_indent ~source last)
+          following_trivia
+      in
+      if moved_to_last = [] then
+        (constructors, following_trivia)
+      else
+        let owned =
+          Cst.VariantConstructor.owned_trivia last
+          |> fun owned -> owned_trivia_append_trailing owned moved_to_last
+        in
+        (List.rev ({last with owned_trivia = owned} :: previous_rev), _remaining)
 
 let normalize_type_definition_owned_trivia = fun ~source ->
   function
   | Cst.TypeDefinition.Variant { syntax_node; constructors } ->
       let normalized_constructors = constructors
-      |> List.map (normalize_variant_constructor_owned_trivia ~source)
-      |> move_last_constructor_type_docstrings_to_parent in
+      |> normalize_variant_constructor_sequence_owned_trivia ~source ~source_node:syntax_node in
       Cst.TypeDefinition.Variant {syntax_node; constructors = normalized_constructors}
   | type_definition ->
       type_definition
@@ -857,7 +968,25 @@ let normalize_single_type_declaration_owned_trivia = fun ~source decl ->
   |> fun syntax_node -> owned_trivia_from_node_excluding_child_owned_spans syntax_node child_owned_spans in
   {decl with type_definition = normalized_type_definition; owned_trivia = owned}
 
-let split_type_declaration_trailing_trivia = fun ~source ~has_next_sibling ~has_next_type_sibling decl ->
+let split_type_declaration_trailing_trivia = fun ~source ~has_next_sibling decl ->
+  let decl =
+    match Cst.TypeDeclaration.type_definition decl with
+    | Cst.TypeDefinition.Variant { syntax_node; constructors } ->
+        let owned = Cst.TypeDeclaration.owned_trivia decl in
+        let constructors, remaining_trailing =
+          update_last_variant_constructor_owned_trivia ~source
+            ~following_trivia:(sort_trivia_by_source (Cst.OwnedTrivia.trailing owned))
+            constructors
+        in
+        let owned = owned_trivia_with_trailing owned remaining_trailing in
+        {
+          decl with
+          type_definition = Cst.TypeDefinition.Variant {syntax_node; constructors};
+          owned_trivia = owned;
+        }
+    | _ ->
+        decl
+  in
   let owned = Cst.TypeDeclaration.owned_trivia decl in
   let decl_indent = source_position_indentation_before source ((Ceibo.Red.SyntaxNode.span
   (Cst.TypeDeclaration.syntax_node decl)).start)
@@ -865,13 +994,16 @@ let split_type_declaration_trailing_trivia = fun ~source ~has_next_sibling ~has_
   let decl_end = Int.max (type_declaration_nontrivia_end decl) (type_definition_owned_trivia_end
   (Cst.TypeDeclaration.type_definition decl)) in
   let contiguous_docstrings, remaining_trailing =
-    if has_next_type_sibling && owned_trivia_has_non_section_leading_docstrings owned then
-      ([], sort_trivia_by_source (Cst.OwnedTrivia.trailing owned))
-    else
-      take_contiguous_type_docstring_block ~source ~decl_end (sort_trivia_by_source
-      (Cst.OwnedTrivia.trailing owned))
+    take_contiguous_type_docstring_block ~source ~decl_end
+      (sort_trivia_by_source (Cst.OwnedTrivia.trailing owned))
   in
-  let prefer_current_continuation = not (owned_trivia_has_non_section_leading_docstrings owned) in
+  let prefer_current_continuation =
+    match Cst.TypeDeclaration.type_definition decl with
+    | Cst.TypeDefinition.Variant { constructors; _ } ->
+        variant_has_previous_constructor_docstrings constructors
+    | _ ->
+        true
+  in
   let current_docstrings, docstrings_for_next =
     if not has_next_sibling then
       (contiguous_docstrings, [])
@@ -910,12 +1042,16 @@ let normalize_type_declaration_sequence = fun ~source ~has_next_sibling ?(initia
     | [ decl ] ->
         let decl = normalize_single_type_declaration_owned_trivia ~source decl in
         let decl = append_type_declaration_leading_trivia decl (sort_trivia_by_source carried_leading) in
-        let decl, bubbled_to_next = split_type_declaration_trailing_trivia ~source ~has_next_sibling ~has_next_type_sibling:false decl in
+        let decl, bubbled_to_next =
+          split_type_declaration_trailing_trivia ~source ~has_next_sibling decl
+        in
         (List.rev (decl :: acc), sort_trivia_by_source (bubbled_after_group @ bubbled_to_next))
     | decl :: rest ->
         let decl = normalize_single_type_declaration_owned_trivia ~source decl in
         let decl = append_type_declaration_leading_trivia decl (sort_trivia_by_source carried_leading) in
-        let decl, bubbled_to_next = split_type_declaration_trailing_trivia ~source ~has_next_sibling:true ~has_next_type_sibling:true decl in
+        let decl, bubbled_to_next =
+          split_type_declaration_trailing_trivia ~source ~has_next_sibling:true decl
+        in
         let carry_to_next, bubble_past_group = bubbled_to_next
         |> List.partition (fun trivia -> not (is_section_docstring_trivia trivia)) in
         loop carry_to_next (sort_trivia_by_source (bubbled_after_group @ bubble_past_group)) (decl
@@ -973,6 +1109,103 @@ let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_l
       in
       ({first with and_declarations = rest}, bubbled_to_next)
 
+let map_last_type_declaration_in_group = fun decl f ->
+  match List.rev (Cst.TypeDeclaration.and_declarations decl) with
+  | [] ->
+      f decl
+  | last :: previous_rev ->
+      let updated_last = f last in
+      {decl with and_declarations = List.rev (updated_last :: previous_rev)}
+
+let absorb_next_type_declaration_leading_trivia = fun ~source current_decl next_decl ->
+  let next_leading =
+    Cst.TypeDeclaration.owned_trivia next_decl
+    |> Cst.OwnedTrivia.leading
+    |> sort_trivia_by_source
+  in
+  let current_decl, moved_to_current =
+    match List.rev (Cst.TypeDeclaration.and_declarations current_decl) with
+    | [] -> (
+        match Cst.TypeDeclaration.type_definition current_decl with
+        | Cst.TypeDefinition.Variant { syntax_node; constructors } ->
+            let constructors, remaining =
+              update_last_variant_constructor_owned_trivia ~source
+                ~following_trivia:next_leading constructors
+            in
+            let moved_to_current =
+              next_leading
+              |> List.filter (fun trivia ->
+                   not
+                     (List.exists
+                        (fun remaining_trivia ->
+                          trivia_same_span trivia remaining_trivia)
+                        remaining))
+            in
+            ({current_decl with
+               type_definition = Cst.TypeDefinition.Variant {syntax_node; constructors}},
+             moved_to_current)
+        | _ ->
+            (current_decl, [])
+      )
+    | last :: previous_rev -> (
+        match Cst.TypeDeclaration.type_definition last with
+        | Cst.TypeDefinition.Variant { syntax_node; constructors } ->
+            let constructors, remaining =
+              update_last_variant_constructor_owned_trivia ~source
+                ~following_trivia:next_leading constructors
+            in
+            let moved_to_current =
+              next_leading
+              |> List.filter (fun trivia ->
+                   not
+                     (List.exists
+                        (fun remaining_trivia ->
+                          trivia_same_span trivia remaining_trivia)
+                        remaining))
+            in
+            ( {current_decl with
+                and_declarations =
+                  List.rev
+                    ({last with
+                      type_definition = Cst.TypeDefinition.Variant {syntax_node; constructors}}
+                    :: previous_rev) },
+              moved_to_current )
+        | _ ->
+            (current_decl, [])
+      )
+  in
+  let next_decl = remove_type_declaration_leading_trivia next_decl moved_to_current in
+  (current_decl, next_decl)
+
+let absorb_following_variant_constructor_trivia = fun ~source decl following_trivia ->
+  match List.rev (Cst.TypeDeclaration.and_declarations decl) with
+  | [] -> (
+      match Cst.TypeDeclaration.type_definition decl with
+      | Cst.TypeDefinition.Variant { syntax_node; constructors } ->
+          let constructors, remaining =
+            update_last_variant_constructor_owned_trivia ~source ~following_trivia constructors
+          in
+          ({decl with type_definition = Cst.TypeDefinition.Variant {syntax_node; constructors}}, remaining)
+      | _ ->
+          (decl, following_trivia)
+    )
+  | last :: previous_rev -> (
+      match Cst.TypeDeclaration.type_definition last with
+      | Cst.TypeDefinition.Variant { syntax_node; constructors } ->
+          let constructors, remaining =
+            update_last_variant_constructor_owned_trivia ~source ~following_trivia constructors
+          in
+          ( {decl with
+              and_declarations =
+                List.rev
+                  ({last with
+                    type_definition = Cst.TypeDefinition.Variant {syntax_node; constructors}}
+                  :: previous_rev) },
+            remaining )
+      | _ ->
+          (decl, following_trivia)
+    )
+
 let structure_item_of_trivia = fun trivia ->
   match trivia with
   | Cst.Trivia.Docstring docstring ->
@@ -1017,6 +1250,31 @@ let rec drop_matching_leading_trivia = fun ~trivia_of_item trivia items ->
   | _ ->
       items
 
+let rec take_leading_trivia_items = fun ~trivia_of_item acc ->
+  function
+  | item :: rest -> (
+      match trivia_of_item item with
+      | Some trivia ->
+          take_leading_trivia_items ~trivia_of_item (trivia :: acc) rest
+      | None ->
+          (List.rev acc, item :: rest)
+    )
+  | [] ->
+      (List.rev acc, [])
+
+let drop_owned_trivia_items = fun ~trivia_of_item owned_spans items ->
+  items
+  |> List.filter
+       (fun item ->
+         match trivia_of_item item with
+         | Some trivia ->
+             not
+               (List.exists
+                  (fun owned_span -> span_contains owned_span (trivia_span trivia))
+                  owned_spans)
+         | None ->
+             true)
+
 let type_declaration_starts_with_and = fun decl ->
   match direct_non_trivia_tokens (Cst.TypeDeclaration.syntax_node decl) with
   | token :: _ ->
@@ -1050,6 +1308,48 @@ type ('item, 'value_decl) ordered_item_ops = {
 }
 
 let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
+  let finalize_normalized_type_declaration = fun normalized_decl next_trivia rest ->
+    let normalized_decl, next_trivia =
+      absorb_following_variant_constructor_trivia ~source normalized_decl
+        next_trivia
+    in
+    let normalized_decl, rest =
+      match rest with
+      | next_item :: tail -> (
+          match ops.type_declaration_of_item next_item with
+          | Some next_decl ->
+              let normalized_decl, next_decl =
+                absorb_next_type_declaration_leading_trivia ~source
+                  normalized_decl next_decl
+              in
+              (normalized_decl, ops.item_of_type_declaration next_decl :: tail)
+          | None ->
+              (normalized_decl, rest)
+        )
+      | [] ->
+          (normalized_decl, rest)
+    in
+    let leading_trivia_items, tail =
+      take_leading_trivia_items ~trivia_of_item:ops.trivia_of_item [] rest
+    in
+    let normalized_decl, leading_trivia_items =
+      absorb_following_variant_constructor_trivia ~source normalized_decl
+        leading_trivia_items
+    in
+    let rest =
+      List.map ops.item_of_trivia leading_trivia_items @ tail
+    in
+    let rest =
+      drop_owned_trivia_items ~trivia_of_item:ops.trivia_of_item
+        (type_declaration_owned_trivia_spans normalized_decl)
+        rest
+    in
+    let rest =
+      drop_matching_leading_trivia ~trivia_of_item:ops.trivia_of_item
+        next_trivia rest
+    in
+    (normalized_decl, List.map ops.item_of_trivia next_trivia @ rest)
+  in
   function
   | [] ->
       []
@@ -1078,13 +1378,13 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
                       ~initial_leading:attached_docstrings
                       decl
                   in
-                  let tail =
-                    drop_matching_leading_trivia ~trivia_of_item:ops.trivia_of_item
-                      next_trivia tail
+                  let normalized_decl, tail =
+                    finalize_normalized_type_declaration normalized_decl next_trivia
+                      tail
                   in
                   ops.item_of_type_declaration normalized_decl
                   :: normalize_ordered_items_owned_trivia ~source ops
-                       (List.map ops.item_of_trivia next_trivia @ tail)
+                       tail
               | None ->
                   item :: normalize_ordered_items_owned_trivia ~source ops rest
             )
@@ -1105,13 +1405,12 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
                   ))
                   decl
               in
-              let rest =
-                drop_matching_leading_trivia ~trivia_of_item:ops.trivia_of_item
-                  next_trivia rest
+              let normalized_decl, rest =
+                finalize_normalized_type_declaration normalized_decl next_trivia
+                  rest
               in
               ops.item_of_type_declaration normalized_decl
-              :: normalize_ordered_items_owned_trivia ~source ops
-                   (List.map ops.item_of_trivia next_trivia @ rest)
+              :: normalize_ordered_items_owned_trivia ~source ops rest
           | None -> (
               match ops.value_declaration_of_item item with
               | Some decl ->
@@ -5738,6 +6037,18 @@ let variant_constructor_from_node = fun node ->
             else
               None
           in
+          let leading_trivia =
+            match Ceibo.Red.SyntaxNode.first_token node with
+            | Some first_token ->
+                Ceibo.Red.SyntaxToken.leading_trivia first_token
+                |> List.filter_map trivia_from_syntax_trivia
+            | None ->
+                []
+          in
+          let constructor_owned_trivia =
+            owned_trivia_from_node node
+            |> fun owned -> owned_trivia_with_leading owned leading_trivia
+          in
           Some Cst.VariantConstructor.{
             syntax_node = node;
             attributes = lifted_attributes;
@@ -5745,7 +6056,7 @@ let variant_constructor_from_node = fun node ->
             arguments = lifted_arguments;
             payload_type = lifted_payload_type;
             result_type = lifted_result_type;
-            owned_trivia = owned_trivia_from_node node
+            owned_trivia = constructor_owned_trivia
           }
       | [] -> None
     )

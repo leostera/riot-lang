@@ -4429,6 +4429,160 @@ let tests =
         | _ ->
             Error "expected params and prerequest declarations");
     Test.case
+      "cst keeps last constructor docs separate from the next type docs"
+      (fun () ->
+        let result =
+          parse_mli
+            "type request_id =\n\
+             \  | String of string\n\
+             \  | Number of int\n\
+             \  (** Numeric request IDs *)\n\
+             (** JSON-RPC error code *)\n\
+             type error_code = int\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.TypeDeclaration request_id;
+            Syn.Cst.SignatureItem.TypeDeclaration error_code ] -> (
+            match Syn.Cst.TypeDeclaration.type_definition request_id with
+            | Syn.Cst.TypeDefinition.Variant { constructors = [ _; number ]; _ } ->
+                (match Syn.Cst.OwnedTrivia.trailing (Syn.Cst.VariantConstructor.owned_trivia number) with
+                | [ Syn.Cst.Trivia.Docstring doc ] ->
+                    Test.assert_equal ~expected:"(** Numeric request IDs *)"
+                      ~actual:(Syn.Cst.Docstring.text doc)
+                | _ ->
+                    raise (Failure "expected last constructor trailing docstring"));
+                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia error_code) with
+                | [ Syn.Cst.Trivia.Docstring doc ] ->
+                    Test.assert_equal ~expected:"(** JSON-RPC error code *)"
+                      ~actual:(Syn.Cst.Docstring.text doc);
+                    Ok ()
+                | _ ->
+                    Error "expected next type leading docstring")
+            | _ ->
+                Error "expected request_id variant constructors")
+        | _ ->
+            Error "expected request_id and error_code declarations");
+    Test.case
+      "cst keeps postfix variant constructor docs owned by constructors at end of file"
+      (fun () ->
+        let result =
+          parse_mli
+            "type error =\n\
+             \  | ParseError of { raw_input : string; parse_error : string }\n\
+             \      (** Client failed to parse JSON or JSON-RPC structure *)\n\
+             \  | UnknownServerError of { code : int; message : string; data : Json.t option }\n\
+             \      (** Server returned a JSON-RPC error object that couldn't be parsed into a\n\
+             \          typed response variant *)\n\
+             (** Client-side errors with rich context information. Includes\n\
+             \    UnknownServerError for when the server sends a JSON-RPC error that we don't\n\
+             \    have a typed response variant for. *)\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.TypeDeclaration error_decl;
+            Syn.Cst.SignatureItem.Docstring type_doc ] -> (
+            match Syn.Cst.TypeDeclaration.type_definition error_decl with
+            | Syn.Cst.TypeDefinition.Variant
+                { constructors = [ parse_error; unknown_server_error ]; _ } ->
+                (match Syn.Cst.OwnedTrivia.trailing
+                         (Syn.Cst.VariantConstructor.owned_trivia parse_error) with
+                | [ Syn.Cst.Trivia.Docstring doc ] ->
+                    Test.assert_equal
+                      ~expected:"(** Client failed to parse JSON or JSON-RPC structure *)"
+                      ~actual:(Syn.Cst.Docstring.text doc)
+                | _ ->
+                    raise
+                      (Failure
+                         "expected ParseError trailing docstring"));
+                (match Syn.Cst.OwnedTrivia.trailing
+                         (Syn.Cst.VariantConstructor.owned_trivia unknown_server_error)
+                 with
+                | [ Syn.Cst.Trivia.Docstring doc ] ->
+                    Test.assert_equal
+                      ~expected:"(** Server returned a JSON-RPC error object that couldn't be parsed into a\n\
+                                 \          typed response variant *)"
+                      ~actual:(Syn.Cst.Docstring.text doc)
+                | _ ->
+                    raise
+                      (Failure
+                         "expected UnknownServerError trailing docstring"));
+                Test.assert_equal
+                  ~expected:
+                    "(** Client-side errors with rich context information. Includes\n\
+                     \    UnknownServerError for when the server sends a JSON-RPC error that we don't\n\
+                     \    have a typed response variant for. *)"
+                  ~actual:(Syn.Cst.Docstring.text type_doc);
+                Ok ()
+            | _ ->
+                Error "expected error variant constructors")
+        | _ ->
+            Error "expected type declaration plus trailing type docstring");
+    Test.case
+      "cst keeps terminal constructor docs off the next type's leading docs"
+      (fun () ->
+        let result =
+          parse_mli
+            "type error =\n\
+             \  | ParseError of { raw_input : string; parse_error : string }\n\
+             \      (** Client failed to parse JSON or JSON-RPC structure *)\n\
+             \  | UnknownServerError of { code : int; message : string; data : Json.t option }\n\
+             \      (** Server returned a JSON-RPC error object that couldn't be parsed into a\n\
+             \          typed response variant *)\n\
+             (** Client-side errors with rich context information. Includes\n\
+             \    UnknownServerError for when the server sends a JSON-RPC error that we don't\n\
+             \    have a typed response variant for. *)\n\
+             type response = int\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.TypeDeclaration error_decl;
+            Syn.Cst.SignatureItem.TypeDeclaration response_decl ] -> (
+            match Syn.Cst.TypeDeclaration.type_definition error_decl with
+            | Syn.Cst.TypeDefinition.Variant
+                { constructors = [ _; unknown_server_error ]; _ } ->
+                (match Syn.Cst.OwnedTrivia.trailing
+                         (Syn.Cst.VariantConstructor.owned_trivia unknown_server_error)
+                 with
+                | [ Syn.Cst.Trivia.Docstring doc ] ->
+                    Test.assert_equal
+                      ~expected:"(** Server returned a JSON-RPC error object that couldn't be parsed into a\n\
+                                 \          typed response variant *)"
+                      ~actual:(Syn.Cst.Docstring.text doc)
+                | _ ->
+                    raise
+                      (Failure
+                         "expected UnknownServerError trailing docstring"));
+                (match Syn.Cst.OwnedTrivia.leading
+                         (Syn.Cst.TypeDeclaration.owned_trivia response_decl)
+                 with
+                | [ Syn.Cst.Trivia.Docstring doc ] ->
+                    Test.assert_equal
+                      ~expected:
+                        "(** Client-side errors with rich context information. Includes\n\
+                         \    UnknownServerError for when the server sends a JSON-RPC error that we don't\n\
+                         \    have a typed response variant for. *)"
+                      ~actual:(Syn.Cst.Docstring.text doc);
+                    Ok ()
+                | _ ->
+                    Error "expected only the type-level docstring on the next type")
+            | _ ->
+                Error "expected error variant constructors")
+        | _ ->
+            Error "expected error and response declarations");
+    Test.case
       "cst keeps section docstrings after grouped type declarations standalone"
       (fun () ->
         let result =
