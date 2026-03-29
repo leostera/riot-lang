@@ -1233,6 +1233,48 @@ let tests =
         | _ ->
             Error "expected module declaration with structure module expression");
     Test.case
+      "cst builder keeps terminal nested structure comments standalone before end"
+      (fun () ->
+        let result =
+          parse_ml
+            "module Foo_bar = struct\n\
+             \  let answer = 42\n\
+             \  (* keep me *)\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
+            {
+              module_expression =
+                Some
+                  ((Syn.Cst.ModuleExpression.Structure _) as module_expression);
+              _;
+            }
+          :: _ -> (
+            match Syn.CstBuilder.structure_items_of_module_expression module_expression with
+            | Ok
+                (Some
+                  [ Syn.Cst.StructureItem.LetBinding binding;
+                    Syn.Cst.StructureItem.Comment comment ]) ->
+                Test.assert_equal ~expected:"answer"
+                  ~actual:(Syn.Cst.LetBinding.name binding);
+                Test.assert_equal ~expected:"(* keep me *)"
+                  ~actual:(Syn.Cst.Comment.text comment);
+                Ok ()
+            | Ok _ ->
+                Error
+                  "expected nested structure terminal comment to stay standalone"
+            | Error _ ->
+                Error
+                  "expected nested structure terminal comment to reify successfully")
+        | _ ->
+            Error "expected module declaration with structure module expression");
+    Test.case
       "cst builder normalizes nested structure grouped type docs and headings"
       (fun () ->
         let result =
@@ -1843,6 +1885,47 @@ let tests =
             | Error _ ->
                 Error "expected nested signature items to reify successfully"
             )
+        | _ ->
+            Error "expected module type declaration with signature body");
+    Test.case
+      "cst builder keeps terminal nested signature docstrings standalone before end"
+      (fun () ->
+        let result =
+          parse_ml
+            "module type S = sig\n\
+             \  val x : int\n\
+             \  (** keep me *)\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleTypeDeclaration
+            {
+              module_type =
+                Some ((Syn.Cst.ModuleType.Signature _) as module_type);
+              _;
+            }
+          :: _ -> (
+            match Syn.CstBuilder.signature_items_of_module_type module_type with
+            | Ok
+                (Some
+                  [ Syn.Cst.SignatureItem.ValueDeclaration decl;
+                    Syn.Cst.SignatureItem.Docstring docstring ]) ->
+                Test.assert_equal ~expected:"x"
+                  ~actual:(Syn.Cst.Token.text decl.name_token);
+                Test.assert_equal ~expected:"(** keep me *)"
+                  ~actual:(Syn.Cst.Docstring.text docstring);
+                Ok ()
+            | Ok _ ->
+                Error
+                  "expected nested signature terminal docstring to stay standalone"
+            | Error _ ->
+                Error
+                  "expected nested signature terminal docstring to reify successfully")
         | _ ->
             Error "expected module type declaration with signature body");
     Test.case "cst builder normalizes nested signature grouped type docs and headings"

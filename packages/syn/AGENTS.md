@@ -36,6 +36,7 @@
 30. Keep record field doc ownership leading-only: field docstrings in inter-field gaps should attach to the next field's `owned_trivia.leading`, while postfix comments may still bubble backward onto the previous field and terminal `}`-owned docs/comments must be preserved without stealing them for the last field.
 31. Keep explicit member-stream normalization limited to repeated member grammars with public member `owned_trivia` today: variant constructors and record fields. Exception declarations stay on the ordinary ordered-item path, and object type fields should not gain member-stream ownership rules until the CST gives them `owned_trivia` and a renderer contract.
 32. Keep doc kind explicit on `Cst.Docstring`: section-vs-ordinary classification should be computed once during CST lift and then reused by ordered-item ownership and nested-body normalization, instead of being rediscovered from raw docstring text in normal paths.
+33. Keep nested `sig ... end` and `struct ... end` helper item streams terminal-trivia-complete: standalone comments/docstrings that live on the closing token's `leading_trivia` must surface as final nested items, not be left for downstream source-gap recovery.
 
 ## Validate
 

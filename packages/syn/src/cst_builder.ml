@@ -7467,9 +7467,42 @@ let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docst
   in
   (root, file_items)
 
-let build_items_from_payload_nodes = fun ~comment_item_of_comment ~docstring_item_of_docstring ~owned_trivia_spans_of_item payload_nodes items_from_node -> payload_nodes
-|> List.concat_map (fun payload_node -> Ceibo.Red.SyntaxNode.children_list payload_node
-|> List.concat_map (source_file_items_from_child ~comment_item_of_comment ~docstring_item_of_docstring ~owned_trivia_spans_of_item items_from_node))
+let build_items_from_payload_nodes =
+  fun ~comment_item_of_comment ~docstring_item_of_docstring ~syntax_node_of_item
+    ~owned_trivia_spans_of_item payload_nodes items_from_node ->
+  let terminal_standalone_trivia_items_from_payload_node = fun payload_node items ->
+    let owned_trivia_spans = items |> List.concat_map owned_trivia_spans_of_item in
+    let after_offset =
+      match items with
+      | item :: rest ->
+          List.fold_left
+            (fun max_end item ->
+              Int.max max_end
+                (span_of_syntax_node_nontrivia_bounds (syntax_node_of_item item)).end_)
+            (span_of_syntax_node_nontrivia_bounds (syntax_node_of_item item)).end_
+            rest
+      | [] -> (
+          match direct_non_trivia_tokens payload_node with
+          | token :: _ ->
+              (Ceibo.Red.SyntaxToken.span token).end_
+          | [] ->
+              (Ceibo.Red.SyntaxNode.span payload_node).start
+        )
+    in
+    standalone_trivia_items_from_node ~comment_item_of_comment
+      ~docstring_item_of_docstring ~after_offset
+      ~excluded_spans:owned_trivia_spans payload_node
+  in
+  payload_nodes
+  |> List.concat_map (fun payload_node ->
+         let items =
+           Ceibo.Red.SyntaxNode.children_list payload_node
+           |> List.concat_map
+                (source_file_items_from_child ~comment_item_of_comment
+                   ~docstring_item_of_docstring ~owned_trivia_spans_of_item
+                   items_from_node)
+         in
+         items @ terminal_standalone_trivia_items_from_payload_node payload_node items)
 
 let rec validate_pattern = fun ~context ->
   function
@@ -8196,7 +8229,7 @@ let raw_structure_items_from_syntax_node = fun node ->
   let items =
     match Ceibo.Red.SyntaxNode.kind node with
     | Syntax_kind.STRUCT_EXPR ->
-        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans [
+        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~syntax_node_of_item:Cst.StructureItem.syntax_node ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans [
           node
         ] structure_items_from_node
     | _ ->
@@ -8240,13 +8273,13 @@ let raw_signature_items_from_syntax_node = fun node ->
   let items =
     match Ceibo.Red.SyntaxNode.kind node with
     | Syntax_kind.SIGNATURE ->
-        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans [
+        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans [
           node
         ] signature_items_from_node
     | Syntax_kind.IDENT_EXPR -> (
         match direct_non_trivia_tokens node with
         | sig_kw :: _ when String.equal (Ceibo.Red.SyntaxToken.text sig_kw) "sig" ->
-            build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans [
+            build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans [
               node
             ] signature_items_from_node
         | _ ->
