@@ -80,9 +80,21 @@ let synthetic_syntax_node_wrapping_token = fun docstring_syntax_token ->
   | _ ->
       panic "synthetic_syntax_node_wrapping_token: missing wrapped child node"
 
+let docstring_kind_from_text = fun comment_text ->
+  let len = String.length comment_text in
+  if len < 5 then
+    Cst.Docstring.Ordinary
+  else
+    let body = String.sub comment_text 3 (len - 5) |> String.trim in
+    if String.length body > 0 && (Char.equal body.[0] '{' || Char.equal body.[0] '#') then
+      Cst.Docstring.Section
+    else
+      Cst.Docstring.Ordinary
+
 let docstring_from_token = fun docstring_syntax_token -> Cst.Docstring.{
   syntax_node = synthetic_syntax_node_wrapping_token docstring_syntax_token;
-  docstring_token = Cst.Token.{syntax_token = docstring_syntax_token}
+  docstring_token = Cst.Token.{syntax_token = docstring_syntax_token};
+  kind = docstring_kind_from_text (Ceibo.Red.SyntaxToken.text docstring_syntax_token)
 }
 
 let comment_from_token = fun comment_syntax_token -> Cst.Comment.{
@@ -764,24 +776,23 @@ let dedup_trivia_by_span = fun trivia ->
   loop [] [] trivia
 
 let is_section_docstring_text = fun comment_text ->
-  let len = String.length comment_text in
-  if len < 5 then
-    false
-  else
-    let body = String.sub comment_text 3 (len - 5) |> String.trim in
-    String.length body > 0 && (Char.equal body.[0] '{' || Char.equal body.[0] '#')
+  match docstring_kind_from_text comment_text with
+  | Cst.Docstring.Section ->
+      true
+  | Cst.Docstring.Ordinary ->
+      false
 
 let is_non_section_docstring_trivia =
   function
   | Cst.Trivia.Docstring docstring ->
-      not (is_section_docstring_text (Cst.Docstring.text docstring))
+      not (Cst.Docstring.is_section docstring)
   | Cst.Trivia.Comment _ ->
       false
 
 let is_section_docstring_trivia =
   function
   | Cst.Trivia.Docstring docstring ->
-      is_section_docstring_text (Cst.Docstring.text docstring)
+      Cst.Docstring.is_section docstring
   | Cst.Trivia.Comment _ ->
       false
 
@@ -1410,7 +1421,7 @@ let rec take_adjacent_item_docstrings = fun ~docstring_of_item ->
   function
   | item :: rest -> (
       match docstring_of_item item with
-      | Some docstring when not (is_section_docstring_text (Cst.Docstring.text docstring)) ->
+      | Some docstring when not (Cst.Docstring.is_section docstring) ->
           let taken, remaining = take_adjacent_item_docstrings ~docstring_of_item rest in
           (Cst.Trivia.Docstring docstring :: taken, remaining)
       | _ ->
@@ -1479,7 +1490,7 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
       []
   | item :: rest -> (
       match ops.docstring_of_item item with
-      | Some docstring when not (is_section_docstring_text (Cst.Docstring.text docstring)) -> (
+      | Some docstring when not (Cst.Docstring.is_section docstring) -> (
           let attached_docstrings, remaining =
             take_adjacent_item_docstrings ~docstring_of_item:ops.docstring_of_item rest
           in

@@ -192,7 +192,7 @@ For every slice below:
 
 ### 7. Make Doc Kind Explicit
 
-- [ ] Represent ordinary docs vs section docs explicitly in the CST/trivia model
+- [x] Represent ordinary docs vs section docs explicitly in the CST/trivia model
   - stop reclassifying headings from raw text in normal paths
   - verification:
     - CST tests for ordinary docs vs section docs vs plain comments
@@ -258,8 +258,9 @@ For every slice below:
 - [ ] Current state: record field doc ownership is now leading-only: docstrings between fields attach to the next field, postfix comments may still stay with the previous field, and terminal `}`-owned docs/comments are preserved inside the record body; `blink/src/sse.mli` plus fixtures `0744` and `0915` pin the formatter output
 - [ ] Current state: explicit member-item streams are only needed for repeated member grammars with public member `owned_trivia` today, namely variant constructors and record fields; exception declarations stay on the ordinary ordered-item pass, and object type fields remain syntax-only until they grow a public owned-trivia/rendering contract
 - [ ] Current state: nested heading/doc ordering is now pinned against the real `ceibo.mli` `Green` signature, including repeated `## Construction` section docs staying standalone while the following `make_trivia` API doc stays declaration-owned
+- [ ] Current state: doc kind is now explicit on `Cst.Docstring`, and normal ownership/rendering paths in `syn` and `krasny` use that explicit section-vs-ordinary distinction instead of reparsing docstring text
 - [ ] Current state: module/class top-level keyword probes, bracket attribute/extension probes, functor application / `(val ...)` module-expression probes, parenthesized module-type lookahead in module expressions, declaration-local `module type of` probes, application/infix/tuple/assign/sequence expression continuations, paren and bracket local-open vs index expression disambiguation, postfix custom-index/operator-like probes, dotted module/module-type/type-name/qualified-field path continuations, local-open core type path lookahead, `include module type of`, `let open` expression detection, the polymorphic/local-open/local-abstract type probes, tuple/as/cons/or pattern continuations, local-open pattern path disambiguation, literal range-pattern probes, and grouped structure/signature type-declaration uppercase-body disambiguation no longer rely on trivia-skipping control flow; inline-comment alias-vs-variant, grouped GADT, and `module type of` declaration cases are pinned in `syn:cst_tests`
 - [ ] Current state: top-level file loops and nested `struct`/`sig` body loops no longer thread trivia through `tokens_to_green []`
 - [ ] Current state: red traversal now follows the same contract as green for parser-built trees; leading trivia lives on tokens and `SyntaxNode.tokens` stays trivia-free
 - [ ] Current state: `print-ceibo` fixture coverage now includes a mixed comment/docstring bridge case
-- [ ] The next concrete slice is making doc kind explicit so ordinary docs and section docs stop getting reclassified from raw text in normal paths
+- [ ] The next concrete slice is deleting top-level trivia archaeology from `krasny/lower.ml`, now that top-level ownership and doc kind are both explicit in the CST

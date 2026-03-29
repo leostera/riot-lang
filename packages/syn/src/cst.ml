@@ -21,9 +21,14 @@ module Token = struct
   let span = fun token -> Ceibo.Red.SyntaxToken.span token.syntax_token
 end
 
+type docstring_kind =
+  | Ordinary
+  | Section
+
 type docstring = {
   syntax_node : syntax_node;
   docstring_token : Token.t;
+  kind : docstring_kind;
 }
 
 type comment = {
@@ -2771,14 +2776,28 @@ module OpenStatement = struct
 end
 
 module Docstring = struct
+  type kind = docstring_kind =
+    | Ordinary
+    | Section
+
   type t = docstring = {
     syntax_node : syntax_node;
     docstring_token : Token.t;
+    kind : kind;
   }
 
   let syntax_node = fun doc -> doc.syntax_node
 
   let token = fun doc -> doc.docstring_token
+
+  let kind = fun doc -> doc.kind
+
+  let is_section =
+    function
+    | {kind = Section; _} ->
+        true
+    | {kind = Ordinary; _} ->
+        false
 
   let text = fun doc -> Token.text doc.docstring_token
 end

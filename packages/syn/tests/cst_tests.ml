@@ -4790,6 +4790,43 @@ let tests =
         | _ ->
             Error "expected event and response type declarations");
     Test.case
+      "cst docstrings expose explicit section vs ordinary kinds"
+      (fun () ->
+        let result =
+          parse_mli
+            "(** ## Types *)\n\
+             type a = int\n\
+             (** Ordinary docs *)\n\
+             type b = int\n\
+             (* plain comment *)\n\
+             type c = int\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.Docstring section_doc;
+            Syn.Cst.SignatureItem.TypeDeclaration _;
+            Syn.Cst.SignatureItem.TypeDeclaration type_b;
+            Syn.Cst.SignatureItem.Comment comment;
+            Syn.Cst.SignatureItem.TypeDeclaration _ ] ->
+            Test.assert_equal ~expected:Syn.Cst.Docstring.Section
+              ~actual:(Syn.Cst.Docstring.kind section_doc);
+            (match Syn.Cst.OwnedTrivia.leading
+                     (Syn.Cst.TypeDeclaration.owned_trivia type_b) with
+            | [ Syn.Cst.Trivia.Docstring ordinary_doc ] ->
+                Test.assert_equal ~expected:Syn.Cst.Docstring.Ordinary
+                  ~actual:(Syn.Cst.Docstring.kind ordinary_doc);
+                Test.assert_equal ~expected:"(* plain comment *)"
+                  ~actual:(Syn.Cst.Comment.text comment);
+                Ok ()
+            | _ ->
+                Error "expected ordinary leading docstring on type b")
+        | _ ->
+            Error "expected section docstring, comment, and type declarations in order");
+    Test.case
       "cst keeps section docstrings after grouped type declarations standalone"
       (fun () ->
         let result =

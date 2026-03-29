@@ -87,9 +87,13 @@ module Token : sig
   val span : t -> Ceibo.Span.t
 end
 
+type docstring_kind =
+  | Ordinary
+  | Section
 type docstring = {
   syntax_node : syntax_node;
   docstring_token : Token.t;
+  kind : docstring_kind;
 }
 type comment = {
   syntax_node : syntax_node;
@@ -4069,13 +4073,21 @@ module OpenStatement : sig
 end
 
 module Docstring : sig
+  type kind = docstring_kind =
+    | Ordinary
+    | Section
   type t = docstring = {
     syntax_node : syntax_node;
     docstring_token : Token.t;
+    kind : kind;
   }
   val syntax_node : t -> syntax_node
 
   val token : t -> Token.t
+
+  val kind : t -> kind
+
+  val is_section : t -> bool
 
   val text : t -> string
 end

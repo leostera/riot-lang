@@ -6253,8 +6253,7 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
         let is_attachable_docstring =
           match item with
           | Syn.Cst.StructureItem.Docstring docstring ->
-              let text = Syn.Cst.Token.text (Syn.Cst.Docstring.token docstring) in
-              not (is_section_docstring_text text)
+              not (Syn.Cst.Docstring.is_section docstring)
               && pending_has_only_breaks pending
           | _ ->
               false
@@ -6537,8 +6536,7 @@ and render_signature_top_level_items
         let is_attachable_docstring =
           match item with
           | Syn.Cst.SignatureItem.Docstring docstring ->
-              let text = Syn.Cst.Token.text (Syn.Cst.Docstring.token docstring) in
-              not (is_section_docstring_text text)
+              not (Syn.Cst.Docstring.is_section docstring)
               && pending_has_only_breaks pending
           | _ ->
               false
