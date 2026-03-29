@@ -29,7 +29,7 @@ This file is _yours_. Keep it up to date after every big change.
 For every future cleanup slice:
 
 - Add or update the smallest regression first.
-- Land the smallest code change that improves the post-migration model.
+- Land the smallest code change that improves the current token-trivia model.
 - Run focused tests first.
 - Run the slice build command.
 - Commit with a scoped conventional commit message.
@@ -59,7 +59,7 @@ For every future cleanup slice:
 ## Maintenance Backlog
 
 - [x] Decide whether `owned_trivia` should stay public as-is or be renamed/simplified now that the token-trivia model is stable.
-- [ ] Keep trimming stale migration-era comments/helpers in `packages/syn` and `packages/krasny` when compiler/readability audits surface them.
+- [ ] Keep trimming stale rollout-era comments/helpers in `packages/syn` and `packages/krasny` when compiler/readability audits surface them.
 - [ ] Add new ownership regressions to `syn:cst_tests` before adding formatter-only fixtures.
 - [ ] Keep future formatter fixtures renderer/layout-focused; do not reintroduce `lower.ml` ownership archaeology.
 

@@ -23,10 +23,10 @@
 17. Keep standalone top-level comments and docstrings explicit in the CST item stream; do not bury their ownership in enclosing declaration spans.
 18. Keep nested `sig ... end` and `struct ... end` syntax-node lifts normalized the same way as file-level lifts; callers should not have to provide extra source text just to get correct trivia ownership.
 19. Keep raw trivia ownership explicit on declaration nodes that can carry inline comments/docstrings, even before higher-level sequence normalization decides whether adjacent docstrings stay standalone or attach to a neighbor.
-20. Keep token-attached trivia as the source of truth; do not reintroduce standalone trivia tree children in Ceibo once the migration lands.
+20. Keep token-attached trivia as the source of truth; do not reintroduce standalone trivia tree children in Ceibo.
 21. Keep `Lexer.tokenize` emitting only real tokens plus `Token.EOF`, with trailing file trivia on `Token.EOF.leading_trivia`.
-22. Keep `Parser.parse_result.tokens` as the original lexer token stream during the migration so tools can stay lossless before trivia children disappear from the tree, and use that stream as the source of truth for file-level standalone trivia instead of re-lexing source text.
-23. Keep parser-built green trees trivia-free in normal paths: parser control flow may still consume token-attached leading trivia explicitly during the migration, but green child arrays should represent trivia through token `leading_trivia`, not standalone trivia elements.
+22. Keep `Parser.parse_result.tokens` as the original lexer token stream, and use that stream as the source of truth for file-level standalone trivia instead of re-lexing source text.
+23. Keep parser-built green trees trivia-free in normal paths: parser control flow may still consume token-attached leading trivia explicitly, but green child arrays should represent trivia through token `leading_trivia`, not standalone trivia elements.
 24. Keep top-level structure/signature doc ownership on one shared ordered-item pass; do not let those normalization rules fork by item family again.
 25. Keep top-level standalone comment/doc ordering driven by token order: derive file items from each item’s first-token leading trivia plus `EOF.leading_trivia`, not by subtracting syntax-node spans from the file.
 26. Keep nested `sig ... end` and `struct ... end` bodies exposed through CST-node helpers such as `CstBuilder.signature_items_of_module_type` and `CstBuilder.structure_items_of_module_expression`; callers should not have to relift raw nested syntax anchors by hand just to get normalized item ownership.
