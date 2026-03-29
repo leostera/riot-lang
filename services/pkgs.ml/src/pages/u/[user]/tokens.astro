@@ -27,7 +27,7 @@ const tokenResponse = await fetchApiTokens(Astro.request);
 >
   <section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
     <div class="grid gap-4">
-      <nav class="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+      <nav class="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <a href="/" class="hover:text-foreground">All packages</a>
         <span>/</span>
         <a href={`/u/${user}`} class="hover:text-foreground">{user}</a>
@@ -37,7 +37,7 @@ const tokenResponse = await fetchApiTokens(Astro.request);
 
       <Card className="rounded-md shadow-none">
         <CardHeader className="border-b border-border">
-          <CardTitle className="text-sm">
+          <CardTitle className="text-base">
             <span class="inline-flex items-center gap-3">
               <GitHubAvatar
                 login={session.user.github_login}
@@ -52,14 +52,14 @@ const tokenResponse = await fetchApiTokens(Astro.request);
         </CardHeader>
         <CardContent className="grid gap-3 py-4">
           <form id="create-token-form" class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <label class="grid gap-2 text-xs text-muted-foreground">
+            <label class="grid gap-2 text-sm text-muted-foreground">
               Token name
               <Input
                 id="create-token-name"
                 name="name"
                 type="text"
                 placeholder="CI publish"
-                className="rounded-md text-sm"
+                className="rounded-md text-base"
                 required
               />
             </label>
@@ -77,7 +77,7 @@ const tokenResponse = await fetchApiTokens(Astro.request);
 
       <Card className="rounded-md shadow-none">
         <CardHeader className="border-b border-border">
-          <CardTitle className="text-sm">Active tokens</CardTitle>
+          <CardTitle className="text-base">Active tokens</CardTitle>
           <CardDescription>
             Token usage is tracked. Revocation is immediate.
           </CardDescription>
@@ -102,8 +102,8 @@ const tokenResponse = await fetchApiTokens(Astro.request);
                 class="grid gap-3 rounded-md border border-border bg-background px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
               >
                 <div class="grid gap-1">
-                  <div class="text-sm font-medium text-foreground">{token.name}</div>
-                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                  <div class="text-base font-medium text-foreground">{token.name}</div>
+                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                     <span>Created {new Date(token.created_at).toLocaleDateString("en")}</span>
                     <span>
                       Last used{" "}
@@ -138,19 +138,19 @@ const tokenResponse = await fetchApiTokens(Astro.request);
   >
     <div class="grid gap-4 p-5">
       <div class="grid gap-1">
-        <div class="text-sm font-semibold text-foreground">New publish token created</div>
-        <p class="text-sm text-muted-foreground">
+        <div class="text-base font-semibold text-foreground">New publish token created</div>
+        <p class="text-base text-muted-foreground">
           Save this token now. It will not be shown again after you close this dialog.
         </p>
       </div>
 
       <div class="grid gap-2">
-        <div class="text-xs text-muted-foreground">
+        <div class="text-sm text-muted-foreground">
           Token name: <span id="dialog-token-name" class="font-medium text-foreground"></span>
         </div>
         <code
           id="dialog-token-value"
-          class="overflow-x-auto rounded-md border border-emerald-700/20 bg-emerald-50 px-3 py-2 text-xs text-emerald-950"
+          class="overflow-x-auto rounded-md border border-emerald-700/20 bg-emerald-50 px-3 py-2 text-sm text-emerald-950"
         />
       </div>
 

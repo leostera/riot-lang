@@ -9,7 +9,7 @@ import SiteLayout from "@/layouts/SiteLayout.astro";
 >
   <section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
     <div class="grid gap-4">
-      <nav class="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+      <nav class="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <a href="/" class="hover:text-foreground">All packages</a>
         <span>/</span>
         <span class="text-foreground">privacy</span>
@@ -17,14 +17,14 @@ import SiteLayout from "@/layouts/SiteLayout.astro";
 
       <Card className="rounded-md shadow-none">
         <CardHeader className="border-b border-border">
-          <CardTitle className="text-sm">Privacy Policy</CardTitle>
+          <CardTitle className="text-base">Privacy Policy</CardTitle>
           <CardDescription>
             How pkgs.ml handles identity, package metadata, and publish credentials.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-6 py-4 text-sm leading-6 text-muted-foreground">
+        <CardContent className="grid gap-6 py-4 text-base leading-7 text-muted-foreground">
           <section class="grid gap-2">
-            <h2 class="text-sm font-semibold text-foreground">GitHub login</h2>
+            <h2 class="text-base font-semibold text-foreground">GitHub login</h2>
             <p>
               When you sign in with GitHub, pkgs.ml stores your GitHub login, GitHub user id,
               display name when available, and avatar URL. This data is used to create your pkgs.ml
@@ -33,7 +33,7 @@ import SiteLayout from "@/layouts/SiteLayout.astro";
           </section>
 
           <section class="grid gap-2">
-            <h2 class="text-sm font-semibold text-foreground">Sessions and cookies</h2>
+            <h2 class="text-base font-semibold text-foreground">Sessions and cookies</h2>
             <p>
               pkgs.ml uses a secure session cookie to keep you signed in. The cookie is scoped to
               the pkgs.ml domain and is used only for authentication and account actions such as
@@ -42,7 +42,7 @@ import SiteLayout from "@/layouts/SiteLayout.astro";
           </section>
 
           <section class="grid gap-2">
-            <h2 class="text-sm font-semibold text-foreground">Publish tokens</h2>
+            <h2 class="text-base font-semibold text-foreground">Publish tokens</h2>
             <p>
               Publish tokens are shown in plaintext exactly once when created. After creation,
               pkgs.ml stores only a derived hash plus token metadata such as name, capabilities,
@@ -51,7 +51,7 @@ import SiteLayout from "@/layouts/SiteLayout.astro";
           </section>
 
           <section class="grid gap-2">
-            <h2 class="text-sm font-semibold text-foreground">Published package metadata</h2>
+            <h2 class="text-base font-semibold text-foreground">Published package metadata</h2>
             <p>
               Packages published to pkgs.ml expose public metadata such as package name, version,
               description, license, categories, dependencies, owners, and source repository links.
@@ -60,7 +60,7 @@ import SiteLayout from "@/layouts/SiteLayout.astro";
           </section>
 
           <section class="grid gap-2">
-            <h2 class="text-sm font-semibold text-foreground">Operational logs</h2>
+            <h2 class="text-base font-semibold text-foreground">Operational logs</h2>
             <p>
               The API records request metadata such as timestamp, route, response status, and
               user-agent for operational debugging, security monitoring, and service reliability.
@@ -68,7 +68,7 @@ import SiteLayout from "@/layouts/SiteLayout.astro";
           </section>
 
           <section class="grid gap-2">
-            <h2 class="text-sm font-semibold text-foreground">Changes</h2>
+            <h2 class="text-base font-semibold text-foreground">Changes</h2>
             <p>
               This policy is an initial draft and will evolve as pkgs.ml grows. Material changes
               should be published on this page before they take effect.

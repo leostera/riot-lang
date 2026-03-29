@@ -48,7 +48,7 @@ const dependencyRows =
   <div class="mx-auto grid w-full max-w-6xl gap-4">
     <Card size="sm" className="rounded-md shadow-none">
       <CardHeader className="border-b border-border">
-        <CardTitle className="text-sm">Dependencies</CardTitle>
+        <CardTitle className="text-base">Dependencies</CardTitle>
         <CardDescription>
           Dependencies declared for this release.
         </CardDescription>
@@ -60,7 +60,7 @@ const dependencyRows =
           ) : (
             <ul class="grid gap-2">
               {dependencyRows.map((dependency) => (
-                <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-sm last:border-b-0 last:pb-0">
+                <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-base last:border-b-0 last:pb-0">
                   <a href={`/p/${dependency.package_name}`} class="font-medium text-foreground hover:text-primary">
                     {dependency.package_name}
                   </a>
@@ -77,7 +77,7 @@ const dependencyRows =
 
     <Card size="sm" className="rounded-md shadow-none">
       <CardHeader className="border-b border-border">
-        <CardTitle className="text-sm">Dependents</CardTitle>
+        <CardTitle className="text-base">Dependents</CardTitle>
         <CardDescription>
           Packages that currently depend on {document.name}.
         </CardDescription>
@@ -89,7 +89,7 @@ const dependencyRows =
           ) : (
             <ul class="grid gap-2">
               {relations?.dependents.map((dependent) => (
-                <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-sm last:border-b-0 last:pb-0">
+                <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-base last:border-b-0 last:pb-0">
                   <a href={`/p/${dependent.package_name}`} class="font-medium text-foreground hover:text-primary">
                     {dependent.package_name}
                   </a>

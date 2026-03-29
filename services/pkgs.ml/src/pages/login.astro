@@ -22,13 +22,13 @@ const loginUrl = buildGitHubLoginUrl(returnTo);
   <section class="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
     <Card className="rounded-md shadow-none">
       <CardHeader className="border-b border-border">
-        <CardTitle className="text-sm">Login with GitHub</CardTitle>
+        <CardTitle className="text-base">Login with GitHub</CardTitle>
         <CardDescription>
           Authenticate with GitHub to manage publish tokens and package ownership.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 py-4">
-        <p class="text-sm leading-6 text-muted-foreground">
+        <p class="text-base leading-7 text-muted-foreground">
           Your GitHub identity is used to create a pkgs.ml account and to bind publish
           tokens to package claims owned by that GitHub user.
         </p>
@@ -43,7 +43,7 @@ const loginUrl = buildGitHubLoginUrl(returnTo);
           >
             Continue with GitHub
           </a>
-          <span class="text-xs text-muted-foreground">You will return to pkgs.ml after GitHub authorizes the session.</span>
+          <span class="text-sm text-muted-foreground">You will return to pkgs.ml after GitHub authorizes the session.</span>
         </div>
       </CardContent>
     </Card>

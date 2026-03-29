@@ -33,8 +33,8 @@ function formatUpdatedAt(value: string): string {
   <div class="grid gap-4">
     <div class="grid gap-1 border-b border-border pb-4">
       <div class="grid gap-1">
-        <h1 class="text-base font-semibold tracking-tight text-foreground">Search OCaml packages</h1>
-        <p class="text-xs text-muted-foreground">
+        <h1 class="text-lg font-semibold tracking-tight text-foreground">Search OCaml packages</h1>
+        <p class="text-sm text-muted-foreground">
           {response.count} result{response.count === 1 ? "" : "s"} for <code>{query}</code>
         </p>
       </div>
@@ -44,7 +44,7 @@ function formatUpdatedAt(value: string): string {
       response.results.length === 0 ? (
         <Card size="sm" className="rounded-md shadow-none">
           <CardHeader>
-            <CardTitle className="text-sm">No packages matched</CardTitle>
+            <CardTitle className="text-base">No packages matched</CardTitle>
             <CardDescription>
               Try a different package name, repository owner, or keyword.
             </CardDescription>
@@ -59,7 +59,7 @@ function formatUpdatedAt(value: string): string {
                   <div class="flex min-w-0 flex-wrap items-center gap-2">
                     <a
                       href={`/p/${result.package_name}`}
-                      class="text-sm font-semibold tracking-tight text-foreground hover:text-primary"
+                      class="text-base font-semibold tracking-tight text-foreground hover:text-primary"
                     >
                       {result.package_name}
                     </a>
@@ -78,7 +78,7 @@ function formatUpdatedAt(value: string): string {
                 </div>
 
                 <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-x-4">
-                  <p class="min-w-0 text-xs leading-5 text-muted-foreground">
+                  <p class="min-w-0 text-sm leading-6 text-muted-foreground">
                     {result.description || "No package description has been published yet."}
                   </p>
 

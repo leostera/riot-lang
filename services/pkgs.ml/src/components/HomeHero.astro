@@ -42,18 +42,18 @@ const { categories, popular, recent } = Astro.props;
   <div class="mx-auto grid w-full max-w-6xl gap-4 px-4 sm:grid-cols-3 sm:px-6">
     <Card size="sm" className="rounded-md shadow-none">
       <CardHeader className="border-b border-border">
-        <CardTitle className="text-sm">Popular categories</CardTitle>
+        <CardTitle className="text-base">Popular categories</CardTitle>
         <CardDescription>Jump into the ecosystem through common areas of development.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
         {
           (categories?.categories.length ?? 0) === 0 ? (
-            <p class="text-xs leading-5 text-muted-foreground">No categories have been published yet.</p>
+            <p class="text-sm leading-6 text-muted-foreground">No categories have been published yet.</p>
           ) : (
             categories?.categories.slice(0, 6).map((category) => (
               <article class="grid gap-1 border-b border-border/70 pb-3 last:border-b-0 last:pb-0">
-                <h3 class="text-sm font-medium text-foreground">{category.name}</h3>
-                <p class="text-xs leading-5 text-muted-foreground">
+                <h3 class="text-base font-medium text-foreground">{category.name}</h3>
+                <p class="text-sm leading-6 text-muted-foreground">
                   {category.package_count} package{category.package_count === 1 ? "" : "s"}
                 </p>
                 <div class="flex flex-wrap gap-1">
@@ -75,22 +75,22 @@ const { categories, popular, recent } = Astro.props;
 
     <Card size="sm" className="rounded-md shadow-none">
       <CardHeader className="border-b border-border">
-        <CardTitle className="text-sm">Popular packages</CardTitle>
+        <CardTitle className="text-base">Popular packages</CardTitle>
         <CardDescription>Packages with the strongest usage signal in the registry.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2">
         {
           (popular?.packages.length ?? 0) === 0 ? (
-            <p class="text-xs leading-5 text-muted-foreground">No popular packages available yet.</p>
+            <p class="text-sm leading-6 text-muted-foreground">No popular packages available yet.</p>
           ) : (
             popular?.packages.slice(0, 6).map((item) => (
               <article class="grid gap-1 border-b border-border/70 pb-2 last:border-b-0 last:pb-0">
                 <div class="flex items-start justify-between gap-2">
                   <div class="grid gap-1">
-                    <a href={item.package_path} class="text-sm font-medium text-foreground hover:text-primary">
+                    <a href={item.package_path} class="text-base font-medium text-foreground hover:text-primary">
                       {item.package_name}
                     </a>
-                    <p class="text-xs leading-5 text-muted-foreground">
+                    <p class="text-sm leading-6 text-muted-foreground">
                       {item.description ?? "Published OCaml package"}
                     </p>
                   </div>
@@ -107,20 +107,20 @@ const { categories, popular, recent } = Astro.props;
 
     <Card size="sm" className="rounded-md shadow-none">
       <CardHeader className="border-b border-border">
-        <CardTitle className="text-sm">Recently updated</CardTitle>
+        <CardTitle className="text-base">Recently updated</CardTitle>
         <CardDescription>Fresh registry activity and package updates.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2">
         {
           (recent?.packages.length ?? 0) === 0 ? (
-            <p class="text-xs leading-5 text-muted-foreground">No package releases have been indexed yet.</p>
+            <p class="text-sm leading-6 text-muted-foreground">No package releases have been indexed yet.</p>
           ) : (
             recent?.packages.slice(0, 6).map((item) => (
               <article class="grid gap-1 border-b border-border/70 pb-2 last:border-b-0 last:pb-0">
-                <a href={item.package_path} class="text-sm font-medium text-foreground hover:text-primary">
+                <a href={item.package_path} class="text-base font-medium text-foreground hover:text-primary">
                   {item.package_name}
                 </a>
-                <p class="text-xs leading-5 text-muted-foreground">
+                <p class="text-sm leading-6 text-muted-foreground">
                   v{item.latest_version} · updated {new Intl.DateTimeFormat("en", {
                     year: "numeric",
                     month: "short",
