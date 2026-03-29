@@ -230,7 +230,7 @@ For every slice below:
   - nested module headings
   - plain comments mixed with docstrings
 
-- [ ] Keep formatter fixtures only for renderer problems after CST ownership is correct
+- [x] Keep formatter fixtures only for renderer problems after CST ownership is correct
   - avoid new `lower.ml`-only fixtures for issues that belong in `syn:cst_tests`
 
 ### 10. Final Validation
@@ -272,8 +272,9 @@ For every slice below:
 - [ ] Current state: `krasny` verbatim/source fallbacks now rebuild text from real token bodies plus later-token `leading_trivia`, so alias patterns, first-class modules, and boolean `if` conditions no longer depend on phantom trivia tokens inside `SyntaxNode.tokens`
 - [ ] Current state: top-level lowered `let ... = fun ... -> ...` output now preserves the original source span when a parameterized binding is immediately followed by an expression phrase, preventing phrase-boundary ambiguities like `ocaml_multi_indices.ml` during workspace verification
 - [ ] Current state: dead `krasny` token-kind filters are gone from normal lowering helpers: `SyntaxNode.tokens` / `direct_tokens` are now treated as real-token-only streams for bounds, literal-sign, poly-variant, core-type, and grouped rendering helpers instead of pretending standalone whitespace/comment/docstring tokens still exist
+- [ ] Current state: the curated `krasny` fixture manifest now audits cleanly (`fixture_audit.py` reports no exact duplicate source/expected/pair groups and no near-duplicate families at the default threshold), while ownership-sensitive cases remain pinned directly in `syn:cst_tests` instead of depending on formatter-only regressions
 - [ ] Current state: module/class top-level keyword probes, bracket attribute/extension probes, functor application / `(val ...)` module-expression probes, parenthesized module-type lookahead in module expressions, declaration-local `module type of` probes, application/infix/tuple/assign/sequence expression continuations, paren and bracket local-open vs index expression disambiguation, postfix custom-index/operator-like probes, dotted module/module-type/type-name/qualified-field path continuations, local-open core type path lookahead, `include module type of`, `let open` expression detection, the polymorphic/local-open/local-abstract type probes, tuple/as/cons/or pattern continuations, local-open pattern path disambiguation, literal range-pattern probes, and grouped structure/signature type-declaration uppercase-body disambiguation no longer rely on trivia-skipping control flow; inline-comment alias-vs-variant, grouped GADT, and `module type of` declaration cases are pinned in `syn:cst_tests`
 - [ ] Current state: top-level file loops and nested `struct`/`sig` body loops no longer thread trivia through `tokens_to_green []`
 - [ ] Current state: red traversal now follows the same contract as green for parser-built trees; leading trivia lives on tokens and `SyntaxNode.tokens` stays trivia-free
 - [ ] Current state: `print-ceibo` fixture coverage now includes a mixed comment/docstring bridge case
-- [ ] The next concrete slice is the section 9 formatter-fixture audit: make sure formatter fixtures are now reserved for renderer/layout problems while ownership cases stay pinned directly in `syn:cst_tests`
+- [ ] The next concrete slice is maintenance only: keep future formatter fixtures renderer/layout-focused and add new ownership regressions to `syn:cst_tests` first
