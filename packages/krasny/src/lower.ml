@@ -938,377 +938,6 @@ let doc_of_owned_trivia = fun ?start ~source trivia ->
   in
   loop None start trivia
 
-let pending_has_section_docstring =
-  fun pending ->
-    List.exists
-      (function
-        | TriviaDocstring (_, true, _) ->
-            true
-        | _ ->
-            false)
-      pending
-
-let pending_has_blank_line =
-  fun pending ->
-    List.exists
-      (function
-        | TriviaBreak (_, break_count) ->
-            break_count >= 2
-        | TriviaComment _ | TriviaDocstring _ ->
-            false)
-      pending
-
-let pending_has_comment_or_section_docstring =
-  fun pending ->
-    List.exists
-      (function
-        | TriviaComment _ ->
-            true
-        | TriviaDocstring (_, true, _) ->
-            true
-        | TriviaBreak _ | TriviaDocstring _ ->
-            false)
-      pending
-
-let source_position_is_line_start = fun source position ->
-  let source_length = String.length source in
-  let position = Int.max 0 (Int.min position source_length) in
-  let rec find_line_start index =
-    if index <= 0 then
-      0
-    else if Char.equal source.[index - 1] '\n' then
-      index
-    else
-      find_line_start (index - 1)
-  in
-  Int.equal (find_line_start position) position
-
-let source_position_has_only_indentation_before = fun source position ->
-  let source_length = String.length source in
-  let position = Int.max 0 (Int.min position source_length) in
-  let rec find_line_start index =
-    if index <= 0 then
-      0
-    else if Char.equal source.[index - 1] '\n' then
-      index
-    else
-      find_line_start (index - 1)
-  in
-  let line_start = find_line_start position in
-  let rec loop index =
-    if index >= position then
-      true
-    else
-      match source.[index] with
-      | ' '
-      | '\t' ->
-          loop (index + 1)
-      | _ ->
-          false
-  in
-  loop line_start
-
-let source_position_indentation_before = fun source position ->
-  let source_length = String.length source in
-  let position = Int.max 0 (Int.min position source_length) in
-  let rec find_line_start index =
-    if index <= 0 then
-      0
-    else if Char.equal source.[index - 1] '\n' then
-      index
-    else
-      find_line_start (index - 1)
-  in
-  let line_start = find_line_start position in
-  let rec loop index =
-    if index >= position then
-      Some (position - line_start)
-    else
-      match source.[index] with
-      | ' '
-      | '\t' ->
-          loop (index + 1)
-      | _ ->
-          None
-  in
-  loop line_start
-
-let docstring_indentation = fun ~source syntax_node ->
-  source_position_indentation_before source (Syn.Ceibo.Red.SyntaxNode.span syntax_node).start
-
-let find_trailing_column_zero_docstring_start = fun ~source ~start ~end_ ->
-  let source_length = String.length source in
-  let start = Int.max 0 (Int.min start source_length) in
-  let end_ = Int.max start (Int.min end_ source_length) in
-  let is_docstring_at index =
-    if index < 0 || index + 2 >= end_ || index + 2 >= source_length then
-      false
-    else if
-      not (Char.equal source.[index] '(')
-      || not (Char.equal source.[index + 1] '*')
-      || not (Char.equal source.[index + 2] '*')
-    then
-      false
-    else if index + 3 >= end_ || index + 3 >= source_length then
-      true
-    else
-      not (Char.equal source.[index + 3] '*')
-  in
-  let rec loop index =
-    if index >= end_ then
-      None
-    else if source_position_has_only_indentation_before source index && is_docstring_at index then
-      let pending = parse_trivia_between_offsets source ~start:index ~end_ [] in
-      match List.sort compare_pending_trivia_by_position pending with
-      | TriviaDocstring (_, true, _) :: _ ->
-          loop (index + 1)
-      | TriviaDocstring _ :: _ ->
-          Some index
-      | _ ->
-          loop (index + 1)
-    else
-      loop (index + 1)
-  in
-  loop start
-
-let find_trailing_docstring_start_any = fun ~source ~start ~end_ ->
-  let source_length = String.length source in
-  let start = Int.max 0 (Int.min start source_length) in
-  let end_ = Int.max start (Int.min end_ source_length) in
-  let is_docstring_at index =
-    if index < 0 || index + 2 >= end_ || index + 2 >= source_length then
-      false
-    else if
-      not (Char.equal source.[index] '(')
-      || not (Char.equal source.[index + 1] '*')
-      || not (Char.equal source.[index + 2] '*')
-    then
-      false
-    else if index + 3 >= end_ || index + 3 >= source_length then
-      true
-    else
-      not (Char.equal source.[index + 3] '*')
-  in
-  let rec loop index =
-    if index >= end_ then
-      None
-    else if source_position_has_only_indentation_before source index && is_docstring_at index then
-      Some index
-    else
-      loop (index + 1)
-  in
-  loop start
-
-let find_trailing_docstring_start_at_indentation =
-  fun ~source ~indent ~include_sections ~start ~end_ ->
-  let source_length = String.length source in
-  let start = Int.max 0 (Int.min start source_length) in
-  let end_ = Int.max start (Int.min end_ source_length) in
-  let is_docstring_at index =
-    if index < 0 || index + 2 >= end_ || index + 2 >= source_length then
-      false
-    else if
-      not (Char.equal source.[index] '(')
-      || not (Char.equal source.[index + 1] '*')
-      || not (Char.equal source.[index + 2] '*')
-    then
-      false
-    else if index + 3 >= end_ || index + 3 >= source_length then
-      true
-    else
-      not (Char.equal source.[index + 3] '*')
-  in
-  let rec loop index =
-    if index >= end_ then
-      None
-    else if is_docstring_at index then
-      match source_position_indentation_before source index with
-      | Some actual_indent when actual_indent = indent ->
-          let pending = parse_trivia_between_offsets source ~start:index ~end_ [] in
-          (match List.sort compare_pending_trivia_by_position pending with
-          | TriviaDocstring (_, true, _) :: _ when not include_sections ->
-              loop (index + 1)
-          | TriviaDocstring _ :: _ ->
-              Some index
-          | _ ->
-              loop (index + 1))
-      | _ ->
-          loop (index + 1)
-    else
-      loop (index + 1)
-  in
-  loop start
-
-let extract_trailing_docstring_block = fun ?(allow_terminal_docstrings = false) pending ->
-  let pending = List.sort compare_pending_trivia_by_position pending in
-  let rec take_leading_breaks = fun acc entries ->
-    match entries with
-    | [] ->
-        (List.rev acc, [])
-    | entry :: rest -> (
-        match entry with
-        | TriviaBreak _ ->
-            take_leading_breaks (entry :: acc) rest
-        | _ ->
-            (List.rev acc, entries)
-      )
-  in
-  let rec consume_docstring_block = fun acc entries ->
-    match entries with
-    | [] ->
-        (List.rev acc, [])
-    | entry :: remaining -> (
-        match entry with
-        | TriviaDocstring (_, true, _) ->
-            (List.rev acc, entries)
-        | TriviaDocstring _ ->
-            let acc = entry :: acc in
-            let breaks, after_breaks = take_leading_breaks [] remaining in
-            let trailing_has_blank_line =
-              List.exists
-                (
-                  function
-                  | TriviaBreak (_, break_count) ->
-                      break_count >= 2
-                  | _ ->
-                      false
-                )
-                breaks
-            in
-            (
-              match after_breaks with
-              | TriviaDocstring (_, false, _) :: _ when not trailing_has_blank_line ->
-                  consume_docstring_block (List.rev_append breaks acc) after_breaks
-              | TriviaDocstring _ :: _ ->
-                  if allow_terminal_docstrings || trailing_has_blank_line then
-                    (List.rev acc, List.append breaks after_breaks)
-                  else
-                    ([], entries)
-              | _ ->
-                  if allow_terminal_docstrings || trailing_has_blank_line then
-                    (List.rev acc, after_breaks)
-                  else
-                    ([], entries)
-            )
-        | _ ->
-            (List.rev acc, entries)
-      )
-  in
-  let leading_breaks, rest = take_leading_breaks [] pending in
-  let has_leading_break =
-    List.exists
-      (
-        function
-        | TriviaBreak (_, break_count) ->
-            break_count >= 1
-        | _ ->
-            false
-      )
-      leading_breaks
-  in
-  if not has_leading_break then
-    (None, pending)
-  else
-    match rest with
-    | TriviaDocstring (_, false, _) :: _ ->
-      let docstrings, remaining = consume_docstring_block [] rest in
-      (render_pending_trivia docstrings, remaining)
-    | _ ->
-        (None, pending)
-
-let extract_docstring_block_from_start = fun ?(allow_terminal_docstrings = false) pending ->
-  let pending = List.sort compare_pending_trivia_by_position pending in
-  let rec take_leading_breaks = fun acc entries ->
-    match entries with
-    | [] ->
-        (List.rev acc, [])
-    | entry :: rest -> (
-        match entry with
-        | TriviaBreak _ ->
-            take_leading_breaks (entry :: acc) rest
-        | _ ->
-            (List.rev acc, entries)
-      )
-  in
-  let rec consume_docstring_block = fun acc entries ->
-    match entries with
-    | [] ->
-        (List.rev acc, [])
-    | entry :: remaining -> (
-        match entry with
-        | TriviaDocstring (_, true, _) ->
-            (List.rev acc, entries)
-        | TriviaDocstring _ ->
-            let acc = entry :: acc in
-            let breaks, after_breaks = take_leading_breaks [] remaining in
-            let trailing_has_blank_line =
-              List.exists
-                (function
-                  | TriviaBreak (_, break_count) ->
-                      break_count >= 2
-                  | _ ->
-                      false)
-                breaks
-            in
-            (
-              match after_breaks with
-              | TriviaDocstring (_, false, _) :: _ when not trailing_has_blank_line ->
-                  consume_docstring_block (List.rev_append breaks acc) after_breaks
-              | TriviaDocstring _ :: _ ->
-                  if allow_terminal_docstrings || trailing_has_blank_line then
-                    (List.rev acc, List.append breaks after_breaks)
-                  else
-                    ([], entries)
-              | _ ->
-                  if allow_terminal_docstrings || trailing_has_blank_line then
-                    (List.rev acc, after_breaks)
-                  else
-                    ([], entries)
-            )
-        | _ ->
-            ([], entries)
-      )
-  in
-  match pending with
-  | TriviaDocstring (_, false, _) :: _ ->
-      let docstrings, remaining = consume_docstring_block [] pending in
-      (render_pending_trivia docstrings, remaining)
-  | _ ->
-      (None, pending)
-
-let extract_trailing_top_level_docstring_block = fun ~source pending ->
-  let pending = List.sort compare_pending_trivia_by_position pending in
-  let rec consume_suffix found_docstring acc = function
-    | [] ->
-        (found_docstring, acc, [])
-    | TriviaBreak _ as entry :: rest ->
-        consume_suffix found_docstring (entry :: acc) rest
-    | TriviaDocstring (position, false, _) as entry :: rest
-      when source_position_has_only_indentation_before source position ->
-        consume_suffix true (entry :: acc) rest
-    | rest ->
-        (found_docstring, acc, rest)
-  in
-  let found_docstring, suffix, remaining_rev =
-    consume_suffix false [] (List.rev pending)
-  in
-  if not found_docstring then
-    (None, pending, None)
-  else
-    let block_start =
-      suffix
-      |> List.find_map (function
-           | TriviaDocstring (position, _, _) ->
-               Some position
-           | TriviaBreak _ | TriviaComment _ ->
-               None)
-    in
-    (render_pending_trivia suffix, List.rev remaining_rev, block_start)
-
-let source_has_trailing_comment_block = fun source ->
-  let body, trailing = Source.split_trailing_comment_block source in
-  String.length body < String.length source && Source.contains_comment_like_text trailing
-
 let render_interleaved_node_docs = fun ~end_before ~source_node ~should_consume_node ~node_docs ->
   let flush_pending = fun pending acc ->
     match render_pending_trivia pending with
@@ -2351,31 +1980,6 @@ let type_declaration_group_requires_verbatim = fun decl ->
   type_declaration_requires_verbatim decl
   || List.exists type_declaration_requires_verbatim (Syn.Cst.TypeDeclaration.and_declarations decl)
 
-let syntax_node_nontrivia_end = fun ?before syntax_node ->
-  let tokens =
-    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.filter
-      (fun syntax_token ->
-        let span = Syn.Ceibo.Red.SyntaxToken.span syntax_token in
-        let within_before =
-          match before with
-          | None ->
-              true
-          | Some boundary ->
-              span.end_ <= boundary
-        in
-        within_before && not (is_whitespace_token syntax_token || is_comment_like_token syntax_token))
-  in
-  match List.rev tokens with
-  | token :: _ ->
-      (Syn.Ceibo.Red.SyntaxToken.span token).end_
-  | [] ->
-      (Syn.Ceibo.Red.SyntaxNode.span syntax_node).end_
-
-let type_declaration_nontrivia_end = fun ?before declaration ->
-  let syntax_node = Syn.Cst.TypeDeclaration.syntax_node declaration in
-  syntax_node_nontrivia_end ?before syntax_node
-
 let render_single_type_declaration_with_keyword = fun ctx keyword decl ->
   if type_declaration_requires_verbatim decl then
     doc_of_verbatim_syntax_node_span_from_current_source ctx (Syn.Cst.TypeDeclaration.syntax_node decl)
@@ -2477,10 +2081,7 @@ let render_type_declaration_member_with_keyword = fun ctx keyword decl ->
   render_single_type_declaration_with_keyword ctx keyword decl
   |> doc_with_type_declaration_owned_trivia ctx decl
 
-let render_type_declaration_with_keyword =
-  fun ?(allow_terminal_docstrings = false) ?(render_remaining_trivia = true) ctx keyword decl ->
-  let _ = allow_terminal_docstrings in
-  let _ = render_remaining_trivia in
+let render_type_declaration_with_keyword = fun ctx keyword decl ->
   let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
   if and_declarations = [] then
     render_type_declaration_member_with_keyword ctx keyword decl
@@ -3134,14 +2735,8 @@ let make_lowerer ctx =
   let doc_of_core_type = doc_of_core_type ctx in
   let doc_of_module_expression = doc_of_module_expression ctx in
   let doc_of_module_type = doc_of_module_type ctx in
-  let render_type_declaration_with_keyword
-      ?(allow_terminal_docstrings = false)
-      ?(render_remaining_trivia = true)
-      keyword decl =
-    render_type_declaration_with_keyword
-      ~allow_terminal_docstrings
-      ~render_remaining_trivia
-      ctx keyword decl
+  let render_type_declaration_with_keyword keyword decl =
+    render_type_declaration_with_keyword ctx keyword decl
   in
   let rec render_expression expression =
   let doc =
@@ -5646,8 +5241,8 @@ and render_structure_entry ~source ~source_offset ~span ~trailing_suffix ~is_las
       else (
         match item with
         | Syn.Cst.StructureItem.TypeDeclaration decl ->
-            render_type_declaration_with_keyword
-              ~allow_terminal_docstrings:is_last_item kw_type decl
+            let _ = is_last_item in
+            render_type_declaration_with_keyword kw_type decl
         | _ ->
             render_structure_item item)
       
@@ -5716,10 +5311,8 @@ and render_signature_entry ~source ~source_offset ~span ~trailing_suffix ~is_las
       else (
         match item with
         | Syn.Cst.SignatureItem.TypeDeclaration decl ->
-            render_type_declaration_with_keyword
-              ~allow_terminal_docstrings:is_last_item
-              ~render_remaining_trivia:false
-              kw_type decl
+            let _ = is_last_item in
+            render_type_declaration_with_keyword kw_type decl
         | _ ->
             render_signature_item item)
     in
