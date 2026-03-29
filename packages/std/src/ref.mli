@@ -62,11 +62,8 @@ open Global
     - Unique resource identifiers
 *)
 
-type 'a t
 (** A unique identifier for a type ['a]. Each call to [make] creates a fresh
     identifier that is distinct from all others. *)
-
-val make : unit -> 'a t
 (** Creates a new unique reference identifier.
 
     Each call returns a fresh identifier that is guaranteed to be different from
@@ -84,8 +81,9 @@ val make : unit -> 'a t
 
     Use this to create witness types that prove ownership or capability at
     runtime. *)
+type 'a t
+val make : unit -> 'a t
 
-val equal : 'a t -> 'b t -> bool
 (** Checks if two references are the same, regardless of their type parameters.
     Returns [true] only if they were created by the same [make] call.
 
@@ -94,8 +92,8 @@ val equal : 'a t -> 'b t -> bool
     ```ocaml let ref1 = Ref.make () in let ref2 = Ref.make () in
 
     Ref.equal ref1 ref1 (* true *) Ref.equal ref1 ref2 (* false *) ``` *)
+val equal : 'a t -> 'b t -> bool
 
-val type_equal : 'a t -> 'b t -> ('a, 'b) Kernel.Type.eq option
 (** Checks if two references are equal and, if so, returns a type equality
     witness proving that ['a] and ['b] are the same type.
 
@@ -112,8 +110,8 @@ val type_equal : 'a t -> 'b t -> ('a, 'b) Kernel.Type.eq option
     Ref.type_equal ref1 ref2 (* None - different refs *)
     ```
 *)
+val type_equal : 'a t -> 'b t -> ('a, 'b) Kernel.Type.eq option
 
-val cast : 'a t -> 'b t -> 'a -> 'b option
 (** Attempts to cast a value from type ['a] to type ['b] if the references are
     equal. Returns [Some value] if the cast succeeds, [None] otherwise.
 
@@ -128,8 +126,8 @@ val cast : 'a t -> 'b t -> 'a -> 'b option
 
     (* Cast fails - different references *) Ref.cast string_ref int_ref "hello"
     (* None *) ``` *)
+val cast : 'a t -> 'b t -> 'a -> 'b option
 
-val is_newer : 'a t -> 'b t -> bool
 (** Returns [true] if the first reference was created after the second.
 
     References have a creation order based on when [make] was called.
@@ -140,8 +138,8 @@ val is_newer : 'a t -> 'b t -> bool
 
     Ref.is_newer new_ref old_ref (* true *) Ref.is_newer old_ref new_ref (*
     false *) ``` *)
+val is_newer : 'a t -> 'b t -> bool
 
-val hash : 'a t -> int
 (** Returns a hash value for the reference.
 
     References with the same identity hash to the same value. Useful for using
@@ -152,3 +150,4 @@ val hash : 'a t -> int
     ```ocaml let ref = Ref.make () in let h = Ref.hash ref in
 
     let table = Hashtbl.create 16 in Hashtbl.add table h "value" ``` *)
+val hash : 'a t -> int

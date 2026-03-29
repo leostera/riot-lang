@@ -30,59 +30,54 @@
     *) ``` *)
 
 include module type of Kernel.Types
+
 include module type of Kernel.Global
 
 (** {1 Process Management} *)
 
 exception Receive_timeout
+
 exception Syscall_timeout
-type 'msg selector = 'msg Miniriot.selector
 
-val self : unit -> Miniriot.Pid.t
 (** Get the PID of the currently running process *)
+type 'msg selector = 'msg Miniriot.selector
+val self : unit -> Miniriot.Pid.t
 
-val spawn : (unit -> (unit, Miniriot.Process.exit_reason) Kernel.result) -> Miniriot.Pid.t
 (** Spawn a new process *)
+val spawn : (unit -> (unit, Miniriot.Process.exit_reason) Kernel.result) -> Miniriot.Pid.t
 
-val spawn_link : (unit -> (unit, Miniriot.Process.exit_reason) Kernel.result) -> Miniriot.Pid.t
 (** Spawn a new process linked to the current process *)
+val spawn_link : (unit -> (unit, Miniriot.Process.exit_reason) Kernel.result) -> Miniriot.Pid.t
 
-val send : Miniriot.Pid.t -> Miniriot.Message.t -> unit
 (** Send a message to a process *)
+val send : Miniriot.Pid.t -> Miniriot.Message.t -> unit
 
-val receive : selector:'value Miniriot.selector -> ?timeout:Time.Duration.t -> unit -> 'value
 (** Receive a message using a selector *)
+(** Receive any message *)
+val receive : selector:'value Miniriot.selector -> ?timeout:Time.Duration.t -> unit -> 'value
 
 val receive_any : ?timeout:Time.Duration.t -> unit -> Miniriot.Message.t
-(** Receive any message *)
 
-val sleep : Time.Duration.t -> unit
 (** Sleeps the current process for at least the specified duration *)
+val sleep : Time.Duration.t -> unit
 
-val yield : unit -> unit
 (** Yield control to the scheduler *)
+val yield : unit -> unit
 
-val shutdown : status:int -> unit
 (** Shutdown the runtime with the given exit status *)
-
+val shutdown : status:int -> unit
 
 open Kernel
 
 (** {1 Collection Types and Constructors} *)
 
-type 'a vec = 'a Kernel.vec
 (** Vector type alias - dynamically-sized array *)
-
-type 'a queue = 'a Kernel.queue
 (** Queue type alias - FIFO queue *)
-
-type 'a set = 'a Kernel.set
+type 'a vec = 'a Kernel.vec
 (** Set type alias - hash-based set *)
-
-type ('k, 'v) map = ('k, 'v) Kernel.map
+type 'a queue = 'a Kernel.queue
 (** Map type alias - hash-based map *)
-
-val vec : 'a list -> 'a vec
+type 'a set = 'a Kernel.set
 (** Create a vector from a list.
     
     ## Examples
@@ -92,8 +87,9 @@ val vec : 'a list -> 'a vec
     (* v is a Vector.t containing [1; 2; 3] *)
     ```
 *)
+type ('k, 'v) map = ('k, 'v) Kernel.map
+val vec : 'a list -> 'a vec
 
-val queue : 'a list -> 'a queue
 (** Create a queue from a list.
     
     ## Examples
@@ -103,8 +99,8 @@ val queue : 'a list -> 'a queue
     (* q is a Queue.t containing [1; 2; 3] *)
     ```
 *)
+val queue : 'a list -> 'a queue
 
-val set : 'a list -> 'a set
 (** Create a set from a list.
     
     ## Examples
@@ -114,8 +110,8 @@ val set : 'a list -> 'a set
     (* s is a HashSet.t containing {1, 2, 3} *)
     ```
 *)
+val set : 'a list -> 'a set
 
-val map : ('k * 'v) list -> ('k, 'v) map
 (** Create a map from a list of key-value pairs.
     
     ## Examples
@@ -125,8 +121,8 @@ val map : ('k * 'v) list -> ('k, 'v) map
     (* m is a HashMap.t containing {"a" -> 1, "b" -> 2} *)
     ```
 *)
+val map : ('k * 'v) list -> ('k, 'v) map
 
-val panic : string -> 'a
 (** Raises a panic exception with the given message. Program terminates unless
     caught.
 
@@ -139,12 +135,14 @@ val panic : string -> 'a
     - Irrecoverable errors
     - Invariant violations
     - Programmer errors (use assertions instead when possible) *)
+val panic : string -> 'a
 
 val ( ! ) : 'a Sync.Cell.t -> 'a
+
 val ( := ) : 'a Sync.Cell.t -> 'a -> unit
+
 val ref : 'a -> 'a Sync.Cell.t
 
-val cell : 'a -> 'a Sync.Cell.t
 (** Creates a mutable cell containing the given value.
 
     ## Examples
@@ -155,39 +153,39 @@ val cell : 'a -> 'a Sync.Cell.t
     ## See Also
 
     - [Sync.Cell] for full cell API *)
+val cell : 'a -> 'a Sync.Cell.t
 
-val print : string -> unit
 (** Prints to stdout with immediate flush (no newline).
 
     ## Examples
 
     ```ocaml print "Processing..." (* Output: Processing... *) ``` *)
+val print : string -> unit
 
-val println : string -> unit
 (** Prints to stdout with newline and immediate flush.
 
     ## Examples
 
     ```ocaml println "Operation complete" (* Output: Operation complete\n *) ```
 *)
+val println : string -> unit
 
-val eprint : string -> unit
 (** Prints to stderr with immediate flush (no newline).
 
     ## Examples
 
     ```ocaml eprint "Debug: processing item" (* Output to stderr: Debug: processing item *) ```
 *)
+val eprint : string -> unit
 
-val eprintln : string -> unit
 (** Prints to stderr with newline and immediate flush.
 
     ## Examples
 
     ```ocaml eprintln "Error: file not found" (* Output to stderr: Error: file not found\n *) ```
 *)
+val eprintln : string -> unit
 
-val todo : string -> 'a
 (** Marks code as TODO, panicking with the given message when called.
 
     ## Examples
@@ -199,10 +197,11 @@ val todo : string -> 'a
     - Placeholder for future implementation
     - Self-documenting incomplete code
     - Fails fast if accidentally called *)
-
-val unimplemented : unit -> 'a
 (** Marks code as unimplemented, panicking when called.
 
     ## Examples
 
     ```ocaml let complex_algorithm () = unimplemented () ``` *)
+val todo : string -> 'a
+
+val unimplemented : unit -> 'a

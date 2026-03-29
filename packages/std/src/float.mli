@@ -1,6 +1,5 @@
 include module type of Kernel.Float
 
-val to_string : ?precision:int -> float -> string
 (** [to_string ?precision f] converts a float to a string with the specified precision.
     
     The precision parameter controls the number of decimal places (default: 6).
@@ -13,3 +12,4 @@ val to_string : ?precision:int -> float -> string
       Float.to_string 42.0                  (* "42.0" or similar *)
     ]}
 *)
+val to_string : ?precision:int -> float -> string

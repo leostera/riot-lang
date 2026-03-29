@@ -60,13 +60,11 @@
     - Rate limiting and throttling
     - Profiling code sections *)
 
-type t
 (** A point in time from a monotonic clock. Opaque - cannot be converted to
     wall-clock time, only compared with other instants. *)
-
+type t
 (** {1 Creation} *)
 
-val now : unit -> t
 (** Returns the current instant from the monotonic clock.
 
     ## Examples
@@ -81,10 +79,10 @@ val now : unit -> t
     - Linux: CLOCK_MONOTONIC
     - macOS: mach_absolute_time
     - Windows: QueryPerformanceCounter *)
+val now : unit -> t
 
 (** {1 Duration Operations} *)
 
-val duration_since : earlier:t -> t -> Duration.t
 (** Returns the time elapsed from [earlier] to the given instant.
 
     Panics if [earlier] is actually later than the current instant.
@@ -99,8 +97,8 @@ val duration_since : earlier:t -> t -> Duration.t
 
     If [earlier] is greater than [self], use [saturating_duration_since] for
     safe handling. *)
+val duration_since : earlier:t -> t -> Duration.t
 
-val saturating_duration_since : earlier:t -> t -> Duration.t
 (** Returns the time elapsed from [earlier], or zero if [earlier] is actually
     later (defensive version of [duration_since]).
 
@@ -115,8 +113,8 @@ val saturating_duration_since : earlier:t -> t -> Duration.t
 
     Use when you want to avoid panics from clock anomalies or incorrect ordering
     of instants. *)
+val saturating_duration_since : earlier:t -> t -> Duration.t
 
-val elapsed : t -> Duration.t
 (** Returns the time elapsed since this instant was created. Equivalent to
     [duration_since ~earlier:self (now ())].
 
@@ -127,10 +125,10 @@ val elapsed : t -> Duration.t
 
     if Duration.to_secs time_taken > 5 then Log.warn "Operation took too long:
     %fs" (Duration.to_secs_float time_taken) ``` *)
+val elapsed : t -> Duration.t
 
 (** {1 Arithmetic Operations} *)
 
-val add : t -> Duration.t -> t
 (** Adds a duration to an instant, returning a future instant. Panics on
     overflow.
 
@@ -141,8 +139,8 @@ val add : t -> Duration.t -> t
 
     (* Check if we've passed the deadline *) if Instant.compare (Instant.now ())
     deadline >= 0 then handle_timeout () ``` *)
+val add : t -> Duration.t -> t
 
-val sub : t -> Duration.t -> t
 (** Subtracts a duration from an instant, returning a past instant. Panics if
     result would be before the epoch.
 
@@ -150,10 +148,10 @@ val sub : t -> Duration.t -> t
 
     ```ocaml let now = Instant.now () in let past = Instant.sub now
     (Duration.from_secs 10) in ``` *)
+val sub : t -> Duration.t -> t
 
 (** {1 Checked Operations} *)
 
-val checked_add : t -> Duration.t -> t option
 (** Adds a duration if the result can be represented, returns [None] on
     overflow.
 
@@ -161,8 +159,8 @@ val checked_add : t -> Duration.t -> t option
 
     ```ocaml match Instant.checked_add instant Duration.max with | Some future
     -> (* OK *) | None -> (* Overflow *) ``` *)
+val checked_add : t -> Duration.t -> t option
 
-val checked_sub : t -> Duration.t -> t option
 (** Subtracts a duration if the result can be represented, returns [None] if it
     would underflow.
 
@@ -170,10 +168,10 @@ val checked_sub : t -> Duration.t -> t option
 
     ```ocaml match Instant.checked_sub instant (Duration.from_secs 1000000) with
     | Some past -> (* OK *) | None -> (* Would be before epoch *) ``` *)
+val checked_sub : t -> Duration.t -> t option
 
 (** {1 Comparison} *)
 
-val compare : t -> t -> int
 (** Compares two instants. Returns negative if first < second, 0 if equal,
     positive if first > second.
 
@@ -182,24 +180,25 @@ val compare : t -> t -> int
     ```ocaml let t1 = Instant.now () in let t2 = Instant.now () in
 
     Instant.compare t1 t2 (* <= 0, t1 should be earlier or equal *) ``` *)
+val compare : t -> t -> int
 
-val equal : t -> t -> bool
 (** Tests equality of two instants.
 
     ## Examples
 
     ```ocaml let t1 = Instant.now () in Instant.equal t1 t1 (* true *) ``` *)
+val equal : t -> t -> bool
 
-val min : t -> t -> t
 (** Returns the earlier of two instants.
 
     ## Examples
 
     ```ocaml let earliest = Instant.min instant1 instant2 ``` *)
+val min : t -> t -> t
 
-val max : t -> t -> t
 (** Returns the later of two instants.
 
     ## Examples
 
     ```ocaml let latest = Instant.max instant1 instant2 ``` *)
+val max : t -> t -> t

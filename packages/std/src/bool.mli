@@ -1,1 +1,1 @@
-  include module type of Kernel.Bool
+include module type of Kernel.Bool

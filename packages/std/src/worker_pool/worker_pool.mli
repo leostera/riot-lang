@@ -63,36 +63,30 @@
 
 open Global
 
-
 module DynamicWorkerPool : sig
-  type 'task t = { coordinator_pid : Pid.t; task_ref : 'task Ref.t }
   (** A pool of worker processes that execute tasks of type ['task]. The
       [task_ref] field is a phantom type witness used for type-safe pattern
       matching on [WorkerReady] messages. *)
-
-  type 'task worker
   (** An opaque handle to a worker that processes tasks of type ['task]. Can
       only be used with [send_task]. Type safety prevents sending wrong task
       types. *)
-
-  val get_worker_task_ref : 'task worker -> 'task Ref.t
+  type 'task t = {
+    coordinator_pid : Pid.t;
+    task_ref : 'task Ref.t;
+  }
   (** Get the task_ref from a worker for type equality checking. *)
+  type 'task worker
+  val get_worker_task_ref : 'task worker -> 'task Ref.t
 
   (** {1 Advanced Mode - Dynamic Task Assignment} *)
 
-  type Message.t +=
-    | WorkerReady : 'task worker -> Message.t
-          (** Message sent to owner when a worker becomes ready for work. The
+  (** Message sent to owner when a worker becomes ready for work. The
               owner must respond by calling [send_task] with a task for this
               worker. The worker is parameterized by task type for type safety.
           *)
+  type Message.t +=
+    | WorkerReady : 'task worker -> Message.t
 
-  val start :
-    concurrency:int ->
-    owner:Pid.t ->
-    worker_fn:(owner:Pid.t -> task:'task -> unit) ->
-    unit ->
-    'task t
   (** [start ~concurrency ~owner ~worker_fn ()] creates a worker pool with no
       pre-queued tasks. The owner will receive [WorkerReady worker] messages and
       must call [send_task pool worker task] to assign work.
@@ -101,6 +95,11 @@ module DynamicWorkerPool : sig
       - Tasks are generated dynamically based on results
       - Task assignment depends on external state
       - You need fine-grained control over scheduling *)
+  val start : concurrency:int ->
+  owner:Pid.t ->
+  worker_fn:(owner:Pid.t -> task:'task -> unit) ->
+  unit ->
+  'task t
 
   val send_task : 'task t -> 'task worker -> 'task -> unit
   (** [send_task pool worker task] assigns a task to a specific worker.
@@ -116,12 +115,11 @@ end
 module SimpleWorkerPool : sig
   (** {1 Simple Mode - Parallel Map} *)
 
-  val run :
-    ?concurrency:int ->
-    tasks:'task list ->
-    fn:('task -> 'result) ->
-    unit ->
-    (int * 'result) list
+  val run : ?concurrency:int ->
+  tasks:'task list ->
+  fn:('task -> 'result) ->
+  unit ->
+  (int * 'result) list
   (** [run ~concurrency ~tasks ~fn ()] executes [fn] on each task in parallel
       using a pool of worker processes, collecting results in order.
 

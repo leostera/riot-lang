@@ -80,64 +80,62 @@
 open Global
 
 (** Year in the Gregorian calendar. Cannot be abbreviated (93 means year 93, not 1993). *)
-type year = int
-
 (** Month: 1..12 *)
-type month = int
-
+type year = int
 (** Day of month: 1..31 *)
-type day = int
-
+type month = int
 (** Hour: 0..23 *)
-type hour = int
-
+type day = int
 (** Minute: 0..59 *)
-type minute = int
-
+type hour = int
 (** Second: 0..59 *)
-type second = int
-
+type minute = int
 (** Day of week: 1 (Monday) .. 7 (Sunday), following ISO 8601 *)
-type day_number = int
-
+type second = int
 (** Last day of month: 28 | 29 | 30 | 31 *)
-type last_day_of_month = int
-
+type day_number = int
 (** Week number: 1..53 *)
-type week_number = int
-
+type last_day_of_month = int
 (** A date without timezone information *)
-type date = { year : year; month : month; day : day }
-
+type week_number = int
 (** A time without date or timezone *)
-type time = { hour : hour; minute : minute; second : second }
-
+type date = {
+  year : year;
+  month : month;
+  day : day;
+}
 (** Year and ISO week number *)
-type year_and_week = { year : year; week : week_number }
-
+type time = {
+  hour : hour;
+  minute : minute;
+  second : second;
+}
+type year_and_week = {
+  year : year;
+  week : week_number;
+}
 (** {1 Constants} *)
 
-val seconds_per_minute : int
 (** 60 seconds per minute *)
+val seconds_per_minute : int
 
-val seconds_per_hour : int
 (** 3600 seconds per hour *)
+val seconds_per_hour : int
 
-val seconds_per_day : int
 (** 86400 seconds per day *)
+val seconds_per_day : int
 
-val days_per_year : int
 (** 365 days per ordinary year *)
+val days_per_year : int
 
-val days_per_leap_year : int
 (** 366 days per leap year *)
+val days_per_leap_year : int
 
-val days_from_0_to_1970 : int
 (** 719528 days from year 0 to Unix epoch (1970-01-01) *)
+val days_from_0_to_1970 : int
 
 (** {1 Leap Years and Month Information} *)
 
-val is_leap_year : year -> bool
 (** Returns [true] if the year is a leap year.
 
     A year is a leap year if:
@@ -153,8 +151,8 @@ val is_leap_year : year -> bool
     Calendar.is_leap_year 2023;;  (* false *)
     ```
 *)
+val is_leap_year : year -> bool
 
-val last_day_of_month : year:int -> month:int -> last_day_of_month
 (** Returns the last day of the month (28, 29, 30, or 31).
 
     Accounts for leap years when computing February's last day.
@@ -170,10 +168,10 @@ val last_day_of_month : year:int -> month:int -> last_day_of_month
 
     @raise Invalid_argument if month is not in range 1-12
 *)
+val last_day_of_month : year:int -> month:int -> last_day_of_month
 
 (** {1 Date Validation} *)
 
-val is_valid_date : date -> bool
 (** Validates if a date is valid in the Gregorian calendar.
 
     Checks:
@@ -191,10 +189,10 @@ val is_valid_date : date -> bool
     Calendar.is_valid_date {year=2024; month=12; day=31};;  (* true *)
     ```
 *)
+val is_valid_date : date -> bool
 
 (** {1 Gregorian Days Conversions} *)
 
-val date_to_gregorian_days : date -> int
 (** Converts a date to the number of days since year 0, January 1st.
 
     This is the foundation for date arithmetic and comparisons.
@@ -209,8 +207,8 @@ val date_to_gregorian_days : date -> int
 
     @raise Invalid_argument if the date is invalid
 *)
+val date_to_gregorian_days : date -> int
 
-val gregorian_days_to_date : int -> date
 (** Converts gregorian days back to a date.
 
     Inverse of {!date_to_gregorian_days}.
@@ -233,10 +231,10 @@ val gregorian_days_to_date : int -> date
     (* true *)
     ```
 *)
+val gregorian_days_to_date : int -> date
 
 (** {1 Gregorian Seconds Conversions} *)
 
-val naive_to_gregorian_seconds : date -> time -> int
 (** Converts a date and time to seconds since year 0, midnight.
 
     Used for datetime arithmetic and comparisons. For working with
@@ -251,8 +249,8 @@ val naive_to_gregorian_seconds : date -> time -> int
     (* 62167219200 - seconds from year 0 to Unix epoch *)
     ```
 *)
+val naive_to_gregorian_seconds : date -> time -> int
 
-val gregorian_seconds_to_naive : int -> date * time
 (** Converts gregorian seconds to a date and time.
 
     Inverse of {!naive_to_gregorian_seconds}.
@@ -264,10 +262,10 @@ val gregorian_seconds_to_naive : int -> date * time
     (* ({year=0; month=1; day=1}, {hour=0; minute=0; second=0}) *)
     ```
 *)
+val gregorian_seconds_to_naive : int -> date * time
 
 (** {1 Day of Week} *)
 
-val day_of_week : date -> day_number
 (** Returns the day of week: 1=Monday, 2=Tuesday, ..., 7=Sunday.
 
     Follows ISO 8601 convention where Monday is day 1.
@@ -282,10 +280,10 @@ val day_of_week : date -> day_number
 
     @raise Invalid_argument if the date is invalid
 *)
+val day_of_week : date -> day_number
 
 (** {1 ISO Week Number} *)
 
-val iso_week_number : date -> year_and_week
 (** Calculates the ISO 8601 week number.
 
     ISO 8601 week rules:
@@ -310,10 +308,10 @@ val iso_week_number : date -> year_and_week
 
     @raise Invalid_argument if the date is invalid
 *)
+val iso_week_number : date -> year_and_week
 
 (** {1 Time Conversions} *)
 
-val time_to_seconds : time -> int
 (** Converts time to seconds since midnight (0-86399).
 
     ## Examples
@@ -324,8 +322,8 @@ val time_to_seconds : time -> int
     Calendar.time_to_seconds {hour=23; minute=59; second=59};; (* 86399 *)
     ```
 *)
+val time_to_seconds : time -> int
 
-val seconds_to_time : int -> time
 (** Converts seconds since midnight to time.
 
     Seconds must be in range 0-86399.
@@ -339,8 +337,8 @@ val seconds_to_time : int -> time
 
     @raise Invalid_argument if seconds is not in range 0-86399
 *)
+val seconds_to_time : int -> time
 
-val seconds_to_daystime : int -> int * time
 (** Converts any number of seconds to [(days, time)].
 
     Handles negative seconds correctly. Time is always non-negative.
@@ -358,10 +356,10 @@ val seconds_to_daystime : int -> int * time
     (* (-1, {hour=23; minute=0; second=0}) - -1 day + 23 hours *)
     ```
 *)
+val seconds_to_daystime : int -> int * time
 
 (** {1 Date/Time Arithmetic} *)
 
-val time_difference : date -> time -> date -> time -> int * time
 (** Computes the difference between two date/time pairs.
 
     Returns [(days, time)] where:
@@ -381,3 +379,4 @@ val time_difference : date -> time -> date -> time -> int * time
     (* (1, {hour=2; minute=30; second=0}) - 1 day, 2.5 hours *)
     ```
 *)
+val time_difference : date -> time -> date -> time -> int * time

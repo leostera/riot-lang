@@ -1,24 +1,25 @@
 (** Log handler management *)
 
-type id = string
 (** Handler identifier *)
-
-type t = { id : id; fn : Event.t -> unit }
 (** A handler with an ID and a callback function *)
-
-val emit : Event.t -> unit
+type id = string
 (** Emit an event to all registered handlers.
     Handlers are called synchronously in the caller process.
     If a handler crashes, the exception is caught and ignored. *)
+type t = {
+  id : id;
+  fn : Event.t -> unit;
+}
+val emit : Event.t -> unit
 
-val attach : id -> (Event.t -> unit) -> unit
 (** Attach a handler with the given ID and callback function *)
+val attach : id -> (Event.t -> unit) -> unit
 
-val detach : id -> unit
 (** Detach a handler by ID *)
+val detach : id -> unit
 
-val detach_all : unit -> unit
 (** Detach all handlers *)
+val detach_all : unit -> unit
 
-val list : unit -> id list
 (** List all registered handler IDs *)
+val list : unit -> id list

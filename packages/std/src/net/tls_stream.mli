@@ -75,13 +75,13 @@
 
 open Global
 
-type 'src t
 (** TLS stream wrapping a reader/writer pair.
     
     The type parameters are:
     - ['src] represents the underlying transport source
     - ['err] represents errors from the underlying transport *)
-
+(** TLS-specific errors *)
+type 'src t
 type error =
   | Closed
   | Handshake_failed of string
@@ -90,16 +90,8 @@ type error =
   | Network_write_failed of Tcp_stream.error
   | Tls_not_available
   | Unsupported_vectored_operation
-(** TLS-specific errors *)
-
 (** {2 Create TLS Streams} *)
 
-val of_client_io :
-  reader:(Tcp_stream.t, error) IO.Reader.t ->
-  writer:(Tcp_stream.t, error) IO.Writer.t ->
-  hostname:string ->
-  unit ->
-  (Tcp_stream.t t, error) result
 (** Create TLS client from any reader/writer pair.
     
     This performs the TLS handshake, which may suspend the calling process
@@ -108,25 +100,25 @@ val of_client_io :
     @param reader Source of encrypted bytes (from network)
     @param writer Destination for encrypted bytes (to network)
     @param hostname Server hostname for SNI and certificate verification *)
+val of_client_io : reader:(Tcp_stream.t, error) IO.Reader.t ->
+writer:(Tcp_stream.t, error) IO.Writer.t ->
+hostname:string ->
+unit ->
+(Tcp_stream.t t, error) result
 
-val of_server_io :
-  reader:(Tcp_stream.t, error) IO.Reader.t ->
-  writer:(Tcp_stream.t, error) IO.Writer.t ->
-  cert_file:string ->
-  key_file:string ->
-  unit ->
-  (Tcp_stream.t t, error) result
 (** Create TLS server from any reader/writer pair.
     
     @param cert_file Path to server certificate (PEM format)
     @param key_file Path to server private key (PEM format) *)
+val of_server_io : reader:(Tcp_stream.t, error) IO.Reader.t ->
+writer:(Tcp_stream.t, error) IO.Writer.t ->
+cert_file:string ->
+key_file:string ->
+unit ->
+(Tcp_stream.t t, error) result
 
 (** {2 Convenience TCP Wrappers} *)
 
-val of_tcp_socket :
-  mode:[ `Client of string | `Server of string * string ] ->
-  Tcp_stream.t ->
-  (Tcp_stream.t t, error) result
 (** Create TLS stream from TCP socket.
     
     This is the core TCP wrapper that handles both client and server modes.
@@ -134,27 +126,23 @@ val of_tcp_socket :
     
     @param mode Either [`Client hostname] for client-side TLS with SNI,
                 or [`Server (cert_file, key_file)] for server-side TLS *)
+val of_tcp_socket : mode:[
+  | `Client of string
+  | `Server of string * string
+] -> Tcp_stream.t -> (Tcp_stream.t t, error) result
 
-val of_tcp_client :
-  hostname:string ->
-  Tcp_stream.t ->
-  (Tcp_stream.t t, error) result
 (** Create TLS client from TCP stream.
     
     Convenience wrapper around [of_client_io] for TCP sockets. *)
+val of_tcp_client : hostname:string -> Tcp_stream.t -> (Tcp_stream.t t, error) result
 
-val of_tcp_server :
-  cert_file:string ->
-  key_file:string ->
-  Tcp_stream.t ->
-  (Tcp_stream.t t, error) result
 (** Create TLS server from TCP stream.
     
     Convenience wrapper around [of_server_io] for TCP sockets. *)
+val of_tcp_server : cert_file:string -> key_file:string -> Tcp_stream.t -> (Tcp_stream.t t, error) result
 
 (** {2 Generic IO Interface} *)
 
-val to_reader : 'src t -> ('src t, error) IO.Reader.t
 (** Convert TLS stream to a generic Reader.
     
     Reads return plaintext data decrypted from the underlying stream.
@@ -172,8 +160,8 @@ val to_reader : 'src t -> ('src t, error) IO.Reader.t
       | Error `Closed -> handle_closed ()
       | Error e -> handle_error e
     ]} *)
+val to_reader : 'src t -> ('src t, error) IO.Reader.t
 
-val to_writer : 'src t -> ('src t, error) IO.Writer.t
 (** Convert TLS stream to a generic Writer.
     
     Writes encrypt plaintext and send it to the underlying stream.
@@ -188,16 +176,17 @@ val to_writer : 'src t -> ('src t, error) IO.Writer.t
       let* () = IO.write_all writer ~buf:"Hello, world!" in
       IO.flush writer
     ]} *)
+val to_writer : 'src t -> ('src t, error) IO.Writer.t
 
 (** {2 TLS Information} *)
 
-val alpn_protocol : 'src t -> string option
 (** Get negotiated ALPN protocol (e.g., "h2", "http/1.1").
     
     Returns [None] if no ALPN was negotiated. *)
+val alpn_protocol : 'src t -> string option
 
-val close : 'src t -> unit
 (** Close the TLS stream.
     
     Note: This does not close the underlying transport - that's the
     caller's responsibility. *)
+val close : 'src t -> unit

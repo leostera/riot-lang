@@ -43,59 +43,55 @@ open Global
     in let full = Uri.join base "v1/users" |> Result.unwrap in Uri.to_string
     full (* "https://example.com/api/v1/users" *) ``` *)
 
-type t
 (** A parsed URL/URI with all components. *)
-
-type url = t
 (** Alias for [t]. *)
-
+type t
 (** URL parsing errors. *)
+type url = t
 type error =
-  | InvalidScheme  (** Invalid or unsupported scheme *)
-  | InvalidAuthority  (** Malformed authority section *)
-  | InvalidPath  (** Invalid path component *)
-  | InvalidQuery  (** Malformed query string *)
-  | InvalidFragment  (** Invalid fragment identifier *)
-  | InvalidFormat  (** General parsing error *)
-  | TooLong  (** URL exceeds maximum length *)
-
+  | InvalidScheme (** Invalid or unsupported scheme *)
+  | InvalidAuthority (** Malformed authority section *)
+  | InvalidPath (** Invalid path component *)
+  | InvalidQuery (** Malformed query string *)
+  | InvalidFragment (** Invalid fragment identifier *)
+  | InvalidFormat (** General parsing error *)
+  | TooLong (** URL exceeds maximum length *)
 (** ## Creation and Parsing *)
 
-val of_string : string -> (t, error) result
 (** Parse a string into a URL *)
+val of_string : string -> (t, error) result
 
-val to_string : t -> string
 (** Convert a URL back to string representation *)
+val to_string : t -> string
 
 (** ## Components Access *)
 
-val scheme : t -> string option
 (** Get the scheme (e.g., "http", "https") *)
+val scheme : t -> string option
 
-val authority : t -> string option
 (** Get the full authority part (e.g., "user:pass@host:port") *)
+val authority : t -> string option
 
-val host : t -> string option
 (** Get just the host part *)
+val host : t -> string option
 
-val port : t -> int option
 (** Get the port number if specified *)
+val port : t -> int option
 
-val path : t -> string
 (** Get the path component (always present, defaults to "/") *)
+val path : t -> string
 
-val query : t -> string option
 (** Get the query string without the '?' *)
+val query : t -> string option
 
-val fragment : t -> string option
 (** Get the fragment without the '#' *)
+val fragment : t -> string option
 
-val path_and_query : t -> string
 (** Get combined path and query (e.g., "/path?query") *)
+val path_and_query : t -> string
 
 (** ## Percent Encoding/Decoding *)
 
-val percent_encode : string -> string
 (** Encode string per RFC 3986, encoding all except unreserved characters.
     
     Unreserved: a-z A-Z 0-9 - . _ ~
@@ -106,8 +102,8 @@ val percent_encode : string -> string
       percent_encode "test@example.com"  (* "test%40example.com" *)
       percent_encode "100%"  (* "100%25" *)
     ]} *)
+val percent_encode : string -> string
 
-val percent_decode : string -> string
 (** Decode percent-encoded string per RFC 3986.
     
     Converts %XX sequences to their corresponding characters.
@@ -120,8 +116,8 @@ val percent_decode : string -> string
     ]}
     
     Invalid sequences (e.g., "%ZZ") are left as-is. *)
+val percent_decode : string -> string
 
-val form_encode : string -> string
 (** Encode for application/x-www-form-urlencoded.
     
     Like percent_encode but space becomes '+' instead of '%20'.
@@ -132,8 +128,8 @@ val form_encode : string -> string
       form_encode "Hello World"  (* "Hello+World" *)
       form_encode "test@example.com"  (* "test%40example.com" *)
     ]} *)
+val form_encode : string -> string
 
-val form_decode : string -> string
 (** Decode application/x-www-form-urlencoded string.
     
     Like percent_decode but also converts '+' to space.
@@ -146,36 +142,46 @@ val form_decode : string -> string
     ]}
     
     Note: Query.parse automatically uses form_decode. *)
+val form_decode : string -> string
 
 (** ## Component Types *)
 
 module Scheme : sig
   type t = string
-
   val http : t
+
   val https : t
+
   val ftp : t
+
   val file : t
+
   val of_string : string -> (t, error) result
+
   val to_string : t -> string
 end
 
 module Authority : sig
   type t
-
   val host : t -> string
+
   val port : t -> int option
+
   val userinfo : t -> string option
+
   val of_string : string -> (t, error) result
+
   val to_string : t -> string
 end
 
 module PathAndQuery : sig
   type t
-
   val path : t -> string
+
   val query : t -> string option
+
   val of_string : string -> (t, error) result
+
   val to_string : t -> string
 end
 
@@ -183,42 +189,46 @@ end
 
 module Builder : sig
   type t
-
   val create : unit -> t
+
   val scheme : t -> string -> t
+
   val authority : t -> string -> t
+
   val host : t -> string -> t
+
   val port : t -> int -> t
+
   val path : t -> string -> t
+
   val query : t -> string -> t
+
   val fragment : t -> string -> t
+
   val build : t -> (url, error) result
 end
 
 (** ## Utilities *)
 
-val is_absolute : t -> bool
 (** Check if URL is absolute (has scheme) *)
+val is_absolute : t -> bool
 
-val is_relative : t -> bool
 (** Check if URL is relative (no scheme) *)
+val is_relative : t -> bool
 
-val join : t -> string -> (t, error) result
 (** Join a base URL with a relative path *)
+val join : t -> string -> (t, error) result
 
-val equal : t -> t -> bool
 (** Compare two URLs for equality *)
+val equal : t -> t -> bool
 
-val compare : t -> t -> int
 (** Compare two URLs *)
+val compare : t -> t -> int
 
 (** ## Query Parameter Utilities *)
 
 module Query : sig
   type param = string * string
-  type t = param list
-
-  val parse : string -> t
   (** Parse query string into parameter list.
       
       Automatically decodes percent-encoded values using form_decode.
@@ -235,8 +245,9 @@ module Query : sig
       
       {b Breaking Change}: Previously returned encoded values.
       Now returns decoded values per RFC 3986. *)
+  type t = param list
+  val parse : string -> t
 
-  val to_string : t -> string
   (** Convert parameter list to query string.
       
       Automatically encodes keys and values using form_encode.
@@ -253,15 +264,16 @@ module Query : sig
       
       {b Breaking Change}: Previously did not encode values.
       Now encodes per application/x-www-form-urlencoded. *)
+  val to_string : t -> string
 
-  val get : t -> string -> string option
   (** Get first value for a parameter name *)
+  val get : t -> string -> string option
 
-  val get_all : t -> string -> string list
   (** Get all values for a parameter name *)
+  val get_all : t -> string -> string list
 
-  val add : t -> string -> string -> t
   (** Add a parameter *)
+  val add : t -> string -> string -> t
 
   val remove : t -> string -> t
   (** Remove all parameters with given name *)

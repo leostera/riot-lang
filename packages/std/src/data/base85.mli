@@ -47,18 +47,17 @@ open Global
     for all-zero groups. Total: 85 characters.
 *)
 
-val encode : string -> string
 (** Encodes a string to Ascii85.
 
     ## Examples
 
     ```ocaml Base85.encode "Man" (* "9jqo^" *) Base85.encode "\x00\x00\x00\x00"
     (* "z" - special case *) ``` *)
+val encode : string -> string
 
-val encode_bytes : bytes -> string
 (** Encodes bytes to Ascii85. *)
+val encode_bytes : bytes -> string
 
-val decode : string -> (string, [ `Invalid_base85 ]) result
 (** Decodes an Ascii85 string.
 
     ## Examples
@@ -77,6 +76,11 @@ val decode : string -> (string, [ `Invalid_base85 ]) result
 
     - Handles optional `<~` and `~>` delimiters used in PDF/PostScript
     - 'z' expands to four zero bytes *)
+val decode : string -> (string, [
+  | `Invalid_base85
+]) result
 
-val decode_bytes : string -> (bytes, [ `Invalid_base85 ]) result
 (** Decodes an Ascii85 string to bytes. *)
+val decode_bytes : string -> (bytes, [
+  | `Invalid_base85
+]) result

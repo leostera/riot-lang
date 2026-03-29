@@ -43,12 +43,10 @@
 
 open Global
 
-type 'a t
 (** The type of an asynchronous task that will produce a value of type `'a` *)
-
+type 'a t
 (** # Creating and Running Tasks *)
 
-val async : (unit -> 'a) -> 'a t
 (** Starts an asynchronous task.
 
     The function runs in a separate thread and begins executing immediately. The
@@ -75,8 +73,8 @@ val async : (unit -> 'a) -> 'a t
 
     match Task.await failing_task with | Ok _ -> assert false | Error exn ->
     println "Caught: %s" (Printexc.to_string exn) ``` *)
+val async : (unit -> 'a) -> 'a t
 
-val await : 'a t -> ('a, exn) result
 (** Waits for a task to complete and returns its result.
 
     Blocks the current thread until the task completes. Returns [`Ok value`] if
@@ -97,8 +95,8 @@ val await : 'a t -> ('a, exn) result
 
     This function blocks the calling thread. Don't call it from within another
     task if you need to maintain parallelism. *)
+val await : 'a t -> ('a, exn) result
 
-val await_all : 'a t list -> ('a, exn) result list
 (** Waits for multiple tasks to complete.
 
     More efficient than `List.map await` for large task lists, as it collects
@@ -130,3 +128,4 @@ val await_all : 'a t list -> ('a, exn) result list
 
     Results are returned in the same order as the input task list, regardless of
     completion order. *)
+val await_all : 'a t list -> ('a, exn) result list

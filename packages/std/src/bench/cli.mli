@@ -2,11 +2,6 @@
 
 open Global
 
-val main :
-  name:string ->
-  benchmarks:Bench_runner.bench_item list ->
-  args:string list ->
-  (unit, Miniriot.Process.exit_reason) result
 (** Main entry point for benchmark binaries with CLI support.
     
     Accepts subcommands:
@@ -32,3 +27,7 @@ val main :
           ~args:Env.args ()
     ]}
 *)
+val main : name:string ->
+benchmarks:Bench_runner.bench_item list ->
+args:string list ->
+(unit, Miniriot.Process.exit_reason) result

@@ -3,31 +3,28 @@
 open Global
 
 type t = Kernel.Net.Tcp_stream.t
-
+(** Connect to a TCP endpoint. This will suspend the process until the
+    connection is established. *)
 type error =
   | Connection_refused
   | Closed
   | System_error of IO.error
-
 val connect : Kernel.Net.Addr.stream_addr -> (t, error) result
-(** Connect to a TCP endpoint. This will suspend the process until the
-    connection is established. *)
 
-val read : t -> bytes -> ?pos:int -> ?len:int -> ?timeout:Time.Duration.t -> unit -> (int, error) result
 (** Read data from the stream. This will suspend the process until data is
     available. Returns the number of bytes read. 
     
     @param timeout Optional timeout duration. If specified and no data arrives
                    within the timeout, raises [Syscall_timeout]. *)
+val read : t -> bytes -> ?pos:int -> ?len:int -> ?timeout:Time.Duration.t -> unit -> (int, error) result
 
-val write : t -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) result
 (** Write data to the stream. This will suspend the process until the socket is
     ready for writing. Returns the number of bytes written. *)
+val write : t -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) result
 
-val close : t -> unit
 (** Close the stream *)
+val close : t -> unit
 
-val to_reader : t -> (t, error) IO.Reader.t
 (** [to_reader stream] creates a Reader from the TCP stream.
 
     The reader wraps the stream's read operations in the generic IO.Reader
@@ -44,8 +41,8 @@ val to_reader : t -> (t, error) IO.Reader.t
       | Error `Closed -> handle_closed ()
       | Error (`System_error msg) -> handle_error msg
     ]} *)
+val to_reader : t -> (t, error) IO.Reader.t
 
-val to_writer : t -> (t, error) IO.Writer.t
 (** [to_writer stream] creates a Writer from the TCP stream.
 
     The writer wraps the stream's write operations in the generic IO.Writer
@@ -61,3 +58,4 @@ val to_writer : t -> (t, error) IO.Writer.t
       | Error `Closed -> handle_closed ()
       | Error (`System_error msg) -> handle_error msg
     ]} *)
+val to_writer : t -> (t, error) IO.Writer.t

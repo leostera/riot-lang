@@ -47,29 +47,27 @@
 type ('a, 'e) t = ('a, 'e) Kernel.result =
   | Ok of 'a
   | Error of 'e
-      (** The Result type - either [`Ok`] with a success value or [`Error`] with
+  (** The Result type - either [`Ok`] with a success value or [`Error`] with
           an error value *)
-
 (** # Constructors *)
 
-val ok : 'a -> ('a, 'e) t
 (** Creates an [`Ok`] value.
 
     ## Examples
 
     ```ocaml let success = Result.ok 42 (* success = Ok 42 *) ``` *)
+val ok : 'a -> ('a, 'e) t
 
-val err : 'e -> ('a, 'e) t
 (** Creates an [`Error`] value.
 
     ## Examples
 
     ```ocaml let failure = Result.err "Something went wrong" (* failure = Error
     "Something went wrong" *) ``` *)
+val err : 'e -> ('a, 'e) t
 
 (** # Querying *)
 
-val is_ok : ('a, 'e) t -> bool
 (** Returns `true` if the result is [`Ok`].
 
     ## Examples
@@ -77,15 +75,15 @@ val is_ok : ('a, 'e) t -> bool
     ```ocaml let x = Ok 2 in assert (Result.is_ok x);
 
     let y = Error "Error message" in assert (not (Result.is_ok y)) ``` *)
+val is_ok : ('a, 'e) t -> bool
 
-val is_error : ('a, 'e) t -> bool
 (** Returns `true` if the result is [`Error`] (alias for [`is_err`]).
 
     ## Examples
 
     ```ocaml if Result.is_error response then Log.error "Request failed" ``` *)
+val is_error : ('a, 'e) t -> bool
 
-val is_err : ('a, 'e) t -> bool
 (** Returns `true` if the result is [`Error`].
 
     ## Examples
@@ -93,8 +91,8 @@ val is_err : ('a, 'e) t -> bool
     ```ocaml let x = Ok 2 in assert (not (Result.is_err x));
 
     let y = Error "Error message" in assert (Result.is_err y) ``` *)
+val is_err : ('a, 'e) t -> bool
 
-val is_ok_and : ('a -> bool) -> ('a, 'e) t -> bool
 (** Returns `true` if the result is [`Ok`] and the value matches the predicate.
 
     ## Examples
@@ -104,8 +102,8 @@ val is_ok_and : ('a -> bool) -> ('a, 'e) t -> bool
 
     let y = Error "Error" in assert (not (Result.is_ok_and (fun v -> v > 0) y))
     ``` *)
+val is_ok_and : ('a -> bool) -> ('a, 'e) t -> bool
 
-val is_err_and : ('e -> bool) -> ('a, 'e) t -> bool
 (** Returns `true` if the result is [`Error`] and the error matches the
     predicate.
 
@@ -117,10 +115,10 @@ val is_err_and : ('e -> bool) -> ('a, 'e) t -> bool
     let x = Error "File not found" in assert (is_not_found x);
 
     let y = Ok 123 in assert (not (is_not_found y)) ``` *)
+val is_err_and : ('e -> bool) -> ('a, 'e) t -> bool
 
 (** # Transforming *)
 
-val map : ('a -> 'b) -> ('a, 'e) t -> ('b, 'e) t
 (** Maps a `Result<'a, 'e>` to `Result<'b, 'e>` by applying a function to the
     [`Ok`] value.
 
@@ -135,8 +133,8 @@ val map : ('a -> 'b) -> ('a, 'e) t -> ('b, 'e) t
 
     assert (double (parse_int "21") = Ok 42); assert (double (parse_int "abc") =
     Error "Not a number") ``` *)
+val map : ('a -> 'b) -> ('a, 'e) t -> ('b, 'e) t
 
-val map_error : ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
 (** Maps a `Result<'a, 'e>` to `Result<'a, 'f>` by applying a function to the
     [`Error`] value.
 
@@ -149,8 +147,8 @@ val map_error : ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
 
     let result = Error "Connection timeout" in assert (add_context result =
     Error "Database error: Connection timeout") ``` *)
+val map_error : ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
 
-val map_err : ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
 (** Maps a `Result<'a, 'e>` to `Result<'a, 'f>` by applying a function to the
     [`Error`] value.
 
@@ -161,8 +159,8 @@ val map_err : ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
     let x = Ok 2 in assert (stringify_error x = Ok 2);
 
     let y = Error 13 in assert (stringify_error y = Error "13") ``` *)
+val map_err : ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
 
-val map_or : default:'b -> ('a -> 'b) -> ('a, 'e) t -> 'b
 (** Returns the result of applying function to [`Ok`] value, or default if
     [`Error`].
 
@@ -176,8 +174,6 @@ val map_or : default:'b -> ('a -> 'b) -> ('a, 'e) t -> 'b
 
     let y = Error "bar" in assert (Result.map_or ~default:42 String.length y =
     42) ``` *)
-
-val map_or_else : default:('e -> 'b) -> ('a -> 'b) -> ('a, 'e) t -> 'b
 (** Maps a `Result<'a, 'e>` to `'b` by applying fallback function to [`Error`],
     or function to [`Ok`] value.
 
@@ -193,10 +189,12 @@ val map_or_else : default:('e -> 'b) -> ('a -> 'b) -> ('a, 'e) t -> 'b
 
     let y = Error "bar" in assert (Result.map_or_else ~default:(fun e ->
     String.length e) String.length y = 3) ``` *)
+val map_or : default:'b -> ('a -> 'b) -> ('a, 'e) t -> 'b
+
+val map_or_else : default:('e -> 'b) -> ('a -> 'b) -> ('a, 'e) t -> 'b
 
 (** # Chaining *)
 
-val and_then : ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
 (** Calls function on [`Ok`] value if present, short-circuits on [`Error`].
 
     Often used to chain fallible operations. This is sometimes called "flatmap"
@@ -214,8 +212,8 @@ val and_then : ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
 
     let failed = parse_int "abc" |> Result.and_then (fun x -> divide x 2) (*
     failed = Error "not an integer" - second operation never runs *) ``` *)
+val and_then : ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
 
-val or_ : ('a, 'e) t -> ('a, 'e) t -> ('a, 'e) t
 (** Returns the first result if [`Ok`], otherwise returns the second result.
 
     ## Examples
@@ -228,8 +226,8 @@ val or_ : ('a, 'e) t -> ('a, 'e) t -> ('a, 'e) t
 
     let x = Error "early" in let y = Error "late" in assert (Result.or_ x y =
     Error "late") ``` *)
+val or_ : ('a, 'e) t -> ('a, 'e) t -> ('a, 'e) t
 
-val or_else : ('a, 'e) t -> ('e -> ('a, 'f) t) -> ('a, 'f) t
 (** Calls function on [`Error`] value if present, passes through [`Ok`].
 
     This function can be used for control flow based on result values.
@@ -241,10 +239,10 @@ val or_else : ('a, 'e) t -> ('e -> ('a, 'f) t) -> ('a, 'f) t
     assert (Result.or_else (Ok 2) sq = Ok 2); assert (Result.or_else (Ok 2) err
     = Ok 2); assert (Result.or_else (Error 3) sq = Ok 9); assert (Result.or_else
     (Error 3) err = Error 3) ``` *)
+val or_else : ('a, 'e) t -> ('e -> ('a, 'f) t) -> ('a, 'f) t
 
 (** # Extracting values *)
 
-val unwrap : ('a, 'e) t -> 'a
 (** Returns the contained [`Ok`] value, consuming the result.
 
     ## Panics
@@ -263,8 +261,6 @@ val unwrap : ('a, 'e) t -> 'a
 
     Generally, prefer [`expect`] which provides a more helpful panic message, or
     [`unwrap_or`] / [`unwrap_or_else`] for non-panicking alternatives. *)
-
-val unwrap_or : default:'a -> ('a, 'e) t -> 'a
 (** Returns the contained [`Ok`] value or a provided default.
 
     Arguments are evaluated eagerly; if you are passing the result of a function
@@ -276,8 +272,8 @@ val unwrap_or : default:'a -> ('a, 'e) t -> 'a
     ~default x = 9);
 
     let y = Error "error" in assert (Result.unwrap_or ~default y = 2) ``` *)
+val unwrap : ('a, 'e) t -> 'a
 
-val unwrap_or_else : fn:(unit -> 'a) -> ('a, 'e) t -> 'a
 (** Returns the contained [`Ok`] value or computes it from a closure.
 
     ## Examples
@@ -285,8 +281,8 @@ val unwrap_or_else : fn:(unit -> 'a) -> ('a, 'e) t -> 'a
     ```ocaml let count s = String.length s in assert (Result.unwrap_or_else
     ~fn:(fun () -> 2) (Ok 9) = 9); assert (Result.unwrap_or_else ~fn:(fun () ->
     count "foo") (Error "bar") = 3) ``` *)
+val unwrap_or : default:'a -> ('a, 'e) t -> 'a
 
-val unwrap_err : ('a, 'e) t -> 'e
 (** Returns the contained [`Error`] value, consuming the result.
 
     ## Panics
@@ -301,8 +297,8 @@ val unwrap_err : ('a, 'e) t -> 'e
 
     (* This will panic: *) let y = Ok 2 in Result.unwrap_err y (* panic: "Called
     Result.unwrap_err on Ok: 2" *) ``` *)
+val unwrap_or_else : fn:(unit -> 'a) -> ('a, 'e) t -> 'a
 
-val expect : msg:string -> ('a, 'e) t -> 'a
 (** Returns the contained [`Ok`] value, consuming the result.
 
     ## Panics
@@ -325,8 +321,8 @@ val expect : msg:string -> ('a, 'e) t -> 'a
 
     **Hint**: If you're having trouble choosing a message, consider using
     [`unwrap`] instead. *)
+val unwrap_err : ('a, 'e) t -> 'e
 
-val expect_err : msg:string -> ('a, 'e) t -> 'e
 (** Returns the contained [`Error`] value, consuming the result.
 
     ## Panics
@@ -338,8 +334,8 @@ val expect_err : msg:string -> ('a, 'e) t -> 'e
 
     ```ocaml let x = Error "emergency failure" in assert (Result.expect_err
     ~msg:"Testing errors" x = "emergency failure") ``` *)
+val expect : msg:string -> ('a, 'e) t -> 'a
 
-val ok_value : ('a, 'e) t -> 'a option
 (** Converts from `Result<'a, 'e>` to [`Option<'a>`].
 
     Converts [`Ok(v)`] to [`Some(v)`] and [`Error(_)`] to [`None`].
@@ -349,8 +345,10 @@ val ok_value : ('a, 'e) t -> 'a option
     ```ocaml let x = Ok 2 in assert (Result.ok_value x = Some 2);
 
     let y = Error "Nothing here" in assert (Result.ok_value y = None) ``` *)
+val expect_err : msg:string -> ('a, 'e) t -> 'e
 
-val err_value : ('a, 'e) t -> 'e option
+val ok_value : ('a, 'e) t -> 'a option
+
 (** Converts from `Result<'a, 'e>` to [`Option<'e>`].
 
     Converts [`Error(e)`] to [`Some(e)`] and [`Ok(_)`] to [`None`].
@@ -361,10 +359,10 @@ val err_value : ('a, 'e) t -> 'e option
 
     let y = Error "Nothing here" in assert (Result.err_value y = Some "Nothing
     here") ``` *)
+val err_value : ('a, 'e) t -> 'e option
 
 (** # Inspecting *)
 
-val inspect : ('a -> unit) -> ('a, 'e) t -> ('a, 'e) t
 (** Calls the provided closure on the contained [`Ok`] value (if any).
 
     Returns the original result unchanged. Useful for debugging or side effects.
@@ -378,8 +376,8 @@ val inspect : ('a -> unit) -> ('a, 'e) t -> ('a, 'e) t
     "Original: %d\n" x) |> Result.map (fun x -> x * x) |> Result.inspect (fun x
     -> Printf.printf "Squared: %d\n" x) (* Prints: Original: 4 Squared: 16
     Returns: Ok 16 *) ``` *)
+val inspect : ('a -> unit) -> ('a, 'e) t -> ('a, 'e) t
 
-val inspect_err : ('e -> unit) -> ('a, 'e) t -> ('a, 'e) t
 (** Calls the provided closure on the contained [`Error`] value (if any).
 
     Returns the original result unchanged. Useful for logging errors.
@@ -389,10 +387,10 @@ val inspect_err : ('e -> unit) -> ('a, 'e) t -> ('a, 'e) t
     ```ocaml Fs.read (Path.v "config.json") |> Result.inspect_err (fun e ->
     Log.warning "Failed to load config: %s" e) |> Result.unwrap_or
     ~default:default_config ``` *)
+val inspect_err : ('e -> unit) -> ('a, 'e) t -> ('a, 'e) t
 
 (** # Iterating *)
 
-val iter : ('a -> unit) -> ('a, 'e) t -> unit
 (** Calls function on [`Ok`] value if present, otherwise does nothing.
 
     ## Examples
@@ -402,8 +400,8 @@ val iter : ('a -> unit) -> ('a, 'e) t -> unit
 
     let y = Error "nothing" in Result.iter (fun v -> Printf.printf "Got: %d\n"
     v) y (* Prints nothing *) ``` *)
+val iter : ('a -> unit) -> ('a, 'e) t -> unit
 
-val iter_error : ('e -> unit) -> ('a, 'e) t -> unit
 (** Calls function on [`Error`] value if present, otherwise does nothing.
 
     ## Examples
@@ -413,10 +411,10 @@ val iter_error : ('e -> unit) -> ('a, 'e) t -> unit
 
     log_error (Error "disk full"); (* Logs error *) log_error (Ok 123) (* Does
     nothing *) ``` *)
+val iter_error : ('e -> unit) -> ('a, 'e) t -> unit
 
 (** # Converting *)
 
-val to_option : ('a, 'e) t -> 'a option
 (** Converts from `Result<'a, 'e>` to [`Option<'a>`].
 
     Alias for [`ok_value`].
@@ -426,8 +424,8 @@ val to_option : ('a, 'e) t -> 'a option
     ```ocaml let x = Ok 2 in assert (Result.to_option x = Some 2);
 
     let y = Error "Nothing here" in assert (Result.to_option y = None) ``` *)
+val to_option : ('a, 'e) t -> 'a option
 
-val of_option : error:'e -> 'a option -> ('a, 'e) t
 (** Converts from [`Option<'a>`] to `Result<'a, 'e>`.
 
     [`Some(v)`] becomes [`Ok(v)`] and [`None`] becomes [`Error(error)`].
@@ -443,8 +441,8 @@ val of_option : error:'e -> 'a option -> ('a, 'e) t
     (* Common pattern with environment variables *) let port = Sys.getenv_opt
     "PORT" |> Result.of_option ~error:"PORT not set" |> Result.and_then (fun s
     -> try Ok (int_of_string s) with _ -> Error "PORT must be a number") ``` *)
+val of_option : error:'e -> 'a option -> ('a, 'e) t
 
-val transpose : ('a option, 'e) t -> ('a, 'e) t option
 (** Transposes a `Result` of an `Option` into an `Option` of a `Result`.
 
     [`Ok(None)`] becomes [`None`]. [`Ok(Some(v))`] becomes [`Some(Ok(v))`].
@@ -458,10 +456,10 @@ val transpose : ('a option, 'e) t -> ('a, 'e) t option
 
     let z = Error "error" in assert (Result.transpose z = Some (Error "error"))
     ``` *)
+val transpose : ('a option, 'e) t -> ('a, 'e) t option
 
 (** # Flattening *)
 
-val flatten : (('a, 'e) t, 'e) t -> ('a, 'e) t
 (** Converts from `Result<Result<'a, 'e>, 'e>` to `Result<'a, 'e>`.
 
     ## Examples
@@ -476,10 +474,10 @@ val flatten : (('a, 'e) t, 'e) t -> ('a, 'e) t
 
     (* Flattening is the reverse of nesting *) let nested = Ok (Ok 5) in assert
     (Result.flatten nested = Ok 5) ``` *)
+val flatten : (('a, 'e) t, 'e) t -> ('a, 'e) t
 
 (** # Collecting *)
 
-val all : ('a, 'e) t list -> ('a list, 'e) t
 (** Converts a list of `Result`s into a single `Result` containing a list.
 
     If all results are [`Ok`], returns [`Ok`] with list of values. If any result
@@ -496,8 +494,8 @@ val all : ('a, 'e) t list -> ('a list, 'e) t
     (* Common pattern: validate multiple inputs *) let parse_numbers strings =
     strings |> List.map (fun s -> try Ok (int_of_string s) with _ -> Error
     (Printf.sprintf "'%s' is not a number" s)) |> Result.all ``` *)
+val all : ('a, 'e) t list -> ('a list, 'e) t
 
-val both : ('a, 'e) t -> ('b, 'e) t -> ('a * 'b, 'e) t
 (** Combines two `Result`s into a single `Result` containing a tuple.
     
     If both are [`Ok`], returns [`Ok`] with tuple of values.
@@ -522,10 +520,10 @@ val both : ('a, 'e) t -> ('b, 'e) t -> ('a * 'b, 'e) t
       |> Result.map (fun (u, p) -> {username = u; password = p})
     ```
 *)
+val both : ('a, 'e) t -> ('b, 'e) t -> ('a * 'b, 'e) t
 
 (** # Misc *)
 
-val fold : ok:('a -> 'c) -> error:('e -> 'c) -> ('a, 'e) t -> 'c
 (** Applies one of two functions depending on the result variant.
 
     This is equivalent to pattern matching but can be more convenient in
@@ -541,3 +539,4 @@ val fold : ok:('a -> 'c) -> error:('e -> 'c) -> ('a, 'e) t -> 'c
 
     (* Convert any result to an exit code *) let to_exit_code = Result.fold
     ~ok:(fun _ -> 0) ~error:(fun _ -> 1) ``` *)
+val fold : ok:('a -> 'c) -> error:('e -> 'c) -> ('a, 'e) t -> 'c

@@ -33,34 +33,33 @@
 
 open Global
 
-val encode : string -> string
 (** Encodes a string to uppercase hexadecimal.
 
     ## Examples
 
     ```ocaml Base16.encode "Hi" (* "4869" *) Base16.encode "\x00\xFF" (* "00FF"
     *) ``` *)
+val encode : string -> string
 
-val encode_lower : string -> string
 (** Encodes a string to lowercase hexadecimal.
 
     ## Examples
 
     ```ocaml Base16.encode_lower "Hi" (* "4869" - wait this is still uppercase
     for digits *) Base16.encode_lower "\xAB\xCD" (* "abcd" *) ``` *)
+val encode_lower : string -> string
 
-val encode_bytes : bytes -> string
 (** Encodes bytes to uppercase hexadecimal.
 
     ## Examples
 
     ```ocaml let b = Bytes.of_string "test" in Base16.encode_bytes b (*
     "74657374" *) ``` *)
+val encode_bytes : bytes -> string
 
-val encode_bytes_lower : bytes -> string
 (** Encodes bytes to lowercase hexadecimal. *)
+val encode_bytes_lower : bytes -> string
 
-val decode : string -> (string, [ `Invalid_base16 ]) result
 (** Decodes a hexadecimal string. Accepts both uppercase and lowercase.
 
     ## Examples
@@ -74,6 +73,11 @@ val decode : string -> (string, [ `Invalid_base16 ]) result
     Returns [`Invalid_base16] if:
     - String length is not even
     - String contains non-hexadecimal characters *)
+val decode : string -> (string, [
+  | `Invalid_base16
+]) result
 
-val decode_bytes : string -> (bytes, [ `Invalid_base16 ]) result
 (** Decodes a hexadecimal string to bytes. *)
+val decode_bytes : string -> (bytes, [
+  | `Invalid_base16
+]) result

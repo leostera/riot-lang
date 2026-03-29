@@ -36,18 +36,17 @@
 
 open Global
 
-val encode : string -> string
 (** Encodes a string to Base32.
 
     ## Examples
 
     ```ocaml Base32.encode "Hi" (* "JBQQ====" *) Base32.encode "test" (*
     "ORSXG5A=" *) ``` *)
+val encode : string -> string
 
-val encode_bytes : bytes -> string
 (** Encodes bytes to Base32. *)
+val encode_bytes : bytes -> string
 
-val decode : string -> (string, [ `Invalid_base32 ]) result
 (** Decodes a Base32 string. Case-insensitive.
 
     ## Examples
@@ -62,6 +61,11 @@ val decode : string -> (string, [ `Invalid_base32 ]) result
     Returns [`Invalid_base32] if:
     - String contains invalid Base32 characters
     - Padding is incorrect *)
+val decode : string -> (string, [
+  | `Invalid_base32
+]) result
 
-val decode_bytes : string -> (bytes, [ `Invalid_base32 ]) result
 (** Decodes a Base32 string to bytes. *)
+val decode_bytes : string -> (bytes, [
+  | `Invalid_base32
+]) result

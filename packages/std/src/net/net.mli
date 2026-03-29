@@ -60,31 +60,30 @@
 
     See [Uri] for URL parsing and [Http] for HTTP-specific functionality. *)
 
+(** Network error types. *)
 type error =
   | Connection_refused
   | Closed
   | System_error of IO.error
-(** Network error types. *)
-
+(** Network addresses *)
 module Uri = Uri
 
-module Addr : module type of Addr
-(** Network addresses *)
-
-module TcpStream : module type of Tcp_stream
 (** TCP stream for connected sockets *)
+module Addr : module type of Addr
 
-module TcpListener : module type of Tcp_listener
 (** TCP listener for accepting connections *)
+module TcpStream : module type of Tcp_stream
 
-module TcpServer : module type of Tcp_server
 (** TCP server that manages a listener and handles line-based protocols *)
+module TcpListener : module type of Tcp_listener
 
-module TcpClient : module type of Tcp_client
 (** TCP client for line-based protocols *)
+module TcpServer : module type of Tcp_server
 
-module TlsStream : module type of Tls_stream
 (** TLS stream for encrypted connections *)
+module TcpClient : module type of Tcp_client
+
+(** HTTP types and utilities *)
+module TlsStream : module type of Tls_stream
 
 module Http : module type of Http
-(** HTTP types and utilities *)

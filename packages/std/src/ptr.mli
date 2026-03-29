@@ -1,2 +1,2 @@
-val equal : 'a -> 'a -> bool
 (** Physical equality comparisons. *)
+val equal : 'a -> 'a -> bool

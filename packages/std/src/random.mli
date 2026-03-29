@@ -1,1 +1,1 @@
-  include module type of Kernel.Random
+include module type of Kernel.Random

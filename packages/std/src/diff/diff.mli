@@ -43,30 +43,38 @@
 
 (** {1 Types} *)
 
-type path_component = Key of string | Index of int
+type path_component =
+  | Key of string
+  | Index of int
 type path = path_component list
-
 type 'value kind =
   | Added of 'value
   | Removed of 'value
   | Changed of 'value * 'value
-
-type 'value change = { path : path; kind : 'value kind }
-type 'value diff = Equal | Diff of 'value change list
-
+type 'value change = {
+  path : path;
+  kind : 'value kind;
+}
+type 'value diff =
+  | Equal
+  | Diff of 'value change list
 (** {1 Diffable Protocol} *)
 
 module type Diffable = sig
   type t
-
   val diff : t -> t -> t diff list
+
   val equal : t -> t -> bool
 end
 
 (** {1 Helper Functions} *)
 
 val has_changes : 'a change list -> bool
+
 val additions : 'a change list -> 'a change list
+
 val removals : 'a change list -> 'a change list
+
 val changes : 'a change list -> 'a change list
+
 val at_path : path -> 'a change list -> 'a change list

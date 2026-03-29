@@ -1,12 +1,13 @@
-type single_result = Passed | Failed of string | Skipped
-
-type t = { 
-  index : int; 
-  name : string; 
+type single_result =
+  | Passed
+  | Failed of string
+  | Skipped
+type t = {
+  index : int;
+  name : string;
   test_type : Test_case.test_type;
-  result : single_result 
+  result : single_result;
 }
-
 type summary = {
   total : int;
   passed : int;
@@ -14,5 +15,4 @@ type summary = {
   skipped : int;
   results : t list;
 }
-
 val make_summary : t list -> summary

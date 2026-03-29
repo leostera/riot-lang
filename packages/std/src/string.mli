@@ -36,7 +36,6 @@
 
 open Iter
 
-include module type of Kernel.String
 (** @inline
 
     Includes all standard library String functions:
@@ -83,9 +82,10 @@ include module type of Kernel.String
     - [`init`] - Create with initialization function
     - [`empty`] - Empty string constant *)
 
+include module type of Kernel.String
+
 (** # UTF-8 Iteration *)
 
-val into_mut_iter : string -> Uchar.t MutIterator.t
 (** Creates a mutable iterator over UTF-8 characters.
 
     Iterates over Unicode characters (not bytes) in the string. Invalid UTF-8
@@ -106,8 +106,8 @@ val into_mut_iter : string -> Uchar.t MutIterator.t
 
     UTF-8 decoding has some overhead. For byte-level operations, use standard
     String functions instead. *)
+val into_mut_iter : string -> Uchar.t MutIterator.t
 
-val into_iter : string -> Uchar.t Iterator.t
 (** Creates an immutable iterator over UTF-8 characters.
 
     Similar to [`into_mut_iter`] but returns an immutable iterator suitable for
@@ -129,10 +129,10 @@ val into_iter : string -> Uchar.t Iterator.t
 
     Invalid UTF-8 sequences are replaced with U+FFFD (�). For strict UTF-8
     validation, check bytes before iteration. *)
+val into_iter : string -> Uchar.t Iterator.t
 
 (** # Unicode-Aware Operations *)
 
-val width : string -> int
 (** Calculate display width for monospace fonts/terminals.
 
     Accounts for:
@@ -151,8 +151,8 @@ val width : string -> int
     ```
 
     This is essential for proper text alignment in terminals. *)
+val width : string -> int
 
-val rune_count : string -> int
 (** Count Unicode code points (runes) in the string.
 
     ## Examples
@@ -166,8 +166,8 @@ val rune_count : string -> int
 
     Note: This counts code points, not user-perceived characters.
     Use `grapheme_count` for user-perceived character count. *)
+val rune_count : string -> int
 
-val grapheme_count : string -> int
 (** Count user-perceived characters (grapheme clusters).
 
     ## Examples
@@ -181,8 +181,8 @@ val grapheme_count : string -> int
     ```
 
     This gives the count users would expect when counting "characters". *)
+val grapheme_count : string -> int
 
-val truncate_width : width:int -> ?tail:string -> string -> string
 (** Truncate string to fit within display width.
 
     ## Parameters
@@ -204,8 +204,8 @@ val truncate_width : width:int -> ?tail:string -> string -> string
     ```
 
     Useful for fitting text in fixed-width terminal columns. *)
+val truncate_width : width:int -> ?tail:string -> string -> string
 
-val pad_left : width:int -> char -> string -> string
 (** Pad string on the left to reach display width.
 
     ## Examples
@@ -219,8 +219,8 @@ val pad_left : width:int -> char -> string -> string
     ```
 
     Uses display width, so handles wide characters correctly. *)
+val pad_left : width:int -> char -> string -> string
 
-val pad_right : width:int -> char -> string -> string
 (** Pad string on the right to reach display width.
 
     ## Examples
@@ -231,8 +231,8 @@ val pad_right : width:int -> char -> string -> string
     ```
 
     Uses display width, so handles wide characters correctly. *)
+val pad_right : width:int -> char -> string -> string
 
-val pad_center : width:int -> char -> string -> string
 (** Pad string on both sides to center within display width.
 
     ## Examples
@@ -243,8 +243,8 @@ val pad_center : width:int -> char -> string -> string
     ```
 
     If padding is uneven, adds extra space on the right. *)
+val pad_center : width:int -> char -> string -> string
 
-val into_grapheme_iter : string -> Unicode.Grapheme.t Iterator.t
 (** Creates an iterator over grapheme clusters.
 
     ## Examples
@@ -255,13 +255,13 @@ val into_grapheme_iter : string -> Unicode.Grapheme.t Iterator.t
     ```
 
     Iterates over user-perceived characters, not code points. *)
+val into_grapheme_iter : string -> Unicode.Grapheme.t Iterator.t
 
-val into_grapheme_mut_iter : string -> Unicode.Grapheme.t MutIterator.t
 (** Creates a mutable iterator over grapheme clusters.
 
     Similar to `into_grapheme_iter` but returns a mutable iterator. *)
+val into_grapheme_mut_iter : string -> Unicode.Grapheme.t MutIterator.t
 
-val word_boundaries : string -> int list
 (** Find byte positions of word boundaries.
 
     ## Examples
@@ -272,8 +272,8 @@ val word_boundaries : string -> int list
     ```
 
     Uses simplified word boundary detection. *)
+val word_boundaries : string -> int list
 
-val split_words : string -> string list
 (** Split string into words.
 
     ## Examples
@@ -284,8 +284,8 @@ val split_words : string -> string list
     ```
 
     Uses simplified word boundary detection. *)
+val split_words : string -> string list
 
-val line_breaks : string -> (int * Unicode.line_break) list
 (** Find line break opportunities.
 
     Returns list of (position, break_type) where:
@@ -301,8 +301,8 @@ val line_breaks : string -> (int * Unicode.line_break) list
     ```
 
     Useful for text wrapping and line breaking. *)
+val line_breaks : string -> (int * Unicode.line_break) list
 
-val wrap : width:int -> string -> string list
 (** Wrap text to fit within display width.
 
     ## Examples
@@ -313,13 +313,13 @@ val wrap : width:int -> string -> string list
     ```
 
     Breaks at word boundaries when possible. *)
+val wrap : width:int -> string -> string list
 
-val wrap_words : width:int -> string -> string list
 (** Wrap text at word boundaries to fit within display width.
 
     Similar to `wrap` but ensures words aren't broken. *)
+val wrap_words : width:int -> string -> string list
 
-val contains : string -> string -> bool
 (** [contains haystack needle] returns [true] if [haystack] contains [needle] as a substring.
     
     Example:
@@ -330,3 +330,4 @@ val contains : string -> string -> bool
     ```
     
     Note: Empty string is considered to be contained in any string. *)
+val contains : string -> string -> bool

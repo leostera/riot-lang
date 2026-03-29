@@ -21,24 +21,21 @@
 
 open Global
 
-type t
 (** The client connection type. Contains the TCP stream and internal buffers. *)
-
+type t
+(** [connect ~host ~port] establishes a TCP connection to the given host and
+    port. Returns [Error] if the connection cannot be established. *)
 type error =
   | Connection_refused
   | Closed
   | System_error of IO.error
-
 val connect : host:string -> port:int -> (t, error) result
-(** [connect ~host ~port] establishes a TCP connection to the given host and
-    port. Returns [Error] if the connection cannot be established. *)
 
-val send : t -> string -> (unit, string) result
 (** [send client data] sends the string data to the server. The string should
     include any necessary delimiters (e.g., newlines). The entire string will be
     sent before returning. Returns [Error] if the send fails. *)
+val send : t -> string -> (unit, string) result
 
-val receive : t -> (string, string) result
 (** [receive client] reads from the server until a newline character is found,
     then returns the line (without the newline). If multiple lines were received
     in a single read, the additional data is buffered internally and will be
@@ -47,6 +44,7 @@ val receive : t -> (string, string) result
     This function blocks until a complete line is available or an error occurs.
     It can be called multiple times to handle streaming responses where each
     response is newline-delimited. *)
+val receive : t -> (string, string) result
 
-val close : t -> unit
 (** [close client] closes the TCP connection. *)
+val close : t -> unit
