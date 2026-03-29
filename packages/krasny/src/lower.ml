@@ -5301,11 +5301,8 @@ and render_signature_top_level_items
         in
         span
     | _ ->
-        let syntax_node = Syn.Cst.SignatureItem.syntax_node item in
-        if signature_item_uses_source_preservation_span item then
-          span_of_syntax_node_nontrivia_bounds syntax_node
-        else
-          span_of_syntax_node_nontrivia_bounds syntax_node
+        Syn.Cst.SignatureItem.syntax_node item
+        |> span_of_syntax_node_nontrivia_bounds
   in
   let compare_signature_items_by_span left right =
     let left_span = signature_item_span left in
