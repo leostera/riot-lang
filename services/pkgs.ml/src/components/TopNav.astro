@@ -61,20 +61,18 @@ const logoutUrl = buildLogoutUrl(currentUrl);
             <summary
               class:list={[
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "list-none rounded-md gap-2 px-2 pr-2.5 [&::-webkit-details-marker]:hidden cursor-pointer",
+                "list-none rounded-md gap-2 px-2.5 [&::-webkit-details-marker]:hidden cursor-pointer",
               ]}
             >
               <GitHubAvatar
                 login={session.user.github_login}
                 avatarUrl={session.user.github_avatar_url}
                 size="sm"
-                showLogin={false}
               />
-              <span aria-hidden="true" class="text-[10px] text-muted-foreground">▾</span>
             </summary>
 
-            <div class="absolute right-0 top-full z-50 mt-2 min-w-[180px] overflow-hidden rounded-md border border-border bg-background shadow-sm">
-              <div class="grid py-1 text-sm">
+            <div class="absolute right-0 top-full z-50 mt-2 min-w-[192px] overflow-hidden rounded-md border border-border bg-background shadow-sm">
+              <div class="grid text-sm">
                 <a
                   href={`/u/${session.user.github_login}`}
                   class="px-3 py-2 text-foreground hover:bg-muted"
