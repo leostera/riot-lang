@@ -4935,6 +4935,80 @@ let tests =
         | _ ->
             Error "expected event and response type declarations");
     Test.case
+      "cst builder record field items keep terminal docstrings before closing braces"
+      (fun () ->
+        let result =
+          parse_mli
+            "type event = {\n\
+             \  data : string;\n\
+             \  id : string option;\n\
+             \  (** Optional event ID field *)\n\
+             }\n\
+             (** Response payload *)\n\
+             type response = int\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.TypeDeclaration event_decl;
+            Syn.Cst.SignatureItem.TypeDeclaration _ ] -> (
+            match Syn.Cst.TypeDeclaration.type_definition event_decl with
+            | Syn.Cst.TypeDefinition.Record { fields; _ } when List.length fields = 2 -> (
+                match Syn.CstBuilder.record_field_items_of_fields fields with
+                | [ Syn.CstBuilder.RecordField _;
+                    Syn.CstBuilder.RecordField _;
+                    Syn.CstBuilder.Docstring doc ] ->
+                    Test.assert_equal
+                      ~expected:"(** Optional event ID field *)"
+                      ~actual:(Syn.Cst.Docstring.text doc);
+                    Ok ()
+                | _ ->
+                    Error
+                      "expected trailing record-field docstring to stay inside the record body")
+            | _ ->
+                Error "expected record type definition")
+        | _ ->
+            Error "expected event and response declarations");
+    Test.case
+      "cst builder record field items keep standalone terminal comments before closing braces"
+      (fun () ->
+        let result =
+          parse_mli
+            "type event = {\n\
+             \  data : string;\n\
+             \  id : string option;\n\
+             \n\
+             \  (* Optional event ID field *)\n\
+             }\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.TypeDeclaration event_decl ] -> (
+            match Syn.Cst.TypeDeclaration.type_definition event_decl with
+            | Syn.Cst.TypeDefinition.Record { fields; _ } when List.length fields = 2 -> (
+                match Syn.CstBuilder.record_field_items_of_fields fields with
+                | [ Syn.CstBuilder.RecordField _;
+                    Syn.CstBuilder.RecordField _;
+                    Syn.CstBuilder.Comment comment ] ->
+                    Test.assert_equal
+                      ~expected:"(* Optional event ID field *)"
+                      ~actual:(Syn.Cst.Comment.text comment);
+                    Ok ()
+                | _ ->
+                    Error
+                      "expected trailing record-field comment to stay inside the record body")
+            | _ ->
+                Error "expected record type definition")
+        | _ ->
+            Error "expected single record declaration");
+    Test.case
       "cst docstrings expose explicit section vs ordinary kinds"
       (fun () ->
         let result =

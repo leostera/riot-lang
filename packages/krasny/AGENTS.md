@@ -23,6 +23,7 @@
 17. Keep `render_structure_top_level_items` and `render_signature_top_level_items` layout-only. They may preserve phrase separators and expression runs, but they must not accumulate pending source-gap trivia or synthetic leading-doc state; ordered item streams plus `owned_trivia` already decide ownership.
 18. Render grouped `type ... and ...` members from each member's `Syn.Cst.TypeDeclaration.owned_trivia`; do not reparse between-member source gaps once `syn` has attached `and`-token leading trivia to the following member.
 19. Keep adjacent standalone ordinary docstrings visually separate in top-level joins; do not compact them into a single tight run just because they are both trivia items.
+20. Render record bodies and inline record constructor arguments from `Syn.CstBuilder.record_field_items_of_fields`; do not inspect raw record syntax children or closing-token trivia to rediscover terminal `}`-owned comments/docstrings.
 
 ## Validate
 

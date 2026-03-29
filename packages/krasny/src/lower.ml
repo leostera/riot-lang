@@ -288,14 +288,6 @@ let syntax_node_has_internal_newline = fun syntax_node ->
   let text = text_of_syntax_node syntax_node |> trim_trailing_layout_whitespace in
   String.contains text "\n"
 
-let doc_of_top_level_trivia_token = fun syntax_token ->
-  match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
-  | Syn.SyntaxKind.COMMENT
-  | Syn.SyntaxKind.DOCSTRING ->
-      Some (Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token))
-  | _ ->
-      None
-
 let is_comment_like_token = fun syntax_token ->
   match Syn.Ceibo.Red.SyntaxToken.kind syntax_token with
   | Syn.SyntaxKind.COMMENT
@@ -938,59 +930,6 @@ let doc_of_owned_trivia = fun ?start ~source trivia ->
   in
   loop None start trivia
 
-let render_interleaved_node_docs = fun ~end_before ~source_node ~should_consume_node ~node_docs ->
-  let flush_pending = fun pending acc ->
-    match render_pending_trivia pending with
-    | None ->
-        acc
-    | Some pending_doc ->
-        pending_doc :: acc
-  in
-  let rec loop = fun pending acc node_docs ->
-    function
-    | [] ->
-        flush_pending pending acc |> List.rev
-    | child :: rest -> (
-        match child with
-        | Syn.Ceibo.Red.Token syntax_token -> (
-            match doc_of_top_level_trivia_token syntax_token with
-            | Some doc ->
-                let span = Syn.Ceibo.Red.SyntaxToken.span syntax_token in
-                loop (TriviaComment (span.start, doc) :: pending) acc node_docs rest
-            | None ->
-                let pending =
-                  let newline_count = newline_count_of_whitespace_token syntax_token in
-                  if newline_count > 0 then
-                    let span = Syn.Ceibo.Red.SyntaxToken.span syntax_token in
-                    push_pending_break pending ~position:span.start newline_count
-                  else
-                    pending
-                in
-                loop pending acc node_docs rest
-          )
-        | Syn.Ceibo.Red.Node node ->
-            if should_consume_node node then
-              match node_docs with
-              | node_doc :: node_docs ->
-                  let acc = flush_pending pending acc in
-                  loop [] (node_doc :: acc) node_docs rest
-              | [] ->
-                  loop pending acc node_docs rest
-            else
-              loop pending acc node_docs rest
-      )
-  in
-  let children =
-    children_in_source_order source_node
-    |> List.filter (fun child ->
-         match end_before with
-         | None ->
-             true
-         | Some end_before ->
-             (child_span child).start < end_before)
-  in
-  loop [] [] node_docs children
-
 let doc_of_core_type = fun ctx type_ ->
   let syntax_node = Syn.Cst.CoreType.syntax_node type_ in
   let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
@@ -1548,8 +1487,14 @@ and render_record_definition_field = fun (field : Syn.Cst.RecordField.t) ->
     Doc.colon;
     Doc.indent 2 (Doc.concat [ separator; type_doc ])
   ])
-and render_record_definition_field_entry = fun ?source (field : Syn.Cst.RecordField.t) ->
-  let body = Doc.concat [ render_record_definition_field field; Doc.semi ] in
+and render_record_definition_field_entry =
+  fun ?source ?(include_trailing_semicolon = true) (field : Syn.Cst.RecordField.t) ->
+  let body =
+    if include_trailing_semicolon then
+      Doc.concat [ render_record_definition_field field; Doc.semi ]
+    else
+      render_record_definition_field field
+  in
   match source with
   | Some source ->
       let owned = Syn.Cst.RecordField.owned_trivia field in
@@ -1564,38 +1509,25 @@ and render_record_definition_field_entry = fun ?source (field : Syn.Cst.RecordFi
       |> fun body -> doc_with_trailing_trivia body trailing
   | None ->
       body
-and render_record_definition_terminal_trivia = fun ~source ~source_node fields ->
-  let _ = source in
-  match List.rev fields, List.rev (Syn.Ceibo.Red.SyntaxNode.tokens source_node) with
-  | _ :: _, closing_token :: _ ->
-      let trailing_docs =
-        Syn.Ceibo.Red.SyntaxToken.leading_trivia closing_token
-        |> List.filter_map
-             (fun trivia ->
-               match Syn.Ceibo.Red.SyntaxTrivia.kind trivia with
-               | Syn.SyntaxKind.COMMENT
-               | Syn.SyntaxKind.DOCSTRING ->
-                   Some (Doc.text (Syn.Ceibo.Red.SyntaxTrivia.text trivia))
-               | _ ->
-                   None)
-      in
-      (match trailing_docs with
-      | [] ->
-          None
-      | docs ->
-          Some (Doc.join Doc.line docs))
-  | _ ->
-      None
+and render_record_definition_body_item = fun ?source ->
+  function
+  | Syn.CstBuilder.RecordField field ->
+      render_record_definition_field_entry ?source field
+  | Syn.CstBuilder.Comment comment ->
+      Doc.text (Syn.Cst.Comment.text comment)
+  | Syn.CstBuilder.Docstring docstring ->
+      Doc.text (Syn.Cst.Docstring.text docstring)
 and render_record_definition = fun ?source fields ->
   let body =
     fields
-    |> List.map (render_record_definition_field_entry ?source)
+    |> Syn.CstBuilder.record_field_items_of_fields
+    |> List.map (render_record_definition_body_item ?source)
     |> Doc.join Doc.line
   in
   Doc.concat
     [ Doc.lbrace; Doc.line; Doc.indent 2 body; Doc.line; Doc.rbrace ]
 and render_inline_record_definition = fun fields ->
-  if fields = [] then
+  if List.is_empty fields then
     Doc.concat [ Doc.lbrace; Doc.rbrace ]
   else
     Doc.group (Doc.concat [
@@ -1607,72 +1539,6 @@ and render_inline_record_definition = fun fields ->
       Doc.break ~flat:" " ();
       Doc.rbrace
     ])
-and render_record_definition_with_comments = fun ?source ~source_node fields ->
-  let field_docs =
-    fields |> List.map (render_record_definition_field_entry ?source)
-  in
-  let body =
-    render_interleaved_node_docs ~end_before:None ~source_node
-      ~should_consume_node:(fun node ->
-        Syn.Ceibo.Red.SyntaxNode.kind node = Syn.SyntaxKind.TYPE_RECORD_FIELD)
-      ~node_docs:field_docs
-    |> Doc.join Doc.line
-  in
-  let trailing =
-    match source with
-    | Some source_text ->
-        render_record_definition_terminal_trivia ~source:source_text ~source_node fields
-    | None ->
-        None
-  in
-  let body =
-    match trailing with
-    | None ->
-        body
-    | Some trailing ->
-        Doc.concat [ body; Doc.line; trailing ]
-  in
-  Doc.concat [ Doc.lbrace; Doc.line; Doc.indent 2 body; Doc.line; Doc.rbrace ]
-and render_inline_record_definition_with_comments = fun ?source ~source_node fields ->
-  let field_count = List.length fields in
-  let field_docs =
-    fields
-    |> List.mapi
-         (fun index field ->
-           let doc =
-             match source with
-             | Some source_text ->
-                 render_record_definition_field_entry ~source:source_text field
-             | None ->
-                 render_record_definition_field field
-           in
-           if index < field_count - 1 then
-             Doc.concat [ doc; Doc.semi ]
-           else
-             doc)
-  in
-  let body =
-    render_interleaved_node_docs ~end_before:None ~source_node
-      ~should_consume_node:(fun node ->
-        Syn.Ceibo.Red.SyntaxNode.kind node = Syn.SyntaxKind.TYPE_RECORD_FIELD)
-      ~node_docs:field_docs
-    |> Doc.join Doc.line
-  in
-  let trailing =
-    match source with
-    | Some source_text ->
-        render_record_definition_terminal_trivia ~source:source_text ~source_node fields
-    | None ->
-        None
-  in
-  let body =
-    match trailing with
-    | None ->
-        body
-    | Some trailing ->
-        Doc.concat [ body; Doc.line; trailing ]
-  in
-  Doc.concat [ Doc.lbrace; Doc.line; Doc.indent 2 body; Doc.line; Doc.rbrace ]
 and render_object_type_field = fun (field : Syn.Cst.object_type_field) ->
   Doc.group (Doc.concat [
     doc_of_token field.field_name;
@@ -1768,10 +1634,20 @@ let render_variant_constructor_arguments = fun ?source ?(prefer_multiline_inline
         fields
         |> List.exists
              (fun field ->
-               let owned = Syn.Cst.RecordField.owned_trivia field in
-               not (List.is_empty (Syn.Cst.OwnedTrivia.leading owned))
-               || not (List.is_empty (Syn.Cst.OwnedTrivia.inner owned))
-               || not (List.is_empty (Syn.Cst.OwnedTrivia.trailing owned)))
+               Syn.Cst.RecordField.owned_trivia field
+               |> Syn.Cst.OwnedTrivia.is_empty
+               |> not)
+      in
+      let field_items = Syn.CstBuilder.record_field_items_of_fields fields in
+      let has_standalone_record_trivia =
+        field_items
+        |> List.exists
+             (function
+               | Syn.CstBuilder.RecordField _ ->
+                   false
+               | Syn.CstBuilder.Comment _
+               | Syn.CstBuilder.Docstring _ ->
+                   true)
       in
       let source_node =
         match fields with
@@ -1783,15 +1659,13 @@ let render_variant_constructor_arguments = fun ?source ?(prefer_multiline_inline
       (
         match source_node with
         | Some source_node when fields_have_owned_trivia
-        || syntax_node_has_comment_like_token source_node
+        || has_standalone_record_trivia
         || (Syn.Ceibo.Red.SyntaxNode.tokens source_node |> List.exists whitespace_has_newline) ->
-            Doc.indent 2
-              (render_record_definition_with_comments ?source ~source_node fields)
-        | Some source_node when prefer_multiline_inline_record ->
-            Doc.indent 2
-              (render_record_definition_with_comments ?source ~source_node fields)
-        | Some _ ->
             Doc.indent 2 (render_record_definition ?source fields)
+        | Some _ when prefer_multiline_inline_record ->
+            Doc.indent 2 (render_record_definition ?source fields)
+        | Some _ ->
+            Doc.indent 2 (render_inline_record_definition fields)
         | None ->
             Doc.indent 2 (render_record_definition ?source fields)
       )
@@ -1847,14 +1721,12 @@ let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comm
         else
           None
       in
-      body
-      |> doc_with_leading_trivia leading
-      |> fun body ->
-           match trailing with
-           | None ->
-               body
-           | Some suffix ->
-               Doc.concat [ body; suffix ]
+      let body = body |> doc_with_leading_trivia leading in
+      (match trailing with
+      | None ->
+          body
+      | Some suffix ->
+          Doc.concat [ body; suffix ])
   | None ->
       if include_trailing_comment then
         match trailing_comment_suffix_doc ?before:end_before
@@ -1868,7 +1740,7 @@ let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comm
 
 let render_variant_definition = fun ?source ~source_node:_ constructors ->
   let constructors_all_inline_records =
-    constructors != []
+    not (List.is_empty constructors)
     && List.for_all
       (fun constructor ->
         match Syn.Cst.VariantConstructor.arguments constructor with
@@ -1893,10 +1765,8 @@ let render_type_definition = fun ?source ->
       None
   | Syn.Cst.TypeDefinition.Alias { manifest; _ } ->
       Some (render_core_type manifest)
-  | Syn.Cst.TypeDefinition.Record { syntax_node; fields } ->
-      Some
-        (render_record_definition_with_comments ?source
-           ~source_node:syntax_node fields)
+  | Syn.Cst.TypeDefinition.Record { fields; _ } ->
+      Some (render_record_definition ?source fields)
   | Syn.Cst.TypeDefinition.Variant { syntax_node; constructors } ->
       Some
         (render_variant_definition

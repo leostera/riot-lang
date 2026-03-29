@@ -9,6 +9,11 @@ type error = {
   context : string list;
 }
 
+type record_field_item =
+  | RecordField of Cst.RecordField.t
+  | Comment of Cst.comment
+  | Docstring of Cst.docstring
+
 exception Bail of error
 
 let bail = fun ~message ~syntax_node ~context -> raise (Bail {
@@ -605,6 +610,27 @@ let owned_trivia_spans = fun owned -> Cst.OwnedTrivia.leading owned
 
 let record_field_owned_trivia_spans = fun field -> owned_trivia_spans
 (Cst.RecordField.owned_trivia field)
+
+let syntax_node_of_record_field_item =
+  function
+  | RecordField field ->
+      Cst.RecordField.syntax_node field
+  | Comment comment ->
+      Cst.Comment.syntax_node comment
+  | Docstring docstring ->
+      Cst.Docstring.syntax_node docstring
+
+let record_field_item_owned_trivia_spans =
+  function
+  | RecordField field ->
+      record_field_owned_trivia_spans field
+  | Comment _
+  | Docstring _ ->
+      []
+
+let record_field_item_of_comment = fun comment -> Comment comment
+
+let record_field_item_of_docstring = fun docstring -> Docstring docstring
 
 let rec variant_constructor_owned_trivia_spans = fun constructor ->
   let argument_spans =
@@ -7567,6 +7593,84 @@ let build_items_from_payload_nodes =
              ~docstring_item_of_docstring syntax_token
            |> Option.map (fun item ->
                   let syntax_node = syntax_node_of_item item in
+                  (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item)))
+  in
+  List.sort
+    (fun
+      (left_index, (left_span : Ceibo.Span.t), _)
+      (right_index, (right_span : Ceibo.Span.t), _) ->
+      let order =
+        if not (Int.equal left_span.start right_span.start) then
+          Int.compare left_span.start right_span.start
+        else if not (Int.equal left_span.end_ right_span.end_) then
+          Int.compare left_span.end_ right_span.end_
+        else
+          0
+      in
+      if Int.equal order 0 then
+        Int.compare left_index right_index
+      else
+        order)
+    (item_entries @ trivia_entries)
+  |> List.map (fun (_, _, item) -> item)
+
+let record_field_items_of_fields = fun fields ->
+  let next_index =
+    let cell = Cell.create 0 in
+    fun () ->
+      let index = Cell.get cell in
+      Cell.set cell (index + 1);
+      index
+  in
+  let item_entries =
+    fields
+    |> List.map (fun field ->
+           let item = RecordField field in
+           let span =
+             span_of_syntax_node_nontrivia_bounds (Cst.RecordField.syntax_node field)
+           in
+           (next_index (), span, item))
+  in
+  let owned_trivia_spans =
+    item_entries
+    |> List.concat_map (fun (_, _, item) ->
+           record_field_item_owned_trivia_spans item)
+  in
+  let terminal_tokens =
+    match fields with
+    | field :: _ -> (
+        match Ceibo.Red.SyntaxNode.parent (Cst.RecordField.syntax_node field) with
+        | Some source_node -> (
+            match List.rev (direct_non_trivia_tokens source_node) with
+            | closing_token :: _ ->
+                Ceibo.Red.SyntaxToken.leading_trivia closing_token
+                |> List.map syntax_token_from_trivia
+            | [] ->
+                [])
+        | None ->
+            [])
+    | [] ->
+        []
+  in
+  let trivia_entries =
+    ((item_entries
+      |> List.concat_map (fun (_, _, item) ->
+             leading_trivia_syntax_tokens_for_item
+               (syntax_node_of_record_field_item item)))
+    @ terminal_tokens)
+    |> List.filter (fun syntax_token ->
+           let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
+           not
+             (List.exists
+                (fun owned_span -> span_contains owned_span token_span)
+                owned_trivia_spans))
+    |> List.filter_map (fun syntax_token ->
+           standalone_trivia_item_from_token
+             ~comment_item_of_comment:record_field_item_of_comment
+             ~docstring_item_of_docstring:record_field_item_of_docstring
+             syntax_token
+           |> Option.map (fun item ->
+                  let syntax_node = syntax_node_of_record_field_item item in
                   (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item)))
   in
   List.sort
