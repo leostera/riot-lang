@@ -62,26 +62,32 @@ open Std
 
 (** {2 Types} *)
 
-type same_site = 
-  | Strict  (** Strictest - no cross-site requests *)
-  | Lax     (** Safe cross-site (GET only) - recommended default *)
-  | None    (** Allow all cross-site (requires Secure flag) *)
-
+type same_site =
+  | Strict (** Strictest - no cross-site requests *)
+  | Lax (** Safe cross-site (GET only) - recommended default *)
+  | None (** Allow all cross-site (requires Secure flag) *)
 type t = {
-  name : string;                  (** Cookie name *)
-  value : string;                 (** Cookie value *)
-  max_age : int option;           (** Lifetime in seconds *)
-  expires : string option;        (** HTTP date format expiration *)
-  domain : string option;         (** Domain scope *)
-  path : string;                  (** Path scope (default: "/") *)
-  secure : bool;                  (** HTTPS only *)
-  http_only : bool;               (** No JavaScript access *)
-  same_site : same_site option;   (** CSRF protection *)
+  name : string;
+  (** Cookie name *)
+  value : string;
+  (** Cookie value *)
+  max_age : int option;
+  (** Lifetime in seconds *)
+  expires : string option;
+  (** HTTP date format expiration *)
+  domain : string option;
+  (** Domain scope *)
+  path : string;
+  (** Path scope (default: "/") *)
+  secure : bool;
+  (** HTTPS only *)
+  http_only : bool;
+  (** No JavaScript access *)
+  same_site : same_site option;
+  (** CSRF protection *)
 }
-
 (** {2 Parsing} *)
 
-val parse : string -> (string * string) list
 (** Parse Cookie header into name-value pairs.
     
     {b Example}:
@@ -93,8 +99,8 @@ val parse : string -> (string * string) list
     - Multiple cookies separated by semicolons
     - Optional whitespace around names/values
     - Missing values (treated as empty string) *)
+val parse : string -> (string * string) list
 
-val parse_set_cookie : string -> t option
 (** Parse Set-Cookie header into cookie record.
     
     {b Example}:
@@ -104,10 +110,10 @@ val parse_set_cookie : string -> t option
     ]}
     
     Returns [None] if header is malformed. *)
+val parse_set_cookie : string -> t option
 
 (** {2 Serialization} *)
 
-val to_set_cookie : t -> string
 (** Serialize cookie to Set-Cookie header value.
     
     {b Example}:
@@ -117,20 +123,10 @@ val to_set_cookie : t -> string
     ]}
     
     Automatically includes all set attributes in correct format. *)
+val to_set_cookie : t -> string
 
 (** {2 Construction} *)
 
-val make :
-  name:string ->
-  value:string ->
-  ?max_age:int ->
-  ?expires:string ->
-  ?path:string ->
-  ?domain:string ->
-  ?secure:bool ->
-  ?http_only:bool ->
-  ?same_site:same_site ->
-  unit -> t
 (** Create a cookie with sensible defaults.
     
     {b Defaults}:
@@ -144,18 +140,18 @@ val make :
       make ~name:"session" ~value:"abc123" 
            ~max_age:3600 ~secure:true ()
     ]} *)
+val make : name:string ->
+value:string ->
+?max_age:int ->
+?expires:string ->
+?path:string ->
+?domain:string ->
+?secure:bool ->
+?http_only:bool ->
+?same_site:same_site ->
+unit ->
+t
 
-val make_validated :
-  name:string ->
-  value:string ->
-  ?max_age:int ->
-  ?expires:string ->
-  ?path:string ->
-  ?domain:string ->
-  ?secure:bool ->
-  ?http_only:bool ->
-  ?same_site:same_site ->
-  unit -> (t, string) result
 (** Create a cookie with validation.
     
     Validates:
@@ -163,16 +159,27 @@ val make_validated :
     - Value contains no control characters or semicolons
     
     Returns [Error msg] if validation fails. *)
+val make_validated : name:string ->
+value:string ->
+?max_age:int ->
+?expires:string ->
+?path:string ->
+?domain:string ->
+?secure:bool ->
+?http_only:bool ->
+?same_site:same_site ->
+unit ->
+(t, string) result
 
 (** {2 Validation} *)
 
-val is_valid_name : string -> bool
 (** Check if cookie name is valid (alphanumeric + underscore + hyphen). *)
+val is_valid_name : string -> bool
 
-val is_valid_value : string -> bool
 (** Check if cookie value is valid (no control characters). *)
+val is_valid_value : string -> bool
 
 (** {2 Utilities} *)
 
-val same_site_to_string : same_site -> string
 (** Convert SameSite to string ("Strict", "Lax", or "None"). *)
+val same_site_to_string : same_site -> string

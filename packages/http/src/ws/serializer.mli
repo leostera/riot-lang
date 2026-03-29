@@ -2,5 +2,5 @@
 
 open Std
 
-val serialize : Frame.t -> string
 (** Serialize a WebSocket frame to wire format *)
+val serialize : Frame.t -> string
