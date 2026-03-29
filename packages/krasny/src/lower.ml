@@ -853,6 +853,91 @@ let doc_with_leading_trivia = fun trivia doc ->
   | Some trivia ->
       Doc.concat [ trivia; Doc.line; doc ]
 
+let nontrivia_end_before = fun ?before syntax_node ->
+  let node_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
+  let end_before =
+    match before with
+    | None ->
+        node_span.end_
+    | Some before ->
+        Int.min before node_span.end_
+  in
+  let tokens =
+    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
+    |> List.filter
+         (fun syntax_token ->
+           let span = Syn.Ceibo.Red.SyntaxToken.span syntax_token in
+           span.end_ <= end_before
+           && not (is_whitespace_token syntax_token || is_comment_like_token syntax_token))
+  in
+  match List.rev tokens with
+  | token :: _ ->
+      (Syn.Ceibo.Red.SyntaxToken.span token).end_
+  | [] ->
+      end_before
+
+let separator_doc_between_offsets = fun source ~start ~end_ ->
+  let source_length = String.length source in
+  let start = Int.max 0 (Int.min start source_length) in
+  let end_ = Int.max start (Int.min end_ source_length) in
+  let rec loop = fun index saw_inline_spacing newline_count ->
+    if index >= end_ then
+      (saw_inline_spacing, newline_count)
+    else
+      match source.[index] with
+      | '\n' ->
+          loop (index + 1) false (newline_count + 1)
+      | ' '
+      | '\t'
+      | '\r' ->
+          loop (index + 1) true newline_count
+      | _ ->
+          loop (index + 1) true newline_count
+  in
+  let saw_inline_spacing, newline_count = loop start false 0 in
+  if newline_count > 0 then
+    List.init newline_count (fun _ -> Doc.line) |> Doc.concat
+  else if saw_inline_spacing then
+    Doc.space
+  else
+    Doc.empty
+
+let doc_of_owned_trivia = fun ?start ~source trivia ->
+  let trivia = trivia |> List.sort (fun left right -> Int.compare
+  ((Syn.Cst.Token.span (Syn.Cst.Trivia.token left)).start)
+  ((Syn.Cst.Token.span (Syn.Cst.Trivia.token right)).start)) in
+  let trivia_doc =
+    function
+    | Syn.Cst.Trivia.Comment comment ->
+        Doc.text (Syn.Cst.Comment.text comment)
+    | Syn.Cst.Trivia.Docstring docstring ->
+        Doc.text (Syn.Cst.Docstring.text docstring)
+  in
+  let rec loop = fun acc previous_end ->
+    function
+    | [] ->
+        acc
+    | trivia :: rest ->
+        let span = Syn.Cst.Token.span (Syn.Cst.Trivia.token trivia) in
+        let separator =
+          match previous_end with
+          | None ->
+              Doc.empty
+          | Some previous_end ->
+              separator_doc_between_offsets source ~start:previous_end ~end_:span.start
+        in
+        let piece = Doc.concat [ separator; trivia_doc trivia ] in
+        let acc =
+          match acc with
+          | None ->
+              Some piece
+          | Some current ->
+              Some (Doc.concat [ current; piece ])
+        in
+        loop acc (Some span.end_) rest
+  in
+  loop None start trivia
+
 let pending_nonbreak_count =
   fun pending ->
     pending |> List.fold_left
@@ -2060,29 +2145,48 @@ let render_variant_constructor = fun ?source ?end_before ?(include_trailing_comm
     | None, None ->
         head
   in
-  if include_trailing_comment then
-    match trailing_comment_suffix_doc ?source ?before:end_before (Syn.Cst.VariantConstructor.syntax_node constructor) with
-    | None ->
+  match source with
+  | Some source ->
+      let owned = Syn.Cst.VariantConstructor.owned_trivia constructor in
+      let leading =
+        doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
+      in
+      let trailing =
+        if include_trailing_comment then
+          Syn.Cst.OwnedTrivia.trailing owned
+          |> List.filter
+               (fun trivia ->
+                 match end_before with
+                 | None ->
+                     true
+                 | Some end_before ->
+                     (Syn.Cst.Token.span (Syn.Cst.Trivia.token trivia)).start < end_before)
+          |> doc_of_owned_trivia ~source
+               ~start:(nontrivia_end_before ?before:end_before
+                         (Syn.Cst.VariantConstructor.syntax_node constructor))
+        else
+          None
+      in
+      body
+      |> doc_with_leading_trivia leading
+      |> fun body ->
+           match trailing with
+           | None ->
+               body
+           | Some suffix ->
+               Doc.concat [ body; suffix ]
+  | None ->
+      if include_trailing_comment then
+        match trailing_comment_suffix_doc ?before:end_before
+                (Syn.Cst.VariantConstructor.syntax_node constructor) with
+        | None ->
+            body
+        | Some suffix ->
+            Doc.concat [ body; suffix ]
+      else
         body
-    | Some suffix ->
-        Doc.concat [ body; suffix ]
-  else
-    body
 
-let render_variant_definition = fun ?source ?end_before ~source_node constructors ->
-  let source_node_nontrivia_end =
-    let tokens =
-      Syn.Ceibo.Red.SyntaxNode.tokens source_node
-      |> List.filter
-        (fun syntax_token ->
-          not (is_whitespace_token syntax_token || is_comment_like_token syntax_token))
-    in
-    match List.rev tokens with
-    | token :: _ ->
-        (Syn.Ceibo.Red.SyntaxToken.span token).end_
-    | [] ->
-        (Syn.Ceibo.Red.SyntaxNode.span source_node).end_
-  in
+let render_variant_definition = fun ?source ?end_before ~source_node:_ constructors ->
   let constructors_all_inline_records =
     constructors != []
     && List.for_all
@@ -2110,24 +2214,7 @@ let render_variant_definition = fun ?source ?end_before ~source_node constructor
       ~prefer_multiline_inline_record:constructors_all_inline_records
       ~include_trailing_comment:true
       constructor) in
-  let end_before =
-    match end_before with
-    | Some _ ->
-        end_before
-    | None -> (
-        match source with
-        | None ->
-            None
-        | Some source ->
-            find_trailing_column_zero_docstring_start
-              ~source
-              ~start:source_node_nontrivia_end
-              ~end_:((Syn.Ceibo.Red.SyntaxNode.span source_node).end_))
-  in
-  render_interleaved_node_docs ~end_before ~source_node ~should_consume_node:(fun node -> Syn.Ceibo.Red.SyntaxNode.kind
-  node
-  = Syn.SyntaxKind.TYPE_VARIANT_CONSTR) ~node_docs:constructor_docs
-  |> Doc.join Doc.line
+  constructor_docs |> Doc.join Doc.line
 
 let render_type_definition = fun ?source ?trailing_docstring_start ->
   function
@@ -5941,6 +6028,67 @@ and signature_item_uses_verbatim_span = function
   | _ ->
       true
 
+and trivia_span = fun trivia -> Syn.Cst.Token.span (Syn.Cst.Trivia.token trivia)
+
+and owned_trivia_end = fun owned -> Syn.Cst.OwnedTrivia.leading owned
+@ Syn.Cst.OwnedTrivia.inner owned
+@ Syn.Cst.OwnedTrivia.trailing owned
+|> List.fold_left
+     (fun acc trivia ->
+       Int.max acc (trivia_span trivia).end_)
+     0
+
+and record_field_owned_trivia_end = fun field ->
+  owned_trivia_end (Syn.Cst.RecordField.owned_trivia field)
+
+and variant_constructor_owned_trivia_end = fun constructor ->
+  let arguments_end =
+    match Syn.Cst.VariantConstructor.arguments constructor with
+    | Some (Syn.Cst.ConstructorArguments.Record fields) ->
+        fields
+        |> List.fold_left
+             (fun acc field -> Int.max acc (record_field_owned_trivia_end field))
+             0
+    | Some (Syn.Cst.ConstructorArguments.Tuple _)
+    | None ->
+        0
+  in
+  Int.max arguments_end
+    (owned_trivia_end (Syn.Cst.VariantConstructor.owned_trivia constructor))
+
+and type_definition_owned_trivia_end =
+  function
+  | Syn.Cst.TypeDefinition.Record { fields; _ } ->
+      fields
+      |> List.fold_left
+           (fun acc field -> Int.max acc (record_field_owned_trivia_end field))
+           0
+  | Syn.Cst.TypeDefinition.Variant { constructors; _ } ->
+      constructors
+      |> List.fold_left
+           (fun acc constructor ->
+             Int.max acc (variant_constructor_owned_trivia_end constructor))
+           0
+  | Syn.Cst.TypeDefinition.Abstract
+  | Syn.Cst.TypeDefinition.Alias _
+  | Syn.Cst.TypeDefinition.Extensible _
+  | Syn.Cst.TypeDefinition.FirstClassModule _
+  | Syn.Cst.TypeDefinition.Object _
+  | Syn.Cst.TypeDefinition.PolyVariant _ ->
+      0
+
+and type_declaration_owned_trivia_end = fun decl ->
+  let current =
+    Int.max
+      (owned_trivia_end (Syn.Cst.TypeDeclaration.owned_trivia decl))
+      (type_definition_owned_trivia_end (Syn.Cst.TypeDeclaration.type_definition decl))
+  in
+  Syn.Cst.TypeDeclaration.and_declarations decl
+  |> List.fold_left
+       (fun acc declaration ->
+         Int.max acc (type_declaration_owned_trivia_end declaration))
+       current
+
 and render_structure_top_level_items ~source ~source_offset ~source_node ~items =
   let find_substring_from source pattern start =
     let source_length = String.length source in
@@ -6034,8 +6182,15 @@ and render_structure_top_level_items ~source ~source_offset ~source_node ~items 
           span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia:true syntax_node
         else
           match item with
-          | Syn.Cst.StructureItem.TypeDeclaration _ ->
-              span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node
+    | Syn.Cst.StructureItem.TypeDeclaration _ ->
+              let span =
+                span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node
+              in
+              match item with
+              | Syn.Cst.StructureItem.TypeDeclaration decl ->
+                  { span with end_ = Int.max span.end_ (type_declaration_owned_trivia_end decl) }
+              | _ ->
+                  span
           | _ ->
               span_of_syntax_node_nontrivia_bounds syntax_node
   in
@@ -6439,12 +6594,15 @@ and render_signature_top_level_items
     | Syn.Cst.SignatureItem.TypeDeclaration decl ->
         let syntax_node = Syn.Cst.SignatureItem.syntax_node item in
         let span =
-          span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node
+          let span =
+            span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node
+          in
+          { span with end_ = Int.max span.end_ (type_declaration_owned_trivia_end decl) }
         in
         (
           match split_type_declaration_trailing_docstring_block ~source decl with
           | _, _, Some remaining_start ->
-              { span with end_ = remaining_start }
+              { span with end_ = Int.max span.end_ remaining_start }
           | _ ->
               span
         )

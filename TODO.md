@@ -164,7 +164,7 @@ For every slice below:
     - CST tests for grouped type docs/headings
     - `timeout 120 tusk build syn krasny`
 
-- [ ] Make variant constructor ownership reliable
+- [x] Make variant constructor ownership reliable
   - constructor docs should not drift to the next type or the parent type header
   - verification:
     - CST tests for constructor docs vs next type docs
@@ -254,8 +254,9 @@ For every slice below:
 - [ ] Current state: nested `sig ... end` and `struct ... end` bodies now expose normalized item lists through `CstBuilder.signature_items_of_module_type` and `CstBuilder.structure_items_of_module_expression`, while still preserving raw syntax-node anchors for losslessness/debugging
 - [ ] Current state: nested helper APIs are now pinned against the same ordered-item ownership behavior as the top level, including grouped-type headings, repeated docs, and standalone doc/comment ordering after `open`
 - [ ] Current state: grouped `type ... and ...` ownership now normalizes each member from its own `TYPE_DECL` token stream before reassembling the public group, so doc/header ownership no longer depends on redistributing trivia out of the grouped parent node by source spans
+- [ ] Current state: variant constructor postfix docs/comments now stay on constructors, including the last constructor before the next type declaration; the ordered-item pass peels constructor-postfix trivia out of both standalone trivia runs and next-type leading trivia before declaration ownership is finalized
 - [ ] Current state: module/class top-level keyword probes, bracket attribute/extension probes, functor application / `(val ...)` module-expression probes, parenthesized module-type lookahead in module expressions, declaration-local `module type of` probes, application/infix/tuple/assign/sequence expression continuations, paren and bracket local-open vs index expression disambiguation, postfix custom-index/operator-like probes, dotted module/module-type/type-name/qualified-field path continuations, local-open core type path lookahead, `include module type of`, `let open` expression detection, the polymorphic/local-open/local-abstract type probes, tuple/as/cons/or pattern continuations, local-open pattern path disambiguation, literal range-pattern probes, and grouped structure/signature type-declaration uppercase-body disambiguation no longer rely on trivia-skipping control flow; inline-comment alias-vs-variant, grouped GADT, and `module type of` declaration cases are pinned in `syn:cst_tests`
 - [ ] Current state: top-level file loops and nested `struct`/`sig` body loops no longer thread trivia through `tokens_to_green []`
 - [ ] Current state: red traversal now follows the same contract as green for parser-built trees; leading trivia lives on tokens and `SyntaxNode.tokens` stays trivia-free
 - [ ] Current state: `print-ceibo` fixture coverage now includes a mixed comment/docstring bridge case
-- [ ] The next concrete slice is variant constructor ownership, especially constructor docs vs the next type declaration
+- [ ] The next concrete slice is record field ownership, especially field docs vs the enclosing type and the next declaration

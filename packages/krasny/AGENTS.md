@@ -15,6 +15,7 @@
 9. `--verify` is a normalized semantic-hash safety preflight, not another formatting-state check. Report files that would reformat safely separately from files that are unsafe to format.
 10. Keep lowering context explicit and per-invocation. Do not reintroduce global mutable source/render state in `Lower`; each format run must be multicore-safe on its own.
 11. Preserve standalone top-level docstrings and section headers. Treat odoc section docs and markdown-style `# ...` doc blocks as section boundaries, not declaration-owned docs to be dropped or reassigned.
+12. Render variant constructor docs from `Syn.Cst.VariantConstructor.owned_trivia`; do not recover constructor ownership from interleaved source-gap archaeology once the CST has already assigned it.
 
 ## Validate
 
