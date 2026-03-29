@@ -84,5 +84,4 @@ type domain_context = {
   mutable current_process : Process.t option;
 }
 
-let current_context : domain_context option Domain.DLS.key =
-  Domain.DLS.new_key (fun () -> None)
+let current_context : domain_context option Domain.DLS.key = Domain.DLS.new_key (fun () -> None)

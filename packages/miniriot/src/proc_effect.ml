@@ -1,6 +1,11 @@
 open Kernel
+
 (* Timeout type for blocking operations *)
-type timeout = [ `infinity | `after of float ]
+type timeout =
+  [
+  | `infinity
+  | `after of float
+]
 
 type _ Effect.t +=
   | Receive : {

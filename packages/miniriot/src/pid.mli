@@ -1,22 +1,21 @@
 (** Process identifiers *)
 
-type t
 (** Opaque process identifier *)
-
-val main : t
 (** The PID of the main process *)
+type t
+val main : t
 
-val next : unit -> t
 (** Generate the next unique PID *)
+val next : unit -> t
 
-val equal : t -> t -> bool
 (** Test PID equality *)
+val equal : t -> t -> bool
 
-val compare : t -> t -> int
 (** Compare PIDs for ordering *)
+val compare : t -> t -> int
 
-val to_int : t -> int
 (** Convert PID to its underlying integer identifier. *)
+val to_int : t -> int
 
-val to_string : t -> string
 (** Convert PID to string representation *)
+val to_string : t -> string
