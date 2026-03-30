@@ -75,6 +75,8 @@ This file is _yours_. Keep it up to date after every big change.
 - the live local-binding `=` placement policy now has focused formatter regression coverage for long boolean chains and pipelines before the next heuristic cleanup.
 - binding-operator clause `=` placement now reuses the same isolated after-equals policy helpers as ordinary local bindings, with focused formatter coverage for explicit `fun` RHS values plus long boolean/pipeline bodies.
 - dead inline-string binding special casing is gone; ordinary `expression_is_simple_after_equals` checks now carry the inline decision for both `let` and `let*` bindings.
+- some remaining fixed-operator layout checks still read token text because `Syn.Cst.Token` does not yet carry the original lexed token kind through the CST surface.
+- named-parameter sugar and core-type alias binders still need small token-text checks in `krasny`; `Syn.Cst` does not yet expose “label matches binding name” or alias-binder sigil spelling as explicit structural facts.
 - singleton list patterns now use explicit formatter edge spacing; `lower.ml` no longer sniffs source text for `"[ "` / `" ]"` to preserve original spacing.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - stale rollout-era dead helpers continue to shrink during audits; unused locals such as `unwrap_parenthesized_expression`, `flatten_top_level_expression_item`, `render_structure_expression_run`, `expression_needs_multiline_binding`, `trim_trailing_layout_whitespace`, `push_pending_break`, `child_span`, `compare_child_by_span`, `children_in_source_order`, `extract_leading_inline_comment`, `syntax_node_of_apply_argument`, `render_function_expression_inline`, `render_unsugared_named_parameter_binding_pattern`, the dead top-level `doc_with_expression_attributes` duplicate, and unused keyword docs such as `kw_if`/`kw_then`/`kw_match`/`kw_try` are gone from `lower.ml`.
@@ -134,6 +136,9 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Remove token-text replay and token-text heuristics still used in `lower.ml`
   - keep auditing the remaining `token_text` uses so they stay limited to explicit structural/layout decisions, not new preservation or replay paths
+  - fixed-operator checks are still blocked on `Syn.Cst.Token` not carrying original lexed token kinds
+  - named-parameter sugar still compares label token text with identifier binding-pattern text
+  - core-type alias rendering still prepends `'` by string check because alias-binder sigils are not explicit in `Syn.Cst`
 
 - [ ] Audit remaining layout heuristics and keep only the ones that are explicit style policy
   - inline `let ... =` placement rules such as `expression_is_simple_after_equals`
@@ -172,6 +177,9 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
   - explicit ambiguity-sensitive type-declaration shape markers
   - explicit poly-variant inherit path rendering data if needed
+  - original lexed token-kind exposure on `Syn.Cst.Token`, so fixed operators such as `|>`, `&&`, and `||` do not require token-text comparisons in `krasny`
+  - explicit named-parameter sugar/equivalence facts, so `krasny` does not compare label text with identifier binding patterns to choose `~label` vs `~label:pattern`
+  - explicit alias-binder sigil spelling on `Syn.Cst.CoreType.Alias`, so `krasny` does not synthesize a missing leading quote when rendering `... as 'a`
 
 - [ ] Add regression coverage before removing each heuristic
   - use `syn:cst_tests` when the missing fact is ownership/structure
