@@ -1889,18 +1889,6 @@ let expression_requires_spaced_delimited_local_open =
   | _ ->
       false
 
-let expression_needs_multiline_binding =
-  function
-  | Syn.Cst.Expression.Match _
-  | Syn.Cst.Expression.Try _
-  | Syn.Cst.Expression.Function _
-  | Syn.Cst.Expression.LetOperator _
-  | Syn.Cst.Expression.Let _
-  | Syn.Cst.Expression.Sequence _ ->
-      true
-  | _ ->
-      false
-
 let rec expression_prefers_multiline_layout =
   function
   | Syn.Cst.Expression.If if_ ->
