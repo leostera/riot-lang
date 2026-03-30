@@ -96,6 +96,59 @@ let dir_exists path =
   | Ok true -> true
   | _ -> false
 
+let write_path_fingerprint hasher path =
+  Crypto.Sha256.write_string hasher (Path.to_string path);
+  match Fs.metadata path with
+  | Ok metadata ->
+      Crypto.Sha256.write_string hasher
+        (Int.to_string (Fs.Metadata.len metadata));
+      Crypto.Sha256.write_string hasher
+        (Float.to_string (Fs.Metadata.modified metadata))
+  | Error _ ->
+      Crypto.Sha256.write_string hasher "missing"
+
+let first_existing paths =
+  List.find_map
+    (fun path -> if path_exists path then Some path else None)
+    paths
+
+let parse_json_field_string json fields =
+  let rec resolve value = function
+    | [] -> (
+        match Data.Json.get_string value with
+        | Some string -> Some string
+        | None -> None)
+    | field :: rest -> (
+        match Data.Json.get_field field value with
+        | Some next -> resolve next rest
+        | None -> None)
+  in
+  resolve json fields
+
+let read_manifest_fingerprint toolchain_path =
+  let manifest_path = Path.(toolchain_path / Path.v "manifest.json") in
+  let parse_fingerprint json =
+    let open Data.Json in
+    parse_json_field_string json [ "toolchain_fingerprint" ]
+    |> Option.or_ (parse_json_field_string json [ "fingerprint"; "value" ])
+  in
+  match Fs.exists manifest_path with
+  | Ok true -> (
+      match Fs.read manifest_path with
+      | Ok raw ->
+          (match Data.Json.of_string raw with
+          | Ok manifest -> parse_fingerprint manifest
+          | Error _ -> None)
+      | Error _ -> None)
+  | Ok false | Error _ -> None
+
+let sysroot_candidates ~toolchain_path ~target =
+  [
+    Path.(toolchain_path / Path.v "sysroot");
+    Path.(toolchain_path / Path.v ("sysroot-" ^ target));
+    Path.(toolchain_path / Path.v "gcc" / Path.v target / Path.v "sysroot");
+  ]
+
 let explicit_sysroot_override () =
   let present name =
     match Env.var Env.String ~name with
@@ -117,13 +170,7 @@ let missing_cross_components ~toolchain_path ~target =
           Path.(toolchain_path / Path.v "gcc" / Path.v "bin" / Path.v (bin_prefix ^ "gcc"));
         ]
       in
-      let sysroot_candidates =
-        [
-          Path.(toolchain_path / Path.v "sysroot");
-          Path.(toolchain_path / Path.v ("sysroot-" ^ target));
-          Path.(toolchain_path / Path.v "gcc" / Path.v target / Path.v "sysroot");
-        ]
-      in
+      let sysroot_candidates = sysroot_candidates ~toolchain_path ~target in
       let compiler_missing =
         if List.exists path_exists compiler_candidates then []
         else [ "cross-compiler" ]
@@ -146,6 +193,21 @@ let validate_toolchain_install ~version ~target =
         else missing_cross_components ~toolchain_path ~target
       in
       if List.length missing = 0 then Ok toolchain else Error missing
+
+let reset_toolchain_install path =
+  match Fs.exists path with
+  | Ok true -> (
+      match Fs.remove_dir_all path with
+      | Ok () -> Ok ()
+      | Error err ->
+          Error
+            ("Failed to remove existing toolchain at " ^ Path.to_string path
+           ^ ": " ^ IO.error_message err))
+  | Ok false -> Ok ()
+  | Error err ->
+      Error
+        ("Failed to inspect existing toolchain at " ^ Path.to_string path
+       ^ ": " ^ IO.error_message err)
 
 let download_and_install_toolchain version ~host ~target =
   let toolchain_path = get_toolchain_path_for_target version target in
@@ -189,25 +251,28 @@ let download_and_install_toolchain version ~host ~target =
       Error ("Failed to download toolchain from " ^ binary_url ^ "\nHTTP error or file not found")
   | Ok _ ->
       println "✓ Download complete, extracting...";
-      
-      (* Create toolchain directory *)
-      let _ = Fs.create_dir_all toolchain_path in
-      
-      (* Extract using tar *)
-      let extract_cmd = Command.make
-        ~args:["-xzf"; Path.to_string tar_path; "-C"; Path.to_string toolchain_path]
-        "tar" in
-      
-      match Command.output extract_cmd with
-      | Error (Command.SystemError msg) ->
-          Error ("Failed to extract toolchain: " ^ msg)
-      | Ok output when output.Command.status != 0 ->
-          Error ("Failed to extract toolchain tarball")
-      | Ok _ ->
-          (* Clean up tarball *)
-          let _ = Fs.remove_file tar_path in
-          println ("✓ OCaml " ^ version ^ " (" ^ target ^ ") installed successfully");
-          Ok ()
+
+      (match reset_toolchain_install toolchain_path with
+      | Error msg -> Error msg
+      | Ok () ->
+          (* Create toolchain directory *)
+          let _ = Fs.create_dir_all toolchain_path in
+
+          (* Extract using tar *)
+          let extract_cmd = Command.make
+            ~args:["-xzf"; Path.to_string tar_path; "-C"; Path.to_string toolchain_path]
+            "tar" in
+
+          match Command.output extract_cmd with
+          | Error (Command.SystemError msg) ->
+              Error ("Failed to extract toolchain: " ^ msg)
+          | Ok output when output.Command.status != 0 ->
+              Error ("Failed to extract toolchain tarball")
+          | Ok _ ->
+              (* Clean up tarball *)
+              let _ = Fs.remove_file tar_path in
+              println ("✓ OCaml " ^ version ^ " (" ^ target ^ ") installed successfully");
+              Ok ())
 
 let init ~config =
   let version = config.Tusk_model.Toolchain_config.version in
@@ -308,13 +373,38 @@ let check_health toolchain =
 
 let hash t =
   let hasher = Crypto.Sha256.create () in
+  let toolchain_path = get_toolchain_path_for_target t.version t.target in
+  let write_legacy_path_fingerprint paths =
+    List.iter (write_path_fingerprint hasher) paths
+  in
   Crypto.Sha256.write_string hasher t.version;
   Crypto.Sha256.write_string hasher t.target;
-  Crypto.Sha256.write_string hasher (Path.to_string (Ocamlc.path t.ocamlc));
-  Crypto.Sha256.write_string hasher (Path.to_string t.ocamlopt);
-  Crypto.Sha256.write_string hasher (Path.to_string (Ocamldep.path t.ocamldep));
-  Crypto.Sha256.write_string hasher
-    (Path.to_string (Ocamlformat.path t.ocamlformat));
+  match read_manifest_fingerprint toolchain_path with
+  | Some fingerprint -> Crypto.Sha256.write_string hasher fingerprint
+  | None ->
+      write_legacy_path_fingerprint
+        [
+          Ocamlc.path t.ocamlc;
+          t.ocamlopt;
+          Ocamldep.path t.ocamldep;
+          Ocamlformat.path t.ocamlformat;
+          Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "stdlib.cmxa");
+          Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix" / Path.v "unix.cmi");
+          Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix" / Path.v "unix.cmxa");
+        ];
+      if not (String.equal t.target (get_host_triple ())) then
+        (match first_existing (sysroot_candidates ~toolchain_path ~target:t.target) with
+        | Some sysroot ->
+            write_legacy_path_fingerprint
+              [
+                Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "uuid" / Path.v "uuid.h");
+                Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "openssl" / Path.v "ssl.h");
+                Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "zlib.h");
+                Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libuuid.a");
+                Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libssl.a");
+                Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libcrypto.a");
+              ]
+        | None -> ());
   Crypto.Sha256.finish hasher
 
 (** Initialize toolchain for a specific target architecture *)
