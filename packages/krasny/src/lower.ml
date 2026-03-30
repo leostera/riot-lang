@@ -149,23 +149,6 @@ let binding_has_explicit_fun_rhs = fun (binding : Syn.Cst.let_binding) ->
   | _ ->
       false
 
-let child_span =
-  function
-  | Syn.Ceibo.Red.Token syntax_token ->
-      Syn.Ceibo.Red.SyntaxToken.span syntax_token
-  | Syn.Ceibo.Red.Node syntax_node ->
-      Syn.Ceibo.Red.SyntaxNode.span syntax_node
-
-let compare_child_by_span = fun left right ->
-  let left_span = child_span left in
-  let right_span = child_span right in
-  if not (Int.equal left_span.start right_span.start) then
-    Int.compare left_span.start right_span.start
-  else if not (Int.equal left_span.end_ right_span.end_) then
-    Int.compare left_span.end_ right_span.end_
-  else
-    0
-
 let compare_direct_token_by_span = fun left right ->
   let left_span = Syn.Ceibo.Red.SyntaxToken.span left in
   let right_span = Syn.Ceibo.Red.SyntaxToken.span right in
