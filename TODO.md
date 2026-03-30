@@ -55,13 +55,13 @@ This file is _yours_. Keep it up to date after every big change.
 - optional parameter defaults and typed binding patterns now survive the `Syn.Cst` lift structurally, and `krasny` renders parameters from CST shape instead of `Source.source_of_parameter`.
 - signature `val` declarations now render names from CST token structure plus `Syn.Cst.Token.is_operator_like_name`; `krasny` no longer reparses declaration source or compares raw token text to recover or parenthesize operator names before `:`.
 - inherited polymorphic-variant rows now render directly from `Syn.Cst.RowField.Inherit.type_`; `krasny` no longer reconstructs inherited row paths by scanning token text.
-- `Syn.Cst.sequence_expression` now exposes per-boundary `separator_tokens`, and binding-operator clauses now expose `equals_token` plus `let_operator_expression.in_token`; the CST surface now carries the token boundaries `krasny` needs for sequence and `let*` trivia without source-gap recovery.
+- `Syn.Cst.sequence_expression` now exposes per-boundary `separator_tokens` plus `expression_leading_trivia`, and binding-operator clauses now expose `equals_token` plus `let_operator_expression.in_token`; the CST surface now carries the boundary trivia `krasny` needs for sequence and `let*` rendering without source-gap recovery.
 - `let f = fun ...` detection now comes from `Syn.Cst.let_binding` shape instead of scanning tokens after `=`.
 - tuple and `let open ... in` line breaking no longer sniff source length or embedded newlines; `krasny` now relies on structural docs there.
 - simple apply expressions now decide whether they stay after `=` by recursing over CST callee/argument shape instead of scanning source text for keyword substrings.
 - application rendering no longer force-switches layout from raw source length or embedded newlines; it follows structural argument break rules only.
 - inline-record constructor arguments no longer preserve multiline layout just because the original record node contained newlines; they format from field structure and owned trivia only.
-- sequence-expression trivia now renders from `separator_tokens` plus the next expression's leading trivia, and `let*`/`let+` clause and body trivia now render from `equals_token` / `in_token`; `lower.ml` no longer reparses raw spans for those boundaries.
+- sequence-expression trivia now renders from `Syn.Cst.sequence_expression.expression_leading_trivia`, and `let*`/`let+` clause and body trivia now render from `equals_token` / `in_token`; `lower.ml` no longer reparses raw spans or generic boundary-helper spans for those paths.
 - match-case layout no longer preserves raw source newlines after `->`; `render_case` now breaks only from rendered body structure and explicit multiline preferences.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - `Format_core.format` now has an explicit EOF policy: non-empty formatted output ends with a final newline, without inspecting the input source to inherit that behavior.
@@ -100,6 +100,7 @@ This file is _yours_. Keep it up to date after every big change.
 - inline-record constructor layout no longer reaches through `RecordField.syntax_node` to ask the red tree for a parent node; `krasny` now decides inline-vs-multiline rendering from field presence, owned trivia, standalone record-body trivia, and explicit multiline preference only.
 - `Syn.Cst.syntax_kind` now owns diagnostics-only syntax-kind access too, and `krasny` keeps that value typed until `error_to_string` renders it; `packages/krasny/src/lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly even for unsupported-shape reporting.
 - `fun`, `if`, ordinary `let`, top-level `let`, class-`let` `and` bindings, and binding-operator CST nodes now carry explicit keyword-bound boundary trivia (`body_leading_trivia`, `value_leading_trivia`, `then_branch_trailing_trivia`, `else_branch_leading_trivia`, and related binding-operator fields), and `krasny` uses those structural fields directly instead of generic boundary-trivia helper calls on those paths.
+- `Syn.Cst.sequence_expression` now carries per-step `expression_leading_trivia`, and `krasny` uses that structural list directly instead of reconstructing semicolon-boundary trivia from generic `leading_trivia_after_token_before_node` helper calls.
 - `Lower.source_file` and `Format_core.format` no longer thread parse-result source through the normal lowering path just to satisfy dead internal parameters.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms; signature-bodied first-class module types fail explicitly instead of reconstructing raw `(module ...)` text.
 - `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature attribute and extension payload item streams directly.
@@ -191,13 +192,12 @@ This file is _yours_. Keep it up to date after every big change.
   - pattern-payload structure beyond the current raw `pattern_syntax_node` / `guard_syntax_node`, so all attribute/extension payload rendering can stay structural there too
   - explicit public nested signature-body item anchors beyond the current helper-only relift surface, if downstream tools need more than `CstBuilder.signature_items_of_module_type`
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
-  - explicit sequence-expression boundary trivia/items, so `krasny` can stop deriving per-expression separator trivia from generic token-span helpers
   - explicit object-expression member ownership / ordered member-item streams if comments or docstrings inside `object ... end` bodies need structural rendering instead of per-member token assumptions
   - explicit ambiguity-sensitive type-declaration shape markers
   - explicit comment-sensitive layout facts for apply / after-`=` policy, so `krasny` can stop scanning red-token leading trivia through `syntax_node_has_comment_like_trivia`
 
 - [ ] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
-  - `lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly; the remaining generic boundary-helper debt is now concentrated in sequence-expression separator joins plus the variant-constructor trailing-trivia start offset
+  - `lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly; the remaining generic boundary-helper/span debt is now concentrated in the variant-constructor trailing-trivia start offset plus explicit style heuristics that still inspect trivia presence
 
 - [ ] Add regression coverage before removing each heuristic
   - use `syn:cst_tests` when the missing fact is ownership/structure

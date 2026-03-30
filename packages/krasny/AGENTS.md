@@ -38,7 +38,7 @@
 32. `Krasny.format` output policy is explicit: non-empty formatted output ends with a final newline, independent of whether the input source had one.
 33. Render trivia around `if ... then ... else` from `else_token.leading_trivia` and the following branch node's leading trivia; do not reparse raw source spans between `then`, `else`, and branch bodies.
 34. Render trivia after `=` and `in` in ordinary `let ... in` expressions from the RHS/body node's leading trivia. Do not reparse raw source spans for those boundaries once the CST already exposes `equals_token`, `in_token`, and the branch node.
-35. Render sequence-expression trivia from `Syn.Cst.sequence_expression.separator_tokens` plus the following expression's leading trivia; do not recover semicolon-boundary comments/docstrings by reparsing the source gap.
+35. Render sequence-expression trivia from `Syn.Cst.sequence_expression.expression_leading_trivia`; do not recover semicolon-boundary comments/docstrings by reparsing the source gap or by re-deriving them from generic token-span helpers in `lower.ml`.
 36. Render binding-operator clause and body trivia from `Syn.Cst.binding_operator_binding.equals_token` and `Syn.Cst.let_operator_expression.in_token`; do not reconstruct `let*` / `and*` / `let+` trivia from raw spans once `syn` exposes the tokens explicitly.
 37. Singleton list-pattern spacing is explicit formatter policy, not source preservation. Do not sniff original `"[ value ]"` spacing from raw node text to decide pattern edge spaces.
 38. Render `if` conditions through ordinary expression lowering. Do not scan token text for `&&` / `||` or token-leading comment trivia to decide boolean-condition layout.
@@ -72,7 +72,7 @@
 66. When a formatter boundary still needs a node’s real-token span, read it through `Syn.Cst.token_body_span`. Do not keep local `SyntaxNode.tokens` scans in `lower.ml` just to recover start/end offsets of the first and last nontrivia tokens.
 67. Do not reach back into `RecordField.syntax_node` parents from `lower.ml` just to choose inline-vs-multiline record-constructor layout. That decision should come from field structure, owned trivia, and explicit formatter policy only.
 68. Keep unsupported-shape diagnostics behind `Syn.Cst` helpers too. `lower.ml` should not read `Ceibo.Red.SyntaxNode.kind` directly just to annotate an error path with the current syntax kind, and it should keep that kind typed until final error rendering.
-69. Prefer node-specific CST boundary-trivia fields over generic helper calls. Once `syn` exposes `fun`/`if`/`let`/binding-operator body or branch trivia structurally, read those fields directly and delete the corresponding `leading_trivia_*` lookups from `lower.ml`.
+69. Prefer node-specific CST boundary-trivia fields over generic helper calls. Once `syn` exposes `fun`/`if`/`let`/binding-operator body or branch trivia, or sequence-expression per-step boundary trivia, read those fields directly and delete the corresponding `leading_trivia_*` lookups from `lower.ml`.
 
 ## Validate
 

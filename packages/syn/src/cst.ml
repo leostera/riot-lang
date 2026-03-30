@@ -1459,6 +1459,7 @@ and sequence_expression = {
   syntax_node : syntax_node;
   separator_token : Token.t;
   separator_tokens : Token.t list;
+  expression_leading_trivia : trivia list list;
   expressions : expression list;
   attributes : attribute list;
 }

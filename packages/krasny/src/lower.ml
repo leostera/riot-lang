@@ -187,26 +187,6 @@ let pending_entry_of_trivia = fun trivia ->
              Syn.Cst.Docstring.is_section docstring,
              Doc.text (Syn.Cst.Docstring.text docstring) ))
 
-let pending_entries_of_leading_trivia_after = fun ~after token ->
-  Syn.Cst.leading_trivia_after ~after token
-  |> List.filter_map pending_entry_of_trivia
-
-let render_leading_trivia_before_token = fun ~after token ->
-  pending_entries_of_leading_trivia_after ~after token
-  |> render_pending_trivia
-
-let render_leading_trivia_before_node = fun ~after syntax_node ->
-  Syn.Cst.leading_trivia_before_node ~after syntax_node
-  |> List.filter_map pending_entry_of_trivia
-  |> render_pending_trivia
-
-let render_leading_trivia_after_token_before_node = fun ~after token syntax_node ->
-  let pending =
-    Syn.Cst.leading_trivia_after_token_before_node ~after token syntax_node
-    |> List.filter_map pending_entry_of_trivia
-  in
-  render_pending_trivia pending
-
 let doc_with_trailing_trivia = fun doc trivia ->
   match trivia with
   | None ->
@@ -3618,9 +3598,11 @@ and render_let_operator_expression
   else
     Doc.concat [ bindings; Doc.space; doc_of_token in_token; Doc.line; body_doc ]
 
-and render_sequence_expression ({ separator_tokens; expressions; _ } : Syn.Cst.sequence_expression) =
+and render_sequence_expression
+    ({ separator_tokens; expression_leading_trivia; expressions; _ } : Syn.Cst.sequence_expression) =
   let expression_count = List.length expressions in
   let separator_token_at = fun index -> List.nth_opt separator_tokens index in
+  let leading_trivia_at = fun index -> List.nth_opt expression_leading_trivia (index - 1) in
   let rec render_sequence_items previous_expression index = function
     | [] ->
         []
@@ -3629,23 +3611,13 @@ and render_sequence_expression ({ separator_tokens; expressions; _ } : Syn.Cst.s
           match previous_expression with
           | None ->
               None
-          | Some previous_expression ->
-              (match separator_token_at (index - 1) with
-              | Some separator_token ->
-                  render_leading_trivia_after_token_before_node
-                    ~after:
-                      (Syn.Cst.token_body_span
-                         (Syn.Cst.Expression.syntax_node previous_expression))
-                        .end_
-                    separator_token
-                    (Syn.Cst.Expression.syntax_node expression)
+          | Some _previous_expression ->
+              (match leading_trivia_at index with
+              | Some trivia ->
+                  trivia |> List.filter_map pending_entry_of_trivia
+                  |> render_pending_trivia
               | None ->
-                  render_leading_trivia_before_node
-                    ~after:
-                      (Syn.Cst.token_body_span
-                         (Syn.Cst.Expression.syntax_node previous_expression))
-                        .end_
-                    (Syn.Cst.Expression.syntax_node expression))
+                  None)
         in
         let suffix =
           match separator_token_at index with

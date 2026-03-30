@@ -5441,6 +5441,7 @@ and prefix_expression_from_node = fun node ->
 and sequence_expression_from_node = fun node ->
   match direct_non_trivia_nodes node with
   | first :: rest ->
+      let expressions = List.map expression_from_node (first :: rest) in
       let separator_tokens =
         direct_non_trivia_tokens node
         |> List.filter (fun syntax_token ->
@@ -5456,11 +5457,29 @@ and sequence_expression_from_node = fun node ->
               "sequence_expression"
             ]
       in
+      let expression_leading_trivia =
+        let rec loop previous_expression separator_tokens expressions =
+          match separator_tokens, expressions with
+          | separator_token :: separator_tokens, expression :: expressions ->
+              Cst.leading_trivia_after_token_before_node
+                ~after:((Cst.token_body_span (Cst.Expression.syntax_node previous_expression)).end_)
+                separator_token (Cst.Expression.syntax_node expression)
+              :: loop expression separator_tokens expressions
+          | _, _ ->
+              []
+        in
+        match expressions with
+        | first_expression :: rest_expressions ->
+            loop first_expression separator_tokens rest_expressions
+        | [] ->
+            []
+      in
       Some {
         syntax_node = node;
         separator_token;
         separator_tokens;
-        expressions = List.map expression_from_node (first :: rest);
+        expression_leading_trivia;
+        expressions;
         attributes = []
       }
   | _ -> None
