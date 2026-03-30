@@ -1117,15 +1117,16 @@ type extended = (module [%foo])
         in
         Test.assert_equal ~expected:"type t = int [@deprecated \"use other\"]\n" ~actual;
         Ok ());
-    Test.case "format fails for unsupported shared attribute payload expressions"
+    Test.case "format shared attribute payload infix expressions structurally"
       (fun () ->
         let source = "type t = int [@foo 1 + 2]\n" in
-        match parse_ml source |> Krasny.format with
-        | Ok _ ->
-            panic
-              "unsupported shared attribute payload expressions should fail formatting instead of replaying source"
-        | Error _ ->
-            Ok ());
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"shared attribute payload infix expressions should render structurally"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
     Test.case "format expression attributes from structural payload items"
       (fun () ->
         let source = "let _ = value [@foo   1  +  2]\n" in

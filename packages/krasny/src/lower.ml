@@ -682,6 +682,21 @@ and render_shared_attribute_payload_expression_doc = function
       doc_of_ident constructor_path
   | Syn.Cst.Expression.Operator { operator_tokens; _ } ->
       operator_tokens |> List.map doc_of_token |> Doc.concat
+  | Syn.Cst.Expression.Prefix { operator_token; operand; _ } ->
+      Doc.concat
+        [
+          doc_of_token operator_token;
+          render_shared_attribute_payload_expression_doc operand;
+        ]
+  | Syn.Cst.Expression.Infix { left; operator_token; right; _ } ->
+      Doc.concat
+        [
+          render_shared_attribute_payload_expression_doc left;
+          Doc.space;
+          doc_of_token operator_token;
+          Doc.space;
+          render_shared_attribute_payload_expression_doc right;
+        ]
   | Syn.Cst.Expression.Literal literal ->
       render_literal literal
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
