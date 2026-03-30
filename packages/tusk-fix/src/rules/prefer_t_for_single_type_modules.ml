@@ -110,15 +110,18 @@ let diagnostics_for_items source_file =
       items
       |> List.filter_map (function
            | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
-               let module_type = Syn.Cst.ModuleSignature.module_type decl in
-               (match Syn.CstBuilder.signature_items_of_module_type module_type with
-               | Ok items -> (
-                   match List.map Syn.Cst.SignatureItem.syntax_node items |> single_type_decl_token with
-                   | Some token when Syn.Ceibo.Red.SyntaxToken.text token != "t" ->
-                       Some (make_diagnostic token)
-                   | _ ->
+               (match Syn.Cst.ModuleSignature.definition decl with
+               | Syn.Cst.ModuleSignature.Signature module_type -> (
+                   match Syn.CstBuilder.signature_items_of_module_type module_type with
+                   | Ok items -> (
+                       match List.map Syn.Cst.SignatureItem.syntax_node items |> single_type_decl_token with
+                       | Some token when Syn.Ceibo.Red.SyntaxToken.text token != "t" ->
+                           Some (make_diagnostic token)
+                       | _ ->
+                           None)
+                   | Error _ ->
                        None)
-               | Error _ ->
+               | Syn.Cst.ModuleSignature.Alias _ ->
                    None)
            | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
                diagnostic_for_module_type_decl decl

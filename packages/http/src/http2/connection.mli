@@ -38,10 +38,14 @@ type event =
 
 (** Connection state *)
 type state =
-  | Idle  (** Connection created but not started *)
-  | Active  (** Connection active and can send/receive *)
-  | GoingAway  (** Sent GOAWAY, finishing existing streams *)
-  | Closed  (** Connection closed *)
+  | (** Connection created but not started *)
+    Idle
+  | (** Connection active and can send/receive *)
+    Active
+  | (** Sent GOAWAY, finishing existing streams *)
+    GoingAway
+  | (** Connection closed *)
+    Closed
 
 (** Stream state per RFC 9113 Section 5.1 *)
 type stream_state =
@@ -57,27 +61,38 @@ type stream_state =
 type stream = {
   id : int;
   state : stream_state Cell.t;
-  window_size : int Cell.t;  (** Flow control window *)
+  (** Flow control window *)
+  window_size : int Cell.t;
   headers : Hpack.header list Cell.t;
   data_chunks : bytes list Cell.t;
 }
 
 (** Connection settings per RFC 9113 Section 6.5.2 *)
 type settings = {
-  header_table_size : int Cell.t;  (** HPACK dynamic table size *)
-  enable_push : bool Cell.t;  (** Server push enabled *)
-  max_concurrent_streams : int option Cell.t;  (** Max concurrent streams *)
-  initial_window_size : int Cell.t;  (** Initial flow control window *)
-  max_frame_size : int Cell.t;  (** Maximum frame size *)
-  max_header_list_size : int option Cell.t;  (** Maximum header list size *)
+  (** HPACK dynamic table size *)
+  header_table_size : int Cell.t;
+  (** Server push enabled *)
+  enable_push : bool Cell.t;
+  (** Max concurrent streams *)
+  max_concurrent_streams : int option Cell.t;
+  (** Initial flow control window *)
+  initial_window_size : int Cell.t;
+  (** Maximum frame size *)
+  max_frame_size : int Cell.t;
+  (** Maximum header list size *)
+  max_header_list_size : int option Cell.t;
 }
 
 (** Connection configuration *)
 type config = {
-  max_frame_size : int;  (** Maximum frame size we'll accept *)
-  initial_window_size : int;  (** Initial window size for flow control *)
-  max_concurrent_streams : int;  (** Maximum concurrent streams *)
-  enable_push : bool;  (** Whether to enable server push *)
+  (** Maximum frame size we'll accept *)
+  max_frame_size : int;
+  (** Initial window size for flow control *)
+  initial_window_size : int;
+  (** Maximum concurrent streams *)
+  max_concurrent_streams : int;
+  (** Whether to enable server push *)
+  enable_push : bool;
 }
 
 (** Connection handle *)

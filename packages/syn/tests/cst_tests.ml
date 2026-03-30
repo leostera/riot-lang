@@ -1789,7 +1789,7 @@ let tests =
         | Syn.Cst.SignatureItem.ModuleDeclaration
             {
               module_name;
-              module_type = Syn.Cst.ModuleType.Signature _;
+              definition = Syn.Cst.ModuleSignature.Signature (Syn.Cst.ModuleType.Signature _);
               is_recursive = false;
               _;
             }
@@ -2036,8 +2036,9 @@ let tests =
         match signature_items cst with
         | [ Syn.Cst.SignatureItem.ModuleDeclaration
                 {
-                module_type =
-                  ((Syn.Cst.ModuleType.Signature _) as module_type);
+                definition =
+                  Syn.Cst.ModuleSignature.Signature
+                    ((Syn.Cst.ModuleType.Signature _) as module_type);
                 _;
                 } ] -> (
             match Syn.CstBuilder.signature_items_of_module_type module_type with
@@ -2107,8 +2108,9 @@ let tests =
         match signature_items cst with
         | [ Syn.Cst.SignatureItem.ModuleDeclaration
                 {
-                module_type =
-                  ((Syn.Cst.ModuleType.Signature _) as module_type);
+                definition =
+                  Syn.Cst.ModuleSignature.Signature
+                    ((Syn.Cst.ModuleType.Signature _) as module_type);
                 _;
                 } ] -> (
             match Syn.CstBuilder.signature_items_of_module_type module_type with
@@ -2156,8 +2158,9 @@ let tests =
                | Syn.Cst.SignatureItem.ModuleDeclaration
                    {
                      module_name;
-                     module_type =
-                       ((Syn.Cst.ModuleType.Signature _) as module_type);
+                     definition =
+                       Syn.Cst.ModuleSignature.Signature
+                         ((Syn.Cst.ModuleType.Signature _) as module_type);
                      _;
                    }
                  when String.equal (Syn.Cst.Token.text module_name) "Green" ->
@@ -2250,8 +2253,9 @@ let tests =
         match signature_items cst with
         | [ Syn.Cst.SignatureItem.ModuleDeclaration
                 {
-                module_type =
-                  ((Syn.Cst.ModuleType.Signature _) as module_type);
+                definition =
+                  Syn.Cst.ModuleSignature.Signature
+                    ((Syn.Cst.ModuleType.Signature _) as module_type);
                 _;
                 } ] -> (
             match Syn.CstBuilder.signature_items_of_module_type module_type with

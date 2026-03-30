@@ -36,6 +36,11 @@ This file is _yours_. Keep it up to date after every big change.
   - `render_module_expression_doc` now only requests nested structure-item relift from the real `ModuleExpression.Structure` branch.
   - Non-`struct` nested module expressions continue to render as ordinary module expressions instead of flowing through an impossible nested-item helper path.
 
+- [x] Restore structural support for valid interface-side module aliases.
+  - `Syn.Cst.ModuleSignature` now distinguishes `module M : S` from `module M = N`.
+  - `.mli` module alias surfaces such as `module Addr = Addr` format structurally again instead of failing during CST lifting.
+  - the reported workspace failures in `gooey`, `http2/connection`, `kernel`, and `miniriot` now pass targeted workspace verification again.
+
 - [ ] Delete dead or redundant formatter branches that were only supporting older broader CST shapes.
   - Focus on `lower.ml`.
   - Prefer removing impossible-state handling that the new CST already forbids.
@@ -54,6 +59,8 @@ This file is _yours_. Keep it up to date after every big change.
 ## Validate
 
 - `timeout 120 tusk build syn krasny fixme tusk-fix`
+- `timeout 180 tusk test syn:cst_tests`
+- `timeout 180 tusk test krasny:format_tests`
 - `timeout 300 python3 packages/syn/tests/test_runner.py cst`
 - `timeout 300 python3 packages/syn/tests/test_runner.py cst --refresh-clean`
 - `timeout 300 python3 packages/krasny/tests/test_runner.py --filter 051`

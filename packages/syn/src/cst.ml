@@ -2778,11 +2778,15 @@ module LetBinding = struct
 end
 
 module ModuleSignature = struct
+  type definition =
+    | Signature of module_type
+    | Alias of module_expression
+
   type t = {
     syntax_node : syntax_node;
     module_name : Token.t;
     functor_parameters : functor_parameter list;
-    module_type : module_type;
+    definition : definition;
     next_and_declaration : t option;
     is_recursive : bool;
     owned_trivia : owned_trivia;
@@ -2794,7 +2798,15 @@ module ModuleSignature = struct
 
   let functor_parameters = fun decl -> decl.functor_parameters
 
-  let module_type = fun decl -> decl.module_type
+  let definition = fun decl -> decl.definition
+
+  let module_type = function
+    | {definition = Signature module_type; _} -> Some module_type
+    | {definition = Alias _; _} -> None
+
+  let module_expression = function
+    | {definition = Signature _; _} -> None
+    | {definition = Alias module_expression; _} -> Some module_expression
 
   let rec and_declarations = fun decl ->
     match decl.next_and_declaration with

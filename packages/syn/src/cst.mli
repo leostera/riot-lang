@@ -4044,11 +4044,15 @@ end
     ```
 *)
 module ModuleSignature : sig
+  type definition =
+    | Signature of module_type
+    | Alias of module_expression
+
   type t = {
     syntax_node : syntax_node;
     module_name : Token.t;
     functor_parameters : functor_parameter list;
-    module_type : module_type;
+    definition : definition;
     next_and_declaration : t option;
     is_recursive : bool;
     owned_trivia : owned_trivia;
@@ -4059,7 +4063,11 @@ module ModuleSignature : sig
 
   val functor_parameters : t -> functor_parameter list
 
-  val module_type : t -> module_type
+  val definition : t -> definition
+
+  val module_type : t -> module_type option
+
+  val module_expression : t -> module_expression option
 
   val and_declarations : t -> t list
 

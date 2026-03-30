@@ -4800,26 +4800,6 @@ and render_module_expression_doc = function
 
 and render_module_signature_with_keyword keyword_doc
     (decl : Syn.Cst.ModuleSignature.t) =
-  let module_name = Syn.Cst.ModuleSignature.module_name_token decl in
-  let functor_parameters = Syn.Cst.ModuleSignature.functor_parameters decl in
-  let module_type = Syn.Cst.ModuleSignature.module_type decl in
-  let header =
-    Doc.concat
-      [
-        keyword_doc;
-        Doc.space;
-        doc_of_token module_name;
-        (if functor_parameters = [] then
-           Doc.empty
-         else
-           Doc.concat
-             [
-               Doc.space;
-               Doc.join Doc.space (List.map render_functor_parameter functor_parameters);
-             ]);
-      ]
-  in
-  let header = Doc.concat [ header; colon; render_module_type_doc module_type ] in
   let rest = Syn.Cst.ModuleSignature.and_declarations decl in
   Doc.join blank_line
     (render_module_signature_header
@@ -4834,7 +4814,6 @@ and render_module_signature_header keyword_doc
     (decl : Syn.Cst.ModuleSignature.t) =
   let module_name = Syn.Cst.ModuleSignature.module_name_token decl in
   let functor_parameters = Syn.Cst.ModuleSignature.functor_parameters decl in
-  let module_type = Syn.Cst.ModuleSignature.module_type decl in
   let header =
     Doc.concat
       [
@@ -4851,7 +4830,11 @@ and render_module_signature_header keyword_doc
              ]);
       ]
   in
-  Doc.concat [ header; colon; render_module_type_doc module_type ]
+  match Syn.Cst.ModuleSignature.definition decl with
+  | Syn.Cst.ModuleSignature.Signature module_type ->
+      Doc.concat [ header; colon; render_module_type_doc module_type ]
+  | Syn.Cst.ModuleSignature.Alias module_expression ->
+      Doc.concat [ header; equals; render_module_expression_doc module_expression ]
 
 and render_module_structure_with_keyword keyword_doc
     (decl : Syn.Cst.ModuleStructure.t) =

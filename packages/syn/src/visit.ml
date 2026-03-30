@@ -870,7 +870,12 @@ and descend_module_signature = fun walk ctx (declaration : Cst.ModuleSignature.t
   walk.functor_parameter
   ctx
   (Cst.ModuleSignature.functor_parameters declaration) in
-  let ctx = walk.module_type ctx (Cst.ModuleSignature.module_type declaration) in
+  let ctx =
+    match Cst.ModuleSignature.definition declaration with
+    | Cst.ModuleSignature.Signature module_type -> walk.module_type ctx module_type
+    | Cst.ModuleSignature.Alias module_expression ->
+        walk.module_expression ctx module_expression
+  in
   List.fold_left walk.module_signature ctx (Cst.ModuleSignature.and_declarations declaration)
 and descend_module_structure = fun walk ctx (declaration : Cst.ModuleStructure.t) ->
   let ctx = List.fold_left

@@ -40,54 +40,51 @@
 
 open Std
 
-(** {1 Core Modules} *)
-
-module Geometry = Geometry
 (** Geometric primitives (Point, Rect) *)
+module Geometry = Geometry
 
-module Viewport = Viewport
 (** Viewport dimensions *)
+module Viewport = Viewport
 
-module Style = Style
 (** Style configuration and builder API *)
+module Style = Style
 
-module Element = Element
 (** UI element tree *)
+module Element = Element
 
-module Render = Render
 (** Render commands *)
+module Render = Render
 
-module Ansi_formatter = Ansi_formatter
 (** ANSI terminal formatting *)
+module Ansi_formatter = Ansi_formatter
 
+(** Terminal renderer *)
 module Terminal_renderer_fullscreen = Terminal_renderer_fullscreen
 module Terminal_renderer_inline = Terminal_renderer_inline
-(** Terminal renderer *)
 
 (** {1 Configuration} *)
 
-type text_measurer = string -> Style.t -> Viewport.t
 (** Function type for measuring text dimensions.
     Takes text content and style, returns dimensions. *)
+type text_measurer = string -> Style.t -> Viewport.t
 
 module Config : sig
   type t
   
-  val make : 
+  (** Create a layout configuration *)
+  val make :
     viewport:Viewport.t ->
     text_measurer:text_measurer ->
     unit ->
     t
-  (** Create a layout configuration *)
   
-  val default_text_measurer : text_measurer
   (** Simple terminal-based text measurement:
       width = character count * 8.0, height = font size *)
+  val default_text_measurer : text_measurer
 end
 
 (** {1 Layout Algorithm} *)
 
-val layout : config:Config.t -> Element.t -> Render.command_list
 (** [layout ~config element] computes the layout for [element] using the
     given configuration and returns a list of render commands.
     
@@ -97,3 +94,4 @@ val layout : config:Config.t -> Element.t -> Render.command_list
     @param element The root element to layout
     @return List of render commands to draw the UI
 *)
+val layout : config:Config.t -> Element.t -> Render.command_list

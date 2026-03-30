@@ -7471,7 +7471,18 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  Cst.ModuleSignature.syntax_node = module_decl_node;
                  module_name;
                  functor_parameters;
-                 module_type;
+                 definition = Cst.ModuleSignature.Signature module_type;
+                 next_and_declaration = None;
+                 is_recursive = is_recursive_group || is_recursive_declaration;
+                 owned_trivia;
+               }
+           | Some
+               (module_name, functor_parameters, None, Some module_expression, is_recursive_declaration, owned_trivia) ->
+               {
+                 Cst.ModuleSignature.syntax_node = module_decl_node;
+                 module_name;
+                 functor_parameters;
+                 definition = Cst.ModuleSignature.Alias module_expression;
                  next_and_declaration = None;
                  is_recursive = is_recursive_group || is_recursive_declaration;
                  owned_trivia;

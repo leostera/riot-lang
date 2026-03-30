@@ -1669,6 +1669,21 @@ let type_extension_to_json = fun decl ->
   ]
 
 let rec module_signature_to_json decl =
+  let definition_json =
+    match Cst.ModuleSignature.definition decl with
+    | Cst.ModuleSignature.Signature module_type ->
+        Json.Object
+          [
+            ("kind", Json.String "signature");
+            ("module_type", module_type_to_json module_type);
+          ]
+    | Cst.ModuleSignature.Alias module_expression ->
+        Json.Object
+          [
+            ("kind", Json.String "alias");
+            ("module_expression", module_expression_to_json module_expression);
+          ]
+  in
   Json.Object [
     ("syntax_node", syntax_node_to_json (Cst.ModuleSignature.syntax_node decl));
     ("module_name", token_to_json (Cst.ModuleSignature.module_name_token decl));
@@ -1676,7 +1691,7 @@ let rec module_signature_to_json decl =
       "functor_parameters",
       Json.Array (List.map functor_parameter_to_json (Cst.ModuleSignature.functor_parameters decl))
     );
-    ("module_type", module_type_to_json (Cst.ModuleSignature.module_type decl));
+    ("definition", definition_json);
     (
       "and_declarations",
       Json.Array (List.map module_signature_to_json (Cst.ModuleSignature.and_declarations decl))
