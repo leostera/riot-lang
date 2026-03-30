@@ -65,6 +65,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - `Format_core.format` now has an explicit EOF policy: non-empty formatted output ends with a final newline, without inspecting the input source to inherit that behavior.
 - top-level structure phrase separators now come from direct source-file separator tokens, not by slicing raw source between item spans or preserving expression runs from source text.
+- structure/signature `open!` statements now render the bang from `bang_token`, instead of hardcoding `!` in the formatter.
 - trivia between `fun ... ->` and the first body token now comes from that body token's `leading_trivia`; `lower.ml` no longer reparses a raw source slice for that path.
 - trivia around `if ... then ... else` branches now comes from `else_token.leading_trivia` and the next branch node's first-token `leading_trivia`; `lower.ml` no longer reparses raw source spans for that path.
 - `if` conditions now render from ordinary expression structure; `lower.ml` no longer scans token text for `&&` / `||` or comment-like trivia just to format boolean conditions.

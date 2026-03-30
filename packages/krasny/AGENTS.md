@@ -51,6 +51,7 @@
 45. Render index expressions from `Syn.Cst.index_expression.opening_tokens` plus `closing_token`. Do not reconstruct `.[ ]`, `.( )`, or extended index-operator punctuation from raw direct-token text once `syn` exposes the delimiter tokens explicitly.
 46. Render signed int/float literals from `sign_token` when the CST constant carries one. Do not rescan literal-node direct tokens for leading `+` / `-`, especially for signed literal patterns.
 47. Render operator expressions, operator patterns, and infix/prefix expression operator docs from CST-carried operator tokens directly. Do not concatenate raw token text back into an operator string when the CST already preserves the exact token sequence.
+48. Render structure/signature `open!` statements from `bang_token` when present. Do not hardcode `!` in the formatter when the CST already carries the token.
 
 ## Validate
 

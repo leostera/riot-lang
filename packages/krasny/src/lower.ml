@@ -4804,7 +4804,11 @@ and render_structure_item = function
       Doc.concat
         [
           kw_open;
-          (if open_.bang_token = None then Doc.empty else Doc.text "!");
+          (match open_.bang_token with
+          | None ->
+              Doc.empty
+          | Some bang_token ->
+              doc_of_token bang_token);
           Doc.space;
           render_open_target open_.target;
         ]
@@ -4849,7 +4853,11 @@ and render_signature_item item =
       Doc.concat
         [
           kw_open;
-          (if open_.bang_token = None then Doc.empty else Doc.text "!");
+          (match open_.bang_token with
+          | None ->
+              Doc.empty
+          | Some bang_token ->
+              doc_of_token bang_token);
           Doc.space;
           render_open_target open_.target;
         ]

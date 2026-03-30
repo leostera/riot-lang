@@ -588,6 +588,20 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
 |}
           ~actual:formatted;
         Ok ());
+    Test.case "format open bang from explicit bang tokens in ml and mli"
+      (fun () ->
+        let source = "open! Inline\n" in
+        let actual_ml =
+          parse_ml source |> Krasny.format
+          |> Result.expect ~msg:"implementation open! should render from bang_token"
+        in
+        let actual_mli =
+          parse_mli source |> Krasny.format
+          |> Result.expect ~msg:"signature open! should render from bang_token"
+        in
+        Test.assert_equal ~expected:source ~actual:actual_ml;
+        Test.assert_equal ~expected:source ~actual:actual_mli;
+        Ok ());
     Test.case "format breaks long tuples without source-length sniffing" (fun () ->
         let source =
           {|let tuple_value = (left_side_identifier, right_side_identifier, final_identifier, fourth_identifier)
