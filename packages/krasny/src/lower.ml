@@ -62,18 +62,6 @@ let render_value_declaration_name = fun (decl : Syn.Cst.value_declaration) ->
   else
     doc_of_token decl.name_token
 
-let nontrivia_bounds_span_of_syntax_node = fun syntax_node ->
-  let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
-  match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
-  | [] ->
-      full_span
-  | first :: rest ->
-      let last = List.fold_left (fun _ token -> token) first rest in
-      {
-        Syn.Ceibo.Span.start = (Syn.Ceibo.Red.SyntaxToken.span first).start;
-        end_ = (Syn.Ceibo.Red.SyntaxToken.span last).end_
-      }
-
 let binding_has_explicit_fun_rhs = fun (binding : Syn.Cst.let_binding) ->
   List.is_empty binding.parameters
   && match binding.value with
@@ -1159,7 +1147,7 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
     Syn.Cst.OwnedTrivia.trailing owned
     |> doc_of_owned_trivia
          ~start:
-           ((nontrivia_bounds_span_of_syntax_node
+           ((Syn.Cst.token_body_span
                (Syn.Cst.VariantConstructor.syntax_node constructor)).end_)
   in
   let body = body |> doc_with_leading_trivia leading in
@@ -3186,13 +3174,6 @@ and render_fun_expression
   let parameters = parameters |> List.map render_parameter in
   let has_multiline_parameter = List.exists Doc.is_multiline parameters in
   let body = render_fun_body body in
-  let body_start =
-    match fun_.body with
-    | Syn.Cst.Expression expression ->
-        (nontrivia_bounds_span_of_syntax_node (Syn.Cst.Expression.syntax_node expression)).start
-    | Syn.Cst.Cases cases ->
-        (nontrivia_bounds_span_of_syntax_node cases.syntax_node).start
-  in
   let body_trivia =
     (match fun_.body with
     | Syn.Cst.Expression expression ->
@@ -3335,7 +3316,7 @@ and render_if_expression_block
     | Some else_token ->
         render_leading_trivia_before_token
           ~after:
-            (nontrivia_bounds_span_of_syntax_node
+            (Syn.Cst.token_body_span
                (Syn.Cst.Expression.syntax_node then_branch))
               .end_
           else_token
@@ -3634,7 +3615,7 @@ and render_sequence_expression ({ separator_tokens; expressions; _ } : Syn.Cst.s
               | Some separator_token ->
                   render_leading_trivia_after_token_before_node
                     ~after:
-                      (nontrivia_bounds_span_of_syntax_node
+                      (Syn.Cst.token_body_span
                          (Syn.Cst.Expression.syntax_node previous_expression))
                         .end_
                     separator_token
@@ -3642,7 +3623,7 @@ and render_sequence_expression ({ separator_tokens; expressions; _ } : Syn.Cst.s
               | None ->
                   render_leading_trivia_before_node
                     ~after:
-                      (nontrivia_bounds_span_of_syntax_node
+                      (Syn.Cst.token_body_span
                          (Syn.Cst.Expression.syntax_node previous_expression))
                         .end_
                     (Syn.Cst.Expression.syntax_node expression))
@@ -4941,93 +4922,6 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.ClassTypeDeclaration decl ->
       unsupported_syntax ~context:[ "signature_item" ] ~syntax_node:decl.syntax_node
         "class type declaration items do not have a structural formatter yet"
-
-and span_of_syntax_node_nontrivia_bounds ?(preserve_leading_trivia = false) syntax_node =
-  let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
-  match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
-  | [] ->
-      full_span
-  | first :: rest ->
-      let last = List.fold_left (fun _ token -> token) first rest in
-      {
-        Syn.Ceibo.Span.start =
-          (if preserve_leading_trivia then
-             full_span.start
-           else
-             (Syn.Ceibo.Red.SyntaxToken.span first).start);
-        end_ = (Syn.Ceibo.Red.SyntaxToken.span last).end_;
-      }
-
-and span_of_syntax_node_nonwhitespace_bounds ?(preserve_leading_trivia = false) syntax_node =
-  span_of_syntax_node_nontrivia_bounds ~preserve_leading_trivia syntax_node
-
-and span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node =
-  let start_span = span_of_syntax_node_nontrivia_bounds syntax_node in
-  let end_span =
-    span_of_syntax_node_nonwhitespace_bounds ~preserve_leading_trivia:true syntax_node
-  in
-  { Syn.Ceibo.Span.start = start_span.start; end_ = end_span.end_ }
-
-and trivia_span = fun trivia -> Syn.Cst.Token.span (Syn.Cst.Trivia.token trivia)
-
-and owned_trivia_end = fun owned -> Syn.Cst.OwnedTrivia.leading owned
-@ Syn.Cst.OwnedTrivia.inner owned
-@ Syn.Cst.OwnedTrivia.trailing owned
-|> List.fold_left
-     (fun acc trivia ->
-       Int.max acc (trivia_span trivia).end_)
-     0
-
-and record_field_owned_trivia_end = fun field ->
-  owned_trivia_end (Syn.Cst.RecordField.owned_trivia field)
-
-and variant_constructor_owned_trivia_end = fun constructor ->
-  let arguments_end =
-    match Syn.Cst.VariantConstructor.arguments constructor with
-    | Some (Syn.Cst.ConstructorArguments.Record fields) ->
-        fields
-        |> List.fold_left
-             (fun acc field -> Int.max acc (record_field_owned_trivia_end field))
-             0
-    | Some (Syn.Cst.ConstructorArguments.Tuple _)
-    | None ->
-        0
-  in
-  Int.max arguments_end
-    (owned_trivia_end (Syn.Cst.VariantConstructor.owned_trivia constructor))
-
-and type_definition_owned_trivia_end =
-  function
-  | Syn.Cst.TypeDefinition.Record { fields; _ } ->
-      fields
-      |> List.fold_left
-           (fun acc field -> Int.max acc (record_field_owned_trivia_end field))
-           0
-  | Syn.Cst.TypeDefinition.Variant { constructors; _ } ->
-      constructors
-      |> List.fold_left
-           (fun acc constructor ->
-             Int.max acc (variant_constructor_owned_trivia_end constructor))
-           0
-  | Syn.Cst.TypeDefinition.Abstract
-  | Syn.Cst.TypeDefinition.Alias _
-  | Syn.Cst.TypeDefinition.Extensible _
-  | Syn.Cst.TypeDefinition.FirstClassModule _
-  | Syn.Cst.TypeDefinition.Object _
-  | Syn.Cst.TypeDefinition.PolyVariant _ ->
-      0
-
-and type_declaration_owned_trivia_end = fun decl ->
-  let current =
-    Int.max
-      (owned_trivia_end (Syn.Cst.TypeDeclaration.owned_trivia decl))
-      (type_definition_owned_trivia_end (Syn.Cst.TypeDeclaration.type_definition decl))
-  in
-  Syn.Cst.TypeDeclaration.and_declarations decl
-  |> List.fold_left
-       (fun acc declaration ->
-         Int.max acc (type_declaration_owned_trivia_end declaration))
-       current
 
 and render_structure_top_level_items ~trailing_phrase_separator_tokens ~items =
   let rec join_entries = function

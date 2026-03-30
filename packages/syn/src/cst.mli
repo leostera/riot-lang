@@ -4185,6 +4185,10 @@ val leading_trivia_before_node : after:int -> syntax_node -> trivia list
 val leading_trivia_after_token_before_node :
   after:int -> Token.t -> syntax_node -> trivia list
 
+(** Return the span covered by the syntax node's real tokens, excluding any
+    leading token-attached trivia. *)
+val token_body_span : syntax_node -> Ceibo.Span.t
+
 module OwnedTrivia : sig
   type t = owned_trivia = {
     leading : trivia list;

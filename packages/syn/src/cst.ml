@@ -3035,6 +3035,18 @@ let leading_trivia_after_token_before_node = fun ~after token syntax_node ->
           ~after:(Ceibo.Red.SyntaxToken.span token.Token.syntax_token).end_
           { Token.syntax_token = first_token }
 
+let token_body_span = fun syntax_node ->
+  let full_span = Ceibo.Red.SyntaxNode.span syntax_node in
+  match Ceibo.Red.SyntaxNode.tokens syntax_node with
+  | [] ->
+      full_span
+  | first :: rest ->
+      let last = List.fold_left (fun _ token -> token) first rest in
+      {
+        Ceibo.Span.start = (Ceibo.Red.SyntaxToken.span first).start;
+        end_ = (Ceibo.Red.SyntaxToken.span last).end_;
+      }
+
 module OwnedTrivia = struct
   type t = owned_trivia = {
     leading : trivia list;

@@ -95,6 +95,8 @@ This file is _yours_. Keep it up to date after every big change.
 - top-level structure/signature rendering now trusts the incoming ordered CST item streams directly; `lower.ml` no longer re-sorts those item lists by reconstructed syntax-node spans before joining docs.
 - signature top-level rendering no longer reconstructs per-item spans at all; `render_signature_top_level_items` now joins the ordered CST stream directly because signature entries have no phrase-separator suffix path today.
 - `Syn.Cst.Implementation` / `Interface` now carry per-item `trailing_phrase_separator_tokens`, and `krasny` uses those CST-provided boundary tokens directly instead of recomputing top-level structure phrase-separator placement from item spans.
+- dead top-level span/owned-trivia boundary helpers such as `span_of_syntax_node_nontrivia_bounds`, `span_of_syntax_node_trim_leading_trivia_keep_trailing_comments`, and `type_declaration_owned_trivia_end` are gone from `lower.ml`; the remaining structural debt is no longer hiding in unused formatter boundary code.
+- `Syn.Cst.token_body_span` now owns the remaining generic “real token span” query, and `krasny` uses that helper instead of scanning `Ceibo.Red.SyntaxNode.tokens` locally for variant-constructor trailing trivia and expression boundary offsets.
 - `Lower.source_file` and `Format_core.format` no longer thread parse-result source through the normal lowering path just to satisfy dead internal parameters.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms; signature-bodied first-class module types fail explicitly instead of reconstructing raw `(module ...)` text.
 - `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature attribute and extension payload item streams directly.
@@ -192,7 +194,6 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit comment-sensitive layout facts for apply / after-`=` policy, so `krasny` can stop scanning red-token leading trivia through `syntax_node_has_comment_like_trivia`
 
 - [ ] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
-  - `span_of_syntax_node_nontrivia_bounds`, `span_of_syntax_node_trim_leading_trivia_keep_trailing_comments`, and `type_declaration_owned_trivia_end` still reconstruct layout boundaries from red-tree token spans
   - body/branch boundary trivia now routes through `Syn.Cst.leading_trivia_*` helpers instead of direct formatter-side token walks, but the remaining debt is still missing node-specific CST boundary fields rather than permanent generic helper indirection
 
 - [ ] Add regression coverage before removing each heuristic
