@@ -5611,24 +5611,23 @@ let tests =
         | binding :: _ -> (
             match Syn.Cst.LetBinding.parameters binding with
             | Syn.Cst.Parameter.Optional
-                {
-                  label_token;
-                  binding_name_token = Some binding_name_token;
-                  binding_name_matches_label = true;
-                  has_default = true;
-                  default_value = Some (Syn.Cst.Expression.Fun _);
-                  binding_pattern = Some (Syn.Cst.Pattern.Typed _);
-                  _;
-                }
+                (Syn.Cst.Defaulted
+                  {
+                    label_token;
+                    binding_name_token = Some binding_name_token;
+                    binding_name_matches_label = true;
+                    default_value = Syn.Cst.Expression.Fun _;
+                    binding_pattern = Syn.Cst.Pattern.Typed _;
+                    _;
+                  })
               :: Syn.Cst.Parameter.Optional
-                   {
-                     label_token = renamed_label;
-                     binding_name_token = Some renamed_binding;
-                     binding_name_matches_label = false;
-                     has_default = false;
-                     default_value = None;
-                     _;
-                   }
+                   (Syn.Cst.Plain
+                     {
+                       label_token = renamed_label;
+                       binding_name_token = Some renamed_binding;
+                       binding_name_matches_label = false;
+                       _;
+                     })
               :: _ ->
                 Test.assert_equal ~expected:"f"
                   ~actual:(Syn.Cst.Token.text label_token);

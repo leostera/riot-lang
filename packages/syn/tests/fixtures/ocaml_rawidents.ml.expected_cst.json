@@ -879,6 +879,7 @@
             },
             {
               "tag": "optional",
+              "kind": "plain",
               "syntax_node": {
                 "kind": "OPTIONAL_PARAM",
                 "span": {
@@ -904,12 +905,12 @@
               },
               "binding_name_token": null,
               "binding_name_matches_label": false,
-              "has_default": false,
               "default_value": null,
               "binding_pattern": null
             },
             {
               "tag": "optional",
+              "kind": "defaulted",
               "syntax_node": {
                 "kind": "OPTIONAL_PARAM_DEFAULT",
                 "span": {
@@ -942,7 +943,6 @@
                 }
               },
               "binding_name_matches_label": true,
-              "has_default": true,
               "default_value": {
                 "tag": "path",
                 "syntax_node": {
@@ -2135,6 +2135,7 @@
             },
             {
               "tag": "optional",
+              "kind": "plain",
               "syntax_node": {
                 "kind": "OPTIONAL_PARAM",
                 "span": {
@@ -2160,7 +2161,6 @@
               },
               "binding_name_token": null,
               "binding_name_matches_label": false,
-              "has_default": false,
               "default_value": null,
               "binding_pattern": null
             },

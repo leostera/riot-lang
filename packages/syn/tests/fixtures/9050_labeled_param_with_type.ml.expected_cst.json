@@ -1030,6 +1030,7 @@
           "parameters": [
             {
               "tag": "optional",
+              "kind": "defaulted",
               "syntax_node": {
                 "kind": "OPTIONAL_PARAM_DEFAULT",
                 "span": {
@@ -1062,7 +1063,6 @@
                 }
               },
               "binding_name_matches_label": true,
-              "has_default": true,
               "default_value": {
                 "tag": "literal",
                 "literal": {

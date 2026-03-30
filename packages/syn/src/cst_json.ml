@@ -758,26 +758,44 @@ and parameter_to_json =
         ("binding_name_matches_label", Json.Bool binding_name_matches_label);
         ("binding_pattern", option_to_json pattern_to_json binding_pattern)
       ]
-  | Cst.Parameter.Optional {
+  | Cst.Parameter.Optional (Cst.Plain {
     syntax_node;
     sigil_token;
     label_token;
     binding_name_token;
     binding_name_matches_label;
-    has_default;
-    default_value;
     binding_pattern
-  } ->
+  }) ->
       Json.Object [
         ("tag", Json.String "optional");
+        ("kind", Json.String "plain");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("sigil_token", token_to_json sigil_token);
         ("label_token", token_to_json label_token);
         ("binding_name_token", option_to_json token_to_json binding_name_token);
         ("binding_name_matches_label", Json.Bool binding_name_matches_label);
-        ("has_default", Json.Bool has_default);
-        ("default_value", option_to_json expression_to_json default_value);
+        ("default_value", Json.Null);
         ("binding_pattern", option_to_json pattern_to_json binding_pattern)
+      ]
+  | Cst.Parameter.Optional (Cst.Defaulted {
+    syntax_node;
+    sigil_token;
+    label_token;
+    binding_name_token;
+    binding_name_matches_label;
+    default_value;
+    binding_pattern
+  }) ->
+      Json.Object [
+        ("tag", Json.String "optional");
+        ("kind", Json.String "defaulted");
+        ("syntax_node", syntax_node_to_json syntax_node);
+        ("sigil_token", token_to_json sigil_token);
+        ("label_token", token_to_json label_token);
+        ("binding_name_token", option_to_json token_to_json binding_name_token);
+        ("binding_name_matches_label", Json.Bool binding_name_matches_label);
+        ("default_value", expression_to_json default_value);
+        ("binding_pattern", pattern_to_json binding_pattern)
       ]
   | Cst.Parameter.LocallyAbstract { syntax_node; binders } ->
       Json.Object [
