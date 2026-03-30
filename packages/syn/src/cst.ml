@@ -207,6 +207,9 @@ and payload =
     }
   | Type of core_type
   | Pattern of pattern_payload
+  | Opaque_tokens of {
+      tokens : Token.t list;
+    }
 
 and pattern_payload = {
   pattern_syntax_node : syntax_node;
@@ -2389,6 +2392,9 @@ module Payload = struct
       }
     | Type of core_type
     | Pattern of pattern_payload
+    | Opaque_tokens of {
+        tokens : Token.t list;
+      }
 
   let item_syntax_nodes =
     function
@@ -2396,7 +2402,8 @@ module Payload = struct
     | Signature { item_syntax_nodes } ->
         Some item_syntax_nodes
     | Type _
-    | Pattern _ ->
+    | Pattern _
+    | Opaque_tokens _ ->
         None
 
   let core_type =
@@ -2404,7 +2411,8 @@ module Payload = struct
     | Type type_ -> Some type_
     | Structure _
     | Signature _
-    | Pattern _ ->
+    | Pattern _
+    | Opaque_tokens _ ->
         None
 
   let pattern_syntax_node =
@@ -2412,7 +2420,8 @@ module Payload = struct
     | Pattern payload -> Some payload.pattern_syntax_node
     | Structure _
     | Signature _
-    | Type _ ->
+    | Type _
+    | Opaque_tokens _ ->
         None
 
   let guard_syntax_node =
@@ -2420,7 +2429,18 @@ module Payload = struct
     | Pattern payload -> payload.guard_syntax_node
     | Structure _
     | Signature _
-    | Type _ ->
+    | Type _
+    | Opaque_tokens _ ->
+        None
+
+  let opaque_tokens =
+    function
+    | Opaque_tokens { tokens } ->
+        Some tokens
+    | Structure _
+    | Signature _
+    | Type _
+    | Pattern _ ->
         None
 end
 

@@ -342,6 +342,51 @@ let tests =
         Test.assert_equal ~expected:`Interface
           ~actual:(Syn.Cst.SourceFile.kind cst);
         Ok ());
+    Test.case "cst source files expose top-level phrase separator tokens"
+      (fun () ->
+        let result =
+          parse_ml
+            "let first = 1;;\n\
+             let second = 2;;\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        Test.assert_equal
+          ~expected:[ ";"; ";"; ";"; ";" ]
+          ~actual:
+            (Syn.Cst.SourceFile.phrase_separator_tokens cst
+            |> List.map Syn.Cst.Token.text);
+        Ok ());
+    Test.case "cst polymorphic-variant inherit patterns keep the path after #"
+      (fun () ->
+        let result = parse_ml "let x = match y with #color | #M.color -> 1\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding { value = Match { cases; _ }; _ } :: _ -> (
+            match cases with
+            | { pattern = PolyVariantInherit first; _ }
+              :: { pattern = PolyVariantInherit second; _ }
+              :: _ ->
+                Test.assert_equal ~expected:[ "color" ]
+                  ~actual:
+                    (Syn.Cst.Ident.segments first.type_path
+                    |> List.map Syn.Cst.Token.text);
+                Test.assert_equal ~expected:[ "M"; "color" ]
+                  ~actual:
+                    (Syn.Cst.Ident.segments second.type_path
+                    |> List.map Syn.Cst.Token.text);
+                Ok ()
+            | _ ->
+                Error "expected polymorphic-variant inherit match cases")
+        | _ ->
+            Error "expected let binding with match expression");
     Test.case "cst is absent when parse diagnostics exist" (fun () ->
         let result = parse_ml "let x =\n" in
         Test.assert_true (List.length result.diagnostics > 0);
@@ -3587,6 +3632,36 @@ let tests =
               ~actual:(Syn.Cst.Token.text result_name_token);
             Ok ()
         | _ -> Error "expected aliased core type binder with explicit sigil");
+    Test.case "cst tokens expose operator-like names and fixed operators"
+      (fun () ->
+        let result =
+          parse_mli
+            "val ( mod ) : int -> int -> int\nval ( mod ) : int -> int -> int\nval ( |> ) : 'a -> ('a -> 'b) -> 'b\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration { name_token = mod_name_token; _ }
+          :: Syn.Cst.SignatureItem.ValueDeclaration { name_token = second_mod_name_token; _ }
+          :: Syn.Cst.SignatureItem.ValueDeclaration { name_token = pipe_name_token; _ }
+          :: _ ->
+            Test.assert_equal ~expected:true
+              ~actual:(Syn.Cst.Token.is_operator_like_name mod_name_token);
+            Test.assert_equal ~expected:false
+              ~actual:(Syn.Cst.Token.is_identifier_like_name mod_name_token);
+            Test.assert_equal ~expected:true
+              ~actual:(Syn.Cst.Token.same_text mod_name_token second_mod_name_token);
+            Test.assert_equal ~expected:false
+              ~actual:(Syn.Cst.Token.same_text mod_name_token pipe_name_token);
+            (match Syn.Cst.Token.fixed_operator pipe_name_token with
+            | Some Syn.Cst.Token.PipeForward ->
+                Ok ()
+            | _ ->
+                Error "expected |> name token to expose PipeForward fixed-operator kind")
+        | _ -> Error "expected operator value declarations");
     Test.case
       "cst value declarations lift explicit polymorphic core types with inline comments"
       (fun () ->
@@ -3998,12 +4073,13 @@ let tests =
               ~actual:(Syn.Cst.Ident.name extension.name);
             Test.assert_equal ~expected:None ~actual:extension.payload_syntax_node;
             (match extension.payload with
-            | Some (Syn.Cst.Payload.Structure { item_syntax_nodes }) ->
-                Test.assert_equal ~expected:1
-                  ~actual:(List.length item_syntax_nodes);
+            | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+                Test.assert_equal
+                  ~expected:[ " "; "42" ]
+                  ~actual:(List.map Syn.Cst.Token.text tokens);
                 Ok ()
             | _ ->
-                Error "expected structure payload for standalone extension item")
+                Error "expected opaque token payload for standalone extension item")
         | _ ->
             Error "expected first item to be an extension item");
     Test.case "cst interfaces distinguish standalone attribute items" (fun () ->
@@ -4034,7 +4110,7 @@ let tests =
             Ok ()
         | _ ->
             Error "expected first item to be an interface extension item");
-    Test.case "cst interface extension payloads fall back to signature items"
+    Test.case "cst interface extension payloads default to opaque tokens"
       (fun () ->
         let result = parse_mli "[%%signature_item val x : int]\n" in
         let cst =
@@ -4042,32 +4118,27 @@ let tests =
             ~msg:"expected CST for diagnostics-free parse"
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
-        let payload_nodes =
+        let payload_tokens =
           signature_items cst
           |> List.filter_map (function
                | Syn.Cst.SignatureItem.Extension
                    {
-                     payload =
-                       Some (Syn.Cst.Payload.Signature { item_syntax_nodes });
+                     payload = Some (Syn.Cst.Payload.Opaque_tokens { tokens });
                      _;
                    } ->
-                   Some item_syntax_nodes
-               | Syn.Cst.SignatureItem.Extension
-                   {
-                     payload =
-                       Some (Syn.Cst.Payload.Structure { item_syntax_nodes });
-                     _;
-                   } ->
-                   Some item_syntax_nodes
+                   Some tokens
                | _ ->
                    None)
         in
-        match payload_nodes with
-        | _ :: _ ->
+        match payload_tokens with
+        | tokens :: _ ->
+            Test.assert_equal
+              ~expected:[ " "; "val"; " "; "x"; " "; ":"; " "; "int" ]
+              ~actual:(List.map Syn.Cst.Token.text tokens);
             Ok ()
         | [] ->
             Error "expected interface extension payload");
-    Test.case "cst builder can reify signature payload items from extensions"
+    Test.case "cst builder does not relift opaque extension payloads"
       (fun () ->
         let result = parse_mli "[%%signature_item val x : int]\n" in
         let cst =
@@ -4078,12 +4149,10 @@ let tests =
         match signature_items cst with
         | Syn.Cst.SignatureItem.Extension { payload = Some payload; _ } :: _ -> (
             match Syn.CstBuilder.signature_items_of_payload payload with
-            | Ok (Some (Syn.Cst.SignatureItem.ValueDeclaration _ :: _)) ->
+            | Ok None ->
                 Ok ()
-            | Ok _ ->
-                Error "expected signature payload helper to reify value items"
             | Error _ ->
-                Error "expected signature payload helper to succeed")
+                Error "expected opaque extension payload helper to stay non-reifying")
         | _ ->
             Error "expected extension payload");
     Test.case "cst attributed types keep attribute names and payload nodes" (fun () ->
@@ -4229,7 +4298,7 @@ let tests =
                 Error "expected expression attribute payload")
         | _ ->
             Error "expected let binding with attribute payload");
-    Test.case "cst extensions lift typed `:` payloads" (fun () ->
+    Test.case "cst extensions keep typed `:` payloads opaque by default" (fun () ->
         let result = parse_ml "let _ = [%foo: int -> string]\n" in
         let cst =
           expect_some result.cst
@@ -4242,29 +4311,18 @@ let tests =
               value =
                 Syn.Cst.Expression.Extension
                   {
-                    payload =
-                      Some
-                        (Syn.Cst.Payload.Type
-                          (Syn.Cst.CoreType.Arrow
-                            {
-                              parameter_type =
-                                Syn.Cst.CoreType.Constr { constructor_path = left; _ };
-                              result_type =
-                                Syn.Cst.CoreType.Constr { constructor_path = right; _ };
-                              _;
-                            }));
+                    payload = Some (Syn.Cst.Payload.Opaque_tokens { tokens });
                     _;
                   };
               _;
             }
           :: _ ->
-            Test.assert_equal ~expected:(Some "int")
-              ~actual:(Syn.Cst.Ident.name left);
-            Test.assert_equal ~expected:(Some "string")
-              ~actual:(Syn.Cst.Ident.name right);
+            Test.assert_equal
+              ~expected:[ ":"; " "; "int"; " "; "->"; " "; "string" ]
+              ~actual:(List.map Syn.Cst.Token.text tokens);
             Ok ()
         | _ ->
-            Error "expected typed extension payload");
+            Error "expected opaque typed extension payload");
     Test.case "cst extensions survive inline comments after bracket" (fun () ->
         let result = parse_ml "let _ = [ (* c *) %foo: int -> string]\n" in
         let cst =
@@ -4279,7 +4337,7 @@ let tests =
                 Syn.Cst.Expression.Extension
                   {
                     name;
-                    payload = Some (Syn.Cst.Payload.Type (Syn.Cst.CoreType.Arrow _));
+                    payload = Some (Syn.Cst.Payload.Opaque_tokens { tokens });
                     _;
                   };
               _;
@@ -4287,9 +4345,12 @@ let tests =
           :: _ ->
             Test.assert_equal ~expected:(Some "foo")
               ~actual:(Syn.Cst.Ident.name name);
+            Test.assert_equal
+              ~expected:[ " "; ":"; " "; "int"; " "; "->"; " "; "string" ]
+              ~actual:(List.map Syn.Cst.Token.text tokens);
             Ok ()
         | _ ->
-            Error "expected commented typed extension payload");
+            Error "expected commented opaque extension payload");
     Test.case "cst exception declarations preserve declared names" (fun () ->
         let result = parse_ml "exception Not_found\n" in
         let cst =
@@ -8836,6 +8897,50 @@ let tests =
               ~actual:(Syn.Cst.Token.text literal_token);
             Ok ()
         | _ -> Error "expected object extension member");
+    Test.case "cst builder keeps object trailing trivia as explicit body entries" (fun () ->
+        let source =
+          "let value =\n  object\n    method run = 1\n    (** body doc *)\n    (* body comment *)\n  end\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Object
+                  {
+                    syntax_node;
+                    members;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            let body_items =
+              Syn.CstBuilder.object_member_items_of_members
+                ~source_node:syntax_node
+                members
+            in
+            (match body_items with
+            | [
+             Syn.CstBuilder.ObjectMember (Syn.Cst.ObjectMember.Method _);
+             Syn.CstBuilder.Docstring docstring;
+             Syn.CstBuilder.Comment comment;
+            ] ->
+                Test.assert_equal
+                  ~expected:"(** body doc *)"
+                  ~actual:(Syn.Cst.Docstring.text docstring);
+                Test.assert_equal
+                  ~expected:"(* body comment *)"
+                  ~actual:(Syn.Cst.Comment.text comment);
+                Ok ()
+            | _ ->
+                Error "expected object stream to include method and body docstring/comment")
+        | _ -> Error "expected object expression in leading let binding");
     Test.case "cst record patterns preserve field punning and nested patterns"
       (fun () ->
         let source = "let x = match r with { user = { id }; name } -> id\n" in

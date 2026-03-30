@@ -241,6 +241,16 @@ and payload =
 
           Example: `[%foo? Some x when x > 0]`.
       *)
+  | Opaque_tokens of {
+      tokens : Token.t list;
+    }
+      (** A lossless opaque payload preserved as its raw shell-local token
+          slice.
+
+          This is the default for extension payloads whose contents are not
+          committed to OCaml CST structure yet, for example foreign mini-
+          languages such as `[%sql SELECT * FROM users]`.
+      *)
 
 (** A pattern payload with its optional `when` guard. *)
 and pattern_payload = {
@@ -4374,6 +4384,9 @@ module Payload : sig
       }
     | Type of core_type
     | Pattern of pattern_payload
+    | Opaque_tokens of {
+        tokens : Token.t list;
+      }
   val item_syntax_nodes : t -> syntax_node list option
 
   val core_type : t -> core_type option
@@ -4381,6 +4394,8 @@ module Payload : sig
   val pattern_syntax_node : t -> syntax_node option
 
   val guard_syntax_node : t -> syntax_node option
+
+  val opaque_tokens : t -> Token.t list option
 end
 
 (** A parsed implementation source file.

@@ -2258,9 +2258,17 @@ let payload_text_from_tokens = fun all_tokens ~start_offset ~end_offset ->
       let span = Ceibo.Red.SyntaxToken.span syntax_token in
       span.start >= start_offset && span.end_ <= end_offset) |> List.map Ceibo.Red.SyntaxToken.text |> String.concat ""
 
-let annotation_payload_from_shell_impl : (Cst.syntax_node -> Cst.payload option) Cell.t = Cell.create (fun _ -> None)
+let attribute_payload_from_shell_impl : (Cst.syntax_node -> Cst.payload option) Cell.t =
+  Cell.create (fun _ -> None)
 
-let annotation_payload_from_shell = fun shell_node -> (Cell.get annotation_payload_from_shell_impl) shell_node
+let attribute_payload_from_shell = fun shell_node ->
+  (Cell.get attribute_payload_from_shell_impl) shell_node
+
+let extension_payload_from_shell_impl : (Cst.syntax_node -> Cst.payload option) Cell.t =
+  Cell.create (fun _ -> None)
+
+let extension_payload_from_shell = fun shell_node ->
+  (Cell.get extension_payload_from_shell_impl) shell_node
 
 let attribute_from_node node : Cst.attribute =
   let shell_node, payload_syntax_node = annotation_shell_and_payload ~annotation_kind:Syntax_kind.ATTRIBUTE_EXPR ~sigils:[
@@ -2285,7 +2293,7 @@ let attribute_from_node node : Cst.attribute =
         sigil_token = token sigil_syntax_token;
         name = annotation_name_from_tokens ~syntax_node:shell_node ~sigils:attribute_sigil_texts shell_tokens;
         payload_syntax_node;
-        payload = annotation_payload_from_shell shell_node
+        payload = attribute_payload_from_shell shell_node
       }
   | None ->
       bail ~message:"expected attribute sigil during Ceibo -> CST lifting" ~syntax_node:node ~context:[
@@ -2315,7 +2323,7 @@ let extension_from_node node : Cst.extension =
         sigil_token = token sigil_syntax_token;
         name = annotation_name_from_tokens ~syntax_node:shell_node ~sigils:extension_sigil_texts shell_tokens;
         payload_syntax_node;
-        payload = annotation_payload_from_shell shell_node;
+        payload = extension_payload_from_shell shell_node;
         attributes = []
       }
   | None ->
@@ -7816,6 +7824,57 @@ let raw_annotation_payload_from_shell = fun shell_node ->
         start_offset = (Ceibo.Red.SyntaxToken.span first_payload_token).start
       }
 
+let extension_payload_from_shell_default = fun shell_node ->
+  let all_tokens = direct_tokens shell_node in
+  let shell_tokens = direct_non_trivia_tokens shell_node in
+  let rec skip_sigils =
+    function
+    | syntax_token :: rest
+      when is_annotation_sigil_text (Ceibo.Red.SyntaxToken.text syntax_token) ->
+        skip_sigils rest
+    | rest ->
+        rest
+  in
+  let rec skip_qualified_name_tail = fun last_name_token ->
+    function
+    | dot_token :: name_token :: rest
+      when String.equal (Ceibo.Red.SyntaxToken.text dot_token) dot_text ->
+        skip_qualified_name_tail name_token rest
+    | rest ->
+        (last_name_token, rest)
+  in
+  match shell_tokens with
+  | open_token :: rest when String.equal (Ceibo.Red.SyntaxToken.text open_token) open_bracket_text -> (
+      match skip_sigils rest with
+      | name_token :: rest ->
+          let last_name_token, rest = skip_qualified_name_tail name_token rest in
+          let start_offset = (Ceibo.Red.SyntaxToken.span last_name_token).end_ in
+          let end_offset =
+            match List.rev rest with
+            | close_token :: _ when
+                String.equal (Ceibo.Red.SyntaxToken.text close_token) close_bracket_text
+                || String.equal (Ceibo.Red.SyntaxToken.text close_token) close_brace_text ->
+                (Ceibo.Red.SyntaxToken.span close_token).start
+            | _ ->
+                Ceibo.Red.SyntaxNode.span shell_node |> fun span -> span.end_
+          in
+          let tokens =
+            all_tokens
+            |> List.filter (fun syntax_token ->
+                   let span = Ceibo.Red.SyntaxToken.span syntax_token in
+                   span.start >= start_offset && span.end_ <= end_offset)
+            |> List.map token
+          in
+          if tokens = [] then
+            None
+          else
+            Some (Cst.Payload.Opaque_tokens { tokens })
+      | [] ->
+          None
+    )
+  | _ ->
+      None
+
 let structure_payload_item_syntax_nodes_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.VAL_DECL -> (
@@ -7846,7 +7905,7 @@ let item_syntax_nodes_from_parse_result = fun ~kind result ->
     | Bail _ ->
         None
 
-let annotation_payload_from_shell_lift = fun shell_node ->
+let attribute_payload_from_shell_lift = fun shell_node ->
   let structure_payload = fun raw_payload ->
     let source = make_padded_fragment ~start_offset:raw_payload.start_offset raw_payload.text in
     parse_implementation_fragment source
@@ -7919,7 +7978,9 @@ let annotation_payload_from_shell_lift = fun shell_node ->
   | None ->
       None
 
-let () = Cell.set annotation_payload_from_shell_impl annotation_payload_from_shell_lift
+let () =
+  Cell.set attribute_payload_from_shell_impl attribute_payload_from_shell_lift;
+  Cell.set extension_payload_from_shell_impl extension_payload_from_shell_default
 
 let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docstring_item_of_docstring ~syntax_node_of_item ~owned_trivia_spans_of_item tree items_from_node ->
   let root = Ceibo.Red.new_root tree in

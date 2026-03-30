@@ -797,6 +797,12 @@ and payload_to_json =
       Json.Object [ ("tag", Json.String "type"); ("type", core_type_to_json type_) ]
   | Cst.Payload.Pattern payload ->
       Json.Object [ ("tag", Json.String "pattern"); ("payload", pattern_payload_to_json payload) ]
+  | Cst.Payload.Opaque_tokens { tokens } ->
+      Json.Object
+        [
+          ("tag", Json.String "opaque_tokens");
+          ("tokens", Json.Array (List.map token_to_json tokens));
+        ]
 and extension_to_json = fun (ext : Cst.extension) -> Json.Object [
   ("syntax_node", syntax_node_to_json ext.syntax_node);
   ("sigil_token", token_to_json ext.sigil_token);

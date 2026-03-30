@@ -2420,6 +2420,8 @@ let make_lowerer =
     match extension.payload with
     | None ->
         Doc.empty
+    | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+        Doc.concat (List.map doc_of_token tokens)
     | Some (Syn.Cst.Payload.Type type_) ->
         Doc.concat [ Doc.colon; Doc.space; render_core_type type_ ]
     | Some (Syn.Cst.Payload.Pattern payload) ->
