@@ -1093,6 +1093,7 @@ module M = [%foo]
         let source =
           {|type packed = (module   Transport   with   type t = int)
 type extended = (module [%foo])
+type payload = (module [%foo: S])
 |}
         in
         let actual =
@@ -1104,6 +1105,7 @@ type extended = (module [%foo])
           ~expected:
             {|type packed = (module Transport with type t = int)
 type extended = (module [%foo])
+type payload = (module [%foo: S])
 |}
           ~actual;
         Ok ());
@@ -1403,6 +1405,7 @@ end)
         let source =
           {|let unpack = function
   | [%foo? Some x] -> x
+  | [%foo? Some y when y > 0] -> y
 |}
         in
         let actual =
@@ -1415,6 +1418,7 @@ end)
             {|let unpack =
   function
   | [%foo? Some x] -> x
+  | [%foo? Some y when y > 0] -> y
 |}
           ~actual;
         assert_idempotent ~source

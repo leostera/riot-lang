@@ -633,6 +633,8 @@ and render_core_type_extension_doc (extension : Syn.Cst.extension) =
     match extension.payload with
     | None ->
         Doc.empty
+    | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+        Doc.concat (List.map doc_of_token tokens)
     | Some (Syn.Cst.Payload.Type type_) ->
         Doc.concat [ Doc.colon; Doc.space; render_core_type type_ ]
     | Some _ ->
@@ -654,6 +656,8 @@ and render_first_class_module_type_extension_doc (extension : Syn.Cst.extension)
     match extension.payload with
     | None ->
         Doc.empty
+    | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+        Doc.concat (List.map doc_of_token tokens)
     | Some _ ->
         unsupported_syntax ~context:[ "first_class_module_type"; "extension_payload" ]
           ~syntax_node:(extension_payload_source_node extension)
@@ -722,6 +726,10 @@ and render_shared_attribute_payload_doc (attribute : Syn.Cst.attribute) =
       in
       unsupported_syntax ~context:shared_attribute_payload_context ~syntax_node
         "shared attribute pattern payloads do not have a structural formatter yet"
+  | Some (Syn.Cst.Payload.Opaque_tokens { tokens = _ }) ->
+      unsupported_syntax ~context:shared_attribute_payload_context
+        ~syntax_node:(shared_attribute_payload_source_node attribute)
+        "shared attribute opaque payloads do not have a structural formatter yet"
   | Some ((Syn.Cst.Payload.Structure _) as payload) -> (
       match Syn.CstBuilder.structure_items_of_payload payload with
       | Ok (Some [ Syn.Cst.StructureItem.Expression expression ]) ->
@@ -1472,23 +1480,28 @@ let rec render_pattern =
         match extension.payload with
         | None ->
             Doc.empty
-        | Some (Syn.Cst.Payload.Pattern { pattern_syntax_node; guard_syntax_node = None }) ->
-            let pattern =
-              match Syn.CstBuilder.pattern_of_syntax_node pattern_syntax_node with
-              | Ok pattern ->
-                  pattern
-              | Error error ->
-                  unsupported_with_context_entries
-                    ~context:
-                      (Context_syntax_kind error.syntax_kind
-                      :: [ Context_label "pattern"; Context_label "extension_payload" ]
-                      @ List.map (fun label -> Context_label label) error.context)
-                    error.message
-            in
-            Doc.concat [ Doc.text "?"; Doc.space; render_pattern pattern ]
-        | Some (Syn.Cst.Payload.Pattern { guard_syntax_node = Some guard_syntax_node; _ }) ->
-            unsupported_syntax ~context:[ "pattern"; "extension_payload" ] ~syntax_node:guard_syntax_node
-              "pattern extension guards do not have a structural formatter yet"
+        | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+            Doc.concat (List.map doc_of_token tokens)
+        | Some (Syn.Cst.Payload.Pattern payload) ->
+            (match payload.guard_syntax_node with
+            | Some guard_syntax_node ->
+                unsupported_syntax ~context:[ "pattern"; "extension_payload" ]
+                  ~syntax_node:guard_syntax_node
+                  "pattern extension guards do not have a structural formatter yet"
+            | None ->
+                let pattern =
+                  match Syn.CstBuilder.pattern_of_syntax_node payload.pattern_syntax_node with
+                  | Ok pattern ->
+                      pattern
+                  | Error error ->
+                      unsupported_with_context_entries
+                        ~context:
+                          (Context_syntax_kind error.syntax_kind
+                          :: [ Context_label "pattern"; Context_label "extension_payload" ]
+                          @ List.map (fun label -> Context_label label) error.context)
+                        error.message
+                in
+                Doc.concat [ Doc.text "?"; Doc.space; render_pattern pattern ])
         | Some _ ->
             unsupported_syntax ~context:[ "pattern"; "extension_payload" ]
               ~syntax_node:(extension_payload_source_node extension)
