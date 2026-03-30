@@ -392,6 +392,85 @@
                   }
                 ]
               },
+              "and_declarations": [
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_DECL",
+                    "span": {
+                      "start": 102,
+                      "end": 123
+                    }
+                  },
+                  "type_name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "IDENT_EXPR",
+                      "span": {
+                        "start": 102,
+                        "end": 111
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "operator",
+                      "span": {
+                        "start": 103,
+                        "end": 111
+                      }
+                    }
+                  },
+                  "type_params": [],
+                  "type_definition": {
+                    "tag": "variant",
+                    "syntax_node": {
+                      "kind": "TYPE_DECL",
+                      "span": {
+                        "start": 102,
+                        "end": 123
+                      }
+                    },
+                    "constructors": [
+                      {
+                        "syntax_node": {
+                          "kind": "TYPE_VARIANT_CONSTR",
+                          "span": {
+                            "start": 113,
+                            "end": 117
+                          }
+                        },
+                        "constructor_name": {
+                          "kind": "IDENT_EXPR",
+                          "text": "Add",
+                          "span": {
+                            "start": 114,
+                            "end": 117
+                          }
+                        },
+                        "payload_type": null
+                      },
+                      {
+                        "syntax_node": {
+                          "kind": "TYPE_VARIANT_CONSTR",
+                          "span": {
+                            "start": 119,
+                            "end": 123
+                          }
+                        },
+                        "constructor_name": {
+                          "kind": "IDENT_EXPR",
+                          "text": "Mul",
+                          "span": {
+                            "start": 120,
+                            "end": 123
+                          }
+                        },
+                        "payload_type": null
+                      }
+                    ]
+                  },
+                  "is_destructive_substitution": false
+                }
+              ],
               "is_destructive_substitution": false
             },
             {

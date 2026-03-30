@@ -17,6 +17,15 @@ let multiline_list_threshold = 10
 let star = Doc.text "*"
 let at = Doc.text "@"
 
+let let_binding_group_items (binding : Syn.Cst.let_binding) =
+  binding :: Syn.Cst.LetBinding.and_bindings binding
+
+let rec binding_operator_group_items (binding : Syn.Cst.binding_operator_binding) =
+  binding
+  :: (match binding.and_binding with
+     | Some next -> binding_operator_group_items next
+     | None -> [])
+
 type error_context_entry =
   | Context_label of string
   | Context_syntax_kind of Syn.SyntaxKind.t
@@ -2877,7 +2886,7 @@ and render_class_fun_expression ({ parameters; body; _ } : Syn.Cst.class_fun_exp
       ]
 
 and render_class_let_expression
-    ({ keyword_token; rec_token; equals_token; binding_pattern; parameters; bound_value; and_bindings; in_token; body; _ } :
+    ({ keyword_token; rec_token; equals_token; binding_pattern; parameters; bound_value; and_binding; in_token; body; _ } :
       Syn.Cst.class_let_expression) =
   let first_binding =
     render_local_binding ~local_context:true ~source_has_explicit_fun:false
@@ -2885,7 +2894,8 @@ and render_class_let_expression
       ~pattern:binding_pattern ~parameters ~value:bound_value
   in
   let and_bindings =
-    and_bindings
+    Option.to_list and_binding
+    |> List.concat_map let_binding_group_items
     |> List.map (fun (binding : Syn.Cst.let_binding) ->
            render_local_binding ~local_context:true ~source_has_explicit_fun:false
              ~keyword_token:binding.keyword_token
@@ -3889,7 +3899,12 @@ and render_binding_operator_binding
     Doc.concat [ header; Doc.space; doc_of_token equals_token; Doc.line; Doc.indent 2 rendered_value ]
 
 and render_let_operator_expression
-    ({ binding; and_bindings; in_token; body_leading_trivia; body; _ } : Syn.Cst.let_operator_expression) =
+    ({ binding; in_token; body_leading_trivia; body; _ } : Syn.Cst.let_operator_expression) =
+  let and_bindings =
+    match binding.and_binding with
+    | Some next -> binding_operator_group_items next
+    | None -> []
+  in
   let rendered_bindings =
     render_binding_operator_binding binding
     :: List.map render_binding_operator_binding and_bindings
@@ -4559,7 +4574,7 @@ and render_local_binding
          ])
 
 and render_let_expression
-    ({ keyword_token; rec_token; equals_token; binding_pattern; parameters; bound_value_leading_trivia; bound_value; and_bindings; body_leading_trivia; body; in_token; _ } :
+    ({ keyword_token; rec_token; equals_token; binding_pattern; parameters; bound_value_leading_trivia; bound_value; and_binding; body_leading_trivia; body; in_token; _ } :
       Syn.Cst.let_expression) =
   let first_binding =
     render_local_binding ~local_context:true ~source_has_explicit_fun:false
@@ -4573,7 +4588,8 @@ and render_let_expression
       ~value:bound_value
   in
   let and_bindings =
-    and_bindings
+    Option.to_list and_binding
+    |> List.concat_map let_binding_group_items
     |> List.map (fun (binding : Syn.Cst.let_binding) ->
            render_local_binding ~local_context:true ~source_has_explicit_fun:false
              ~keyword_token:binding.keyword_token
@@ -4631,7 +4647,7 @@ and render_let_binding_group_item (binding : Syn.Cst.let_binding) =
 and render_let_binding (binding : Syn.Cst.let_binding) =
   let first = render_let_binding_group_item binding in
   let trailing =
-    binding.and_bindings
+    Syn.Cst.LetBinding.and_bindings binding
     |> List.map (fun and_binding ->
            Doc.concat [ Doc.line; render_let_binding_group_item and_binding ])
   in

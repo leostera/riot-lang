@@ -1327,7 +1327,6 @@
                             }
                           }
                         },
-                        "payload_syntax_node": null,
                         "payload": {
                           "tag": "opaque",
                           "tokens": [

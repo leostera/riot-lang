@@ -6,6 +6,12 @@ type red_node = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
 type red_token = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_token
 type red_element = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_element
 
+let rec binding_operator_bindings_of_chain (binding : Syn.Cst.binding_operator_binding) =
+  binding
+  :: (match binding.and_binding with
+     | Some next -> binding_operator_bindings_of_chain next
+     | None -> [])
+
 let is_trivia kind =
   let open Syn.SyntaxKind in
   kind = WHITESPACE || kind = COMMENT || kind = DOCSTRING
@@ -213,16 +219,14 @@ and let_bindings_of_expression expr =
       let_bindings_of_function_body body
   | Syn.Cst.Expression.Function { cases; _ } ->
       cases |> List.concat_map let_bindings_of_match_case
-  | Syn.Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
-      let_bindings_of_expression binding.bound_value
-      @
-      (and_bindings
+  | Syn.Cst.Expression.LetOperator { binding; body; _ } ->
+      (binding_operator_bindings_of_chain binding
       |> List.concat_map (fun ({ bound_value; _ } : Syn.Cst.binding_operator_binding) ->
              let_bindings_of_expression bound_value))
       @ let_bindings_of_expression body
-  | Syn.Cst.Expression.Let { bound_value; and_bindings; body; _ } ->
+  | Syn.Cst.Expression.Let { bound_value; and_binding; body; _ } ->
       let_bindings_of_expression bound_value
-      @ (and_bindings |> List.concat_map let_bindings_of_let_binding)
+      @ (Option.to_list and_binding |> List.concat_map let_bindings_of_let_binding)
       @ let_bindings_of_expression body
   | Syn.Cst.Expression.Match { scrutinee; cases; _ } ->
       let_bindings_of_expression scrutinee
@@ -287,9 +291,9 @@ and let_bindings_of_class_expression = function
   | Syn.Cst.ClassExpression.Apply { callee; argument; _ } ->
       let_bindings_of_class_expression callee
       @ let_bindings_of_apply_argument argument
-  | Syn.Cst.ClassExpression.Let { bound_value; and_bindings; body; _ } ->
+  | Syn.Cst.ClassExpression.Let { bound_value; and_binding; body; _ } ->
       let_bindings_of_expression bound_value
-      @ (and_bindings |> List.concat_map let_bindings_of_let_binding)
+      @ (Option.to_list and_binding |> List.concat_map let_bindings_of_let_binding)
       @ let_bindings_of_class_expression body
   | Syn.Cst.ClassExpression.Constraint { class_expression; _ } ->
       let_bindings_of_class_expression class_expression
@@ -426,16 +430,14 @@ let rec expressions_of_expression expr =
         expressions_of_function_body body
     | Syn.Cst.Expression.Function { cases; _ } ->
         cases |> List.concat_map expressions_of_match_case
-    | Syn.Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
-        expressions_of_expression binding.bound_value
-        @
-        (and_bindings
+    | Syn.Cst.Expression.LetOperator { binding; body; _ } ->
+        (binding_operator_bindings_of_chain binding
         |> List.concat_map (fun ({ bound_value; _ } : Syn.Cst.binding_operator_binding) ->
                expressions_of_expression bound_value))
         @ expressions_of_expression body
-    | Syn.Cst.Expression.Let { bound_value; and_bindings; body; _ } ->
+    | Syn.Cst.Expression.Let { bound_value; and_binding; body; _ } ->
         expressions_of_expression bound_value
-        @ (and_bindings |> List.concat_map expressions_of_let_binding)
+        @ (Option.to_list and_binding |> List.concat_map expressions_of_let_binding)
         @ expressions_of_expression body
     | Syn.Cst.Expression.Match { scrutinee; cases; _ } ->
         expressions_of_expression scrutinee
@@ -502,9 +504,9 @@ and expressions_of_class_expression = function
   | Syn.Cst.ClassExpression.Apply { callee; argument; _ } ->
       expressions_of_class_expression callee
       @ expressions_of_apply_argument argument
-  | Syn.Cst.ClassExpression.Let { bound_value; and_bindings; body; _ } ->
+  | Syn.Cst.ClassExpression.Let { bound_value; and_binding; body; _ } ->
       expressions_of_expression bound_value
-      @ (and_bindings |> List.concat_map expressions_of_let_binding)
+      @ (Option.to_list and_binding |> List.concat_map expressions_of_let_binding)
       @ expressions_of_class_expression body
   | Syn.Cst.ClassExpression.Constraint { class_expression; _ } ->
       expressions_of_class_expression class_expression

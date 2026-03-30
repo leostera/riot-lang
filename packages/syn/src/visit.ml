@@ -147,6 +147,13 @@ type 'ctx visitor = {
   visit_variant_constructor : 'ctx -> 'ctx walker -> Cst.VariantConstructor.t -> 'ctx;
 }
 
+let rec fold_binding_operator_chain (walk : 'ctx walker) ctx
+    (binding : Cst.binding_operator_binding) =
+  let ctx = walk.binding_operator_binding ctx binding in
+  match binding.and_binding with
+  | Some next -> fold_binding_operator_chain walk ctx next
+  | None -> ctx
+
 let rec descend_attribute = fun walk ctx (attribute : Cst.attribute) ->
   match attribute.payload with
   | Some payload ->
@@ -696,19 +703,17 @@ and descend_expression = fun walk ctx (expression : Cst.Expression.t) ->
       List.fold_left walk.match_case ctx cases
   | Cst.Expression.LetOperator {
     binding;
-    and_bindings;
     body;
     attributes;
     _
   } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
-      let ctx = walk.binding_operator_binding ctx binding in
-      let ctx = List.fold_left walk.binding_operator_binding ctx and_bindings in
+      let ctx = fold_binding_operator_chain walk ctx binding in
       walk.expression ctx body
   | Cst.Expression.Let {
     parameters;
     bound_value;
-    and_bindings;
+    and_binding;
     body;
     attributes;
     _
@@ -716,7 +721,11 @@ and descend_expression = fun walk ctx (expression : Cst.Expression.t) ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = List.fold_left walk.parameter ctx parameters in
       let ctx = walk.expression ctx bound_value in
-      let ctx = List.fold_left walk.let_binding ctx and_bindings in
+      let ctx =
+        match and_binding with
+        | Some binding -> walk.let_binding ctx binding
+        | None -> ctx
+      in
       walk.expression ctx body
   | Cst.Expression.Match { scrutinee; cases; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
@@ -813,13 +822,17 @@ and descend_class_expression = fun walk ctx (class_expression : Cst.ClassExpress
   | Cst.ClassExpression.Let {
     parameters;
     bound_value;
-    and_bindings;
+    and_binding;
     body;
     _
   } ->
       let ctx = List.fold_left walk.parameter ctx parameters in
       let ctx = walk.expression ctx bound_value in
-      let ctx = List.fold_left walk.let_binding ctx and_bindings in
+      let ctx =
+        match and_binding with
+        | Some binding -> walk.let_binding ctx binding
+        | None -> ctx
+      in
       walk.class_expression ctx body
   | Cst.ClassExpression.Constraint { class_expression; class_type; _ } ->
       let ctx = walk.class_expression ctx class_expression in

@@ -4191,7 +4191,6 @@ let tests =
               ~actual:(Syn.Cst.Token.text attribute.sigil_token);
             Test.assert_equal ~expected:(Some "attr")
               ~actual:(Syn.Cst.Ident.name attribute.name);
-            Test.assert_equal ~expected:None ~actual:attribute.payload_syntax_node;
             Ok ()
         | _ ->
             Error "expected first item to be an attribute item");
@@ -4214,7 +4213,6 @@ let tests =
               ~actual:(Syn.Cst.Token.text extension.sigil_token);
             Test.assert_equal ~expected:(Some "toplevel_eval")
               ~actual:(Syn.Cst.Ident.name extension.name);
-            Test.assert_equal ~expected:None ~actual:extension.payload_syntax_node;
             (match extension.payload with
             | Some (Syn.Cst.Payload.Opaque { tokens }) ->
                 Test.assert_equal
@@ -4298,7 +4296,6 @@ let tests =
               ~actual:(Syn.Cst.Token.text attribute.sigil_token);
             Test.assert_equal ~expected:(Some "foo")
               ~actual:(Syn.Cst.Ident.name attribute.name);
-            Test.assert_equal ~expected:None ~actual:attribute.payload_syntax_node;
             Test.assert_equal ~expected:None ~actual:attribute.payload;
             Ok ()
         | _ -> Error "expected attributed type alias");
@@ -4364,7 +4361,6 @@ let tests =
             Test.assert_equal ~expected:1 ~actual:(List.length attributes);
             match attributes with
             | {
-               payload_syntax_node = None;
                payload = Some (Syn.Cst.Payload.Opaque { tokens });
                _;
               }
@@ -6226,17 +6222,17 @@ let tests =
         match structure_items cst with
         | _ :: Syn.Cst.StructureItem.Expression
                  (Syn.Cst.Expression.LetOperator
-                   {
-                     binding =
-                       {
-                         keyword_token;
-                         operator_token;
-                         binding_pattern =
-                           Syn.Cst.Pattern.Identifier
-                             { name_token = binding_name; _ };
-                         bound_value = Syn.Cst.Expression.Constructor _;
-                       };
-                     and_bindings = [];
+                     {
+                       binding =
+                         {
+                           keyword_token;
+                           operator_token;
+                           binding_pattern =
+                             Syn.Cst.Pattern.Identifier
+                               { name_token = binding_name; _ };
+                           bound_value = Syn.Cst.Expression.Constructor _;
+                           and_binding = None;
+                         };
                      body = Syn.Cst.Expression.Constructor _;
                      _;
                    })
@@ -6267,28 +6263,28 @@ let tests =
                      (Syn.Cst.Expression.LetOperator
                        {
                          binding =
-                           {
-                             keyword_token = let_keyword;
-                             operator_token = let_operator;
-                             binding_pattern =
-                               Syn.Cst.Pattern.Identifier
-                                 { name_token = left_name; _ };
-                             bound_value = Syn.Cst.Expression.Constructor _;
-                           };
-                         and_bindings =
-                           [
-                             {
-                               keyword_token = and_keyword;
-                               operator_token = and_operator;
-                               binding_pattern =
-                                 Syn.Cst.Pattern.Identifier
-                                   { name_token = right_name; _ };
-                               bound_value = Syn.Cst.Expression.Constructor _;
-                             };
-                           ];
-                         body = Syn.Cst.Expression.Constructor _;
-                         _;
-                       })
+                         {
+                           keyword_token = let_keyword;
+                           operator_token = let_operator;
+                           binding_pattern =
+                             Syn.Cst.Pattern.Identifier
+                               { name_token = left_name; _ };
+                           bound_value = Syn.Cst.Expression.Constructor _;
+                           and_binding =
+                             Some
+                               {
+                                 keyword_token = and_keyword;
+                                 operator_token = and_operator;
+                                 binding_pattern =
+                                   Syn.Cst.Pattern.Identifier
+                                     { name_token = right_name; _ };
+                                 bound_value = Syn.Cst.Expression.Constructor _;
+                                 and_binding = None;
+                               };
+                          };
+                        body = Syn.Cst.Expression.Constructor _;
+                        _;
+                      })
                :: _ ->
             Test.assert_equal ~expected:"let"
               ~actual:(Syn.Cst.Token.text let_keyword);
@@ -6321,8 +6317,12 @@ let tests =
         | _ :: _ :: Syn.Cst.StructureItem.Expression
                      (Syn.Cst.Expression.LetOperator
                        {
-                         binding = { equals_token = first_equals; _ };
-                         and_bindings = [ { equals_token = second_equals; _ } ];
+                         binding =
+                           {
+                             equals_token = first_equals;
+                             and_binding = Some { equals_token = second_equals; _ };
+                             _;
+                           };
                          in_token;
                          _;
                        })

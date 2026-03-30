@@ -1,6 +1,14 @@
 open Std
 open Std.Data
 
+let rec binding_operator_bindings_to_list (binding : Cst.binding_operator_binding) =
+  match binding.and_binding with
+  | Some next -> next :: binding_operator_bindings_to_list next
+  | None -> []
+
+let let_binding_chain_to_list binding =
+  binding :: Cst.LetBinding.and_bindings binding
+
 let span_to_json = fun (span : Ceibo.Span.t) -> Json.Object [
   ("start", Json.Int span.start);
   ("end", Json.Int span.end_)
@@ -782,7 +790,6 @@ and attribute_to_json = fun (attr : Cst.attribute) -> Json.Object [
   ("syntax_node", syntax_node_to_json attr.syntax_node);
   ("sigil_token", token_to_json attr.sigil_token);
   ("name", ident_to_json attr.name);
-  ("payload_syntax_node", option_to_json syntax_node_to_json attr.payload_syntax_node);
   ("payload", option_to_json payload_to_json attr.payload)
 ]
 and payload_to_json =
@@ -797,7 +804,6 @@ and extension_to_json = fun (ext : Cst.extension) -> Json.Object [
   ("syntax_node", syntax_node_to_json ext.syntax_node);
   ("sigil_token", token_to_json ext.sigil_token);
   ("name", ident_to_json ext.name);
-  ("payload_syntax_node", option_to_json syntax_node_to_json ext.payload_syntax_node);
   ("payload", option_to_json payload_to_json ext.payload)
 ]
 and method_definition_to_json =
@@ -1262,7 +1268,6 @@ and expression_to_json = fun expression ->
   | Cst.Expression.LetOperator {
     syntax_node;
     binding;
-    and_bindings;
     in_token;
     body;
     _
@@ -1271,7 +1276,7 @@ and expression_to_json = fun expression ->
         ("tag", Json.String "let_operator");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("binding", binding_operator_binding_to_json binding);
-        ("and_bindings", Json.Array (List.map binding_operator_binding_to_json and_bindings));
+        ("and_bindings", Json.Array (List.map binding_operator_binding_to_json (binding_operator_bindings_to_list binding)));
         ("in_token", token_to_json in_token);
         ("body", expression_to_json body)
       ]
@@ -1285,7 +1290,7 @@ and expression_to_json = fun expression ->
     binding_pattern;
     parameters;
     bound_value;
-    and_bindings;
+    and_binding;
     body;
     is_recursive;
     _
@@ -1301,7 +1306,7 @@ and expression_to_json = fun expression ->
           ("binding_pattern", pattern_to_json binding_pattern);
           ("parameters", Json.Array (List.map parameter_to_json parameters));
           ("bound_value", expression_to_json bound_value);
-          ("and_bindings", Json.Array (List.map let_binding_to_json and_bindings));
+          ("and_bindings", Json.Array (Option.to_list and_binding |> List.concat_map let_binding_chain_to_list |> List.map let_binding_to_json));
           ("body", expression_to_json body);
           ("is_recursive", Json.Bool is_recursive);
         ] @ expression_attribute_fields expression
@@ -1834,7 +1839,7 @@ and class_expression_to_json =
     binding_pattern;
     parameters;
     bound_value;
-    and_bindings;
+    and_binding;
     body;
     is_recursive
   } ->
@@ -1848,7 +1853,7 @@ and class_expression_to_json =
         ("binding_pattern", pattern_to_json binding_pattern);
         ("parameters", Json.Array (List.map parameter_to_json parameters));
         ("bound_value", expression_to_json bound_value);
-        ("and_bindings", Json.Array (List.map let_binding_to_json and_bindings));
+        ("and_bindings", Json.Array (Option.to_list and_binding |> List.concat_map let_binding_chain_to_list |> List.map let_binding_to_json));
         ("body", class_expression_to_json body);
         ("is_recursive", Json.Bool is_recursive);
       ]

@@ -173,7 +173,81 @@
                   "suffix": null
                 }
               },
-              "and_bindings": [],
+              "and_bindings": [
+                {
+                  "syntax_node": {
+                    "kind": "LET_BINDING",
+                    "span": {
+                      "start": 82,
+                      "end": 88
+                    }
+                  },
+                  "keyword_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "and",
+                    "span": {
+                      "start": 79,
+                      "end": 82
+                    }
+                  },
+                  "rec_token": null,
+                  "equals_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "=",
+                    "span": {
+                      "start": 85,
+                      "end": 86
+                    }
+                  },
+                  "attributes": [],
+                  "binding_pattern": {
+                    "tag": "identifier",
+                    "syntax_node": {
+                      "kind": "IDENT_PATTERN",
+                      "span": {
+                        "start": 82,
+                        "end": 84
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "z",
+                      "span": {
+                        "start": 83,
+                        "end": 84
+                      }
+                    }
+                  },
+                  "parameters": [],
+                  "value": {
+                    "tag": "literal",
+                    "literal": {
+                      "tag": "int",
+                      "syntax_node": {
+                        "kind": "INT_LITERAL",
+                        "span": {
+                          "start": 86,
+                          "end": 88
+                        }
+                      },
+                      "literal_token": {
+                        "kind": "INT_LITERAL",
+                        "text": "3",
+                        "span": {
+                          "start": 87,
+                          "end": 88
+                        }
+                      },
+                      "base": "decimal",
+                      "prefix": null,
+                      "digits": "3",
+                      "suffix": null
+                    }
+                  },
+                  "and_bindings": [],
+                  "is_recursive": false
+                }
+              ],
               "is_recursive": false
             },
             {

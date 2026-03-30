@@ -1,5 +1,11 @@
 open Std
 
+let rec binding_operator_bindings_of_chain (binding : Cst.binding_operator_binding) =
+  binding
+  :: (match binding.and_binding with
+     | Some next -> binding_operator_bindings_of_chain next
+     | None -> [])
+
 let expressions_of_apply_argument =
   function
   | Cst.Positional expression ->
@@ -54,12 +60,13 @@ and expressions_of_class_expression =
   | Cst.ClassExpression.Let {
     parameters;
     bound_value;
-    and_bindings;
+    and_binding;
     body;
     _
   } ->
       [ bound_value ]
-      @ (and_bindings |> List.map Cst.LetBinding.value)
+      @ (Option.to_list and_binding
+        |> List.concat_map (fun binding -> Cst.LetBinding.and_bindings binding |> List.map Cst.LetBinding.value))
       @ (parameters |> List.concat_map expressions_of_parameter)
       @ expressions_of_class_expression body
   | Cst.ClassExpression.Constraint { class_expression; _ } ->
@@ -168,19 +175,20 @@ let children_of_expression =
       cases
       |> List.concat_map (fun ({ guard; body; _ } : Cst.match_case) -> Option.to_list guard
       @ [ body ])
-  | Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
-      [ binding.bound_value ]
-      @ List.map (fun ({ bound_value; _ } : Cst.binding_operator_binding) -> bound_value) and_bindings
+  | Cst.Expression.LetOperator { binding; body; _ } ->
+      (binding_operator_bindings_of_chain binding
+      |> List.map (fun ({ bound_value; _ } : Cst.binding_operator_binding) -> bound_value))
       @ [ body ]
   | Cst.Expression.Let {
     parameters;
     bound_value;
-    and_bindings;
+    and_binding;
     body;
     _
   } ->
       [ bound_value ]
-      @ List.map Cst.LetBinding.value and_bindings
+      @ (Option.to_list and_binding
+        |> List.concat_map (fun binding -> Cst.LetBinding.and_bindings binding |> List.map Cst.LetBinding.value))
       @ (parameters |> List.concat_map expressions_of_parameter)
       @ [ body ]
   | Cst.Expression.Match { scrutinee; cases; _ } ->

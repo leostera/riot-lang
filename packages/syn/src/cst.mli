@@ -137,10 +137,6 @@ type owned_trivia = {
     The `sigil_token` preserves whether the attribute was introduced with a
     single `@`, double `@@`, or floating `@@@`-style sigil.
 
-    `payload_syntax_node` keeps the attachment anchor when the parser wrapped
-    another syntax node around the attribute shell, while `payload` exposes the
-    structured payload parsed from the shell itself.
-
     Examples:
 
     ```ocaml,norun
@@ -183,7 +179,6 @@ type attribute = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   name : Ident.t;
-  payload_syntax_node : syntax_node option;
   payload : payload option;
 }
 
@@ -191,10 +186,6 @@ type attribute = {
 
     Extensions appear in whatever grammar position admits `[%name ...]`,
     `[%%name ...]`, or similar extension forms.
-
-    `payload_syntax_node` keeps the surrounding syntax node when the extension
-    was wrapped around an already-parsed payload anchor, while `payload`
-    exposes the shell payload as a structured tree.
 
     Examples:
 
@@ -207,7 +198,6 @@ and extension = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   name : Ident.t;
-  payload_syntax_node : syntax_node option;
   payload : payload option;
   attributes : attribute list;
 }
@@ -2181,8 +2171,8 @@ and value_definition =
 
 (** Payload for `object_member` methods.
 
-    This covers concrete methods, virtual methods, private methods, and
-    overriding methods such as `method!`.
+    This covers concrete object methods, including `private` and overriding
+    forms such as `method!`.
 *)
 and object_method = {
   syntax_node : syntax_node;
@@ -2197,8 +2187,8 @@ and object_method = {
 
 (** Payload for `object_member` values.
 
-    This covers object fields declared with `val`, including `mutable`,
-    `virtual`, and overriding forms.
+    This covers concrete object fields declared with `val`, including
+    `mutable` and overriding forms.
 *)
 and object_value = {
   syntax_node : syntax_node;
@@ -2758,7 +2748,7 @@ and let_binding = {
   parameters : parameter list;
   value_leading_trivia : trivia list;
   value : expression;
-  and_bindings : let_binding list;
+  and_binding : let_binding option;
   is_recursive : bool;
 }
 
@@ -2778,6 +2768,7 @@ and binding_operator_binding = {
   binding_pattern : pattern;
   bound_value_leading_trivia : trivia list;
   bound_value : expression;
+  and_binding : binding_operator_binding option;
 }
 
 (** Payload for `Expression.LetOperator`.
@@ -2792,7 +2783,6 @@ and binding_operator_binding = {
 and let_operator_expression = {
   syntax_node : syntax_node;
   binding : binding_operator_binding;
-  and_bindings : binding_operator_binding list;
   in_token : Token.t;
   body_leading_trivia : trivia list;
   body : expression;
@@ -2803,7 +2793,8 @@ and let_operator_expression = {
 
     The first binding is split into `binding_pattern` and `bound_value`, while
     any parameter sugar from `let f x = ...` is preserved in `parameters`, and
-    any trailing `and` bindings are exposed in `and_bindings`.
+    any trailing `and` bindings are exposed as a recursive `and_binding`
+    chain.
 *)
 and let_expression = {
   syntax_node : syntax_node;
@@ -2815,7 +2806,7 @@ and let_expression = {
   parameters : parameter list;
   bound_value_leading_trivia : trivia list;
   bound_value : expression;
-  and_bindings : let_binding list;
+  and_binding : let_binding option;
   body_leading_trivia : trivia list;
   body : expression;
   is_recursive : bool;
@@ -3098,7 +3089,7 @@ and class_let_expression = {
   binding_pattern : pattern;
   parameters : parameter list;
   bound_value : expression;
-  and_bindings : let_binding list;
+  and_binding : let_binding option;
   body : class_expression;
   is_recursive : bool;
 }
@@ -3903,7 +3894,7 @@ module TypeDeclaration : sig
     manifest_alias : core_type option;
     private_flag : private_flag;
     constraints : type_constraint list;
-    and_declarations : t list;
+    next_and_declaration : t option;
     is_nonrec : bool;
     is_destructive_substitution : bool;
     owned_trivia : owned_trivia;
@@ -3931,6 +3922,8 @@ module TypeDeclaration : sig
   val constraints : t -> TypeConstraint.t list
 
   val and_declarations : t -> t list
+
+  val next_and_declaration : t -> t option
 
   (** `true` for `type nonrec t = ...`. *)
   val is_nonrec : t -> bool
@@ -4002,7 +3995,7 @@ module LetBinding : sig
     parameters : Parameter.t list;
     value_leading_trivia : trivia list;
     value : expression;
-    and_bindings : let_binding list;
+    and_binding : let_binding option;
     is_recursive : bool;
   }
   val syntax_node : t -> syntax_node
@@ -4030,6 +4023,8 @@ module LetBinding : sig
 
   val and_bindings : t -> t list
 
+  val and_binding : t -> t option
+
   val value_syntax_node : t -> syntax_node
 
   val is_recursive : t -> bool
@@ -4051,7 +4046,7 @@ module ModuleSignature : sig
     module_name : Token.t;
     functor_parameters : functor_parameter list;
     module_type : module_type;
-    and_declarations : t list;
+    next_and_declaration : t option;
     is_recursive : bool;
     owned_trivia : owned_trivia;
   }
@@ -4064,6 +4059,8 @@ module ModuleSignature : sig
   val module_type : t -> module_type
 
   val and_declarations : t -> t list
+
+  val next_and_declaration : t -> t option
 
   val is_recursive : t -> bool
 
@@ -4088,7 +4085,7 @@ module ModuleStructure : sig
     functor_parameters : functor_parameter list;
     module_type : module_type option;
     module_expression : module_expression;
-    and_declarations : t list;
+    next_and_declaration : t option;
     is_recursive : bool;
     owned_trivia : owned_trivia;
   }
@@ -4103,6 +4100,8 @@ module ModuleStructure : sig
   val module_expression : t -> module_expression
 
   val and_declarations : t -> t list
+
+  val next_and_declaration : t -> t option
 
   val is_recursive : t -> bool
 
@@ -4321,20 +4320,6 @@ module ValueDeclaration : sig
   val owned_trivia : t -> owned_trivia
 end
 
-(** A `class` declaration item.
-
-    `class_type` is present for signature-style declarations such as
-    `class c : object ... end`. `class_body` is present for implementation
-    bindings such as `class c = object ... end`.
-
-    Declaration-site class items keep their optional signature-like type and
-    optional implementation body separate so both
-
-    - `class c : object ... end`
-    - `class c = object ... end`
-
-    can be represented without flattening one form into the other.
-*)
 type external_declaration = {
   syntax_node : syntax_node;
   name_token : Token.t;
@@ -4343,15 +4328,12 @@ type external_declaration = {
   attributes : attribute list;
   owned_trivia : owned_trivia;
 }
-(** A `class type` declaration item.
-
-    `class_type_body` is always present because class-type declarations are
-    definition forms rather than forward declarations.
+(** A `class` declaration item that appears in signatures.
 
     Example:
 
     ```ocaml,norun
-    class type service = object method run : unit -> unit end
+    class service : object method run : unit -> unit end
     ```
 *)
 module ClassDeclaration : sig
@@ -4381,6 +4363,15 @@ module ClassDeclaration : sig
   val name : t -> string
 end
 
+(** A `class` definition item that appears in implementations.
+
+    Examples:
+
+    ```ocaml,norun
+    class service = object method run = () end
+    class service : object method run : unit end = object method run = () end
+    ```
+*)
 module ClassDefinition : sig
   type t = {
     syntax_node : syntax_node;
@@ -4410,6 +4401,18 @@ module ClassDefinition : sig
 
   val name : t -> string
 end
+
+(** A `class type` declaration item.
+
+    `class_type_body` is always present because class-type declarations are
+    definition forms rather than forward declarations.
+
+    Example:
+
+    ```ocaml,norun
+    class type service = object method run : unit -> unit end
+    ```
+*)
 (** The payload of an `include` item.
 
     Implementations include module expressions such as `include M` or

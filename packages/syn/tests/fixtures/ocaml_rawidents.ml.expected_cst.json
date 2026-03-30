@@ -264,7 +264,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": {
                     "tag": "opaque",
                     "tokens": [
@@ -408,7 +407,6 @@
               }
             }
           },
-          "payload_syntax_node": null,
           "payload": {
             "tag": "opaque",
             "tokens": [
@@ -746,7 +744,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": {
                     "tag": "opaque",
                     "tokens": [
@@ -1200,7 +1197,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": {
                     "tag": "opaque",
                     "tokens": [
@@ -1326,7 +1322,6 @@
               }
             }
           },
-          "payload_syntax_node": null,
           "payload": {
             "tag": "opaque",
             "tokens": [
@@ -1611,7 +1606,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": {
                     "tag": "opaque",
                     "tokens": [
@@ -1762,7 +1756,6 @@
               }
             }
           },
-          "payload_syntax_node": null,
           "payload": {
             "tag": "opaque",
             "tokens": [
@@ -1900,7 +1893,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": {
                     "tag": "opaque",
                     "tokens": [
@@ -2044,7 +2036,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": {
                     "tag": "opaque",
                     "tokens": [
@@ -2277,7 +2268,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": {
                     "tag": "opaque",
                     "tokens": [
@@ -2457,7 +2447,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": {
                     "tag": "opaque",
                     "tokens": [
@@ -2667,7 +2656,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": {
                     "tag": "opaque",
                     "tokens": [
@@ -3120,7 +3108,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": {
                     "tag": "opaque",
                     "tokens": [
@@ -3511,7 +3498,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": {
                     "tag": "opaque",
                     "tokens": [

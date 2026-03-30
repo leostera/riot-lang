@@ -60,6 +60,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `Syn.Cst.class_declaration` is now an explicit valid-shape sum instead of a `class_type option * class_body option` product; impossible `None/None` declaration states are no longer representable.
 - `Syn.Cst.ModuleTypeDeclaration` now models only `module type Name` and `module type Name = ...`; the bogus `is_destructive_substitution` state is gone from that CST node.
 - `Syn.Cst.ModuleStructure` and `Syn.Cst.ModuleSignature` now split implementation-only versus interface-only `module` bindings, and grouped `module rec ... and ...` declarations live on `and_declarations` instead of a recursive wrapper item.
+- grouped `let`, `let ... in`, `let*`/`and*`, `type ... and ...`, and grouped `module` declarations now use recursive `and_binding` / `next_and_declaration` links internally, while the public helper accessors still flatten them for consumers that want the whole group.
 - implementation-side `val` items are no longer representable in `Syn.Cst.StructureItem`; ordinary `value_declaration` nodes now stay signature-only, matching standard OCaml syntax.
 - `Syn.Cst.let_binding` is now pattern-first only; the old cached `binding_name` field is gone, and simple binding names are derived from `binding_pattern` when the pattern shape actually carries one.
 - expression type annotations and coercions now share one `Syn.Cst.Expression.TypeAscription` node with explicit `Type | Coerce | ConstraintCoerce` variants instead of a split `Typed` node plus nullable `Coerce` record.

@@ -238,7 +238,6 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null,
                     "payload": null
                   }
                 ],
@@ -611,7 +610,6 @@
                                   }
                                 }
                               },
-                              "payload_syntax_node": null,
                               "payload": null
                             }
                           ]
@@ -1138,7 +1136,6 @@
                               }
                             }
                           },
-                          "payload_syntax_node": null,
                           "payload": null
                         }
                       },
@@ -1489,7 +1486,6 @@
                                                 }
                                               }
                                             },
-                                            "payload_syntax_node": null,
                                             "payload": {
                                               "tag": "opaque",
                                               "tokens": [
@@ -1668,7 +1664,6 @@
                                                 }
                                               }
                                             },
-                                            "payload_syntax_node": null,
                                             "payload": {
                                               "tag": "opaque",
                                               "tokens": [
@@ -1912,7 +1907,6 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null,
                       "payload": null
                     }
                   ]
@@ -2108,7 +2102,6 @@
                                 }
                               }
                             },
-                            "payload_syntax_node": null,
                             "payload": null
                           }
                         }
@@ -2145,13 +2138,6 @@
                               "start": 894,
                               "end": 897
                             }
-                          }
-                        },
-                        "payload_syntax_node": {
-                          "kind": "IDENT_EXPR",
-                          "span": {
-                            "start": 888,
-                            "end": 890
                           }
                         },
                         "payload": null
@@ -2244,7 +2230,6 @@
                                     }
                                   }
                                 },
-                                "payload_syntax_node": null,
                                 "payload": null
                               }
                             ]
@@ -2286,13 +2271,6 @@
                               "start": 916,
                               "end": 919
                             }
-                          }
-                        },
-                        "payload_syntax_node": {
-                          "kind": "INT_LITERAL",
-                          "span": {
-                            "start": 910,
-                            "end": 912
                           }
                         },
                         "payload": null
@@ -2398,7 +2376,6 @@
                                   }
                                 }
                               },
-                              "payload_syntax_node": null,
                               "payload": null
                             }
                           }
@@ -2438,13 +2415,6 @@
                               "start": 946,
                               "end": 949
                             }
-                          }
-                        },
-                        "payload_syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 940,
-                            "end": 942
                           }
                         },
                         "payload": null
@@ -2537,7 +2507,6 @@
                                     }
                                   }
                                 },
-                                "payload_syntax_node": null,
                                 "payload": null
                               }
                             ]
@@ -2579,13 +2548,6 @@
                               "start": 977,
                               "end": 980
                             }
-                          }
-                        },
-                        "payload_syntax_node": {
-                          "kind": "INT_LITERAL",
-                          "span": {
-                            "start": 971,
-                            "end": 973
                           }
                         },
                         "payload": null
@@ -2678,7 +2640,6 @@
                                     }
                                   }
                                 },
-                                "payload_syntax_node": null,
                                 "payload": null
                               }
                             ]
@@ -2720,13 +2681,6 @@
                               "start": 1002,
                               "end": 1005
                             }
-                          }
-                        },
-                        "payload_syntax_node": {
-                          "kind": "INT_LITERAL",
-                          "span": {
-                            "start": 996,
-                            "end": 998
                           }
                         },
                         "payload": null
@@ -2832,7 +2786,6 @@
                                   }
                                 }
                               },
-                              "payload_syntax_node": null,
                               "payload": null
                             }
                           }
@@ -2872,13 +2825,6 @@
                               "start": 1035,
                               "end": 1038
                             }
-                          }
-                        },
-                        "payload_syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 1029,
-                            "end": 1031
                           }
                         },
                         "payload": null
@@ -2971,7 +2917,6 @@
                                     }
                                   }
                                 },
-                                "payload_syntax_node": null,
                                 "payload": null
                               }
                             ]
@@ -3013,13 +2958,6 @@
                               "start": 1069,
                               "end": 1072
                             }
-                          }
-                        },
-                        "payload_syntax_node": {
-                          "kind": "INT_LITERAL",
-                          "span": {
-                            "start": 1063,
-                            "end": 1065
                           }
                         },
                         "payload": null
@@ -3105,7 +3043,6 @@
                                   }
                                 }
                               },
-                              "payload_syntax_node": null,
                               "payload": null
                             }
                           ]
@@ -3143,13 +3080,6 @@
                               "start": 1095,
                               "end": 1098
                             }
-                          }
-                        },
-                        "payload_syntax_node": {
-                          "kind": "IDENT_EXPR",
-                          "span": {
-                            "start": 1089,
-                            "end": 1091
                           }
                         },
                         "payload": null
@@ -3191,7 +3121,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": null
                 }
               },
@@ -3333,7 +3262,6 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null,
                       "payload": null
                     }
                   }
@@ -3427,7 +3355,6 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null,
                       "payload": null
                     }
                   },
@@ -3522,7 +3449,6 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null,
                       "payload": null
                     }
                   },
@@ -3617,7 +3543,6 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null,
                       "payload": null
                     }
                   },
@@ -3712,7 +3637,6 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null,
                       "payload": null
                     }
                   },
@@ -3828,7 +3752,6 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null,
                       "payload": null
                     }
                   }
@@ -3869,7 +3792,6 @@
                   }
                 }
               },
-              "payload_syntax_node": null,
               "payload": null
             }
           }
@@ -3969,7 +3891,6 @@
                     }
                   }
                 },
-                "payload_syntax_node": null,
                 "payload": {
                   "tag": "opaque",
                   "tokens": [
@@ -4268,7 +4189,6 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null,
                     "payload": null
                   }
                 },
@@ -4326,7 +4246,6 @@
                         }
                       }
                     },
-                    "payload_syntax_node": null,
                     "payload": null
                   }
                 }
@@ -4531,7 +4450,6 @@
                           }
                         }
                       },
-                      "payload_syntax_node": null,
                       "payload": null
                     }
                   }
@@ -4597,7 +4515,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": null
                 }
               }
@@ -4687,7 +4604,6 @@
                   }
                 }
               },
-              "payload_syntax_node": null,
               "payload": null
             }
           ],
@@ -4796,7 +4712,6 @@
                       }
                     }
                   },
-                  "payload_syntax_node": null,
                   "payload": null
                 }
               ],
@@ -5094,7 +5009,6 @@
                   }
                 }
               },
-              "payload_syntax_node": null,
               "payload": null
             }
           ],
@@ -5177,7 +5091,6 @@
                   }
                 }
               },
-              "payload_syntax_node": null,
               "payload": null
             }
           ],
@@ -5293,7 +5206,6 @@
                   }
                 }
               },
-              "payload_syntax_node": null,
               "payload": null
             }
           ]

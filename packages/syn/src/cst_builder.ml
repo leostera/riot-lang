@@ -1393,6 +1393,45 @@ let normalize_type_declaration_sequence = fun ~source ~has_next_sibling ?(initia
   in
   loop initial_leading [] [] decls
 
+let rec let_binding_chain_of_list = function
+  | [] -> None
+  | (binding : Cst.LetBinding.t) :: rest ->
+      Some { binding with and_binding = let_binding_chain_of_list rest }
+
+let let_binding_chain_to_list (binding : Cst.LetBinding.t) =
+  binding :: Cst.LetBinding.and_bindings binding
+
+let rec binding_operator_chain_of_list = function
+  | [] -> None
+  | (binding : Cst.binding_operator_binding) :: rest ->
+      Some { binding with and_binding = binding_operator_chain_of_list rest }
+
+let rec binding_operator_bindings_of_chain (binding : Cst.binding_operator_binding) =
+  binding
+  :: (match binding.and_binding with
+     | Some next -> binding_operator_bindings_of_chain next
+     | None -> [])
+
+let binding_operator_chain_tail (binding : Cst.binding_operator_binding) =
+  match binding.and_binding with
+  | Some next -> next :: binding_operator_bindings_of_chain next
+  | None -> []
+
+let rec type_declaration_chain_of_list = function
+  | [] -> None
+  | (decl : Cst.TypeDeclaration.t) :: rest ->
+      Some { decl with next_and_declaration = type_declaration_chain_of_list rest }
+
+let rec module_signature_chain_of_list = function
+  | [] -> None
+  | (decl : Cst.ModuleSignature.t) :: rest ->
+      Some { decl with next_and_declaration = module_signature_chain_of_list rest }
+
+let rec module_structure_chain_of_list = function
+  | [] -> None
+  | (decl : Cst.ModuleStructure.t) :: rest ->
+      Some { decl with next_and_declaration = module_structure_chain_of_list rest }
+
 let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_leading = []) decl ->
   let group_syntax_node = Cst.TypeDeclaration.syntax_node decl in
   let and_member_leading_trivia =
@@ -1422,7 +1461,7 @@ let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_l
     match nodes, decls with
     | node :: node_rest, ((decl : Cst.TypeDeclaration.t) :: decl_rest) ->
         restore_member_nodes
-          ({decl with syntax_node = node; and_declarations = []} :: acc)
+          ({decl with syntax_node = node; next_and_declaration = None} :: acc)
           node_rest
           decl_rest
     | [], [] ->
@@ -1438,7 +1477,7 @@ let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_l
     | None ->
         decl :: Cst.TypeDeclaration.and_declarations decl
         |> List.map (fun (decl : Cst.TypeDeclaration.t) ->
-               {decl with and_declarations = []})
+               {decl with next_and_declaration = None})
   in
   let normalized_decls, bubbled_to_next =
     normalize_type_declaration_sequence ~source ~has_next_sibling
@@ -1471,7 +1510,7 @@ let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_l
         | _ ->
             first
       in
-      ({first with and_declarations = rest}, bubbled_to_next)
+      ({first with next_and_declaration = type_declaration_chain_of_list rest}, bubbled_to_next)
 
 let map_last_type_declaration_in_group = fun decl f ->
   match List.rev (Cst.TypeDeclaration.and_declarations decl) with
@@ -1479,7 +1518,9 @@ let map_last_type_declaration_in_group = fun decl f ->
       f decl
   | last :: previous_rev ->
       let updated_last = f last in
-      {decl with and_declarations = List.rev (updated_last :: previous_rev)}
+      {decl with
+        next_and_declaration =
+          type_declaration_chain_of_list (List.rev (updated_last :: previous_rev))}
 
 let absorb_next_type_declaration_leading_trivia = fun ~source current_decl next_decl ->
   let next_leading =
@@ -1539,11 +1580,12 @@ let absorb_next_type_declaration_leading_trivia = fun ~source current_decl next_
                         remaining))
             in
             ( {current_decl with
-                and_declarations =
-                  List.rev
-                    ({last with
-                      type_definition = Cst.TypeDefinition.Variant {syntax_node; constructors}}
-                    :: previous_rev) },
+                next_and_declaration =
+                  type_declaration_chain_of_list
+                    (List.rev
+                       ({last with
+                         type_definition = Cst.TypeDefinition.Variant {syntax_node; constructors}}
+                       :: previous_rev)) },
               moved_to_current )
         | _ ->
             (current_decl, [])
@@ -1571,11 +1613,12 @@ let absorb_following_variant_constructor_trivia = fun ~source decl following_tri
             update_last_variant_constructor_owned_trivia ~source ~following_trivia constructors
           in
           ( {decl with
-              and_declarations =
-                List.rev
-                  ({last with
-                    type_definition = Cst.TypeDefinition.Variant {syntax_node; constructors}}
-                  :: previous_rev) },
+              next_and_declaration =
+                type_declaration_chain_of_list
+                  (List.rev
+                     ({last with
+                       type_definition = Cst.TypeDefinition.Variant {syntax_node; constructors}}
+                     :: previous_rev)) },
             remaining )
       | _ ->
           (decl, following_trivia)
@@ -2351,7 +2394,7 @@ let extension_payload_from_shell = fun shell_node ->
   (Cell.get extension_payload_from_shell_impl) shell_node
 
 let attribute_from_node node : Cst.attribute =
-  let shell_node, payload_syntax_node = annotation_shell_and_payload ~annotation_kind:Syntax_kind.ATTRIBUTE_EXPR ~sigils:[
+  let shell_node, _payload_syntax_node = annotation_shell_and_payload ~annotation_kind:Syntax_kind.ATTRIBUTE_EXPR ~sigils:[
     at_text;
     double_at_text;
     triple_at_text
@@ -2372,7 +2415,6 @@ let attribute_from_node node : Cst.attribute =
         Cst.syntax_node = node;
         sigil_token = token sigil_syntax_token;
         name = annotation_name_from_tokens ~syntax_node:shell_node ~sigils:attribute_sigil_texts shell_tokens;
-        payload_syntax_node;
         payload = attribute_payload_from_shell shell_node
       }
   | None ->
@@ -2381,7 +2423,7 @@ let attribute_from_node node : Cst.attribute =
       ]
 
 let extension_from_node node : Cst.extension =
-  let shell_node, payload_syntax_node = annotation_shell_and_payload ~annotation_kind:Syntax_kind.EXTENSION_EXPR ~sigils:[
+  let shell_node, _payload_syntax_node = annotation_shell_and_payload ~annotation_kind:Syntax_kind.EXTENSION_EXPR ~sigils:[
     percent_text;
     double_percent_text;
     triple_percent_text
@@ -2402,7 +2444,6 @@ let extension_from_node node : Cst.extension =
         Cst.syntax_node = node;
         sigil_token = token sigil_syntax_token;
         name = annotation_name_from_tokens ~syntax_node:shell_node ~sigils:extension_sigil_texts shell_tokens;
-        payload_syntax_node;
         payload = extension_payload_from_shell shell_node;
         attributes = []
       }
@@ -3305,9 +3346,16 @@ and package_type_from_module_type_node = fun node ->
 and core_type_payload_and_field_attribute = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.ATTRIBUTE_EXPR ->
+      let _, payload_syntax_node =
+        annotation_shell_and_payload ~annotation_kind:Syntax_kind.ATTRIBUTE_EXPR ~sigils:[
+          at_text;
+          double_at_text;
+          triple_at_text
+        ] node
+      in
       let attribute = attribute_from_node node in
       if attribute_is_item_like attribute then
-        match attribute.payload_syntax_node with
+        match payload_syntax_node with
         | Some payload_node when can_lift_core_type_node payload_node ->
             (payload_node, Some attribute)
         | _ ->
@@ -5905,7 +5953,8 @@ and let_operator_expression_from_node = fun node ->
                   Cst.leading_trivia_before_node
                     ~after:(Cst.Token.span equals_token).end_
                     bound_value_node;
-                bound_value = expression_from_node bound_value_node
+                bound_value = expression_from_node bound_value_node;
+                and_binding = None
               } in
               lift_bindings (binding :: acc) rest_pairs rest_nodes
           | _ ->
@@ -5920,8 +5969,7 @@ and let_operator_expression_from_node = fun node ->
           | binding :: and_bindings ->
               Some {
                 Cst.syntax_node = node;
-                binding;
-                and_bindings;
+                binding = { binding with and_binding = binding_operator_chain_of_list and_bindings };
                 in_token;
                 body_leading_trivia =
                   Cst.leading_trivia_before_node
@@ -5980,7 +6028,7 @@ and let_expression_from_node = fun ~is_recursive_binding node ->
                           ~after:(Cst.Token.span binding_equals_token).end_
                           value_node;
                       value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:value_node;
-                      and_bindings = [];
+                      and_binding = None;
                       is_recursive = is_recursive_binding
                     }
               | [] -> None
@@ -6016,7 +6064,7 @@ and let_expression_from_node = fun ~is_recursive_binding node ->
           ); rec_token = direct_token_with_text node "rec"; equals_token; in_token; binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix prefix_nodes; bound_value_leading_trivia =
             Cst.leading_trivia_before_node
               ~after:(Cst.Token.span equals_token).end_
-              bound_value_node; bound_value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_bindings = and_binding_nodes
+              bound_value_node; bound_value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_binding = and_binding_nodes
           |> List.mapi
             (fun index and_binding_node ->
               match List.nth_opt and_keyword_tokens index with
@@ -6027,7 +6075,8 @@ and let_expression_from_node = fun ~is_recursive_binding node ->
                     "let_expression";
                     "and_bindings"
                   ])
-          |> List.filter_map (fun binding -> binding); body_leading_trivia =
+          |> List.filter_map (fun binding -> binding)
+          |> let_binding_chain_of_list; body_leading_trivia =
             Cst.leading_trivia_before_node
               ~after:(Cst.Token.span in_token).end_
               body_node; body = expression_from_node body_node; is_recursive = is_recursive_binding; attributes = []}
@@ -6389,7 +6438,7 @@ and class_let_expression_from_node = fun ~is_recursive_binding node ->
                                     )).end_
                           value_node;
                       value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:value_node;
-                      and_bindings = [];
+                      and_binding = None;
                       is_recursive = is_recursive_binding
                     }
               | [] -> None
@@ -6420,7 +6469,7 @@ and class_let_expression_from_node = fun ~is_recursive_binding node ->
                 bail ~message:"expected class let-in keyword during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                   "class_let_expression"
                 ]
-          ); binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix prefix_nodes; bound_value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_bindings = and_binding_nodes
+          ); binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix prefix_nodes; bound_value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_binding = and_binding_nodes
           |> List.mapi
             (fun index and_binding_node ->
               match List.nth_opt and_keyword_tokens index with
@@ -6431,7 +6480,8 @@ and class_let_expression_from_node = fun ~is_recursive_binding node ->
                     "class_let_expression";
                     "and_bindings"
                   ])
-          |> List.filter_map (fun binding -> binding); body = class_expression_from_node body_node; is_recursive = is_recursive_binding}: Cst.class_let_expression)
+          |> List.filter_map (fun binding -> binding)
+          |> let_binding_chain_of_list; body = class_expression_from_node body_node; is_recursive = is_recursive_binding}: Cst.class_let_expression)
     | _ ->
         None
 and local_open_class_expression_from_node = fun node ->
@@ -6623,7 +6673,7 @@ and let_binding_from_binding_operator_binding = fun
       parameters = [];
       value_leading_trivia = bound_value_leading_trivia;
       value = clause_value;
-      and_bindings = [];
+      and_binding = None;
       is_recursive = false
     }
 and match_case_from_node = fun node ->
@@ -7166,7 +7216,7 @@ let type_declaration_from_node = fun node ->
             manifest_alias = type_manifest_alias_from_node node;
             private_flag = private_flag_from_type_declaration_node node;
             constraints = lifted_constraints;
-            and_declarations = [];
+            next_and_declaration = None;
             is_nonrec = type_declaration_has_nonrec node;
             is_destructive_substitution = has_destructive_substitution;
             owned_trivia = owned_trivia_from_node node
@@ -7183,7 +7233,7 @@ let rec flatten_type_declaration_group = fun (decl : Cst.TypeDeclaration.t) ->
       flattened
   | [] ->
       let existing_and_declarations = Cst.TypeDeclaration.and_declarations decl in
-      let decl = {decl with and_declarations = []} in
+      let decl = {decl with next_and_declaration = None} in
       decl :: (existing_and_declarations |> List.concat_map flatten_type_declaration_group)
 
 let grouped_type_declaration_from_nodes = fun ~group_syntax_node nodes ->
@@ -7194,14 +7244,17 @@ let grouped_type_declaration_from_nodes = fun ~group_syntax_node nodes ->
   | [] ->
       None
   | first :: rest ->
-      Some {first with syntax_node = group_syntax_node; and_declarations = rest}
+      Some
+        {first with
+          syntax_node = group_syntax_node;
+          next_and_declaration = type_declaration_chain_of_list rest}
 
 let merge_type_declaration_groups = fun (first : Cst.TypeDeclaration.t) (next : Cst.TypeDeclaration.t) ->
   match flatten_type_declaration_group first @ flatten_type_declaration_group next with
   | [] ->
       first
   | first :: rest ->
-      {first with and_declarations = rest}
+      {first with next_and_declaration = type_declaration_chain_of_list rest}
 
 let rec coalesce_structure_type_declaration_groups =
   function
@@ -7290,7 +7343,7 @@ let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_bindin
                 ~after:(Cst.Token.span binding_equals_token).end_
                 value_node;
             value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:value_node;
-            and_bindings = [];
+            and_binding = None;
             is_recursive = is_recursive_binding
           }
       | [] -> None
@@ -7346,7 +7399,7 @@ let let_expression_binding_from_node = fun ~is_recursive_binding node ->
             prefix_nodes; value_leading_trivia =
               Cst.leading_trivia_before_node
                 ~after:(Cst.Token.span binding_equals_token).end_
-                bound_value_node; value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_bindings = []; is_recursive = is_recursive_binding}
+                bound_value_node; value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_binding = None; is_recursive = is_recursive_binding}
     | _ -> None
 
 let module_declaration_parts_from_node = fun node ->
@@ -7421,7 +7474,7 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  module_name;
                  functor_parameters;
                  module_type;
-                 and_declarations = [];
+                 next_and_declaration = None;
                  is_recursive = is_recursive_group || is_recursive_declaration;
                  owned_trivia;
                }
@@ -7447,7 +7500,13 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
                (fun decl ->
                  owned_trivia_spans (Cst.ModuleSignature.owned_trivia decl)))
       in
-      Some { first with syntax_node = group_syntax_node; and_declarations = rest; owned_trivia }
+      Some
+        {
+          first with
+          syntax_node = group_syntax_node;
+          next_and_declaration = module_signature_chain_of_list rest;
+          owned_trivia;
+        }
 
 let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive_group module_decl_nodes ->
   let declarations =
@@ -7463,7 +7522,7 @@ let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  functor_parameters;
                  module_type;
                  module_expression;
-                 and_declarations = [];
+                 next_and_declaration = None;
                  is_recursive = is_recursive_group || is_recursive_declaration;
                  owned_trivia;
                }
@@ -7489,7 +7548,13 @@ let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive
                (fun decl ->
                  owned_trivia_spans (Cst.ModuleStructure.owned_trivia decl)))
       in
-      Some { first with syntax_node = group_syntax_node; and_declarations = rest; owned_trivia }
+      Some
+        {
+          first with
+          syntax_node = group_syntax_node;
+          next_and_declaration = module_structure_chain_of_list rest;
+          owned_trivia;
+        }
 
 let module_type_declaration_from_node = fun node ->
   match find_declaration_name_token
@@ -7882,7 +7947,13 @@ let rec structure_items_from_node = fun node ->
                             ])
                     |> List.filter_map (fun value -> value)
                   in
-                  let grouped_binding = {first_binding with syntax_node = node; and_bindings} in
+                  let grouped_binding =
+                    {
+                      first_binding with
+                      syntax_node = node;
+                      and_binding = let_binding_chain_of_list and_bindings;
+                    }
+                  in
                   [ Cst.StructureItem.LetBinding grouped_binding ]
               | None ->
                   unsupported_item node
@@ -8987,7 +9058,7 @@ and validate_class_expression = fun ~context ->
   | Cst.ClassExpression.Let {
     parameters;
     bound_value;
-    and_bindings;
+    and_binding;
     body;
     _
   } ->
@@ -8999,7 +9070,8 @@ and validate_class_expression = fun ~context ->
       List.iteri (fun index binding -> validate_expression ~context:(((("class_expression.let.and_binding["
       ^ Int.to_string index
       ^ "]")
-      :: context))) (Cst.LetBinding.value binding)) and_bindings;
+      :: context))) (Cst.LetBinding.value binding))
+        (Option.to_list and_binding |> List.concat_map let_binding_chain_to_list);
       validate_class_expression ~context:((("class_expression.let.body" :: context))) body
   | Cst.ClassExpression.Constraint { class_expression; class_type; _ } ->
       validate_class_expression ~context:((("class_expression.constraint.expression" :: context))) class_expression;
@@ -9209,7 +9281,7 @@ and validate_expression = fun ~context ->
       ^ Int.to_string index
       ^ "]")
       :: context))) case) cases
-  | Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
+  | Cst.Expression.LetOperator { binding; body; _ } ->
       validate_pattern ~context:((("expression.let_operator.binding.pattern" :: context))) binding.binding_pattern;
       validate_expression ~context:((("expression.let_operator.binding.value" :: context))) binding.bound_value;
       List.iteri
@@ -9222,13 +9294,13 @@ and validate_expression = fun ~context ->
           ^ Int.to_string index
           ^ "].value")
           :: context))) bound_value)
-        and_bindings;
+        (binding_operator_chain_tail binding);
       validate_expression ~context:((("expression.let_operator.body" :: context))) body
   | Cst.Expression.Let {
     binding_pattern;
     parameters;
     bound_value;
-    and_bindings;
+    and_binding;
     body;
     _
   } ->
@@ -9244,7 +9316,7 @@ and validate_expression = fun ~context ->
           :: context))) (Cst.LetBinding.binding_pattern binding);
           validate_expression ~context:(((("expression.let.and_bindings[" ^ Int.to_string index ^ "].value")
           :: context))) (Cst.LetBinding.value binding))
-        and_bindings;
+        (Option.to_list and_binding |> List.concat_map let_binding_chain_to_list);
       validate_expression ~context:((("expression.let.body" :: context))) body
   | Cst.Expression.Match { scrutinee; cases; _ } ->
       validate_expression ~context:((("expression.match.scrutinee" :: context))) scrutinee;
@@ -9334,7 +9406,11 @@ let validate_type_constraint = fun ~context ({ left; right; _ } : Cst.type_const
   validate_core_type ~context:((("type_constraint.left" :: context))) left;
   validate_core_type ~context:((("type_constraint.right" :: context))) right
 
-let rec validate_type_declaration = fun ~context ({ type_definition; manifest_alias; constraints; and_declarations; _ } : Cst.TypeDeclaration.t) ->
+let rec validate_type_declaration = fun ~context (decl : Cst.TypeDeclaration.t) ->
+  let type_definition = Cst.TypeDeclaration.type_definition decl in
+  let manifest_alias = Cst.TypeDeclaration.manifest_alias decl in
+  let constraints = Cst.TypeDeclaration.constraints decl in
+  let and_declarations = Cst.TypeDeclaration.and_declarations decl in
   Option.iter (validate_core_type ~context:((("item.type_declaration.manifest_alias" :: context)))) manifest_alias;
   validate_type_definition ~context:((("item.type_declaration" :: context))) type_definition;
   List.iteri (fun index constraint_ -> validate_type_constraint ~context:(((("item.type_declaration.constraint["
@@ -9394,7 +9470,7 @@ let validate_structure_item = fun ~context ->
       validate_type_declaration ~context decl
   | Cst.StructureItem.TypeExtension decl ->
       validate_type_extension ~context decl
-  | Cst.StructureItem.LetBinding { binding_pattern; value; and_bindings; _ } ->
+  | Cst.StructureItem.LetBinding { binding_pattern; value; and_binding; _ } ->
       validate_pattern ~context:((("item.let_binding.pattern" :: context))) binding_pattern;
       validate_expression ~context:((("item.let_binding.value" :: context))) value;
       List.iteri
@@ -9403,7 +9479,7 @@ let validate_structure_item = fun ~context ->
           :: context))) (Cst.LetBinding.binding_pattern binding);
           validate_expression ~context:(((("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].value")
           :: context))) (Cst.LetBinding.value binding))
-        and_bindings
+        (Option.to_list and_binding |> List.concat_map let_binding_chain_to_list)
   | Cst.StructureItem.Expression expr ->
       validate_expression ~context:((("item.expression" :: context))) expr
   | Cst.StructureItem.ClassDeclaration decl ->

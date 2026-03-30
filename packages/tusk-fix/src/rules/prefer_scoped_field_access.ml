@@ -1,5 +1,11 @@
 open Std
 
+let rec binding_operator_group_items (binding : Syn.Cst.binding_operator_binding) =
+  binding
+  :: (match binding.and_binding with
+     | Some next -> binding_operator_group_items next
+     | None -> [])
+
 let rule_id = "prefer-scoped-field-access"
 let rule_description =
   "Module-qualified field access should use scoped qualification syntax"
@@ -226,16 +232,14 @@ and diagnostics_for_expression ~inside_local_open expr =
         diagnostics_for_function_body ~inside_local_open body
     | Syn.Cst.Expression.Function { cases; _ } ->
         cases |> List.concat_map (diagnostics_for_match_case ~inside_local_open)
-    | Syn.Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
-        diagnostics_for_expression ~inside_local_open binding.bound_value
-        @
-        (and_bindings
+    | Syn.Cst.Expression.LetOperator { binding; body; _ } ->
+        (binding_operator_group_items binding
         |> List.concat_map (fun ({ bound_value; _ } : Syn.Cst.binding_operator_binding) ->
                diagnostics_for_expression ~inside_local_open bound_value))
         @ diagnostics_for_expression ~inside_local_open body
-    | Syn.Cst.Expression.Let { bound_value; and_bindings; body; _ } ->
+    | Syn.Cst.Expression.Let { bound_value; and_binding; body; _ } ->
         diagnostics_for_expression ~inside_local_open bound_value
-        @ (and_bindings |> List.concat_map diagnostics_for_let_binding)
+        @ (Option.to_list and_binding |> List.concat_map diagnostics_for_let_binding)
         @ diagnostics_for_expression ~inside_local_open body
     | Syn.Cst.Expression.Match { scrutinee; cases; _ } ->
         diagnostics_for_expression ~inside_local_open scrutinee

@@ -185,7 +185,6 @@ type attribute = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   name : Ident.t;
-  payload_syntax_node : syntax_node option;
   payload : payload option;
 }
 
@@ -193,7 +192,6 @@ and extension = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   name : Ident.t;
-  payload_syntax_node : syntax_node option;
   payload : payload option;
   attributes : attribute list;
 }
@@ -1581,7 +1579,7 @@ and let_binding = {
   parameters : parameter list;
   value_leading_trivia : trivia list;
   value : expression;
-  and_bindings : let_binding list;
+  and_binding : let_binding option;
   is_recursive : bool;
 }
 
@@ -1592,12 +1590,12 @@ and binding_operator_binding = {
   binding_pattern : pattern;
   bound_value_leading_trivia : trivia list;
   bound_value : expression;
+  and_binding : binding_operator_binding option;
 }
 
 and let_operator_expression = {
   syntax_node : syntax_node;
   binding : binding_operator_binding;
-  and_bindings : binding_operator_binding list;
   in_token : Token.t;
   body_leading_trivia : trivia list;
   body : expression;
@@ -1614,7 +1612,7 @@ and let_expression = {
   parameters : parameter list;
   bound_value_leading_trivia : trivia list;
   bound_value : expression;
-  and_bindings : let_binding list;
+  and_binding : let_binding option;
   body_leading_trivia : trivia list;
   body : expression;
   is_recursive : bool;
@@ -1768,7 +1766,7 @@ and class_let_expression = {
   binding_pattern : pattern;
   parameters : parameter list;
   bound_value : expression;
-  and_bindings : let_binding list;
+  and_binding : let_binding option;
   body : class_expression;
   is_recursive : bool;
 }
@@ -2647,7 +2645,7 @@ module TypeDeclaration = struct
     manifest_alias : core_type option;
     private_flag : private_flag;
     constraints : type_constraint list;
-    and_declarations : t list;
+    next_and_declaration : t option;
     is_nonrec : bool;
     is_destructive_substitution : bool;
     owned_trivia : owned_trivia;
@@ -2667,7 +2665,12 @@ module TypeDeclaration = struct
 
   let constraints = fun decl -> decl.constraints
 
-  let and_declarations = fun decl -> decl.and_declarations
+  let rec and_declarations = fun decl ->
+    match decl.next_and_declaration with
+    | None -> []
+    | Some next -> next :: and_declarations next
+
+  let next_and_declaration = fun decl -> decl.next_and_declaration
 
   let is_nonrec = fun decl -> decl.is_nonrec
 
@@ -2719,7 +2722,7 @@ module LetBinding = struct
     parameters : Parameter.t list;
     value_leading_trivia : trivia list;
     value : expression;
-    and_bindings : let_binding list;
+    and_binding : let_binding option;
     is_recursive : bool;
   }
 
@@ -2764,7 +2767,12 @@ module LetBinding = struct
 
   let value = fun binding -> binding.value
 
-  let and_bindings = fun binding -> binding.and_bindings
+  let rec and_bindings = fun binding ->
+    match binding.and_binding with
+    | None -> []
+    | Some next -> next :: and_bindings next
+
+  let and_binding = fun binding -> binding.and_binding
 
   let value_syntax_node = fun binding -> Expression.syntax_node binding.value
 
@@ -2784,7 +2792,7 @@ module ModuleSignature = struct
     module_name : Token.t;
     functor_parameters : functor_parameter list;
     module_type : module_type;
-    and_declarations : t list;
+    next_and_declaration : t option;
     is_recursive : bool;
     owned_trivia : owned_trivia;
   }
@@ -2797,7 +2805,12 @@ module ModuleSignature = struct
 
   let module_type = fun decl -> decl.module_type
 
-  let and_declarations = fun decl -> decl.and_declarations
+  let rec and_declarations = fun decl ->
+    match decl.next_and_declaration with
+    | None -> []
+    | Some next -> next :: and_declarations next
+
+  let next_and_declaration = fun decl -> decl.next_and_declaration
 
   let is_recursive = fun decl -> decl.is_recursive
 
@@ -2814,7 +2827,7 @@ module ModuleStructure = struct
     functor_parameters : functor_parameter list;
     module_type : module_type option;
     module_expression : module_expression;
-    and_declarations : t list;
+    next_and_declaration : t option;
     is_recursive : bool;
     owned_trivia : owned_trivia;
   }
@@ -2829,7 +2842,12 @@ module ModuleStructure = struct
 
   let module_expression = fun decl -> decl.module_expression
 
-  let and_declarations = fun decl -> decl.and_declarations
+  let rec and_declarations = fun decl ->
+    match decl.next_and_declaration with
+    | None -> []
+    | Some next -> next :: and_declarations next
+
+  let next_and_declaration = fun decl -> decl.next_and_declaration
 
   let is_recursive = fun decl -> decl.is_recursive
 

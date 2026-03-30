@@ -1,5 +1,11 @@
 open Std
 
+let rec binding_operator_group_items (binding : Syn.Cst.binding_operator_binding) =
+  binding
+  :: (match binding.and_binding with
+     | Some next -> binding_operator_group_items next
+     | None -> [])
+
 let rule_id = "prefer-record-destructuring-parameters"
 let rule_description =
   "Functions that immediately destructure a record argument should destructure it in the parameter"
@@ -233,22 +239,22 @@ and usage_in_expression expected_name expr =
       usage_in_function_body expected_name body
   | Syn.Cst.Expression.Function { cases; _ } ->
       cases |> List.map (usage_in_match_case expected_name) |> merge_all
-  | Syn.Cst.Expression.LetOperator { binding; and_bindings; body; _ } ->
+  | Syn.Cst.Expression.LetOperator { binding; body; _ } ->
       merge_all
-        (usage_in_expression expected_name binding.bound_value
-        :: usage_in_expression expected_name body
-        :: List.map
+        (List.map
              (fun ({ bound_value; _ } : Syn.Cst.binding_operator_binding) ->
                usage_in_expression expected_name bound_value)
-             and_bindings)
-  | Syn.Cst.Expression.Let { bound_value; and_bindings; body; _ } ->
+             (binding_operator_group_items binding)
+        @ [ usage_in_expression expected_name body ])
+  | Syn.Cst.Expression.Let { bound_value; and_binding; body; _ } ->
       merge_all
         (usage_in_expression expected_name bound_value
         :: usage_in_expression expected_name body
         :: List.map
              (fun (binding : Syn.Cst.let_binding) ->
                usage_in_expression expected_name binding.value)
-             and_bindings)
+             (Option.to_list and_binding |> List.concat_map (fun binding ->
+                  binding :: Syn.Cst.LetBinding.and_bindings binding)))
   | Syn.Cst.Expression.Match { scrutinee; cases; _ } ->
       merge_all
         (usage_in_expression expected_name scrutinee
@@ -276,7 +282,7 @@ let is_immediate_record_destructure expected_name = function
       {
         binding_pattern;
         bound_value;
-        and_bindings = [];
+        and_binding = None;
         is_recursive = false;
         _;
       } -> (
