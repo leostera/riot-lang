@@ -2372,7 +2372,7 @@ let make_lowerer =
             | _ ->
                 render_expression operand
           in
-          Doc.concat [ Doc.text operator; operand_doc ])
+          Doc.concat [ doc_of_token operator_token; operand_doc ])
   | Syn.Cst.Expression.FieldAssign { target; operator_token; value; _ } ->
       Doc.concat
         [
@@ -2900,7 +2900,7 @@ and render_infix_expression ({ syntax_node; left; operator_token; right; _ } :
   in
   Doc.group
     (join_map
-       (Doc.concat [ Doc.break (); Doc.text operator; Doc.space ])
+       (Doc.concat [ Doc.break (); doc_of_token operator_token; Doc.space ])
        render_expression parts)
 
 and render_apply_expression ({ syntax_node; callee; argument; _ } : Syn.Cst.apply_expression) =
@@ -4175,7 +4175,7 @@ and render_local_binding
           let operator = token_text operator_token in
           let parts = infix_chain operator (Syn.Cst.Expression.Infix infix) in
           join_map
-            (Doc.concat [ Doc.line; Doc.text operator; Doc.space ])
+            (Doc.concat [ Doc.line; doc_of_token operator_token; Doc.space ])
             render_expression
             parts
       | _ ->

@@ -358,6 +358,35 @@ let is_plus =
 |}
           ~actual;
         Ok ());
+    Test.case "format infix and prefix expression operators from explicit operator tokens"
+      (fun () ->
+        let source =
+          {|let negate value = ~-value
+let ready = flag01 && flag02 && flag03 && flag04 && flag05 && flag06 && flag07 && flag08 && flag09
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"infix and prefix expressions should format from CST-carried operator tokens"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let negate value = ~-value
+
+let ready =
+  flag01
+  && flag02
+  && flag03
+  && flag04
+  && flag05
+  && flag06
+  && flag07
+  && flag08
+  && flag09
+|}
+          ~actual;
+        Ok ());
     Test.case "format singleton list patterns with explicit formatter spacing"
       (fun () ->
         let compact_source =

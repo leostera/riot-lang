@@ -50,7 +50,7 @@
 44. When `render_local_binding` synthesizes an outer `: type ...` annotation from parameter types, drop duplicate inner type annotations from the unsugared `fun` parameter list too. Normalize `~(fn : a -> b)` to `~fn` once the outer arrow already carries `fn:(a -> b)`.
 45. Render index expressions from `Syn.Cst.index_expression.opening_tokens` plus `closing_token`. Do not reconstruct `.[ ]`, `.( )`, or extended index-operator punctuation from raw direct-token text once `syn` exposes the delimiter tokens explicitly.
 46. Render signed int/float literals from `sign_token` when the CST constant carries one. Do not rescan literal-node direct tokens for leading `+` / `-`, especially for signed literal patterns.
-47. Render operator expressions and operator patterns from their `operator_tokens` directly. Do not concatenate raw token text back into an operator string when the CST already preserves the exact token sequence.
+47. Render operator expressions, operator patterns, and infix/prefix expression operator docs from CST-carried operator tokens directly. Do not concatenate raw token text back into an operator string when the CST already preserves the exact token sequence.
 
 ## Validate
 
