@@ -1090,25 +1090,14 @@ let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record 
                | Syn.CstBuilder.Docstring _ ->
                    true)
       in
-      let source_node =
-        match fields with
-        | [] ->
-            None
-        | field :: _ ->
-            Syn.Ceibo.Red.SyntaxNode.parent (Syn.Cst.RecordField.syntax_node field)
-      in
-      (
-        match source_node with
-        | Some _ when fields_have_owned_trivia
-        || has_standalone_record_trivia ->
-            Doc.indent 2 (render_record_definition fields)
-        | Some _ when prefer_multiline_inline_record ->
-            Doc.indent 2 (render_record_definition fields)
-        | Some _ ->
-            Doc.indent 2 (render_inline_record_definition fields)
-        | None ->
-            Doc.indent 2 (render_record_definition fields)
-      )
+      if List.is_empty fields then
+        Doc.indent 2 (render_record_definition fields)
+      else if fields_have_owned_trivia || has_standalone_record_trivia then
+        Doc.indent 2 (render_record_definition fields)
+      else if prefer_multiline_inline_record then
+        Doc.indent 2 (render_record_definition fields)
+      else
+        Doc.indent 2 (render_inline_record_definition fields)
 
 let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) constructor ->
   let head = Doc.concat [

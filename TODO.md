@@ -97,6 +97,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `Syn.Cst.Implementation` / `Interface` now carry per-item `trailing_phrase_separator_tokens`, and `krasny` uses those CST-provided boundary tokens directly instead of recomputing top-level structure phrase-separator placement from item spans.
 - dead top-level span/owned-trivia boundary helpers such as `span_of_syntax_node_nontrivia_bounds`, `span_of_syntax_node_trim_leading_trivia_keep_trailing_comments`, and `type_declaration_owned_trivia_end` are gone from `lower.ml`; the remaining structural debt is no longer hiding in unused formatter boundary code.
 - `Syn.Cst.token_body_span` now owns the remaining generic “real token span” query, and `krasny` uses that helper instead of scanning `Ceibo.Red.SyntaxNode.tokens` locally for variant-constructor trailing trivia and expression boundary offsets.
+- inline-record constructor layout no longer reaches through `RecordField.syntax_node` to ask the red tree for a parent node; `krasny` now decides inline-vs-multiline rendering from field presence, owned trivia, standalone record-body trivia, and explicit multiline preference only.
 - `Lower.source_file` and `Format_core.format` no longer thread parse-result source through the normal lowering path just to satisfy dead internal parameters.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms; signature-bodied first-class module types fail explicitly instead of reconstructing raw `(module ...)` text.
 - `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature attribute and extension payload item streams directly.
@@ -195,6 +196,7 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
   - body/branch boundary trivia now routes through `Syn.Cst.leading_trivia_*` helpers instead of direct formatter-side token walks, but the remaining debt is still missing node-specific CST boundary fields rather than permanent generic helper indirection
+  - the only live direct red-tree read left in `lower.ml` is unsupported-syntax reporting via `Syn.Ceibo.Red.SyntaxNode.kind`; keep auditing whether that should stay as diagnostics-only plumbing or move behind `Syn.Cst`
 
 - [ ] Add regression coverage before removing each heuristic
   - use `syn:cst_tests` when the missing fact is ownership/structure

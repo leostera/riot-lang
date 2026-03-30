@@ -70,6 +70,7 @@
 64. Render plain `object ... end` expressions structurally from `Syn.Cst.Expression.Object`. Support empty objects, self patterns, `method`/`val`/`inherit`/`initializer` members, and postfix member attributes without replaying source text; keep object extension members on an explicit unsupported path until `syn` exposes the remaining structural ownership facts there.
 65. When body/branch boundary trivia still comes from token-attached leading trivia, read it through `Syn.Cst.leading_trivia_after`, `leading_trivia_before_node`, and `leading_trivia_after_token_before_node`. Do not walk `Ceibo.Red.SyntaxNode.tokens` in `lower.ml` just to rediscover the first token and its attached trivia.
 66. When a formatter boundary still needs a node’s real-token span, read it through `Syn.Cst.token_body_span`. Do not keep local `SyntaxNode.tokens` scans in `lower.ml` just to recover start/end offsets of the first and last nontrivia tokens.
+67. Do not reach back into `RecordField.syntax_node` parents from `lower.ml` just to choose inline-vs-multiline record-constructor layout. That decision should come from field structure, owned trivia, and explicit formatter policy only.
 
 ## Validate
 
