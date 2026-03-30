@@ -897,6 +897,256 @@ describe("riot package registry routes", () => {
     expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.4.2")).toBeNull();
   });
 
+  test("publish rejects packages with undeclared semver dependencies", async () => {
+    const { env, db, queue, indexedQueue } = makeEnv();
+    const ctx = new FakeExecutionContext();
+    const archive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = true",
+        'description = "Terminal UI toolkit for Riot"',
+        'license = "MIT"',
+        "[dependencies]",
+        'kernel = { version = "^1.0.0" }',
+      ].join("\n"),
+    });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
+        return new Response(archive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const response = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: {
+            authorization: "Bearer root-secret",
+          },
+        }),
+        env,
+        ctx,
+      );
+      await ctx.drain();
+
+      expect(response.status).toBe(422);
+      expect(await readJson(response)).toMatchObject({
+        error: "missing_dependency",
+      });
+    });
+
+    expect(queue.messages).toHaveLength(0);
+    expect(indexedQueue.messages).toHaveLength(0);
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).toBeNull();
+    expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.4.2")).toBeNull();
+  });
+
+  test("publish accepts dependencies on already-published packages", async () => {
+    const { env, db, queue, indexedQueue } = makeEnv();
+    const kernelArchive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "kernel"',
+        'version = "0.0.1"',
+        "public = true",
+        'description = "OCaml runtime primitives"',
+        'license = "MIT"',
+      ].join("\n"),
+    });
+      const dependentArchive = await makeTarGz({
+        "tusk.toml": [
+          "[package]",
+          'name = "minttea"',
+          'version = "0.4.2"',
+          "public = true",
+          'description = "Terminal UI toolkit for Riot"',
+          'license = "MIT"',
+          "[dependencies]",
+          'kernel = { version = "^0.0.1" }',
+        ].join("\n"),
+      });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/kernel") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/kernel/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === `/repos/leostera/kernel/tarball/${SHA}`) {
+        return new Response(kernelArchive, { status: 200 });
+      }
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: NEXT_SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${NEXT_SHA}`) {
+        return new Response(dependentArchive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const kernelCtx = new FakeExecutionContext();
+      const kernelResponse = await handleRequest(
+        new Request("https://registry.test/package/leostera/kernel/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        kernelCtx,
+      );
+      await kernelCtx.drain();
+
+      const mintCtx = new FakeExecutionContext();
+      const publishResponse = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        mintCtx,
+      );
+      await mintCtx.drain();
+
+      expect(kernelResponse.status).toBe(200);
+      expect(publishResponse.status).toBe(200);
+      expect((await readJson(publishResponse)) as Record<string, unknown>).toMatchObject({
+        package: "github.com/leostera/minttea",
+        package_name: "minttea",
+        package_version: "0.4.2",
+      });
+    });
+
+    expect(queue.messages).toHaveLength(2);
+    expect(indexedQueue.messages).toHaveLength(2);
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).not.toBeNull();
+    expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.4.2")).not.toBeNull();
+  });
+
+  test("publish accepts git-based dependencies without registry lookup", async () => {
+    const { env, db, queue, indexedQueue } = makeEnv();
+    const ctx = new FakeExecutionContext();
+    const archive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = true",
+        'description = "Terminal UI toolkit for Riot"',
+        'license = "MIT"',
+        "[dependencies]",
+        'kernel = { git = "https://github.com/leostera/kernel.git" }',
+      ].join("\n"),
+    });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
+        return new Response(archive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const response = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        ctx,
+      );
+      await ctx.drain();
+
+      expect(response.status).toBe(200);
+      expect(await readJson(response)).toMatchObject({
+        package: "github.com/leostera/minttea",
+        package_name: "minttea",
+      });
+    });
+
+    expect(queue.messages).toHaveLength(1);
+    expect(indexedQueue.messages).toHaveLength(1);
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).not.toBeNull();
+    expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.4.2")).not.toBeNull();
+  });
+
+  test("publish rejects invalid dependency references", async () => {
+    const { env, db, queue, indexedQueue } = makeEnv();
+    const ctx = new FakeExecutionContext();
+    const archive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = true",
+        'description = "Terminal UI toolkit for Riot"',
+        'license = "MIT"',
+        "[dependencies]",
+        'kernel = { version = "not-a-version" }',
+      ].join("\n"),
+    });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
+        return new Response(archive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const response = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: {
+            authorization: "Bearer root-secret",
+          },
+        }),
+        env,
+        ctx,
+      );
+      await ctx.drain();
+
+      expect(response.status).toBe(422);
+      expect(await readJson(response)).toMatchObject({
+        error: "invalid_dependency_reference",
+      });
+    });
+
+    expect(queue.messages).toHaveLength(0);
+    expect(indexedQueue.messages).toHaveLength(0);
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).toBeNull();
+    expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.4.2")).toBeNull();
+  });
+
   test("github selector misses surface as 404 without publishing", async () => {
     const { env, bucket, queue } = makeEnv();
     const ctx = new FakeExecutionContext();

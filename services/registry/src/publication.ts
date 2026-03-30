@@ -1,3 +1,5 @@
+import isGitUrl from "is-git-url";
+import semver from "semver";
 import spdxExpressionValidate from "spdx-expression-validate";
 
 import { buildPublicationManifest } from "./manifest.ts";
@@ -7,6 +9,7 @@ import { isFullSha, isSemverLikeTag } from "./locator.ts";
 import {
   applyMetadataMigrations,
   readPackageClaim,
+  hasPublishedRelease,
   readPublishedRelease,
   readSelectorResolution,
   writePackageClaim,
@@ -140,6 +143,7 @@ export async function publishPackageRelease(
   const manifest = await readMaterializationManifest(env, materialization.manifestKey);
   assertPublishableManifest(manifest);
   await applyMetadataMigrations(env.SEARCH_DB);
+  await assertPublishableDependencies(env.SEARCH_DB, manifest);
 
   const now = new Date().toISOString();
   const existingClaim = await readPackageClaim(env.SEARCH_DB, manifest.package_name);
@@ -284,6 +288,168 @@ function assertPublishableManifest(manifest: PackagePublicationManifest): void {
   }
 }
 
+async function assertPublishableDependencies(db: D1Database, manifest: PackagePublicationManifest): Promise<void> {
+  for (const dependency of manifest.dependencies) {
+    const normalized = normalizeDependencyRecord(dependency);
+    if (normalized === null) {
+      throw new HttpError(
+        422,
+        "invalid_dependency_reference",
+        `Invalid dependency entry in ${manifest.package_name}: dependency declarations must include a package name.`,
+      );
+    }
+
+    if (normalized.kind === "path") {
+      continue;
+    }
+
+    if (normalized.kind === "git") {
+      continue;
+    }
+
+    if (!(await hasPublishedRelease(db, normalized.name))) {
+      throw new HttpError(
+        422,
+        "missing_dependency",
+        `Dependency ${normalized.name}@${normalized.requirement} is missing from the registry.`,
+      );
+    }
+  }
+}
+
+function normalizeDependencyRecord(dependency: Record<string, unknown>): DependencyReference | null {
+  const packageName = readDependencyPackageName(dependency);
+  if (packageName === null) {
+    return null;
+  }
+
+  if (typeof dependency.path === "string") {
+    if (dependency.path.trim().length === 0) {
+      return null;
+    }
+
+    return {
+      name: packageName,
+      kind: "path",
+    };
+  }
+
+  const gitReference = readStringField(dependency, "git") ?? readStringField(dependency, "url");
+  if (gitReference !== null) {
+    if (!isValidGitReference(gitReference)) {
+      throw new HttpError(
+        422,
+        "invalid_dependency_reference",
+        `Dependency ${packageName} has invalid git reference ${gitReference}.`,
+      );
+    }
+
+    return {
+      name: packageName,
+      kind: "git",
+      requirement: gitReference,
+    };
+  }
+
+  const requirement = readStringField(dependency, "requirement") ??
+    readStringField(dependency, "version") ??
+    readStringField(dependency, "raw");
+
+  if (requirement === null) {
+    throw new HttpError(
+      422,
+      "invalid_dependency_reference",
+      `Dependency ${packageName} must declare a requirement, path, or git reference.`,
+    );
+  }
+
+  if (!isValidSemverRange(requirement)) {
+    throw new HttpError(
+      422,
+      "invalid_dependency_reference",
+      `Dependency ${packageName} has non-semver requirement ${requirement}.`,
+    );
+  }
+
+  return {
+    name: packageName,
+    requirement,
+    requirementKind: "semver",
+    kind: "registry",
+  };
+}
+
+function readDependencyPackageName(dependency: Record<string, unknown>): string | null {
+  if (typeof dependency.package === "string") {
+    return dependency.package.trim().length > 0 ? dependency.package.trim() : null;
+  }
+
+  if (typeof dependency.name === "string") {
+    return dependency.name.trim().length > 0 ? dependency.name.trim() : null;
+  }
+
+  return null;
+}
+
+function readStringField(dependency: Record<string, unknown>, key: string): string | null {
+  const value = dependency[key];
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function isValidSemverRange(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.toLowerCase() === "latest") {
+    return true;
+  }
+
+  return semver.validRange(trimmed) !== null;
+}
+
+function isValidGitReference(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+
+  if (isGitUrl(trimmed)) {
+    return true;
+  }
+
+  const withoutFragment = trimmed.split("#")[0];
+  if (withoutFragment === undefined) {
+    return false;
+  }
+
+  if (isGitUrl(withoutFragment)) {
+    return true;
+  }
+
+  if (trimmed.includes("://")) {
+    return false;
+  }
+
+  const parts = trimmed.split("/");
+  if (parts.length !== 2) {
+    return false;
+  }
+
+  const [owner, repo] = parts;
+  if (owner === undefined || repo === undefined) {
+    return false;
+  }
+
+  if (trimmed.includes(":")) {
+    return false;
+  }
+
+  return owner.length > 0 && repo.length > 0 && !owner.includes(" ") && !repo.includes(" ");
+}
+
+type DependencyReference =
+  | { name: string; kind: "path" }
+  | { name: string; kind: "git"; requirement: string }
+  | { name: string; kind: "registry"; requirement: string; requirementKind: "semver" };
+
 function buildClaimRecord(
   locator: PackageLocator,
   manifest: PackagePublicationManifest,
@@ -411,9 +577,7 @@ function releaseMatchesManifest(
 }
 
 function isValidSemver(value: string): boolean {
-  return /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(
-    value,
-  );
+  return semver.valid(value.trim()) !== null;
 }
 
 function ownsSourceLocator(githubLogin: string, locator: PackageLocator): boolean {
