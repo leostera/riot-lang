@@ -82,6 +82,7 @@ This file is _yours_. Keep it up to date after every big change.
 - shared/global core-type, module-type, and module-expression attributes now render no-payload, type-payload, and simple single-expression structure payloads structurally; richer shared/global payload forms fail explicitly instead of replaying raw payload text.
 - split-sigil floating attributes such as `[@@@foo]` now lift as payload-free annotations instead of misparsing the trailing `@foo` as raw payload text.
 - relifted nested `struct ... end` and `sig ... end` bodies now keep floating attributes as real sibling items after preceding `type` declarations, without double-splitting or dropping them.
+- core-type variables now render from `Syn.Cst.CoreType.Var.name_token`; that simple token-backed case no longer replays the raw syntax-node token stream.
 - `packages/krasny/src/source.ml` is gone; `krasny` no longer keeps any live raw source-reconstruction helper.
 - the remaining attribute debt is the still-raw pattern payload case, plus whatever extra CST structure richer payload bodies need before they can lower structurally.
 
@@ -119,19 +120,17 @@ This file is _yours_. Keep it up to date after every big change.
   - `separator_doc_between_offsets` is gone
   - `doc_of_owned_trivia` now uses explicit formatter separators instead of raw source gaps between adjacent comment/doc items
 
-- [ ] Remove source-sniffing and token-text heuristics used to make rendering decisions
-  - rendered-source substring checks such as `[@` / `[%%expect]` preservation gates
-  - multiline/layout heuristics currently driven by reconstructed node text
-  - token-text scans over `SyntaxNode.tokens`, e.g. searching for `"="` then `"fun"` or reconstructing poly-variant inherit paths from token text lists
+- [ ] Remove token-text replay and token-text heuristics still used in `lower.ml`
+  - `doc_of_nontrivia_direct_tokens` call sites such as polymorphic-variant heads
+  - `signed_literal_text_from_syntax_node`
+  - `poly_type_has_explicit_type_keyword`
+  - `render_index_expression` punctuation reconstruction from `direct_tokens`
+  - any remaining token-text-based preservation gates such as shortcut-attribute / extension special cases if they still exist
 
-- [ ] Remove node-text-driven layout heuristics from `lower.ml`
-  - function-binding layout branches in `render_local_binding`
-  - `tuple_source_is_long`
-  - `apply_expression_is_simple_after_equals`
-  - `expression_source_is_long`
-  - `expression_source_has_newline`
-  - application multiline preference derived from raw node text length/newlines
-  - `let exception` rendering that prints `exception_declaration.syntax_node` text directly
+- [ ] Audit remaining layout heuristics and keep only the ones that are explicit style policy
+  - inline `let ... =` placement rules such as `expression_is_simple_after_equals`
+  - `render_local_binding` header/body placement rules
+  - `let exception` rendering, which still prints from `exception_declaration.syntax_node` text today
 
 - [ ] Remove source-derived “safe to rewrite” gates from top-level formatting
   - keep auditing top-level item joins for any remaining “preserve because rewrite might change meaning” behavior

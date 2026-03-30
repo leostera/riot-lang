@@ -986,8 +986,8 @@ and render_core_type =
   function
   | Syn.Cst.CoreType.Wildcard { wildcard_token; _ } ->
       doc_of_token wildcard_token
-  | Syn.Cst.CoreType.Var { syntax_node; _ } ->
-      doc_of_nontrivia_direct_tokens syntax_node
+  | Syn.Cst.CoreType.Var { name_token; _ } ->
+      doc_of_token name_token
   | Syn.Cst.CoreType.Constr { constructor_path; arguments; _ } ->
       let head = doc_of_ident constructor_path in
       (
