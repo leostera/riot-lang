@@ -613,34 +613,18 @@ let render_float_constant = fun (literal : Syn.Cst.float_constant) ->
   let fractional_digits = group_digits_from_left ~group_size:3 literal.fractional_digits in
   integral_digits ^ "." ^ fractional_digits ^ exponent ^ suffix
 
-let signed_literal_text_from_syntax_node = fun ~default_text syntax_node ->
-  let sign_prefix =
-    nontrivia_direct_tokens syntax_node
-    |> List.find_map
-      (fun syntax_token ->
-        let text = Syn.Ceibo.Red.SyntaxToken.text syntax_token in
-        if String.equal text "-" || String.equal text "+" then
-          Some text
-        else
-          None)
-  in
-  match sign_prefix with
-  | Some _ when String.starts_with ~prefix:"-" default_text || String.starts_with ~prefix:"+" default_text ->
-      default_text
-  | Some sign ->
-      sign ^ default_text
-  | None ->
-      default_text
-
 let render_literal =
   function
   | Syn.Cst.Literal.Int literal ->
-      let literal_text = signed_literal_text_from_syntax_node ~default_text:(render_integer_constant
-      literal) literal.syntax_node in
-      Doc.text literal_text
+      Doc.concat [
+        Option.unwrap_or (Option.map doc_of_token literal.sign_token) ~default:Doc.empty;
+        Doc.text (render_integer_constant literal)
+      ]
   | Syn.Cst.Literal.Float literal ->
-      let literal_text = signed_literal_text_from_syntax_node ~default_text:(render_float_constant literal) literal.syntax_node in
-      Doc.text literal_text
+      Doc.concat [
+        Option.unwrap_or (Option.map doc_of_token literal.sign_token) ~default:Doc.empty;
+        Doc.text (render_float_constant literal)
+      ]
   | Syn.Cst.Literal.String literal ->
       doc_of_token literal.literal_token
   | Syn.Cst.Literal.Char literal ->

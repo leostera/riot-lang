@@ -169,6 +169,12 @@ and float_exponent_to_json = fun ({ marker; sign; digits } : Cst.float_exponent)
   ("sign", option_to_json exponent_sign_to_json sign);
   ("digits", Json.String digits)
 ]
+and sign_token_field_to_json =
+  function
+  | None ->
+      []
+  | Some sign_token ->
+      [ ("sign_token", token_to_json sign_token) ]
 and constant_to_json =
   function
   | Cst.Constant.String {
@@ -188,38 +194,48 @@ and constant_to_json =
       ]
   | Cst.Constant.Int {
     syntax_node;
+    sign_token;
     literal_token;
     base;
     prefix;
     digits;
     suffix
   } ->
-      Json.Object [
-        ("tag", Json.String "int");
-        ("syntax_node", syntax_node_to_json syntax_node);
-        ("literal_token", token_to_json literal_token);
-        ("base", integer_base_to_json base);
-        ("prefix", option_to_json (fun text -> Json.String text) prefix);
-        ("digits", Json.String digits);
-        ("suffix", option_to_json (fun text -> Json.String text) suffix)
-      ]
+      Json.Object
+        ([
+           ("tag", Json.String "int");
+           ("syntax_node", syntax_node_to_json syntax_node);
+         ]
+        @ sign_token_field_to_json sign_token
+        @ [
+            ("literal_token", token_to_json literal_token);
+            ("base", integer_base_to_json base);
+            ("prefix", option_to_json (fun text -> Json.String text) prefix);
+            ("digits", Json.String digits);
+            ("suffix", option_to_json (fun text -> Json.String text) suffix);
+          ])
   | Cst.Constant.Float {
     syntax_node;
+    sign_token;
     literal_token;
     integral_digits;
     fractional_digits;
     exponent;
     suffix
   } ->
-      Json.Object [
-        ("tag", Json.String "float");
-        ("syntax_node", syntax_node_to_json syntax_node);
-        ("literal_token", token_to_json literal_token);
-        ("integral_digits", Json.String integral_digits);
-        ("fractional_digits", Json.String fractional_digits);
-        ("exponent", option_to_json float_exponent_to_json exponent);
-        ("suffix", option_to_json (fun text -> Json.String text) suffix)
-      ]
+      Json.Object
+        ([
+           ("tag", Json.String "float");
+           ("syntax_node", syntax_node_to_json syntax_node);
+         ]
+        @ sign_token_field_to_json sign_token
+        @ [
+            ("literal_token", token_to_json literal_token);
+            ("integral_digits", Json.String integral_digits);
+            ("fractional_digits", Json.String fractional_digits);
+            ("exponent", option_to_json float_exponent_to_json exponent);
+            ("suffix", option_to_json (fun text -> Json.String text) suffix);
+          ])
   | Cst.Constant.Char { syntax_node; literal_token; contents } ->
       Json.Object [
         ("tag", Json.String "char");

@@ -1855,8 +1855,24 @@ let literal_token_from_node = fun ~context node ->
           bail ~message:"expected literal token during Ceibo -> CST lifting" ~syntax_node:node ~context
     )
 
+let literal_sign_token_from_node = fun ~literal_token syntax_node ->
+  let literal_span = Cst.Token.span literal_token in
+  direct_non_trivia_tokens syntax_node
+  |> List.find_map
+       (fun syntax_token ->
+         let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
+         let token_text = Ceibo.Red.SyntaxToken.text syntax_token in
+         if
+           token_span.end_ <= literal_span.start
+           && (String.equal token_text "-" || String.equal token_text "+")
+         then
+           Some (token syntax_token)
+         else
+           None)
+
 let constant_from_syntax_token = fun ~syntax_node syntax_token ->
   let literal_token = token syntax_token in
+  let sign_token = literal_sign_token_from_node ~literal_token syntax_node in
   match Ceibo.Red.SyntaxToken.kind syntax_token with
   | Syntax_kind.STRING_LITERAL ->
       let delimiter, contents, terminated = string_delimiter_and_contents (Cst.Token.text literal_token) in
@@ -1870,11 +1886,12 @@ let constant_from_syntax_token = fun ~syntax_node syntax_token ->
       }
   | Syntax_kind.INT_LITERAL ->
       let base, prefix, digits, suffix = integer_parts (Cst.Token.text literal_token) in
-      Cst.Constant.Int {syntax_node; literal_token; base; prefix; digits; suffix; attributes = []}
+      Cst.Constant.Int {syntax_node; sign_token; literal_token; base; prefix; digits; suffix; attributes = []}
   | Syntax_kind.FLOAT_LITERAL ->
       let integral_digits, fractional_digits, exponent, suffix = float_parts (Cst.Token.text literal_token) in
       Cst.Constant.Float {
         syntax_node;
+        sign_token;
         literal_token;
         integral_digits;
         fractional_digits;

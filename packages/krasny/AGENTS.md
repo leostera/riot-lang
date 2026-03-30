@@ -49,6 +49,7 @@
 43. Render `CoreType.Var` from `sigil_token` plus `name_token`. Do not drop quoted `'a` sigils by printing only the bare name token, and do not reintroduce raw token replay to recover them.
 44. When `render_local_binding` synthesizes an outer `: type ...` annotation from parameter types, drop duplicate inner type annotations from the unsugared `fun` parameter list too. Normalize `~(fn : a -> b)` to `~fn` once the outer arrow already carries `fn:(a -> b)`.
 45. Render index expressions from `Syn.Cst.index_expression.opening_tokens` plus `closing_token`. Do not reconstruct `.[ ]`, `.( )`, or extended index-operator punctuation from raw direct-token text once `syn` exposes the delimiter tokens explicitly.
+46. Render signed int/float literals from `sign_token` when the CST constant carries one. Do not rescan literal-node direct tokens for leading `+` / `-`, especially for signed literal patterns.
 
 ## Validate
 

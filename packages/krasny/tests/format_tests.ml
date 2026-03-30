@@ -314,6 +314,27 @@ let z = x.%(0)
         in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
+    Test.case "format signed literal patterns from structural sign tokens"
+      (fun () ->
+        let source =
+          {|let classify = function | -1 -> `Neg | +2 -> `Pos | _ -> `Other
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"signed literal patterns should format from CST-carried sign tokens"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let classify =
+  function
+  | -1 -> `Neg
+  | +2 -> `Pos
+  | _ -> `Other
+|}
+          ~actual;
+        Ok ());
     Test.case "format singleton list patterns with explicit formatter spacing"
       (fun () ->
         let compact_source =

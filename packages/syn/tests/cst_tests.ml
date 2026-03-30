@@ -8201,6 +8201,69 @@ let tests =
             Test.assert_true terminated;
             Ok ()
         | _ -> Error "expected structured literal constants");
+    Test.case "cst pattern literals preserve explicit sign tokens" (fun () ->
+        let source =
+          "let classify = function | -1 -> true | +2 -> false | _ -> false\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Function
+                  {
+                    cases =
+                      {
+                        pattern =
+                          Syn.Cst.Pattern.Literal
+                            {
+                              literal =
+                                Syn.Cst.PatternLiteral.Int
+                                  {
+                                    sign_token = Some negative_sign_token;
+                                    literal_token = negative_literal_token;
+                                    _;
+                                  };
+                              _;
+                            };
+                        _;
+                      }
+                      :: {
+                           pattern =
+                             Syn.Cst.Pattern.Literal
+                               {
+                                 literal =
+                                   Syn.Cst.PatternLiteral.Int
+                                     {
+                                       sign_token = Some positive_sign_token;
+                                       literal_token = positive_literal_token;
+                                       _;
+                                     };
+                                 _;
+                               };
+                           _;
+                         }
+                      :: _;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"-"
+              ~actual:(Syn.Cst.Token.text negative_sign_token);
+            Test.assert_equal ~expected:"1"
+              ~actual:(Syn.Cst.Token.text negative_literal_token);
+            Test.assert_equal ~expected:"+"
+              ~actual:(Syn.Cst.Token.text positive_sign_token);
+            Test.assert_equal ~expected:"2"
+              ~actual:(Syn.Cst.Token.text positive_literal_token);
+            Ok ()
+        | _ -> Error "expected signed literal patterns in function cases");
     Test.case "lexer tagged quoted string literals tokenize as strings" (fun () ->
         let kinds =
           Syn.tokenize "let explanation = {explain|hello|explain}\n"

@@ -1263,6 +1263,7 @@ type string_constant = {
 *)
 type integer_constant = {
   syntax_node : syntax_node;
+  sign_token : Token.t option;
   literal_token : Token.t;
   base : integer_base;
   prefix : string option;
@@ -1294,6 +1295,7 @@ type float_exponent = {
 *)
 type float_constant = {
   syntax_node : syntax_node;
+  sign_token : Token.t option;
   literal_token : Token.t;
   integral_digits : string;
   fractional_digits : string;
