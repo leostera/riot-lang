@@ -8,10 +8,6 @@
     "deploy": "wrangler deploy",
     "migrate": "wrangler d1 migrations apply riot-registry --local --config wrangler.toml",
     "migrate:remote": "wrangler d1 migrations apply riot-registry --remote --config wrangler.toml",
-    "db:backup": "bash scripts/db-backup.sh",
-    "db:time-travel:info": "bash scripts/db-time-travel-info.sh",
-    "db:time-travel:restore": "bash scripts/db-time-travel-restore.sh",
-    "db:restore": "bash scripts/db-restore.sh",
     "test": "bun test tests/routes.test.ts tests/storage.test.ts tests/indexing.test.ts tests/search.test.ts tests/auth.test.ts",
     "test:e2e": "bun test tests/e2e.test.ts"
   },

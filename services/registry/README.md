@@ -24,56 +24,29 @@ bun run migrate:remote
 
 ## Backups and rollback
 
-The control-plane database is Cloudflare D1 (`riot-registry`). Set up periodic
-backups from your deployment environment by running:
+The control-plane database is Cloudflare D1 (`riot-registry`).
 
-```bash
-cd services/registry
-bun run db:backup
-```
-
-Backups are written as SQL dumps under `services/registry/backups` by default.
-Set environment overrides before running:
-
-```bash
-export REGISTRY_D1_DB_NAME=riot-registry
-export REGISTRY_D1_BACKUP_DIR=./backups
-```
-
-Rollback options:
-
-- **Point-in-time rollback (recommended):**
+- Use **D1 Time Travel** for point-in-time rollback. It is always on, supports
+  rollback to historical points, and is the primary recovery mechanism.
 
   ```bash
-  bun run db:time-travel:info
-  bun run db:time-travel:restore -- --timestamp <RFC3339-or-epoch>
-  bun run db:time-travel:restore -- --bookmark <bookmark>
+  # Current backup point
+  wrangler d1 time-travel info riot-registry
+
+  # Restore to a timestamp (UTC RFC3339 or Unix seconds)
+  wrangler d1 time-travel restore riot-registry --timestamp 2026-03-30T10:20:00Z
   ```
 
-  Examples:
+- For retention beyond Time Travel retention windows, use the Cloudflare
+  Workflows example to periodically export D1 into R2:
+  https://developers.cloudflare.com/workflows/examples/backup-d1/
 
-  ```bash
-  # find available rollback points around a UTC timestamp
-  bunx wrangler d1 time-travel info riot-registry --timestamp 2026-03-30T10:20:00Z --json
-
-  # restore to a concrete timestamp
-  bunx wrangler d1 time-travel restore riot-registry --timestamp 2026-03-30T10:20:00Z
-  ```
-
-- **Restore from a snapshot file (full re-import):**
-
-  ```bash
-  bun run db:restore -- services/registry/backups/registry-d1-riot-registry-20260330T101530Z.sql
-  ```
-
-  This is destructive and replays the SQL dump. Confirm the prompt before
-  continuing, and validate after restore.
+  This pattern uses the D1 REST export API and cron-driven retry logic.
 
 Notes:
-- D1 Time Travel rollback is managed by Cloudflare and is generally the safest
-  restoration path.
-- Keep exported SQL backups in an external secure location if you need retention
-  beyond Cloudflare Time Travel retention.
+- Time Travel retention is plan-dependent (7 days on Free, 30 days on Paid).
+- Time Travel restore overwrites the target database in place; validate immediately
+  after restore.
 
 Wrangler reads `.env` during local development, and the Worker expects at least:
 

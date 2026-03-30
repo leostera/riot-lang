@@ -1,7 +1,6 @@
 dist
 artifacts
 .wrangler
-services/registry/backups/*.sql
 *.pone
 3rdparty
 generated
