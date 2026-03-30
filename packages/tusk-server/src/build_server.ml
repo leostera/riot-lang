@@ -86,52 +86,63 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
     let profile = Profile.(apply_overrides debug workspace.profile_overrides) in
     Log.debug ("Build started with profile " ^ (Data.Json.to_string (Profile.to_json profile)));
     
-    (* Convert target_arch string to Tusk_model.Target.t if provided *)
-    let target = match target_arch with
-      | Some arch_str -> 
+    let config = Tusk_model.Toolchain_config.from_workspace workspace in
+
+    let toolchain, target =
+      match target_arch with
+      | Some arch_str ->
           (match Kernel.System.Host.from_string arch_str with
-          | Ok target_triplet -> 
+          | Ok target_triplet ->
               Log.info ("✓ Parsed target architecture: " ^ arch_str ^ " -> os=" ^ target_triplet.os);
               let host_triplet = Kernel.System.Host.current in
               if Kernel.System.Host.equal target_triplet host_triplet then (
                 Log.info "Target matches host - native compilation";
-                Some Tusk_model.Target.Host
+                (toolchain, Some Tusk_model.Target.Host)
               ) else (
-                Log.info ("Cross-compiling from " ^ Kernel.System.Host.to_string host_triplet ^ 
-                          " to " ^ Kernel.System.Host.to_string target_triplet);
-                let detection = Tusk_toolchain.CrossCompilingToolchain.detect ~target_triplet in
-                Some (Tusk_model.Target.make_cross_with_config 
-                  ~target_triplet
-                  ~sysroot:detection.sysroot
-                  ~bin_dir:detection.bin_dir
-                  ~bin_prefix:detection.bin_prefix)
-              )
-          | Error msg -> 
-              Log.warn ("Invalid target architecture '" ^ arch_str ^ "': " ^ msg ^ ", using host");
-              None)
-      | None -> None
+                Log.info
+                  ("Cross-compiling from " ^ Kernel.System.Host.to_string host_triplet
+                 ^ " to " ^ Kernel.System.Host.to_string target_triplet);
+                let resolved_toolchain =
+                  match Tusk_toolchain.init_for_target ~config ~target:arch_str with
+                  | Ok tc ->
+                      Log.debug ("Using cross-compilation toolchain for " ^ arch_str);
+                      tc
+                  | Error msg ->
+                      Log.error
+                        ("Failed to init toolchain for " ^ arch_str ^ ": " ^ msg
+                       ^ ", using host toolchain");
+                      toolchain
+                in
+                let toolchain_root =
+                  Path.(
+                    Tusk_model.Tusk_dirs.dot_tusk
+                    / Path.v "toolchains"
+                    / Path.v config.version
+                    / Path.v arch_str)
+                in
+                let detection =
+                  Tusk_toolchain.CrossCompilingToolchain.detect ~toolchain_root
+                    ~target_triplet
+                in
+                ( resolved_toolchain,
+                  Some
+                    (Tusk_model.Target.make_cross_with_config ~target_triplet
+                       ~sysroot:detection.sysroot ~bin_dir:detection.bin_dir
+                       ~bin_prefix:detection.bin_prefix) ))
+          | Error msg ->
+              Log.warn
+                ("Invalid target architecture '" ^ arch_str ^ "': " ^ msg
+               ^ ", using host");
+              (toolchain, None))
+      | None -> (toolchain, None)
     in
-    
+
     let build_ctx =
       Build_ctx.make ~session_id ~profile ?target
         ~available_parallelism:concurrency ()
     in
     Log.info ("Build context created: target_platform=" ^ (Build_ctx.target_platform_name build_ctx) ^ 
               ", host_platform=" ^ (Build_ctx.host_platform_name build_ctx));
-    
-    (* Get the appropriate toolchain for the target architecture *)
-    let toolchain = match target_arch with
-      | Some arch_str ->
-          let config = Tusk_model.Toolchain_config.from_workspace workspace in
-          (match Tusk_toolchain.init_for_target ~config ~target:arch_str with
-          | Ok tc -> 
-              Log.debug ("Using cross-compilation toolchain for " ^ arch_str);
-              tc
-          | Error msg ->
-              Log.error ("Failed to init toolchain for " ^ arch_str ^ ": " ^ msg ^ ", using host toolchain");
-              toolchain)
-      | None -> toolchain
-    in
     
     let result =
       Coordinator.build_workspace ~workspace ~toolchain ~store

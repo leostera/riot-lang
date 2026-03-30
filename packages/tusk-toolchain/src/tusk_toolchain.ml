@@ -86,6 +86,67 @@ let check_binaries_exist toolchain =
   | _, _, Error err ->
       Error ("Failed to check binaries: " ^ IO.error_message err)
 
+let path_exists path =
+  match Fs.exists path with
+  | Ok true -> true
+  | _ -> false
+
+let dir_exists path =
+  match Fs.is_dir path with
+  | Ok true -> true
+  | _ -> false
+
+let explicit_sysroot_override () =
+  let present name =
+    match Env.var Env.String ~name with
+    | Some value -> not (String.equal value "")
+    | None -> false
+  in
+  present "CROSS_SYSROOT" || present "SYSROOT"
+
+let missing_cross_components ~toolchain_path ~target =
+  match Kernel.System.Host.from_string target with
+  | Error _ -> []
+  | Ok target_triplet ->
+      let bin_prefix =
+        CrossCompilingToolchain.bin_prefix_of_triplet target_triplet
+      in
+      let compiler_candidates =
+        [
+          Path.(toolchain_path / Path.v "bin" / Path.v (bin_prefix ^ "gcc"));
+          Path.(toolchain_path / Path.v "gcc" / Path.v "bin" / Path.v (bin_prefix ^ "gcc"));
+        ]
+      in
+      let sysroot_candidates =
+        [
+          Path.(toolchain_path / Path.v "sysroot");
+          Path.(toolchain_path / Path.v ("sysroot-" ^ target));
+          Path.(toolchain_path / Path.v "gcc" / Path.v target / Path.v "sysroot");
+        ]
+      in
+      let compiler_missing =
+        if List.exists path_exists compiler_candidates then []
+        else [ "cross-compiler" ]
+      in
+      let sysroot_missing =
+        if List.exists dir_exists sysroot_candidates then []
+        else [ "sysroot" ]
+      in
+      compiler_missing @ sysroot_missing
+
+let validate_toolchain_install ~version ~target =
+  let toolchain_path = get_toolchain_path_for_target version target in
+  let source = Version version in
+  let toolchain = make_toolchain version source ~target in
+  match check_binaries_exist toolchain with
+  | Error _ -> Error [ "binaries" ]
+  | Ok () ->
+      let missing =
+        if target = get_host_triple () || explicit_sysroot_override () then []
+        else missing_cross_components ~toolchain_path ~target
+      in
+      if List.length missing = 0 then Ok toolchain else Error missing
+
 let download_and_install_toolchain version ~host ~target =
   let toolchain_path = get_toolchain_path_for_target version target in
   
@@ -268,14 +329,31 @@ let init_for_target ~config ~target =
   let host = get_host_triple () in
   let toolchain_path = get_toolchain_path_for_target version target in
   let bin_dir = Path.(toolchain_path / Path.v "bin") in
+  let validate () = validate_toolchain_install ~version ~target in
+  let refresh () =
+    match download_and_install_toolchain version ~host ~target with
+    | Ok () -> (
+        match validate () with
+        | Ok toolchain -> Ok toolchain
+        | Error missing ->
+            Error
+              ("Downloaded toolchain for " ^ target ^ " but it is still incomplete: "
+             ^ String.concat ", " missing))
+    | Error msg -> Error ("Failed to download toolchain for " ^ target ^ ": " ^ msg)
+  in
   
   (* Check if already installed *)
   match Fs.is_dir bin_dir with
   | Ok true ->
-      let toolchain = make_toolchain version source ~target in
-      (match check_binaries_exist toolchain with
-      | Ok () -> Ok toolchain
-      | Error _ -> Error ("Toolchain incomplete: " ^ Path.to_string toolchain_path))
+      (match validate () with
+      | Ok toolchain -> Ok toolchain
+      | Error missing when not (String.equal target host) ->
+          Log.info
+            ("Refreshing cross toolchain for " ^ target ^ " because it is missing: "
+           ^ String.concat ", " missing);
+          refresh ()
+      | Error _ ->
+          Error ("Toolchain incomplete: " ^ Path.to_string toolchain_path))
   | _ ->
       (* Try local compiler if native build *)
       if host = target then
@@ -315,13 +393,7 @@ let init_for_target ~config ~target =
             | Error msg -> Error ("Failed to download toolchain for " ^ target ^ ": " ^ msg)))
       else
         (* Cross-compilation - download cross-toolchain *)
-        (match download_and_install_toolchain version ~host ~target with
-        | Ok () ->
-            let toolchain = make_toolchain version source ~target in
-            (match check_binaries_exist toolchain with
-            | Ok () -> Ok toolchain
-            | Error msg -> Error ("Downloaded but incomplete: " ^ msg))
-        | Error msg -> Error ("Failed to download toolchain for " ^ target ^ ": " ^ msg))
+        refresh ()
 
 (** Get toolchain for specific target (lazy initialization) *)
 let get_for_target ~config ~target =
@@ -348,14 +420,9 @@ let check_toolchain_status ~version ~target =
   | Ok false | Error _ -> 
       NotInstalled { expected_path = toolchain_path }
   | Ok true ->
-      let source = Version version in
-      let toolchain = make_toolchain version source ~target in
-      (match check_binaries_exist toolchain with
-      | Ok () -> Installed { path = toolchain_path }
-      | Error msg ->
-          (* For now, just return generic incomplete status *)
-          (* TODO: implement find_missing_binaries to get specific missing files *)
-          Incomplete { path = toolchain_path; missing = ["binaries"] })
+      (match validate_toolchain_install ~version ~target with
+      | Ok _ -> Installed { path = toolchain_path }
+      | Error missing -> Incomplete { path = toolchain_path; missing })
 
 let list_toolchains ~config =
   let version = config.Tusk_model.Toolchain_config.version in

@@ -1,11 +1,13 @@
 #!/bin/bash
-# Create minimal sysroot for Linux cross-compilation
-# This script uses Docker to extract system libraries and headers from Ubuntu
+# Create a minimal Linux SDK overlay for cross-compilation.
+# This script uses Docker to extract only the non-libc headers and libraries
+# that Riot's foreign stubs need on Linux.
 
 set -e
 
 TARGET="${1:-aarch64-unknown-linux-gnu}"
 UBUNTU_VERSION="${2:-22.04}"
+OUTPUT_ROOT="${3:-$PWD}"
 
 case "$TARGET" in
   aarch64-unknown-linux-gnu)
@@ -25,12 +27,13 @@ case "$TARGET" in
     ;;
 esac
 
-SYSROOT_DIR="sysroot-${TARGET}"
+SYSROOT_DIR="${OUTPUT_ROOT%/}/sysroot-${TARGET}"
 DOCKER_IMAGE="ubuntu:${UBUNTU_VERSION}"
 
 echo "Creating sysroot for $TARGET using $DOCKER_IMAGE..."
 
 # Clean previous sysroot
+mkdir -p "$OUTPUT_ROOT"
 rm -rf "$SYSROOT_DIR"
 mkdir -p "$SYSROOT_DIR/usr"/{include,lib}
 
@@ -57,12 +60,30 @@ docker exec "$CONTAINER" apt-get install -y -qq \
 
 # Extract headers
 echo "Extracting headers..."
-docker cp "$CONTAINER:/usr/include/." "$SYSROOT_DIR/usr/include/"
+docker cp "$CONTAINER:/usr/include/uuid" "$SYSROOT_DIR/usr/include/"
+docker cp "$CONTAINER:/usr/include/openssl" "$SYSROOT_DIR/usr/include/"
+docker cp "$CONTAINER:/usr/include/zlib.h" "$SYSROOT_DIR/usr/include/"
+docker cp "$CONTAINER:/usr/include/zconf.h" "$SYSROOT_DIR/usr/include/"
+docker cp "$CONTAINER:/usr/include/${LIB_DIR}/openssl/." "$SYSROOT_DIR/usr/include/openssl/" 2>/dev/null || true
 
-# Extract libraries
+# Extract libraries without overwriting the bundled glibc sysroot.
 echo "Extracting libraries..."
-docker cp "$CONTAINER:/usr/lib/${LIB_DIR}/." "$SYSROOT_DIR/usr/lib/" 2>/dev/null || true
-docker cp "$CONTAINER:/lib/${LIB_DIR}/." "$SYSROOT_DIR/usr/lib/" 2>/dev/null || true
+docker exec "$CONTAINER" bash -lc "
+  set -euo pipefail
+  shopt -s nullglob
+  rm -rf /tmp/riot-sdk-libs
+  mkdir -p /tmp/riot-sdk-libs
+  for pattern in libuuid.so* libuuid.a libssl.so* libssl.a libcrypto.so* libcrypto.a libz.so* libz.a; do
+    for file in /usr/lib/${LIB_DIR}/\$pattern /lib/${LIB_DIR}/\$pattern; do
+      [ -e \"\$file\" ] || continue
+      cp -a \"\$file\" /tmp/riot-sdk-libs/
+    done
+  done
+  tar czf /tmp/riot-sdk-libs.tar -C /tmp/riot-sdk-libs .
+"
+docker cp "$CONTAINER:/tmp/riot-sdk-libs.tar" "$OUTPUT_ROOT/riot-sdk-libs-${TARGET}.tar.gz"
+tar xzf "$OUTPUT_ROOT/riot-sdk-libs-${TARGET}.tar.gz" -C "$SYSROOT_DIR/usr/lib/"
+rm -f "$OUTPUT_ROOT/riot-sdk-libs-${TARGET}.tar.gz"
 
 # Create lib64 symlink if needed (x86_64)
 if [ "$ARCH" = "amd64" ]; then
@@ -70,14 +91,14 @@ if [ "$ARCH" = "amd64" ]; then
 fi
 
 # Create tarball
-TARBALL="${SYSROOT_DIR}.tar.gz"
+TARBALL="${OUTPUT_ROOT%/}/sysroot-${TARGET}.tar.gz"
 echo "Creating tarball: $TARBALL"
 tar czf "$TARBALL" "$SYSROOT_DIR"
 
 # Show size
 SIZE=$(du -h "$TARBALL" | cut -f1)
 echo ""
-echo "✅ Sysroot created successfully!"
+echo "✅ SDK overlay created successfully!"
 echo "   Target:   $TARGET"
 echo "   Path:     $SYSROOT_DIR"
 echo "   Tarball:  $TARBALL ($SIZE)"
@@ -93,4 +114,4 @@ echo ""
 
 # List key libraries
 echo "Included libraries:"
-find "$SYSROOT_DIR/usr/lib" -maxdepth 1 -name "*.so" -o -name "*.a" | sort | head -20
+find "$SYSROOT_DIR/usr/lib" -maxdepth 1 \( -name "*.so" -o -name "*.a" \) | sort

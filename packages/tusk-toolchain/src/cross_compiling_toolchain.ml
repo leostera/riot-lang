@@ -1,4 +1,5 @@
 open Std
+open Tusk_model
 
 (** Cross-compilation toolchain detection and configuration *)
 
@@ -49,32 +50,97 @@ let detect_sysroot cc_path =
 let bin_dir_of_compiler cc_path =
   Path.parent cc_path
 
+let env_sysroot () =
+  let from_env name =
+    match Env.var Env.String ~name with
+    | Some path when not (String.equal path "") -> Some (Path.v path)
+    | _ -> None
+  in
+  match from_env "CROSS_SYSROOT" with
+  | Some path -> Some path
+  | None -> from_env "SYSROOT"
+
+let first_existing paths =
+  List.find_map
+    (fun path ->
+      match Fs.exists path with
+      | Ok true -> Some path
+      | _ -> None)
+    paths
+
+let bundled_c_compiler ~toolchain_root ~bin_prefix =
+  first_existing
+    [
+      Path.(toolchain_root / v "bin" / v (bin_prefix ^ "gcc"));
+      Path.(toolchain_root / v "gcc" / v "bin" / v (bin_prefix ^ "gcc"));
+    ]
+
+let bundled_sysroot ~toolchain_root ~target_triplet =
+  let target = System.Host.to_string target_triplet in
+  first_existing
+    [
+      Path.(toolchain_root / v "sysroot");
+      Path.(toolchain_root / v ("sysroot-" ^ target));
+      Path.(toolchain_root / v "gcc" / v target / v "sysroot");
+    ]
+
 (** Detect cross-compilation toolchain for target *)
-let detect ~target_triplet =
+let detect ?toolchain_root ~target_triplet =
   let bin_prefix = bin_prefix_of_triplet target_triplet in
-  
-  match find_c_compiler bin_prefix with
+
+  let bundled_cc =
+    match toolchain_root with
+    | Some root -> bundled_c_compiler ~toolchain_root:root ~bin_prefix
+    | None -> None
+  in
+  let cc_path =
+    match bundled_cc with
+    | Some _ as cc -> cc
+    | None -> find_c_compiler bin_prefix
+  in
+
+  let explicit_sysroot = env_sysroot () in
+  let bundled_sr =
+    match toolchain_root with
+    | Some root -> bundled_sysroot ~toolchain_root:root ~target_triplet
+    | None -> None
+  in
+
+  match cc_path with
   | None ->
       (* No cross-compiler found - return minimal config *)
       Log.warn ("Cross-compiler not found for " ^ System.Host.to_string target_triplet);
       Log.warn ("Expected: " ^ bin_prefix ^ "gcc in PATH");
       {
-        sysroot = None;
+        sysroot = (match explicit_sysroot with Some path -> Some path | None -> bundled_sr);
         bin_dir = None;
         bin_prefix;
         c_compiler = None;
       }
   
   | Some cc_path ->
-      let sysroot = detect_sysroot cc_path in
+      let sysroot =
+        match explicit_sysroot with
+        | Some path -> Some path
+        | None -> (
+            match bundled_sr with
+            | Some path -> Some path
+            | None -> detect_sysroot cc_path)
+      in
       let bin_dir = bin_dir_of_compiler cc_path in
-      
+
+      (match bundled_cc with
+      | Some path when Path.equal path cc_path ->
+          Log.info ("✓ Using bundled cross-compiler: " ^ Path.to_string path)
+      | _ ->
+          Log.info ("✓ Using PATH cross-compiler: " ^ Path.to_string cc_path));
+
       (match sysroot with
-      | Some sr -> 
+      | Some sr ->
           Log.info ("✓ Found sysroot: " ^ Path.to_string sr)
-      | None -> 
+      | None ->
           Log.warn ("⚠ No sysroot found for cross-compiler"));
-      
+
       {
         sysroot;
         bin_dir;

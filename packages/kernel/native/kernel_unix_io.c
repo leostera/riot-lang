@@ -1,3 +1,7 @@
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include <caml/alloc.h>
 #include <caml/bigarray.h>
 #include <caml/memory.h>

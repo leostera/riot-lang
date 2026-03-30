@@ -293,6 +293,64 @@ host_target_for_cross_target() {
   esac
 }
 
+linux_sysroot_overlay_target() {
+  local target="$1"
+
+  case "$target" in
+    *-x-aarch64-unknown-linux-gnu)
+      printf '%s\n' "aarch64-unknown-linux-gnu"
+      ;;
+    *-x-x86_64-unknown-linux-gnu)
+      printf '%s\n' "x86_64-unknown-linux-gnu"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+toolchain_sysroot_dir() {
+  local toolchain_dir="$1"
+  local target_triplet="$2"
+
+  if [ -d "$toolchain_dir/gcc/$target_triplet/sysroot" ]; then
+    printf '%s\n' "$toolchain_dir/gcc/$target_triplet/sysroot"
+  elif [ -d "$toolchain_dir/sysroot" ]; then
+    printf '%s\n' "$toolchain_dir/sysroot"
+  else
+    return 1
+  fi
+}
+
+merge_linux_sysroot_overlay() {
+  local target="$1"
+  local toolchain_dir="$2"
+  local overlay_target
+  local sysroot_dir
+  local overlay_root
+
+  overlay_target="$(linux_sysroot_overlay_target "$target" 2>/dev/null)" || return 0
+  sysroot_dir="$(toolchain_sysroot_dir "$toolchain_dir" "$overlay_target")" || \
+    die "unable to locate bundled sysroot for $target in $toolchain_dir"
+
+  echo "Merging Linux sysroot overlay for $overlay_target into $sysroot_dir"
+
+  if [ "$DRY_RUN" != "0" ]; then
+    printf '+ bash %q %q %q %q\n' \
+      "$REPO_ROOT/scripts/create-sysroot.sh" \
+      "$overlay_target" \
+      "22.04" \
+      "/tmp/riot-ocaml-sysroot.$overlay_target.XXXXXX"
+    printf '+ rsync -a %q %q/\n' "/tmp/riot-ocaml-sysroot.$overlay_target.XXXXXX/sysroot-$overlay_target/" "$sysroot_dir"
+    return 0
+  fi
+
+  overlay_root="$(mktemp -d "/tmp/riot-ocaml-sysroot.${overlay_target}.XXXXXX")"
+  bash "$REPO_ROOT/scripts/create-sysroot.sh" "$overlay_target" "22.04" "$overlay_root"
+  rsync -a "$overlay_root/sysroot-$overlay_target"/ "$sysroot_dir"/
+  rm -rf "$overlay_root"
+}
+
 restore_built_host_toolchain() {
   local host_target="$1"
   local worktree_dir="$2"
@@ -364,6 +422,8 @@ build_local_target() {
     cd "$worktree_dir"
     bash ./cross/build.sh "$target"
   )
+
+  merge_linux_sysroot_overlay "$target" "$worktree_dir/cross/$target"
 
   temp_output_dir="$(mktemp -d "$output_dir/.tmp-${target}.XXXXXX")"
   (

@@ -29,16 +29,19 @@ val bin_dir_of_compiler : Path.t -> Path.t option
 
 (** Detect cross-compilation toolchain for target
     
-    This function:
-    1. Derives the binary prefix from target triplet
-    2. Searches for the cross-compiler in PATH
-    3. Queries the compiler for its sysroot
-    4. Returns all detected information
+    Detection order:
+    1. Honor [`CROSS_SYSROOT`] / [`SYSROOT`] environment overrides
+    2. Prefer a bundled compiler/sysroot inside the installed OCaml toolchain root
+    3. Fall back to a cross-compiler discovered on [`PATH`]
+    4. Query the selected compiler for its sysroot if needed
     
-    If the cross-compiler is not found, returns a minimal config
-    with bin_prefix set but other fields as None.
+    If no compiler is found, returns a minimal config with [`bin_prefix`] set
+    but the other fields left as [`None`].
 *)
-val detect : target_triplet:System.Host.t -> detection_result
+val detect :
+  ?toolchain_root:Path.t ->
+  target_triplet:System.Host.t ->
+  detection_result
 
 (** Get full path to a cross-compilation binary
     
