@@ -842,10 +842,23 @@ and type_definition_owned_trivia_spans =
   | Cst.TypeDefinition.PolyVariant _ ->
       []
 
-let rec type_declaration_owned_trivia_spans = fun decl -> owned_trivia_spans
-(Cst.TypeDeclaration.owned_trivia decl)
-@ type_definition_owned_trivia_spans (Cst.TypeDeclaration.type_definition decl)
-@ (Cst.TypeDeclaration.and_declarations decl |> List.concat_map type_declaration_owned_trivia_spans)
+let type_declaration_owned_trivia_spans =
+  let rec collect acc decl =
+    let acc =
+      List.rev_append
+        (type_definition_owned_trivia_spans (Cst.TypeDeclaration.type_definition decl))
+        acc
+    in
+    let acc =
+      List.rev_append (owned_trivia_spans (Cst.TypeDeclaration.owned_trivia decl)) acc
+    in
+    match Cst.TypeDeclaration.next_and_declaration decl with
+    | Some next ->
+        collect acc next
+    | None ->
+        List.rev acc
+  in
+  fun decl -> collect [] decl
 
 let type_definition_owned_trivia_end = fun type_definition ->
   type_definition_owned_trivia_spans type_definition |> List.fold_left
@@ -9419,17 +9432,24 @@ let rec validate_type_declaration = fun ~context (decl : Cst.TypeDeclaration.t) 
   let type_definition = Cst.TypeDeclaration.type_definition decl in
   let manifest_alias = Cst.TypeDeclaration.manifest_alias decl in
   let constraints = Cst.TypeDeclaration.constraints decl in
-  let and_declarations = Cst.TypeDeclaration.and_declarations decl in
   Option.iter (validate_core_type ~context:((("item.type_declaration.manifest_alias" :: context)))) manifest_alias;
   validate_type_definition ~context:((("item.type_declaration" :: context))) type_definition;
   List.iteri (fun index constraint_ -> validate_type_constraint ~context:(((("item.type_declaration.constraint["
   ^ Int.to_string index
   ^ "]")
   :: context))) constraint_) constraints;
-  List.iteri (fun index declaration -> validate_type_declaration ~context:(((("item.type_declaration.and_declarations["
-  ^ Int.to_string index
-  ^ "]")
-  :: context))) declaration) and_declarations
+  let rec validate_tail index =
+    function
+    | Some declaration ->
+        validate_type_declaration ~context:(((("item.type_declaration.and_declarations["
+        ^ Int.to_string index
+        ^ "]")
+        :: context))) declaration;
+        validate_tail (index + 1) (Cst.TypeDeclaration.next_and_declaration declaration)
+    | None ->
+        ()
+  in
+  validate_tail 0 (Cst.TypeDeclaration.next_and_declaration decl)
 
 let validate_type_extension = fun ~context ({ constructors; _ } : Cst.TypeExtension.t) ->
   List.iteri
@@ -9482,13 +9502,18 @@ let validate_structure_item = fun ~context ->
   | Cst.StructureItem.LetBinding { binding_pattern; value; and_binding; _ } ->
       validate_pattern ~context:((("item.let_binding.pattern" :: context))) binding_pattern;
       validate_expression ~context:((("item.let_binding.value" :: context))) value;
-      List.iteri
-        (fun index binding ->
-          validate_pattern ~context:(((("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].pattern")
-          :: context))) (Cst.LetBinding.binding_pattern binding);
-          validate_expression ~context:(((("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].value")
-          :: context))) (Cst.LetBinding.value binding))
-        (Option.to_list and_binding |> List.concat_map let_binding_chain_to_list)
+      let rec validate_and_bindings index =
+        function
+        | Some binding ->
+            validate_pattern ~context:(((("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].pattern")
+            :: context))) (Cst.LetBinding.binding_pattern binding);
+            validate_expression ~context:(((("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].value")
+            :: context))) (Cst.LetBinding.value binding);
+            validate_and_bindings (index + 1) (Cst.LetBinding.and_binding binding)
+        | None ->
+            ()
+      in
+      validate_and_bindings 0 and_binding
   | Cst.StructureItem.Expression expr ->
       validate_expression ~context:((("item.expression" :: context))) expr
   | Cst.StructureItem.ClassDeclaration decl ->
@@ -9561,26 +9586,25 @@ let lift = fun ~kind ~source ~tokens tree ->
     match kind with
     | `Implementation ->
         let syntax_node, items, phrase_separator_tokens, trailing_phrase_separator_tokens = build_source_file_body ~source ~tokens ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~syntax_node_of_item:Cst.StructureItem.syntax_node ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans tree structure_items_from_node in
+        let items = items |> coalesce_structure_type_declaration_groups in
+        let items = normalize_structure_items_owned_trivia ~source items in
         Cst.Implementation {
           syntax_node;
           phrase_separator_tokens;
           trailing_phrase_separator_tokens;
-          items = items
-          |> coalesce_structure_type_declaration_groups
-          |> normalize_structure_items_owned_trivia ~source
+          items
         }
     | `Interface ->
         let syntax_node, items, phrase_separator_tokens, trailing_phrase_separator_tokens = build_source_file_body ~source ~tokens ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans tree signature_items_from_node in
+        let items = items |> coalesce_signature_type_declaration_groups in
+        let items = normalize_signature_items_owned_trivia ~source items in
         Cst.Interface {
           syntax_node;
           phrase_separator_tokens;
           trailing_phrase_separator_tokens;
-          items = items
-          |> coalesce_signature_type_declaration_groups
-          |> normalize_signature_items_owned_trivia ~source
+          items
         }
   in
-  validate_source_file cst;
   cst
 
 let create_from_ceibo = fun ~kind ~source ~tokens tree ->
