@@ -73,7 +73,7 @@ This file is _yours_. Keep it up to date after every big change.
 - singleton list patterns now use explicit formatter edge spacing; `lower.ml` no longer sniffs source text for `"[ "` / `" ]"` to preserve original spacing.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `render_trivia_between_spans`, `parse_trivia_between_offsets`, `trailing_inline_comment_suffix`, `leading_inline_comment_between_offsets`, and `split_leading_inline_comment_source` are gone from `lower.ml`; the remaining raw-trivia debt is in `doc_of_owned_trivia` separator recovery and source/text heuristics, not generic between-node span replay.
-- `packages/krasny/src/source.ml` is trimmed to the live helper surface `lower.ml` still uses; the old replay-era helper chain for trailing comments, pattern text, fresh match names, and comment-like substring probes is gone.
+- `packages/krasny/src/source.ml` is trimmed to raw source-reconstruction helpers only; the old replay-era helper chain and the structural comment-trivia probe are gone from `Source`.
 
 ## Working Style
 
@@ -159,8 +159,7 @@ This file is _yours_. Keep it up to date after every big change.
     `Source.source_of_span`,
     `Source.source_of_syntax_node`,
     `Source.source_of_node_from_source`,
-    `Source.source_between`,
-    `Source.syntax_node_has_comment_like_trivia`
+    `Source.source_between`
 
 - [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing
   - explicit phrase-separator / top-level phrase-boundary modeling

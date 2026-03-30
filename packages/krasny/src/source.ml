@@ -31,25 +31,6 @@ let source_of_syntax_node (node : Syn.Cst.syntax_node) =
       List.iter append_token rest;
       IO.Buffer.contents buffer |> trim_trailing_newlines
 
-let syntax_node_has_comment_like_trivia (node : Syn.Cst.syntax_node) =
-  let found = ref false in
-  Syn.Ceibo.Red.SyntaxNode.preorder node (function
-    | Syn.Ceibo.Red.Token token ->
-        if
-          Syn.Ceibo.Red.SyntaxToken.leading_trivia token
-          |> List.exists (fun trivia ->
-                 match Syn.Ceibo.Red.SyntaxTrivia.kind trivia with
-                 | Syn.SyntaxKind.COMMENT
-                 | Syn.SyntaxKind.DOCSTRING ->
-                     true
-                 | _ ->
-                     false)
-        then
-          found := true
-    | Syn.Ceibo.Red.Node _ ->
-        ());
-  !found
-
 let source_of_span source (span : Syn.Ceibo.Span.t) =
   let source_length = String.length source in
   let start =

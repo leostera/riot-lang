@@ -111,6 +111,26 @@ let text_of_syntax_node = fun syntax_node ->
       in
       first_text ^ rest_text
 
+let syntax_node_has_comment_like_trivia = fun (node : Syn.Cst.syntax_node) ->
+  let found = ref false in
+  Syn.Ceibo.Red.SyntaxNode.preorder node (function
+    | Syn.Ceibo.Red.Token token ->
+        if
+          Syn.Ceibo.Red.SyntaxToken.leading_trivia token
+          |> List.exists (fun trivia ->
+                 match Syn.Ceibo.Red.SyntaxTrivia.kind trivia with
+                 | Syn.SyntaxKind.COMMENT
+                 | Syn.SyntaxKind.DOCSTRING ->
+                     true
+                 | _ ->
+                     false)
+        then
+          found := true
+    | Syn.Ceibo.Red.Node _ ->
+        ())
+  ;
+  !found
+
 let token_is_phrase_separator = fun token ->
   String.equal (Syn.Ceibo.Red.SyntaxToken.text token) semicolon_text
 
@@ -2068,7 +2088,7 @@ and apply_argument_is_simple_after_equals =
       true
 and apply_expression_is_simple_after_equals =
   fun ({ syntax_node; callee; argument; _ } : Syn.Cst.apply_expression) ->
-  not (Source.syntax_node_has_comment_like_trivia syntax_node)
+  not (syntax_node_has_comment_like_trivia syntax_node)
   && expression_is_simple_after_equals callee
   && apply_argument_is_simple_after_equals argument
 
