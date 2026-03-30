@@ -4627,24 +4627,6 @@ and render_let_binding (binding : Syn.Cst.let_binding) =
   in
   Doc.concat (first :: trailing)
 
-and nested_structure_items_from_module_expression module_expression =
-  match module_expression with
-  | Syn.Cst.ModuleExpression.Structure { item_syntax_nodes; _ } -> (
-      match Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes with
-      | Ok items ->
-          items
-      | Error error ->
-          unsupported_with_context_entries
-            ~context:
-              (Context_label "module_expression"
-              :: Context_syntax_kind error.syntax_kind
-              :: List.map (fun label -> Context_label label) error.context)
-            error.message)
-  | _ ->
-      unsupported_syntax ~context:[ "module_expression" ]
-        ~syntax_node:(Syn.Cst.ModuleExpression.syntax_node module_expression)
-        "nested structure module expressions do not have a structural item stream"
-
 and nested_signature_items_from_module_type module_type =
   match Syn.CstBuilder.signature_items_of_module_type module_type with
   | Ok items ->
@@ -4749,10 +4731,18 @@ and render_module_application_argument = function
 and render_module_expression_doc = function
   | Syn.Cst.ModuleExpression.Path path ->
       doc_of_ident path
-  | (Syn.Cst.ModuleExpression.Structure { syntax_node; item_syntax_nodes = _ } as module_expression) ->
+  | Syn.Cst.ModuleExpression.Structure { syntax_node; item_syntax_nodes } ->
       let body =
-        render_structure_items ~source_node:syntax_node
-          (nested_structure_items_from_module_expression module_expression)
+        match Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes with
+        | Ok items ->
+            render_structure_items ~source_node:syntax_node items
+        | Error error ->
+            unsupported_with_context_entries
+              ~context:
+                (Context_label "module_expression"
+                :: Context_syntax_kind error.syntax_kind
+                :: List.map (fun label -> Context_label label) error.context)
+              error.message
       in
       Doc.concat
         [
