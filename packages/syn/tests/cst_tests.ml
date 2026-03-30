@@ -2084,6 +2084,58 @@ let tests =
                 Error "expected nested signature items to normalize successfully")
         | _ ->
             Error "expected module declaration with signature body");
+    Test.case "cst builder keeps nested signature prefix docs before declarations"
+      (fun () ->
+        let result =
+          parse_mli
+            {|
+module Span : sig
+  (** Span type representing a range in source text. *)
+  type t
+  (** `make` creates a span. *)
+  val make : unit -> t
+end
+|}
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | [ Syn.Cst.SignatureItem.ModuleDeclaration
+              {
+                definition =
+                  Syn.Cst.ModuleSignature.Signature
+                    ((Syn.Cst.ModuleType.Signature _) as module_type);
+                _;
+              } ] -> (
+            match Syn.CstBuilder.signature_items_of_module_type module_type with
+            | Ok
+                [
+                  Syn.Cst.SignatureItem.Docstring type_doc;
+                  Syn.Cst.SignatureItem.TypeDeclaration decl;
+                  Syn.Cst.SignatureItem.Docstring value_doc;
+                  Syn.Cst.SignatureItem.ValueDeclaration value_decl;
+                ] ->
+                Test.assert_equal
+                  ~expected:"(** Span type representing a range in source text. *)"
+                  ~actual:(Syn.Cst.Docstring.text type_doc);
+                Test.assert_equal ~expected:"t"
+                  ~actual:(Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token decl));
+                Test.assert_equal
+                  ~expected:"(** `make` creates a span. *)"
+                  ~actual:(Syn.Cst.Docstring.text value_doc);
+                Test.assert_equal ~expected:"make"
+                  ~actual:(Syn.Cst.Token.text value_decl.name_token);
+                Ok ()
+            | Ok _ ->
+                Error
+                  "expected nested signature prefix docs to stay as standalone items"
+            | Error _ ->
+                Error "expected nested signature items to reify successfully")
+        | _ ->
+            Error "expected module declaration with signature body");
     Test.case "cst builder normalizes repeated nested signature type docs"
       (fun () ->
         let result =
@@ -6335,6 +6387,70 @@ let tests =
               ~actual:(Syn.Cst.Token.text in_token);
             Ok ()
         | _ -> Error "expected let-operator tokens to expose equals and in");
+    Test.case "cst let bindings keep comment trivia before grouped and-bindings"
+      (fun () ->
+        let source =
+          {|
+let rec first x = second x
+(* Parse signature item (top-level in .mli files) *)
+and second x = x
+|}
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              and_binding =
+                Some
+                  ({
+                     binding_pattern =
+                       Syn.Cst.Pattern.Identifier { name_token; _ };
+                     _;
+                   } as nested);
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"second"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Test.assert_equal
+              ~expected:[ "(* Parse signature item (top-level in .mli files) *)"; "\n" ]
+              ~actual:
+                (nested
+                |> Syn.Cst.LetBinding.leading_trivia
+                |> List.map Syn.Cst.Trivia.text);
+            Ok ()
+        | _ ->
+            Error "expected grouped let binding with nested and-binding comment");
+    Test.case "cst type declarations keep declaration attributes attached"
+      (fun () ->
+        let result =
+          parse_ml {|type perform = { perform : int } [@@unboxed]
+|}
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | [ Syn.Cst.StructureItem.TypeDeclaration decl ] -> (
+            match Syn.Cst.TypeDeclaration.attributes decl with
+            | [ attribute ] ->
+                Test.assert_equal ~expected:"@@"
+                  ~actual:(Syn.Cst.Token.text attribute.sigil_token);
+                Test.assert_equal ~expected:(Some "unboxed")
+                  ~actual:(Syn.Cst.Ident.name attribute.name);
+                Ok ()
+            | _ ->
+                Error "expected declaration-level type attribute to stay attached")
+        | _ ->
+            Error
+              "expected a single type declaration item without a trailing floating attribute");
     Test.case "cst let expressions expose unit-pattern sequencing structurally" (fun () ->
         let source = "let render () = let () = log () in flush ()\n" in
         let result = parse_ml source in

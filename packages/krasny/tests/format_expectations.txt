@@ -117,6 +117,9 @@
 0920_signature_grouped_type_comment_before_and_member.mli
 0921_signature_grouped_type_doc_before_and_member.mli
 0922_signature_variant_inline_record_terminal_doc_before_closing_brace.mli
+0923_nested_signature_prefix_docs.mli
+0924_type_declaration_attribute.ml
+0925_comment_before_and_binding.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

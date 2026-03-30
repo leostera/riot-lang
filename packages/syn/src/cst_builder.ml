@@ -174,6 +174,10 @@ let trivia_from_syntax_trivia = fun trivia ->
   | _ ->
       None
 
+let leading_trivia_from_syntax_token = fun syntax_token ->
+  Ceibo.Red.SyntaxToken.leading_trivia syntax_token
+  |> List.filter_map trivia_from_syntax_trivia
+
 let span_contains = fun (outer : Ceibo.Span.t) (inner : Ceibo.Span.t) -> inner.start >= outer.start
 && inner.end_ <= outer.end_
 
@@ -6031,6 +6035,9 @@ and let_expression_from_node = fun ~is_recursive_binding node ->
                       keyword_token = and_keyword_token;
                       rec_token = direct_token_with_text node "rec";
                       equals_token = binding_equals_token;
+                      leading_trivia =
+                        leading_trivia_from_syntax_token
+                          (Cst.Token.syntax_token and_keyword_token);
                       attributes = binding_attributes;
                       binding_pattern = pattern_from_node nested_binding_pattern_node;
                       parameters = binding_parameters_from_prefix prefix_nodes;
@@ -6432,6 +6439,9 @@ and class_let_expression_from_node = fun ~is_recursive_binding node ->
                               "class_let_expression.and"
                             ]
                       );
+                      leading_trivia =
+                        leading_trivia_from_syntax_token
+                          (Cst.Token.syntax_token and_keyword_token);
                       attributes = binding_attributes;
                       binding_pattern = pattern_from_node nested_binding_pattern_node;
                       parameters = binding_parameters_from_prefix prefix_nodes;
@@ -6679,6 +6689,7 @@ and let_binding_from_binding_operator_binding = fun
       keyword_token = binding_keyword_token;
       rec_token = None;
       equals_token = binding_equals_token;
+      leading_trivia = [];
       attributes = [];
       binding_pattern = clause_pattern;
       parameters = [];
@@ -7227,6 +7238,7 @@ let type_declaration_from_node = fun node ->
             manifest_alias = type_manifest_alias_from_node node;
             private_flag = private_flag_from_type_declaration_node node;
             constraints = lifted_constraints;
+            attributes = [];
             next_and_declaration = None;
             is_nonrec = type_declaration_has_nonrec node;
             is_destructive_substitution = has_destructive_substitution;
@@ -7346,6 +7358,9 @@ let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_bindin
             keyword_token = binding_keyword_token;
             rec_token = binding_rec_token;
             equals_token = binding_equals_token;
+            leading_trivia =
+              leading_trivia_from_syntax_token
+                (Cst.Token.syntax_token binding_keyword_token);
             attributes = binding_attributes;
             binding_pattern = pattern_from_node binding_pattern_node;
             parameters = binding_parameters_from_prefix prefix_nodes;
@@ -7406,7 +7421,7 @@ let let_expression_binding_from_node = fun ~is_recursive_binding node ->
                   bail ~message:"expected let-expression binding keyword during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                     "let_expression.binding"
                   ]
-            ); rec_token = direct_token_with_text node "rec"; equals_token = binding_equals_token; attributes = []; binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix
+            ); rec_token = direct_token_with_text node "rec"; equals_token = binding_equals_token; leading_trivia = []; attributes = []; binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix
             prefix_nodes; value_leading_trivia =
               Cst.leading_trivia_before_node
                 ~after:(Cst.Token.span binding_equals_token).end_
@@ -9581,13 +9596,75 @@ let validate_source_file = fun source_file ->
         ] item) items
   )
 
+let attribute_is_declaration_attribute = fun (attribute : Cst.attribute) ->
+  String.equal (attribute_sigil_text attribute) double_at_text
+
+let rec take_structure_type_declaration_attributes acc =
+  function
+  | Cst.StructureItem.Attribute attribute :: rest
+    when attribute_is_declaration_attribute attribute ->
+      take_structure_type_declaration_attributes (attribute :: acc) rest
+  | items ->
+      (List.rev acc, items)
+
+let rec attach_structure_type_declaration_attributes =
+  function
+  | Cst.StructureItem.TypeDeclaration decl :: rest ->
+      let attributes, rest = take_structure_type_declaration_attributes [] rest in
+      let decl =
+        if attributes = [] then
+          decl
+        else
+          { decl with attributes = decl.attributes @ attributes }
+      in
+      Cst.StructureItem.TypeDeclaration decl
+      :: attach_structure_type_declaration_attributes rest
+  | item :: rest ->
+      item :: attach_structure_type_declaration_attributes rest
+  | [] ->
+      []
+
+let rec take_signature_type_declaration_attributes acc =
+  function
+  | Cst.SignatureItem.Attribute attribute :: rest
+    when attribute_is_declaration_attribute attribute ->
+      take_signature_type_declaration_attributes (attribute :: acc) rest
+  | items ->
+      (List.rev acc, items)
+
+let rec attach_signature_type_declaration_attributes =
+  function
+  | Cst.SignatureItem.TypeDeclaration decl :: rest ->
+      let attributes, rest = take_signature_type_declaration_attributes [] rest in
+      let decl =
+        if attributes = [] then
+          decl
+        else
+          { decl with attributes = decl.attributes @ attributes }
+      in
+      Cst.SignatureItem.TypeDeclaration decl
+      :: attach_signature_type_declaration_attributes rest
+  | item :: rest ->
+      item :: attach_signature_type_declaration_attributes rest
+  | [] ->
+      []
+
+let normalize_structure_items = fun ~source items -> items
+|> coalesce_structure_type_declaration_groups
+|> attach_structure_type_declaration_attributes
+|> normalize_structure_items_owned_trivia ~source
+
+let normalize_signature_items = fun ~source items -> items
+|> coalesce_signature_type_declaration_groups
+|> attach_signature_type_declaration_attributes
+|> normalize_signature_items_owned_trivia ~source
+
 let lift = fun ~kind ~source ~tokens tree ->
   let cst =
     match kind with
     | `Implementation ->
         let syntax_node, items, phrase_separator_tokens, trailing_phrase_separator_tokens = build_source_file_body ~source ~tokens ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~syntax_node_of_item:Cst.StructureItem.syntax_node ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans tree structure_items_from_node in
-        let items = items |> coalesce_structure_type_declaration_groups in
-        let items = normalize_structure_items_owned_trivia ~source items in
+        let items = normalize_structure_items ~source items in
         Cst.Implementation {
           syntax_node;
           phrase_separator_tokens;
@@ -9596,8 +9673,7 @@ let lift = fun ~kind ~source ~tokens tree ->
         }
     | `Interface ->
         let syntax_node, items, phrase_separator_tokens, trailing_phrase_separator_tokens = build_source_file_body ~source ~tokens ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans tree signature_items_from_node in
-        let items = items |> coalesce_signature_type_declaration_groups in
-        let items = normalize_signature_items_owned_trivia ~source items in
+        let items = normalize_signature_items ~source items in
         Cst.Interface {
           syntax_node;
           phrase_separator_tokens;
@@ -9630,10 +9706,6 @@ let signature_item_payload_nodes_from_node = fun node ->
       |> List.concat_map split_payload_item_nodes_from_node
   | _ ->
       split_payload_item_nodes_from_node node
-
-let normalize_structure_items = fun ~source items -> items
-|> coalesce_structure_type_declaration_groups
-|> normalize_structure_items_owned_trivia ~source
 
 let raw_structure_items_from_syntax_node = fun node ->
   let items =
@@ -9669,8 +9741,10 @@ let structure_items_from_syntax_nodes = fun nodes ->
   | exception Bail error -> Error error
 
 let structure_items_of_module_expression = function
-  | Cst.ModuleExpression.Structure {item_syntax_nodes; _} ->
-      structure_items_from_syntax_nodes item_syntax_nodes
+  | Cst.ModuleExpression.Structure {syntax_node; _} ->
+      structure_items_from_syntax_node_with_source
+        ~source:(source_text_of_syntax_node_tree syntax_node)
+        syntax_node
   | module_expression ->
       Error
         {
@@ -9679,10 +9753,6 @@ let structure_items_of_module_expression = function
           span = Ceibo.Red.SyntaxNode.span (Cst.ModuleExpression.syntax_node module_expression);
           context = [ "module_expression" ];
         }
-
-let normalize_signature_items = fun ~source items -> items
-|> coalesce_signature_type_declaration_groups
-|> normalize_signature_items_owned_trivia ~source
 
 let raw_signature_items_from_syntax_node = fun node ->
   let items =
@@ -9723,8 +9793,9 @@ let signature_items_from_syntax_nodes = fun nodes ->
 
 let signature_items_of_module_type = function
   | Cst.ModuleType.Signature {signature_syntax_node; _} ->
-      signature_item_payload_nodes_from_node signature_syntax_node
-      |> signature_items_from_syntax_nodes
+      signature_items_from_syntax_node_with_source
+        ~source:(source_text_of_syntax_node_tree signature_syntax_node)
+        signature_syntax_node
   | module_type ->
       Error
         {

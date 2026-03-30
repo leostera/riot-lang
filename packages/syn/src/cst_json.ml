@@ -1430,6 +1430,7 @@ and let_binding_to_json = fun binding ->
     ("keyword_token", token_to_json (Cst.LetBinding.keyword_token binding));
     ("rec_token", option_to_json token_to_json (Cst.LetBinding.rec_token binding));
     ("equals_token", token_to_json (Cst.LetBinding.equals_token binding));
+    ("leading_trivia", Json.Array (List.map trivia_to_json (Cst.LetBinding.leading_trivia binding)));
     ("attributes", Json.Array (List.map attribute_to_json (Cst.LetBinding.attributes binding)));
     ("binding_pattern", pattern_to_json (Cst.LetBinding.binding_pattern binding));
     ("parameters", Json.Array (List.map parameter_to_json (Cst.LetBinding.parameters binding)));
@@ -1594,6 +1595,7 @@ let type_definition_to_json =
 let rec type_declaration_to_json = fun decl ->
   let constraints = Cst.TypeDeclaration.constraints decl |> List.map type_constraint_to_json in
   let owned_trivia = owned_trivia_fields_to_json (Cst.TypeDeclaration.owned_trivia decl) in
+  let attributes = Cst.TypeDeclaration.attributes decl |> List.map attribute_to_json in
   Json.Object (
     [
       ("syntax_node", syntax_node_to_json (Cst.TypeDeclaration.syntax_node decl));
@@ -1623,6 +1625,12 @@ let rec type_declaration_to_json = fun decl ->
         []
       else
         [ ("constraints", Json.Array constraints) ]
+    )
+    @ (
+      if attributes = [] then
+        []
+      else
+        [ ("attributes", Json.Array attributes) ]
     )
     @ (
       match Cst.TypeDeclaration.next_and_declaration decl with

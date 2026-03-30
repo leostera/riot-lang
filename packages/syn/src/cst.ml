@@ -1573,6 +1573,7 @@ and let_binding = {
   keyword_token : Token.t;
   rec_token : Token.t option;
   equals_token : Token.t;
+  leading_trivia : trivia list;
   attributes : attribute list;
   binding_pattern : pattern;
   parameters : parameter list;
@@ -2636,6 +2637,7 @@ module TypeDeclaration = struct
     manifest_alias : core_type option;
     private_flag : private_flag;
     constraints : type_constraint list;
+    attributes : attribute list;
     next_and_declaration : t option;
     is_nonrec : bool;
     is_destructive_substitution : bool;
@@ -2655,6 +2657,8 @@ module TypeDeclaration = struct
   let private_flag = fun decl -> decl.private_flag
 
   let constraints = fun decl -> decl.constraints
+
+  let attributes = fun decl -> decl.attributes
 
   let rec and_declarations = fun decl ->
     match decl.next_and_declaration with
@@ -2708,6 +2712,7 @@ module LetBinding = struct
     keyword_token : Token.t;
     rec_token : Token.t option;
     equals_token : Token.t;
+    leading_trivia : trivia list;
     attributes : attribute list;
     binding_pattern : pattern;
     parameters : Parameter.t list;
@@ -2724,6 +2729,8 @@ module LetBinding = struct
   let rec_token = fun binding -> binding.rec_token
 
   let equals_token = fun binding -> binding.equals_token
+
+  let leading_trivia = fun binding -> binding.leading_trivia
 
   let attributes = fun binding -> binding.attributes
 

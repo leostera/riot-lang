@@ -2740,14 +2740,15 @@ and function_expression = {
 (** A single `let` binding.
 
     This shape is used both for item-level bindings and for nested `and`
-    bindings inside `let ... in ...` expressions. For top-level mutual groups,
-    `and_bindings` stores trailing clauses under the leading binding.
+    bindings inside `let ... in ...` expressions. For grouped bindings,
+    `and_binding` chains the trailing clauses under the leading binding.
 *)
 and let_binding = {
   syntax_node : syntax_node;
   keyword_token : Token.t;
   rec_token : Token.t option;
   equals_token : Token.t;
+  leading_trivia : trivia list;
   attributes : attribute list;
   binding_pattern : pattern;
   parameters : parameter list;
@@ -3897,6 +3898,7 @@ module TypeDeclaration : sig
     manifest_alias : core_type option;
     private_flag : private_flag;
     constraints : type_constraint list;
+    attributes : attribute list;
     next_and_declaration : t option;
     is_nonrec : bool;
     is_destructive_substitution : bool;
@@ -3923,6 +3925,9 @@ module TypeDeclaration : sig
       `type color = private Red | Blue`.
   *)
   val constraints : t -> TypeConstraint.t list
+
+  (** Declaration-level attributes such as `type t = int [@@immediate]`. *)
+  val attributes : t -> attribute list
 
   val and_declarations : t -> t list
 
@@ -3993,6 +3998,7 @@ module LetBinding : sig
     keyword_token : Token.t;
     rec_token : Token.t option;
     equals_token : Token.t;
+    leading_trivia : trivia list;
     attributes : attribute list;
     binding_pattern : pattern;
     parameters : Parameter.t list;
@@ -4008,6 +4014,9 @@ module LetBinding : sig
   val rec_token : t -> Token.t option
 
   val equals_token : t -> Token.t
+
+  (** Comment/doc trivia attached before the binding keyword, especially `and`. *)
+  val leading_trivia : t -> trivia list
 
   val attributes : t -> attribute list
 
