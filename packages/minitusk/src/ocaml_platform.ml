@@ -77,7 +77,7 @@ module Ocamlc = struct
 
   (** Build and run an ocamlc command *)
   let run ?(includes = []) ?(libs = []) ?(output = None) ?(mode = Compile)
-      ?(flags = []) ?(verbose = false) sources =
+      ?(flags = []) ?(extra_args = []) ?(verbose = false) sources =
     (* Build command arguments *)
     let args = [ ocamlc_path ] in
 
@@ -89,6 +89,8 @@ module Ocamlc = struct
       | CustomExe -> args @ [ "-custom" ]
       | Executable -> args
     in
+
+    let args = args @ extra_args in
 
     (* Add flags *)
     let args = args @ flags_to_string flags in
@@ -223,8 +225,9 @@ module Ocamlc = struct
       Io.run_command_with_output [ "/bin/sh"; "-c"; full_cmd ]
 
   (** Create a library (.cma) from object files *)
-  let create_library ~includes ~output objects =
+  let create_library ?(extra_args = []) ~includes ~output objects =
     run ~includes ~output:(Some output) ~mode:Library ~flags:[ NoStdlib ]
+      ~extra_args
       objects
 
   (** Create an executable from object files and libraries *)

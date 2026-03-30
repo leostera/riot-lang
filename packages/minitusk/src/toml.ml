@@ -1,6 +1,7 @@
-  open Stdlib
+open Stdlib
 type value =
   | String of string
+  | Int of int
   | Array of value list
   | Table of (string * value) list
   | Bool of bool
@@ -13,22 +14,20 @@ type error =
   | Unterminated_array of { position : int }
   | Unexpected_char of { position : int; found : char; expected : string }
 
-let format = Printf.sprintf
-
 let error_to_string = function
-  | Invalid_path { path } -> format "Invalid path: %s" path
+  | Invalid_path { path } -> "Invalid path: " ^ path
   | File_read_error { path; reason } ->
-      format "Failed to read file %s: %s" path reason
+      "Failed to read file " ^ path ^ ": " ^ reason
   | Parse_error { position; context; reason } ->
-      format "Parse error at position %d (context: %s): %s" position context
-        reason
+      "Parse error at position " ^ string_of_int position ^ " (context: "
+      ^ context ^ "): " ^ reason
   | Unterminated_string { position } ->
-      format "Unterminated string at position %d" position
+      "Unterminated string at position " ^ string_of_int position
   | Unterminated_array { position } ->
-      format "Unterminated array at position %d" position
+      "Unterminated array at position " ^ string_of_int position
   | Unexpected_char { position; found; expected } ->
-      format "Unexpected character '%c' at position %d (expected %s)" found
-        position expected
+      "Unexpected character '" ^ String.make 1 found ^ "' at position "
+      ^ string_of_int position ^ " (expected " ^ expected ^ ")"
 
 exception Parse_exception of error
 
@@ -249,6 +248,18 @@ let parse content =
     | 'f' when !pos + 5 <= len && String.sub content !pos 5 = "false" ->
         pos := !pos + 5;
         Bool false
+    | '0' .. '9' | '-' | '+' ->
+        let start = !pos in
+        if current_char () = '-' || current_char () = '+' then advance ();
+        while
+          not (at_end ())
+          && current_char () >= '0'
+          && current_char () <= '9'
+        do
+          advance ()
+        done;
+        let str = String.trim (String.sub content start (!pos - start)) in
+        (try Int (int_of_string str) with Failure _ -> String str)
     | _ ->
         (* Bare string - read until comma, bracket, newline, or comment *)
         let start = !pos in
@@ -366,12 +377,14 @@ let parse content =
             (* skip = *)
             try
               let value = parse_value () in
-              current_items := (key, value) :: !current_items;
+              current_items :=
+                (key, value) :: List.remove_assoc key !current_items;
               skip_to_eol ()
             with Exit ->
               (* Bare string parsing hit delimiter *)
               let value = String "" in
-              current_items := (key, value) :: !current_items;
+              current_items :=
+                (key, value) :: List.remove_assoc key !current_items;
               skip_to_eol ())
     done;
     raise Exit
@@ -411,7 +424,9 @@ let parse content =
             in
             let updated_table = insert_nested_table rest value existing_table in
             (* Replace or add the key with updated nested table *)
-            let acc_without_key = List.filter (fun (k, _) -> k != key) acc in
+            let acc_without_key =
+              List.filter (fun (k, _) -> not (String.equal k key)) acc
+            in
             (key, Table updated_table) :: acc_without_key
       in
 
@@ -432,7 +447,9 @@ let parse content =
       (* Add array sections as arrays *)
       let items_with_arrays =
         List.fold_left
-          (fun acc (name, tables) -> (name, Array (List.rev tables)) :: acc)
+          (fun acc (name, tables) ->
+            let path = String.split_on_char '.' name in
+            insert_nested_table path (Array (List.rev tables)) acc)
           items !array_sections
       in
 
@@ -449,6 +466,28 @@ let parse content =
 
 (* Helper functions *)
 let get_string = function String s -> Some s | _ -> None
+let get_int = function Int i -> Some i | _ -> None
 let get_array = function Array items -> Some items | _ -> None
 let get_table = function Table items -> Some items | _ -> None
 let find key items = try Some (List.assoc key items) with Not_found -> None
+
+let rec to_string ?(indent = 0) value =
+  let ind = String.make (indent * 2) ' ' in
+  match value with
+  | String s -> "\"" ^ s ^ "\""
+  | Int i -> string_of_int i
+  | Bool b -> if b then "true" else "false"
+  | Array items ->
+      let items_str =
+        String.concat ", " (List.map (to_string ~indent:(indent + 1)) items)
+      in
+      "[" ^ items_str ^ "]"
+  | Table items ->
+      let items_str =
+        String.concat ",\n"
+          (List.map
+             (fun (k, v) ->
+               ind ^ "  " ^ k ^ " = " ^ to_string ~indent:(indent + 1) v)
+             items)
+      in
+      if indent = 0 then "{\n" ^ items_str ^ "\n}" else "{ " ^ items_str ^ " }"

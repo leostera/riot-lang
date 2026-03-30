@@ -219,9 +219,25 @@ let execute_action ~project_root ~package ~cc_flags ~ld_flags ~uses_stdlib ~uses
         if uses_stdlib then []
         else [ Ocaml_platform.NoStdlib ]
       in
+      let has_c_stubs =
+        List.exists (fun file -> Filename.check_suffix file ".o") object_files
+      in
+      let wrapped_cc_flags =
+        cc_flags
+        |> List.concat_map (fun flag -> [ "-ccopt"; flag ])
+      in
+      let wrapped_ld_flags =
+        ld_flags
+        |> List.concat_map (fun flag -> [ "-cclib"; flag ])
+      in
+      let extra_args =
+        (if has_c_stubs then [ "-custom" ] else [])
+        @ wrapped_cc_flags @ wrapped_ld_flags
+      in
       match
         Ocaml_platform.Ocamlc.run ~includes:("." :: final_includes)
           ~output:(Some archive_name) ~mode:Ocaml_platform.Library ~flags
+          ~extra_args
           object_files
       with
       | Ok _ -> () (* Ignore stdout output *)

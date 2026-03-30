@@ -39,8 +39,8 @@ RUN echo "=== Step 2: Running minitusk ===" && \
 
 # Step 3: Build Tusk proper using the bootstrap Tusk
 RUN echo "=== Step 3: Building Tusk proper ===" && \
-    ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server tusk-cli && \
-    ./_build/bootstrap/out/Tusk_cli/tusk install tusk
+    ./_build/bootstrap/out/Tusk_cli/tusk -v build tusk-cli && \
+    ./_build/bootstrap/out/Tusk_cli/tusk -v install tusk
 
 
 # Verify the final Tusk binary exists and works
