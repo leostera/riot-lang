@@ -2654,7 +2654,8 @@ and render_object_override_expression ({ fields; _ } : Syn.Cst.object_override_e
            object_override_close;
          ])
 
-and render_index_expression ({ syntax_node; collection; index; _ } : Syn.Cst.index_expression) =
+and render_index_expression
+    ({ collection; opening_tokens; index; closing_token; _ } : Syn.Cst.index_expression) =
   let collection_doc =
     match collection with
     | Syn.Cst.Expression.If _
@@ -2669,23 +2670,12 @@ and render_index_expression ({ syntax_node; collection; index; _ } : Syn.Cst.ind
     | _ ->
         render_expression collection
   in
-  let punct =
-    nontrivia_direct_tokens syntax_node
-    |> List.map Syn.Ceibo.Red.SyntaxToken.text
-  in
-  let before_index, after_index =
-    match List.rev punct with
-    | [] ->
-        (".(", ")")
-    | right :: reversed_left ->
-        (List.rev reversed_left |> String.concat "", right)
-  in
   Doc.concat
     [
       collection_doc;
-      Doc.text before_index;
+      Doc.concat (List.map doc_of_token opening_tokens);
       render_expression index;
-      Doc.text after_index;
+      doc_of_token closing_token;
     ]
 
 and render_record_expression = function

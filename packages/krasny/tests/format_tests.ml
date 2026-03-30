@@ -299,6 +299,21 @@ let map : type a b. a t -> fn:(a -> b) -> b t = fun iter ~fn -> failwith "todo"
         in
         Test.assert_equal ~expected ~actual;
         Ok ());
+    Test.case "format index expressions from explicit delimiter tokens"
+      (fun () ->
+        let source =
+          {|let x = s.[0]
+let y = a.(0)
+let z = x.%(0)
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"index expressions should format from CST-carried delimiters, not token replay"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
     Test.case "format singleton list patterns with explicit formatter spacing"
       (fun () ->
         let compact_source =

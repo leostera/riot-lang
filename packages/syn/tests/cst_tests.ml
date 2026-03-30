@@ -8901,9 +8901,11 @@ let tests =
                 Syn.Cst.Expression.Index
                   {
                     collection = Syn.Cst.Expression.Path { path; _ };
+                    opening_tokens;
                     index =
                       Syn.Cst.Expression.Literal
                         (Syn.Cst.Literal.Int { literal_token; _ });
+                    closing_token;
                     _;
                   };
               _;
@@ -8911,10 +8913,50 @@ let tests =
           :: _ ->
             Test.assert_equal ~expected:(Some "s")
               ~actual:(Syn.Cst.Ident.name path);
+            Test.assert_equal ~expected:[ "."; "[" ]
+              ~actual:(opening_tokens |> List.map Syn.Cst.Token.text);
             Test.assert_equal ~expected:"0"
               ~actual:(Syn.Cst.Token.text literal_token);
+            Test.assert_equal ~expected:"]"
+              ~actual:(Syn.Cst.Token.text closing_token);
             Ok ()
         | _ -> Error "expected string index expression");
+    Test.case "cst extended index expressions preserve delimiter tokens"
+      (fun () ->
+        let source = "let z = x.%(0)\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.Index
+                  {
+                    collection = Syn.Cst.Expression.Path { path; _ };
+                    opening_tokens;
+                    index =
+                      Syn.Cst.Expression.Literal
+                        (Syn.Cst.Literal.Int { literal_token; _ });
+                    closing_token;
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "x")
+              ~actual:(Syn.Cst.Ident.name path);
+            Test.assert_equal ~expected:[ "."; "%"; "(" ]
+              ~actual:(opening_tokens |> List.map Syn.Cst.Token.text);
+            Test.assert_equal ~expected:"0"
+              ~actual:(Syn.Cst.Token.text literal_token);
+            Test.assert_equal ~expected:")"
+              ~actual:(Syn.Cst.Token.text closing_token);
+            Ok ()
+        | _ -> Error "expected extended index expression");
     Test.case "cst polyvariant expressions preserve tags and payloads" (fun () ->
         let source = "let x = `Point { y = 1; z = 2 }\n" in
         let result = parse_ml source in

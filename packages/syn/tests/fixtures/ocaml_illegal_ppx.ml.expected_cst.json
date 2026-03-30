@@ -2345,6 +2345,24 @@
               },
               "payload": null
             },
+            "opening_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 483,
+                  "end": 484
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "(",
+                "span": {
+                  "start": 484,
+                  "end": 485
+                }
+              }
+            ],
             "index": {
               "tag": "apply",
               "syntax_node": {
@@ -2563,6 +2581,14 @@
                     }
                   }
                 }
+              }
+            },
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 511,
+                "end": 512
               }
             }
           },

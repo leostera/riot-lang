@@ -2371,7 +2371,9 @@ and field_access_expression = {
 and index_expression = {
   syntax_node : syntax_node;
   collection : expression;
+  opening_tokens : Token.t list;
   index : expression;
+  closing_token : Token.t;
   attributes : attribute list;
 }
 

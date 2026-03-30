@@ -130,6 +130,32 @@
                 "payload": null
               }
             },
+            "opening_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 11,
+                  "end": 12
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "!",
+                "span": {
+                  "start": 12,
+                  "end": 13
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "(",
+                "span": {
+                  "start": 13,
+                  "end": 14
+                }
+              }
+            ],
             "index": {
               "tag": "path",
               "syntax_node": {
@@ -156,6 +182,14 @@
                     "end": 15
                   }
                 }
+              }
+            },
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 15,
+                "end": 16
               }
             }
           },

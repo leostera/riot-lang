@@ -212,6 +212,24 @@
                       }
                     }
                   },
+                  "opening_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 24,
+                        "end": 25
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "(",
+                      "span": {
+                        "start": 25,
+                        "end": 26
+                      }
+                    }
+                  ],
                   "index": {
                     "tag": "path",
                     "syntax_node": {
@@ -238,6 +256,14 @@
                           "end": 27
                         }
                       }
+                    }
+                  },
+                  "closing_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ")",
+                    "span": {
+                      "start": 27,
+                      "end": 28
                     }
                   }
                 },
@@ -295,6 +321,24 @@
                         }
                       }
                     },
+                    "opening_tokens": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "span": {
+                          "start": 35,
+                          "end": 36
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "(",
+                        "span": {
+                          "start": 36,
+                          "end": 37
+                        }
+                      }
+                    ],
                     "index": {
                       "tag": "path",
                       "syntax_node": {
@@ -321,6 +365,14 @@
                             "end": 38
                           }
                         }
+                      }
+                    },
+                    "closing_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": ")",
+                      "span": {
+                        "start": 38,
+                        "end": 39
                       }
                     }
                   },

@@ -84,6 +84,7 @@ This file is _yours_. Keep it up to date after every big change.
 - relifted nested `struct ... end` and `sig ... end` bodies now keep floating attributes as real sibling items after preceding `type` declarations, without double-splitting or dropping them.
 - core-type variables now render from `Syn.Cst.CoreType.Var.sigil_token` plus `name_token`; quoted `'a` and bare locally abstract `a` variables no longer need raw syntax-node token replay.
 - typed named parameters now normalize through synthesized outer `: type ...` binding annotations without duplicating `~(fn : ...)` inside the unsugared `fun` parameter list.
+- `Syn.Cst.index_expression` now carries explicit `opening_tokens` plus `closing_token`, and `krasny` renders `.[ ]`, `.( )`, and extended `.%( )` delimiters from those CST tokens instead of reconstructing punctuation from raw direct-token text.
 - polymorphic-variant expression and pattern heads now render from explicit `tag_token` plus a formatter backtick, instead of replaying raw syntax-node token text.
 - `Syn.Cst.CoreType.Poly` now exposes `type_keyword_token`, and `krasny` uses that explicit token instead of scanning raw tokens to decide whether locally abstract types were written with `type`.
 - `packages/krasny/src/source.ml` is gone; `krasny` no longer keeps any live raw source-reconstruction helper.
@@ -125,7 +126,6 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Remove token-text replay and token-text heuristics still used in `lower.ml`
   - `signed_literal_text_from_syntax_node`
-  - `render_index_expression` punctuation reconstruction from `direct_tokens`
   - any remaining token-text-based preservation gates such as shortcut-attribute / extension special cases if they still exist
 
 - [ ] Audit remaining layout heuristics and keep only the ones that are explicit style policy

@@ -102,6 +102,24 @@
                 }
               }
             },
+            "opening_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 9,
+                  "end": 10
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "[",
+                "span": {
+                  "start": 10,
+                  "end": 11
+                }
+              }
+            ],
             "index": {
               "tag": "literal",
               "literal": {
@@ -125,6 +143,14 @@
                 "prefix": null,
                 "digits": "0",
                 "suffix": null
+              }
+            },
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": "]",
+              "span": {
+                "start": 12,
+                "end": 13
               }
             }
           },

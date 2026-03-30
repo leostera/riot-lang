@@ -115,6 +115,24 @@
                     }
                   }
                 },
+                "opening_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 15,
+                      "end": 16
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "(",
+                    "span": {
+                      "start": 16,
+                      "end": 17
+                    }
+                  }
+                ],
                 "index": {
                   "tag": "path",
                   "syntax_node": {
@@ -142,8 +160,34 @@
                       }
                     }
                   }
+                },
+                "closing_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ")",
+                  "span": {
+                    "start": 18,
+                    "end": 19
+                  }
                 }
               },
+              "opening_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 20,
+                    "end": 21
+                  }
+                }
+              ],
               "index": {
                 "tag": "path",
                 "syntax_node": {
@@ -170,6 +214,14 @@
                       "end": 22
                     }
                   }
+                }
+              },
+              "closing_token": {
+                "kind": "IDENT_EXPR",
+                "text": ")",
+                "span": {
+                  "start": 22,
+                  "end": 23
                 }
               }
             },

@@ -1028,12 +1028,14 @@ and expression_to_json = fun expression ->
         ("field_name", token_to_json field_name)
       ]
       @ expression_attribute_fields expression)
-  | Cst.Expression.Index { syntax_node; collection; index; _ } ->
+  | Cst.Expression.Index { syntax_node; collection; opening_tokens; index; closing_token; _ } ->
       Json.Object ([
         ("tag", Json.String "index");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("collection", expression_to_json collection);
-        ("index", expression_to_json index)
+        ("opening_tokens", Json.Array (List.map token_to_json opening_tokens));
+        ("index", expression_to_json index);
+        ("closing_token", token_to_json closing_token)
       ]
       @ expression_attribute_fields expression)
   | Cst.Expression.ObjectOverride { syntax_node; fields; _ } ->

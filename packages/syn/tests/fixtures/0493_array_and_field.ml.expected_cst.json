@@ -129,6 +129,24 @@
                   }
                 }
               },
+              "opening_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 15,
+                    "end": 16
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "(",
+                  "span": {
+                    "start": 16,
+                    "end": 17
+                  }
+                }
+              ],
               "index": {
                 "tag": "path",
                 "syntax_node": {
@@ -155,6 +173,14 @@
                       "end": 18
                     }
                   }
+                }
+              },
+              "closing_token": {
+                "kind": "IDENT_EXPR",
+                "text": ")",
+                "span": {
+                  "start": 18,
+                  "end": 19
                 }
               }
             },

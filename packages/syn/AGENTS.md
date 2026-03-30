@@ -50,6 +50,7 @@
 44. Keep explicit nested item-anchor helpers non-duplicating: once `item_syntax_nodes` already includes lifted floating-attribute siblings, downstream relift helpers must not split the same `TYPE_DECL` a second time.
 45. Keep the optional leading `type` keyword explicit on `Cst.CoreType.Poly` via `type_keyword_token`. Downstream tools should not rescan raw poly-type tokens just to distinguish `type a. ...` from `'a. ...`.
 46. Keep quoted-vs-bare `Cst.CoreType.Var` spelling explicit. Preserve the optional apostrophe on quoted vars via `sigil_token` instead of forcing downstream tools to infer `'a` vs `a` from raw token scans or ad hoc string rewriting.
+47. Keep index-expression delimiters explicit on `Cst.index_expression`. Preserve the opening punctuation token sequence and closing token so downstream renderers can print `.[ ]`, `.( )`, and extended `.%( )` forms without raw token-text reconstruction.
 
 ## Validate
 

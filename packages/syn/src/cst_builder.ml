@@ -5196,15 +5196,22 @@ and field_access_expression_from_node = fun node ->
       })
   | _ -> None
 and index_expression_from_node = fun node ->
-  match direct_non_trivia_nodes node with
-  | collection_node :: index_node :: _ ->
-      Some {
-        syntax_node = node;
-        collection = expression_from_node collection_node;
-        index = expression_from_node index_node;
-        attributes = []
-      }
-  | _ -> None
+  match direct_non_trivia_nodes node, direct_non_trivia_tokens node with
+  | collection_node :: index_node :: _, punctuation_tokens -> (
+      match List.rev punctuation_tokens with
+      | closing_syntax_token :: reversed_opening_tokens ->
+          Some {
+            syntax_node = node;
+            collection = expression_from_node collection_node;
+            opening_tokens = List.rev reversed_opening_tokens |> List.map token;
+            index = expression_from_node index_node;
+            closing_token = token closing_syntax_token;
+            attributes = []
+          }
+      | [] ->
+          bail ~message:"expected index expression punctuation during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "expression.index" ])
+  | _, _ -> None
 and assign_expression_from_node = fun node ->
   match direct_non_trivia_nodes node, direct_non_trivia_tokens node with
   | target_node :: value_node :: _, operator_syntax_token :: _ ->
