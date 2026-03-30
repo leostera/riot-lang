@@ -335,6 +335,29 @@ let z = x.%(0)
 |}
           ~actual;
         Ok ());
+    Test.case "format operator expressions and patterns from explicit operator tokens"
+      (fun () ->
+        let source =
+          {|let op = ( + )
+let is_plus = function | ( + ) -> true | _ -> false
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"operator expressions and patterns should format from CST-carried operator tokens"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let op = ( + )
+
+let is_plus =
+  function
+  | ( + ) -> true
+  | _ -> false
+|}
+          ~actual;
+        Ok ());
     Test.case "format singleton list patterns with explicit formatter spacing"
       (fun () ->
         let compact_source =

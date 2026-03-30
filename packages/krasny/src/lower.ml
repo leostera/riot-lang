@@ -1632,7 +1632,7 @@ let rec render_pattern =
             ]
       )
   | Syn.Cst.Pattern.Operator { operator_tokens; _ } ->
-      let operator = operator_tokens |> List.map token_text |> String.concat "" |> Doc.text in
+      let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
       Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
   | Syn.Cst.Pattern.FirstClassModule { binding; module_type; _ } ->
       let binding_doc =
@@ -2295,7 +2295,7 @@ let make_lowerer =
           kw_done;
         ]
   | Syn.Cst.Expression.Operator { operator_tokens; _ } ->
-      let operator = operator_tokens |> List.map token_text |> String.concat "" |> Doc.text in
+      let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
       Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
   | Syn.Cst.Expression.Tuple { elements; _ } ->
       let rendered_elements = List.map render_expression elements in
